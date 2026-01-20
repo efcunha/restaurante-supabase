@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Fundo marrom -->
+  <rect width="1024" height="1024" fill="#8B2F2F"/>
+  
+  <!-- Círculo dourado -->
+  <circle cx="512" cy="512" r="400" fill="#E5B84A"/>
+  
+  <!-- Texto ESPETO ajustado -->
+  <text x="512" y="580" font-size="140" text-anchor="middle" fill="#8B2F2F" font-family="Arial Black, Arial" font-weight="bold">ESPETO</text>
+</svg>

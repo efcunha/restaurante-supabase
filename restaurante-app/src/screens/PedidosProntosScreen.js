@@ -1,0 +1,425 @@
+import { StatusBar } from 'expo-status-bar';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { useState, useEffect } from 'react';
+import { useOrders } from '../context/OrderContext.firestore';
+import { useAuth } from '../context/AuthContext';
+import BackgroundPattern from '../components/BackgroundPattern';
+import PedidoDetalhesModal from './PedidoDetalhesModal';
+import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { db } from '../config/firebaseConfig';
+import { getLocalDateKey } from '../utils/dateUtils';
+import { exitApp } from '../utils/appUtils';
+
+export default function PedidosProntosScreen() {
+  const { markItemAsDelivered } = useOrders();
+  const { user, logout } = useAuth();
+  const [selectedOrderId, setSelectedOrderId] = useState(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [processingItems, setProcessingItems] = useState(new Set()); // Loading state
+  const [allOrders, setAllOrders] = useState([]);
+
+  // ✅ TEMPO REAL: Listener para multi-usuários
+  useEffect(() => {
+    const today = getLocalDateKey();
+    const qPedidos = query(
+      collection(db, 'pedidos'),
+      where('dateKey', '==', today)
+    );
+    
+    const unsubscribe = onSnapshot(qPedidos, (snapshot) => {
+      const pedidos = [];
+      snapshot.forEach(doc => {
+        pedidos.push({ id: doc.id, ...doc.data() });
+      });
+      setAllOrders(pedidos);
+    }, (error) => {
+      console.error('Erro ao ouvir pedidos:', error);
+    });
+    
+    return () => unsubscribe();
+  }, []);
+
+  // Buscar pedidos com status montagem ou churrasqueira que têm itens marcados como prontos
+  const churrasqueiraOrders = allOrders.filter(o => o.status === 'churrasqueira' || o.status === 'montagem');
+  
+  // Extrair itens prontos individuais (que ainda NÃO foram entregues)
+  const readyItems = [];
+  const seenItems = new Set(); // Para evitar duplicatas
+  
+  churrasqueiraOrders.forEach(order => {
+    if (order.itemsWithStatus && order.itemsWithStatus.length > 0) {
+      order.itemsWithStatus.forEach(item => {
+        if (item.status === 'pronto' && item.checked && !item.delivered) {
+          // Criar chave única para evitar duplicatas
+          const itemKey = `${order.id}-${item.id}`;
+          
+          if (!seenItems.has(itemKey)) {
+            seenItems.add(itemKey);
+            readyItems.push({
+              ...item,
+              orderId: order.id,
+              comandaNumber: order.comandaNumber || order.numeroComanda,
+              client: order.client,
+              criadoPorNome: order.criadoPorNome || order.createdByName,
+              orderTimestamp: order.timestamp || order.createdAt
+            });
+          }
+        }
+      });
+    }
+  });
+  
+  // ORDENAR: Primeiro por número de comanda (menor primeiro), depois por timestamp do pedido
+  readyItems.sort((a, b) => {
+    // Extrair número da comanda (ex: "002" de "002")
+    const numA = parseInt(a.comandaNumber) || 0;
+    const numB = parseInt(b.comandaNumber) || 0;
+    
+    if (numA !== numB) {
+      return numA - numB; // Comanda menor primeiro
+    }
+    
+    // Se mesma comanda, ordenar por timestamp do pedido (mais antigo primeiro)
+    const timeA = new Date(a.orderTimestamp).getTime();
+    const timeB = new Date(b.orderTimestamp).getTime();
+    return timeA - timeB;
+  });
+  
+  // console.log('📋 [Prontos] Itens prontos:', readyItems.length, readyItems.map(i => ({ 
+  //   id: i.id,
+  //   orderId: i.orderId,
+  //   name: i.name,
+  //   status: i.status, 
+  //   checked: i.checked, 
+  //   delivered: i.delivered 
+  // })));
+
+  const handleDeliver = async (orderId, itemId) => {
+    // Validar se caixa está aberto
+    try {
+      const { default: CaixaService } = await import('../services/CaixaService');
+      const caixaAberto = await CaixaService.getCaixaAberto();
+      if (!caixaAberto) {
+        Alert.alert('Caixa Fechado', 'É necessário abrir o caixa antes de entregar pedidos.');
+        return;
+      }
+    } catch (e) {
+      console.error('[Prontos] Erro ao verificar caixa:', e);
+    }
+    
+    try {
+      const itemKey = `${orderId}-${itemId}`;
+      setProcessingItems(prev => new Set([...prev, itemKey]));
+      
+      // Buscar pedido atual do estado local (vem do onSnapshot)
+      const order = allOrders.find(o => o.id === orderId);
+      if (!order || !order.itemsWithStatus) {
+        throw new Error('Pedido não encontrado');
+      }
+      
+      const now = new Date().toISOString();
+      
+      // Atualizar item como entregue
+      const updatedItems = order.itemsWithStatus.map(item => 
+        item.id === itemId 
+          ? { ...item, delivered: true, deliveredAt: now }
+          : item
+      );
+      
+      // Verificar se todos os itens foram entregues
+      const allDelivered = updatedItems.every(item => item.delivered === true);
+      
+      const updatePayload = {
+        itemsWithStatus: updatedItems,
+      };
+      
+      if (allDelivered) {
+        updatePayload.status = 'delivered';
+        updatePayload.deliveredAt = now;
+        updatePayload.entreguePor = user?.id || null;
+        updatePayload.entreguePorNome = user?.nome || null;
+      }
+      
+      // Atualizar diretamente no Firebase
+      const pedidoRef = doc(db, 'pedidos', orderId);
+      await updateDoc(pedidoRef, updatePayload);
+      
+      setProcessingItems(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(itemKey);
+        return newSet;
+      });
+      
+    } catch (error) {
+      console.error('❌ Erro ao entregar item:', error);
+      Alert.alert('Erro', 'Não foi possível marcar como entregue');
+      
+      const itemKey = `${orderId}-${itemId}`;
+      setProcessingItems(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(itemKey);
+        return newSet;
+      });
+    }
+  };
+
+  const handleOpenDetails = (orderId) => {
+    setSelectedOrderId(orderId);
+    setModalVisible(true);
+  };
+
+  const handleCloseModal = () => {
+    setModalVisible(false);
+    setSelectedOrderId(null);
+  };
+
+  return (
+    <View style={styles.container}>
+      <BackgroundPattern />
+      
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <Text style={styles.headerTitle}>Pedidos Prontos</Text>
+          {user && (
+            <Text style={styles.userInfo}>{user.nome || user.email}</Text>
+          )}
+        </View>
+        <TouchableOpacity 
+          style={styles.logoutBtn} 
+          onPress={exitApp}
+        >
+          <Text style={styles.logoutBtnText}>Sair</Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView style={styles.content}>
+        {readyItems.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyText}>Nenhum item pronto</Text>
+            <Text style={styles.emptySubtext}>Marque itens na montagem e eles aparecerão aqui</Text>
+          </View>
+        ) : (
+          readyItems.map((item, index) => (
+            <View 
+              key={`${item.orderId}-${item.id}`} 
+              style={styles.itemCard}
+            >
+              <View style={styles.itemHeader}>
+                <Text style={styles.comandaNumber}>Comanda {item.comandaNumber || '?'}</Text>
+                <Text style={styles.clientName}>{item.client}</Text>
+              </View>
+              
+              <View style={styles.itemBody}>
+                <View style={styles.checkIcon}>
+                  <Text style={styles.checkIconText}>✓</Text>
+                </View>
+                <Text style={styles.itemName}>{item.name}</Text>
+              </View>
+
+              {item.criadoPorNome && (
+                <Text style={styles.garcomText}>👤 Garçom: {item.criadoPorNome}</Text>
+              )}
+
+              <TouchableOpacity 
+                style={styles.deliverBtn} 
+                onPress={() => handleDeliver(item.orderId, item.id)}
+              >
+                <Text style={styles.deliverBtnText}>ENTREGUE</Text>
+              </TouchableOpacity>
+            </View>
+          ))
+        )}
+      </ScrollView>
+
+      {selectedOrderId && (
+        <PedidoDetalhesModal
+          visible={modalVisible}
+          orderId={selectedOrderId}
+          onClose={handleCloseModal}
+        />
+      )}
+
+      <StatusBar style="light" />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F5F1E8',
+  },
+  header: {
+    backgroundColor: '#8B2F2F',
+    paddingTop: 50,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 15,
+    elevation: 8,
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  headerTitle: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: '600',
+  },
+  userInfo: {
+    color: '#E5B84A',
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  logoutBtn: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+  },
+  logoutBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  content: {
+    flex: 1,
+    padding: 20,
+  },
+  orderCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 15,
+    padding: 18,
+    marginBottom: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  itemCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 15,
+    padding: 18,
+    marginBottom: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
+    borderLeftWidth: 5,
+    borderLeftColor: '#4CAF50',
+  },
+  itemHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  comandaNumber: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#8B2F2F',
+  },
+  clientName: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '600',
+  },
+  itemBody: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  checkIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#4CAF50',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  checkIconText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  itemName: {
+    flex: 1,
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '600',
+  },
+  orderNumber: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#8B2F2F',
+    marginBottom: 5,
+  },
+  orderClient: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2C2C2C',
+    marginBottom: 10,
+  },
+  garcomText: {
+    fontSize: 13,
+    color: '#2196F3',
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  finalizadoPorText: {
+    fontSize: 13,
+    color: '#4CAF50',
+    fontStyle: 'italic',
+    marginBottom: 8,
+  },
+  orderItems: {
+    marginBottom: 15,
+  },
+  itemText: {
+    fontSize: 14,
+    color: '#5C5C5C',
+    paddingVertical: 3,
+  },
+  deliverBtn: {
+    backgroundColor: '#E5B84A',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#E5B84A',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 5,
+  },
+  deliverBtnText: {
+    color: '#2C2C2C',
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#8B2F2F',
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#999',
+  },
+});
