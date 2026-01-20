@@ -1,0 +1,69 @@
+# Dependencies
+node_modules/
+
+# React Native
+.expo/
+.metro-health-check*
+*.hbc
+
+# Android
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+*.apk
+*.aab
+*.jks
+!android/app/debug.keystore
+
+# iOS
+ios/Pods/
+ios/build/
+ios/.xcode.env.local
+*.xcworkspace
+DerivedData/
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.xcuserstate
+
+# Firebase
+.firebase/
+serviceAccountKey.json
+firebase-adminsdk-*.json
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# IDE/Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Build
+dist/
+*.tsbuildinfo
+
+# Temporary
+*.tmp
+*.temp
+.cache/
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+__tests__*
+*__tests__*
