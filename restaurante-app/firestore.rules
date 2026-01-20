@@ -1,0 +1,17 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Permitir leitura/escrita autenticada (ajuste conforme necessário)
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Regras específicas para funcionarios (unicidade de UID)
+    match /funcionarios/{uid} {
+      allow read: if request.auth != null;
+      allow create: if request.auth.uid == uid 
+        && !exists(/databases/$(database)/documents/funcionarios/$(uid));
+      allow update: if request.auth.uid == uid;
+    }
+  }
+}
