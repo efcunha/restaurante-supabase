@@ -66,7 +66,7 @@ class PDFService {
       <body>
         <div class="container">
           <div class="header">
-            <h1 class="title">ESPETO & CIA</h1>
+            <h1 class="title">Recibo de Vendas</h1>
             <div class="subtitle">Comprovante de Pedido</div>
           </div>
 
