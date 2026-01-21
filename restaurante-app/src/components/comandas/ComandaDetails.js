@@ -4,7 +4,7 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, Platform }
 import { colors } from '../../theme/colors';
 import { calcularPrecoItem, fixDecimal } from '../../utils/orderCalculator';
 
-export default function ComandaDetails({ comanda, onClose, onPay, onPrint, onCancel, onAddItems }) {
+export default function ComandaDetails({ comanda, onClose, onPay, onPrint, onCancel, onAddItems, onShare }) {
     // Calcular Saldo devedor
     const saldoDevedor = useMemo(() => {
         return fixDecimal(Math.max(0, comanda.totalConsumido - comanda.totalPago));
@@ -66,9 +66,14 @@ export default function ComandaDetails({ comanda, onClose, onPay, onPrint, onCan
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>Comanda {comanda.comandaNumber}</Text>
                 </View>
-                <TouchableOpacity onPress={onPrint} style={styles.printBtn}>
-                    <Text style={{ fontSize: 20 }}>🖨️</Text>
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row' }}>
+                    <TouchableOpacity onPress={onShare} style={[styles.printBtn, { marginRight: 10 }]}>
+                        <Text style={{ fontSize: 20 }}>📤</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={onPrint} style={styles.printBtn}>
+                        <Text style={{ fontSize: 20 }}>🖨️</Text>
+                    </TouchableOpacity>
+                </View>
             </View>
 
             <ScrollView style={styles.content}>
