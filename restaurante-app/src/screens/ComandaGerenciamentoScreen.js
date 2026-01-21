@@ -11,7 +11,7 @@ import ComandaDetails from '../components/comandas/ComandaDetails';
 import AddItemsModal from '../components/comandas/AddItemsModal';
 import { colors } from '../theme/colors';
 import { getTodayKey } from '../services/FirebaseOptimizations';
-import { CARDAPIO_STATIC, fixDecimal } from '../utils/orderCalculator';
+import { CARDAPIO_STATIC, fixDecimal, calcularPrecoItem } from '../utils/orderCalculator';
 
 // Keep Services as they are, assume they handle their own internal logic
 import PagamentosService from '../services/PagamentosService';
@@ -44,27 +44,55 @@ export default function ComandaGerenciamentoScreen() {
   // --- Actions ---
 
   const handlePrint = async (comandaData) => {
-    // Basic reconstruction of printing data from comanda object
-    const comandaParaImprimir = {
-      comandaNumber: comandaData.comandaNumber,
-      cliente: comandaData.cliente || 'Não informado',
-      horarioCriacao: comandaData.horarioCriacao || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-      criadoPor: comandaData.criadoPorNome || '',
-      // We rely on backend/service logic if possible, or reconstruct items
-      // For now utilizing what we have. ComandaDetails computes summary too.
-      // Re-using the structure passed around might benefit from a consistent model.
-      totalConsumido: comandaData.totalConsumido
-      // ... simplified for this refactor
+    // Preparar dados para o formato esperado pelo PrinterService (itens)
+    let itensParaImprimir = [];
+    
+    if (comandaData.pedidos && comandaData.pedidos.length > 0) {
+      // Agrupar itens igual fazemos no Details
+      const mapItens = {};
+
+      comandaData.pedidos.forEach(p => {
+        let itemsArray = p.items || p.itens || [];
+        if (!Array.isArray(itemsArray)) itemsArray = [];
+        
+        itemsArray.forEach(itemText => {
+            const calc = calcularPrecoItem(itemText);
+            const nome = calc.nomeCompleto;
+            
+            if (!mapItens[nome]) {
+                mapItens[nome] = {
+                    nome: nome,
+                    quantidade: 0,
+                    valor: calc.precoUnitario,
+                    observacao: '' 
+                };
+            }
+            mapItens[nome].quantidade += calc.quantidade;
+        });
+      });
+      
+      // Converter para array
+      itensParaImprimir = Object.values(mapItens).map(item => ({
+        nome: item.nome,
+        quantidade: item.quantidade,
+        valor: item.valor * item.quantidade, // PrinterService espera valor total da linha ou unit? Checando...
+        // CODE CHECK: PrinterService line 230: `R$ ${item.valor.toFixed(2)}` -> imprime direto.
+        // Se a quantidade for > 1, geralmente queremos (qtd x unit) ou total.
+        // PrinterService implementado imprime "QTDx Nome" e depois o VALOR.
+        // Vamos passar o valor TOTAL dessa linha (unit * qtd).
+        observacao: item.observacao
+      }));
+    }
+
+    const dadosImpressao = {
+      ...comandaData,
+      itens: itensParaImprimir
     };
 
-    // Actually, PrinterService expects specific format. 
-    // In strict refactor, I should duplicate the mapper logic or move it to utils.
-    // For now, let's trust the service handles it or valid object is passed.
-    // Ideally user interaction flows should be preserved.
-
-    const sucesso = await PrinterService.printComanda(comandaData); // Assume updated service or object compatibility
-    if (sucesso) Alert.alert('Sucesso', 'Enviado para impressão');
-    else Alert.alert('Erro', 'Falha na impressão');
+    const sucesso = await PrinterService.printComanda(dadosImpressao);
+    if (!sucesso) {
+        Alert.alert('Erro', 'Falha ao conectar na impressora. Verifique se o Bluetooth está ligado e a impressora configurada.');
+    }
   };
 
   const handlePayment = async (comanda, forma, valor) => {
