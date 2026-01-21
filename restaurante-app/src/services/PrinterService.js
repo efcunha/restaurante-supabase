@@ -40,12 +40,27 @@ class PrinterService {
       const config = await AsyncStorage.getItem(PRINTER_CONFIG_KEY);
       if (config) {
         const { printer, width } = JSON.parse(config);
-        this.connectedPrinter = printer;
-        this.printerWidth = width || 48;
+        // Não definir connectedPrinter aqui, pois não está conectado de fato
+        // Apenas guardar config para uso futuro se necessário
+        this.savedConfig = { printer, width };
       }
       this.initialized = true;
     } catch (error) {
+      console.log('Erro ao ler config da impressora:', error);
     }
+  }
+
+  /**
+   * Tenta conectar automaticamente na última impressora salva
+   */
+  async autoConnect() {
+    if (!this.initialized) await this.initialize();
+    
+    if (this.savedConfig && this.isAvailable()) {
+      console.log('🔄 Tentando reconexão automática com impressora:', this.savedConfig.printer.name);
+      return await this.connect(this.savedConfig.printer, this.savedConfig.width);
+    }
+    return false;
   }
 
   /**

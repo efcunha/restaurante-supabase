@@ -1,9 +1,15 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, SectionList, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
-import React, { memo, useCallback } from 'react';
+import { StyleSheet, Text, View, SectionList, TouchableOpacity, TextInput, ActivityIndicator, LayoutAnimation, Platform, UIManager } from 'react-native';
+import React, { memo, useCallback, useEffect } from 'react';
 import BackgroundPattern from '../components/BackgroundPattern';
 import { useNovoPedido } from '../hooks/useNovoPedido';
 import { colors } from '../theme/colors';
+
+if (Platform.OS === 'android') {
+  if (UIManager.setLayoutAnimationEnabledExperimental) {
+    UIManager.setLayoutAnimationEnabledExperimental(true);
+  }
+}
 
 const QuantityButton = memo(({ onPress, text }) => (
   <TouchableOpacity style={styles.quantityBtn} onPress={onPress}>
@@ -237,28 +243,25 @@ export default function NovoPedidoScreen() {
 
 
 
+  // Wrappers for animation
+  const updateProdutoAnimated = useCallback((...args) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    updateProduto(...args);
+  }, [updateProduto]);
+
+  const handleRemoveItemAnimated = useCallback((...args) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.spring); // Spring for deletion feeling
+    handleRemoveItem(...args);
+  }, [handleRemoveItem]);
+
   const renderItem = ({ item, section }) => {
     if (section.type === 'caldos') {
-      return <CaldoRow caldoBase={item} cardapioCaldos={section.original} produtos={produtos} updateProduto={updateProduto} />;
+      return <CaldoRow caldoBase={item} cardapioCaldos={section.original} produtos={produtos} updateProduto={updateProdutoAnimated} />;
     }
-    return <StandardRow item={item} produtos={produtos} updateProduto={updateProduto} type={section.type} />;
+    return <StandardRow item={item} produtos={produtos} updateProduto={updateProdutoAnimated} type={section.type} />;
   };
 
-  const renderSectionHeader = ({ section: { title } }) => (
-    <Text style={styles.sectionTitle}>{title}</Text>
-  );
-
-  const HeaderComponent = () => (
-    <View style={styles.headerForm}>
-      <Text style={styles.label}>Nome do Cliente (opcional)</Text>
-      <TextInput
-        style={styles.input}
-        value={clientName}
-        onChangeText={setClientName}
-        placeholder="Digite o nome do cliente"
-      />
-    </View>
-  );
+  // ...
 
   const FooterComponent = () => (
     <View style={styles.listFooter}>
@@ -267,7 +270,7 @@ export default function NovoPedidoScreen() {
           key={index}
           item={item.text}
           price={item.price}
-          onRemove={() => handleRemoveItem(item.text)}
+          onRemove={() => handleRemoveItemAnimated(item.text)}
         />
       ))}
       <View style={styles.totalSpace} />

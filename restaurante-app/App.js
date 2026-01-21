@@ -22,7 +22,11 @@ import ComandaGerenciamentoScreen from './src/screens/ComandaGerenciamentoScreen
 
 import { OrderProvider } from './src/context/OrderContext.firestore';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
+import { ToastProvider } from './src/context/ToastContext';
 import { canAccessScreen } from './src/auth/roles';
+import OfflineNotice from './src/components/OfflineNotice';
+import PrinterService from './src/services/PrinterService';
+import { useEffect } from 'react'; // Ensure useEffect is imported if not already
 
 const Tab = createBottomTabNavigator();
 
@@ -105,10 +109,16 @@ function AppContent() {
     );
   }
 
+  // Tentar reconexão com impressora ao iniciar
+  useEffect(() => {
+    PrinterService.autoConnect();
+  }, []);
+
   // COM USUÁRIO = APP (com key única para forçar re-render)
   return (
     <SafeAreaProvider key={`app-${sessionKey}-${Date.now()}`}>
       <StatusBar barStyle="dark-content" backgroundColor="#F5F1E8" translucent={false} />
+      <OfflineNotice />
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <MainApp sessionKey={sessionKey} />
       </SafeAreaView>
@@ -137,7 +147,9 @@ const styles = StyleSheet.create({
 export default function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <ToastProvider>
+        <AppContent />
+      </ToastProvider>
     </AuthProvider>
   );
 }

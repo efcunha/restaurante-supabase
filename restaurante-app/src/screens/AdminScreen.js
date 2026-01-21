@@ -6,6 +6,8 @@ import { collection, getDocs, doc, writeBatch, setDoc, deleteDoc, serverTimestam
 import { db } from '../config/firebaseConfig';
 import { getTodayKey, getDateKeyRange } from '../services/FirebaseOptimizations';
 import BackgroundPattern from '../components/BackgroundPattern';
+import { SalesByDayChart, SalesByPaymentChart } from '../components/FinancialCharts';
+import { colors } from '../theme/colors';
 import FuncionariosScreen from './FuncionariosScreen';
 import CaixaAberturaScreen from './CaixaAberturaScreen';
 import CaixaOperacoesScreen from './CaixaOperacoesScreen';
@@ -55,6 +57,10 @@ export default function AdminScreen() {
     totalVendido: 0,
     totalPedidos: 0,
     ticketMedio: 0
+  });
+  const [chartData, setChartData] = useState({
+    salesByDay: null,
+    salesByPayment: null
   });
   const [loadingVendas, setLoadingVendas] = useState(true);
 
@@ -782,6 +788,68 @@ export default function AdminScreen() {
       // console.log(`💰 Total vendido: R$ ${totalVendido.toFixed(2)}`);
       // console.log(`💰 Total de comandas: ${totalPedidos}`);
 
+      // --- AGREGAÇÃO PARA GRÁFICOS ---
+      
+      // 1. Vendas por Dia (Bar Chart)
+      // Inicializar mapa de dias do intervalo
+      const dailyMap = {};
+      
+      // Se for período curto (hoje/semana), mostrar dias individuais
+      // Se for mês, também
+      
+      // Iterar comandas para preencher dias
+      comandasSnapshot.docs.forEach(doc => {
+        const comanda = doc.data();
+        let dKey = comanda.dateKey;
+        if (!dKey && comanda.fechadaAt) {
+             const dt = comanda.fechadaAt.toDate ? comanda.fechadaAt.toDate() : new Date(comanda.fechadaAt.seconds * 1000);
+             dKey = dt.toISOString().split('T')[0];
+        }
+
+        if (dKey && dKey >= dateKeyInicio && dKey <= dateKeyFim) {
+           dailyMap[dKey] = (dailyMap[dKey] || 0) + (comanda.totalConsumido || 0);
+        }
+      });
+
+      // Ordenar e formatar para o gráfico
+      const sortedDays = Object.keys(dailyMap).sort();
+      const salesByDay = {
+        labels: sortedDays.map(d => d.split('-')[2] + '/' + d.split('-')[1]), // DD/MM
+        datasets: [{
+          data: sortedDays.map(d => dailyMap[d])
+        }]
+      };
+
+      // 2. Vendas por Pagamento (Pie Chart) - Buscar na coleção 'pagamentos'
+      // Precisamos buscar pagamentos do período
+      const pagamentosSnapshot = await getDocs(
+        query(
+          collection(db, 'pagamentos'),
+          where('dateKey', '>=', dateKeyInicio),
+          where('dateKey', '<=', dateKeyFim)
+        )
+      );
+
+      const paymentMap = {};
+      pagamentosSnapshot.forEach(doc => {
+        const p = doc.data();
+        const forma = p.forma ? p.forma.toUpperCase() : 'OUTROS';
+        paymentMap[forma] = (paymentMap[forma] || 0) + (p.valor || 0);
+      });
+
+      const paymentColors = [colors.primary, colors.secondary, colors.success, colors.warning, '#808080'];
+      const salesByPayment = Object.keys(paymentMap).map((forma, index) => ({
+        name: forma,
+        population: paymentMap[forma],
+        color: paymentColors[index % paymentColors.length],
+        legendFontColor: "#7F7F7F",
+        legendFontSize: 12
+      }));
+
+      setChartData({ salesByDay, salesByPayment });
+
+      // -------------------------------
+
       const ticketMedio = totalPedidos > 0 ? totalVendido / totalPedidos : 0;
       setVendasStats({
         totalVendido,
@@ -1180,6 +1248,18 @@ export default function AdminScreen() {
             </View>
           </View>
         </View>
+
+        {/* Relatórios Section Title was nearby */}
+
+        {/* Dashboards Gráficos */}
+        {!loadingVendas && chartData.salesByDay && (
+          <View style={{ marginTop: 20, paddingHorizontal: 20 }}>
+            <SalesByDayChart data={chartData.salesByDay} />
+            <SalesByPaymentChart data={chartData.salesByPayment} />
+          </View>
+        )}
+
+
 
         {/* Reports Section */}
         <Text style={styles.reportsTitle}>Relatórios</Text>
