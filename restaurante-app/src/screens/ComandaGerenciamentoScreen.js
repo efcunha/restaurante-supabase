@@ -21,6 +21,7 @@ import CaixaService from '../services/CaixaService';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
 import { LayoutAnimation, Platform, UIManager } from 'react-native';
+import PDFService from '../services/PDFService';
 
 if (Platform.OS === 'android') {
   if (UIManager.setLayoutAnimationEnabledExperimental) {
@@ -235,6 +236,42 @@ export default function ComandaGerenciamentoScreen() {
   };
 
 
+  const prepareDataForExport = (comandaData) => {
+      // Reutilizar lógica de agrupar itens
+    let itensParaImprimir = [];
+    if (comandaData.pedidos && comandaData.pedidos.length > 0) {
+      const mapItens = {};
+      comandaData.pedidos.forEach(p => {
+        let itemsArray = p.items || p.itens || [];
+        if (!Array.isArray(itemsArray)) itemsArray = [];
+        itemsArray.forEach(itemText => {
+            const calc = calcularPrecoItem(itemText);
+            const nome = calc.nomeCompleto;
+            if (!mapItens[nome]) {
+                mapItens[nome] = { nome: nome, quantidade: 0, valor: calc.precoUnitario, observacao: '' };
+            }
+            mapItens[nome].quantidade += calc.quantidade;
+        });
+      });
+      itensParaImprimir = Object.values(mapItens).map(item => ({
+        nome: item.nome,
+        quantidade: item.quantidade,
+        valor: item.valor * item.quantidade,
+        observacao: item.observacao
+      }));
+    }
+    return { ...comandaData, itens: itensParaImprimir };
+  };
+
+  const handleShare = async (comandaData) => {
+    try {
+        const data = prepareDataForExport(comandaData);
+        await PDFService.generateAndShareComanda(data);
+    } catch (e) {
+        Alert.alert('Erro', 'Falha ao compartilhar PDF');
+    }
+  };
+
   if (selectedComanda) {
     // Pass handlers to Details
     return (
@@ -246,6 +283,7 @@ export default function ComandaGerenciamentoScreen() {
           onCancel={handleCancel}
           onAddItems={() => setShowAddModal(true)}
           onPrint={() => handlePrint(selectedComanda)}
+          onShare={() => handleShare(selectedComanda)}
         />
         {/* We also need a way to open AddItemsModal from Details. 
                 Ideally Details should have an "Add" button that calls a prop.
