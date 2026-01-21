@@ -8,7 +8,8 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
-  Modal
+  Modal,
+  Platform
 } from 'react-native';
 import { collection, getDocs, addDoc, updateDoc, doc, getDoc, setDoc, writeBatch, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
@@ -480,6 +481,53 @@ export default function GerenciarCardapioScreen() {
       default: return 'Outro';
     }
   };
+
+  const excluirProduto = async (variacoes) => {
+    const nomeBase = getNomeBase(variacoes[0].name);
+    
+    // Check compatibility with web and mobile for confirm
+    let confirmed = false;
+    if (Platform.OS === 'web') {
+        confirmed = window.confirm(`Tem certeza que deseja excluir "${nomeBase}" e todas as suas variações?`);
+    } else {
+        await new Promise((resolve) => {
+            Alert.alert(
+                'Confirmar Exclusão',
+                `Tem certeza que deseja excluir "${nomeBase}"?`,
+                [
+                    { text: 'Cancelar', onPress: () => resolve(false), style: 'cancel' },
+                    { text: 'Excluir', onPress: () => resolve(true), style: 'destructive' },
+                ]
+            );
+        }).then(res => confirmed = res);
+    }
+
+    if (!confirmed) return;
+
+    try {
+        setLoading(true);
+        const batch = writeBatch(db);
+        
+        variacoes.forEach(v => {
+            batch.delete(doc(db, 'cardapio', v.id));
+        });
+
+        await batch.commit();
+        // console.log('✅ Produto excluído');
+        
+        if (Platform.OS !== 'web') {
+            Alert.alert('Sucesso', 'Produto excluído com sucesso');
+        }
+        
+        carregarProdutos();
+    } catch (error) {
+        console.error('❌ Erro ao excluir:', error);
+        Alert.alert('Erro', 'Não foi possível excluir o produto');
+    } finally {
+        setLoading(false);
+    }
+  };
+
 
   return (
     <View style={styles.container}>
@@ -1308,5 +1356,18 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
+  },
+  deleteBtn: {
+    backgroundColor: '#DC3545',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    minWidth: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deleteBtnText: {
+    fontSize: 14,
+    color: '#FFFFFF',
   },
 });
