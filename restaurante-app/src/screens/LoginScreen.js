@@ -92,8 +92,16 @@ export default function LoginScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+      // User reported behavior='height' (previous code) still covers input.
+      // Let's TRY 'padding' for Android too or just tweak offset?
+      // Actually, often removing 'behavior' on Android with 'adjustResize' is best.
+      // But let's try 'padding' enabled for both.
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined} 
+      // If we use undefined on Android, it relies solely on native window resize.
+      // Let's stick to 'padding' which pushes content up.
+      behavior="padding"
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <ScrollView
@@ -186,13 +194,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#8B2F2F',
   },
   content: {
-    // flex: 1, // Removed flex: 1 here because ScrollView handles height
-    justifyContent: 'center',
     padding: 20,
     paddingHorizontal: 25,
     paddingTop: 40,
-    minHeight: '100%', // Ensure it takes full height for centering
+    width: '100%',
   },
+
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
