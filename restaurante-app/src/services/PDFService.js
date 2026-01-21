@@ -78,8 +78,7 @@ class PDFService {
           <div class="info">
             <strong>Comanda:</strong> ${comanda.comandaNumber}<br/>
             <strong>Cliente:</strong> ${comanda.cliente || 'Consumidor Final'}<br/>
-            <strong>Data:</strong> ${comanda.horarioCriacao || new Date().toLocaleString()}<br/>
-            <strong>Atendente:</strong> ${comanda.criadoPor || '-'}
+            <strong>Data:</strong> ${comanda.dataEmissao || new Date().toLocaleString()}<br/>
           </div>
 
           <table class="table">
@@ -107,13 +106,6 @@ class PDFService {
               <span>SALDO A PAGAR:</span>
               <span>R$ ${(comanda.saldoAberto || 0).toFixed(2)}</span>
             </div>
-          </div>
-          
-          <div style="margin-top:20px;">
-            <strong>Pagamentos:</strong>
-            <table class="table" style="font-size:14px; margin-top:5px;">
-                ${pagamentosHtml}
-            </table>
           </div>
 
           <div class="footer">
