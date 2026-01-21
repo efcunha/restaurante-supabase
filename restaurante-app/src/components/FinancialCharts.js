@@ -1,7 +1,18 @@
 import React from 'react';
-import { View, Text, StyleSheet, Dimensions } from 'react-native';
-import { BarChart, PieChart } from 'react-native-chart-kit';
+import { View, Text, StyleSheet, Dimensions, Platform } from 'react-native';
 import { colors } from '../theme/colors';
+
+// Conditional import to prevent Web bundling errors if module is native-only
+let BarChart, PieChart;
+try {
+  if (Platform.OS !== 'web') {
+    const Charts = require('react-native-chart-kit');
+    BarChart = Charts.BarChart;
+    PieChart = Charts.PieChart;
+  }
+} catch (e) {
+  console.warn('Charts module not available:', e);
+}
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -16,6 +27,14 @@ const chartConfig = {
 };
 
 export const SalesByDayChart = ({ data }) => {
+  if (Platform.OS === 'web' || !BarChart) {
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyText}>Gráficos disponíveis apenas no App (Mobile)</Text>
+      </View>
+    );
+  }
+
   // data format: { labels: ['Seg', 'Ter', ...], datasets: [{ data: [100, 200, ...] }] }
   
   if (!data || !data.datasets || data.datasets[0].data.length === 0) {
@@ -31,7 +50,7 @@ export const SalesByDayChart = ({ data }) => {
       <Text style={styles.chartTitle}>Vendas por Dia (R$)</Text>
       <BarChart
         data={data}
-        width={screenWidth - 40}
+        width={screenWidth - 80}
         height={220}
         yAxisLabel="R$ "
         chartConfig={chartConfig}
@@ -45,6 +64,10 @@ export const SalesByDayChart = ({ data }) => {
 };
 
 export const SalesByPaymentChart = ({ data }) => {
+  if (Platform.OS === 'web' || !PieChart) {
+    return null;
+  }
+
   // data format: array of objects for PieChart
   // e.g. [{ name: 'Pix', population: 200, color: '...', legendFontColor: '...', legendFontSize: 15 }]
 
@@ -61,7 +84,7 @@ export const SalesByPaymentChart = ({ data }) => {
       <Text style={styles.chartTitle}>Meios de Pagamento</Text>
       <PieChart
         data={data}
-        width={screenWidth - 40}
+        width={screenWidth - 80}
         height={220}
         chartConfig={chartConfig}
         accessor={"population"}
