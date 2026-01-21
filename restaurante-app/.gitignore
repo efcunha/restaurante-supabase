@@ -58,6 +58,17 @@ dist/
 *.temp
 .cache/
 
+# Keystores (Security)
+*.keystore
+!android/app/debug.keystore
+
+# Build Output
+build/
+
+# Firebase Config (Optional - uncomment to track)
+google-services.json
+GoogleService-Info.plist
+
 # OS
 .DS_Store
 .DS_Store?
