@@ -68,19 +68,46 @@ cd android && ./gradlew assembleRelease --quiet
 if [ $? -eq 0 ]; then
     cd ..
     
-    # Copiar todos os APKs gerados para a pasta build
+    # Copiar todos os APKs gerados para a pasta build com versionamento
     APK_DIR="android/app/build/outputs/apk/release"
+    
     if [ -d "$APK_DIR" ]; then
-        cp "$APK_DIR"/*.apk build/ 2>/dev/null
+        # Extrair versão do app.json
+        VERSION=$(grep -o '"version": "[^"]*"' app.json | head -n 1 | cut -d'"' -f4)
+        if [ -z "$VERSION" ]; then
+            VERSION="1.0.0"
+        fi
+        TIMESTAMP=$(date +%Y%m%d_%H%M)
+        
+        echo "📦 Copiando APKs (v$VERSION)..."
+        
+        for apk in "$APK_DIR"/*.apk; do
+            if [ -f "$apk" ]; then
+                base_name=$(basename "$apk")
+                # Tentar extrair arquitetura do nome (ex: restaurante-arm64-v8a-release.apk)
+                if [[ "$base_name" == *"arm64-v8a"* ]]; then
+                    ARCH="arm64-v8a"
+                elif [[ "$base_name" == *"armeabi-v7a"* ]]; then
+                    ARCH="armeabi-v7a"
+                elif [[ "$base_name" == *"universal"* ]]; then
+                    ARCH="universal"
+                else
+                    ARCH="standard"
+                fi
+                
+                NEW_NAME="Restaurante_v${VERSION}_${TIMESTAMP}_${ARCH}.apk"
+                cp "$apk" "build/$NEW_NAME"
+            fi
+        done
         
         if [ $? -eq 0 ]; then
             echo "✅ Build RELEASE concluído!"
             echo "📦 APKs gerados:"
-            ls -lh build/*.apk | awk '{print "  -", $9, "("$5")"}'
+            ls -lh build/Restaurante_v${VERSION}_${TIMESTAMP}*.apk | awk '{print "  -", $9, "(" $5 ")"}'
             echo ""
             echo "📱 Instale no celular:"
-            echo "  ARM64: adb install build/restaurante-1.0.1-arm64-v8a.apk"
-            echo "  ARM32: adb install build/restaurante-1.0.1-armeabi-v7a.apk"
+            echo "  ARM64: adb install build/Restaurante_v${VERSION}_${TIMESTAMP}_arm64-v8a.apk"
+            echo "  ARM32: adb install build/Restaurante_v${VERSION}_${TIMESTAMP}_armeabi-v7a.apk"
         else
             echo "❌ Erro ao copiar APKs"
             exit 1
