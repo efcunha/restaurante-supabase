@@ -27,7 +27,8 @@ export default function ComandaGerenciamentoScreen() {
     activeTab, setActiveTab,
     comandasAbertas, comandasPagas, comandasCanceladas,
     selectedComanda, setSelectedComanda,
-    isRefreshing, carregarComandas
+    isRefreshing, carregarComandas,
+    isLoadingMore, onLoadMore
   } = useComandaManagement();
 
   const [showAddModal, setShowAddModal] = useState(false);
@@ -247,7 +248,7 @@ export default function ComandaGerenciamentoScreen() {
           onPress={() => setActiveTab('pagas')}
         >
           <Text style={[styles.tabText, activeTab === 'pagas' && styles.activeTabText]}>
-            Pagas ({comandasPagas.length})
+            Pagas
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -255,7 +256,7 @@ export default function ComandaGerenciamentoScreen() {
           onPress={() => setActiveTab('canceladas')}
         >
           <Text style={[styles.tabText, activeTab === 'canceladas' && styles.activeTabText]}>
-            Canceladas ({comandasCanceladas.length})
+            Canceladas
           </Text>
         </TouchableOpacity>
       </View>
@@ -268,6 +269,8 @@ export default function ComandaGerenciamentoScreen() {
         onSelectComanda={setSelectedComanda}
         refreshing={isRefreshing}
         onRefresh={() => carregarComandas(true)}
+        onLoadMore={onLoadMore}
+        loadingMore={isLoadingMore}
       />
 
       <StatusBar style="dark" />
