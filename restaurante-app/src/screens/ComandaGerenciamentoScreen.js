@@ -5,6 +5,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useOrders } from '../context/OrderContext.firestore';
 import { useComandaManagement } from '../hooks/useComandaManagement';
+import { useToast } from '../context/ToastContext';
 import ComandaList from '../components/comandas/ComandaList';
 import ComandaDetails from '../components/comandas/ComandaDetails';
 import AddItemsModal from '../components/comandas/AddItemsModal';
@@ -19,6 +20,13 @@ import PrinterService from '../services/PrinterService';
 import CaixaService from '../services/CaixaService';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
+import { LayoutAnimation, Platform, UIManager } from 'react-native';
+
+if (Platform.OS === 'android') {
+  if (UIManager.setLayoutAnimationEnabledExperimental) {
+    UIManager.setLayoutAnimationEnabledExperimental(true);
+  }
+}
 
 export default function ComandaGerenciamentoScreen() {
   const { user } = useAuth();
@@ -92,12 +100,12 @@ export default function ComandaGerenciamentoScreen() {
         await ComandasService.fecharComanda(comanda.comandaNumber, user?.id, user?.nome);
       }
 
-      Alert.alert('Sucesso', 'Pagamento registrado!');
+      showToast('Pagamento registrado!', 'success');
       setSelectedComanda(null);
       carregarComandas(true);
 
     } catch (e) {
-      Alert.alert('Erro', e.message);
+      showToast(e.message, 'error');
     }
   };
 
@@ -121,11 +129,11 @@ export default function ComandaGerenciamentoScreen() {
         canceladaEm: new Date().toISOString(),
         motivoCancelamento: motivo
       });
-      Alert.alert('Sucesso', 'Comanda cancelada');
+      showToast('Comanda cancelada', 'info');
       setSelectedComanda(null);
       carregarComandas(true);
     } catch (e) {
-      Alert.alert('Erro', e.message);
+      showToast(e.message, 'error');
     }
   };
 
@@ -190,11 +198,11 @@ export default function ComandaGerenciamentoScreen() {
         false
       );
 
-      Alert.alert('Sucesso', 'Itens adicionados');
+      showToast('Itens adicionados com sucesso!', 'success');
       setShowAddModal(false);
       carregarComandas(true);
     } catch (e) {
-      Alert.alert('Erro', e.message);
+      showToast(e.message, 'error');
     }
   };
 
@@ -237,7 +245,10 @@ export default function ComandaGerenciamentoScreen() {
       <View style={styles.tabs}>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'abertas' && styles.activeTab]}
-          onPress={() => setActiveTab('abertas')}
+          onPress={() => {
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+            setActiveTab('abertas');
+          }}
         >
           <Text style={[styles.tabText, activeTab === 'abertas' && styles.activeTabText]}>
             Abertas ({comandasAbertas.length})
@@ -245,7 +256,10 @@ export default function ComandaGerenciamentoScreen() {
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'pagas' && styles.activeTab]}
-          onPress={() => setActiveTab('pagas')}
+          onPress={() => {
+             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+             setActiveTab('pagas');
+          }}
         >
           <Text style={[styles.tabText, activeTab === 'pagas' && styles.activeTabText]}>
             Pagas
@@ -253,7 +267,10 @@ export default function ComandaGerenciamentoScreen() {
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'canceladas' && styles.activeTab]}
-          onPress={() => setActiveTab('canceladas')}
+          onPress={() => {
+             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+             setActiveTab('canceladas');
+          }}
         >
           <Text style={[styles.tabText, activeTab === 'canceladas' && styles.activeTabText]}>
             Canceladas

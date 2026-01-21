@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getAuth, initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Preferir variáveis de ambiente (Expo: usar prefixo EXPO_PUBLIC_*)
 // NÃO são segredos sensíveis, mas evitamos hardcode e logs em produção.
@@ -18,12 +19,23 @@ let app, auth, db;
 
 try {
   app = initializeApp(firebaseConfig);
-  auth = getAuth(app);
-  db = getFirestore(app);
   
-  console.log('✅ Firebase inicializado sem cache');
+  // Auth Persistence with AsyncStorage (keeps user logged in across restarts)
+  auth = initializeAuth(app, {
+    persistence: getReactNativePersistence(AsyncStorage)
+  });
+
+  // Firestore Persistence (Offline Capabilities)
+  db = initializeFirestore(app, {
+    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+  });
+  
+  console.log('✅ Firebase inicializado COM persistência (Offline/Cache)');
 } catch (error) {
-  console.error('❌ Erro ao inicializar Firebase:', error);
+  // If already initialized, ignore
+  if (!/already exists/.test(error.message)) {
+      console.error('❌ Erro ao inicializar Firebase:', error);
+  }
 }
 
 export { auth, db };

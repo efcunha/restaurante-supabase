@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo, useRef } from 'react';
 import { Alert } from 'react-native';
 import { useOrders } from '../context/OrderContext.firestore';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { getNextComandaNumber, peekNextComandaNumber, formatComandaNumber } from '../services/ComandaService';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
@@ -16,7 +17,8 @@ export const fixDecimal = (value) => Math.round((value + Number.EPSILON) * 100) 
 
 export function useNovoPedido() {
     const { addOrder } = useOrders();
-    const { user } = useAuth(); // Assuming useAuth is available here or passed down if needed, but hook composition is fine.
+    const { user } = useAuth(); 
+    const { showToast } = useToast();
 
     const [comandaNumber, setComandaNumber] = useState('');
     const [loadingComanda, setLoadingComanda] = useState(false);
@@ -184,7 +186,7 @@ export function useNovoPedido() {
 
     const handleSubmit = async () => {
         if (selectedItems.length === 0) {
-            Alert.alert('Atenção', 'Adicione pelo menos um item ao pedido');
+            showToast('Adicione pelo menos um item ao pedido', 'warning');
             return;
         }
 
@@ -206,11 +208,7 @@ export function useNovoPedido() {
                 false // isPago
             );
 
-            Alert.alert(
-                '✅ Pedido Criado!',
-                `Comanda Nº ${novoNumeroComanda}\n\n${items.length} ${items.length === 1 ? 'item adicionado' : 'itens adicionados'}`,
-                [{ text: 'OK' }]
-            );
+            showToast(`Pedido criado! Comanda ${novoNumeroComanda}`, 'success');
 
             setComandaNumber('');
             setClientName('');
@@ -225,7 +223,7 @@ export function useNovoPedido() {
                     [{ text: 'Entendi' }]
                 );
             } else {
-                Alert.alert('Erro', error.message || 'Não foi possível criar o pedido');
+                showToast(error.message || 'Não foi possível criar o pedido', 'error');
             }
         } finally {
             setIsSubmitting(false);
