@@ -82,6 +82,11 @@ function MainApp({ sessionKey }) {
 function AppContent() {
   const { user, loading, sessionKey } = useAuth();
 
+  // Tentar reconexão com impressora ao iniciar
+  useEffect(() => {
+    PrinterService.autoConnect();
+  }, []);
+
   // LOADING
   if (loading) {
     return (
@@ -109,10 +114,7 @@ function AppContent() {
     );
   }
 
-  // Tentar reconexão com impressora ao iniciar
-  useEffect(() => {
-    PrinterService.autoConnect();
-  }, []);
+
 
   // COM USUÁRIO = APP (com key única para forçar re-render)
   return (
