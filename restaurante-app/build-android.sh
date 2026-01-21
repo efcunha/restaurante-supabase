@@ -59,10 +59,28 @@ echo -e "${GREEN}✅ BUILD CONCLUÍDO COM SUCESSO!${NC}"
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
-# Criar pasta build e copiar APKs
+# Criar pasta build e copiar APKs com versionamento
 BUILD_OUTPUT="build"
 mkdir -p "$BUILD_OUTPUT"
-cp "$APK_DIR"/*.apk "$BUILD_OUTPUT/"
+
+# Extrair versão do app.json
+VERSION=$(grep -o '"version": "[^"]*"' app.json | head -n 1 | cut -d'"' -f4)
+if [ -z "$VERSION" ]; then
+    VERSION="1.0.0"
+fi
+TIMESTAMP=$(date +%Y%m%d_%H%M)
+
+echo "📦 Copiando APKs com versão v$VERSION..."
+
+for apk in "$APK_DIR"/*.apk; do
+    if [ -f "$apk" ]; then
+        # Novo nome: Restaurante_v1.0.1_20250121_1200.apk
+        # Se houver múltiplos APKs (splits), manter o sufixo original seria bom, mas para single apk:
+        NEW_NAME="Restaurante_v${VERSION}_${TIMESTAMP}.apk"
+        
+        cp "$apk" "$BUILD_OUTPUT/$NEW_NAME"
+    fi
+done
 
 echo "📦 APKs gerados e copiados:"
 echo ""
