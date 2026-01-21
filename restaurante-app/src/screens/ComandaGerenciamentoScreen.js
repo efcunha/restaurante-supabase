@@ -260,7 +260,21 @@ export default function ComandaGerenciamentoScreen() {
         observacao: item.observacao
       }));
     }
-    return { ...comandaData, itens: itensParaImprimir };
+    
+    // Formatar data: 21/01/2026 as 07:12
+    const now = new Date();
+    const dia = String(now.getDate()).padStart(2, '0');
+    const mes = String(now.getMonth() + 1).padStart(2, '0');
+    const ano = now.getFullYear();
+    const hora = String(now.getHours()).padStart(2, '0');
+    const min = String(now.getMinutes()).padStart(2, '0');
+    const dataFormatada = `${dia}/${mes}/${ano} às ${hora}:${min}`;
+
+    return { 
+        ...comandaData, 
+        itens: itensParaImprimir,
+        dataEmissao: dataFormatada 
+    };
   };
 
   const handleShare = async (comandaData) => {
