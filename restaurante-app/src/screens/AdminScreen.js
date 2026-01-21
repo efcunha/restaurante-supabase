@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { collection, getDocs, doc, writeBatch, setDoc, deleteDoc, serverTimestamp, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
+import { getTodayKey, getDateKeyRange } from '../services/FirebaseOptimizations';
 import BackgroundPattern from '../components/BackgroundPattern';
 import FuncionariosScreen from './FuncionariosScreen';
 import CaixaAberturaScreen from './CaixaAberturaScreen';
@@ -110,7 +111,7 @@ export default function AdminScreen() {
   // 🔴 LISTENERS EM TEMPO REAL para atualizar estatísticas automaticamente
   useEffect(() => {
     // Listener para pedidos (atualiza estatísticas operacionais)
-    const dateKey = new Date().toISOString().split('T')[0];
+    const dateKey = getTodayKey(); // Usar data local para consistência
     const pedidosQuery = query(
       collection(db, 'pedidos'),
       where('dateKey', '==', dateKey)
@@ -600,7 +601,7 @@ export default function AdminScreen() {
   const carregarEstatisticas = async () => {
     try {
       setLoadingStats(true);
-      const today = new Date().toISOString().split('T')[0];
+      const today = getTodayKey();
       // Buscar DIRETAMENTE todos os pedidos do dia pelo dateKey
       const qPedidosDia = query(
         collection(db, 'pedidos'),
@@ -730,23 +731,10 @@ export default function AdminScreen() {
       setLoadingVendas(true);
       // console.log('💰 === CARREGANDO ESTATÍSTICAS DE VENDAS ===');
       
-      const hoje = new Date();
-      let dataInicio;
-      let dataFim = hoje;
-
-      // Calcular data de início baseado no período
-      if (periodoSelecionado === 'hoje') {
-        dataInicio = hoje;
-      } else if (periodoSelecionado === 'semana') {
-        dataInicio = new Date(hoje);
-        dataInicio.setDate(hoje.getDate() - 7);
-      } else if (periodoSelecionado === 'mes') {
-        dataInicio = new Date(hoje);
-        dataInicio.setMonth(hoje.getMonth() - 1);
-      }
-
-      const dateKeyInicio = dataInicio.toISOString().split('T')[0];
-      const dateKeyFim = dataFim.toISOString().split('T')[0];
+      setLoadingVendas(true);
+      // console.log('💰 === CARREGANDO ESTATÍSTICAS DE VENDAS ===');
+      
+      const { startKey: dateKeyInicio, endKey: dateKeyFim } = getDateKeyRange(periodoSelecionado);
       
       // console.log(`💰 Período: ${dateKeyInicio} até ${dateKeyFim}`);
       // console.log(`💰 Buscando comandas fechadas...`);
