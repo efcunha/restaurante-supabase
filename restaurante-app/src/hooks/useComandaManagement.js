@@ -303,6 +303,73 @@ export function useComandaManagement() {
         };
     }, [activeTab]);
 
+    const selectComanda = async (comanda) => {
+        setSelectedComanda(comanda);
+        
+        // Se estiver em abas de histórico (pagas/canceladas), os pedidos podem não estar carregados
+        // Ou se por algum motivo pedidos estiver vazio/undefined
+        if (comanda && (!comanda.pedidos || comanda.pedidos.length === 0)) {
+            try {
+                // Fetch pedidos
+                // OBS: Como é histórico, pode ser muitos pedidos.
+                // Filtrar apenas pela comanda.
+                const q = query(
+                    collection(db, 'pedidos'),
+                    where('comandaNumber', 'in', [comanda.comandaNumber, Number(comanda.comandaNumber), String(comanda.comandaNumber)])
+                    // Nota: Firestore 'in' suporta até 10, aqui é só para garantir tipos string/number
+                ); 
+                // Simplificando para tipo string que é o padrão normalizado, mas garantindo robustez
+                const q2 = query(
+                    collection(db, 'pedidos'),
+                    where('numeroComanda', '==', String(comanda.comandaNumber))
+                );
+
+                // Tentar queries (as vezes salvo como number as vezes string)
+                // O ideal é buscar por dataKey também para otimizar, mas histórico pode ser de outro dia?
+                // Se o 'comandas' do histórico tem dateKey, usamos.
+                
+                let constraints = [where('numeroComanda', '==', String(comanda.comandaNumber))];
+                if (comanda.dateKey) {
+                    constraints.push(where('dateKey', '==', comanda.dateKey));
+                }
+                
+                const qFinal = query(collection(db, 'pedidos'), ...constraints);
+                const snap = await getDocs(qFinal);
+                
+                const pedidos = [];
+                snap.forEach(d => pedidos.push({ id: d.id, ...d.data() }));
+
+                if (pedidos.length > 0) {
+                    setSelectedComanda(prev => {
+                        if (prev && prev.comandaNumber === comanda.comandaNumber) {
+                            return { ...prev, pedidos: pedidos };
+                        }
+                        return prev;
+                    });
+                } else { 
+                    // Fallback: tentar sem dateKey se falhou (compatibilidade legado)
+                    if (comanda.dateKey) {
+                        const qBackup = query(collection(db, 'pedidos'), where('numeroComanda', '==', String(comanda.comandaNumber)));
+                        const snapBackup = await getDocs(qBackup);
+                         const pedidosBackup = [];
+                        snapBackup.forEach(d => pedidosBackup.push({ id: d.id, ...d.data() }));
+                        if (pedidosBackup.length > 0) {
+                             setSelectedComanda(prev => {
+                                if (prev && prev.comandaNumber === comanda.comandaNumber) {
+                                    return { ...prev, pedidos: pedidosBackup };
+                                }
+                                return prev;
+                            });
+                        }
+                    }
+                }
+
+            } catch (e) {
+                console.error("Erro ao carregar detalhes da comanda:", e);
+            }
+        }
+    };
+
     return {
         activeTab,
         setActiveTab,
@@ -310,7 +377,7 @@ export function useComandaManagement() {
         comandasPagas,
         comandasCanceladas,
         selectedComanda,
-        setSelectedComanda,
+        setSelectedComanda: selectComanda, // Use our wrapper
         isRefreshing,
         isLoadingMore,
         hasMore,

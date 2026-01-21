@@ -14,7 +14,7 @@ try {
   console.warn('Charts module not available:', e);
 }
 
-const screenWidth = Dimensions.get('window').width;
+
 
 const chartConfig = {
   backgroundGradientFrom: "#ffffff",
@@ -45,12 +45,14 @@ export const SalesByDayChart = ({ data }) => {
     );
   }
 
+  const screenWidth = Dimensions.get('window').width;
+
   return (
     <View style={styles.chartContainer}>
       <Text style={styles.chartTitle}>Vendas por Dia (R$)</Text>
       <BarChart
         data={data}
-        width={screenWidth - 80}
+        width={screenWidth - 100}
         height={220}
         yAxisLabel="R$ "
         chartConfig={chartConfig}
@@ -79,12 +81,14 @@ export const SalesByPaymentChart = ({ data }) => {
     );
   }
 
+  const screenWidth = Dimensions.get('window').width;
+
   return (
     <View style={styles.chartContainer}>
       <Text style={styles.chartTitle}>Meios de Pagamento</Text>
       <PieChart
         data={data}
-        width={screenWidth - 80}
+        width={screenWidth - 100}
         height={220}
         chartConfig={chartConfig}
         accessor={"population"}
