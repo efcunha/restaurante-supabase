@@ -30,15 +30,20 @@ class PDFService {
   buildHtml(comanda) {
     const itensHtml = (comanda.itens || []).map(item => `
       <tr>
-        <td style="padding: 5px 0;">${item.quantidade}x ${item.nome}<br/><small style="color:#666">${item.observacao || ''}</small></td>
-        <td style="text-align: right; vertical-align: top;">R$ ${item.valor ? item.valor.toFixed(2) : '0.00'}</td>
+        <td style="padding: 5px 0;">
+            ${item.quantidade}x ${item.nome}
+            ${item.observacao ? `<br/><small style="color:#666">${item.observacao}</small>` : ''}
+        </td>
+        <td style="text-align: right; vertical-align: top; white-space: nowrap; padding-left: 10px;">
+            R$ ${item.valor ? item.valor.toFixed(2) : '0.00'}
+        </td>
       </tr>
     `).join('');
 
     const pagamentosHtml = Object.entries(comanda.pagamentosResumo || {}).map(([forma, valor]) => `
       <tr>
         <td style="color: #444;">${forma.toUpperCase()}</td>
-        <td style="text-align: right;">R$ ${valor.toFixed(2)}</td>
+        <td style="text-align: right; white-space: nowrap;">R$ ${valor.toFixed(2)}</td>
       </tr>
     `).join('') || '<tr><td colspan="2" style="text-align:center; font-style:italic">Nenhum pagamento registrado</td></tr>';
 
@@ -49,7 +54,7 @@ class PDFService {
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
         <style>
           body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 20px; color: #333; }
-          .container { max-width: 400px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 10px; }
+          .container { max-width: 500px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 10px; }
           .header { text-align: center; margin-bottom: 20px; }
           .title { font-size: 24px; font-weight: bold; color: #8B2F2F; margin: 0; }
           .subtitle { font-size: 14px; color: #666; margin-top: 5px; }
