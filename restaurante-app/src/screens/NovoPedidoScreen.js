@@ -229,6 +229,17 @@ export default function NovoPedidoScreen() {
     return sectionsData;
   }, [cardapio]);
 
+  // Wrappers for animation
+  const updateProdutoAnimated = useCallback((...args) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    updateProduto(...args);
+  }, [updateProduto]);
+
+  const handleRemoveItemAnimated = useCallback((...args) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.spring); // Spring for deletion feeling
+    handleRemoveItem(...args);
+  }, [handleRemoveItem]);
+
   if (loadingCardapio) {
     return (
       <View style={styles.container}>
@@ -241,18 +252,22 @@ export default function NovoPedidoScreen() {
     );
   }
 
+  const HeaderComponent = () => (
+    <View style={styles.headerForm}>
+      <Text style={styles.label}>Nome do Cliente:</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Digite o nome do cliente"
+        value={clientName}
+        onChangeText={setClientName}
+        placeholderTextColor="#999"
+      />
+    </View>
+  );
 
-
-  // Wrappers for animation
-  const updateProdutoAnimated = useCallback((...args) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    updateProduto(...args);
-  }, [updateProduto]);
-
-  const handleRemoveItemAnimated = useCallback((...args) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.spring); // Spring for deletion feeling
-    handleRemoveItem(...args);
-  }, [handleRemoveItem]);
+  const renderSectionHeader = ({ section: { title } }) => (
+    <Text style={styles.sectionTitle}>{title}</Text>
+  );
 
   const renderItem = ({ item, section }) => {
     if (section.type === 'caldos') {
