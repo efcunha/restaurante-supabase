@@ -1,6 +1,6 @@
 
 import React, { memo } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Platform, ActivityIndicator } from 'react-native';
 import { colors } from '../../theme/colors';
 
 const ComandaCard = memo(({ comanda, onPress }) => (
@@ -30,7 +30,7 @@ const ComandaCard = memo(({ comanda, onPress }) => (
     </TouchableOpacity>
 ));
 
-export default function ComandaList({ comandas, onSelectComanda, refreshing, onRefresh }) {
+export default function ComandaList({ comandas, onSelectComanda, refreshing, onRefresh, onLoadMore, loadingMore }) {
     if (comandas.length === 0) {
         return (
             <View style={styles.emptyContainer}>
@@ -49,6 +49,10 @@ export default function ComandaList({ comandas, onSelectComanda, refreshing, onR
             contentContainerStyle={styles.listContent}
             refreshing={refreshing}
             onRefresh={onRefresh}
+            onEndReached={onLoadMore}
+            onEndReachedThreshold={0.5}
+            // Add footer loader if needed
+            ListFooterComponent={loadingMore ? <ActivityIndicator size="small" color={colors.primary} /> : null}
         />
     );
 }

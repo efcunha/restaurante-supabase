@@ -12,7 +12,8 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "test": "node --experimental-modules __tests__/OrderFirestoreService.test.js",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "deploy:indexes": "npx firebase deploy --only firestore:indexes --project restaurante-dabf3"
   },
   "dependencies": {
     "@dataconnect/admin-generated": "file:src/dataconnect-admin-generated",

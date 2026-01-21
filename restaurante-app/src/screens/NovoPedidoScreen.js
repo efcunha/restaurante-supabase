@@ -193,6 +193,36 @@ export default function NovoPedidoScreen() {
     handleLogout
   } = useNovoPedido();
 
+  // Prepare sections for SectionList (Must be before conditional return)
+  const sections = React.useMemo(() => {
+    const sectionsData = [];
+
+    // Caldos: Aggregate by base name
+    if (cardapio.caldos?.length > 0) {
+      const caldosUnicos = [...new Set(cardapio.caldos.map(c => c.name.replace(/\s*\((300ml|180ml)\)/, '').trim()))];
+      sectionsData.push({
+        title: '🍲 Caldos',
+        data: caldosUnicos,
+        type: 'caldos',
+        original: cardapio.caldos
+      });
+    }
+
+    if (cardapio.comidas?.length > 0) {
+      sectionsData.push({ title: '🍽️ Comidas', data: cardapio.comidas, type: 'comidas' });
+    }
+
+    if (cardapio.porcoes?.length > 0) {
+      sectionsData.push({ title: '🍟 Porções', data: cardapio.porcoes, type: 'porcoes' });
+    }
+
+    if (cardapio.bebidas?.length > 0) {
+      sectionsData.push({ title: '🥤 Bebidas', data: cardapio.bebidas, type: 'bebidas' });
+    }
+
+    return sectionsData;
+  }, [cardapio]);
+
   if (loadingCardapio) {
     return (
       <View style={styles.container}>
@@ -205,37 +235,7 @@ export default function NovoPedidoScreen() {
     );
   }
 
-  // Prepare sections for SectionList
-  const buildSections = () => {
-    const sections = [];
 
-    // Caldos: Aggregate by base name
-    if (cardapio.caldos?.length > 0) {
-      const caldosUnicos = [...new Set(cardapio.caldos.map(c => c.name.replace(/\s*\((300ml|180ml)\)/, '').trim()))];
-      sections.push({
-        title: '🍲 Caldos',
-        data: caldosUnicos,
-        type: 'caldos',
-        original: cardapio.caldos
-      });
-    }
-
-    if (cardapio.comidas?.length > 0) {
-      sections.push({ title: '🍽️ Comidas', data: cardapio.comidas, type: 'comidas' });
-    }
-
-    if (cardapio.porcoes?.length > 0) {
-      sections.push({ title: '🍟 Porções', data: cardapio.porcoes, type: 'porcoes' });
-    }
-
-    if (cardapio.bebidas?.length > 0) {
-      sections.push({ title: '🥤 Bebidas', data: cardapio.bebidas, type: 'bebidas' });
-    }
-
-    return sections;
-  };
-
-  const sections = buildSections();
 
   const renderItem = ({ item, section }) => {
     if (section.type === 'caldos') {
@@ -372,7 +372,7 @@ const styles = StyleSheet.create({
   // Variation Rows
   variationRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
   variationLabelBtn: { flex: 1, padding: 10, borderRadius: 8 },
-  variationLabelText: { color: colors.shadow, fontSize: 13, fontWeight: '700', textAlign: 'center' }, // Shadow color as text color for contrast on warning/success bg? Or black? 
+  variationLabelText: { color: colors.shadow, fontSize: 16, fontWeight: '700', textAlign: 'center' }, // Shadow color as text color for contrast on warning/success bg? Or black? 
   // Wait, original used black for text on colored bg.
 
   variationControls: { flexDirection: 'row', alignItems: 'center', gap: 8 },
