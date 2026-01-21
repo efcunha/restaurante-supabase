@@ -66,6 +66,15 @@
       ]
     },
     {
+      "collectionGroup": "comandas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "dateKey", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "comandaNumber", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "pagamentos",
       "queryScope": "COLLECTION",
       "fields": [
