@@ -18,10 +18,12 @@ import PagamentosService from '../services/PagamentosService';
 import ComandasService from '../services/ComandasService';
 import PrinterService from '../services/PrinterService';
 import CaixaService from '../services/CaixaService';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, writeBatch, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
+import { getCompanyDoc, getCompanyCollection } from '../utils/firestoreUtils';
 import { LayoutAnimation, Platform, UIManager } from 'react-native';
 import PDFService from '../services/PDFService';
+
 
 if (Platform.OS === 'android') {
   if (UIManager.setLayoutAnimationEnabledExperimental) {
@@ -41,13 +43,14 @@ export default function ComandaGerenciamentoScreen() {
   } = useComandaManagement();
 
   const [showAddModal, setShowAddModal] = useState(false);
+  const { showToast } = useToast();
 
   // --- Actions ---
 
   const handlePrint = async (comandaData) => {
     // Preparar dados para o formato esperado pelo PrinterService (itens)
     let itensParaImprimir = [];
-    
+
     if (comandaData.pedidos && comandaData.pedidos.length > 0) {
       // Agrupar itens igual fazemos no Details
       const mapItens = {};
@@ -55,23 +58,23 @@ export default function ComandaGerenciamentoScreen() {
       comandaData.pedidos.forEach(p => {
         let itemsArray = p.items || p.itens || [];
         if (!Array.isArray(itemsArray)) itemsArray = [];
-        
+
         itemsArray.forEach(itemText => {
-            const calc = calcularPrecoItem(itemText);
-            const nome = calc.nomeCompleto;
-            
-            if (!mapItens[nome]) {
-                mapItens[nome] = {
-                    nome: nome,
-                    quantidade: 0,
-                    valor: calc.precoUnitario,
-                    observacao: '' 
-                };
-            }
-            mapItens[nome].quantidade += calc.quantidade;
+          const calc = calcularPrecoItem(itemText);
+          const nome = calc.nomeCompleto;
+
+          if (!mapItens[nome]) {
+            mapItens[nome] = {
+              nome: nome,
+              quantidade: 0,
+              valor: calc.precoUnitario,
+              observacao: ''
+            };
+          }
+          mapItens[nome].quantidade += calc.quantidade;
         });
       });
-      
+
       // Converter para array
       itensParaImprimir = Object.values(mapItens).map(item => ({
         nome: item.nome,
@@ -92,13 +95,13 @@ export default function ComandaGerenciamentoScreen() {
 
     const sucesso = await PrinterService.printComanda(dadosImpressao);
     if (!sucesso) {
-        Alert.alert('Erro', 'Falha ao conectar na impressora. Verifique se o Bluetooth está ligado e a impressora configurada.');
+      Alert.alert('Erro', 'Falha ao conectar na impressora. Verifique se o Bluetooth está ligado e a impressora configurada.');
     }
   };
 
   const handlePayment = async (comanda, forma, valor) => {
     try {
-      const caixaAberto = await CaixaService.getCaixaAberto();
+      const caixaAberto = await CaixaService.getCaixaAberto(user.companyId);
       if (!caixaAberto) {
         Alert.alert('Caixa Fechado', 'Abra o caixa antes de receber pagamentos.');
         return;
@@ -109,6 +112,7 @@ export default function ComandaGerenciamentoScreen() {
         .map(p => p.id);
 
       await PagamentosService.registrarPagamento({
+        companyId: user.companyId,
         dateKey: getTodayKey(),
         comandaNumber: comanda.comandaNumber,
         forma: forma,
@@ -118,7 +122,7 @@ export default function ComandaGerenciamentoScreen() {
       });
 
       if (pedidosParaPagar.length > 0) {
-        await PagamentosService.marcarPedidosComoPagos(pedidosParaPagar, forma);
+        await PagamentosService.marcarPedidosComoPagos(user.companyId, pedidosParaPagar, forma);
       }
 
       // Check closure
@@ -126,7 +130,7 @@ export default function ComandaGerenciamentoScreen() {
       if (saldoRestante <= 0.01) {
         // Close comanda
         await new Promise(r => setTimeout(r, 1000)); // wait propagation
-        await ComandasService.fecharComanda(comanda.comandaNumber, user?.id, user?.nome);
+        await ComandasService.fecharComanda(user.companyId, comanda.comandaNumber, user?.id, user?.nome);
       }
 
       showToast('Pagamento registrado!', 'success');
@@ -151,10 +155,10 @@ export default function ComandaGerenciamentoScreen() {
 
     try {
       const docId = `comanda-${getTodayKey()}-${selectedComanda.comandaNumber}`;
-      await updateDoc(doc(db, 'comandas', docId), {
+      await updateDoc(getCompanyDoc(user.companyId, 'comandas', docId), {
         status: 'cancelada',
-        canceladaPor: user?.id,
-        canceladaPorNome: user?.nome,
+        canceladaPor: user?.id || 'admin',
+        canceladaPorNome: user?.nome || 'Admin',
         canceladaEm: new Date().toISOString(),
         motivoCancelamento: motivo
       });
@@ -237,7 +241,7 @@ export default function ComandaGerenciamentoScreen() {
 
 
   const prepareDataForExport = (comandaData) => {
-      // Reutilizar lógica de agrupar itens
+    // Reutilizar lógica de agrupar itens
     let itensParaImprimir = [];
     if (comandaData.pedidos && comandaData.pedidos.length > 0) {
       const mapItens = {};
@@ -245,12 +249,12 @@ export default function ComandaGerenciamentoScreen() {
         let itemsArray = p.items || p.itens || [];
         if (!Array.isArray(itemsArray)) itemsArray = [];
         itemsArray.forEach(itemText => {
-            const calc = calcularPrecoItem(itemText);
-            const nome = calc.nomeCompleto;
-            if (!mapItens[nome]) {
-                mapItens[nome] = { nome: nome, quantidade: 0, valor: calc.precoUnitario, observacao: '' };
-            }
-            mapItens[nome].quantidade += calc.quantidade;
+          const calc = calcularPrecoItem(itemText);
+          const nome = calc.nomeCompleto;
+          if (!mapItens[nome]) {
+            mapItens[nome] = { nome: nome, quantidade: 0, valor: calc.precoUnitario, observacao: '' };
+          }
+          mapItens[nome].quantidade += calc.quantidade;
         });
       });
       itensParaImprimir = Object.values(mapItens).map(item => ({
@@ -260,7 +264,7 @@ export default function ComandaGerenciamentoScreen() {
         observacao: item.observacao
       }));
     }
-    
+
     // Formatar data: 21/01/2026 as 07:12
     const now = new Date();
     const dia = String(now.getDate()).padStart(2, '0');
@@ -270,19 +274,86 @@ export default function ComandaGerenciamentoScreen() {
     const min = String(now.getMinutes()).padStart(2, '0');
     const dataFormatada = `${dia}/${mes}/${ano} às ${hora}:${min}`;
 
-    return { 
-        ...comandaData, 
-        itens: itensParaImprimir,
-        dataEmissao: dataFormatada 
+    return {
+      ...comandaData,
+      itens: itensParaImprimir,
+      dataEmissao: dataFormatada
     };
+  };
+
+  const handleLimparTudo = async () => {
+    console.log('[LimparTudo] Botão clicado. User:', user?.email, 'Company:', user?.companyId);
+
+    if (!user?.companyId) {
+      if (Platform.OS === 'web') {
+        window.alert('Erro: ID da empresa não encontrado. Tente sair e entrar novamente.');
+      } else {
+        Alert.alert('Erro', 'ID da empresa não encontrado. Tente sair e entrar novamente.');
+      }
+      return;
+    }
+
+    const executeClean = async () => {
+      try {
+        console.log('[LimparTudo] Iniciando limpeza...');
+        const batch = writeBatch(db);
+        const today = getTodayKey();
+        let count = 0;
+
+        // 1. Comandas
+        const qComandas = query(getCompanyCollection(user.companyId, 'comandas'), where('dateKey', '==', today));
+        const snapComandas = await getDocs(qComandas);
+        snapComandas.forEach(doc => { batch.delete(doc.ref); count++; });
+
+        // 2. Pedidos
+        const qPedidos = query(getCompanyCollection(user.companyId, 'pedidos'), where('dateKey', '==', today));
+        const snapPedidos = await getDocs(qPedidos);
+        snapPedidos.forEach(doc => { batch.delete(doc.ref); count++; });
+
+        // 3. Pagamentos
+        const qPagamentos = query(getCompanyCollection(user.companyId, 'pagamentos'), where('dateKey', '==', today));
+        const snapPagamentos = await getDocs(qPagamentos);
+        snapPagamentos.forEach(doc => { batch.delete(doc.ref); count++; });
+
+        console.log(`[LimparTudo] Deletando ${count} registros...`);
+        await batch.commit();
+        console.log('[LimparTudo] Sucesso!');
+        showToast(`Limpeza concluída! ${count} registros excluídos.`, 'success');
+        carregarComandas(true);
+      } catch (error) {
+        console.error('[LimparTudo] Erro:', error);
+        showToast('Erro ao limpar: ' + error.message, 'error');
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      // WEB: Usar confirm nativo do browser pois Alert.alert do RN Web pode falhar
+      if (window.confirm('⚠️ MODO DE TESTE\n\nIsso excluirá TODAS as comandas, pedidos e pagamentos de HOJE.\n\nDeseja continuar?')) {
+        await executeClean();
+      }
+    } else {
+      // MOBILE: Usar Alert nativo
+      Alert.alert(
+        '⚠️ MODO DE TESTE',
+        'Isso excluirá TODAS as comandas, pedidos e pagamentos de HOJE.\n\nUsar APENAS para limpar dados de teste.',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'LIMPAR TUDO AGORA',
+            style: 'destructive',
+            onPress: executeClean
+          }
+        ]
+      );
+    }
   };
 
   const handleShare = async (comandaData) => {
     try {
-        const data = prepareDataForExport(comandaData);
-        await PDFService.generateAndShareComanda(data);
+      const data = prepareDataForExport(comandaData);
+      await PDFService.generateAndShareComanda(data);
     } catch (e) {
-        Alert.alert('Erro', 'Falha ao compartilhar PDF');
+      Alert.alert('Erro', 'Falha ao compartilhar PDF');
     }
   };
 
@@ -319,7 +390,12 @@ export default function ComandaGerenciamentoScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Gerenciamento</Text>
-        <Text style={styles.userInfo}>{user?.nome || user?.email}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <TouchableOpacity onPress={handleLimparTudo} style={{ padding: 8, backgroundColor: '#FFE0E0', borderRadius: 8 }}>
+            <Text style={{ color: 'red', fontSize: 12, fontWeight: 'bold' }}>🗑️ LIMPAR TESTES</Text>
+          </TouchableOpacity>
+          <Text style={styles.userInfo}>{user?.nome || user?.email}</Text>
+        </View>
       </View>
 
       <View style={styles.tabs}>
@@ -337,8 +413,8 @@ export default function ComandaGerenciamentoScreen() {
         <TouchableOpacity
           style={[styles.tab, activeTab === 'pagas' && styles.activeTab]}
           onPress={() => {
-             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-             setActiveTab('pagas');
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+            setActiveTab('pagas');
           }}
         >
           <Text style={[styles.tabText, activeTab === 'pagas' && styles.activeTabText]}>
@@ -348,8 +424,8 @@ export default function ComandaGerenciamentoScreen() {
         <TouchableOpacity
           style={[styles.tab, activeTab === 'canceladas' && styles.activeTab]}
           onPress={() => {
-             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-             setActiveTab('canceladas');
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+            setActiveTab('canceladas');
           }}
         >
           <Text style={[styles.tabText, activeTab === 'canceladas' && styles.activeTabText]}>

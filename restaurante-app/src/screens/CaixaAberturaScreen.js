@@ -29,7 +29,7 @@ export default function CaixaAberturaScreen() {
       }
 
       setLoading(true);
-      await CaixaService.abrirCaixa(valor, userId, userName);
+      await CaixaService.abrirCaixa(user.companyId, valor, userId, userName);
       Alert.alert('Sucesso', `Caixa aberto!\nValor: R$ ${valor.toFixed(2)}`);
       
     } catch (e) {

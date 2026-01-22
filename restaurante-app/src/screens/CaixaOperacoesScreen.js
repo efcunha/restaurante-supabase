@@ -13,7 +13,7 @@ export default function CaixaOperacoesScreen() {
 
   const reforco = async () => {
     try {
-      await CaixaService.registrarReforco(valorReforco, motivoReforco, user?.id, user?.nome);
+      await CaixaService.registrarReforco(user.companyId, valorReforco, motivoReforco, user?.id, user?.nome);
       Alert.alert('Ok', 'Reforço registrado.');
       setValorReforco(''); setMotivoReforco('');
     } catch (e) { Alert.alert('Erro', e.message); }
@@ -21,7 +21,7 @@ export default function CaixaOperacoesScreen() {
 
   const sangria = async () => {
     try {
-      await CaixaService.registrarSangria(valorSangria, motivoSangria, user?.id, user?.nome);
+      await CaixaService.registrarSangria(user.companyId, valorSangria, motivoSangria, user?.id, user?.nome);
       Alert.alert('Ok', 'Sangria registrada.');
       setValorSangria(''); setMotivoSangria('');
     } catch (e) { Alert.alert('Erro', e.message); }

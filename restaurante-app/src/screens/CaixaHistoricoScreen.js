@@ -1,12 +1,14 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, ScrollView } from 'react-native';
 import { useEffect, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import CaixaService from '../services/CaixaService';
 
 export default function CaixaHistoricoScreen() {
+  const { user } = useAuth();
   const [registros, setRegistros] = useState([]);
 
-  useEffect(() => { (async () => setRegistros(await CaixaService.historico()))(); }, []);
+  useEffect(() => { (async () => setRegistros(await CaixaService.historico(user?.companyId)))(); }, [user]);
 
   return (
     <View style={styles.container}>

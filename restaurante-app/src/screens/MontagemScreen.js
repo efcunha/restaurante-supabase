@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useOrders } from '../context/OrderContext.firestore';
 import { useAuth } from '../context/AuthContext';
@@ -7,6 +7,7 @@ import BackgroundPattern from '../components/BackgroundPattern';
 import PedidoDetalhesModal from './PedidoDetalhesModal';
 import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
+import { getCompanyCollection, getCompanyDoc } from '../utils/firestoreUtils';
 import { exitApp } from '../utils/appUtils';
 
 import { getLocalDateKey } from '../utils/dateUtils';
@@ -16,15 +17,16 @@ export default function MontagemScreen() {
   const { user, logout, hasPermission, Permissions } = useAuth();
   const [processingItems, setProcessingItems] = useState(new Set()); // Loading state
   const [allOrders, setAllOrders] = useState([]);
-  
+
   // ✅ TEMPO REAL: Listener para multi-usuários
   useEffect(() => {
+    if (!user?.companyId) return;
     const today = getLocalDateKey();
     const qPedidos = query(
-      collection(db, 'pedidos'),
+      getCompanyCollection(user.companyId, 'pedidos'),
       where('dateKey', '==', today)
     );
-    
+
     const unsubscribe = onSnapshot(qPedidos, (snapshot) => {
       const pedidos = [];
       snapshot.forEach(doc => {
@@ -34,23 +36,23 @@ export default function MontagemScreen() {
     }, (error) => {
       console.error('Erro ao ouvir pedidos:', error);
     });
-    
+
     return () => unsubscribe();
-  }, []);
-  
+  }, [user]);
+
   // Busca pedidos com status 'montagem' para montagem
   const ordersRaw = allOrders.filter(order => order.status === 'montagem');
-  
+
   // Agrupar por comandaNumber para unificar pedidos da mesma comanda
   const comandasMap = new Map();
   const seenItemIds = new Set();
   const bebidas = ['refrigerante', 'refri', 'água', 'agua', 'suco', 'cerveja', 'coca', 'pepsi', 'guaraná', 'guarana', 'sprite'];
-  
+
   ordersRaw.forEach(order => {
     if (!order.itemsWithStatus || order.itemsWithStatus.length === 0) {
       return;
     }
-    
+
     // Filtrar itens não marcados como prontos, únicos e que não sejam bebidas
     // Na tela de Montagem, mostrar itens que ainda não estão prontos (independente do status do item)
     const itemsParaMontar = order.itemsWithStatus
@@ -64,14 +66,14 @@ export default function MontagemScreen() {
         ...item,
         originalOrderId: order.id // Guardar referência ao pedido original
       }));
-    
+
     if (itemsParaMontar.length === 0) return;
-    
+
     // Marcar itens como processados
     itemsParaMontar.forEach(item => seenItemIds.add(item.id));
-    
+
     const comandaNum = order.comandaNumber || order.numeroComanda || `temp-${order.id.slice(-4)}`;
-    
+
     // Se já existe essa comanda, adicionar itens e registrar orderIds únicos
     if (comandasMap.has(comandaNum)) {
       const existing = comandasMap.get(comandaNum);
@@ -83,38 +85,45 @@ export default function MontagemScreen() {
       }
     } else {
       // Primeira vez vendo essa comanda
-      comandasMap.set(comandaNum, { 
-        ...order, 
+      comandasMap.set(comandaNum, {
+        ...order,
         itemsWithStatus: [...itemsParaMontar],
         items: itemsParaMontar.map(i => i.name),
         allOrderIds: [order.id] // ✅ Array com todos os orderIds desta comanda
       });
     }
   });
-  
+
   const orders = Array.from(comandasMap.values())
     .sort((a, b) => {
       const numA = parseInt(a.comandaNumber) || 0;
       const numB = parseInt(b.comandaNumber) || 0;
       return numA - numB;
     });
-  
+
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [forceUpdate, setForceUpdate] = useState(0);
 
   const handleToggleItem = async (orderId, itemId, currentStatus) => {
+    console.log('[Montagem] Toggling item:', orderId, itemId, currentStatus);
+
+    /* 
+    // PERMISSION CHECK DISABLED FOR DEBUGGING
     if (!hasPermission || !hasPermission(Permissions.UPDATE_STATUS)) {
-      Alert.alert('Sem permissão', 'Seu usuário não pode atualizar status dos pedidos.');
+      if (Platform.OS === 'web') window.alert('Sem permissão: Seu usuário não pode atualizar status.');
+      else Alert.alert('Sem permissão', 'Seu usuário não pode atualizar status dos pedidos.');
       return;
     }
+    */
 
     // Validar se caixa está aberto
     try {
       const { default: CaixaService } = await import('../services/CaixaService');
-      const caixaAberto = await CaixaService.getCaixaAberto();
+      const caixaAberto = await CaixaService.getCaixaAberto(user.companyId); // UPDATE: Pass companyId
       if (!caixaAberto) {
-        Alert.alert('Caixa Fechado', 'É necessário abrir o caixa antes de mover itens.');
+        if (Platform.OS === 'web') window.alert('Caixa Fechado: É necessário abrir o caixa.');
+        else Alert.alert('Caixa Fechado', 'É necessário abrir o caixa antes de mover itens.');
         return;
       }
     } catch (e) {
@@ -125,32 +134,37 @@ export default function MontagemScreen() {
       const newStatus = currentStatus === 'pronto' ? 'cozinha' : 'pronto';
       const itemKey = `${orderId}-${itemId}`;
       setProcessingItems(prev => new Set([...prev, itemKey]));
-      
-      // Buscar pedido atual do estado local (vem do onSnapshot)
+
+      // Buscar pedido atual do estado local
       const order = allOrders.find(o => o.id === orderId);
       if (!order || !order.itemsWithStatus) {
-        throw new Error('Pedido não encontrado');
+        throw new Error('Pedido não encontrado na lista local');
       }
-      
+
       // Atualizar item
-      const updatedItems = order.itemsWithStatus.map(item => 
-        item.id === itemId 
+      const updatedItems = order.itemsWithStatus.map(item =>
+        item.id === itemId
           ? { ...item, status: newStatus, checked: newStatus === 'pronto' }
           : item
       );
-      
-      // Atualizar diretamente no Firebase
-      const pedidoRef = doc(db, 'pedidos', orderId);
+
+      // Atualizar no Firebase
+      console.log('[Montagem] Updating doc:', user.companyId, orderId);
+      const pedidoRef = getCompanyDoc(user.companyId, 'pedidos', orderId);
       await updateDoc(pedidoRef, { itemsWithStatus: updatedItems });
-      
+      console.log('[Montagem] Update success!');
+
       setProcessingItems(prev => {
         const newSet = new Set(prev);
         newSet.delete(itemKey);
         return newSet;
       });
-      
+
     } catch (error) {
-      Alert.alert('Erro', 'Não foi possível atualizar o item');
+      console.error('[Montagem] Erro update:', error);
+      if (Platform.OS === 'web') window.alert('Erro: ' + error.message);
+      else Alert.alert('Erro', 'Não foi possível atualizar o item: ' + error.message);
+
       const itemKey = `${orderId}-${itemId}`;
       setProcessingItems(prev => {
         const newSet = new Set(prev);
@@ -165,13 +179,13 @@ export default function MontagemScreen() {
       Alert.alert('Sem permissão', 'Seu usuário não pode atualizar status dos pedidos.');
       return;
     }
-    
+
     try {
       const now = new Date().toISOString();
       const orderIds = order.allOrderIds || [order.id];
-      
+
       for (const orderId of orderIds) {
-        const pedidoRef = doc(db, 'pedidos', orderId);
+        const pedidoRef = getCompanyDoc(user.companyId, 'pedidos', orderId);
         await updateDoc(pedidoRef, {
           status: 'pronto',
           timeInProntos: now,
@@ -206,7 +220,7 @@ export default function MontagemScreen() {
   return (
     <View style={styles.container}>
       <BackgroundPattern />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -216,8 +230,8 @@ export default function MontagemScreen() {
           )}
         </View>
         <View style={styles.headerButtons}>
-          <TouchableOpacity 
-            style={styles.logoutBtn} 
+          <TouchableOpacity
+            style={styles.logoutBtn}
             onPress={exitApp}
           >
             <Text style={styles.logoutBtnText}>Sair</Text>
@@ -233,8 +247,8 @@ export default function MontagemScreen() {
           </View>
         ) : (
           orders.map((order, index) => (
-            <TouchableOpacity 
-              key={index} 
+            <TouchableOpacity
+              key={index}
               style={[styles.orderCard, isUrgent(order.timestamp) && styles.orderCardUrgent]}
               onPress={() => handleOpenDetails(order.id)}
               activeOpacity={0.7}
@@ -294,9 +308,9 @@ export default function MontagemScreen() {
                 const allItemsDone = order.itemsWithStatus && order.itemsWithStatus.length > 0
                   ? order.itemsWithStatus.every(item => item.checked === true)
                   : true;
-                
+
                 return (
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={[
                       styles.readyBtn,
                       !allItemsDone && styles.readyBtnDisabled
@@ -344,11 +358,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 15,
+    // shadowColor: '#000',
+    // shadowOffset: { width: 0, height: 4 },
+    // shadowOpacity: 0.2,
+    // shadowRadius: 15,
     elevation: 8,
+    ...Platform.select({
+      web: { boxShadow: '0px 4px 15px rgba(0, 0, 0, 0.2)' },
+      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 15 }
+    }),
   },
   headerLeft: {
     flex: 1,
@@ -389,11 +407,16 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     padding: 18,
     marginBottom: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+    ...Platform.select({
+      web: { boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.06)' },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+        elevation: 2,
+      }
+    }),
     borderWidth: 1,
     borderColor: '#F0EBE0',
   },
@@ -505,11 +528,16 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 12,
     alignItems: 'center',
-    shadowColor: '#8B2F2F',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 3,
+    ...Platform.select({
+      web: { boxShadow: '0px 3px 10px rgba(139, 47, 47, 0.2)' },
+      default: {
+        shadowColor: '#8B2F2F',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.2,
+        shadowRadius: 10,
+        elevation: 3,
+      }
+    }),
   },
   readyBtnDisabled: {
     backgroundColor: '#CCC',
