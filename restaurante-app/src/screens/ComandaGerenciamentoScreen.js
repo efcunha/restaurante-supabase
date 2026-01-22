@@ -351,7 +351,8 @@ export default function ComandaGerenciamentoScreen() {
   const handleShare = async (comandaData) => {
     try {
       const data = prepareDataForExport(comandaData);
-      await PDFService.generateAndShareComanda(data);
+      // Pass company data from AuthContext
+      await PDFService.generateAndShareComanda(data, user?.company);
     } catch (e) {
       Alert.alert('Erro', 'Falha ao compartilhar PDF');
     }

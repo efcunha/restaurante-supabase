@@ -51,7 +51,7 @@ export const RolePermissions = {
 export const RoleScreens = {
   [Roles.ADMIN]: ['Novo Pedido', 'Cozinha', 'Montagem', 'Prontos', 'Comandas', 'Admin'],
   [Roles.GERENTE]: ['Novo Pedido', 'Cozinha', 'Montagem', 'Prontos', 'Comandas', 'Admin'],
-  [Roles.GARCOM]: ['Novo Pedido', 'Cozinha', 'Montagem', 'Prontos', 'Comandas'],
+  [Roles.GARCOM]: ['Novo Pedido', 'Comandas'],
   [Roles.COZINHEIRO]: ['Cozinha'],
   [Roles.MONTAGEM]: ['Montagem', 'Prontos'],
 };
@@ -69,6 +69,10 @@ export function canAccessScreen(role, screenName) {
 // Helper para normalizar o papel obtido do Firestore
 export function normalizeRole(roleValue) {
   const v = String(roleValue || '').toLowerCase();
+
+  // Legacy aliases
+  if (v === 'churrasqueiro') return Roles.COZINHEIRO;
+
   if (Object.values(Roles).includes(v)) return v;
   return Roles.GARCOM; // padrão seguro
 }

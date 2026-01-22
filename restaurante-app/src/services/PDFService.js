@@ -3,31 +3,31 @@ import * as Sharing from 'expo-sharing';
 import { Alert, Platform } from 'react-native';
 
 class PDFService {
-    
-  async generateAndShareComanda(comandaData) {
+
+  async generateAndShareComanda(comandaData, companyData) {
     if (Platform.OS === 'web') {
       Alert.alert('Aviso', 'No modo Web, utilize a impressão do navegador (CTRL+P).');
       return;
     }
 
     try {
-      const html = this.buildHtml(comandaData);
+      const html = this.buildHtml(comandaData, companyData);
       const { uri } = await Print.printToFileAsync({ html });
-      
+
       // Compartilhar arquivo
       await Sharing.shareAsync(uri, {
         UTI: '.pdf',
         mimeType: 'application/pdf',
         dialogTitle: 'Compartilhar Comprovante'
       });
-      
+
     } catch (error) {
       console.error('Erro ao gerar PDF:', error);
       Alert.alert('Erro', 'Não foi possível gerar/compartilhar o PDF.');
     }
   }
 
-  buildHtml(comanda) {
+  buildHtml(comanda, companyData) {
     const itensHtml = (comanda.itens || []).map(item => `
       <tr>
         <td style="padding: 5px 0;">
@@ -46,6 +46,9 @@ class PDFService {
         <td style="text-align: right; white-space: nowrap;">R$ ${valor.toFixed(2)}</td>
       </tr>
     `).join('') || '<tr><td colspan="2" style="text-align:center; font-style:italic">Nenhum pagamento registrado</td></tr>';
+
+    const companyName = companyData?.name || 'Recibo de Vendas';
+    const companyDoc = companyData?.document ? (companyData.documentType === 'cpf' ? 'CPF' : 'CNPJ') + ': ' + companyData.document : '';
 
     return `
       <!DOCTYPE html>
@@ -71,8 +74,9 @@ class PDFService {
       <body>
         <div class="container">
           <div class="header">
-            <h1 class="title">Recibo de Vendas</h1>
-            <div class="subtitle">Comprovante de Pedido</div>
+            <h1 class="title">${companyName}</h1>
+            <div class="subtitle">${companyDoc}</div>
+            <div class="subtitle" style="margin-top:20px;">Comprovante de Pedido</div>
           </div>
 
           <div class="info">
