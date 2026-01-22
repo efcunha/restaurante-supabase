@@ -2,15 +2,17 @@ import React, { createContext, useState, useContext, useCallback, useEffect, use
 import { Platform } from 'react-native';
 import { writeBatch, doc, collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
+import { getCompanyCollection } from '../utils/firestoreUtils';
 import OrderService from '../services/OrderService.js';
 import OrderFirestoreService from '../services/OrderFirestoreService';
 import { useAuth } from './AuthContext';
 
 // Função auxiliar para calcular total buscando preços do Firestore
-const calculateTotalFromFirestore = async (items) => {
+const calculateTotalFromFirestore = async (companyId, items) => {
   try {
+    if (!companyId) return 0;
     // Buscar todos os itens do cardápio
-    const cardapioSnap = await getDocs(collection(db, 'cardapio'));
+    const cardapioSnap = await getDocs(getCompanyCollection(companyId, 'cardapio'));
     const cardapioMap = {};
     
     cardapioSnap.forEach(doc => {
@@ -86,7 +88,7 @@ export const OrderProvider = ({ children }) => {
     let mounted = true;
     
     try {
-      unsubscribe = OrderFirestoreService.listenToActiveOrders(({ orders: firestoreOrders, docMap }) => {
+      unsubscribe = OrderFirestoreService.listenToActiveOrders(user.companyId, ({ orders: firestoreOrders, docMap }) => {
         // CRÍTICO: Verificar se ainda está montado E se ainda há usuário
         if (!mounted || !user) return;
         
@@ -215,7 +217,7 @@ export const OrderProvider = ({ children }) => {
           import('../services/ComandasService')
         ]);
 
-        const caixa = await CaixaService.getCaixaAberto();
+        const caixa = await CaixaService.getCaixaAberto(user.companyId);
         if (!caixa) {
           throw new Error('Caixa não está aberto. Abra o caixa antes de criar pedidos.');
         }
@@ -240,11 +242,11 @@ export const OrderProvider = ({ children }) => {
         
         // Garantir comanda aberta ANTES de criar pedido
         console.log('🔵 [OrderContext] Garantindo comanda aberta:', comandaNumber);
-        await ComandasService.ensureComandaAberta(comandaNumber, createdBy, createdByName);
+        await ComandasService.ensureComandaAberta(user.companyId, comandaNumber, createdBy, createdByName);
         
         // Calcular total buscando preços do Firestore
         console.log('🔵 [OrderContext] Calculando total do pedido...');
-        const calculatedTotal = await calculateTotalFromFirestore(items);
+        const calculatedTotal = await calculateTotalFromFirestore(user.companyId, items);
         console.log('🔵 [OrderContext] Total calculado:', calculatedTotal);
         
         console.log('🔵 [OrderContext] Criando order object...');
@@ -255,8 +257,8 @@ export const OrderProvider = ({ children }) => {
         // Salvar pedido e adicionar consumo em paralelo (seguro pois comanda já existe)
         console.log('🔵 [OrderContext] Salvando no Firestore...');
         const [firestoreDocId] = await Promise.all([
-          OrderFirestoreService.saveOrder(order),
-          ComandasService.adicionarConsumo(comandaNumber, valorPedido)
+          OrderFirestoreService.saveOrder(user.companyId, order),
+          ComandasService.adicionarConsumo(user.companyId, comandaNumber, valorPedido)
         ]);
         console.log('✅ [OrderContext] Salvo com sucesso! DocId:', firestoreDocId);
         
@@ -307,7 +309,7 @@ export const OrderProvider = ({ children }) => {
         }
         
         // Atualizar no Firestore
-        await OrderFirestoreService.updateOrder(firestoreDocId, updatedData);
+        await OrderFirestoreService.updateOrder(user.companyId, firestoreDocId, updatedData);
       } else {
         // Fallback local
         setOrders(prevOrders => 
@@ -335,7 +337,7 @@ export const OrderProvider = ({ children }) => {
       const firestoreDocId = firestoreDocMap[orderId];
       
       if (isOnline && firestoreDocId) {
-        await OrderFirestoreService.deleteOrder(firestoreDocId);
+        await OrderFirestoreService.deleteOrder(user.companyId, firestoreDocId);
         // Remover do mapa
         setFirestoreDocMap(prev => {
           const newMap = { ...prev };
@@ -379,7 +381,7 @@ export const OrderProvider = ({ children }) => {
       );
       
       if (isOnline && firestoreDocId) {
-        await OrderFirestoreService.updateOrderStatus(firestoreDocId, 'montagem', updatePayload);
+        await OrderFirestoreService.updateOrderStatus(user.companyId, firestoreDocId, 'montagem', updatePayload);
       }
     } catch (error) {
       // Error silently handled
@@ -393,7 +395,7 @@ export const OrderProvider = ({ children }) => {
       const now = new Date().toISOString();
       
       if (isOnline && firestoreDocId) {
-        await OrderFirestoreService.updateOrderStatus(firestoreDocId, 'pronto', {
+        await OrderFirestoreService.updateOrderStatus(user.companyId, firestoreDocId, 'pronto', {
           timeInProntos: now,
           movidoParaProntoPor: user?.id || null,
           movidoParaProntoPorNome: user?.nome || null,
@@ -421,7 +423,7 @@ export const OrderProvider = ({ children }) => {
       
       if (isOnline && firestoreDocId) {
         // ✅ Atualizar status para 'delivered' e adicionar deliveredAt
-        await OrderFirestoreService.updateOrder(firestoreDocId, {
+        await OrderFirestoreService.updateOrder(user.companyId, firestoreDocId, {
           status: 'delivered',
           deliveredAt: now,
           entreguePor: user?.id || null,
@@ -499,7 +501,7 @@ export const OrderProvider = ({ children }) => {
       
       // PASSO 2: Se não encontrou firestoreDocId no mapa, buscar no Firestore pelo itemId
       if (!firestoreDocId && isOnline) {
-        const result = await OrderFirestoreService.findDocByItemId(itemId);
+        const result = await OrderFirestoreService.findDocByItemId(user.companyId, itemId);
         if (result) {
           firestoreDocId = result.docId;
           actualOrderId = result.orderId;
@@ -572,18 +574,18 @@ export const OrderProvider = ({ children }) => {
       // PASSO 6: Atualizar no Firestore
       if (isOnline && updatePayload) {
         if (firestoreDocId) {
-          await OrderFirestoreService.updateOrder(firestoreDocId, updatePayload);
+          await OrderFirestoreService.updateOrder(user.companyId, firestoreDocId, updatePayload);
         } else {
           // Última tentativa: buscar por orderId
-          const docId = await OrderFirestoreService.findDocIdByOrderId(actualOrderId);
+          const docId = await OrderFirestoreService.findDocIdByOrderId(user.companyId, actualOrderId);
           if (docId) {
-            await OrderFirestoreService.updateOrder(docId, updatePayload);
+            await OrderFirestoreService.updateOrder(user.companyId, docId, updatePayload);
             setFirestoreDocMap(prev => ({ ...prev, [actualOrderId]: docId }));
           } else {
             // Fallback final: buscar por itemId
-            const result = await OrderFirestoreService.findDocByItemId(itemId);
+            const result = await OrderFirestoreService.findDocByItemId(user.companyId, itemId);
             if (result) {
-              await OrderFirestoreService.updateOrder(result.docId, updatePayload);
+              await OrderFirestoreService.updateOrder(user.companyId, result.docId, updatePayload);
               setFirestoreDocMap(prev => ({ ...prev, [result.orderId]: result.docId }));
             } else {
               throw new Error(`Documento Firestore não encontrado para itemId=${itemId}`);
@@ -646,7 +648,7 @@ export const OrderProvider = ({ children }) => {
 
       const firestoreDocId = firestoreDocMap[orderId];
       if (isOnline && firestoreDocId) {
-        await OrderFirestoreService.updateOrder(firestoreDocId, updatePayload);
+        await OrderFirestoreService.updateOrder(user.companyId, firestoreDocId, updatePayload);
       }
     } catch (error) {
       throw error;
@@ -764,15 +766,15 @@ export const OrderProvider = ({ children }) => {
         comandasSemana,
         comandasMes,
       ] = await Promise.all([
-        OrderFirestoreService.getEstatisticasGarcom(garcomId, 'hoje'),
-        OrderFirestoreService.getEstatisticasGarcom(garcomId, 'semana'),
-        OrderFirestoreService.getEstatisticasGarcom(garcomId, periodoMes),
-        OrderFirestoreService.getEstatisticasPagamentos(garcomId, 'hoje'),
-        OrderFirestoreService.getEstatisticasPagamentos(garcomId, 'semana'),
-        OrderFirestoreService.getEstatisticasPagamentos(garcomId, periodoMes),
-        OrderFirestoreService.getEstatisticasComandas(garcomId, 'hoje'),
-        OrderFirestoreService.getEstatisticasComandas(garcomId, 'semana'),
-        OrderFirestoreService.getEstatisticasComandas(garcomId, periodoMes),
+        OrderFirestoreService.getEstatisticasGarcom(user.companyId, garcomId, 'hoje'),
+        OrderFirestoreService.getEstatisticasGarcom(user.companyId, garcomId, 'semana'),
+        OrderFirestoreService.getEstatisticasGarcom(user.companyId, garcomId, periodoMes),
+        OrderFirestoreService.getEstatisticasPagamentos(user.companyId, garcomId, 'hoje'),
+        OrderFirestoreService.getEstatisticasPagamentos(user.companyId, garcomId, 'semana'),
+        OrderFirestoreService.getEstatisticasPagamentos(user.companyId, garcomId, periodoMes),
+        OrderFirestoreService.getEstatisticasComandas(user.companyId, garcomId, 'hoje'),
+        OrderFirestoreService.getEstatisticasComandas(user.companyId, garcomId, 'semana'),
+        OrderFirestoreService.getEstatisticasComandas(user.companyId, garcomId, periodoMes),
       ]);
 
       console.log('[OrderContext] Estatísticas vendas hoje:', hoje);

@@ -7,6 +7,7 @@ import BackgroundPattern from '../components/BackgroundPattern';
 import PedidoDetalhesModal from './PedidoDetalhesModal';
 import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
+import { getCompanyCollection, getCompanyDoc } from '../utils/firestoreUtils';
 import { getLocalDateKey } from '../utils/dateUtils';
 import { exitApp } from '../utils/appUtils';
 
@@ -20,12 +21,13 @@ export default function PedidosProntosScreen() {
 
   // ✅ TEMPO REAL: Listener para multi-usuários
   useEffect(() => {
+    if (!user?.companyId) return;
     const today = getLocalDateKey();
     const qPedidos = query(
-      collection(db, 'pedidos'),
+      getCompanyCollection(user.companyId, 'pedidos'),
       where('dateKey', '==', today)
     );
-    
+
     const unsubscribe = onSnapshot(qPedidos, (snapshot) => {
       const pedidos = [];
       snapshot.forEach(doc => {
@@ -35,24 +37,24 @@ export default function PedidosProntosScreen() {
     }, (error) => {
       console.error('Erro ao ouvir pedidos:', error);
     });
-    
+
     return () => unsubscribe();
-  }, []);
+  }, [user]);
 
   // Buscar pedidos com status montagem ou churrasqueira que têm itens marcados como prontos
   const churrasqueiraOrders = allOrders.filter(o => o.status === 'churrasqueira' || o.status === 'montagem');
-  
+
   // Extrair itens prontos individuais (que ainda NÃO foram entregues)
   const readyItems = [];
   const seenItems = new Set(); // Para evitar duplicatas
-  
+
   churrasqueiraOrders.forEach(order => {
     if (order.itemsWithStatus && order.itemsWithStatus.length > 0) {
       order.itemsWithStatus.forEach(item => {
         if (item.status === 'pronto' && item.checked && !item.delivered) {
           // Criar chave única para evitar duplicatas
           const itemKey = `${order.id}-${item.id}`;
-          
+
           if (!seenItems.has(itemKey)) {
             seenItems.add(itemKey);
             readyItems.push({
@@ -68,23 +70,23 @@ export default function PedidosProntosScreen() {
       });
     }
   });
-  
+
   // ORDENAR: Primeiro por número de comanda (menor primeiro), depois por timestamp do pedido
   readyItems.sort((a, b) => {
     // Extrair número da comanda (ex: "002" de "002")
     const numA = parseInt(a.comandaNumber) || 0;
     const numB = parseInt(b.comandaNumber) || 0;
-    
+
     if (numA !== numB) {
       return numA - numB; // Comanda menor primeiro
     }
-    
+
     // Se mesma comanda, ordenar por timestamp do pedido (mais antigo primeiro)
     const timeA = new Date(a.orderTimestamp).getTime();
     const timeB = new Date(b.orderTimestamp).getTime();
     return timeA - timeB;
   });
-  
+
   // console.log('📋 [Prontos] Itens prontos:', readyItems.length, readyItems.map(i => ({ 
   //   id: i.id,
   //   orderId: i.orderId,
@@ -95,65 +97,72 @@ export default function PedidosProntosScreen() {
   // })));
 
   const handleDeliver = async (orderId, itemId) => {
+    console.log('[Prontos] Delivering item:', orderId, itemId);
+
     // Validar se caixa está aberto
     try {
       const { default: CaixaService } = await import('../services/CaixaService');
-      const caixaAberto = await CaixaService.getCaixaAberto();
+      const caixaAberto = await CaixaService.getCaixaAberto(user.companyId); // UPDATE: Pass companyId
       if (!caixaAberto) {
-        Alert.alert('Caixa Fechado', 'É necessário abrir o caixa antes de entregar pedidos.');
+        if (Platform.OS === 'web') window.alert('Caixa Fechado: É necessário abrir o caixa antes de entregar pedidos.');
+        else Alert.alert('Caixa Fechado', 'É necessário abrir o caixa antes de entregar pedidos.');
         return;
       }
     } catch (e) {
       console.error('[Prontos] Erro ao verificar caixa:', e);
     }
-    
+
     try {
       const itemKey = `${orderId}-${itemId}`;
       setProcessingItems(prev => new Set([...prev, itemKey]));
-      
+
       // Buscar pedido atual do estado local (vem do onSnapshot)
       const order = allOrders.find(o => o.id === orderId);
       if (!order || !order.itemsWithStatus) {
         throw new Error('Pedido não encontrado');
       }
-      
+
       const now = new Date().toISOString();
-      
+
       // Atualizar item como entregue
-      const updatedItems = order.itemsWithStatus.map(item => 
-        item.id === itemId 
+      const updatedItems = order.itemsWithStatus.map(item =>
+        item.id === itemId
           ? { ...item, delivered: true, deliveredAt: now }
           : item
       );
-      
+
       // Verificar se todos os itens foram entregues
       const allDelivered = updatedItems.every(item => item.delivered === true);
-      
+
       const updatePayload = {
         itemsWithStatus: updatedItems,
+        atualizadoEm: now
       };
-      
+
       if (allDelivered) {
         updatePayload.status = 'delivered';
         updatePayload.deliveredAt = now;
         updatePayload.entreguePor = user?.id || null;
         updatePayload.entreguePorNome = user?.nome || null;
       }
-      
+
+      console.log('[Prontos] Updating doc:', user.companyId, orderId);
       // Atualizar diretamente no Firebase
-      const pedidoRef = doc(db, 'pedidos', orderId);
+      const pedidoRef = getCompanyDoc(user.companyId, 'pedidos', orderId);
       await updateDoc(pedidoRef, updatePayload);
-      
+      console.log('[Prontos] Update success!');
+
       setProcessingItems(prev => {
         const newSet = new Set(prev);
         newSet.delete(itemKey);
         return newSet;
       });
-      
+
     } catch (error) {
       console.error('❌ Erro ao entregar item:', error);
-      Alert.alert('Erro', 'Não foi possível marcar como entregue');
-      
+      if (Platform.OS === 'web') window.alert('Erro: ' + error.message);
+      else Alert.alert('Erro', 'Não foi possível marcar como entregue: ' + error.message);
+
       const itemKey = `${orderId}-${itemId}`;
       setProcessingItems(prev => {
         const newSet = new Set(prev);
@@ -176,7 +185,7 @@ export default function PedidosProntosScreen() {
   return (
     <View style={styles.container}>
       <BackgroundPattern />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -185,8 +194,8 @@ export default function PedidosProntosScreen() {
             <Text style={styles.userInfo}>{user.nome || user.email}</Text>
           )}
         </View>
-        <TouchableOpacity 
-          style={styles.logoutBtn} 
+        <TouchableOpacity
+          style={styles.logoutBtn}
           onPress={exitApp}
         >
           <Text style={styles.logoutBtnText}>Sair</Text>
@@ -201,15 +210,15 @@ export default function PedidosProntosScreen() {
           </View>
         ) : (
           readyItems.map((item, index) => (
-            <View 
-              key={`${item.orderId}-${item.id}`} 
+            <View
+              key={`${item.orderId}-${item.id}`}
               style={styles.itemCard}
             >
               <View style={styles.itemHeader}>
                 <Text style={styles.comandaNumber}>Comanda {item.comandaNumber || '?'}</Text>
                 <Text style={styles.clientName}>{item.client}</Text>
               </View>
-              
+
               <View style={styles.itemBody}>
                 <View style={styles.checkIcon}>
                   <Text style={styles.checkIconText}>✓</Text>
@@ -221,8 +230,8 @@ export default function PedidosProntosScreen() {
                 <Text style={styles.garcomText}>👤 Garçom: {item.criadoPorNome}</Text>
               )}
 
-              <TouchableOpacity 
-                style={styles.deliverBtn} 
+              <TouchableOpacity
+                style={styles.deliverBtn}
                 onPress={() => handleDeliver(item.orderId, item.id)}
               >
                 <Text style={styles.deliverBtnText}>ENTREGUE</Text>

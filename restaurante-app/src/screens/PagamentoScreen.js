@@ -6,6 +6,9 @@ import CaixaService from '../services/CaixaService';
 import PagamentosService from '../services/PagamentosService';
 import ComandasService from '../services/ComandasService';
 import { getTodayKey } from '../services/FirebaseOptimizations';
+import { getCompanyDoc, getCompanyCollection } from '../utils/firestoreUtils';
+import { getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../config/firebaseConfig';
 
 // Usar função centralizada para consistência de data local
 const todayKey = getTodayKey;
@@ -29,12 +32,12 @@ export default function PagamentoScreen() {
 
   const carregarSaldo = async () => {
     try {
+      if (!user?.companyId || !comanda) return;
       // simples: estimar saldo a partir de comanda doc
       const dateKey = todayKey();
       const id = `comanda-${dateKey}-${comanda}`;
-      const { getDoc, doc } = await import('firebase/firestore');
-      const { db } = await import('../config/firebaseConfig');
-      const snap = await getDoc(doc(db, 'comandas', id));
+      
+      const snap = await getDoc(getCompanyDoc(user.companyId, 'comandas', id));
       if (!snap.exists()) throw new Error('Comanda não encontrada');
       const data = snap.data();
       setSaldo({
@@ -56,6 +59,7 @@ export default function PagamentoScreen() {
 
       // Registrar pagamento
       await PagamentosService.registrarPagamento({
+        companyId: user.companyId,
         dateKey: todayKey(),
         comandaNumber: comanda,
         forma,
@@ -72,9 +76,7 @@ export default function PagamentoScreen() {
       // Recarregar saldo atualizado
       const dateKey = todayKey();
       const id = `comanda-${dateKey}-${comanda}`;
-      const { getDoc, doc } = await import('firebase/firestore');
-      const { db } = await import('../config/firebaseConfig');
-      const snap = await getDoc(doc(db, 'comandas', id));
+      const snap = await getDoc(getCompanyDoc(user.companyId, 'comandas', id));
       
       if (!snap.exists()) {
         Alert.alert('Erro', 'Comanda não encontrada');
@@ -103,10 +105,8 @@ export default function PagamentoScreen() {
         
         try {
           // 🔒 MARCAR TODOS OS PEDIDOS COMO PAGOS ANTES DE FECHAR
-          const { collection, query, where, getDocs } = await import('firebase/firestore');
-          const { db } = await import('../config/firebaseConfig');
           
-          const ordersRef = collection(db, 'orders');
+          const ordersRef = getCompanyCollection(user.companyId, 'pedidos');
           const q = query(ordersRef, where('comandaNumber', '==', comanda));
           const snapshot = await getDocs(q);
           
@@ -118,11 +118,11 @@ export default function PagamentoScreen() {
             });
             
             if (pedidosIds.length > 0) {
-              await PagamentosService.marcarPedidosComoPagos(pedidosIds, forma);
+              await PagamentosService.marcarPedidosComoPagos(user.companyId, pedidosIds, forma);
             }
           }
           
-          await ComandasService.fecharComanda(comanda, user?.id, user?.nome);
+          await ComandasService.fecharComanda(user.companyId, comanda, user?.id, user?.nome);
           // console.log('[Pagamento] ✅ Comanda fechada com sucesso');
           
           // Limpar antes do Alert
@@ -156,7 +156,7 @@ export default function PagamentoScreen() {
 
   const fechar = async () => {
     try {
-      await ComandasService.fecharComanda(comanda, user?.id, user?.nome);
+      await ComandasService.fecharComanda(user.companyId, comanda, user?.id, user?.nome);
       setTimeout(() => {
         Alert.alert('✅ Comanda fechada', 'Conta encerrada com sucesso.');
       }, 100);

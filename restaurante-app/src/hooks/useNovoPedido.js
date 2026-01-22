@@ -6,6 +6,7 @@ import { useToast } from '../context/ToastContext';
 import { getNextComandaNumber, peekNextComandaNumber, formatComandaNumber } from '../services/ComandaService';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
+import { getCompanyCollection } from '../utils/firestoreUtils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { exitApp } from '../utils/appUtils';
@@ -35,8 +36,15 @@ export function useNovoPedido() {
     const carregarCardapioFirestore = async (isBackground = false) => {
         try {
             if (!isBackground) setLoadingCardapio(true);
+            
+            if (!user?.companyId) {
+                console.warn('⚠️ Usuário sem empresa vinculada');
+                setCardapio({ caldos: [], comidas: [], bebidas: [], porcoes: [] });
+                setLoadingCardapio(false);
+                return;
+            }
 
-            const snapshot = await getDocs(collection(db, 'cardapio'));
+            const snapshot = await getDocs(getCompanyCollection(user.companyId, 'cardapio'));
             const produtosDb = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
@@ -120,55 +128,58 @@ export function useNovoPedido() {
         [cardapio]
     );
 
+    // Helper to calculate price for a single item (extracted for reuse)
+    const calculateItemPrice = useCallback((itemName, qty = 1) => {
+        const nomeBase = itemName.replace(/\s*\(.*\)$/, '');
+        
+        // 1. Tentar encontrar item exato no cardápio
+        const produtoExato = cardapioCombinado.find(p => p.name === nomeBase);
+        
+        if (produtoExato) {
+            return qty * produtoExato.price;
+        }
+
+        // Logic for Caldos variations (300ml vs 180ml)
+        if (itemName.match(/(Caldinho|Caldo|Calde)/i)) {
+            if (itemName.match(/180\s*ml/i)) {
+                return qty * 10;
+            } else if (itemName.match(/300\s*ml/i)) {
+                return qty * 15;
+            }
+        }
+
+        // 2. Fallback: procurar por prefixo
+        const produtoPartial = cardapioCombinado.find(p => itemName.startsWith(p.name));
+        if (produtoPartial) {
+            return qty * produtoPartial.price;
+        }
+        
+        return 0;
+    }, [cardapioCombinado]);
+
     const total = useMemo(() => {
         let totalCalc = 0;
         for (const [name, qty] of Object.entries(produtos)) {
             if (qty > 0) {
-                const nomeBase = name.replace(/\s*\(.*\)$/, '');
-
-                // 1. Tentar encontrar item exato no cardápio
-                // Isso cobre "Cerveja Heineken", "Espetinho Simples", etc.
-                const produtoExato = cardapioCombinado.find(p => p.name === nomeBase);
-
-                if (produtoExato) {
-                    totalCalc += qty * produtoExato.price;
-                } else {
-                    // Logic for Caldos variations (300ml vs 180ml) if not in DB
-                    // This mimics the UI fallback logic
-                    if (name.includes('Caldinho') || name.includes('Caldo')) {
-                        if (name.includes('180ml')) {
-                            totalCalc += qty * 10;
-                            continue;
-                        } else if (name.includes('300ml')) {
-                            totalCalc += qty * 15;
-                            continue;
-                        }
-                    }
-
-                    // 2. Fallback: procurar por prefixo (ex: "Caldinho" encontrando "Caldinho de Macaxeira")
-                    // CUIDADO: Isso pode pegar o preço base (15) para um item de 180ml (10) se a lógica acima falhar
-                    const produtoPartial = cardapioCombinado.find(p => name.startsWith(p.name));
-                    if (produtoPartial) {
-                        totalCalc += qty * produtoPartial.price;
-                    }
-                }
+                totalCalc += calculateItemPrice(name, qty);
             }
         }
         return fixDecimal(totalCalc);
-    }, [produtos, cardapioCombinado]);
+    }, [produtos, calculateItemPrice]);
 
     const selectedItems = useMemo(() => {
         const items = [];
         for (const [name, qty] of Object.entries(produtos)) {
             if (qty > 0) {
+                const itemPrice = calculateItemPrice(name, 1); // Unit price
                 items.push({
                     text: `${qty}x ${name}`,
-                    price: 0 // Calculated by context/backend
+                    price: itemPrice * qty
                 });
             }
         }
         return items;
-    }, [produtos]);
+    }, [produtos, calculateItemPrice]);
 
     const handleRemoveItem = useCallback((itemText) => {
         // Remover prefixo de quantidade "1x ", "2x " para obter a chave original
@@ -204,7 +215,7 @@ export function useNovoPedido() {
                 novoNumeroComanda,
                 user?.uid || '',
                 user?.nome || user?.email || 'Garçom',
-                0, // totalPrice calculated by backend/service
+                parseFloat(total),
                 false // isPago
             );
 

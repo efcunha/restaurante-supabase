@@ -1,8 +1,8 @@
-import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback, useRef } from 'react';
 import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from 'firebase/auth';
-import { auth } from '../config/firebaseConfig';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from 'firebase/auth';
+import { auth, db } from '../config/firebaseConfig';
 import { buscarFuncionarioPorUid } from '../services/funcionarios';
 import { normalizeRole, hasPermission, Permissions } from '../auth/roles';
 
@@ -21,7 +21,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState(null);
   const [sessionKey, setSessionKey] = useState(1);
-  const [isManualLogin, setIsManualLogin] = useState(false);
+  const isManualLoginRef = useRef(false);
 
   useEffect(() => {
     let mounted = true;
@@ -37,14 +37,14 @@ export const AuthProvider = ({ children }) => {
         if (mounted) {
           setUser(null);
           setRole(null);
-          setIsManualLogin(false);
+          isManualLoginRef.current = false;
           setLoading(false);
         }
       } catch (error) {
         if (mounted) {
           setUser(null);
           setRole(null);
-          setIsManualLogin(false);
+          isManualLoginRef.current = false;
           setLoading(false);
         }
       }
@@ -61,11 +61,11 @@ export const AuthProvider = ({ children }) => {
         return;
       }
       
-      if (firebaseUser && isManualLogin) {
+      if (firebaseUser && isManualLoginRef.current) {
         return;
       }
       
-      if (firebaseUser && !isManualLogin) {
+      if (firebaseUser && !isManualLoginRef.current) {
         try {
           await signOut(auth);
           await AsyncStorage.clear();
@@ -75,7 +75,7 @@ export const AuthProvider = ({ children }) => {
       if (mounted) {
         setUser(null);
         setRole(null);
-        setIsManualLogin(false);
+        isManualLoginRef.current = false;
         setLoading(false);
       }
     });
@@ -84,7 +84,7 @@ export const AuthProvider = ({ children }) => {
       mounted = false;
       unsubscribe();
     };
-  }, [isManualLogin]);
+  }, []);
 
   const login = async (email, senha) => {
     try {
@@ -97,7 +97,7 @@ export const AuthProvider = ({ children }) => {
       } catch (e) {}
       
       // SEGUNDO: Marcar como login manual
-      setIsManualLogin(true);
+      isManualLoginRef.current = true;
       
       // TERCEIRO: Fazer login
       console.log('[Auth] Tentando login Firebase Auth...');
@@ -112,15 +112,30 @@ export const AuthProvider = ({ children }) => {
       console.log('[Auth] Resultado busca:', result);
       
       if (result.success) {
+        // Obter dados da empresa
+        let companyData = null;
+        if (result.funcionario.companyId) {
+            try {
+                const { getDoc, doc } = require('firebase/firestore');
+                const companyDoc = await getDoc(doc(db, 'companies', result.funcionario.companyId));
+                if (companyDoc.exists()) {
+                    companyData = { id: companyDoc.id, ...companyDoc.data() };
+                    console.log('[Auth] 🏢 Empresa carregada:', companyData.name);
+                }
+            } catch (companyError) {
+                console.error('[Auth] ❌ Erro ao carregar empresa:', companyError);
+            }
+        }
+
         // QUARTO: Definir estados manualmente
-        setUser(result.funcionario);
+        setUser({ ...result.funcionario, company: companyData }); // Anexar dados da empresa ao user
         setRole(normalizeRole(result.funcionario.funcao));
         setSessionKey(k => k + 1);
         setLoading(false);
         return true;
       } else {
         await signOut(auth);
-        setIsManualLogin(false);
+        isManualLoginRef.current = false;
         Alert.alert(
           'Acesso negado', 
           `Usuário não cadastrado como funcionário.\n\n` +
@@ -134,7 +149,7 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('[Auth] ❌ Erro no login:', error);
-      setIsManualLogin(false);
+      isManualLoginRef.current = false;
       let errorMessage = 'Erro ao fazer login';
       let errorDetails = '';
       
@@ -161,7 +176,7 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       // PRIMEIRO: Limpar flag de login manual
-      setIsManualLogin(false);
+      isManualLoginRef.current = false;
       
       // SEGUNDO: Limpar estados IMEDIATAMENTE
       setUser(null);
@@ -174,12 +189,37 @@ export const AuthProvider = ({ children }) => {
       await AsyncStorage.clear();
     } catch (error) {
       // Mesmo com erro, garantir limpeza local
-      setIsManualLogin(false);
+      isManualLoginRef.current = false;
       setUser(null);
       setRole(null);
       setLoading(false);
       setSessionKey(Date.now());
       AsyncStorage.clear().catch(() => {});
+    }
+  };
+
+  const register = async (email, password) => {
+    try {
+      setLoading(true);
+      // PRIMEIRO: Garantir logout
+      try {
+        await signOut(auth);
+        await AsyncStorage.clear();
+      } catch (e) {}
+      
+      // SEGUNDO: Marcar como login manual para evitar auto-logout
+      isManualLoginRef.current = true;
+      
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      // Opcional: recarregar ou definir user/role se necessário, mas para registro inicial 
+      // talvez a gente só queira o objeto user e deixar o componente lidar com DB
+      setLoading(false);
+      return { success: true, user: userCredential.user };
+    } catch (error) {
+      console.error('[Auth] ❌ Erro no registro:', error);
+      isManualLoginRef.current = false;
+      setLoading(false);
+      return { success: false, error };
     }
   };
 
@@ -206,6 +246,7 @@ export const AuthProvider = ({ children }) => {
       loading, 
       login, 
       logout, // Usar logout real
+      register, // Adicionado para evitar logout no cadastro
       sessionKey, 
       hasPermission: (perm) => hasPermission(role, perm), 
       Permissions 

@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { Ionicons } from '@expo/vector-icons';
 
-export default function LoginScreen() {
+export default function LoginScreen({ navigation }) {
   const { login } = useAuth();
   const { showToast } = useToast();
   const [email, setEmail] = useState('');
@@ -137,6 +137,15 @@ export default function LoginScreen() {
             <Text style={styles.footer}>
               Entre com seu usuário e senha{'\n'}fornecidos pelo administrador
             </Text>
+
+            <TouchableOpacity 
+                style={{ marginTop: 20, padding: 10 }}
+                onPress={() => navigation.navigate('Register')}
+            >
+                <Text style={{ color: '#FFF', textAlign: 'center', textDecorationLine: 'underline' }}>
+                    Não tem uma conta? Cadastre seu restaurante
+                </Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </TouchableWithoutFeedback>

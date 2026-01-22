@@ -6,20 +6,22 @@ import { useAuth } from '../context/AuthContext';
 import BackgroundPattern from '../components/BackgroundPattern';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
+import { getCompanyCollection } from '../utils/firestoreUtils';
 import { getLocalDateKey } from '../utils/dateUtils';
 import { exitApp } from '../utils/appUtils';
 
 export default function CozinhaScreen() {
   const { user, logout } = useAuth();
   const [allOrders, setAllOrders] = useState([]);
-  
+
   useEffect(() => {
+    if (!user?.companyId) return;
     const today = getLocalDateKey();
     const qPedidos = query(
-      collection(db, 'pedidos'),
+      getCompanyCollection(user.companyId, 'pedidos'),
       where('dateKey', '==', today)
     );
-    
+
     const unsubscribe = onSnapshot(qPedidos, (snapshot) => {
       const pedidos = [];
       snapshot.forEach(doc => {
@@ -29,20 +31,20 @@ export default function CozinhaScreen() {
     }, (error) => {
       console.error('Erro ao ouvir pedidos:', error);
     });
-    
+
     return () => unsubscribe();
-  }, []);
-  
+  }, [user]);
+
   const ordersRaw = allOrders.filter(order => order.status === 'montagem');
-  
+
   const bebidas = ['refrigerante', 'refri', 'água', 'agua', 'suco', 'cerveja', 'coca', 'pepsi', 'guaraná', 'guarana', 'sprite'];
   const seenItemIds = new Set();
-  
+
   const allValidItems = [];
-  
+
   ordersRaw.forEach(order => {
     if (!order.itemsWithStatus || order.itemsWithStatus.length === 0) return;
-    
+
     order.itemsWithStatus.forEach(item => {
       const isBebida = bebidas.some(bebida => item.name.toLowerCase().includes(bebida));
       if (item.status !== 'pronto' && !item.checked && !seenItemIds.has(item.id) && !isBebida) {
@@ -96,7 +98,7 @@ export default function CozinhaScreen() {
   return (
     <View style={styles.container}>
       <BackgroundPattern />
-      
+
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Text style={styles.headerTitle}>🍲 Cozinha</Text>

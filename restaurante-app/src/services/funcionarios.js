@@ -20,7 +20,7 @@ import { db } from '../config/firebaseConfig';
 import { createUserWithEmailAndPassword, updatePassword, deleteUser } from 'firebase/auth';
 import { auth } from '../config/firebaseConfig';
 
-const FUNCIONARIOS_COLLECTION = 'funcionarios';
+const FUNCIONARIOS_COLLECTION = 'users'; // Migrated from 'funcionarios' for SaaS
 
 // Flag para ignorar mudanças de auth durante cadastro
 let ignorandoMudancaAuth = false;

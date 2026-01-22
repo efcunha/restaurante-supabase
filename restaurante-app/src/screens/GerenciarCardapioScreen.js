@@ -13,6 +13,8 @@ import {
 } from 'react-native';
 import { collection, getDocs, addDoc, updateDoc, doc, getDoc, setDoc, writeBatch, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
+import { useAuth } from '../context/AuthContext';
+import { getCompanyCollection, getCompanyDoc } from '../utils/firestoreUtils';
 import BackgroundPattern from '../components/BackgroundPattern';
 
 // Componente para cada item de variação
@@ -57,6 +59,7 @@ function VariacaoItem({ variacao, onSalvar, onToggleStatus }) {
 }
 
 export default function GerenciarCardapioScreen() {
+  const { user } = useAuth();
   // Estados para cadastro
   const [nome, setNome] = useState('');
   const [preco, setPreco] = useState('');
@@ -102,7 +105,13 @@ export default function GerenciarCardapioScreen() {
       setLoadingProdutos(true);
       // console.log('📦 Carregando produtos do Firestore...');
 
-      const snapshot = await getDocs(collection(db, 'cardapio'));
+      if (!user?.companyId) {
+        console.warn('⚠️ Usuário sem empresa vinculada');
+        setLoadingProdutos(false);
+        return;
+      }
+
+      const snapshot = await getDocs(getCompanyCollection(user.companyId, 'cardapio'));
       // console.log(`📦 ${snapshot.size} produtos encontrados`);
 
       const produtosData = snapshot.docs.map(doc => ({
@@ -166,7 +175,7 @@ export default function GerenciarCardapioScreen() {
         const batch = writeBatch(db);
 
         variacoes.forEach(variacao => {
-          const novoDoc = doc(collection(db, 'cardapio'));
+          const novoDoc = getCompanyDoc(user.companyId, 'cardapio');
           batch.set(novoDoc, {
             name: variacao.nome,
             price: variacao.preco,
@@ -215,7 +224,7 @@ export default function GerenciarCardapioScreen() {
           createdAt: Date.now()
         };
 
-        await addDoc(collection(db, 'cardapio'), novoProduto);
+        await addDoc(getCompanyCollection(user.companyId, 'cardapio'), novoProduto);
         // console.log('✅ Produto cadastrado com sucesso');
 
         window.alert('✅ Produto cadastrado com sucesso!');
@@ -258,7 +267,7 @@ export default function GerenciarCardapioScreen() {
       setLoading(true);
       // console.log('✏️ Editando produto:', editando.id);
 
-      const produtoRef = doc(db, 'cardapio', editando.id);
+      const produtoRef = getCompanyDoc(user.companyId, 'cardapio', editando.id);
       await updateDoc(produtoRef, {
         name: editNome.trim(),
         price: parseFloat(editPreco),
@@ -283,7 +292,7 @@ export default function GerenciarCardapioScreen() {
     try {
       // console.log(`🔄 ${produto.active ? 'Desativando' : 'Ativando'} produto:`, produto.id);
 
-      const produtoRef = doc(db, 'cardapio', produto.id);
+      const produtoRef = getCompanyDoc(user.companyId, 'cardapio', produto.id);
       await updateDoc(produtoRef, {
         active: !produto.active
       });
@@ -307,7 +316,7 @@ export default function GerenciarCardapioScreen() {
       setLoading(true);
       // console.log('🔄 Iniciando migração de categorias...');
 
-      const snapshot = await getDocs(collection(db, 'cardapio'));
+      const snapshot = await getDocs(getCompanyCollection(user.companyId, 'cardapio'));
       const especiais = ['Carneiro', 'Cupim', 'Picanha'];
 
       let countSimples = 0;
@@ -328,7 +337,7 @@ export default function GerenciarCardapioScreen() {
             }
           }
 
-          await updateDoc(doc(db, 'cardapio', docSnap.id), {
+          await updateDoc(getCompanyDoc(user.companyId, 'cardapio', docSnap.id), {
             category: novaCategoria
           });
 
@@ -364,7 +373,7 @@ export default function GerenciarCardapioScreen() {
       setLoading(true);
       // console.log('🔄 Limpando produtos duplicados...');
 
-      const snapshot = await getDocs(collection(db, 'cardapio'));
+      const snapshot = await getDocs(getCompanyCollection(user.companyId, 'cardapio'));
       const variacoes = ['Simples', 'com Arroz', 'com Macaxeira', 'Completo'];
 
       let countDeletados = 0;
@@ -379,7 +388,7 @@ export default function GerenciarCardapioScreen() {
           const temVariacao = variacoes.some(v => nome.includes(v));
 
           if (!temVariacao) {
-            await deleteDoc(doc(db, 'cardapio', docSnap.id));
+            await deleteDoc(getCompanyDoc(user.companyId, 'cardapio', docSnap.id));
             countDeletados++;
             // console.log(`🗑️  Removido: ${nome}`);
           }
@@ -439,7 +448,7 @@ export default function GerenciarCardapioScreen() {
         return;
       }
 
-      await updateDoc(doc(db, 'cardapio', produto.id), {
+      await updateDoc(getCompanyDoc(user.companyId, 'cardapio', produto.id), {
         price: precoNum
       });
 
@@ -509,7 +518,7 @@ export default function GerenciarCardapioScreen() {
         const batch = writeBatch(db);
         
         variacoes.forEach(v => {
-            batch.delete(doc(db, 'cardapio', v.id));
+            batch.delete(getCompanyDoc(user.companyId, 'cardapio', v.id));
         });
 
         await batch.commit();
@@ -720,7 +729,10 @@ export default function GerenciarCardapioScreen() {
                     <View style={styles.produtoInfo}>
                       <Text style={styles.produtoNome}>{nomeBase}</Text>
                       <Text style={styles.produtoVariacoes}>
-                        {variacoes.length} variação{variacoes.length > 1 ? 'ões' : ''}
+                        {variacoes.length === 1 
+                          ? `R$ ${Number(primeiraVariacao.price).toFixed(2)}`
+                          : `${variacoes.length} variações`
+                        }
                       </Text>
                     </View>
                   </View>

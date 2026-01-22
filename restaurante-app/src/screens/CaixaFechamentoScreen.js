@@ -9,7 +9,7 @@ export default function CaixaFechamentoScreen() {
   const [caixa, setCaixa] = useState(null);
   const [saldoReal, setSaldoReal] = useState('');
 
-  useEffect(() => { (async () => { setCaixa(await CaixaService.getCaixaAberto()); })(); }, []);
+  useEffect(() => { (async () => { setCaixa(await CaixaService.getCaixaAberto(user.companyId)); })(); }, []);
 
   const fechar = async () => {
     try {
@@ -18,7 +18,7 @@ export default function CaixaFechamentoScreen() {
         return;
       }
 
-      const r = await CaixaService.fecharCaixa(user?.id, user?.nome, saldoReal);
+      const r = await CaixaService.fecharCaixa(user.companyId, user?.id, user?.nome, saldoReal);
       
       const diferenca = r.diferenca;
       let mensagem = `✅ CAIXA FECHADO COM SUCESSO!\n\n`;
