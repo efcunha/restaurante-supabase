@@ -25,14 +25,14 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     let mounted = true;
-    
+
     // DESABILITAR PERSISTÊNCIA FIREBASE COMPLETAMENTE
     const initAuth = async () => {
       try {
         // Forçar logout inicial
         await signOut(auth);
         await AsyncStorage.clear();
-        
+
         // Limpar estados
         if (mounted) {
           setUser(null);
@@ -49,29 +49,29 @@ export const AuthProvider = ({ children }) => {
         }
       }
     };
-    
+
     initAuth();
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (!mounted) return;
-      
+
       const { isIgnorandoMudancaAuth } = require('../services/funcionarios');
-      
+
       if (isIgnorandoMudancaAuth()) {
         return;
       }
-      
+
       if (firebaseUser && isManualLoginRef.current) {
         return;
       }
-      
+
       if (firebaseUser && !isManualLoginRef.current) {
         try {
           await signOut(auth);
           await AsyncStorage.clear();
-        } catch (error) {}
+        } catch (error) { }
       }
-      
+
       if (mounted) {
         setUser(null);
         setRole(null);
@@ -89,46 +89,50 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, senha) => {
     try {
       setLoading(true);
-      
+
       // PRIMEIRO: Garantir logout completo
       try {
         await signOut(auth);
         await AsyncStorage.clear();
-      } catch (e) {}
-      
+      } catch (e) { }
+
       // SEGUNDO: Marcar como login manual
       isManualLoginRef.current = true;
-      
+
       // TERCEIRO: Fazer login
       console.log('[Auth] Tentando login Firebase Auth...');
       const userCredential = await signInWithEmailAndPassword(auth, email, senha);
       console.log('[Auth] ✅ Auth OK, UID:', userCredential.user.uid);
-      
+
       // Aguardar token de auth propagar
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       console.log('[Auth] Buscando funcionário no Firestore...');
       const result = await buscarFuncionarioPorUid(userCredential.user.uid);
       console.log('[Auth] Resultado busca:', result);
-      
+
       if (result.success) {
         // Obter dados da empresa
         let companyData = null;
         if (result.funcionario.companyId) {
-            try {
-                const { getDoc, doc } = require('firebase/firestore');
-                const companyDoc = await getDoc(doc(db, 'companies', result.funcionario.companyId));
-                if (companyDoc.exists()) {
-                    companyData = { id: companyDoc.id, ...companyDoc.data() };
-                    console.log('[Auth] 🏢 Empresa carregada:', companyData.name);
-                }
-            } catch (companyError) {
-                console.error('[Auth] ❌ Erro ao carregar empresa:', companyError);
+          try {
+            const { getDoc, doc } = require('firebase/firestore');
+            const companyDoc = await getDoc(doc(db, 'companies', result.funcionario.companyId));
+            if (companyDoc.exists()) {
+              companyData = { id: companyDoc.id, ...companyDoc.data() };
+              console.log('[Auth] 🏢 Empresa carregada:', companyData.name);
             }
+          } catch (companyError) {
+            console.error('[Auth] ❌ Erro ao carregar empresa:', companyError);
+          }
         }
 
         // QUARTO: Definir estados manualmente
-        setUser({ ...result.funcionario, company: companyData }); // Anexar dados da empresa ao user
+        setUser({
+          uid: userCredential.user.uid, // Garantir acesso universal ao UID
+          ...result.funcionario,
+          company: companyData
+        });
         setRole(normalizeRole(result.funcionario.funcao));
         setSessionKey(k => k + 1);
         setLoading(false);
@@ -137,7 +141,7 @@ export const AuthProvider = ({ children }) => {
         await signOut(auth);
         isManualLoginRef.current = false;
         Alert.alert(
-          'Acesso negado', 
+          'Acesso negado',
           `Usuário não cadastrado como funcionário.\n\n` +
           `UID: ${userCredential.user.uid}\n` +
           `Email: ${userCredential.user.email}\n\n` +
@@ -152,7 +156,7 @@ export const AuthProvider = ({ children }) => {
       isManualLoginRef.current = false;
       let errorMessage = 'Erro ao fazer login';
       let errorDetails = '';
-      
+
       if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
         errorMessage = 'Email ou senha incorretos';
       } else if (error.code === 'auth/invalid-email') {
@@ -163,9 +167,9 @@ export const AuthProvider = ({ children }) => {
       } else {
         errorDetails = error.message || error.toString();
       }
-      
+
       Alert.alert(
-        'Erro no login', 
+        'Erro no login',
         errorDetails ? `${errorMessage}\n\n${errorDetails}` : errorMessage
       );
       setLoading(false);
@@ -177,13 +181,13 @@ export const AuthProvider = ({ children }) => {
     try {
       // PRIMEIRO: Limpar flag de login manual
       isManualLoginRef.current = false;
-      
+
       // SEGUNDO: Limpar estados IMEDIATAMENTE
       setUser(null);
       setRole(null);
       setLoading(false);
       setSessionKey(Date.now());
-      
+
       // TERCEIRO: Limpar Firebase e AsyncStorage
       await signOut(auth);
       await AsyncStorage.clear();
@@ -194,7 +198,7 @@ export const AuthProvider = ({ children }) => {
       setRole(null);
       setLoading(false);
       setSessionKey(Date.now());
-      AsyncStorage.clear().catch(() => {});
+      AsyncStorage.clear().catch(() => { });
     }
   };
 
@@ -205,11 +209,11 @@ export const AuthProvider = ({ children }) => {
       try {
         await signOut(auth);
         await AsyncStorage.clear();
-      } catch (e) {}
-      
+      } catch (e) { }
+
       // SEGUNDO: Marcar como login manual para evitar auto-logout
       isManualLoginRef.current = true;
-      
+
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       // Opcional: recarregar ou definir user/role se necessário, mas para registro inicial 
       // talvez a gente só queira o objeto user e deixar o componente lidar com DB
@@ -229,8 +233,8 @@ export const AuthProvider = ({ children }) => {
       'Deseja trocar de usuário?',
       [
         { text: 'Cancelar', style: 'cancel' },
-        { 
-          text: 'Trocar', 
+        {
+          text: 'Trocar',
           onPress: async () => {
             await logout();
           }
@@ -240,16 +244,16 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      role, 
-      loading, 
-      login, 
+    <AuthContext.Provider value={{
+      user,
+      role,
+      loading,
+      login,
       logout, // Usar logout real
       register, // Adicionado para evitar logout no cadastro
-      sessionKey, 
-      hasPermission: (perm) => hasPermission(role, perm), 
-      Permissions 
+      sessionKey,
+      hasPermission: (perm) => hasPermission(role, perm),
+      Permissions
     }}>
       {children}
     </AuthContext.Provider>
