@@ -20,6 +20,8 @@ import AdminScreen from './src/screens/AdminScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import ComandaGerenciamentoScreen from './src/screens/ComandaGerenciamentoScreen';
 
+import RegisterCompanyScreen from './src/screens/RegisterCompanyScreen';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { OrderProvider } from './src/context/OrderContext.firestore';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { ToastProvider } from './src/context/ToastContext';
@@ -79,6 +81,18 @@ function MainApp({ sessionKey }) {
   );
 }
 
+// Auth Stack
+const Stack = createNativeStackNavigator();
+
+function AuthStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="Register" component={RegisterCompanyScreen} />
+    </Stack.Navigator>
+  );
+}
+
 function AppContent() {
   const { user, loading, sessionKey } = useAuth();
 
@@ -102,14 +116,14 @@ function AppContent() {
     );
   }
 
-  // SEM USUÁRIO = LOGIN (com key única para forçar re-render)
+  // SEM USUÁRIO = AUTH STACK (Login/Register)
   if (!user) {
     return (
-      <SafeAreaProvider key={`login-${sessionKey}-${Date.now()}`}>
+      <SafeAreaProvider key={`auth-${sessionKey}-${Date.now()}`}>
         <StatusBar barStyle="dark-content" backgroundColor="#F5F1E8" translucent={false} />
-        <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-          <LoginScreen />
-        </SafeAreaView>
+        <NavigationContainer>
+             <AuthStack />
+        </NavigationContainer>
       </SafeAreaProvider>
     );
   }

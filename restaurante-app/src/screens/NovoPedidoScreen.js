@@ -58,8 +58,8 @@ const ProdutoItem = memo(({ item, produtos = {}, updateProduto }) => {
 
 // Helper to render complex Caldo rows which are not just 1:1 with cardapio items
 const CaldoRow = memo(({ caldoBase, cardapioCaldos, produtos, updateProduto }) => {
-  const preco300 = cardapioCaldos.find(c => c.name.includes(caldoBase) && c.name.includes('300ml'))?.price || 15;
-  const preco180 = cardapioCaldos.find(c => c.name.includes(caldoBase) && c.name.includes('180ml'))?.price || 10;
+  const preco300 = cardapioCaldos.find(c => c.name.includes(caldoBase) && c.name.match(/300\s*ml/i))?.price || 15;
+  const preco180 = cardapioCaldos.find(c => c.name.includes(caldoBase) && c.name.match(/180\s*ml/i))?.price || 10;
 
   return (
     <View style={styles.caldoCard}>
@@ -205,7 +205,7 @@ export default function NovoPedidoScreen() {
 
     // Caldos: Aggregate by base name
     if (cardapio.caldos?.length > 0) {
-      const caldosUnicos = [...new Set(cardapio.caldos.map(c => c.name.replace(/\s*\((300ml|180ml)\)/, '').trim()))];
+      const caldosUnicos = [...new Set(cardapio.caldos.map(c => c.name.replace(/\s*\(?\s*(300|180)\s*ml\s*\)?/gi, '').trim()))];
       sectionsData.push({
         title: '🍲 Caldos',
         data: caldosUnicos,

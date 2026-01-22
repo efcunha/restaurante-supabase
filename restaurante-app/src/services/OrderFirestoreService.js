@@ -18,6 +18,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
+import { getCompanyCollection, getCompanyDoc } from '../utils/firestoreUtils';
 import OrderService from './OrderService.js';
 import { 
   cachedQuery, 
@@ -254,10 +255,15 @@ class OrderFirestoreService {
   /**
    * Escuta mudanças em pedidos ativos em tempo real
    * OTIMIZADO: Com debounce para evitar re-renders excessivos
+   * @param {string} companyId - ID da empresa
    * @param {Function} callback - Recebe { orders, docMap }
    * @returns {Function} Função unsubscribe
    */
-  listenToActiveOrders(callback) {
+  listenToActiveOrders(companyId, callback) {
+    if (!companyId) {
+        console.warn('⚠️ listenToActiveOrders chamado sem companyId');
+        return () => {};
+    }
     const setupListener = async () => {
       const { withErrorHandling, createUserFriendlyErrorMessage, retryWithBackoff } = await import('../utils/errorHandling');
       
@@ -266,7 +272,7 @@ class OrderFirestoreService {
       
       // Query com filtro server-side por dateKey
       const q = query(
-        collection(db, PEDIDOS_COLLECTION),
+        getCompanyCollection(companyId, 'pedidos'),
         where('dateKey', '==', todayKey)
       );
       
@@ -352,7 +358,7 @@ class OrderFirestoreService {
           console.log('[ListenToActiveOrders] Index error detected, using fallback query...');
           
           try {
-            const fallbackQ = query(collection(db, PEDIDOS_COLLECTION));
+            const fallbackQ = query(getCompanyCollection(companyId, 'pedidos'));
             return onSnapshot(fallbackQ, 
               withErrorHandling(
                 (snapshot) => {
@@ -432,13 +438,14 @@ class OrderFirestoreService {
 
   /**
    * Salva um order já criado no Firestore (NOVO - evita duplicação)
+   * @param {string} companyId - ID da empresa
    * @param {Object} order - Order completo criado pelo OrderService
    * @returns {Promise<string>} ID do documento criado
    */
-  async saveOrder(order) {
+  async saveOrder(companyId, order) {
     try {
       const firestoreData = orderToFirestore(order);
-      const docRef = await addDoc(collection(db, PEDIDOS_COLLECTION), firestoreData);
+      const docRef = await addDoc(getCompanyCollection(companyId, 'pedidos'), firestoreData);
       
       // OTIMIZAÇÃO: Invalidar cache de estatísticas após criar pedido
       invalidateCache('stats_');
@@ -451,14 +458,15 @@ class OrderFirestoreService {
 
   /**
    * Busca o ID do documento Firestore pelo orderId formatado (#XXX)
+   * @param {string} companyId - ID da empresa
    * @param {string} orderId - ID formatado do pedido (ex: #001)
    * @returns {Promise<string|null>} ID do documento Firestore ou null se não encontrado
    */
-  async findDocIdByOrderId(orderId) {
+  async findDocIdByOrderId(companyId, orderId) {
     try {
       const todayKey = getTodayKey();
       const q = query(
-        collection(db, PEDIDOS_COLLECTION),
+        getCompanyCollection(companyId, 'pedidos'),
         where('dateKey', '==', todayKey),
         where('idFormatado', '==', orderId)
       );
@@ -470,7 +478,7 @@ class OrderFirestoreService {
       
       // Fallback: buscar sem filtro de data (mais lento)
       const qFallback = query(
-        collection(db, PEDIDOS_COLLECTION),
+        getCompanyCollection(companyId, 'pedidos'),
         where('idFormatado', '==', orderId)
       );
       
@@ -488,10 +496,11 @@ class OrderFirestoreService {
   /**
    * Busca documento Firestore que contém um item específico pelo itemId
    * O itemId tem formato: #XXX-comanda-YYY-item-N (ex: #001-comanda-3-item-0) ou #XXX-item-N (compatibilidade)
+   * @param {string} companyId - ID da empresa
    * @param {string} itemId - ID do item (ex: #001-comanda-3-item-0)
    * @returns {Promise<{docId: string, orderId: string}|null>} DocId e orderId ou null
    */
-  async findDocByItemId(itemId) {
+  async findDocByItemId(companyId, itemId) {
     try {
       // Extrair orderId do itemId (formato: #XXX-comanda-YYY-item-N ou #XXX-item-N para compatibilidade)
       const match = itemId.match(/^(#\d+)(?:-comanda-[^-]+-item-\d+|-item-\d+)$/);
@@ -504,7 +513,7 @@ class OrderFirestoreService {
       
       // Buscar por idFormatado (mais eficiente se houver índice)
       const q = query(
-        collection(db, PEDIDOS_COLLECTION),
+        getCompanyCollection(companyId, 'pedidos'),
         where('dateKey', '==', todayKey),
         where('idFormatado', '==', orderId)
       );
@@ -573,13 +582,14 @@ class OrderFirestoreService {
 
   /**
    * Atualiza status do pedido
+   * @param {string} companyId - ID da empresa
    * @param {string} firestoreDocId - ID do documento no Firestore
    * @param {string} newStatus - Novo status
    * @param {Object} timestamps - Timestamps a adicionar
    */
-  async updateOrderStatus(firestoreDocId, newStatus, timestamps = {}) {
+  async updateOrderStatus(companyId, firestoreDocId, newStatus, timestamps = {}) {
     try {
-      const pedidoRef = doc(db, PEDIDOS_COLLECTION, firestoreDocId);
+      const pedidoRef = getCompanyDoc(companyId, 'pedidos', firestoreDocId);
       
       // 🔒 SEGURANÇA: Remover isPago dos timestamps
       const { isPago, ...safeTimestamps } = timestamps;
@@ -596,12 +606,13 @@ class OrderFirestoreService {
 
   /**
    * Edita pedido existente
+   * @param {string} companyId - ID da empresa
    * @param {string} firestoreDocId - ID do documento
    * @param {Object} updatedData - Dados atualizados
    */
-  async updateOrder(firestoreDocId, updatedData) {
+  async updateOrder(companyId, firestoreDocId, updatedData) {
     try {
-      const pedidoRef = doc(db, PEDIDOS_COLLECTION, firestoreDocId);
+      const pedidoRef = getCompanyDoc(companyId, 'pedidos', firestoreDocId);
       
       // 🔒 SEGURANÇA: Remover isPago se vier nos dados
       const { isPago, ...safeData } = updatedData;
@@ -635,11 +646,12 @@ class OrderFirestoreService {
 
   /**
    * Deleta pedido do Firestore
+   * @param {string} companyId - ID da empresa
    * @param {string} firestoreDocId - ID do documento
    */
-  async deleteOrder(firestoreDocId) {
+  async deleteOrder(companyId, firestoreDocId) {
     try {
-      await deleteDoc(doc(db, PEDIDOS_COLLECTION, firestoreDocId));
+      await deleteDoc(getCompanyDoc(companyId, 'pedidos', firestoreDocId));
     } catch (error) {
       throw error;
     }
@@ -690,12 +702,13 @@ class OrderFirestoreService {
 
   /**
    * Busca estatísticas por garçom com filtros de período (OTIMIZADO COM CACHE)
+   * @param {string} companyId - ID da empresa
    * @param {string} garcomId - ID do garçom (null para todos)
    * @param {string} periodo - 'hoje', 'semana', 'mes'
    * @returns {Promise<Object>} Estatísticas do garçom
    */
-  async getEstatisticasGarcom(garcomId = null, periodo = 'hoje') {
-    const cacheKey = `stats_${garcomId || 'all'}_${periodo}`;
+  async getEstatisticasGarcom(companyId, garcomId = null, periodo = 'hoje') {
+    const cacheKey = `stats_${companyId}_${garcomId || 'all'}_${periodo}`;
     
     try {
       // OTIMIZAÇÃO: Usar cache com TTL de 30 segundos para estatísticas
@@ -703,17 +716,16 @@ class OrderFirestoreService {
         const { startKey, endKey } = getDateKeyRange(periodo);
         
         console.log(`[OrderFirestoreService] getEstatisticasGarcom - garcomId: ${garcomId}, periodo: ${periodo}`);
-        console.log(`[OrderFirestoreService] dateKey range: ${startKey} a ${endKey}`);
         
         // BUSCAR PEDIDOS
         let q;
         if (periodo === 'hoje') {
           q = query(
-            collection(db, PEDIDOS_COLLECTION),
+            getCompanyCollection(companyId, 'pedidos'),
             where('dateKey', '==', startKey)
           );
         } else {
-          q = query(collection(db, PEDIDOS_COLLECTION));
+          q = query(getCompanyCollection(companyId, 'pedidos'));
         }
         
         const snapshot = await getDocs(q);
@@ -745,7 +757,7 @@ class OrderFirestoreService {
         });
 
         // BUSCAR PAGAMENTOS
-        const pagamentosQuery = query(collection(db, 'pagamentos'));
+        const pagamentosQuery = query(getCompanyCollection(companyId, 'pagamentos'));
         const pagamentosSnapshot = await getDocs(pagamentosQuery);
         
         const pagamentos = [];
@@ -783,18 +795,16 @@ class OrderFirestoreService {
 
   /**
    * Busca estatísticas de todos os garçons agrupadas (OTIMIZADO COM CACHE)
+   * @param {string} companyId - ID da empresa
    * @param {string} periodo - 'hoje', 'semana', 'mes'
    * @returns {Promise<Array>} Array de estatísticas por garçom
    */
-  async getEstatisticasTodosGarcons(periodo = 'hoje') {
-    const cacheKey = `stats_all_garcons_${periodo}`;
+  async getEstatisticasTodosGarcons(companyId, periodo = 'hoje') {
+    const cacheKey = `stats_${companyId}_all_garcons_${periodo}`;
     
     try {
       return await cachedQuery(cacheKey, async () => {
         const { startKey, endKey } = getDateKeyRange(periodo);
-        
-        console.log(`[OrderFirestoreService] getEstatisticasTodosGarcons - periodo: ${periodo}`);
-        console.log(`[OrderFirestoreService] dateKey range: ${startKey} a ${endKey}`);
         
         // OTIMIZAÇÃO: Para 'hoje', usar query com filtro server-side
         let q;

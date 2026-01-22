@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
+import { getCompanyCollection } from '../utils/firestoreUtils';
 import ComandasService from '../services/ComandasService';
 import PagamentosService from '../services/PagamentosService';
 import BackgroundPattern from '../components/BackgroundPattern';
@@ -22,14 +23,15 @@ export default function ComandaAbertaScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    loadComandasAbertas();
-  }, []);
+    if (user?.companyId) loadComandasAbertas();
+  }, [user]);
 
   const loadComandasAbertas = async () => {
     try {
-      const list = await ComandasService.listarComandasAbertas();
+      if (!user?.companyId) return;
+      const list = await ComandasService.listarComandasAbertas(user.companyId);
       setComandasAbertas(list);
-      
+
       // Se há uma comanda selecionada, atualizar seus dados
       if (selected) {
         const updatedComanda = list.find(c => c.comandaNumber === selected.comandaNumber);
@@ -45,10 +47,11 @@ export default function ComandaAbertaScreen() {
   };
 
   const loadPedidosComanda = async (comandaNumber) => {
+    if (!user?.companyId) return;
     const q = query(
-      collection(db, 'pedidos'),
+      getCompanyCollection(user.companyId, 'pedidos'),
       where('numeroComanda', '==', String(comandaNumber)),
-      where('status', 'in', ['churrasqueira','montagem','pronto','entregue'])
+      where('status', 'in', ['churrasqueira', 'montagem', 'pronto', 'entregue'])
     );
     const snap = await getDocs(q);
     const list = [];
@@ -71,10 +74,11 @@ export default function ComandaAbertaScreen() {
   };
 
   const loadPagamentosComanda = async (comandaNumber) => {
+    if (!user?.companyId) return;
     const hoje = new Date().toISOString().split('T')[0];
     console.log('🔍 Buscando pagamentos - Comanda:', comandaNumber, 'Data:', hoje);
     const q = query(
-      collection(db, 'pagamentos'),
+      getCompanyCollection(user.companyId, 'pagamentos'),
       where('comandaNumber', '==', String(comandaNumber)),
       where('dateKey', '==', hoje)
     );
@@ -105,11 +109,12 @@ export default function ComandaAbertaScreen() {
   const registrarPagamentoParcial = () => {
     Alert.prompt('Pagamento', 'Valor a pagar:', async (valor) => {
       Alert.prompt('Forma', '1-Dinheiro, 2-Pix, 3-Débito, 4-Crédito', async (input) => {
-        const formas = ['dinheiro','pix','debito','credito'];
+        const formas = ['dinheiro', 'pix', 'debito', 'credito'];
         const idx = parseInt(input, 10) - 1;
         if (idx >= 0 && idx < 4) {
           try {
             await PagamentosService.registrarPagamento({
+              companyId: user.companyId,
               dateKey: todayKey(),
               comandaNumber: selected.comandaNumber,
               forma: formas[idx],
@@ -132,15 +137,16 @@ export default function ComandaAbertaScreen() {
       Alert.alert('Erro', 'Nenhuma comanda selecionada');
       return;
     }
-    
+
     const saldo = Number(selected.saldoAberto || 0);
     if (!(saldo > 0)) {
       Alert.alert('Nada a pagar', 'Saldo já está zerado.');
       return;
     }
-    
+
     try {
       await PagamentosService.registrarPagamento({
+        companyId: user.companyId,
         dateKey: todayKey(),
         comandaNumber: selected.comandaNumber,
         forma: forma,
@@ -148,7 +154,7 @@ export default function ComandaAbertaScreen() {
         usuarioId: user?.id,
         usuarioNome: user?.nome,
       });
-      await ComandasService.fecharComanda(selected.comandaNumber, user?.id, user?.nome);
+      await ComandasService.fecharComanda(user.companyId, selected.comandaNumber, user?.id, user?.nome);
       setSelected(null);
       setPedidos([]);
       await loadComandasAbertas();
@@ -162,7 +168,7 @@ export default function ComandaAbertaScreen() {
 
   const fecharComanda = async () => {
     try {
-      await ComandasService.fecharComanda(selected.comandaNumber, user?.id, user?.nome);
+      await ComandasService.fecharComanda(user.companyId, selected.comandaNumber, user?.id, user?.nome);
       Alert.alert('Comanda fechada', 'Conta encerrada.');
       setSelected(null);
       setPedidos([]);
@@ -175,15 +181,15 @@ export default function ComandaAbertaScreen() {
       <BackgroundPattern />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Comandas Abertas</Text>
-        <TouchableOpacity 
-          style={styles.logoutBtn} 
+        <TouchableOpacity
+          style={styles.logoutBtn}
           onPress={exitApp}
         >
           <Text style={styles.logoutBtnText}>Sair</Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={{ padding: 20 }}
         refreshControl={
           <RefreshControl
@@ -211,8 +217,8 @@ export default function ComandaAbertaScreen() {
             <TouchableOpacity onPress={() => { setSelected(null); setPedidos([]); }}>
               <Text style={styles.backLink}>← Voltar</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.refreshBtn} 
+            <TouchableOpacity
+              style={styles.refreshBtn}
               onPress={onRefresh}
             >
               <Text style={styles.refreshBtnText}>🔄 Atualizar</Text>
@@ -246,9 +252,9 @@ export default function ComandaAbertaScreen() {
               <View style={styles.paymentSection}>
                 <Text style={styles.paymentSectionTitle}>Pagamento Rápido</Text>
                 <View style={styles.paymentButtons}>
-                  {['dinheiro','pix','débito','crédito'].map(forma => (
-                    <TouchableOpacity 
-                      key={forma} 
+                  {['dinheiro', 'pix', 'débito', 'crédito'].map(forma => (
+                    <TouchableOpacity
+                      key={forma}
                       style={styles.paymentBtn}
                       onPress={() => registrarPagamentoRapido(forma)}
                     >
@@ -262,8 +268,8 @@ export default function ComandaAbertaScreen() {
             <TouchableOpacity style={styles.btn} onPress={registrarPagamentoParcial}>
               <Text style={styles.btnText}>REGISTRAR PAGAMENTO PARCIAL</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.btn,{backgroundColor:'#8B2F2F',marginTop:10}]} onPress={fecharComanda}>
-              <Text style={[styles.btnText,{color:'#fff'}]}>FECHAR COMANDA</Text>
+            <TouchableOpacity style={[styles.btn, { backgroundColor: '#8B2F2F', marginTop: 10 }]} onPress={fecharComanda}>
+              <Text style={[styles.btnText, { color: '#fff' }]}>FECHAR COMANDA</Text>
             </TouchableOpacity>
           </>
         )}
@@ -275,32 +281,32 @@ export default function ComandaAbertaScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F1E8' },
-  header: { backgroundColor: '#8B2F2F', paddingTop: 50, paddingBottom: 20, paddingHorizontal: 20, flexDirection:'row', justifyContent:'space-between', alignItems:'center' },
+  header: { backgroundColor: '#8B2F2F', paddingTop: 50, paddingBottom: 20, paddingHorizontal: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headerTitle: { color: '#fff', fontSize: 24, fontWeight: '600' },
   logoutBtn: { backgroundColor: 'rgba(255,255,255,0.15)', paddingVertical: 8, paddingHorizontal: 14, borderRadius: 10 },
   logoutBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
   sectionTitle: { fontSize: 18, fontWeight: '700', color: '#8B2F2F', marginBottom: 12 },
-  card: { backgroundColor:'#fff', borderRadius:12, padding:16, marginBottom:12, borderWidth:1, borderColor:'#F0EBE0' },
-  cardTitle: { fontSize:18, fontWeight:'700', color:'#8B2F2F', marginBottom:8 },
-  cardLine: { fontSize:14, color:'#2C2C2C', marginBottom:4 },
-  backLink: { color:'#8B2F2F', fontSize:16, fontWeight:'700', marginBottom:12 },
-  refreshBtn: { backgroundColor:'#E5B84A', paddingVertical:10, paddingHorizontal:16, borderRadius:10, alignSelf:'flex-end', marginBottom:12 },
-  refreshBtnText: { color:'#2C2C2C', fontSize:14, fontWeight:'700' },
-  headerCard: { backgroundColor:'#8B2F2F', borderRadius:12, padding:20, marginBottom:20 },
-  comandaNumBig: { fontSize:22, fontWeight:'700', color:'#E5B84A', marginBottom:10 },
-  line: { fontSize:16, color:'#fff', marginBottom:6 },
-  pedidoCard: { backgroundColor:'#fff', borderRadius:12, padding:15, marginBottom:12, borderWidth:1, borderColor:'#F0EBE0' },
-  pedidoId: { fontSize:14, fontWeight:'700', color:'#8B2F2F', marginBottom:8 },
-  itemLine: { fontSize:13, color:'#2C2C2C', marginBottom:4 },
-  totalLine: { fontSize:16, fontWeight:'700', color:'#8B2F2F', marginTop:8 },
-  pagamentoCard: { backgroundColor:'#E8F5E9', borderRadius:12, padding:12, marginBottom:8, borderWidth:1, borderColor:'#4CAF50' },
-  pagamentoLine: { fontSize:14, fontWeight:'700', color:'#2E7D32', marginBottom:4 },
-  pagamentoUser: { fontSize:12, color:'#555', fontStyle:'italic' },
-  paymentSection: { backgroundColor:'#fff', borderRadius:12, padding:16, marginBottom:16, borderWidth:1, borderColor:'#E5B84A' },
-  paymentSectionTitle: { fontSize:16, fontWeight:'700', color:'#8B2F2F', marginBottom:12 },
-  paymentButtons: { flexDirection:'row', flexWrap:'wrap', gap:8 },
-  paymentBtn: { flexBasis:'48%', backgroundColor:'#8B2F2F', padding:12, borderRadius:8, alignItems:'center' },
-  paymentBtnText: { color:'#fff', fontSize:12, fontWeight:'700' },
-  btn: { backgroundColor:'#E5B84A', padding:16, borderRadius:12, alignItems:'center' },
-  btnText: { color:'#2C2C2C', fontWeight:'700' },
+  card: { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#F0EBE0' },
+  cardTitle: { fontSize: 18, fontWeight: '700', color: '#8B2F2F', marginBottom: 8 },
+  cardLine: { fontSize: 14, color: '#2C2C2C', marginBottom: 4 },
+  backLink: { color: '#8B2F2F', fontSize: 16, fontWeight: '700', marginBottom: 12 },
+  refreshBtn: { backgroundColor: '#E5B84A', paddingVertical: 10, paddingHorizontal: 16, borderRadius: 10, alignSelf: 'flex-end', marginBottom: 12 },
+  refreshBtnText: { color: '#2C2C2C', fontSize: 14, fontWeight: '700' },
+  headerCard: { backgroundColor: '#8B2F2F', borderRadius: 12, padding: 20, marginBottom: 20 },
+  comandaNumBig: { fontSize: 22, fontWeight: '700', color: '#E5B84A', marginBottom: 10 },
+  line: { fontSize: 16, color: '#fff', marginBottom: 6 },
+  pedidoCard: { backgroundColor: '#fff', borderRadius: 12, padding: 15, marginBottom: 12, borderWidth: 1, borderColor: '#F0EBE0' },
+  pedidoId: { fontSize: 14, fontWeight: '700', color: '#8B2F2F', marginBottom: 8 },
+  itemLine: { fontSize: 13, color: '#2C2C2C', marginBottom: 4 },
+  totalLine: { fontSize: 16, fontWeight: '700', color: '#8B2F2F', marginTop: 8 },
+  pagamentoCard: { backgroundColor: '#E8F5E9', borderRadius: 12, padding: 12, marginBottom: 8, borderWidth: 1, borderColor: '#4CAF50' },
+  pagamentoLine: { fontSize: 14, fontWeight: '700', color: '#2E7D32', marginBottom: 4 },
+  pagamentoUser: { fontSize: 12, color: '#555', fontStyle: 'italic' },
+  paymentSection: { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#E5B84A' },
+  paymentSectionTitle: { fontSize: 16, fontWeight: '700', color: '#8B2F2F', marginBottom: 12 },
+  paymentButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  paymentBtn: { flexBasis: '48%', backgroundColor: '#8B2F2F', padding: 12, borderRadius: 8, alignItems: 'center' },
+  paymentBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  btn: { backgroundColor: '#E5B84A', padding: 16, borderRadius: 12, alignItems: 'center' },
+  btnText: { color: '#2C2C2C', fontWeight: '700' },
 });

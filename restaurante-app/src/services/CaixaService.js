@@ -3,6 +3,7 @@
  */
 import { doc, runTransaction, serverTimestamp, getDoc, setDoc, collection, addDoc, query, where, getDocs, orderBy, deleteDoc } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
+import { getCompanyCollection, getCompanyDoc } from '../utils/firestoreUtils';
 
 const CAIXA_COLLECTION = 'caixas'; // documentos por dia: caixa-YYYY-MM-DD
 const MOVIMENTOS_COLLECTION = 'movimentosCaixa';
@@ -23,14 +24,15 @@ let caixaCache = { data: null, timestamp: 0 };
 const CACHE_TTL = 2 * 60 * 1000;
 
 class CaixaService {
-  async getCaixaAberto() {
+  async getCaixaAberto(companyId) {
+    if (!companyId) return null; // Or throw error
     const now = Date.now();
     if (caixaCache.data && (now - caixaCache.timestamp) < CACHE_TTL) {
       return caixaCache.data;
     }
 
     const id = buildCaixaDocId();
-    const ref = doc(db, CAIXA_COLLECTION, id);
+    const ref = getCompanyDoc(companyId, 'caixas', id);
 
     const snap = await getDoc(ref);
 
@@ -50,7 +52,8 @@ class CaixaService {
     caixaCache = { data: null, timestamp: 0 };
   }
 
-  async abrirCaixa(valorInicial, usuarioId, usuarioNome) {
+  async abrirCaixa(companyId, valorInicial, usuarioId, usuarioNome) {
+    if (!companyId) throw new Error("Company ID required");
     try {
       // Validações básicas
       if (!usuarioId || !usuarioNome) {
@@ -68,7 +71,7 @@ class CaixaService {
 
       const dataStr = dateKey();
       const id = buildCaixaDocId(dataStr);
-      const ref = doc(db, CAIXA_COLLECTION, id);
+      const ref = getCompanyDoc(companyId, 'caixas', id);
 
       const result = await runTransaction(db, async (tx) => {
         const snap = await tx.get(ref);
@@ -137,8 +140,8 @@ class CaixaService {
     }
   }
 
-  async registrarReforco(valor, motivo, usuarioId, usuarioNome) {
-    const caixa = await this.getCaixaAberto();
+  async registrarReforco(companyId, valor, motivo, usuarioId, usuarioNome) {
+    const caixa = await this.getCaixaAberto(companyId);
     if (!caixa) throw new Error('Nenhum caixa aberto.');
     const valorNum = parseFloat(valor);
     if (!(valorNum > 0)) throw new Error('Valor de reforço deve ser positivo.');
@@ -157,7 +160,7 @@ class CaixaService {
         movimentosCount: (dados.movimentosCount || 0) + 1,
       });
       // registrar movimento
-      await addDoc(collection(db, MOVIMENTOS_COLLECTION), {
+      await addDoc(getCompanyCollection(companyId, 'movimentosCaixa'), {
         tipo: 'reforco',
         valor: valorNum,
         motivo: motivo || '',
@@ -170,8 +173,8 @@ class CaixaService {
     this.invalidateCache();
   }
 
-  async registrarSangria(valor, motivo, usuarioId, usuarioNome) {
-    const caixa = await this.getCaixaAberto();
+  async registrarSangria(companyId, valor, motivo, usuarioId, usuarioNome) {
+    const caixa = await this.getCaixaAberto(companyId);
     if (!caixa) throw new Error('Nenhum caixa aberto.');
     const valorNum = parseFloat(valor);
     if (!(valorNum > 0)) throw new Error('Valor de sangria deve ser positivo.');
@@ -191,7 +194,7 @@ class CaixaService {
         atualizado: serverTimestamp(),
         movimentosCount: (dados.movimentosCount || 0) + 1,
       });
-      await addDoc(collection(db, MOVIMENTOS_COLLECTION), {
+      await addDoc(getCompanyCollection(companyId, 'movimentosCaixa'), {
         tipo: 'sangria',
         valor: valorNum,
         motivo: motivo || '',
@@ -204,7 +207,8 @@ class CaixaService {
     this.invalidateCache();
   }
 
-  async registrarVenda(forma, valor) {
+  async registrarVenda(companyId, forma, valor) {
+    if (!companyId) return; // Silent return for now or throw
     const formasValidas = ['dinheiro', 'pix', 'debito', 'credito'];
     if (!formasValidas.includes(forma)) throw new Error('Forma de pagamento inválida.');
     const valorNum = parseFloat(valor);
@@ -242,8 +246,9 @@ class CaixaService {
     this.invalidateCache();
   }
 
-  async fecharCaixa(usuarioId, usuarioNome, saldoRealContado) {
-    const caixaRef = doc(db, CAIXA_COLLECTION, buildCaixaDocId());
+  async fecharCaixa(companyId, usuarioId, usuarioNome, saldoRealContado) {
+    if (!companyId) throw new Error("Company ID required");
+    const caixaRef = getCompanyDoc(companyId, 'caixas', buildCaixaDocId());
     const result = await runTransaction(db, async (tx) => {
       const snap = await tx.get(caixaRef);
       if (!snap.exists()) throw new Error('Caixa não encontrado.');
@@ -275,7 +280,7 @@ class CaixaService {
     this.invalidateCache();
 
     // APÓS fechar o caixa, fazer limpeza do dia
-    await this.limparDadosDoDia();
+    await this.limparDadosDoDia(companyId);
     return result;
   }
 
@@ -288,8 +293,9 @@ class CaixaService {
     return `${y}-${m}-${d}`;
   }
 
-  async historico(limit = 30) {
-    const q = query(collection(db, CAIXA_COLLECTION), orderBy('data', 'desc'));
+  async historico(companyId, limit = 30) {
+    if (!companyId) return [];
+    const q = query(getCompanyCollection(companyId, 'caixas'), orderBy('data', 'desc'));
     const snap = await getDocs(q);
     const registros = [];
     snap.forEach(d => registros.push({ id: d.id, ...d.data() }));
@@ -303,7 +309,8 @@ class CaixaService {
    * 3. Exclui pedidos não pagos
    * PRESERVA: Comandas fechadas de dias anteriores, histórico de vendas
    */
-  async limparDadosDoDia() {
+  async limparDadosDoDia(companyId) {
+    if (!companyId) return;
     try {
       const hoje = dateKey();
 
@@ -314,7 +321,7 @@ class CaixaService {
 
       // 1. Buscar comandas de HOJE
       const comandasSnapshot = await getDocs(
-        query(collection(db, 'comandas'), where('dateKey', '==', hoje))
+        query(getCompanyCollection(companyId, 'comandas'), where('dateKey', '==', hoje))
       );
 
       for (const docSnapshot of comandasSnapshot.docs) {
@@ -333,7 +340,7 @@ class CaixaService {
 
       // 2. Excluir pedidos não pagos de hoje ou de comandas abertas
       const pedidosSnapshot = await getDocs(
-        query(collection(db, 'pedidos'), where('dateKey', '==', hoje))
+        query(getCompanyCollection(companyId, 'pedidos'), where('dateKey', '==', hoje))
       );
 
       for (const docSnapshot of pedidosSnapshot.docs) {
