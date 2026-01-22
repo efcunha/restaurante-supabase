@@ -10,7 +10,7 @@
  */
 export const sanitizeString = (text) => {
   if (!text || typeof text !== 'string') return '';
-  
+
   return text
     .trim()
     // Remove HTML tags
@@ -34,24 +34,24 @@ export const sanitizeString = (text) => {
  */
 export const validateClientName = (name) => {
   const sanitized = sanitizeString(name);
-  
+
   if (!sanitized || sanitized.length === 0) {
     return { isValid: false, error: 'Nome do cliente é obrigatório' };
   }
-  
+
   if (sanitized.length < 2) {
     return { isValid: false, error: 'Nome deve ter no mínimo 2 caracteres' };
   }
-  
+
   if (sanitized.length > 100) {
     return { isValid: false, error: 'Nome não pode ter mais de 100 caracteres' };
   }
-  
+
   // Validar se tem pelo menos uma letra
   if (!/[a-zA-Záàâãéèêíìîóòôõöúùûüçñ]/i.test(sanitized)) {
     return { isValid: false, error: 'Nome deve conter letras' };
   }
-  
+
   return { isValid: true, value: sanitized };
 };
 
@@ -63,22 +63,22 @@ export const validateClientName = (name) => {
 export const validatePrice = (price) => {
   // Converter para number se for string
   const numPrice = typeof price === 'string' ? parseFloat(price.replace(',', '.')) : price;
-  
+
   if (isNaN(numPrice)) {
     return { isValid: false, error: 'Preço deve ser um número válido' };
   }
-  
+
   if (numPrice < 0) {
     return { isValid: false, error: 'Preço não pode ser negativo' };
   }
-  
+
   if (numPrice > 10000) {
     return { isValid: false, error: 'Preço muito alto (máximo R$ 10.000)' };
   }
-  
+
   // Máximo 2 casas decimais
   const rounded = Math.round(numPrice * 100) / 100;
-  
+
   return { isValid: true, value: rounded };
 };
 
@@ -89,19 +89,19 @@ export const validatePrice = (price) => {
  */
 export const validateQuantity = (quantity) => {
   const numQty = typeof quantity === 'string' ? parseInt(quantity, 10) : quantity;
-  
+
   if (isNaN(numQty)) {
     return { isValid: false, error: 'Quantidade deve ser um número' };
   }
-  
+
   if (numQty <= 0) {
     return { isValid: false, error: 'Quantidade deve ser maior que zero' };
   }
-  
+
   if (numQty > 1000) {
     return { isValid: false, error: 'Quantidade muito alta (máximo 1000)' };
   }
-  
+
   return { isValid: true, value: numQty };
 };
 
@@ -114,13 +114,13 @@ export const validateObservations = (observations) => {
   if (!observations) {
     return { isValid: true, value: '' };
   }
-  
+
   const sanitized = sanitizeString(observations);
-  
+
   if (sanitized.length > 500) {
     return { isValid: false, error: 'Observações não podem ter mais de 500 caracteres' };
   }
-  
+
   return { isValid: true, value: sanitized };
 };
 
@@ -133,15 +133,15 @@ export const validateOrderItems = (items) => {
   if (!Array.isArray(items)) {
     return { isValid: false, error: 'Itens deve ser um array' };
   }
-  
+
   if (items.length === 0) {
     return { isValid: false, error: 'Pedido deve ter pelo menos um item' };
   }
-  
+
   if (items.length > 100) {
     return { isValid: false, error: 'Pedido não pode ter mais de 100 itens' };
   }
-  
+
   // Validar cada item
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
@@ -152,32 +152,86 @@ export const validateOrderItems = (items) => {
       return { isValid: false, error: `Item ${i + 1} é muito longo` };
     }
   }
-  
+
   return { isValid: true };
 };
 
 /**
- * Valida CPF (básico, sem algoritmo de validação)
+ * Valida CPF com algoritmo verificador
  * @param {string} cpf - CPF a validar
  * @returns {Object} { isValid, error, value }
  */
 export const validateCPF = (cpf) => {
-  if (!cpf) {
-    return { isValid: false, error: 'CPF é obrigatório' };
-  }
-  
-  // Remove caracteres não numéricos
+  if (!cpf) return { isValid: false, error: 'CPF é obrigatório' };
+
   const clean = cpf.replace(/\D/g, '');
-  
-  if (clean.length !== 11) {
-    return { isValid: false, error: 'CPF deve ter 11 dígitos' };
+
+  if (clean.length !== 11) return { isValid: false, error: 'CPF deve ter 11 dígitos' };
+
+  if (/^(\d)\1{10}$/.test(clean)) return { isValid: false, error: 'CPF inválido' };
+
+  // Validação do algoritmo
+  let soma = 0;
+  let resto;
+
+  for (let i = 1; i <= 9; i++) soma = soma + parseInt(clean.substring(i - 1, i)) * (11 - i);
+  resto = (soma * 10) % 11;
+
+  if ((resto === 10) || (resto === 11)) resto = 0;
+  if (resto !== parseInt(clean.substring(9, 10))) return { isValid: false, error: 'CPF inválido' };
+
+  soma = 0;
+  for (let i = 1; i <= 10; i++) soma = soma + parseInt(clean.substring(i - 1, i)) * (12 - i);
+  resto = (soma * 10) % 11;
+
+  if ((resto === 10) || (resto === 11)) resto = 0;
+  if (resto !== parseInt(clean.substring(10, 11))) return { isValid: false, error: 'CPF inválido' };
+
+  return { isValid: true, value: clean };
+};
+
+/**
+ * Valida CNPJ com algoritmo verificador
+ * @param {string} cnpj - CNPJ a validar
+ * @returns {Object} { isValid, error, value }
+ */
+export const validateCNPJ = (cnpj) => {
+  if (!cnpj) return { isValid: false, error: 'CNPJ é obrigatório' };
+
+  const clean = cnpj.replace(/\D/g, '');
+
+  if (clean.length !== 14) return { isValid: false, error: 'CNPJ deve ter 14 dígitos' };
+
+  if (/^(\d)\1{13}$/.test(clean)) return { isValid: false, error: 'CNPJ inválido' };
+
+  // Validação do algoritmo
+  let tamanho = clean.length - 2
+  let numeros = clean.substring(0, tamanho);
+  let digitos = clean.substring(tamanho);
+  let soma = 0;
+  let pos = tamanho - 7;
+
+  for (let i = tamanho; i >= 1; i--) {
+    soma += numeros.charAt(tamanho - i) * pos--;
+    if (pos < 2) pos = 9;
   }
-  
-  // Validação básica: não pode ser tudo igual
-  if (/^(\d)\1{10}$/.test(clean)) {
-    return { isValid: false, error: 'CPF inválido' };
+
+  let resultado = soma % 11 < 2 ? 0 : 11 - soma % 11;
+  if (resultado != digitos.charAt(0)) return { isValid: false, error: 'CNPJ inválido' };
+
+  tamanho = tamanho + 1;
+  numeros = clean.substring(0, tamanho);
+  soma = 0;
+  pos = tamanho - 7;
+
+  for (let i = tamanho; i >= 1; i--) {
+    soma += numeros.charAt(tamanho - i) * pos--;
+    if (pos < 2) pos = 9;
   }
-  
+
+  resultado = soma % 11 < 2 ? 0 : 11 - soma % 11;
+  if (resultado != digitos.charAt(1)) return { isValid: false, error: 'CNPJ inválido' };
+
   return { isValid: true, value: clean };
 };
 
@@ -190,20 +244,20 @@ export const validateEmail = (email) => {
   if (!email) {
     return { isValid: false, error: 'Email é obrigatório' };
   }
-  
+
   const sanitized = sanitizeString(email.toLowerCase());
-  
+
   // Regex simples para email
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  
+
   if (!emailRegex.test(sanitized)) {
     return { isValid: false, error: 'Email inválido' };
   }
-  
+
   if (sanitized.length > 100) {
     return { isValid: false, error: 'Email muito longo' };
   }
-  
+
   return { isValid: true, value: sanitized };
 };
 
@@ -214,19 +268,19 @@ export const validateEmail = (email) => {
  */
 export const validateCategory = (category) => {
   const sanitized = sanitizeString(category);
-  
+
   if (!sanitized || sanitized.length === 0) {
     return { isValid: false, error: 'Categoria é obrigatória' };
   }
-  
+
   if (sanitized.length < 2) {
     return { isValid: false, error: 'Categoria deve ter no mínimo 2 caracteres' };
   }
-  
+
   if (sanitized.length > 50) {
     return { isValid: false, error: 'Categoria não pode ter mais de 50 caracteres' };
   }
-  
+
   return { isValid: true, value: sanitized };
 };
 
@@ -237,19 +291,19 @@ export const validateCategory = (category) => {
  */
 export const validateProductName = (name) => {
   const sanitized = sanitizeString(name);
-  
+
   if (!sanitized || sanitized.length === 0) {
     return { isValid: false, error: 'Nome do produto é obrigatório' };
   }
-  
+
   if (sanitized.length < 2) {
     return { isValid: false, error: 'Nome deve ter no mínimo 2 caracteres' };
   }
-  
+
   if (sanitized.length > 100) {
     return { isValid: false, error: 'Nome não pode ter mais de 100 caracteres' };
   }
-  
+
   return { isValid: true, value: sanitized };
 };
 
@@ -260,19 +314,19 @@ export const validateProductName = (name) => {
  */
 export const validateComandaNumber = (number) => {
   const numCmd = typeof number === 'string' ? parseInt(number, 10) : number;
-  
+
   if (isNaN(numCmd)) {
     return { isValid: false, error: 'Número de comanda deve ser um número' };
   }
-  
+
   if (numCmd <= 0) {
     return { isValid: false, error: 'Número de comanda deve ser maior que zero' };
   }
-  
+
   if (numCmd > 9999) {
     return { isValid: false, error: 'Número de comanda muito alto' };
   }
-  
+
   return { isValid: true, value: numCmd };
 };
 
@@ -284,7 +338,7 @@ export const validateComandaNumber = (number) => {
 export const validateCompleteOrder = (order) => {
   const errors = {};
   const value = {};
-  
+
   // Validar cliente (OPCIONAL - não é obrigatório)
   const clientName = order.client || '';
   if (clientName && clientName.trim().length > 0) {
@@ -298,7 +352,7 @@ export const validateCompleteOrder = (order) => {
     // Cliente não informado - usar valor padrão
     value.client = 'Cliente';
   }
-  
+
   // Validar itens
   const itemsValidation = validateOrderItems(order.items);
   if (!itemsValidation.isValid) {
@@ -306,7 +360,7 @@ export const validateCompleteOrder = (order) => {
   } else {
     value.items = order.items; // Itens validados
   }
-  
+
   // Validar observações (opcional)
   if (order.observations) {
     const obsValidation = validateObservations(order.observations);
@@ -318,7 +372,7 @@ export const validateCompleteOrder = (order) => {
   } else {
     value.observations = '';
   }
-  
+
   return {
     isValid: Object.keys(errors).length === 0,
     errors,
@@ -333,25 +387,25 @@ export const validateCompleteOrder = (order) => {
  */
 export const validateCompleteProduct = (product) => {
   const errors = {};
-  
+
   // Validar nome
   const nameValidation = validateProductName(product.name);
   if (!nameValidation.isValid) {
     errors.name = nameValidation.error;
   }
-  
+
   // Validar categoria
   const categoryValidation = validateCategory(product.category);
   if (!categoryValidation.isValid) {
     errors.category = categoryValidation.error;
   }
-  
+
   // Validar preço
   const priceValidation = validatePrice(product.price);
   if (!priceValidation.isValid) {
     errors.price = priceValidation.error;
   }
-  
+
   return {
     isValid: Object.keys(errors).length === 0,
     errors
@@ -365,31 +419,31 @@ export const validateCompleteProduct = (product) => {
  */
 export const validateCompleteEmployee = (employee) => {
   const errors = {};
-  
+
   // Validar nome
   const nameValidation = validateClientName(employee.nome);
   if (!nameValidation.isValid) {
     errors.nome = nameValidation.error;
   }
-  
+
   // Validar CPF
   const cpfValidation = validateCPF(employee.cpf);
   if (!cpfValidation.isValid) {
     errors.cpf = cpfValidation.error;
   }
-  
+
   // Validar email
   const emailValidation = validateEmail(employee.email);
   if (!emailValidation.isValid) {
     errors.email = emailValidation.error;
   }
-  
+
   // Validar funcao (role)
   const validRoles = ['admin', 'gerente', 'garcom', 'cozinheiro', 'montagem', 'caixa'];
   if (!validRoles.includes(employee.funcao)) {
     errors.funcao = 'Função inválida';
   }
-  
+
   return {
     isValid: Object.keys(errors).length === 0,
     errors
@@ -404,6 +458,7 @@ export default {
   validateObservations,
   validateOrderItems,
   validateCPF,
+  validateCNPJ,
   validateEmail,
   validateCategory,
   validateProductName,
