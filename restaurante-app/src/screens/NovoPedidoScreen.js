@@ -222,6 +222,10 @@ export default function NovoPedidoScreen() {
       sectionsData.push({ title: '🍟 Porções', data: cardapio.porcoes, type: 'porcoes' });
     }
 
+    if (cardapio.outros?.length > 0) {
+      sectionsData.push({ title: '📦 Outros', data: cardapio.outros, type: 'outros' });
+    }
+
     if (cardapio.bebidas?.length > 0) {
       sectionsData.push({ title: '🥤 Bebidas', data: cardapio.bebidas, type: 'bebidas' });
     }

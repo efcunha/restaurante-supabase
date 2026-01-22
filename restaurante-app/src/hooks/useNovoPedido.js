@@ -18,7 +18,7 @@ export const fixDecimal = (value) => Math.round((value + Number.EPSILON) * 100) 
 
 export function useNovoPedido() {
     const { addOrder } = useOrders();
-    const { user } = useAuth(); 
+    const { user } = useAuth();
     const { showToast } = useToast();
 
     const [comandaNumber, setComandaNumber] = useState('');
@@ -27,7 +27,7 @@ export function useNovoPedido() {
     const [observations, setObservations] = useState('');
     const [produtos, setProdutos] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [cardapio, setCardapio] = useState({ caldos: [], comidas: [], bebidas: [], porcoes: [] });
+    const [cardapio, setCardapio] = useState({ caldos: [], comidas: [], bebidas: [], porcoes: [], outros: [] });
     const [loadingCardapio, setLoadingCardapio] = useState(true);
 
     const cardapioLoadedRef = useRef(false);
@@ -36,10 +36,10 @@ export function useNovoPedido() {
     const carregarCardapioFirestore = async (isBackground = false) => {
         try {
             if (!isBackground) setLoadingCardapio(true);
-            
+
             if (!user?.companyId) {
                 console.warn('⚠️ Usuário sem empresa vinculada');
-                setCardapio({ caldos: [], comidas: [], bebidas: [], porcoes: [] });
+                setCardapio({ caldos: [], comidas: [], bebidas: [], porcoes: [], outros: [] });
                 setLoadingCardapio(false);
                 return;
             }
@@ -70,7 +70,13 @@ export function useNovoPedido() {
                 .map(p => ({ name: p.name, price: p.price }))
                 .sort((a, b) => a.name.localeCompare(b.name));
 
-            const novoCardapio = { caldos, comidas, bebidas, porcoes };
+            // Fix: Fetch 'outro' (singular usually in DB) or 'outros'
+            const outros = produtosDb
+                .filter(p => p.category === 'outro' || p.category === 'outros')
+                .map(p => ({ name: p.name, price: p.price }))
+                .sort((a, b) => a.name.localeCompare(b.name));
+
+            const novoCardapio = { caldos, comidas, bebidas, porcoes, outros };
             setCardapio(novoCardapio);
             cardapioLoadedRef.current = true;
             lastLoadTimeRef.current = Date.now();
@@ -111,6 +117,7 @@ export function useNovoPedido() {
         }, [carregarCardapio])
     );
 
+
     const updateProduto = useCallback((itemName, delta) => {
         setProdutos(prev => {
             const currentQty = prev[itemName] || 0;
@@ -124,17 +131,23 @@ export function useNovoPedido() {
     }, []);
 
     const cardapioCombinado = useMemo(() =>
-        [...(cardapio.caldos || []), ...(cardapio.bebidas || []), ...(cardapio.comidas || []), ...(cardapio.porcoes || [])],
+        [
+            ...(cardapio.caldos || []),
+            ...(cardapio.bebidas || []),
+            ...(cardapio.comidas || []),
+            ...(cardapio.porcoes || []),
+            ...(cardapio.outros || [])
+        ],
         [cardapio]
     );
 
     // Helper to calculate price for a single item (extracted for reuse)
     const calculateItemPrice = useCallback((itemName, qty = 1) => {
         const nomeBase = itemName.replace(/\s*\(.*\)$/, '');
-        
+
         // 1. Tentar encontrar item exato no cardápio
         const produtoExato = cardapioCombinado.find(p => p.name === nomeBase);
-        
+
         if (produtoExato) {
             return qty * produtoExato.price;
         }
@@ -153,7 +166,7 @@ export function useNovoPedido() {
         if (produtoPartial) {
             return qty * produtoPartial.price;
         }
-        
+
         return 0;
     }, [cardapioCombinado]);
 
