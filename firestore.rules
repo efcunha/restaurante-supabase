@@ -1,0 +1,41 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function to check if user belongs to the company
+    function doesUserBelongToCompany(companyId) {
+      // 1. Check if the user document exists and has the correct companyId
+      // Note: This requires the user document ID to be the same as Auth UID (which we enforce in registration)
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId;
+    }
+
+    // Helper: is owner or admin (optional future expansion)
+    function isAdmin() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.funcao == 'admin';
+    }
+
+    // --- USERS COLLECTION ---
+    // Users can read/write their own profile
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // --- COMPANIES COLLECTION ---
+    match /companies/{companyId} {
+      // Allow read if user belongs to this company
+      allow read: if request.auth != null && doesUserBelongToCompany(companyId);
+      
+      // Allow write only if user belongs to company (and ideally is admin, but keeping simple for now)
+      allow write: if request.auth != null && doesUserBelongToCompany(companyId);
+
+      // --- SUB-COLLECTIONS (Scoped Data) ---
+      // This covers: pedidos, cardapio, comandas, caixa, etc.
+      match /{document=**} {
+        allow read, write: if request.auth != null && doesUserBelongToCompany(companyId);
+      }
+    }
+    
+    // Fallback for older collections (optional, can be removed if migration is complete)
+    // match /pedidos/{pedidoId} { allow read, write: if request.auth != null; }
+  }
+}

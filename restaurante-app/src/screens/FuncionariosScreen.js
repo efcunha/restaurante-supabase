@@ -15,7 +15,7 @@ export default function FuncionariosScreen() {
   const [funcionarioParaExcluir, setFuncionarioParaExcluir] = useState(null);
   const [editandoFuncionario, setEditandoFuncionario] = useState(null);
   const [mostrarSenha, setMostrarSenha] = useState(false);
-  
+
   // Form state
   const [nome, setNome] = useState('');
   const [cpf, setCpf] = useState('');
@@ -44,7 +44,7 @@ export default function FuncionariosScreen() {
   const handleCriarFuncionario = async () => {
     // console.log('[FuncionariosScreen] 🔵 handleCriarFuncionario chamado');
     // console.log('[FuncionariosScreen] 📋 Dados do formulário:', { nome, cpf, email, funcao, editandoFuncionario });
-    
+
     if (!nome.trim() || !cpf.trim() || !email.trim()) {
       alert('⚠️ Atenção: Preencha todos os campos obrigatórios');
       return;
@@ -64,7 +64,7 @@ export default function FuncionariosScreen() {
 
     // console.log('[FuncionariosScreen] ✅ Validações OK, iniciando salvamento...');
     setLoading(true);
-    
+
     let result;
     if (editandoFuncionario) {
       // console.log('[FuncionariosScreen] ✏️ Modo edição');
@@ -75,12 +75,12 @@ export default function FuncionariosScreen() {
         email,
         funcao,
       };
-      
+
       // Se preencheu nova senha, incluir nos dados
       if (senha.trim()) {
         dadosAtualizacao.senha = senha;
       }
-      
+
       result = await atualizarFuncionario(editandoFuncionario.id, dadosAtualizacao);
     } else {
       // console.log('[FuncionariosScreen] ➕ Modo criação');
@@ -93,7 +93,7 @@ export default function FuncionariosScreen() {
         funcao,
       });
     }
-    
+
     // console.log('[FuncionariosScreen] 📊 Resultado:', result);
 
     if (result.success) {
@@ -102,7 +102,7 @@ export default function FuncionariosScreen() {
       setLoading(false);
       setModalVisible(false);
       limparForm();
-      
+
       // Mensagem personalizada se foi recriado para trocar senha
       if (result.mensagem) {
         alert('✅ ' + result.mensagem);
@@ -132,16 +132,16 @@ export default function FuncionariosScreen() {
 
   const confirmarExclusao = async () => {
     if (!funcionarioParaExcluir) return;
-    
+
     // console.log('[FuncionariosScreen] 🔄 Deletando funcionário ID:', funcionarioParaExcluir.id);
     setLoading(true);
     setModalExcluirVisible(false);
-    
+
     const result = await deletarFuncionario(funcionarioParaExcluir.id);
     setLoading(false);
-    
+
     // console.log('[FuncionariosScreen] 📊 Resultado da exclusão:', result);
-    
+
     if (result.success) {
       if (result.warning) {
         alert('✅ Funcionário excluído!\n\n⚠️ Observação: ' + result.warning);
@@ -152,30 +152,30 @@ export default function FuncionariosScreen() {
     } else {
       alert('Erro ao excluir: ' + (result.error || 'Erro desconhecido'));
     }
-    
+
     setFuncionarioParaExcluir(null);
   };
 
   const handleCorrigirLu = async () => {
     alert('🔍 Diagnóstico do Firestore\n\nVerificando cadastros...');
     const result = await listarFuncionarios();
-    
+
     if (result.success) {
       const total = result.funcionarios.length;
       const ativos = result.funcionarios.filter(f => f.ativo === true).length;
       const inativos = result.funcionarios.filter(f => f.ativo === false).length;
       const semStatus = result.funcionarios.filter(f => f.ativo === undefined).length;
-      
-      let detalhes = result.funcionarios.map(f => 
+
+      let detalhes = result.funcionarios.map(f =>
         `• ${f.nome || 'SEM NOME'} (${f.email || 'SEM EMAIL'})\n  Status: ${f.ativo === true ? '✅ Ativo' : f.ativo === false ? '❌ Inativo' : '⚠️ Sem status'}`
       ).join('\n\n');
-      
+
       alert(`📊 DIAGNÓSTICO FIRESTORE\n\n` +
-            `Total: ${total} cadastros\n` +
-            `Ativos: ${ativos}\n` +
-            `Inativos: ${inativos}\n` +
-            `Sem status: ${semStatus}\n\n` +
-            `DETALHES:\n${detalhes}`);
+        `Total: ${total} cadastros\n` +
+        `Ativos: ${ativos}\n` +
+        `Inativos: ${inativos}\n` +
+        `Sem status: ${semStatus}\n\n` +
+        `DETALHES:\n${detalhes}`);
     } else {
       alert('❌ Erro ao buscar: ' + result.error);
     }
@@ -193,7 +193,8 @@ export default function FuncionariosScreen() {
   const getFuncaoLabel = (func) => {
     const labels = {
       garcom: 'Garçom',
-      churrasqueiro: 'Churrasqueiro',
+      churrasqueiro: 'Cozinheiro(a)', // Legacy
+      cozinheiro: 'Cozinheiro(a)',
       montagem: 'Montagem',
       admin: 'Administrador',
     };
@@ -203,7 +204,8 @@ export default function FuncionariosScreen() {
   const getFuncaoColor = (func) => {
     const colors = {
       garcom: '#4A90E2',
-      churrasqueiro: '#E5B84A',
+      churrasqueiro: '#E5B84A', // Legacy
+      cozinheiro: '#E5B84A',
       montagem: '#7ED321',
       admin: '#8B2F2F',
     };
@@ -218,8 +220,8 @@ export default function FuncionariosScreen() {
           <Text style={styles.headerTitle}>Funcionários</Text>
           <Text style={styles.headerSubtitle}>Logado: {user?.nome}</Text>
         </View>
-        <TouchableOpacity 
-          onPress={exitApp} 
+        <TouchableOpacity
+          onPress={exitApp}
           style={styles.logoutBtn}
         >
           <Text style={styles.logoutText}>Sair</Text>
@@ -228,7 +230,7 @@ export default function FuncionariosScreen() {
 
       <ScrollView style={styles.content}>
         {/* Botão Adicionar */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.addButton}
           onPress={() => setModalVisible(true)}
         >
@@ -237,7 +239,7 @@ export default function FuncionariosScreen() {
 
         {/* Lista de Funcionários */}
         <Text style={styles.sectionTitle}>Funcionários Cadastrados ({funcionarios.length})</Text>
-        
+
         {loading && funcionarios.length === 0 ? (
           <Text style={styles.emptyText}>Carregando...</Text>
         ) : funcionarios.length === 0 ? (
@@ -251,10 +253,10 @@ export default function FuncionariosScreen() {
                   <Text style={styles.funcaoText}>{getFuncaoLabel(func.funcao)}</Text>
                 </View>
               </View>
-              
+
               <Text style={styles.funcionarioInfo}>CPF: {func.cpf}</Text>
               <Text style={styles.funcionarioInfo}>Email: {func.email}</Text>
-              
+
               <View style={styles.actionButtons}>
                 <TouchableOpacity
                   style={styles.editarBtn}
@@ -262,7 +264,7 @@ export default function FuncionariosScreen() {
                 >
                   <Text style={styles.editarText}>✏️ Editar</Text>
                 </TouchableOpacity>
-                
+
                 <TouchableOpacity
                   style={styles.desativarBtn}
                   onPress={() => {
@@ -291,7 +293,7 @@ export default function FuncionariosScreen() {
               <Text style={styles.modalTitle}>
                 {editandoFuncionario ? 'Editar Funcionário' : 'Novo Funcionário'}
               </Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => {
                   setModalVisible(false);
                   limparForm();
@@ -301,7 +303,7 @@ export default function FuncionariosScreen() {
                 <Text style={styles.closeModalText}>✕</Text>
               </TouchableOpacity>
             </View>
-            
+
             <ScrollView>
               <Text style={styles.label}>Nome Completo</Text>
               <TextInput
@@ -341,7 +343,7 @@ export default function FuncionariosScreen() {
                   onChangeText={setSenha}
                   secureTextEntry={!mostrarSenha}
                 />
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.passwordToggle}
                   onPress={() => setMostrarSenha(!mostrarSenha)}
                 >
@@ -350,7 +352,7 @@ export default function FuncionariosScreen() {
                   </Text>
                 </TouchableOpacity>
               </View>
-              
+
               {editandoFuncionario && senha.length > 0 && senha.length < 6 && (
                 <Text style={styles.helperText}>
                   ⚠️ Nova senha deve ter no mínimo 6 caracteres
@@ -359,7 +361,7 @@ export default function FuncionariosScreen() {
 
               <Text style={styles.label}>Função</Text>
               <View style={styles.funcaoButtons}>
-                {['garcom', 'churrasqueiro', 'montagem', 'admin'].map((f) => (
+                {['garcom', 'cozinheiro', 'montagem', 'admin'].map((f) => (
                   <TouchableOpacity
                     key={f}
                     style={[
@@ -390,7 +392,7 @@ export default function FuncionariosScreen() {
               >
                 <Text style={styles.cancelBtnText}>Cancelar</Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={[styles.modalBtn, styles.saveBtn]}
                 onPress={handleCriarFuncionario}
@@ -422,7 +424,7 @@ export default function FuncionariosScreen() {
             <Text style={styles.modalExcluirWarning}>
               O funcionário não poderá mais fazer login no sistema.
             </Text>
-            
+
             <View style={styles.modalExcluirButtons}>
               <TouchableOpacity
                 style={[styles.modalExcluirBtn, styles.modalExcluirCancelar]}
@@ -433,7 +435,7 @@ export default function FuncionariosScreen() {
               >
                 <Text style={styles.modalExcluirCancelarText}>Cancelar</Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={[styles.modalExcluirBtn, styles.modalExcluirConfirmar]}
                 onPress={confirmarExclusao}
