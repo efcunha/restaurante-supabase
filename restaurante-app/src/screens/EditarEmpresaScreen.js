@@ -87,13 +87,15 @@ export default function EditarEmpresaScreen({ onBack }) {
     };
 
     const handleSave = async () => {
+        console.log('[EditarEmpresa] 💾 Iniciando salvamento...');
+
         if (!restaurantName.trim()) {
-            Alert.alert('Erro', 'Nome do restaurante é obrigatório');
+            alert('Erro: Nome do restaurante é obrigatório');
             return;
         }
 
         if (!documentValue) {
-            Alert.alert('Erro', 'CPF ou CNPJ é obrigatório');
+            alert('Erro: CPF ou CNPJ é obrigatório');
             return;
         }
 
@@ -106,29 +108,43 @@ export default function EditarEmpresaScreen({ onBack }) {
         }
 
         if (!docValidation.isValid) {
-            Alert.alert('Erro', docValidation.error);
+            alert(`Erro: ${docValidation.error}`);
             return;
         }
 
         try {
             setSaving(true);
+            console.log('[EditarEmpresa] 🏢 Atualizando documento:', user.companyId);
+
             const docRef = doc(db, 'companies', user.companyId);
 
-            await updateDoc(docRef, {
+            const updateData = {
                 name: restaurantName.trim(),
                 documentType: documentType,
-                document: docValidation.value, // Clean value
+                document: docValidation.value,
                 updatedAt: serverTimestamp(),
-                updatedBy: user.uid
-            });
+                updatedBy: user.uid || user.id || 'admin' // Fallback se uid falhar
+            };
 
-            Alert.alert('Sucesso', 'Dados da empresa atualizados com sucesso!', [
-                { text: 'OK', onPress: onBack }
-            ]);
+            console.log('[EditarEmpresa] 📋 Dados:', updateData);
+
+            await updateDoc(docRef, updateData);
+
+            console.log('[EditarEmpresa] ✅ Sucesso!');
+
+            // Feedback compatível com Web/Mobile
+            if (Platform.OS === 'web') {
+                window.alert('✅ Dados da empresa atualizados com sucesso!');
+                onBack();
+            } else {
+                Alert.alert('Sucesso', 'Dados da empresa atualizados com sucesso!', [
+                    { text: 'OK', onPress: onBack }
+                ]);
+            }
 
         } catch (error) {
-            console.error('Error updating company:', error);
-            Alert.alert('Erro', 'Falha ao atualizar dados');
+            console.error('[EditarEmpresa] ❌ Erro updating company:', error);
+            alert(`Erro ao salvar: ${error.message}`);
         } finally {
             setSaving(false);
         }
