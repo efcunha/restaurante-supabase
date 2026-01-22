@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { collection, getDocs, doc, writeBatch, setDoc, deleteDoc, serverTimestamp, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
 import { getTodayKey, getDateKeyRange } from '../services/FirebaseOptimizations';
+import { getCompanyCollection } from '../utils/firestoreUtils';
 import BackgroundPattern from '../components/BackgroundPattern';
 import { SalesByDayChart, SalesByPaymentChart } from '../components/FinancialCharts';
 import { colors } from '../theme/colors';
@@ -17,11 +18,12 @@ import ComandaVisualizacaoAdminScreen from './ComandaVisualizacaoAdminScreen';
 import GerenciarCardapioScreen from './GerenciarCardapioScreen';
 import EstoqueScreen from './EstoqueScreen';
 import PrinterConfigScreen from './PrinterConfigScreen';
+import EditarEmpresaScreen from './EditarEmpresaScreen';
 import { exitApp } from '../utils/appUtils';
 
 export default function AdminScreen() {
   const { user, logout } = useAuth();
-  
+
   // Helper para formatar valores em Real brasileiro
   const formatarMoeda = (valor) => {
     if (valor === null || valor === undefined || isNaN(valor)) return 'R$ 0,00';
@@ -30,7 +32,7 @@ export default function AdminScreen() {
     partes[0] = partes[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     return 'R$ ' + partes.join(',');
   };
-  
+
   const [showFuncionarios, setShowFuncionarios] = useState(false);
   const [showCaixaMenu, setShowCaixaMenu] = useState(false);
   const [showCaixaAbertura, setShowCaixaAbertura] = useState(false);
@@ -41,8 +43,9 @@ export default function AdminScreen() {
   const [showGerenciarCardapio, setShowGerenciarCardapio] = useState(false);
   const [showEstoque, setShowEstoque] = useState(false);
   const [showPrinterConfig, setShowPrinterConfig] = useState(false);
+  const [showEditarEmpresa, setShowEditarEmpresa] = useState(false);
   const [loadingLimpar, setLoadingLimpar] = useState(false);
-  
+
   // Estados para estatísticas
   const [stats, setStats] = useState({
     totalPedidos: 0,
@@ -50,7 +53,7 @@ export default function AdminScreen() {
     tempoMedio: 0
   });
   const [loadingStats, setLoadingStats] = useState(true);
-  
+
   // Estados para estatísticas de vendas
   const [periodoSelecionado, setPeriodoSelecionado] = useState('hoje'); // 'hoje', 'semana', 'mes'
   const [vendasStats, setVendasStats] = useState({
@@ -117,30 +120,29 @@ export default function AdminScreen() {
   // 🔴 LISTENERS EM TEMPO REAL para atualizar estatísticas automaticamente
   useEffect(() => {
     // Listener para pedidos (atualiza estatísticas operacionais)
-    const dateKey = getTodayKey(); // Usar data local para consistência
+    if (!user?.companyId) return;
+
+    const dateKey = getTodayKey();
     const pedidosQuery = query(
-      collection(db, 'pedidos'),
+      getCompanyCollection(user.companyId, 'pedidos'),
       where('dateKey', '==', dateKey)
     );
-    
+
     const unsubscribePedidos = onSnapshot(
-      pedidosQuery, 
+      pedidosQuery,
       (snapshot) => {
-        // Usar debounce para evitar múltiplos reloads
         debounceReload();
-      }, 
+      },
       (error) => {
         console.error('[AdminScreen] ❌ Erro no listener de pedidos:', error);
-        console.error('[AdminScreen] ❌ Código do erro:', error.code);
-        console.error('[AdminScreen] ❌ Mensagem:', error.message);
       }
     );
 
     // Listener para comandas (atualiza estatísticas de vendas E operacionais)
-    const comandasQuery = collection(db, 'comandas');
-    
+    const comandasQuery = getCompanyCollection(user.companyId, 'comandas');
+
     const unsubscribeComandas = onSnapshot(
-      comandasQuery, 
+      comandasQuery,
       (snapshot) => {
         let abertas = 0;
         let fechadas = 0;
@@ -151,7 +153,7 @@ export default function AdminScreen() {
         });
         // Usar debounce para evitar múltiplos reloads
         debounceReload();
-      }, 
+      },
       (error) => {
         console.error('[AdminScreen] ❌ Erro no listener de comandas:', error);
         console.error('[AdminScreen] ❌ Código do erro:', error.code);
@@ -177,12 +179,12 @@ export default function AdminScreen() {
           if (totalApagado === 0) console.log(`⚠️ Coleção ${nomeColecao} já está vazia`);
           break;
         }
-        
+
         // Mostrar amostra dos IDs (primeiros 5)
         if (snapshot.size > 0) {
           const amostra = snapshot.docs.slice(0, 5).map(d => d.id).join(', ');
         }
-        
+
         // Seleciona apenas até PAGE_SIZE para não ultrapassar
         const docs = snapshot.docs.slice(0, PAGE_SIZE);
         const batch = writeBatch(db);
@@ -213,13 +215,13 @@ export default function AdminScreen() {
       if (snapBefore.empty) {
         return { ok: true, attempts: attempt };
       }
-      
+
       // Apagar
       await limparColecao(nomeColecao);
-      
+
       // Aguardar commit no servidor
       await new Promise(res => setTimeout(res, delayMs));
-      
+
       // Verifica
       const snapAfter = await getDocs(collection(db, nomeColecao));
       if (snapAfter.empty) {
@@ -230,22 +232,22 @@ export default function AdminScreen() {
         await new Promise(res => setTimeout(res, delayMs * 2));
       }
     }
-    
+
     const finalSnap = await getDocs(collection(db, nomeColecao));
     console.error(`❌ [ensureColecaoVazia] FALHA em ${nomeColecao} após ${maxAttempts} tentativas. Restantes: ${finalSnap.size}`);
-    
+
     // Mostrar IDs dos docs que não foram apagados
     if (!finalSnap.empty && finalSnap.size <= 20) {
       console.error(`📋 IDs não apagados:`);
       finalSnap.forEach(doc => console.error(`  - ${doc.id}`));
     }
-    
+
     return { ok: finalSnap.empty, attempts: maxAttempts, remaining: finalSnap.size };
   };
 
   const limparTodasComandas = async () => {
     const today = new Date().toISOString().split('T')[0];
-    
+
     // Usar window.confirm para web (Alert.alert não funciona bem no navegador)
     const mensagem = `⚠️ ATENÇÃO - LIMPAR COMANDAS ABERTAS\n\n` +
       `Isso apagará PERMANENTEMENTE:\n\n` +
@@ -255,22 +257,22 @@ export default function AdminScreen() {
       `✅ Comandas FECHADAS (vendas) serão PRESERVADAS\n` +
       `✅ Histórico de vendas será mantido\n\n` +
       `Deseja continuar?`;
-    
-    const confirmado = typeof window !== 'undefined' && window.confirm 
+
+    const confirmado = typeof window !== 'undefined' && window.confirm
       ? window.confirm(mensagem)
       : false;
     if (!confirmado) {
       return;
     }
-    
+
     try {
       setLoadingLimpar(true);
       let totalComandas = 0;
       let totalPedidos = 0;
-      
+
       // Implementação da limpeza de comandas abertas aqui
       // ... (código existente)
-      
+
     } catch (error) {
       console.error('❌ Erro:', error);
     } finally {
@@ -287,82 +289,82 @@ export default function AdminScreen() {
       `• Pagamentos de DIAS ANTERIORES\n\n` +
       `✅ Dados de HOJE serão PRESERVADOS\n\n` +
       `Deseja continuar?`;
-    
-    const confirmado = typeof window !== 'undefined' && window.confirm 
+
+    const confirmado = typeof window !== 'undefined' && window.confirm
       ? window.confirm(mensagem)
       : false;
-    
+
     if (!confirmado) {
       return;
     }
-    
+
     try {
       setLoadingLimpar(true);
       const today = new Date().toISOString().split('T')[0];
       let totalPedidos = 0;
       let totalComandas = 0;
       let totalPagamentos = 0;
-      
+
       // 1. Apagar pedidos antigos
       const pedidosSnap = await getDocs(collection(db, 'pedidos'));
       const batch1 = writeBatch(db);
       let countBatch1 = 0;
-      
+
       pedidosSnap.docs.forEach(pedidoDoc => {
         const pedido = pedidoDoc.data();
-        const dateKey = pedido.dateKey || (pedido.createdAt?.seconds ? 
+        const dateKey = pedido.dateKey || (pedido.createdAt?.seconds ?
           new Date(pedido.createdAt.seconds * 1000).toISOString().split('T')[0] : null);
-        
+
         if (dateKey && dateKey < today) {
           batch1.delete(doc(db, 'pedidos', pedidoDoc.id));
           countBatch1++;
         }
       });
-      
+
       if (countBatch1 > 0) {
         await batch1.commit();
         totalPedidos = countBatch1;
       } else {
       }
-      
+
       // 2. Apagar comandas antigas
       const comandasSnap = await getDocs(collection(db, 'comandas'));
       const batch2 = writeBatch(db);
       let countBatch2 = 0;
-      
+
       comandasSnap.docs.forEach(comandaDoc => {
         const comanda = comandaDoc.data();
-        const dateKey = comanda.dateKey || (comanda.abertaAt?.seconds ? 
+        const dateKey = comanda.dateKey || (comanda.abertaAt?.seconds ?
           new Date(comanda.abertaAt.seconds * 1000).toISOString().split('T')[0] : null);
-        
+
         if (dateKey && dateKey < today) {
           batch2.delete(doc(db, 'comandas', comandaDoc.id));
           countBatch2++;
         }
       });
-      
+
       if (countBatch2 > 0) {
         await batch2.commit();
         totalComandas = countBatch2;
       } else {
       }
-      
+
       // 3. Apagar pagamentos antigos
       const pagamentosSnap = await getDocs(collection(db, 'pagamentos'));
       const batch3 = writeBatch(db);
       let countBatch3 = 0;
-      
+
       pagamentosSnap.docs.forEach(pagamentoDoc => {
         const pagamento = pagamentoDoc.data();
-        const dateKey = pagamento.dateKey || (pagamento.createdAt?.seconds ? 
+        const dateKey = pagamento.dateKey || (pagamento.createdAt?.seconds ?
           new Date(pagamento.createdAt.seconds * 1000).toISOString().split('T')[0] : null);
-        
+
         if (dateKey && dateKey < today) {
           batch3.delete(doc(db, 'pagamentos', pagamentoDoc.id));
           countBatch3++;
         }
       });
-      
+
       if (countBatch3 > 0) {
         await batch3.commit();
         totalPagamentos = countBatch3;
@@ -374,11 +376,11 @@ export default function AdminScreen() {
           `Comandas: ${totalComandas}\n` +
           `Pagamentos: ${totalPagamentos}`);
       }
-      
+
       // Recarregar estatísticas
       carregarEstatisticas();
       carregarEstatisticasVendas();
-      
+
     } catch (error) {
       console.error('❌ Erro ao limpar dados antigos:', error);
       if (typeof window !== 'undefined' && window.alert) {
@@ -398,34 +400,34 @@ export default function AdminScreen() {
       `3. Adicionar campo recebidoPor\n` +
       `4. Calcular totalPago e saldoAberto\n\n` +
       `Deseja continuar?`;
-    
-    const confirmado = typeof window !== 'undefined' && window.confirm 
+
+    const confirmado = typeof window !== 'undefined' && window.confirm
       ? window.confirm(mensagem)
       : false;
-    
+
     if (!confirmado) return;
-    
+
     try {
       // console.log('💰 Iniciando correção completa...\n');
-      
+
       // Buscar TODOS os pedidos
       const pedidosRef = collection(db, 'pedidos');
       const pedidosSnapshot = await getDocs(pedidosRef);
-      
+
       if (pedidosSnapshot.empty) {
         Alert.alert('Aviso', 'Nenhum pedido encontrado');
         return;
       }
-      
+
       // Agrupar pedidos por comanda
       const comandasMap = {};
-      
+
       pedidosSnapshot.forEach(pedidoDoc => {
         const pedido = pedidoDoc.data();
         const comandaNum = String(pedido.comandaNumber || pedido.comandaId || '');
-        
+
         if (!comandaNum || comandaNum.startsWith('TEMP')) return;
-        
+
         if (!comandasMap[comandaNum]) {
           comandasMap[comandaNum] = {
             numero: comandaNum,
@@ -437,21 +439,21 @@ export default function AdminScreen() {
             criadoPorId: pedido.createdBy || pedido.criadoPor || 'system',
           };
         }
-        
+
         comandasMap[comandaNum].pedidos.push(pedido);
         comandasMap[comandaNum].totalConsumido += pedido.totalPrice || 0;
-        
+
         if (pedido.isPago === true) {
           comandasMap[comandaNum].totalPago += pedido.totalPrice || 0;
         }
       });
-      
+
       // console.log(`[MIGRAÇÃO] Encontradas ${Object.keys(comandasMap).length} comandas\n`);
-      
+
       let criadas = 0;
       let atualizadas = 0;
       let erros = 0;
-      
+
       // Para cada comanda, criar/atualizar no Firestore
       for (const [comandaNum, info] of Object.entries(comandasMap)) {
         try {
@@ -461,14 +463,14 @@ export default function AdminScreen() {
             where('comandaNumber', '==', comandaNum)
           );
           const snap = await getDocs(q);
-          
+
           const recebidoPor = info.totalPago > 0 ? [{
             id: info.criadoPorId,
             nome: info.criadoPorNome,
             data: new Date().toISOString(),
             timestamp: Date.now()
           }] : [];
-          
+
           const comandaData = {
             comandaNumber: comandaNum,
             numeroComanda: comandaNum,
@@ -482,7 +484,7 @@ export default function AdminScreen() {
             criadoPor: info.criadoPorId,
             ultimaAtualizacao: new Date().toISOString(),
           };
-          
+
           if (snap.empty) {
             // Criar nova comanda
             const docId = `comanda-${info.dateKey}-${comandaNum}`;
@@ -493,7 +495,7 @@ export default function AdminScreen() {
             // Atualizar comanda existente
             const docRef = doc(db, 'comandas', snap.docs[0].id);
             const existing = snap.docs[0].data();
-            
+
             // Só atualizar se recebidoPor estiver vazio
             if (!existing.recebidoPor || existing.recebidoPor.length === 0) {
               await setDoc(docRef, comandaData, { merge: true });
@@ -508,15 +510,15 @@ export default function AdminScreen() {
           erros++;
         }
       }
-      
+
       // console.log(`\n📊 RESULTADO FINAL:`);
       // console.log(`✅ Comandas criadas: ${criadas}`);
       // console.log(`✅ Comandas atualizadas: ${atualizadas}`);
       // console.log(`❌ Erros: ${erros}`);
-      
+
       if (criadas > 0 || atualizadas > 0) {
         Alert.alert(
-          'Migração Concluída!', 
+          'Migração Concluída!',
           `✅ ${criadas} comanda(s) criada(s)\n` +
           `✅ ${atualizadas} comanda(s) atualizada(s)\n\n` +
           `Recarregue a tela de Comandas para ver as mudanças.`,
@@ -525,7 +527,7 @@ export default function AdminScreen() {
       } else {
         Alert.alert('Aviso', 'Todas as comandas já estão corretas!');
       }
-      
+
     } catch (error) {
       console.error('❌ Erro na migração:', error);
       Alert.alert('Erro', `Falha na migração: ${error.message}`);
@@ -538,36 +540,36 @@ export default function AdminScreen() {
       `Isso vai adicionar os campos criadoPor/criadoPorNome nos pedidos antigos.\n\n` +
       `Necessário para que as estatísticas de garçons mostrem todos os usuários.\n\n` +
       `Deseja continuar?`;
-    
-    const confirmado = typeof window !== 'undefined' && window.confirm 
+
+    const confirmado = typeof window !== 'undefined' && window.confirm
       ? window.confirm(mensagem)
       : false;
-    
+
     if (!confirmado) return;
-    
+
     try {
       // console.log('👤 Iniciando correção de garçons retroativa...\n');
-      
+
       const pedidosRef = collection(db, 'pedidos');
       const snapshot = await getDocs(pedidosRef);
-      
+
       if (snapshot.empty) {
         Alert.alert('Aviso', 'Nenhum pedido encontrado');
         return;
       }
-      
+
       let corrigidos = 0;
       let pulados = 0;
-      
+
       for (const docSnapshot of snapshot.docs) {
         const pedido = docSnapshot.data();
-        
+
         // Se já tem criadoPor, pular
         if (pedido.criadoPor) {
           pulados++;
           continue;
         }
-        
+
         // Se tem createdBy mas não tem criadoPor, adicionar
         if (pedido.createdBy) {
           const docRef = doc(db, 'pedidos', docSnapshot.id);
@@ -575,7 +577,7 @@ export default function AdminScreen() {
             criadoPor: pedido.createdBy,
             criadoPorNome: pedido.createdByName || pedido.criadoPorNome || 'Sem nome'
           }, { merge: true });
-          
+
           // console.log(`✅ Corrigido pedido ${docSnapshot.id.slice(-4)}: ${pedido.createdByName}`);
           corrigidos++;
         } else {
@@ -583,12 +585,12 @@ export default function AdminScreen() {
           pulados++;
         }
       }
-      
+
       // console.log(`\n📊 Resumo: ${corrigidos} corrigidos, ${pulados} pulados`);
-      
+
       if (corrigidos > 0) {
         Alert.alert(
-          'Sucesso!', 
+          'Sucesso!',
           `✅ ${corrigidos} pedidos corrigidos!\n\n` +
           `Agora as estatísticas de garçons devem mostrar todos os usuários.`,
           [{ text: 'OK' }]
@@ -596,7 +598,7 @@ export default function AdminScreen() {
       } else {
         Alert.alert('Aviso', 'Nenhuma correção necessária.');
       }
-      
+
     } catch (error) {
       console.error('❌ Erro ao corrigir garçons:', error);
       Alert.alert('Erro', `Falha ao corrigir: ${error.message}`);
@@ -607,22 +609,24 @@ export default function AdminScreen() {
   const carregarEstatisticas = async () => {
     try {
       setLoadingStats(true);
+      if (!user?.companyId) return;
+
       const today = getTodayKey();
       // Buscar DIRETAMENTE todos os pedidos do dia pelo dateKey
       const qPedidosDia = query(
-        collection(db, 'pedidos'),
+        getCompanyCollection(user.companyId, 'pedidos'),
         where('dateKey', '==', today)
       );
       let pedidosSnapshot = await getDocs(qPedidosDia);
       // 🔧 SE NÃO ENCONTROU PEDIDOS, VERIFICAR SE HÁ PEDIDOS SEM dateKey E CORRIGI-LOS
       if (pedidosSnapshot.size === 0) {
-        const todosPedidos = await getDocs(collection(db, 'pedidos'));
+        const todosPedidos = await getDocs(getCompanyCollection(user.companyId, 'pedidos'));
         let pedidosSemDateKey = 0;
         const batch = writeBatch(db);
-        
+
         todosPedidos.docs.forEach(pedidoDoc => {
           const pedido = pedidoDoc.data();
-          
+
           if (!pedido.dateKey) {
             let dateKey;
             if (pedido.createdAt) {
@@ -633,16 +637,16 @@ export default function AdminScreen() {
                 dateKey = pedido.createdAt.split('T')[0];
               }
             }
-            
+
             if (!dateKey) {
               dateKey = today; // fallback para hoje
             }
-            
+
             batch.update(doc(db, 'pedidos', pedidoDoc.id), { dateKey });
             pedidosSemDateKey++;
           }
         });
-        
+
         if (pedidosSemDateKey > 0) {
           await batch.commit();
           // Buscar novamente após correção
@@ -661,7 +665,7 @@ export default function AdminScreen() {
         // console.log(`📊 [Pedido ${pedidoDoc.id.slice(-4)}] status: ${pedido.status}, itens:`, pedido.itens, 'deliveredAt:', pedido.deliveredAt);
         // O campo correto no Firestore é 'itens' (com acento)
         const items = pedido.itens || pedido.items;
-        
+
         if (items && Array.isArray(items)) {
           items.forEach(item => {
             // Extrair quantidade do item (formato: "2x Carne Simples" ou "1x Item")
@@ -676,13 +680,13 @@ export default function AdminScreen() {
         // Usar criadoEm ou horaPedido (campos do Firestore) em vez de createdAt
         const inicio = pedido.criadoEm || pedido.horaPedido || pedido.createdAt;
         const fim = pedido.timeInProntos;
-        
+
         // console.log(`⏱️  [Pedido ${pedidoDoc.id.slice(-4)}] inicio:`, inicio, 'fim:', fim, 'status:', pedido.status);
-        
+
         if (inicio && fim) {
           // console.log(`✅ [Pedido ${pedidoDoc.id.slice(-4)}] TEM AMBOS OS TIMESTAMPS! Calculando...`);
           let inicioSeconds, fimSeconds;
-          
+
           // Converter início para seconds
           if (inicio.seconds) {
             inicioSeconds = inicio.seconds;
@@ -691,7 +695,7 @@ export default function AdminScreen() {
           } else {
             inicioSeconds = new Date(inicio).getTime() / 1000;
           }
-          
+
           // Converter fim para seconds
           if (fim.seconds) {
             fimSeconds = fim.seconds;
@@ -700,7 +704,7 @@ export default function AdminScreen() {
           } else {
             fimSeconds = new Date(fim).getTime() / 1000;
           }
-          
+
           const tempoMinutos = Math.round((fimSeconds - inicioSeconds) / 60);
           // console.log(`⏱️  [Pedido ${pedidoDoc.id.slice(-4)}] Tempo calculado: ${tempoMinutos} minutos`);
           if (tempoMinutos > 0 && tempoMinutos < 180) {
@@ -716,9 +720,9 @@ export default function AdminScreen() {
       const tempoMedio = temposTotais.length > 0
         ? Math.round(temposTotais.reduce((a, b) => a + b, 0) / temposTotais.length)
         : 0;
-      
+
       // console.log(`📊 [Estatísticas FINAL] Pedidos: ${totalPedidos}, Itens: ${totalItens}, Tempo Médio: ${tempoMedio} min (de ${temposTotais.length} pedidos com tempo)`);
-      
+
       setStats({
         totalPedidos,
         totalItens,
@@ -736,25 +740,27 @@ export default function AdminScreen() {
     try {
       setLoadingVendas(true);
       // console.log('💰 === CARREGANDO ESTATÍSTICAS DE VENDAS ===');
-      
+
       setLoadingVendas(true);
       // console.log('💰 === CARREGANDO ESTATÍSTICAS DE VENDAS ===');
-      
+
       const { startKey: dateKeyInicio, endKey: dateKeyFim } = getDateKeyRange(periodoSelecionado);
-      
+
       // console.log(`💰 Período: ${dateKeyInicio} até ${dateKeyFim}`);
       // console.log(`💰 Buscando comandas fechadas...`);
-      
+
       // Buscar todas as comandas fechadas no período
+      if (!user?.companyId) return;
+
       const comandasSnapshot = await getDocs(
         query(
-          collection(db, 'comandas'),
+          getCompanyCollection(user.companyId, 'comandas'),
           where('status', '==', 'fechada')
         )
       );
-      
+
       // console.log(`💰 Total de comandas fechadas no banco: ${comandasSnapshot.size}`);
-      
+
       let totalVendido = 0;
       let totalPedidos = 0;
 
@@ -762,7 +768,7 @@ export default function AdminScreen() {
       comandasSnapshot.docs.forEach(doc => {
         const comanda = doc.data();
         let comandaDateKey = comanda.dateKey;
-        
+
         // Se não tiver dateKey, tentar extrair da data de fechamento
         if (!comandaDateKey && comanda.fechadaAt) {
           if (comanda.fechadaAt.toDate) {
@@ -772,9 +778,9 @@ export default function AdminScreen() {
             comandaDateKey = date.toISOString().split('T')[0];
           }
         }
-        
+
         // console.log(`  💰 Comanda ${comanda.numeroComanda || comanda.comandaNumber}: R$ ${(comanda.totalConsumido || 0).toFixed(2)}, data: ${comandaDateKey || 'sem data'}`);
-        
+
         if (comandaDateKey && comandaDateKey >= dateKeyInicio && comandaDateKey <= dateKeyFim) {
           totalVendido += comanda.totalConsumido || 0;
           totalPedidos++;
@@ -789,25 +795,25 @@ export default function AdminScreen() {
       // console.log(`💰 Total de comandas: ${totalPedidos}`);
 
       // --- AGREGAÇÃO PARA GRÁFICOS ---
-      
+
       // 1. Vendas por Dia (Bar Chart)
       // Inicializar mapa de dias do intervalo
       const dailyMap = {};
-      
+
       // Se for período curto (hoje/semana), mostrar dias individuais
       // Se for mês, também
-      
+
       // Iterar comandas para preencher dias
       comandasSnapshot.docs.forEach(doc => {
         const comanda = doc.data();
         let dKey = comanda.dateKey;
         if (!dKey && comanda.fechadaAt) {
-             const dt = comanda.fechadaAt.toDate ? comanda.fechadaAt.toDate() : new Date(comanda.fechadaAt.seconds * 1000);
-             dKey = dt.toISOString().split('T')[0];
+          const dt = comanda.fechadaAt.toDate ? comanda.fechadaAt.toDate() : new Date(comanda.fechadaAt.seconds * 1000);
+          dKey = dt.toISOString().split('T')[0];
         }
 
         if (dKey && dKey >= dateKeyInicio && dKey <= dateKeyFim) {
-           dailyMap[dKey] = (dailyMap[dKey] || 0) + (comanda.totalConsumido || 0);
+          dailyMap[dKey] = (dailyMap[dKey] || 0) + (comanda.totalConsumido || 0);
         }
       });
 
@@ -867,11 +873,11 @@ export default function AdminScreen() {
   const carregarAlertasEstoque = async () => {
     try {
       setLoadingAlertas(true);
-      
+
       // TODO: Implementar EstoqueService quando necessário
       // Por enquanto, apenas limpar alertas
       setAlertasEstoque([]);
-      
+
       /* DESABILITADO até implementar EstoqueService
       const { default: EstoqueService } = await import('../services/EstoqueService');
       
@@ -912,12 +918,12 @@ export default function AdminScreen() {
               const pedidosSnapshot = await getDocs(collection(db, 'pedidos'));
               let atualizados = 0;
               let jaExistiam = 0;
-              
+
               const batch = writeBatch(db);
-              
+
               pedidosSnapshot.docs.forEach(pedidoDoc => {
                 const pedido = pedidoDoc.data();
-                
+
                 if (!pedido.dateKey) {
                   let dateKey;
                   if (pedido.createdAt) {
@@ -928,20 +934,20 @@ export default function AdminScreen() {
                       dateKey = pedido.createdAt.split('T')[0];
                     }
                   }
-                  
+
                   if (!dateKey) {
                     dateKey = new Date().toISOString().split('T')[0];
                   }
-                  
+
                   batch.update(doc(db, 'pedidos', pedidoDoc.id), { dateKey });
                   atualizados++;
                 } else {
                   jaExistiam++;
                 }
               });
-              
+
               await batch.commit();
-              
+
               Alert.alert(
                 '✅ Correção Concluída',
                 `Pedidos atualizados: ${atualizados}\nJá tinham dateKey: ${jaExistiam}\n\nRecarregue as estatísticas!`
@@ -971,7 +977,7 @@ export default function AdminScreen() {
           onPress: async () => {
             try {
               // sinalizar limpeza para listeners
-              try { if (typeof window !== 'undefined' && window.localStorage) window.localStorage.setItem('limpezaEmAndamento','1'); } catch {}
+              try { if (typeof window !== 'undefined' && window.localStorage) window.localStorage.setItem('limpezaEmAndamento', '1'); } catch { }
 
               // Sinalizar para outros clientes via Firestore (maintenance flag)
               try {
@@ -983,12 +989,12 @@ export default function AdminScreen() {
               const result = await ensureColecaoVazia('comandas', 10, 1200);
               const resumo = result.ok ? `✅ Todas as comandas apagadas (${result.attempts} tentativas)` : `❌ Falha ao apagar comandas (restam ${result.remaining})`;
               Alert.alert('Resultado', resumo);
-              try { if (typeof window !== 'undefined' && window.location && window.location.reload) setTimeout(() => window.location.reload(), 700); } catch {}
+              try { if (typeof window !== 'undefined' && window.location && window.location.reload) setTimeout(() => window.location.reload(), 700); } catch { }
             } catch (e) {
               console.error('❌ Erro ao apagar comandas:', e);
               Alert.alert('Erro', `Falha: ${e.message}`);
             } finally {
-              try { if (typeof window !== 'undefined' && window.localStorage) window.localStorage.removeItem('limpezaEmAndamento'); } catch {}
+              try { if (typeof window !== 'undefined' && window.localStorage) window.localStorage.removeItem('limpezaEmAndamento'); } catch { }
               // remover flag de manutenção
               try {
                 const maintenanceRef = doc(db, 'maintenance', 'limpeza');
@@ -1006,19 +1012,19 @@ export default function AdminScreen() {
   // Migra pedidos antigos para adicionar itemsWithStatus
   const migrarItemsWithStatus = async () => {
     // console.log('🔧 Função migrarItemsWithStatus chamada!');
-    
+
     // Executar direto sem Alert (não funciona bem no web)
     try {
       setLoadingLimpar(true);
-      
+
       // console.log('🔧 Iniciando migração de itemsWithStatus...');
-      
+
       // Buscar TODOS os pedidos
       const ordersRef = collection(db, 'pedidos');
       const snapshot = await getDocs(ordersRef);
-      
+
       // console.log(`📦 Total de pedidos encontrados: ${snapshot.size}`);
-      
+
       if (snapshot.empty) {
         // console.log('❌ Nenhum pedido encontrado!');
         alert('Nenhum pedido encontrado!');
@@ -1026,87 +1032,87 @@ export default function AdminScreen() {
         return;
       }
 
-              let migrados = 0;
-              let jaExistiam = 0;
-              let erros = 0;
+      let migrados = 0;
+      let jaExistiam = 0;
+      let erros = 0;
 
-              // Processar cada pedido
-              let batch = writeBatch(db);
-              let batchCount = 0;
+      // Processar cada pedido
+      let batch = writeBatch(db);
+      let batchCount = 0;
 
-              for (const docSnap of snapshot.docs) {
-                const data = docSnap.data();
-                const orderId = data.id || docSnap.id;
+      for (const docSnap of snapshot.docs) {
+        const data = docSnap.data();
+        const orderId = data.id || docSnap.id;
 
-                // FORÇAR MIGRAÇÃO - não pular nenhum pedido
-                // (Comentado a verificação que estava pulando pedidos)
-                // const temItemsWithStatus = data.itemsWithStatus && Array.isArray(data.itemsWithStatus) && data.itemsWithStatus.length > 0;
-                // if (temItemsWithStatus) {
-                //   jaExistiam++;
-                //   continue;
-                // }
+        // FORÇAR MIGRAÇÃO - não pular nenhum pedido
+        // (Comentado a verificação que estava pulando pedidos)
+        // const temItemsWithStatus = data.itemsWithStatus && Array.isArray(data.itemsWithStatus) && data.itemsWithStatus.length > 0;
+        // if (temItemsWithStatus) {
+        //   jaExistiam++;
+        //   continue;
+        // }
 
-                // Buscar items - no Firestore o campo é 'itens' (português)
-                let itemsArray = data.itens || data.items || [];
-                
-                // Se ainda não tiver, tentar outros campos
-                if (!itemsArray || itemsArray.length === 0) {
-                  const keys = Object.keys(data);
-                  
-                  // Verificar propriedades numéricas (0, 1, 2...)
-                  const numericKeys = keys.filter(k => /^\d+$/.test(k)).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
-                  if (numericKeys.length > 0 && typeof data[numericKeys[0]] === 'string') {
-                    itemsArray = numericKeys.map(k => data[k]);
-                    // console.log(`  📝 Encontrado ${itemsArray.length} items em propriedades numéricas`);
-                  }
-                }
-                
-                // console.log(`  Pedido ${orderId}: ${itemsArray?.length || 0} items`);
+        // Buscar items - no Firestore o campo é 'itens' (português)
+        let itemsArray = data.itens || data.items || [];
 
-                // Verificar se conseguimos items válido
-                if (!itemsArray || !Array.isArray(itemsArray) || itemsArray.length === 0) {
-                  // console.log(`  ❌ Pedido ${orderId}: Sem items válido`);
-                  erros++;
-                  continue;
-                }
+        // Se ainda não tiver, tentar outros campos
+        if (!itemsArray || itemsArray.length === 0) {
+          const keys = Object.keys(data);
 
-                // Criar itemsWithStatus a partir de items
-                const now = new Date().toISOString();
-                const comandaNum = data.numeroComanda || data.comandaNumber || data.comandaId || 'temp';
-                const itemsWithStatus = itemsArray.map((itemName, index) => ({
-                  id: `${orderId}-comanda-${comandaNum}-item-${index}`,
-                  name: itemName,
-                  status: 'churrasqueira',
-                  checked: false,
-                  timestamp: now
-                }));
+          // Verificar propriedades numéricas (0, 1, 2...)
+          const numericKeys = keys.filter(k => /^\d+$/.test(k)).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+          if (numericKeys.length > 0 && typeof data[numericKeys[0]] === 'string') {
+            itemsArray = numericKeys.map(k => data[k]);
+            // console.log(`  📝 Encontrado ${itemsArray.length} items em propriedades numéricas`);
+          }
+        }
 
-                // console.log(`  ✅ Migrando pedido ${orderId} com ${itemsWithStatus.length} itens`);
+        // console.log(`  Pedido ${orderId}: ${itemsArray?.length || 0} items`);
 
-                // Adicionar ao batch - atualizar items E itemsWithStatus
-                const docRef = doc(db, 'pedidos', docSnap.id);
-                const updateData = {
-                  itemsWithStatus,
-                  items: itemsArray // Garantir que items está preenchido
-                };
-                batch.update(docRef, updateData);
-                
-                migrados++;
-                batchCount++;
+        // Verificar se conseguimos items válido
+        if (!itemsArray || !Array.isArray(itemsArray) || itemsArray.length === 0) {
+          // console.log(`  ❌ Pedido ${orderId}: Sem items válido`);
+          erros++;
+          continue;
+        }
 
-                // Firestore tem limite de 500 operações por batch
-                if (batchCount >= 500) {
-                  await batch.commit();
-                  batch = writeBatch(db); // Criar novo batch
-                  batchCount = 0;
-                }
-              }
+        // Criar itemsWithStatus a partir de items
+        const now = new Date().toISOString();
+        const comandaNum = data.numeroComanda || data.comandaNumber || data.comandaId || 'temp';
+        const itemsWithStatus = itemsArray.map((itemName, index) => ({
+          id: `${orderId}-comanda-${comandaNum}-item-${index}`,
+          name: itemName,
+          status: 'churrasqueira',
+          checked: false,
+          timestamp: now
+        }));
 
-              // Commit do batch final se houver operações pendentes
-              if (batchCount > 0) {
-                // console.log(`💾 Commitando batch final com ${batchCount} operações...`);
-                await batch.commit();
-              }
+        // console.log(`  ✅ Migrando pedido ${orderId} com ${itemsWithStatus.length} itens`);
+
+        // Adicionar ao batch - atualizar items E itemsWithStatus
+        const docRef = doc(db, 'pedidos', docSnap.id);
+        const updateData = {
+          itemsWithStatus,
+          items: itemsArray // Garantir que items está preenchido
+        };
+        batch.update(docRef, updateData);
+
+        migrados++;
+        batchCount++;
+
+        // Firestore tem limite de 500 operações por batch
+        if (batchCount >= 500) {
+          await batch.commit();
+          batch = writeBatch(db); // Criar novo batch
+          batchCount = 0;
+        }
+      }
+
+      // Commit do batch final se houver operações pendentes
+      if (batchCount > 0) {
+        // console.log(`💾 Commitando batch final com ${batchCount} operações...`);
+        await batch.commit();
+      }
 
       // console.log('✅ Migração concluída!');
       // console.log(`   Migrados: ${migrados}`);
@@ -1116,10 +1122,10 @@ export default function AdminScreen() {
 
       const mensagem = `✅ Migração concluída!\n\nMigrados: ${migrados}\nJá tinham: ${jaExistiam}\nErros: ${erros}\nTotal: ${snapshot.size}`;
       alert(mensagem);
-      
+
       // Recarregar estatísticas
       carregarEstatisticas();
-      
+
     } catch (e) {
       console.error('❌ Erro na migração:', e);
       alert(`Erro na migração: ${e.message}`);
@@ -1135,12 +1141,13 @@ export default function AdminScreen() {
     { name: 'Gerenciar Estoque', icon: '📦', action: () => setShowEstoque(true) },
     { name: 'Gerenciar Cardápio', icon: '🍴', action: () => setShowGerenciarCardapio(true) },
     { name: 'Configurar Impressora', icon: '🖨️', action: () => setShowPrinterConfig(true) },
+    { name: 'Dados da Empresa', icon: '🏢', action: () => setShowEditarEmpresa(true) },
   ];
 
   return (
     <View style={styles.container}>
       <BackgroundPattern />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -1149,8 +1156,8 @@ export default function AdminScreen() {
             <Text style={styles.userInfo}>{user.nome || user.email}</Text>
           )}
         </View>
-        <TouchableOpacity 
-          style={styles.logoutBtn} 
+        <TouchableOpacity
+          style={styles.logoutBtn}
           onPress={exitApp}
         >
           <Text style={styles.logoutBtnText}>Sair</Text>
@@ -1197,9 +1204,9 @@ export default function AdminScreen() {
               <Text style={styles.refreshButton}>🔄</Text>
             </TouchableOpacity>
           </View>
-          
+
           <View style={styles.vendasTabs}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.vendaTab, periodoSelecionado === 'hoje' && styles.vendaTabActive]}
               onPress={() => setPeriodoSelecionado('hoje')}
             >
@@ -1207,7 +1214,7 @@ export default function AdminScreen() {
                 Hoje
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.vendaTab, periodoSelecionado === 'semana' && styles.vendaTabActive]}
               onPress={() => setPeriodoSelecionado('semana')}
             >
@@ -1215,7 +1222,7 @@ export default function AdminScreen() {
                 Semana
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.vendaTab, periodoSelecionado === 'mes' && styles.vendaTabActive]}
               onPress={() => setPeriodoSelecionado('mes')}
             >
@@ -1263,17 +1270,17 @@ export default function AdminScreen() {
 
         {/* Reports Section */}
         <Text style={styles.reportsTitle}>Relatórios</Text>
-        
+
         {loadingLimpar && (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#8B2F2F" />
             <Text style={styles.loadingText}>Apagando todos os dados...</Text>
           </View>
         )}
-        
+
         {reports.map((report, index) => (
-          <TouchableOpacity 
-            key={index} 
+          <TouchableOpacity
+            key={index}
             style={[styles.reportCard, report.danger && styles.reportCardDanger]}
             onPress={report.action}
             disabled={loadingLimpar}
@@ -1313,9 +1320,9 @@ export default function AdminScreen() {
                 <Text style={styles.caixaMenuClose}>✕</Text>
               </TouchableOpacity>
             </View>
-            
+
             <View style={styles.caixaMenuContent}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.caixaMenuItem}
                 onPress={() => {
                   setShowCaixaMenu(false);
@@ -1326,7 +1333,7 @@ export default function AdminScreen() {
                 <Text style={styles.caixaMenuText}>Abrir Caixa</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.caixaMenuItem}
                 onPress={() => {
                   setShowCaixaMenu(false);
@@ -1337,7 +1344,7 @@ export default function AdminScreen() {
                 <Text style={styles.caixaMenuText}>Sangria / Reforço</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.caixaMenuItem}
                 onPress={() => {
                   setShowCaixaMenu(false);
@@ -1348,7 +1355,7 @@ export default function AdminScreen() {
                 <Text style={styles.caixaMenuText}>Fechar Caixa</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.caixaMenuItem}
                 onPress={() => {
                   setShowCaixaMenu(false);
@@ -1364,9 +1371,9 @@ export default function AdminScreen() {
       </Modal>
 
       {/* Modal Abrir Caixa */}
-      <Modal 
-        visible={showCaixaAbertura} 
-        animationType="slide" 
+      <Modal
+        visible={showCaixaAbertura}
+        animationType="slide"
         onRequestClose={() => setShowCaixaAbertura(false)}
         statusBarTranslucent={true}
         hardwareAccelerated={true}
@@ -1382,9 +1389,9 @@ export default function AdminScreen() {
       </Modal>
 
       {/* Modal Sangria/Reforço */}
-      <Modal 
-        visible={showCaixaOperacoes} 
-        animationType="slide" 
+      <Modal
+        visible={showCaixaOperacoes}
+        animationType="slide"
         onRequestClose={() => setShowCaixaOperacoes(false)}
         statusBarTranslucent={true}
         hardwareAccelerated={true}
@@ -1400,9 +1407,9 @@ export default function AdminScreen() {
       </Modal>
 
       {/* Modal Fechar Caixa */}
-      <Modal 
-        visible={showCaixaFechamento} 
-        animationType="slide" 
+      <Modal
+        visible={showCaixaFechamento}
+        animationType="slide"
         onRequestClose={() => setShowCaixaFechamento(false)}
         statusBarTranslucent={true}
         hardwareAccelerated={true}
@@ -1418,9 +1425,9 @@ export default function AdminScreen() {
       </Modal>
 
       {/* Modal Histórico Caixas */}
-      <Modal 
-        visible={showCaixaHistorico} 
-        animationType="slide" 
+      <Modal
+        visible={showCaixaHistorico}
+        animationType="slide"
         onRequestClose={() => setShowCaixaHistorico(false)}
         statusBarTranslucent={true}
         hardwareAccelerated={true}
@@ -1436,9 +1443,9 @@ export default function AdminScreen() {
       </Modal>
 
       {/* Modal Visualização de Comandas */}
-      <Modal 
-        visible={showComandasVisualizacao} 
-        animationType="slide" 
+      <Modal
+        visible={showComandasVisualizacao}
+        animationType="slide"
         onRequestClose={() => setShowComandasVisualizacao(false)}
       >
         <View style={{ flex: 1, backgroundColor: '#F5F1E8' }}>
@@ -1452,9 +1459,9 @@ export default function AdminScreen() {
       </Modal>
 
       {/* Modal Gerenciar Cardápio */}
-      <Modal 
-        visible={showGerenciarCardapio} 
-        animationType="slide" 
+      <Modal
+        visible={showGerenciarCardapio}
+        animationType="slide"
         onRequestClose={() => setShowGerenciarCardapio(false)}
       >
         <View style={{ flex: 1, backgroundColor: '#F5F1E8' }}>
@@ -1468,9 +1475,9 @@ export default function AdminScreen() {
       </Modal>
 
       {/* Modal Gerenciar Estoque */}
-      <Modal 
-        visible={showEstoque} 
-        animationType="slide" 
+      <Modal
+        visible={showEstoque}
+        animationType="slide"
         onRequestClose={() => setShowEstoque(false)}
       >
         <View style={{ flex: 1, backgroundColor: '#F5F1E8' }}>
@@ -1484,14 +1491,23 @@ export default function AdminScreen() {
       </Modal>
 
       {/* Modal Configurar Impressora */}
-      <Modal 
-        visible={showPrinterConfig} 
-        animationType="slide" 
+      <Modal
+        visible={showPrinterConfig}
+        animationType="slide"
         onRequestClose={() => setShowPrinterConfig(false)}
       >
         <View style={{ flex: 1, backgroundColor: '#F5F1E8' }}>
           <PrinterConfigScreen navigation={{ goBack: () => setShowPrinterConfig(false) }} />
         </View>
+      </Modal>
+
+      {/* Modal Editar Empresa */}
+      <Modal
+        visible={showEditarEmpresa}
+        animationType="slide"
+        onRequestClose={() => setShowEditarEmpresa(false)}
+      >
+        <EditarEmpresaScreen onBack={() => setShowEditarEmpresa(false)} />
       </Modal>
 
       <StatusBar style="light" />

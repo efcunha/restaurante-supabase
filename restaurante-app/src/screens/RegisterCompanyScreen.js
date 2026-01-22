@@ -17,6 +17,8 @@ import { colors } from '../theme/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 
+import { validateCPF, validateCNPJ } from '../utils/validation';
+
 export default function RegisterCompanyScreen({ navigation }) {
   const { register } = useAuth();
   const [restaurantName, setRestaurantName] = useState('');
@@ -24,41 +26,77 @@ export default function RegisterCompanyScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [documentType, setDocumentType] = useState('cpf'); // 'cpf' | 'cnpj'
+  const [documentValue, setDocumentValue] = useState('');
   const [loading, setLoading] = useState(false);
   const [secureText, setSecureText] = useState(true);
 
+  // Formatter for display
+  const formatDocument = (text, type) => {
+    const numbers = text.replace(/\D/g, '');
+    if (type === 'cpf') {
+      return numbers
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+        .replace(/(-\d{2})\d+?$/, '$1');
+    } else {
+      return numbers
+        .replace(/^(\d{2})(\d)/, '$1.$2')
+        .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+        .replace(/\.(\d{3})(\d)/, '.$1/$2')
+        .replace(/(\d{4})(\d)/, '$1-$2')
+        .replace(/(-\d{2})\d+?$/, '$1');
+    }
+  };
+
+  const handleDocumentChange = (text) => {
+    setDocumentValue(formatDocument(text, documentType));
+  };
+
   const handleRegister = async () => {
-    if (!restaurantName || !adminName || !email || !password) {
+    if (!restaurantName || !adminName || !email || !password || !documentValue) {
       Alert.alert('Erro', 'Preencha todos os campos obrigatórios');
       return;
     }
 
     if (password !== confirmPassword) {
-        Alert.alert('Erro', 'As senhas não conferem');
-        return;
+      Alert.alert('Erro', 'As senhas não conferem');
+      return;
     }
 
     if (password.length < 6) {
-        Alert.alert('Erro', 'A senha deve ter pelo menos 6 caracteres');
-        return;
+      Alert.alert('Erro', 'A senha deve ter pelo menos 6 caracteres');
+      return;
+    }
+
+    // Validation
+    let docValidation;
+    if (documentType === 'cpf') {
+      docValidation = validateCPF(documentValue);
+    } else {
+      docValidation = validateCNPJ(documentValue);
+    }
+
+    if (!docValidation.isValid) {
+      Alert.alert('Erro', docValidation.error);
+      return;
     }
 
     try {
       setLoading(true);
 
       const emailSanitized = email.toLowerCase().trim();
-      const passwordSanitized = password.trim(); // Optional: trim password if you want to forbid leading/trailing spaces? Usually better leave password raw but maybe user added accidental space.
-      // Actually standard practice: trim email, keep password raw. But user might have added space on mobile keyboard.
-      // Let's only trim email for now.
-      
-      
+      const passwordSanitized = password.trim();
+
+
       // 1. Create Auth User via Context (prevents auto-logout)
       const result = await register(emailSanitized, passwordSanitized);
-      
+
       if (!result.success) {
         throw result.error;
       }
-      
+
       const user = result.user;
 
       // 2. Create Company Document
@@ -71,7 +109,9 @@ export default function RegisterCompanyScreen({ navigation }) {
         createdAt: serverTimestamp(),
         plan: 'free',
         active: true,
-        createdBy: user.uid
+        createdBy: user.uid,
+        documentType: documentType,
+        document: docValidation.value // Clean value (numbers only)
       });
 
       // 3. Create User Document linked to Company
@@ -92,9 +132,9 @@ export default function RegisterCompanyScreen({ navigation }) {
       // But for now, let's just alert success. The AuthContext listener *might* kick in
       // but without isManualLogin=true (wait, we set it true in register!), it would survive.
       // However logic in onAuthStateChanged is complicated.
-      
+
       Alert.alert(
-        'Sucesso', 
+        'Sucesso',
         'Conta criada com sucesso! Faça login novamente para carregar suas permissões.',
         [{ text: 'OK', onPress: () => navigation.navigate('Login') }] // Force re-login to fetch Firestore data cleanly
       );
@@ -102,63 +142,63 @@ export default function RegisterCompanyScreen({ navigation }) {
     } catch (error) {
       // TENTATIVA DE AUTO-RECUPERAÇÃO (SELF-HEALING)
       if (error.code === 'auth/email-already-in-use') {
-          console.log('⚠️ Email já existe. Tentando verificar se é um cadastro incompleto...');
-          try {
-              // Tenta logar com a senha fornecida
-              const { signInWithEmailAndPassword } = require('firebase/auth');
-              const userCredential = await signInWithEmailAndPassword(auth, emailSanitized, passwordSanitized);
-              const user = userCredential.user;
-              
-              // Verifica se já tem dados no Firestore
-              const { getDoc } = require('firebase/firestore');
-              const userDocRef = doc(db, 'users', user.uid);
-              const userDocSnap = await getDoc(userDocRef);
-              
-              if (!userDocSnap.exists()) {
-                  console.log('🛠️ Cadastro incompleto detectado. Recuperando...');
-                  
-                  // REPETE A CRIAÇÃO DE DADOS (Cópia da lógica acima)
-                  const companyRef = doc(collection(db, 'companies'));
-                  const companyId = companyRef.id;
+        console.log('⚠️ Email já existe. Tentando verificar se é um cadastro incompleto...');
+        try {
+          // Tenta logar com a senha fornecida
+          const { signInWithEmailAndPassword } = require('firebase/auth');
+          const userCredential = await signInWithEmailAndPassword(auth, emailSanitized, passwordSanitized);
+          const user = userCredential.user;
 
-                  await setDoc(companyRef, {
-                    name: restaurantName,
-                    createdAt: serverTimestamp(),
-                    plan: 'free',
-                    active: true,
-                    createdBy: user.uid
-                  });
+          // Verifica se já tem dados no Firestore
+          const { getDoc } = require('firebase/firestore');
+          const userDocRef = doc(db, 'users', user.uid);
+          const userDocSnap = await getDoc(userDocRef);
 
-                  await setDoc(userDocRef, {
-                    name: adminName,
-                    email: emailSanitized,
-                    role: 'admin',
-                    funcao: 'admin',
-                    companyId: companyId,
-                    createdAt: serverTimestamp(),
-                    active: true
-                  });
-                  
-                  Alert.alert(
-                    'Cadastro Recuperado', 
-                    'Identificamos que seu cadastro anterior foi interrompido. Finalizamos ele agora!\n\nFaça login para entrar.',
-                    [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
-                  );
-                  return; // Sair com sucesso
-              } else {
-                  Alert.alert('Aviso', 'Este email já está cadastrado e ativo. Por favor, faça login.');
-                  return;
-              }
-          } catch (loginError) {
-              // Se a senha estiver errada ou outro erro de login, cai aqui
-              console.error('Erro na recuperação:', loginError);
-              if (loginError.code === 'auth/wrong-password') {
-                  Alert.alert('Erro', 'Este email já está cadastrado, mas a senha informada está incorreta.');
-              } else {
-                  Alert.alert('Erro', 'Email já cadastrado. Tente fazer login ou usar outro email.');
-              }
-              return;
+          if (!userDocSnap.exists()) {
+            console.log('🛠️ Cadastro incompleto detectado. Recuperando...');
+
+            // REPETE A CRIAÇÃO DE DADOS (Cópia da lógica acima)
+            const companyRef = doc(collection(db, 'companies'));
+            const companyId = companyRef.id;
+
+            await setDoc(companyRef, {
+              name: restaurantName,
+              createdAt: serverTimestamp(),
+              plan: 'free',
+              active: true,
+              createdBy: user.uid
+            });
+
+            await setDoc(userDocRef, {
+              name: adminName,
+              email: emailSanitized,
+              role: 'admin',
+              funcao: 'admin',
+              companyId: companyId,
+              createdAt: serverTimestamp(),
+              active: true
+            });
+
+            Alert.alert(
+              'Cadastro Recuperado',
+              'Identificamos que seu cadastro anterior foi interrompido. Finalizamos ele agora!\n\nFaça login para entrar.',
+              [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
+            );
+            return; // Sair com sucesso
+          } else {
+            Alert.alert('Aviso', 'Este email já está cadastrado e ativo. Por favor, faça login.');
+            return;
           }
+        } catch (loginError) {
+          // Se a senha estiver errada ou outro erro de login, cai aqui
+          console.error('Erro na recuperação:', loginError);
+          if (loginError.code === 'auth/wrong-password') {
+            Alert.alert('Erro', 'Este email já está cadastrado, mas a senha informada está incorreta.');
+          } else {
+            Alert.alert('Erro', 'Email já cadastrado. Tente fazer login ou usar outro email.');
+          }
+          return;
+        }
       }
 
       console.error('Registration Error:', error);
@@ -172,83 +212,108 @@ export default function RegisterCompanyScreen({ navigation }) {
   };
 
   return (
-    <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.container}
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.container}
     >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-            <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-                <Ionicons name="arrow-back" size={24} color={colors.primary} />
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={24} color={colors.primary} />
+        </TouchableOpacity>
+
+        <View style={styles.header}>
+          <Text style={styles.title}>Crie sua conta</Text>
+          <Text style={styles.subtitle}>Gerencie seu restaurante de forma inteligente</Text>
+        </View>
+
+        <View style={styles.form}>
+          <Text style={styles.label}>Tipo de Documento</Text>
+          <View style={styles.docTypeContainer}>
+            <TouchableOpacity
+              style={[styles.docTypeBtn, documentType === 'cpf' && styles.docTypeBtnActive]}
+              onPress={() => setDocumentType('cpf')}
+            >
+              <Text style={[styles.docTypeText, documentType === 'cpf' && styles.docTypeTextActive]}>CPF</Text>
             </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.docTypeBtn, documentType === 'cnpj' && styles.docTypeBtnActive]}
+              onPress={() => setDocumentType('cnpj')}
+            >
+              <Text style={[styles.docTypeText, documentType === 'cnpj' && styles.docTypeTextActive]}>CNPJ</Text>
+            </TouchableOpacity>
+          </View>
 
-            <View style={styles.header}>
-                <Text style={styles.title}>Crie sua conta</Text>
-                <Text style={styles.subtitle}>Gerencie seu restaurante de forma inteligente</Text>
-            </View>
+          <Text style={styles.label}>{documentType === 'cpf' ? 'CPF' : 'CNPJ'}</Text>
+          <TextInput
+            style={styles.input}
+            placeholder={documentType === 'cpf' ? '000.000.000-00' : '00.000.000/0000-00'}
+            value={documentValue}
+            onChangeText={handleDocumentChange}
+            keyboardType="numeric"
+          />
 
-            <View style={styles.form}>
-                <Text style={styles.label}>Nome do Restaurante</Text>
-                <TextInput
-                    style={styles.input}
-                    placeholder="Ex: Espetinho do Zé"
-                    value={restaurantName}
-                    onChangeText={setRestaurantName}
-                />
+          <Text style={styles.label}>Nome do Restaurante</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Ex: Espetinho do Zé"
+            value={restaurantName}
+            onChangeText={setRestaurantName}
+          />
 
-                <Text style={styles.label}>Seu Nome (Administrador)</Text>
-                <TextInput
-                    style={styles.input}
-                    placeholder="Ex: José Silva"
-                    value={adminName}
-                    onChangeText={setAdminName}
-                />
+          <Text style={styles.label}>Seu Nome (Administrador)</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Ex: José Silva"
+            value={adminName}
+            onChangeText={setAdminName}
+          />
 
-                <Text style={styles.label}>Email</Text>
-                <TextInput
-                    style={styles.input}
-                    placeholder="seu@email.com"
-                    value={email}
-                    onChangeText={setEmail}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                />
+          <Text style={styles.label}>Email</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="seu@email.com"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
 
-                <Text style={styles.label}>Senha</Text>
-                <View style={styles.passwordContainer}>
-                    <TextInput
-                        style={styles.inputPassword}
-                        placeholder="Mínimo 6 caracteres"
-                        value={password}
-                        onChangeText={setPassword}
-                        secureTextEntry={secureText}
-                    />
-                    <TouchableOpacity onPress={() => setSecureText(!secureText)} style={styles.eyeIcon}>
-                        <Ionicons name={secureText ? "eye-off" : "eye"} size={24} color="#999" />
-                    </TouchableOpacity>
-                </View>
+          <Text style={styles.label}>Senha</Text>
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.inputPassword}
+              placeholder="Mínimo 6 caracteres"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={secureText}
+            />
+            <TouchableOpacity onPress={() => setSecureText(!secureText)} style={styles.eyeIcon}>
+              <Ionicons name={secureText ? "eye-off" : "eye"} size={24} color="#999" />
+            </TouchableOpacity>
+          </View>
 
-                <Text style={styles.label}>Confirmar Senha</Text>
-                <TextInput
-                    style={styles.input}
-                    placeholder="Repita a senha"
-                    value={confirmPassword}
-                    onChangeText={setConfirmPassword}
-                    secureTextEntry={secureText}
-                />
+          <Text style={styles.label}>Confirmar Senha</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Repita a senha"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            secureTextEntry={secureText}
+          />
 
-                <TouchableOpacity 
-                    style={[styles.btn, loading && styles.btnDisabled]} 
-                    onPress={handleRegister}
-                    disabled={loading}
-                >
-                    {loading ? (
-                        <ActivityIndicator color="#FFF" />
-                    ) : (
-                        <Text style={styles.btnText}>CRIAR CONTA GRÁTIS</Text>
-                    )}
-                </TouchableOpacity>
-            </View>
-        </ScrollView>
+          <TouchableOpacity
+            style={[styles.btn, loading && styles.btnDisabled]}
+            onPress={handleRegister}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <Text style={styles.btnText}>CRIAR CONTA GRÁTIS</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -330,6 +395,31 @@ const styles = StyleSheet.create({
   },
   btnDisabled: {
     opacity: 0.7,
+  },
+  docTypeContainer: {
+    flexDirection: 'row',
+    marginBottom: 5,
+    marginTop: 5,
+  },
+  docTypeBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    backgroundColor: '#F0F0F0',
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: '#DDD'
+  },
+  docTypeBtnActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  docTypeText: {
+    color: '#666',
+    fontWeight: '600'
+  },
+  docTypeTextActive: {
+    color: '#FFF'
   },
   btnText: {
     color: '#FFF',
