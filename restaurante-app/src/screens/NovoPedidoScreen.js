@@ -181,6 +181,33 @@ const VariationRow = ({ label, qty, color, onInc, onDec, last }) => (
   </View>
 );
 
+const HeaderComponent = memo(({ clientName, setClientName }) => (
+  <View style={styles.headerForm}>
+    <Text style={styles.label}>Nome do Cliente:</Text>
+    <TextInput
+      style={styles.input}
+      placeholder="Digite o nome do cliente"
+      value={clientName}
+      onChangeText={setClientName}
+      placeholderTextColor="#999"
+    />
+  </View>
+));
+
+const FooterComponent = memo(({ selectedItems, onRemoveItem }) => (
+  <View style={styles.listFooter}>
+    {selectedItems.map((item, index) => (
+      <SelectedItem
+        key={index}
+        item={item.text}
+        price={item.price}
+        onRemove={() => onRemoveItem(item.text)}
+      />
+    ))}
+    <View style={styles.totalSpace} />
+  </View>
+));
+
 
 export default function NovoPedidoScreen() {
   const {
@@ -256,18 +283,7 @@ export default function NovoPedidoScreen() {
     );
   }
 
-  const HeaderComponent = () => (
-    <View style={styles.headerForm}>
-      <Text style={styles.label}>Nome do Cliente:</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Digite o nome do cliente"
-        value={clientName}
-        onChangeText={setClientName}
-        placeholderTextColor="#999"
-      />
-    </View>
-  );
+
 
   const renderSectionHeader = ({ section: { title } }) => (
     <Text style={styles.sectionTitle}>{title}</Text>
@@ -282,19 +298,7 @@ export default function NovoPedidoScreen() {
 
   // ...
 
-  const FooterComponent = () => (
-    <View style={styles.listFooter}>
-      {selectedItems.map((item, index) => (
-        <SelectedItem
-          key={index}
-          item={item.text}
-          price={item.price}
-          onRemove={() => handleRemoveItemAnimated(item.text)}
-        />
-      ))}
-      <View style={styles.totalSpace} />
-    </View>
-  );
+
 
   return (
     <View style={styles.container}>
@@ -316,8 +320,8 @@ export default function NovoPedidoScreen() {
         renderSectionHeader={renderSectionHeader}
         keyExtractor={(item, index) => item.name || item}
         contentContainerStyle={styles.listContent}
-        ListHeaderComponent={HeaderComponent}
-        ListFooterComponent={FooterComponent}
+        ListHeaderComponent={<HeaderComponent clientName={clientName} setClientName={setClientName} />}
+        ListFooterComponent={<FooterComponent selectedItems={selectedItems} onRemoveItem={handleRemoveItemAnimated} />}
         stickySectionHeadersEnabled={false}
       />
 
