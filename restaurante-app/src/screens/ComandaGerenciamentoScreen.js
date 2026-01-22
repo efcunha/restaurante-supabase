@@ -18,9 +18,9 @@ import PagamentosService from '../services/PagamentosService';
 import ComandasService from '../services/ComandasService';
 import PrinterService from '../services/PrinterService';
 import CaixaService from '../services/CaixaService';
-import { doc, updateDoc, writeBatch, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../config/firebaseConfig';
-import { getCompanyDoc, getCompanyCollection } from '../utils/firestoreUtils';
+import { updateDoc } from 'firebase/firestore';
+
+import { getCompanyDoc } from '../utils/firestoreUtils';
 import { LayoutAnimation, Platform, UIManager } from 'react-native';
 import PDFService from '../services/PDFService';
 
@@ -281,72 +281,7 @@ export default function ComandaGerenciamentoScreen() {
     };
   };
 
-  const handleLimparTudo = async () => {
-    console.log('[LimparTudo] Botão clicado. User:', user?.email, 'Company:', user?.companyId);
 
-    if (!user?.companyId) {
-      if (Platform.OS === 'web') {
-        window.alert('Erro: ID da empresa não encontrado. Tente sair e entrar novamente.');
-      } else {
-        Alert.alert('Erro', 'ID da empresa não encontrado. Tente sair e entrar novamente.');
-      }
-      return;
-    }
-
-    const executeClean = async () => {
-      try {
-        console.log('[LimparTudo] Iniciando limpeza...');
-        const batch = writeBatch(db);
-        const today = getTodayKey();
-        let count = 0;
-
-        // 1. Comandas
-        const qComandas = query(getCompanyCollection(user.companyId, 'comandas'), where('dateKey', '==', today));
-        const snapComandas = await getDocs(qComandas);
-        snapComandas.forEach(doc => { batch.delete(doc.ref); count++; });
-
-        // 2. Pedidos
-        const qPedidos = query(getCompanyCollection(user.companyId, 'pedidos'), where('dateKey', '==', today));
-        const snapPedidos = await getDocs(qPedidos);
-        snapPedidos.forEach(doc => { batch.delete(doc.ref); count++; });
-
-        // 3. Pagamentos
-        const qPagamentos = query(getCompanyCollection(user.companyId, 'pagamentos'), where('dateKey', '==', today));
-        const snapPagamentos = await getDocs(qPagamentos);
-        snapPagamentos.forEach(doc => { batch.delete(doc.ref); count++; });
-
-        console.log(`[LimparTudo] Deletando ${count} registros...`);
-        await batch.commit();
-        console.log('[LimparTudo] Sucesso!');
-        showToast(`Limpeza concluída! ${count} registros excluídos.`, 'success');
-        carregarComandas(true);
-      } catch (error) {
-        console.error('[LimparTudo] Erro:', error);
-        showToast('Erro ao limpar: ' + error.message, 'error');
-      }
-    };
-
-    if (Platform.OS === 'web') {
-      // WEB: Usar confirm nativo do browser pois Alert.alert do RN Web pode falhar
-      if (window.confirm('⚠️ MODO DE TESTE\n\nIsso excluirá TODAS as comandas, pedidos e pagamentos de HOJE.\n\nDeseja continuar?')) {
-        await executeClean();
-      }
-    } else {
-      // MOBILE: Usar Alert nativo
-      Alert.alert(
-        '⚠️ MODO DE TESTE',
-        'Isso excluirá TODAS as comandas, pedidos e pagamentos de HOJE.\n\nUsar APENAS para limpar dados de teste.',
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          {
-            text: 'LIMPAR TUDO AGORA',
-            style: 'destructive',
-            onPress: executeClean
-          }
-        ]
-      );
-    }
-  };
 
   const handleShare = async (comandaData) => {
     try {
@@ -392,9 +327,7 @@ export default function ComandaGerenciamentoScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Gerenciamento</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <TouchableOpacity onPress={handleLimparTudo} style={{ padding: 8, backgroundColor: '#FFE0E0', borderRadius: 8 }}>
-            <Text style={{ color: 'red', fontSize: 12, fontWeight: 'bold' }}>🗑️ LIMPAR TESTES</Text>
-          </TouchableOpacity>
+
           <Text style={styles.userInfo}>{user?.nome || user?.email}</Text>
         </View>
       </View>
