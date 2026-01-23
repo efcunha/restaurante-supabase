@@ -254,7 +254,10 @@ export default function MontagemScreen() {
               activeOpacity={0.7}
             >
               <View style={styles.orderHeader}>
-                <Text style={styles.orderNumber}>Comanda {order.comandaNumber || order.numeroComanda || '?'}</Text>
+                <Text style={styles.orderNumber}>
+                  Comanda {order.comandaNumber || order.numeroComanda || '?'}
+                  {order.mesa ? ` - Mesa ${order.mesa}` : ''}
+                </Text>
                 <Text style={styles.orderTime}>
                   {order.horarioCriacao || (order.timestamp ? new Date(order.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '--:--')}
                 </Text>

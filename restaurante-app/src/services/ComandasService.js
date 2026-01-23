@@ -13,11 +13,13 @@ const todayKey = getLocalDateKey;
 const comandaId = (dateKey, numero) => `comanda-${dateKey}-${String(numero)}`;
 
 class ComandasService {
-  async ensureComandaAberta(companyId, comandaNumber, usuarioId, usuarioNome) {
+  async ensureComandaAberta(companyId, comandaNumber, usuarioId, usuarioNome, mesa = '', cliente = '') {
     if (!companyId) throw new Error("Company ID required");
     const dateKey = todayKey();
     const id = comandaId(dateKey, comandaNumber);
     const ref = getCompanyDoc(companyId, COMANDAS_COLLECTION, id);
+
+    console.log(`[ComandasService] ensureComandaAberta #${comandaNumber} - Mesa: ${mesa}, Cliente: ${cliente}`);
 
     await runTransaction(db, async (tx) => {
       const snap = await tx.get(ref);
@@ -33,29 +35,48 @@ class ComandasService {
           dateKey,
           comandaNumber: String(comandaNumber),
           status: 'aberta',
+          mesa: mesa || '',
+          cliente: cliente || 'Não informado',
           totalConsumido: 0,
           totalPago: 0,
           saldoAberto: 0,
-          recebidoPor: [], // Lista de quem recebeu pagamentos
+          recebidoPor: [],
           abertaAt: serverTimestamp(),
           criadaEm: criadaEm.toISOString(),
-          horarioCriacao, // Horário formatado HH:MM
+          horarioCriacao,
           abertaPor: usuarioId || '',
           abertaPorNome: usuarioNome || '',
           fechadaAt: null,
           fechadaPor: null,
           atualizado: serverTimestamp(),
         });
+        console.log('[ComandasService] Nova comanda criada.');
       } else {
-        // Comanda existe - se estiver fechada, reabrir para novos pedidos
         const data = snap.data();
+        const updates = { atualizado: serverTimestamp() };
+
+        // Se estiver fechada, reabrir
         if (data.status === 'fechada') {
           console.log(`[ComandasService] 🔓 Reabrindo comanda ${comandaNumber} para novos pedidos`);
-          tx.update(ref, {
-            status: 'aberta',
-            atualizado: serverTimestamp()
-          });
+          updates.status = 'aberta';
         }
+
+        // Atualizar Mesa se fornecida
+        if (mesa && (!data.mesa || data.mesa !== mesa)) {
+          updates.mesa = mesa;
+        }
+
+        // Lógica ROBUSTA de atualização de Cliente
+        const invalidos = ['Não informado', 'Cliente Balcão', 'Cliente', '', null, undefined];
+        const clienteInformadoEhValido = cliente && !invalidos.includes(cliente);
+
+        // Permite atualizar se o novo for válido
+        if (clienteInformadoEhValido) {
+          console.log(`[ComandasService] Atualizando cliente de: "${data.cliente}" para: "${cliente}"`);
+          updates.cliente = cliente;
+        }
+
+        tx.update(ref, updates);
       }
     });
     return { id, dateKey };
@@ -72,7 +93,6 @@ class ComandasService {
       const snap = await tx.get(ref);
       if (!snap.exists()) throw new Error('Comanda não encontrada');
       const data = snap.data();
-      // Permite adicionar consumo mesmo em comanda fechada
 
       const totalAnterior = data.totalConsumido || 0;
       const novoTotal = totalAnterior + valor;

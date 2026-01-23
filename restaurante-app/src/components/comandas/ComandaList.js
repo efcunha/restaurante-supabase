@@ -20,6 +20,9 @@ const ComandaCard = memo(({ comanda, onPress }) => (
             <Text style={styles.clienteInfo}>
                 👤 {comanda.cliente !== 'Não informado' ? comanda.cliente : 'Cliente Balcão'}
             </Text>
+            {comanda.mesa ? (
+                <Text style={styles.mesaInfo}>🪑 Mesa: {comanda.mesa}</Text>
+            ) : null}
             <Text style={styles.timeInfo}>🕒 {comanda.horarioCriacao || '---'}</Text>
         </View>
 
@@ -135,6 +138,12 @@ const styles = StyleSheet.create({
     timeInfo: {
         fontSize: 14,
         color: colors.textLight,
+    },
+    mesaInfo: {
+        fontSize: 15,
+        color: colors.text,
+        fontWeight: '600',
+        marginBottom: 4,
     },
     cardFooter: {
         flexDirection: 'row',

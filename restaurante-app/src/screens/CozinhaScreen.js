@@ -51,7 +51,8 @@ export default function CozinhaScreen() {
         seenItemIds.add(item.id);
         allValidItems.push({
           ...item,
-          comandaNumber: order.comandaNumber
+          comandaNumber: order.comandaNumber,
+          mesa: order.mesa // ✅ Propagar mesa
         });
       }
     });
@@ -71,6 +72,7 @@ export default function CozinhaScreen() {
     nome: extrairNome(item.name),
     quantidade: extrairQuantidade(item.name),
     comanda: item.comandaNumber,
+    mesa: item.mesa || '', // ✅ Mapear mesa
     nomeCompleto: item.name
   }));
 
@@ -87,6 +89,7 @@ export default function CozinhaScreen() {
       grupos[caldo.nome].total += caldo.quantidade;
       grupos[caldo.nome].comandas.push({
         numero: caldo.comanda,
+        mesa: caldo.mesa,
         quantidade: caldo.quantidade
       });
     });
@@ -131,6 +134,7 @@ export default function CozinhaScreen() {
                   {grupo.comandas.map((cmd, i) => (
                     <View key={i} style={styles.comandaItem}>
                       <Text style={styles.comandaNumero}>#{cmd.numero}</Text>
+                      {cmd.mesa ? <Text style={styles.comandaNumero}> (Mesa {cmd.mesa})</Text> : null}
                       <Text style={styles.comandaQtd}>{cmd.quantidade}x</Text>
                     </View>
                   ))}

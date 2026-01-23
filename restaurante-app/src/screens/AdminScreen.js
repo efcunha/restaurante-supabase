@@ -830,7 +830,7 @@ export default function AdminScreen() {
       // Precisamos buscar pagamentos do período
       const pagamentosSnapshot = await getDocs(
         query(
-          collection(db, 'pagamentos'),
+          getCompanyCollection(user.companyId, 'pagamentos'), // ✅ CORRIGIDO: Buscar na subcoleção da empresa
           where('dateKey', '>=', dateKeyInicio),
           where('dateKey', '<=', dateKeyFim)
         )
