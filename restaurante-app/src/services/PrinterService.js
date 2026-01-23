@@ -35,7 +35,7 @@ class PrinterService {
    */
   async initialize() {
     if (this.initialized) return;
-    
+
     try {
       const config = await AsyncStorage.getItem(PRINTER_CONFIG_KEY);
       if (config) {
@@ -55,7 +55,7 @@ class PrinterService {
    */
   async autoConnect() {
     if (!this.initialized) await this.initialize();
-    
+
     if (this.savedConfig && this.isAvailable()) {
       console.log('🔄 Tentando reconexão automática com impressora:', this.savedConfig.printer.name);
       return await this.connect(this.savedConfig.printer, this.savedConfig.width);
@@ -99,13 +99,13 @@ class PrinterService {
 
     try {
       await EscPosPrinter.connect(printer.target);
-      
+
       this.connectedPrinter = printer;
       this.printerWidth = width;
-      
+
       // Salvar configuração
       await AsyncStorage.setItem(PRINTER_CONFIG_KEY, JSON.stringify({ printer, width }));
-      
+
       return true;
     } catch (error) {
       Alert.alert('Erro', 'Não foi possível conectar com a impressora.');
@@ -174,7 +174,7 @@ class PrinterService {
       Alert.alert('Não disponível', 'Impressão via Bluetooth só funciona no app mobile (Android/iOS).');
       return false;
     }
-    
+
     if (!this.connectedPrinter) {
       Alert.alert('Sem impressora', 'Conecte-se a uma impressora primeiro.');
       return false;
@@ -197,21 +197,26 @@ class PrinterService {
         heightTimes: 1
       });
       await EscPosPrinter.printText(line + '\n');
-      
+
       // Informações da comanda
       await EscPosPrinter.printText(`Comanda: ${comandaData.comandaNumber || '?'}`, {
         fontType: 1
       });
-      await EscPosPrinter.printText(`        ${comandaData.horarioCriacao || ''}\n`);
-      
+
+      if (comandaData.mesa) {
+        await EscPosPrinter.printText(`   Mesa: ${comandaData.mesa}`, { fontType: 1 });
+      }
+
+      await EscPosPrinter.printText(`\n        ${comandaData.horarioCriacao || ''}\n`);
+
       if (comandaData.cliente) {
         await EscPosPrinter.printText(`Cliente: ${comandaData.cliente}\n`);
       }
-      
+
       if (comandaData.criadoPor) {
         await EscPosPrinter.printText(`Criado por: ${comandaData.criadoPor}\n`);
       }
-      
+
       await EscPosPrinter.printText(line + '\n');
       await EscPosPrinter.printText(centerText('ITENS CONSUMIDOS') + '\n');
       await EscPosPrinter.printText(line + '\n');
@@ -220,27 +225,27 @@ class PrinterService {
       for (const item of comandaData.itens || []) {
         // Nome do item
         await EscPosPrinter.printText(`${item.quantidade || 1}x ${item.nome}\n`);
-        
+
         // Observação (se houver)
         if (item.observacao) {
           await EscPosPrinter.printText(`   (${item.observacao})\n`);
         }
-        
+
         // Valor alinhado à direita
         const valorStr = `R$ ${item.valor.toFixed(2)}`;
         const spaces = ' '.repeat(this.printerWidth - valorStr.length);
         await EscPosPrinter.printText(spaces + valorStr + '\n');
-        
+
         await EscPosPrinter.printText(dashes + '\n');
       }
 
       // Totais
       await EscPosPrinter.printText(line + '\n');
-      
+
       const totalConsumido = `R$ ${(comandaData.totalConsumido || 0).toFixed(2)}`;
       const totalPago = `R$ ${(comandaData.totalPago || 0).toFixed(2)}`;
       const saldo = `R$ ${(comandaData.saldoAberto || 0).toFixed(2)}`;
-      
+
       await EscPosPrinter.printText('TOTAL CONSUMIDO:' + ' '.repeat(this.printerWidth - 16 - totalConsumido.length) + totalConsumido + '\n', {
         fontType: 1
       });
@@ -248,12 +253,12 @@ class PrinterService {
       await EscPosPrinter.printText('SALDO DEVEDOR:' + ' '.repeat(this.printerWidth - 14 - saldo.length) + saldo + '\n', {
         fontType: 1
       });
-      
+
       await EscPosPrinter.printText(line + '\n');
       await EscPosPrinter.printText(centerText('Obrigado e Volte Sempre!') + '\n');
       await EscPosPrinter.printText(line + '\n');
       await EscPosPrinter.printText('\n\n\n');
-      
+
       // Cortar papel
       await EscPosPrinter.cutPaper();
 
@@ -289,13 +294,22 @@ class PrinterService {
         heightTimes: 2
       });
       await EscPosPrinter.printText(line + '\n');
-      
+
       // Informações
       await EscPosPrinter.printText(`Comanda: ${pedidoData.comandaNumber || '?'}\n`, {
         fontType: 1,
         widthTimes: 1,
         heightTimes: 1
       });
+
+      if (pedidoData.mesa) {
+        await EscPosPrinter.printText(`MESA: ${pedidoData.mesa}\n`, {
+          fontType: 1,
+          widthTimes: 1,
+          heightTimes: 1
+        });
+      }
+
       await EscPosPrinter.printText(`Horario: ${pedidoData.horarioCriacao || ''}\n`);
       await EscPosPrinter.printText(`Cliente: ${pedidoData.cliente || 'N/A'}\n`);
       await EscPosPrinter.printText(line + '\n');
@@ -307,7 +321,7 @@ class PrinterService {
           widthTimes: 1,
           heightTimes: 1
         });
-        
+
         if (item.observacao) {
           await EscPosPrinter.printText(`   OBS: ${item.observacao}\n`);
         }

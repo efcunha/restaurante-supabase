@@ -15,13 +15,13 @@ const CARDAPIO = {
     'Pão de Alho': 12.00,
     'Asinha': 12.00
   },
-  
+
   especiais: {
     'Carneiro': 15.00,
     'Cupim': 18.00,
     'Picanha': 20.00
   },
-  
+
   jantinhaCompleta: {
     base: 24.00,
     especiais: {
@@ -30,7 +30,7 @@ const CARDAPIO = {
       'Picanha': 36.00
     }
   },
-  
+
   jantinha1Acomp: {
     base: 20.00,
     especiais: {
@@ -39,7 +39,7 @@ const CARDAPIO = {
       'Picanha': 30.00
     }
   },
-  
+
   bebidas: {
     'Refrigerante Lata': 7.00,
     'Refrigerante 1L': 10.00,
@@ -47,13 +47,13 @@ const CARDAPIO = {
     'Água com Gás': 4.00,
     'Suco': 6.00
   },
-  
+
   caldos: {
     'Caldinho de Macaxeira': 15.00,
     'Caldo de Camarão': 15.00,
     'Caldo de Fava': 15.00
   },
-  
+
   risotos: {
     'Risoto de Camarão': 25.00,
     'Risoto de Charque': 25.00,
@@ -72,20 +72,20 @@ class OrderService {
     });
     return total;
   }
-  
+
   extractQuantity(item) {
     const match = item.match(/^(\d+)x?\s*/);
     return parseInt(match?.[1], 10) || 1;
   }
-  
+
   calculateItemPrice(item) {
     // Remover quantidade e tempero
     let itemName = item.replace(/^\d+x?\s*/, "").replace(/\s*\(.*\)$/, "").trim();
     const itemLower = itemName.toLowerCase();
-    
+
     // NOTA: Este método usa preços hardcoded para compatibilidade com código legado
     // Para preços dinâmicos do Firestore, use calculateOrderTotalFromFirestore()
-    
+
     // Caldos
     if (itemLower.includes('caldinho') || itemLower.includes('caldo')) {
       for (const [nome, preco] of Object.entries(CARDAPIO.caldos)) {
@@ -106,7 +106,7 @@ class OrderService {
     if (itemLower.includes('água') && itemLower.includes('gás')) return CARDAPIO.bebidas['Água com Gás'];
     if (itemLower.includes('água')) return CARDAPIO.bebidas['Água Mineral'];
     if (itemLower.includes('suco')) return CARDAPIO.bebidas.Suco;
-    
+
     // Jantinha Completa
     if (itemLower.includes('jantinha completa')) {
       if (itemLower.includes('carneiro')) return CARDAPIO.jantinhaCompleta.especiais.Carneiro;
@@ -114,7 +114,7 @@ class OrderService {
       if (itemLower.includes('picanha')) return CARDAPIO.jantinhaCompleta.especiais.Picanha;
       return CARDAPIO.jantinhaCompleta.base;
     }
-    
+
     // Jantinha 1 Acompanhamento
     if (itemLower.includes('jantinha') && (itemLower.includes('arroz') || itemLower.includes('macaxeira'))) {
       if (itemLower.includes('carneiro')) return CARDAPIO.jantinha1Acomp.especiais.Carneiro;
@@ -122,12 +122,12 @@ class OrderService {
       if (itemLower.includes('picanha')) return CARDAPIO.jantinha1Acomp.especiais.Picanha;
       return CARDAPIO.jantinha1Acomp.base;
     }
-    
+
     // Espetinhos Especiais
     if (itemLower.includes('carneiro')) return CARDAPIO.especiais.Carneiro;
     if (itemLower.includes('cupim')) return CARDAPIO.especiais.Cupim;
     if (itemLower.includes('picanha')) return CARDAPIO.especiais.Picanha;
-    
+
     // Espetinhos Normais
     for (const [nome, preco] of Object.entries(CARDAPIO.espetinhos)) {
       if (itemLower.includes(nome.toLowerCase())) {
@@ -142,24 +142,24 @@ class OrderService {
    * - Agora nasce com status 'churrasqueira' (visualização inicial)
    * - Montagem só registra quando transicionado explicitamente
    */
-  createOrder(orderId, clientName, items, observations, comandaNumber = '', createdBy = '', createdByName = '', totalPrice = 0, isPago = false) {
+  createOrder(orderId, clientName, items, observations, comandaNumber = '', createdBy = '', createdByName = '', totalPrice = 0, isPago = false, mesa = '') {
     const now = new Date();
     const nowISO = now.toISOString();
-    
+
     // CORREÇÃO: Usar data LOCAL para dateKey (consistente com getTodayKey)
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
     const dateKey = `${year}-${month}-${day}`;
-    
+
     const comanda = comandaNumber?.trim() || '';
     const calculatedTotal = totalPrice > 0 ? totalPrice : this.calculateOrderTotal(items);
     // Nasce em 'montagem' para aparecer em ambos painéis (churrasqueira e montagem)
     const status = 'montagem';
-    
+
     // Formatar horário de criação (HH:MM)
-    const horarioCriacao = now.toLocaleTimeString('pt-BR', { 
-      hour: '2-digit', 
+    const horarioCriacao = now.toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
       minute: '2-digit',
       timeZone: 'America/Sao_Paulo'
     });
@@ -176,6 +176,7 @@ class OrderService {
     const order = {
       id: orderId,
       client: clientName,
+      mesa: mesa?.trim() || '', // Mesa opcional
       comandaNumber: comanda,
       items,
       itemsWithStatus, // Array de objetos com status individual
@@ -239,14 +240,14 @@ class OrderService {
       throw new Error('Pedido não possui itemsWithStatus');
     }
 
-    const updatedItems = order.itemsWithStatus.map(item => 
-      item.id === itemId 
-        ? { 
-            ...item, 
-            status: newStatus, 
-            checked: newStatus === 'pronto',
-            timestamp: new Date().toISOString()
-          }
+    const updatedItems = order.itemsWithStatus.map(item =>
+      item.id === itemId
+        ? {
+          ...item,
+          status: newStatus,
+          checked: newStatus === 'pronto',
+          timestamp: new Date().toISOString()
+        }
         : item
     );
 
@@ -273,7 +274,7 @@ class OrderService {
   updateOrder(order, updatedData) {
     // Permitir atualizar isPago mesmo em pedidos prontos/montagem (para pagamento)
     const apenasIsPago = Object.keys(updatedData).length === 1 && 'isPago' in updatedData;
-    
+
     // Pode editar enquanto preparação não iniciou (timeInMontagem null) e não está pronto
     // OU se estiver apenas atualizando isPago
     if (!apenasIsPago && ((order.status === 'montagem' && order.timeInMontagem) || order.status === 'pronto')) {

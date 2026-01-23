@@ -24,6 +24,7 @@ export function useNovoPedido() {
     const [comandaNumber, setComandaNumber] = useState('');
     const [loadingComanda, setLoadingComanda] = useState(false);
     const [clientName, setClientName] = useState('');
+    const [mesa, setMesa] = useState(''); // ✅ Novo estado para Mesa
     const [observations, setObservations] = useState('');
     const [produtos, setProdutos] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -229,13 +230,15 @@ export function useNovoPedido() {
                 user?.uid || '',
                 user?.nome || user?.email || 'Garçom',
                 parseFloat(total),
-                false // isPago
+                false, // isPago
+                mesa // ✅ Passar mesa
             );
 
             showToast(`Pedido criado! Comanda ${novoNumeroComanda}`, 'success');
 
             setComandaNumber('');
             setClientName('');
+            setMesa(''); // ✅ Limpar mesa
             setObservations('');
             setProdutos({});
         } catch (error) {
@@ -265,6 +268,8 @@ export function useNovoPedido() {
         produtos,
         clientName,
         setClientName,
+        mesa,
+        setMesa,
         observations,
         setObservations,
         updateProduto,

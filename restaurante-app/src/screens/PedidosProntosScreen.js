@@ -62,6 +62,7 @@ export default function PedidosProntosScreen() {
               orderId: order.id,
               comandaNumber: order.comandaNumber || order.numeroComanda,
               client: order.client,
+              mesa: order.mesa, // ✅ Propagar mesa
               criadoPorNome: order.criadoPorNome || order.createdByName,
               orderTimestamp: order.timestamp || order.createdAt
             });
@@ -215,7 +216,10 @@ export default function PedidosProntosScreen() {
               style={styles.itemCard}
             >
               <View style={styles.itemHeader}>
-                <Text style={styles.comandaNumber}>Comanda {item.comandaNumber || '?'}</Text>
+                <Text style={styles.comandaNumber}>
+                  Comanda {item.comandaNumber || '?'}
+                  {item.mesa ? ` - Mesa ${item.mesa}` : ''}
+                </Text>
                 <Text style={styles.clientName}>{item.client}</Text>
               </View>
 

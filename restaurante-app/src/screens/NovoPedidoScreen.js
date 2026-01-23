@@ -181,16 +181,34 @@ const VariationRow = ({ label, qty, color, onInc, onDec, last }) => (
   </View>
 );
 
-const HeaderComponent = memo(({ clientName, setClientName }) => (
+const HeaderComponent = memo(({ clientName, setClientName, mesa, setMesa }) => (
   <View style={styles.headerForm}>
-    <Text style={styles.label}>Nome do Cliente:</Text>
-    <TextInput
-      style={styles.input}
-      placeholder="Digite o nome do cliente"
-      value={clientName}
-      onChangeText={setClientName}
-      placeholderTextColor="#999"
-    />
+    <View style={{ flexDirection: 'row', gap: 10 }}>
+      {/* Campo Nome do Cliente */}
+      <View style={{ flex: 1 }}>
+        <Text style={styles.label}>Nome do Cliente:</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Digite o nome"
+          value={clientName}
+          onChangeText={setClientName}
+          placeholderTextColor="#999"
+        />
+      </View>
+
+      {/* Campo Mesa (Opcional) */}
+      <View style={{ width: 80 }}>
+        <Text style={styles.label}>Mesa:</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Nº"
+          value={mesa}
+          onChangeText={setMesa}
+          placeholderTextColor="#999"
+          keyboardType="numeric"
+        />
+      </View>
+    </View>
   </View>
 ));
 
@@ -217,6 +235,8 @@ export default function NovoPedidoScreen() {
     produtos,
     clientName,
     setClientName,
+    mesa,
+    setMesa,
     updateProduto,
     total,
     selectedItems,
@@ -320,7 +340,7 @@ export default function NovoPedidoScreen() {
         renderSectionHeader={renderSectionHeader}
         keyExtractor={(item, index) => item.name || item}
         contentContainerStyle={styles.listContent}
-        ListHeaderComponent={<HeaderComponent clientName={clientName} setClientName={setClientName} />}
+        ListHeaderComponent={<HeaderComponent clientName={clientName} setClientName={setClientName} mesa={mesa} setMesa={setMesa} />}
         ListFooterComponent={<FooterComponent selectedItems={selectedItems} onRemoveItem={handleRemoveItemAnimated} />}
         stickySectionHeadersEnabled={false}
       />
@@ -373,7 +393,7 @@ const styles = StyleSheet.create({
   logoutText: { color: colors.white, fontWeight: '600' },
   listContent: { padding: 20, paddingBottom: 120 },
   headerForm: { marginBottom: 20 },
-  label: { fontSize: 14, color: colors.textLight, marginBottom: 6 },
+  label: { fontSize: 16, color: colors.text, marginBottom: 6, fontWeight: 'bold' },
   input: {
     backgroundColor: colors.white,
     borderRadius: 8,
