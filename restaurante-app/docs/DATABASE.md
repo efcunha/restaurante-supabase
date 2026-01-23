@@ -6,13 +6,36 @@ All collections are generally namespaced by `companies/{companyId}/...` to suppo
 
 ## 📂 Collections Structure
 
+The application currently uses a **Hybrid Structure** migrating towards Multi-tenancy. You will see both Root and Nested collections.
+
+### Root Collections (Global/Legacy)
+
+```
+/
+├── companies/           # Main container for multi-tenant data
+├── users/               # Application users metadata
+├── counters/            # Global counters for auto-increment IDs (e.g. comanda-counter)
+├── cardapio/            # Global/Template menu items (Legacy)
+├── funcionarios/        # Global/Template employees (Legacy)
+├── temperos/            # Global seasoning options
+└── caixas/              # Cash register records (Legacy/Root access)
+```
+
+### Nested Collections (Company-Specific)
+
+This is the target architecture for multi-tenancy. Active data should be here.
+
 ```
 companies/{companyId}/
-├── pedidos/             # Individual orders (kitchen tickets)
-├── comandas/            # Groups of orders (customer bill)
-├── pagamentos/          # Payment transaction records
-└── caixa/               # Cash register shifts (open/close)
+├── pedidos/             # Company's orders
+├── comandas/            # Company's bills
+├── pagamentos/          # Company's transactions
+├── caixas/              # Company's cash register sessions
+├── cardapio/            # Company-specific menu overrides
+└── funcionarios/        # Company-specific employees
 ```
+
+> **Note**: If you see empty collections at the root, they might be legacy artifacts. The app logic prioritizes `companies/{companyId}/...` but may fallback to root collections for compatibility.
 
 ## 📄 Data Models
 
