@@ -97,6 +97,7 @@ export function useComandaManagement() {
             const newComandas = snapshot.docs.map(doc => ({
                 comandaNumber: doc.data().comandaNumber || doc.data().numeroComanda,
                 ...doc.data(),
+                mesa: doc.data().mesa || '', // ✅ Capturar mesa no histórico
                 totalConsumido: doc.data().totalConsumido || 0,
                 status: statusTab === 'pagas' ? 'paga' : statusFirestore
             })).sort(sortComandasNumerico); // Ordenar no cliente
@@ -182,6 +183,7 @@ export function useComandaManagement() {
                     saldoAberto: 0,
                     status: 'aberta',
                     cliente: order.client || 'Não informado',
+                    mesa: order.mesa || '', // ✅ Capturar mesa do pedido
                     ultimaAtualizacao: order.createdAt,
                     criadoPorNome: order.createdByName || null,
                     horarioCriacao: order.horarioCriacao || null,
@@ -194,6 +196,11 @@ export function useComandaManagement() {
             if (order.entreguePorNome && !comandasMap[comandaNum].entregues.includes(order.entreguePorNome)) {
                 comandasMap[comandaNum].entregues.push(order.entreguePorNome);
             }
+            // Se mesa não estava definida, mas este pedido tem (ex: pedido adicionado depois), atualizar
+            if (order.mesa && !comandasMap[comandaNum].mesa) {
+                comandasMap[comandaNum].mesa = order.mesa;
+            }
+
             comandasMap[comandaNum].pedidos.push(order);
             const isPedidoPago = order.isPago === true || order.isPago === 'true' || order.isPago === 1;
             if (isPedidoPago) {
@@ -225,6 +232,12 @@ export function useComandaManagement() {
                             c.ultimoPagamentoPor = data.ultimoPagamentoPor || c.ultimoPagamentoPor;
                             c.ultimoPagamentoForma = data.ultimoPagamentoForma || c.ultimoPagamentoForma;
                             c.ultimoPagamentoEm = data.ultimoPagamentoEm || c.ultimoPagamentoEm;
+                            c.mesa = data.mesa || c.mesa; // ✅ Sincronizar mesa do documento da comanda
+
+                            // ✅ Sincronizar cliente do documento da Comanda (PREVALECE sobre o pedido)
+                            if (data.cliente && data.cliente !== 'Não informado' && data.cliente !== 'Cliente Balcão') {
+                                c.cliente = data.cliente;
+                            }
 
                             if (data.status === 'fechada') c.status = 'paga';
                             else if (data.status === 'cancelada') c.status = 'cancelada';
