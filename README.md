@@ -6,9 +6,9 @@ A complete mobile solution for restaurant management, handling everything from o
 
 Detailed documentation is available in the `docs/` folder:
 
-- [**Architecture**](docs/ARCHITECTURE.md): Code codebase organization, patterns, and state management.
-- [**Database**](docs/DATABASE.md): Firestore schema, data models, and indexing strategy.
-- [**Workflows**](docs/WORKFLOWS.md): Build instructions, deployment, and maintenance guides.
+- [**Architecture**](restaurante-app/docs/ARCHITECTURE.md): Code codebase organization, patterns, and state management.
+- [**Database**](restaurante-app/docs/DATABASE.md): Firestore schema, data models, and indexing strategy.
+- [**Workflows**](restaurante-app/docs/WORKFLOWS.md): Build instructions, deployment, and maintenance guides.
 
 ## 🚀 Quick Start
 
