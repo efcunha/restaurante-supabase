@@ -168,25 +168,25 @@ export const CardPagamentos = ({ pagamentos }) => {
           semana: semana.dinheiro || { total: 0, quantidade: 0 },
           mes: mes.dinheiro || { total: 0, quantidade: 0 },
         })}
-        
+
         <View style={styles.divider} />
-        
+
         {renderMetodo('📱', 'Pix', {
           hoje: hoje.pix || { total: 0, quantidade: 0 },
           semana: semana.pix || { total: 0, quantidade: 0 },
           mes: mes.pix || { total: 0, quantidade: 0 },
         })}
-        
+
         <View style={styles.divider} />
-        
+
         {renderMetodo('💳', 'Cartão Débito', {
           hoje: hoje.debito || { total: 0, quantidade: 0 },
           semana: semana.debito || { total: 0, quantidade: 0 },
           mes: mes.debito || { total: 0, quantidade: 0 },
         })}
-        
+
         <View style={styles.divider} />
-        
+
         {renderMetodo('💳', 'Cartão Crédito', {
           hoje: hoje.credito || { total: 0, quantidade: 0 },
           semana: semana.credito || { total: 0, quantidade: 0 },
@@ -221,7 +221,7 @@ export const EstatisticasGarcomContainer = ({ estatisticas, nomeGarcom, loading 
   const { vendas, pagamentos, comandas } = estatisticas;
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }}>
       <View style={styles.headerSection}>
         <Text style={styles.sectionTitle}>📊 Estatísticas por Garçom</Text>
       </View>
