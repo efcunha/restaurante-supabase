@@ -19,7 +19,7 @@ import BackgroundPattern from '../components/BackgroundPattern';
 
 // Componente para cada item de variação
 // Componente para cada item de variação
-function VariacaoItem({ variacao, onSalvar, onToggleStatus }) {
+function VariacaoItem({ variacao, onSalvar }) {
   const [precoTemp, setPrecoTemp] = useState(variacao.price.toString());
   const [nomeTemp, setNomeTemp] = useState(variacao.name);
 
@@ -48,22 +48,10 @@ function VariacaoItem({ variacao, onSalvar, onToggleStatus }) {
             style={styles.variacaoSalvarBtn}
             onPress={() => onSalvar(variacao, precoTemp, nomeTemp)}
           >
-            <Text style={styles.variacaoSalvarText}>✓</Text>
+            <Text style={styles.variacaoSalvarText}>Salvar</Text>
           </TouchableOpacity>
         </View>
       </View>
-
-      <TouchableOpacity
-        style={[
-          styles.variacaoStatusBtn,
-          variacao.active ? styles.variacaoStatusAtivo : styles.variacaoStatusInativo
-        ]}
-        onPress={() => onToggleStatus(variacao)}
-      >
-        <Text style={styles.variacaoStatusText}>
-          {variacao.active ? 'ATIVO' : 'INATIVO'}
-        </Text>
-      </TouchableOpacity>
     </View>
   );
 }
@@ -778,7 +766,7 @@ export default function GerenciarCardapioScreen() {
                       style={styles.deleteBtn}
                       onPress={() => excluirProduto(variacoes)}
                     >
-                      <Text style={styles.deleteBtnText}>🗑️</Text>
+                      <Text style={styles.deleteBtnText}>Excluir</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -1357,15 +1345,16 @@ const styles = StyleSheet.create({
   },
   variacaoSalvarBtn: {
     backgroundColor: '#7ED321',
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
+    marginLeft: 10,
   },
   variacaoSalvarText: {
     color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '700',
   },
   variacaoStatusBtn: {
@@ -1403,12 +1392,13 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 8,
-    minWidth: 50,
+    minWidth: 100,
     alignItems: 'center',
     justifyContent: 'center',
   },
   deleteBtnText: {
-    fontSize: 14,
+    fontSize: 12,
+    fontWeight: '700',
     color: '#FFFFFF',
   },
 });
