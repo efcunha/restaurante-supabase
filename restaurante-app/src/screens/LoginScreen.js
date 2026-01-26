@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Image, BackHandler, ScrollView, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Image, BackHandler, ScrollView, TouchableWithoutFeedback, Keyboard, useWindowDimensions } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -14,6 +14,11 @@ export default function LoginScreen({ navigation }) {
   const [senha, setSenha] = useState('');
   const [loading, setLoading] = useState(false);
   const [mostrarSenha, setMostrarSenha] = useState(false);
+
+  // Responsividade
+  const { height } = useWindowDimensions();
+  // Logo ocupa 20% da tela, máximo de 180px, mínimo de 100px
+  const logoSize = Math.min(Math.max(height * 0.20, 100), 180);
 
   // ... (useEffect kept as is)
 
@@ -82,7 +87,7 @@ export default function LoginScreen({ navigation }) {
             <View style={styles.header}>
               <Image
                 source={require('../assets/images/login.png')}
-                style={styles.logo}
+                style={[styles.logo, { width: logoSize, height: logoSize }]}
                 resizeMode="contain"
               />
             </View>
@@ -133,39 +138,38 @@ export default function LoginScreen({ navigation }) {
                   {loading ? 'ENTRANDO...' : 'ENTRAR'}
                 </Text>
               </TouchableOpacity>
-            </View>
 
-            {/* Rodapé */}
-            <TouchableOpacity
-              style={styles.forgotPasswordBtn}
-              onPress={async () => {
-                if (!email.trim()) {
-                  Alert.alert('Esqueci minha senha', 'Por favor, digite seu email no campo acima primeiro.');
-                  return;
-                }
+              <TouchableOpacity
+                style={styles.forgotPasswordBtn}
+                onPress={async () => {
+                  if (!email.trim()) {
+                    Alert.alert('Esqueci minha senha', 'Por favor, digite seu email no campo acima primeiro.');
+                    return;
+                  }
 
-                Alert.alert(
-                  'Redefinir Senha',
-                  `Enviar link de redefinição para:\n${email}?`,
-                  [
-                    { text: 'Cancelar', style: 'cancel' },
-                    {
-                      text: 'Enviar Email',
-                      onPress: async () => {
-                        try {
-                          await sendPasswordResetEmail(auth, email.trim());
-                          Alert.alert('Sucesso', '✅ Email enviado!\nVerifique sua caixa de entrada (e spam) para redefinir a senha.');
-                        } catch (error) {
-                          Alert.alert('Erro', '❌ Não foi possível enviar: ' + error.message);
+                  Alert.alert(
+                    'Redefinir Senha',
+                    `Enviar link de redefinição para:\n${email}?`,
+                    [
+                      { text: 'Cancelar', style: 'cancel' },
+                      {
+                        text: 'Enviar Email',
+                        onPress: async () => {
+                          try {
+                            await sendPasswordResetEmail(auth, email.trim());
+                            Alert.alert('Sucesso', '✅ Email enviado!\nVerifique sua caixa de entrada (e spam) para redefinir a senha.');
+                          } catch (error) {
+                            Alert.alert('Erro', '❌ Não foi possível enviar: ' + error.message);
+                          }
                         }
                       }
-                    }
-                  ]
-                );
-              }}
-            >
-              <Text style={styles.forgotPasswordText}>Esqueci minha senha</Text>
-            </TouchableOpacity>
+                    ]
+                  );
+                }}
+              >
+                <Text style={styles.forgotPasswordText}>Esqueci minha senha</Text>
+              </TouchableOpacity>
+            </View>
 
             <Text style={styles.footer}>
               Entre com seu usuário e senha{'\n'}fornecidos pelo administrador
@@ -196,17 +200,18 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
     paddingHorizontal: 25,
-    paddingTop: 40,
+    paddingTop: 10, // Menos padding no topo
     width: '100%',
   },
 
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
+    paddingBottom: 20,
   },
   exitButton: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 50 : 30,
+    top: Platform.OS === 'ios' ? 40 : 20,
     right: 20,
     width: 40,
     height: 40,
@@ -218,17 +223,17 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: 20,
-    marginTop: -20,
+    marginBottom: 10, // Menos margem
+    marginTop: 0,
   },
   logo: {
-    width: 200,
-    height: 200,
+    // Dynamic size via inline styles
+    marginBottom: 10,
   },
   form: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
-    padding: 25,
+    padding: 20, // Reduzido de 25
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.3,
@@ -239,15 +244,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#8B2F2F',
-    marginBottom: 8,
-    marginTop: 15,
+    marginBottom: 6,
+    marginTop: 10, // Menos margem
   },
   input: {
     backgroundColor: '#F5F1E8',
     borderWidth: 1,
     borderColor: '#E0D8C8',
     borderRadius: 12,
-    padding: 15,
+    padding: 12, // Menos padding interno
     fontSize: 16,
     color: '#2C2C2C',
   },
@@ -262,7 +267,7 @@ const styles = StyleSheet.create({
   },
   passwordInput: {
     flex: 1,
-    padding: 15,
+    padding: 12, // Menos padding interno
     fontSize: 16,
     color: '#2C2C2C',
   },
@@ -271,10 +276,10 @@ const styles = StyleSheet.create({
   },
   loginBtn: {
     backgroundColor: '#8B2F2F',
-    padding: 18,
+    padding: 15, // Menos padding vertical
     borderRadius: 12,
     alignItems: 'center',
-    marginTop: 25,
+    marginTop: 20,
     shadowColor: '#8B2F2F',
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.3,
@@ -293,21 +298,17 @@ const styles = StyleSheet.create({
   footer: {
     textAlign: 'center',
     color: '#FFFFFF',
-    fontSize: 13,
-    marginTop: 30,
+    fontSize: 12, // Fonte um pouco menor
+    marginTop: 20,
     opacity: 0.8,
-    opacity: 0.8,
-    lineHeight: 20,
+    lineHeight: 18,
   },
   forgotPasswordBtn: {
     marginTop: 15,
-    padding: 10,
+    padding: 5,
     alignSelf: 'center',
   },
   forgotPasswordText: {
-    color: '#D8A0A0', // Rosa claro/Vermelho desbotado para combinar com o fundo vermelho escuro ou branco
-    // Na verdade o fundo aqui é branco (dentro do form) ou vermelho (fora)?
-    // O form é branco. Então cor deve ser destaque.
     color: '#8B2F2F',
     fontSize: 14,
     textDecorationLine: 'underline',
