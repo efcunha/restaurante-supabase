@@ -30,16 +30,16 @@ export default function CaixaOperacoesScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}><Text style={styles.headerTitle}>Sangria / Reforço</Text></View>
-      <ScrollView contentContainerStyle={{ padding: 20 }}>
+      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
         <Text style={styles.section}>Reforço</Text>
         <TextInput placeholder="Valor" keyboardType="numeric" style={styles.input} value={valorReforco} onChangeText={setValorReforco} />
         <TextInput placeholder="Motivo" style={styles.input} value={motivoReforco} onChangeText={setMotivoReforco} />
         <TouchableOpacity style={styles.btn} onPress={reforco}><Text style={styles.btnText}>REGISTRAR REFORÇO</Text></TouchableOpacity>
 
-        <Text style={[styles.section,{marginTop:24}]}>Sangria</Text>
+        <Text style={[styles.section, { marginTop: 24 }]}>Sangria</Text>
         <TextInput placeholder="Valor" keyboardType="numeric" style={styles.input} value={valorSangria} onChangeText={setValorSangria} />
         <TextInput placeholder="Motivo" style={styles.input} value={motivoSangria} onChangeText={setMotivoSangria} />
-        <TouchableOpacity style={[styles.btn,{backgroundColor:'#8B2F2F'}]} onPress={sangria}><Text style={[styles.btnText,{color:'#fff'}]}>REGISTRAR SANGRIA</Text></TouchableOpacity>
+        <TouchableOpacity style={[styles.btn, { backgroundColor: '#8B2F2F' }]} onPress={sangria}><Text style={[styles.btnText, { color: '#fff' }]}>REGISTRAR SANGRIA</Text></TouchableOpacity>
       </ScrollView>
       <StatusBar style="light" />
     </View>

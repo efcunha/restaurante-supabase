@@ -19,13 +19,13 @@ export default function CaixaFechamentoScreen() {
       }
 
       const r = await CaixaService.fecharCaixa(user.companyId, user?.id, user?.nome, saldoReal);
-      
+
       const diferenca = r.diferenca;
       let mensagem = `✅ CAIXA FECHADO COM SUCESSO!\n\n`;
       mensagem += `Saldo esperado: R$ ${r.saldoEsperado.toFixed(2)}\n`;
       mensagem += `Saldo real: R$ ${r.saldoReal.toFixed(2)}\n`;
       mensagem += `Diferença: R$ ${diferenca.toFixed(2)}`;
-      
+
       if (diferenca > 0) {
         mensagem += ` (SOBRA)`;
       } else if (diferenca < 0) {
@@ -33,21 +33,21 @@ export default function CaixaFechamentoScreen() {
       } else {
         mensagem += ` (CONFERE ✓)`;
       }
-      
+
       alert(mensagem);
-      
+
       // Limpar estado
       setCaixa(null);
       setSaldoReal('');
-    } catch (e) { 
-      alert('❌ Erro: ' + e.message); 
+    } catch (e) {
+      alert('❌ Erro: ' + e.message);
     }
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.header}><Text style={styles.headerTitle}>Fechamento de Caixa</Text></View>
-      <ScrollView contentContainerStyle={{ padding: 20 }}>
+      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
         {caixa ? (
           <View style={styles.card}>
             <Text style={styles.line}>Valor inicial: R$ {Number(caixa.valorInicial || 0).toFixed(2)}</Text>
@@ -63,7 +63,7 @@ export default function CaixaFechamentoScreen() {
             <Text style={styles.line}>Crédito: R$ {Number(caixa.porForma?.credito || 0).toFixed(2)}</Text>
           </View>
         ) : (
-          <Text style={{ color:'#8B2F2F' }}>Nenhum caixa aberto.</Text>
+          <Text style={{ color: '#8B2F2F' }}>Nenhum caixa aberto.</Text>
         )}
 
         <Text style={styles.label}>Saldo real contado</Text>
@@ -85,7 +85,7 @@ const styles = StyleSheet.create({
   input: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#E0D8C8', borderRadius: 12, padding: 14, marginBottom: 20 },
   btn: { backgroundColor: '#E5B84A', padding: 16, borderRadius: 12, alignItems: 'center' },
   btnText: { color: '#2C2C2C', fontWeight: '700' },
-  card: { backgroundColor:'#fff', borderRadius:12, padding:16, borderColor:'#F0EBE0', borderWidth:1, marginBottom: 10 },
+  card: { backgroundColor: '#fff', borderRadius: 12, padding: 16, borderColor: '#F0EBE0', borderWidth: 1, marginBottom: 10 },
   line: { color: '#2C2C2C', marginBottom: 6 },
   section: { color: '#8B2F2F', fontWeight: '700', marginBottom: 8, marginTop: 8 },
 });

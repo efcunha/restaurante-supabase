@@ -547,7 +547,7 @@ export default function GerenciarCardapioScreen() {
     <View style={styles.container}>
       <BackgroundPattern />
 
-      <ScrollView style={styles.content}>
+      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Botões de ação rápida */}
 
 
