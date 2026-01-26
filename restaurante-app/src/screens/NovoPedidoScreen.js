@@ -430,6 +430,8 @@ const styles = StyleSheet.create({
   produtoInfo: { flex: 1 },
   produtoPrice: { fontSize: 17, fontWeight: '700', color: colors.primary, textAlign: 'center' },
 
+  quantityControl: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+
   // List Footer
   listFooter: { marginTop: 20 },
   selectedItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.white, borderRadius: 8, padding: 12, marginBottom: 8 },
