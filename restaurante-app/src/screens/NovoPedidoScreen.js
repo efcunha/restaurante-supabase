@@ -148,17 +148,21 @@ const StandardRow = memo(({ item, produtos, updateProduto, type }) => {
   // Simple item (Bebida/Porcao)
   const qty = produtos[item.name] || 0;
   return (
-    <View style={styles.simpleCard}>
-      <Text style={styles.simpleName}>{item.name}</Text>
-      <Text style={styles.simplePrice}>R$ {item.price.toFixed(2)}</Text>
-      <View style={styles.quantityControl}>
-        <TouchableOpacity style={[styles.roundBtn, { backgroundColor: colors.danger }]} onPress={() => updateProduto(item.name, -1)}>
-          <Text style={styles.roundBtnText}>−</Text>
-        </TouchableOpacity>
-        <Text style={styles.qtyText}>{qty}</Text>
-        <TouchableOpacity style={[styles.roundBtn, { backgroundColor: colors.success }]} onPress={() => updateProduto(item.name, 1)}>
-          <Text style={styles.roundBtnText}>+</Text>
-        </TouchableOpacity>
+    <View style={styles.verticalCard}>
+      <Text style={styles.verticalName}>{item.name}</Text>
+
+      <View style={styles.verticalControlsRow}>
+        <Text style={styles.verticalPrice}>R$ {item.price.toFixed(2)}</Text>
+
+        <View style={styles.quantityControl}>
+          <TouchableOpacity style={[styles.roundBtn, { backgroundColor: colors.danger }]} onPress={() => updateProduto(item.name, -1)}>
+            <Text style={styles.roundBtnText}>−</Text>
+          </TouchableOpacity>
+          <Text style={styles.qtyText}>{qty}</Text>
+          <TouchableOpacity style={[styles.roundBtn, { backgroundColor: colors.success }]} onPress={() => updateProduto(item.name, 1)}>
+            <Text style={styles.roundBtnText}>+</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -408,12 +412,18 @@ const styles = StyleSheet.create({
   caldoCard: { backgroundColor: colors.white, borderRadius: 12, padding: 12, marginBottom: 12, elevation: 1 },
   standardCard: { backgroundColor: colors.white, borderRadius: 12, padding: 12, marginBottom: 12, elevation: 1 },
   simpleCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, backgroundColor: colors.white, padding: 12, borderRadius: 8, elevation: 1 },
+  verticalCard: { flexDirection: 'column', marginBottom: 12, backgroundColor: colors.white, padding: 12, borderRadius: 8, elevation: 1 },
 
   produtoName: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 4, textAlign: 'center' },
   sizeTitle: { fontSize: 17, fontWeight: '700', color: colors.primary, marginTop: 8, marginBottom: 4, textAlign: 'center' },
 
   simpleName: { fontSize: 18, fontWeight: '700', color: colors.text, flex: 1 },
+  verticalName: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 8, textAlign: 'center' },
+
+  verticalControlsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 10 },
+
   simplePrice: { fontSize: 17, fontWeight: '700', color: colors.primary, marginHorizontal: 12 },
+  verticalPrice: { fontSize: 17, fontWeight: '700', color: colors.primary },
 
   // Variation Rows
   variationRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
