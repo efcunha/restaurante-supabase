@@ -21,7 +21,13 @@ serviceAccountKey.json
 *.swp
 *.DS_Store
 
+
 # Build outputs (if any in root)
 build/
 dist/
 coverage/
+
+# Misc
+.firebase/
+.expo/
+*.bak
