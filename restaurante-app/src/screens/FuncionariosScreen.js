@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { criarFuncionario, listarFuncionarios, deletarFuncionario, atualizarFuncionario } from '../services/funcionarios';
 import { corrigirLu } from '../services/corrigir-funcionarios';
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { auth } from '../config/firebaseConfig';
 import { exitApp } from '../utils/appUtils';
 
 export default function FuncionariosScreen() {
@@ -104,7 +106,9 @@ export default function FuncionariosScreen() {
       limparForm();
 
       // Mensagem personalizada se foi recriado para trocar senha
-      if (result.mensagem) {
+      if (result.warning) {
+        alert(result.warning);
+      } else if (result.mensagem) {
         alert('✅ ' + result.mensagem);
       } else {
         alert(editandoFuncionario ? '✅ Funcionário atualizado com sucesso!' : '✅ Funcionário cadastrado com sucesso!');
@@ -380,6 +384,34 @@ export default function FuncionariosScreen() {
                   </TouchableOpacity>
                 ))}
               </View>
+
+              {editandoFuncionario && (
+                <TouchableOpacity
+                  style={styles.resetPasswordBtn}
+                  onPress={() => {
+                    Alert.alert(
+                      'Redefinir Senha',
+                      `Deseja enviar um email de redefinição de senha para:\n${email}?`,
+                      [
+                        { text: 'Cancelar', style: 'cancel' },
+                        {
+                          text: 'Enviar Email',
+                          onPress: async () => {
+                            try {
+                              await sendPasswordResetEmail(auth, email.trim());
+                              alert('✅ Email de redefinição enviado com sucesso!');
+                            } catch (error) {
+                              alert('Erro ao enviar: ' + error.message);
+                            }
+                          }
+                        }
+                      ]
+                    );
+                  }}
+                >
+                  <Text style={styles.resetPasswordText}>📧 Enviar Email de Redefinição de Senha</Text>
+                </TouchableOpacity>
+              )}
             </ScrollView>
 
             <View style={styles.modalButtons}>
@@ -798,5 +830,20 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '700',
+  },
+  resetPasswordBtn: {
+    marginTop: 20,
+    backgroundColor: '#E3F2FD',
+    padding: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#4A90E2',
+    borderStyle: 'dashed',
+  },
+  resetPasswordText: {
+    color: '#3498DB',
+    fontWeight: '600',
+    fontSize: 14,
   },
 });
