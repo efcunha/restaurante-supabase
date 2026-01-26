@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { Ionicons } from '@expo/vector-icons';
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { auth } from '../config/firebaseConfig';
 
 export default function LoginScreen({ navigation }) {
   const { login } = useAuth();
@@ -134,17 +136,48 @@ export default function LoginScreen({ navigation }) {
             </View>
 
             {/* Rodapé */}
+            <TouchableOpacity
+              style={styles.forgotPasswordBtn}
+              onPress={async () => {
+                if (!email.trim()) {
+                  Alert.alert('Esqueci minha senha', 'Por favor, digite seu email no campo acima primeiro.');
+                  return;
+                }
+
+                Alert.alert(
+                  'Redefinir Senha',
+                  `Enviar link de redefinição para:\n${email}?`,
+                  [
+                    { text: 'Cancelar', style: 'cancel' },
+                    {
+                      text: 'Enviar Email',
+                      onPress: async () => {
+                        try {
+                          await sendPasswordResetEmail(auth, email.trim());
+                          Alert.alert('Sucesso', '✅ Email enviado!\nVerifique sua caixa de entrada (e spam) para redefinir a senha.');
+                        } catch (error) {
+                          Alert.alert('Erro', '❌ Não foi possível enviar: ' + error.message);
+                        }
+                      }
+                    }
+                  ]
+                );
+              }}
+            >
+              <Text style={styles.forgotPasswordText}>Esqueci minha senha</Text>
+            </TouchableOpacity>
+
             <Text style={styles.footer}>
               Entre com seu usuário e senha{'\n'}fornecidos pelo administrador
             </Text>
 
-            <TouchableOpacity 
-                style={{ marginTop: 20, padding: 10 }}
-                onPress={() => navigation.navigate('Register')}
+            <TouchableOpacity
+              style={{ marginTop: 20, padding: 10 }}
+              onPress={() => navigation.navigate('Register')}
             >
-                <Text style={{ color: '#FFF', textAlign: 'center', textDecorationLine: 'underline' }}>
-                    Não tem uma conta? Cadastre seu restaurante
-                </Text>
+              <Text style={{ color: '#FFF', textAlign: 'center', textDecorationLine: 'underline' }}>
+                Não tem uma conta? Cadastre seu restaurante
+              </Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -263,6 +296,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 30,
     opacity: 0.8,
+    opacity: 0.8,
     lineHeight: 20,
+  },
+  forgotPasswordBtn: {
+    marginTop: 15,
+    padding: 10,
+    alignSelf: 'center',
+  },
+  forgotPasswordText: {
+    color: '#D8A0A0', // Rosa claro/Vermelho desbotado para combinar com o fundo vermelho escuro ou branco
+    // Na verdade o fundo aqui é branco (dentro do form) ou vermelho (fora)?
+    // O form é branco. Então cor deve ser destaque.
+    color: '#8B2F2F',
+    fontSize: 14,
+    textDecorationLine: 'underline',
+    fontWeight: '600',
   },
 });
