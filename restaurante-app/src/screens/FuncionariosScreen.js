@@ -232,7 +232,7 @@ export default function FuncionariosScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content}>
+      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Botão Adicionar */}
         <TouchableOpacity
           style={styles.addButton}

@@ -10,7 +10,7 @@ export default function EstoqueScreen() {
   const [itensEstoque, setItensEstoque] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  
+
   // Form states
   const [nomeItem, setNomeItem] = useState('');
   const [quantidade, setQuantidade] = useState('');
@@ -166,12 +166,12 @@ export default function EstoqueScreen() {
   return (
     <View style={styles.container}>
       <BackgroundPattern />
-      
+
       <View style={styles.header}>
         <Text style={styles.headerTitle}>📦 Gerenciar Estoque</Text>
       </View>
 
-      <ScrollView style={styles.content}>
+      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Categorias */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriasScroll}>
           {categorias.map(cat => (
@@ -225,7 +225,7 @@ export default function EstoqueScreen() {
                 onChangeText={setQuantidade}
                 placeholderTextColor="#999"
               />
-              
+
               <View style={styles.unidadeContainer}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   {unidades.map(un => (
@@ -317,11 +317,11 @@ export default function EstoqueScreen() {
                   >
                     <Text style={styles.btnAjusteText}>−</Text>
                   </TouchableOpacity>
-                  
+
                   <Text style={styles.quantidadeText}>
                     {item.quantidade} {item.unidade}
                   </Text>
-                  
+
                   <TouchableOpacity
                     style={styles.btnAjuste}
                     onPress={() => ajustarQuantidade(item.id, item.nome, item.quantidade, 1)}
@@ -348,7 +348,7 @@ export default function EstoqueScreen() {
                 >
                   <Text style={styles.btnText}>✏️ Editar</Text>
                 </TouchableOpacity>
-                
+
                 <TouchableOpacity
                   style={styles.btnDeletar}
                   onPress={() => deletarItem(item.id, item.nome)}

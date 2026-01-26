@@ -154,24 +154,34 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('[Auth] ❌ Erro no login:', error);
       isManualLoginRef.current = false;
-      let errorMessage = 'Erro ao fazer login';
-      let errorDetails = '';
 
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-        errorMessage = 'Email ou senha incorretos';
-      } else if (error.code === 'auth/invalid-email') {
-        errorMessage = 'Email inválido';
+      let message = 'Ocorreu um erro ao fazer login.';
+
+      // Mapeamento de erros comuns do Firebase para mensagens amigáveis
+      const errorMessages = {
+        'auth/invalid-credential': 'Email ou senha incorretos.',
+        'auth/user-not-found': 'Email ou senha incorretos.',
+        'auth/wrong-password': 'Email ou senha incorretos.',
+        'auth/invalid-email': 'O endereço de email é inválido.',
+        'auth/too-many-requests': 'Muitas tentativas incorretas. Tente novamente mais tarde.',
+        'auth/user-disabled': 'Esta conta foi desativada.',
+        'auth/network-request-failed': 'Verifique sua conexão com a internet.'
+      };
+
+      if (errorMessages[error.code]) {
+        message = errorMessages[error.code];
       } else if (error.code) {
-        errorMessage = `Código: ${error.code}`;
-        errorDetails = error.message || 'Sem detalhes';
+        // Para outros erros, mostra uma mensagem genérica com o código
+        message = `Erro não esperado (${error.code})`;
       } else {
-        errorDetails = error.message || error.toString();
+        message = error.message || 'Erro desconhecido.';
       }
 
       Alert.alert(
-        'Erro no login',
-        errorDetails ? `${errorMessage}\n\n${errorDetails}` : errorMessage
+        'Falha no Login',
+        message
       );
+
       setLoading(false);
       return false;
     }

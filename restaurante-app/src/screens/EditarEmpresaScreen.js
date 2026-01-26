@@ -172,7 +172,7 @@ export default function EditarEmpresaScreen({ onBack }) {
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={styles.content}
             >
-                <ScrollView contentContainerStyle={styles.scrollContent}>
+                <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}>
                     <View style={styles.card}>
                         <Text style={styles.sectionTitle}>Informações Básicas</Text>
 
