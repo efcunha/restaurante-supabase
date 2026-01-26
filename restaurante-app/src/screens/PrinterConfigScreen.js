@@ -45,7 +45,7 @@ export default function PrinterConfigScreen({ navigation }) {
     try {
       const foundPrinters = await PrinterService.listPrinters();
       setPrinters(foundPrinters);
-      
+
       if (foundPrinters.length === 0) {
         Alert.alert(
           'Nenhuma impressora',
@@ -117,7 +117,7 @@ export default function PrinterConfigScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <BackgroundPattern />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -126,7 +126,7 @@ export default function PrinterConfigScreen({ navigation }) {
         <Text style={styles.headerTitle}>Configurar Impressora</Text>
       </View>
 
-      <ScrollView style={styles.content}>
+      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Status da Conexão */}
         <View style={styles.statusCard}>
           <Text style={styles.cardTitle}>Status da Conexão</Text>

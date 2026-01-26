@@ -12,11 +12,11 @@ export default function CaixaAberturaScreen() {
 
   const abrirCaixa = async () => {
     if (loading) return;
-    
+
     try {
       const userId = user?.id || user?.uid || '';
       const userName = user?.nome || user?.name || 'Usuário';
-      
+
       if (!userId) {
         Alert.alert('Erro', 'Faça login novamente.');
         return;
@@ -31,7 +31,7 @@ export default function CaixaAberturaScreen() {
       setLoading(true);
       await CaixaService.abrirCaixa(user.companyId, valor, userId, userName);
       Alert.alert('Sucesso', `Caixa aberto!\nValor: R$ ${valor.toFixed(2)}`);
-      
+
     } catch (e) {
       Alert.alert('Erro', e?.message || 'Erro ao abrir caixa.');
     } finally {
@@ -44,19 +44,19 @@ export default function CaixaAberturaScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Abertura de Caixa</Text>
       </View>
-      <ScrollView contentContainerStyle={{ padding: 20 }}>
+      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
         <Text style={styles.label}>Valor inicial (R$)</Text>
-        <TextInput 
-          style={styles.input} 
-          keyboardType="numeric" 
-          value={valorInicial} 
+        <TextInput
+          style={styles.input}
+          keyboardType="numeric"
+          value={valorInicial}
           onChangeText={setValorInicial}
           placeholder="0.00"
           placeholderTextColor="#999"
         />
-        <TouchableOpacity 
-          style={[styles.btn, loading && styles.btnDisabled]} 
-          onPress={abrirCaixa} 
+        <TouchableOpacity
+          style={[styles.btn, loading && styles.btnDisabled]}
+          onPress={abrirCaixa}
           disabled={loading}
         >
           <Text style={styles.btnText}>
