@@ -18,13 +18,23 @@ import { getCompanyCollection, getCompanyDoc } from '../utils/firestoreUtils';
 import BackgroundPattern from '../components/BackgroundPattern';
 
 // Componente para cada item de variação
+// Componente para cada item de variação
 function VariacaoItem({ variacao, onSalvar, onToggleStatus }) {
   const [precoTemp, setPrecoTemp] = useState(variacao.price.toString());
+  const [nomeTemp, setNomeTemp] = useState(variacao.name);
 
   return (
     <View style={styles.variacaoItem}>
       <View style={styles.variacaoInfo}>
-        <Text style={styles.variacaoNome}>{variacao.name}</Text>
+
+        {/* Campo para editar o nome da variação */}
+        <TextInput
+          style={styles.variacaoNomeInput}
+          value={nomeTemp}
+          onChangeText={setNomeTemp}
+          placeholder="Nome do item"
+        />
+
         <View style={styles.variacaoPrecoContainer}>
           <Text style={styles.variacaoLabel}>R$</Text>
           <TextInput
@@ -36,7 +46,7 @@ function VariacaoItem({ variacao, onSalvar, onToggleStatus }) {
           />
           <TouchableOpacity
             style={styles.variacaoSalvarBtn}
-            onPress={() => onSalvar(variacao, precoTemp)}
+            onPress={() => onSalvar(variacao, precoTemp, nomeTemp)}
           >
             <Text style={styles.variacaoSalvarText}>✓</Text>
           </TouchableOpacity>
@@ -440,7 +450,7 @@ export default function GerenciarCardapioScreen() {
   };
 
   // Função para salvar alteração de uma variação
-  const salvarVariacao = async (produto, novoPreco) => {
+  const salvarVariacao = async (produto, novoPreco, novoNome) => {
     try {
       const precoNum = parseFloat(novoPreco);
       if (isNaN(precoNum) || precoNum <= 0) {
@@ -448,21 +458,28 @@ export default function GerenciarCardapioScreen() {
         return;
       }
 
+      if (!novoNome || !novoNome.trim()) {
+        window.alert('Nome inválido');
+        return;
+      }
+
       await updateDoc(getCompanyDoc(user.companyId, 'cardapio', produto.id), {
-        price: precoNum
+        price: precoNum,
+        name: novoNome.trim()
       });
 
-      // console.log(`✅ Preço de ${produto.name} atualizado`);
+      // console.log(`✅ Produto ${produto.name} atualizado`);
       carregarProdutos();
 
       // Atualizar a lista de variações no modal
       const variacoesAtualizadas = variacoesSelecionadas.map(v =>
-        v.id === produto.id ? { ...v, price: precoNum } : v
+        v.id === produto.id ? { ...v, price: precoNum, name: novoNome.trim() } : v
       );
       setVariacoesSelecionadas(variacoesAtualizadas);
+      window.alert('Alterações salvas!');
     } catch (error) {
-      console.error('❌ Erro ao atualizar preço:', error);
-      window.alert('Erro ao atualizar o preço');
+      console.error('❌ Erro ao atualizar:', error);
+      window.alert('Erro ao atualizar o item');
     }
   };
 
@@ -493,47 +510,47 @@ export default function GerenciarCardapioScreen() {
 
   const excluirProduto = async (variacoes) => {
     const nomeBase = getNomeBase(variacoes[0].name);
-    
+
     // Check compatibility with web and mobile for confirm
     let confirmed = false;
     if (Platform.OS === 'web') {
-        confirmed = window.confirm(`Tem certeza que deseja excluir "${nomeBase}" e todas as suas variações?`);
+      confirmed = window.confirm(`Tem certeza que deseja excluir "${nomeBase}" e todas as suas variações?`);
     } else {
-        await new Promise((resolve) => {
-            Alert.alert(
-                'Confirmar Exclusão',
-                `Tem certeza que deseja excluir "${nomeBase}"?`,
-                [
-                    { text: 'Cancelar', onPress: () => resolve(false), style: 'cancel' },
-                    { text: 'Excluir', onPress: () => resolve(true), style: 'destructive' },
-                ]
-            );
-        }).then(res => confirmed = res);
+      await new Promise((resolve) => {
+        Alert.alert(
+          'Confirmar Exclusão',
+          `Tem certeza que deseja excluir "${nomeBase}"?`,
+          [
+            { text: 'Cancelar', onPress: () => resolve(false), style: 'cancel' },
+            { text: 'Excluir', onPress: () => resolve(true), style: 'destructive' },
+          ]
+        );
+      }).then(res => confirmed = res);
     }
 
     if (!confirmed) return;
 
     try {
-        setLoading(true);
-        const batch = writeBatch(db);
-        
-        variacoes.forEach(v => {
-            batch.delete(getCompanyDoc(user.companyId, 'cardapio', v.id));
-        });
+      setLoading(true);
+      const batch = writeBatch(db);
 
-        await batch.commit();
-        // console.log('✅ Produto excluído');
-        
-        if (Platform.OS !== 'web') {
-            Alert.alert('Sucesso', 'Produto excluído com sucesso');
-        }
-        
-        carregarProdutos();
+      variacoes.forEach(v => {
+        batch.delete(getCompanyDoc(user.companyId, 'cardapio', v.id));
+      });
+
+      await batch.commit();
+      // console.log('✅ Produto excluído');
+
+      if (Platform.OS !== 'web') {
+        Alert.alert('Sucesso', 'Produto excluído com sucesso');
+      }
+
+      carregarProdutos();
     } catch (error) {
-        console.error('❌ Erro ao excluir:', error);
-        Alert.alert('Erro', 'Não foi possível excluir o produto');
+      console.error('❌ Erro ao excluir:', error);
+      Alert.alert('Erro', 'Não foi possível excluir o produto');
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -729,7 +746,7 @@ export default function GerenciarCardapioScreen() {
                     <View style={styles.produtoInfo}>
                       <Text style={styles.produtoNome}>{nomeBase}</Text>
                       <Text style={styles.produtoVariacoes}>
-                        {variacoes.length === 1 
+                        {variacoes.length === 1
                           ? `R$ ${Number(primeiraVariacao.price).toFixed(2)}`
                           : `${variacoes.length} variações`
                         }
@@ -1127,8 +1144,10 @@ const styles = StyleSheet.create({
   },
   produtoActions: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 8,
     justifyContent: 'flex-end',
+    flexWrap: 'wrap', // Allow wrapping if screen is narrow
+    maxWidth: '50%',  // Limit width so it doesn't crush the name too much
   },
   statusBtn: {
     paddingVertical: 8,
@@ -1305,6 +1324,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#2C2C2C',
     marginBottom: 8,
+  },
+  variacaoNomeInput: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#2C2C2C',
+    marginBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ccc',
+    paddingVertical: 4,
+    minWidth: 150,
   },
   variacaoPrecoContainer: {
     flexDirection: 'row',
