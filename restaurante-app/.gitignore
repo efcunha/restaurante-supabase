@@ -33,10 +33,13 @@ DerivedData/
 serviceAccountKey.json
 firebase-adminsdk-*.json
 
-# Environment
+# Environment keys
 .env
-.env.*
-!.env.example
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+serviceAccountKey.json
 
 # IDE/Editor
 .idea/
@@ -48,10 +51,18 @@ Thumbs.db
 
 # Logs
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # Build
 dist/
 *.tsbuildinfo
+# Build outputs (if any in root)
+build/
+dist/
+coverage/
+dataconnect/
 
 # Temporary
 *.tmp
@@ -78,3 +89,9 @@ GoogleService-Info.plist
 ehthumbs.db
 __tests__*
 *__tests__*
+
+# Misc
+.firebase/
+.gemini/
+.expo/
+*.bak
