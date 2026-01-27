@@ -12,7 +12,8 @@ export default function AddItemsModal({ visible, onClose, onConfirm, comandaNumb
     const [itensSelecionados, setItensSelecionados] = useState([]);
     const [showPontoModal, setShowPontoModal] = useState(false);
     const [espetoParaPonto, setEspetoParaPonto] = useState(null); // { nome, tipo }
-    const [temperos, setTemperos] = useState(['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada']);
+    const [temperosCaldos, setTemperosCaldos] = useState(['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada']);
+    const [temperosComidas, setTemperosComidas] = useState(['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada']);
 
     useEffect(() => {
         if (visible && user?.companyId) {
@@ -20,8 +21,16 @@ export default function AddItemsModal({ visible, onClose, onConfirm, comandaNumb
                 try {
                     const docRef = doc(db, 'companies', user.companyId, 'settings', 'cardapio_config');
                     const docSnap = await getDoc(docRef);
-                    if (docSnap.exists() && docSnap.data().temperos) {
-                        setTemperos(docSnap.data().temperos);
+                    if (docSnap.exists()) {
+                        const data = docSnap.data();
+                        if (data.temperosCaldos) setTemperosCaldos(data.temperosCaldos);
+                        if (data.temperosComidas) setTemperosComidas(data.temperosComidas);
+
+                        // Fallback
+                        if (!data.temperosCaldos && !data.temperosComidas && data.temperos) {
+                            setTemperosCaldos(data.temperos);
+                            setTemperosComidas(data.temperos);
+                        }
                     }
                 } catch (e) { console.error('Erro ao carregar temperos', e); }
             };
@@ -37,7 +46,11 @@ export default function AddItemsModal({ visible, onClose, onConfirm, comandaNumb
         const ehComida = CARDAPIO_STATIC.comidas.some(c => c.name === nome);
 
         if (ehCaldo || ehComida) {
-            setEspetoParaPonto({ nome, tipo: 'tempero' });
+            setEspetoParaPonto({
+                nome,
+                tipo: 'tempero',
+                category: ehCaldo ? 'caldo' : 'comida'
+            });
             setShowPontoModal(true);
         } else {
             const itemFormatado = tipo ? `1x ${nome} ${tipo}` : `1x ${nome}`;
@@ -133,7 +146,7 @@ export default function AddItemsModal({ visible, onClose, onConfirm, comandaNumb
                         <View style={styles.overlay}>
                             <View style={[styles.modalContainer, { maxHeight: 300 }]}>
                                 <Text style={[styles.title, { color: colors.text, marginBottom: 20 }]}>Selecione a Opção</Text>
-                                {temperos.map(opt => (
+                                {espetoParaPonto && (espetoParaPonto.category === 'caldo' ? temperosCaldos : temperosComidas).map(opt => (
                                     <TouchableOpacity
                                         key={opt}
                                         style={styles.optionBtn}
