@@ -91,8 +91,10 @@ export default function FuncionariosScreen() {
         nome,
         cpf,
         email,
+        email,
         senha,
         funcao,
+        companyId: user.companyId || (user.company && user.company.id)
       });
     }
 

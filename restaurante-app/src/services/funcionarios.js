@@ -54,6 +54,7 @@ export const criarFuncionario = async (dados) => {
       cpf: dados.cpf.trim(),
       funcao: dados.funcao,
       email: dados.email.toLowerCase().trim(),
+      companyId: dados.companyId || null, // Vínculo com a empresa
       ativo: true,
       criadoEm: new Date().toISOString(),
     };
