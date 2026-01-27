@@ -66,10 +66,8 @@ export default function GerenciarCardapioScreen() {
 
   // Estados para cadastro com variações (espetinhos)
   const [criarVariacoes, setCriarVariacoes] = useState(false);
-  const [precoSimples, setPrecoSimples] = useState('');
-  const [precoArroz, setPrecoArroz] = useState('');
-  const [precoMacaxeira, setPrecoMacaxeira] = useState('');
-  const [precoCompleto, setPrecoCompleto] = useState('');
+  const [precosVariacoes, setPrecosVariacoes] = useState({});
+  const [variacoesEspetinho, setVariacoesEspetinho] = useState(['Simples', 'com Arroz', 'com Macaxeira', 'Completo']);
 
   // Estados para listagem
   const [produtos, setProdutos] = useState([]);
@@ -91,13 +89,15 @@ export default function GerenciarCardapioScreen() {
   // Estados para Temperos/Opções
   const [temperosCaldos, setTemperosCaldos] = useState(['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada']);
   const [temperosComidas, setTemperosComidas] = useState(['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada']);
-  const [tipoTemperoAtivo, setTipoTemperoAtivo] = useState('caldos'); // 'caldos' | 'comidas'
+  const [tipoTemperoAtivo, setTipoTemperoAtivo] = useState('caldos'); // 'caldos' | 'comidas' | 'variacoes'
   const [novoTempero, setNovoTempero] = useState('');
   const [editTemperoIndex, setEditTemperoIndex] = useState(-1);
   const [loadingTemperos, setLoadingTemperos] = useState(true);
 
   const categorias = [
     { value: 'caldo', label: '🍲 Caldos' },
+    { value: 'espetinho-simples', label: '🔥 Espetinho Simples' },
+    { value: 'espetinho-especial', label: '🌟 Espetinho Especial' },
     { value: 'porcao', label: '🍟 Porção' },
     { value: 'bebida', label: '🥤 Bebida' },
     { value: 'comida', label: '🍽️ Comida' },
@@ -106,10 +106,10 @@ export default function GerenciarCardapioScreen() {
 
   useEffect(() => {
     carregarProdutos();
-    carregarTemperos();
+    carregarConfig();
   }, []);
 
-  const carregarTemperos = async () => {
+  const carregarConfig = async () => {
     if (!user?.companyId) return;
     try {
       setLoadingTemperos(true);
@@ -119,6 +119,7 @@ export default function GerenciarCardapioScreen() {
         const data = docSnap.data();
         if (data.temperosCaldos) setTemperosCaldos(data.temperosCaldos);
         if (data.temperosComidas) setTemperosComidas(data.temperosComidas);
+        if (data.variacoesEspetinho) setVariacoesEspetinho(data.variacoesEspetinho);
 
         // Legacy fallback
         if (!data.temperosCaldos && !data.temperosComidas && data.temperos) {
@@ -127,19 +128,24 @@ export default function GerenciarCardapioScreen() {
         }
       }
     } catch (e) {
-      console.error('Erro ao carregar temperos:', e);
+      console.error('Erro ao carregar configurações:', e);
     } finally {
       setLoadingTemperos(false);
     }
   };
 
-  const getListaAtiva = () => tipoTemperoAtivo === 'caldos' ? temperosCaldos : temperosComidas;
+  const getListaAtiva = () => {
+    if (tipoTemperoAtivo === 'caldos') return temperosCaldos || [];
+    if (tipoTemperoAtivo === 'comidas') return temperosComidas || [];
+    return variacoesEspetinho || [];
+  };
 
-  const salvarListas = async (novaListaCaldos, novaListaComidas) => {
+  const salvarListas = async (novaListaCaldos, novaListaComidas, novaListaVariacoes) => {
     const docRef = doc(db, 'companies', user.companyId, 'settings', 'cardapio_config');
     await setDoc(docRef, {
       temperosCaldos: novaListaCaldos !== undefined ? novaListaCaldos : temperosCaldos,
-      temperosComidas: novaListaComidas !== undefined ? novaListaComidas : temperosComidas
+      temperosComidas: novaListaComidas !== undefined ? novaListaComidas : temperosComidas,
+      variacoesEspetinho: novaListaVariacoes !== undefined ? novaListaVariacoes : variacoesEspetinho
     }, { merge: true });
   };
 
@@ -160,11 +166,16 @@ export default function GerenciarCardapioScreen() {
         novos.push(novoTempero.trim());
       }
 
-      const isCaldos = tipoTemperoAtivo === 'caldos';
-      if (isCaldos) setTemperosCaldos(novos);
-      else setTemperosComidas(novos);
-
-      await salvarListas(isCaldos ? novos : undefined, !isCaldos ? novos : undefined);
+      if (tipoTemperoAtivo === 'caldos') {
+        setTemperosCaldos(novos);
+        await salvarListas(novos, undefined, undefined);
+      } else if (tipoTemperoAtivo === 'comidas') {
+        setTemperosComidas(novos);
+        await salvarListas(undefined, novos, undefined);
+      } else {
+        setVariacoesEspetinho(novos);
+        await salvarListas(undefined, undefined, novos);
+      }
 
       setNovoTempero('');
       setEditTemperoIndex(-1);
@@ -187,14 +198,19 @@ export default function GerenciarCardapioScreen() {
 
   const removerTempero = async (index) => {
     try {
-      const isCaldos = tipoTemperoAtivo === 'caldos';
       const novos = [...getListaAtiva()];
       novos.splice(index, 1);
 
-      if (isCaldos) setTemperosCaldos(novos);
-      else setTemperosComidas(novos);
-
-      await salvarListas(isCaldos ? novos : undefined, !isCaldos ? novos : undefined);
+      if (tipoTemperoAtivo === 'caldos') {
+        setTemperosCaldos(novos);
+        await salvarListas(novos, undefined, undefined);
+      } else if (tipoTemperoAtivo === 'comidas') {
+        setTemperosComidas(novos);
+        await salvarListas(undefined, novos, undefined);
+      } else {
+        setVariacoesEspetinho(novos);
+        await salvarListas(undefined, undefined, novos);
+      }
     } catch (e) {
       Alert.alert('Erro', 'Falha ao remover item.');
     }
@@ -258,21 +274,21 @@ export default function GerenciarCardapioScreen() {
 
     // Se for espetinho e criar variações estiver marcado
     if (criarVariacoes && (categoria === 'espetinho-simples' || categoria === 'espetinho-especial')) {
-      if (!precoSimples || !precoArroz || !precoMacaxeira || !precoCompleto) {
+      // Verificar se algum preço está vazio para as variações ativas
+      const algumVazio = variacoesEspetinho.some(v => !precosVariacoes[v]);
+      if (algumVazio) {
         window.alert('Preencha todos os preços das variações');
         return;
       }
 
       try {
         setLoading(true);
-        // console.log('➕ Cadastrando produto com 4 variações:', nome);
+        // console.log('➕ Cadastrando produto com variações:', nome);
 
-        const variacoes = [
-          { nome: `${nome.trim()} Simples`, preco: parseFloat(precoSimples) },
-          { nome: `${nome.trim()} com Arroz`, preco: parseFloat(precoArroz) },
-          { nome: `${nome.trim()} com Macaxeira`, preco: parseFloat(precoMacaxeira) },
-          { nome: `${nome.trim()} Completo`, preco: parseFloat(precoCompleto) }
-        ];
+        const variacoes = variacoesEspetinho.map(v => ({
+          nome: `${nome.trim()} ${v}`,
+          preco: parseFloat(precosVariacoes[v])
+        }));
 
         const batch = writeBatch(db);
 
@@ -290,14 +306,11 @@ export default function GerenciarCardapioScreen() {
         await batch.commit();
         // console.log('✅ 4 variações cadastradas com sucesso');
 
-        window.alert(`✅ Sucesso! ${nome} cadastrado com 4 variações!`);
+        window.alert(`✅ Sucesso! ${nome} cadastrado com ${variacoes.length} variações!`);
 
         // Limpar campos
         setNome('');
-        setPrecoSimples('');
-        setPrecoArroz('');
-        setPrecoMacaxeira('');
-        setPrecoCompleto('');
+        setPrecosVariacoes({});
 
         // Recarregar lista
         carregarProdutos();
@@ -476,7 +489,7 @@ export default function GerenciarCardapioScreen() {
       // console.log('🔄 Limpando produtos duplicados...');
 
       const snapshot = await getDocs(getCompanyCollection(user.companyId, 'cardapio'));
-      const variacoes = ['Simples', 'com Arroz', 'com Macaxeira', 'Completo'];
+      const variacoes = variacoesEspetinho;
 
       let countDeletados = 0;
 
@@ -511,12 +524,11 @@ export default function GerenciarCardapioScreen() {
   // Função para extrair o nome base do produto (sem a variação)
   const getNomeBase = (nomeProduto) => {
     // Remove as variações do nome
-    return nomeProduto
-      .replace(' Simples', '')
-      .replace(' com Arroz', '')
-      .replace(' com Macaxeira', '')
-      .replace(' Completo', '')
-      .trim();
+    let nome = nomeProduto;
+    variacoesEspetinho.forEach(v => {
+      nome = nome.replace(` ${v}`, '');
+    });
+    return nome.trim();
   };
 
   // Função para agrupar produtos por nome base
@@ -711,63 +723,29 @@ export default function GerenciarCardapioScreen() {
                   {criarVariacoes && <Text style={styles.checkmark}>✓</Text>}
                 </View>
                 <Text style={styles.variacaoToggleText}>
-                  Criar 4 variações (Simples, Arroz, Macaxeira, Completo)
+                  Criar variações automáticas ({variacoesEspetinho.join(', ')})
                 </Text>
               </TouchableOpacity>
             )}
 
-            {/* Se criar variações estiver marcado, mostrar 4 campos de preço */}
+            {/* Se criar variações estiver marcado, mostrar campos de preço dinâmicos */}
             {criarVariacoes && (categoria === 'espetinho-simples' || categoria === 'espetinho-especial') ? (
               <>
                 <Text style={styles.label}>Preços das variações:</Text>
                 <View style={styles.variacoesGrid}>
-                  <View style={styles.variacaoField}>
-                    <Text style={styles.variacaoLabel}>Simples</Text>
-                    <TextInput
-                      style={styles.inputVariacao}
-                      placeholder="12.00"
-                      placeholderTextColor="#999"
-                      value={precoSimples}
-                      onChangeText={setPrecoSimples}
-                      keyboardType="numeric"
-                    />
-                  </View>
-
-                  <View style={styles.variacaoField}>
-                    <Text style={styles.variacaoLabel}>com Arroz</Text>
-                    <TextInput
-                      style={styles.inputVariacao}
-                      placeholder="20.00"
-                      placeholderTextColor="#999"
-                      value={precoArroz}
-                      onChangeText={setPrecoArroz}
-                      keyboardType="numeric"
-                    />
-                  </View>
-
-                  <View style={styles.variacaoField}>
-                    <Text style={styles.variacaoLabel}>com Macaxeira</Text>
-                    <TextInput
-                      style={styles.inputVariacao}
-                      placeholder="20.00"
-                      placeholderTextColor="#999"
-                      value={precoMacaxeira}
-                      onChangeText={setPrecoMacaxeira}
-                      keyboardType="numeric"
-                    />
-                  </View>
-
-                  <View style={styles.variacaoField}>
-                    <Text style={styles.variacaoLabel}>Completo</Text>
-                    <TextInput
-                      style={styles.inputVariacao}
-                      placeholder="24.00"
-                      placeholderTextColor="#999"
-                      value={precoCompleto}
-                      onChangeText={setPrecoCompleto}
-                      keyboardType="numeric"
-                    />
-                  </View>
+                  {variacoesEspetinho.map((variacao, idx) => (
+                    <View key={idx} style={styles.variacaoField}>
+                      <Text style={styles.variacaoLabel}>{variacao}</Text>
+                      <TextInput
+                        style={styles.inputVariacao}
+                        placeholder="0.00"
+                        placeholderTextColor="#999"
+                        value={precosVariacoes[variacao] || ''}
+                        onChangeText={(text) => setPrecosVariacoes(prev => ({ ...prev, [variacao]: text }))}
+                        keyboardType="numeric"
+                      />
+                    </View>
+                  ))}
                 </View>
               </>
             ) : (
@@ -811,12 +789,18 @@ export default function GerenciarCardapioScreen() {
               >
                 <Text style={{ fontWeight: 'bold', color: tipoTemperoAtivo === 'comidas' ? '#8B0000' : '#666' }}>🍽️ Para Comidas</Text>
               </TouchableOpacity>
+              <TouchableOpacity
+                style={{ flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 6, backgroundColor: tipoTemperoAtivo === 'variacoes' ? '#fff' : 'transparent', elevation: tipoTemperoAtivo === 'variacoes' ? 2 : 0 }}
+                onPress={() => { setTipoTemperoAtivo('variacoes'); setEditTemperoIndex(-1); setNovoTempero(''); }}
+              >
+                <Text style={{ fontWeight: 'bold', color: tipoTemperoAtivo === 'variacoes' ? '#8B0000' : '#666' }}>🍢 Variações</Text>
+              </TouchableOpacity>
             </View>
 
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <TextInput
                 style={[styles.input, { flex: 1, marginBottom: 0 }]}
-                placeholder={editTemperoIndex >= 0 ? "Editando opção..." : `Novo item para ${tipoTemperoAtivo === 'caldos' ? 'Caldos' : 'Comidas'}`}
+                placeholder={editTemperoIndex >= 0 ? "Editando opção..." : `Novo item para ${tipoTemperoAtivo === 'caldos' ? 'Caldos' : tipoTemperoAtivo === 'comidas' ? 'Comidas' : 'Variações'}`}
                 value={novoTempero}
                 onChangeText={setNovoTempero}
               />
@@ -831,7 +815,9 @@ export default function GerenciarCardapioScreen() {
             </View>
 
             <Text style={{ fontSize: 12, color: '#999', marginTop: 5, marginBottom: 10 }}>
-              Estes itens aparecerão nas opções de {tipoTemperoAtivo === 'caldos' ? 'Caldos' : 'Comidas'} no Novo Pedido.
+              {tipoTemperoAtivo === 'variacoes'
+                ? 'Estes sufixos serão usados para gerar os itens automaticamente (ex: "com Baião").'
+                : `Estes itens aparecerão nas opções de ${tipoTemperoAtivo === 'caldos' ? 'Caldos' : 'Comidas'} no Novo Pedido.`}
             </Text>
 
             {loadingTemperos ? <ActivityIndicator size="small" color="#8B2F2F" /> : (
