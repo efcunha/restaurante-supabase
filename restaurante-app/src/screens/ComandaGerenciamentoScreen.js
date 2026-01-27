@@ -12,6 +12,8 @@ import AddItemsModal from '../components/comandas/AddItemsModal';
 import { colors } from '../theme/colors';
 import { getTodayKey } from '../services/FirebaseOptimizations';
 import { CARDAPIO_STATIC, fixDecimal, calcularPrecoItem } from '../utils/orderCalculator';
+import CancelOrderModal from '../components/comandas/CancelOrderModal';
+import BackgroundPattern from '../components/BackgroundPattern';
 
 // Keep Services as they are, assume they handle their own internal logic
 import PagamentosService from '../services/PagamentosService';
@@ -32,7 +34,7 @@ if (Platform.OS === 'android') {
 }
 
 export default function ComandaGerenciamentoScreen() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { addOrder } = useOrders();
   const {
     activeTab, setActiveTab,
@@ -43,11 +45,21 @@ export default function ComandaGerenciamentoScreen() {
   } = useComandaManagement();
 
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showCancelModal, setShowCancelModal] = useState(false); // [NEW] Modal state
-  const [cancelReason, setCancelReason] = useState(''); // [NEW] Reason state
+  const [showCancelModal, setShowCancelModal] = useState(false);
   const { showToast } = useToast();
 
   // --- Actions ---
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Sair',
+      'Deseja realmente sair?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Sair', onPress: logout, style: 'destructive' }
+      ]
+    );
+  };
 
   const handlePrint = async (comandaData) => {
     // Preparar dados para o formato esperado pelo PrinterService (itens)
@@ -146,12 +158,11 @@ export default function ComandaGerenciamentoScreen() {
 
   const handleCancel = () => {
     if (!selectedComanda) return;
-    setCancelReason('');
     setShowCancelModal(true);
   };
 
-  const confirmCancel = async () => {
-    if (!cancelReason.trim()) {
+  const confirmCancel = async (reason) => {
+    if (!reason?.trim()) {
       Alert.alert('Erro', 'Por favor, informe o motivo do cancelamento.');
       return;
     }
@@ -163,11 +174,11 @@ export default function ComandaGerenciamentoScreen() {
         canceladaPor: user?.id || 'admin',
         canceladaPorNome: user?.nome || 'Admin',
         canceladaEm: new Date().toISOString(),
-        motivoCancelamento: cancelReason.trim()
+        motivoCancelamento: reason.trim()
       });
       showToast('Comanda cancelada', 'info');
       setSelectedComanda(null);
-      setShowCancelModal(false); // Close Modal
+      setShowCancelModal(false);
       carregarComandas(true);
     } catch (e) {
       showToast(e.message, 'error');
@@ -322,18 +333,29 @@ export default function ComandaGerenciamentoScreen() {
           onConfirm={handleAddItems}
           comandaNumber={selectedComanda.comandaNumber}
         />
+
+        <CancelOrderModal
+          visible={showCancelModal}
+          onClose={() => setShowCancelModal(false)}
+          onConfirm={confirmCancel}
+        />
       </>
     );
   }
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Gerenciamento</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+      <BackgroundPattern />
 
+      <View style={styles.header}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerTitle}>Gerenciamento</Text>
           <Text style={styles.userInfo}>{user?.nome || user?.email}</Text>
         </View>
+
+        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+          <Text style={styles.logoutText}>Sair</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.tabs}>
@@ -386,37 +408,11 @@ export default function ComandaGerenciamentoScreen() {
 
       <StatusBar style="dark" />
 
-      {/* MODAL CANCELAMENTO */}
-      <Modal
+      <CancelOrderModal
         visible={showCancelModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowCancelModal(false)}
-      >
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Cancelar Comanda</Text>
-            <Text style={styles.modalSubtitle}>Informe o motivo do cancelamento:</Text>
-
-            <TextInput
-              style={styles.inputReason}
-              placeholder="Ex: Cliente desistiu"
-              value={cancelReason}
-              onChangeText={setCancelReason}
-              autoFocus={true}
-            />
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity style={styles.btnCancel} onPress={() => setShowCancelModal(false)}>
-                <Text style={styles.btnCancelText}>Voltar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.btnConfirm} onPress={confirmCancel}>
-                <Text style={styles.btnConfirmText}>Confirmar</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+        onClose={() => setShowCancelModal(false)}
+        onConfirm={confirmCancel}
+      />
     </View>
   );
 }
@@ -424,18 +420,27 @@ export default function ComandaGerenciamentoScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: {
-    paddingTop: 50,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center'
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 50,
+    paddingBottom: 15,
+    backgroundColor: colors.primary,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    elevation: 4,
+    zIndex: 10,
   },
-  headerTitle: { fontSize: 24, fontWeight: 'bold', color: colors.primary },
-  userInfo: { color: colors.textSecondary },
+  headerTitle: { fontSize: 28, fontWeight: 'bold', color: colors.white },
+  userInfo: { fontSize: 12, color: colors.userInfo, marginTop: 4 },
+  logoutBtn: {
+    backgroundColor: colors.logoutBg,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  logoutText: { color: colors.white, fontWeight: '600' },
   tabs: { flexDirection: 'row', padding: 10, gap: 10 },
   tab: { flex: 1, padding: 10, alignItems: 'center', borderRadius: 8, backgroundColor: '#E0E0E0' },
   activeTab: { backgroundColor: colors.primary },
@@ -447,26 +452,5 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     justifyContent: 'center', alignItems: 'center',
     elevation: 5
-  },
-  // Modal Styles
-  modalOverlay: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center', alignItems: 'center', padding: 20
-  },
-  modalContent: {
-    backgroundColor: colors.white, borderRadius: 12, padding: 20,
-    width: '100%', maxWidth: 400,
-    elevation: 10
-  },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', color: colors.danger, marginBottom: 10, textAlign: 'center' },
-  modalSubtitle: { fontSize: 16, color: colors.textSecondary, marginBottom: 10 },
-  inputReason: {
-    borderWidth: 1, borderColor: colors.border, borderRadius: 8,
-    padding: 12, fontSize: 16, marginBottom: 20, backgroundColor: '#f9f9f9'
-  },
-  modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10 },
-  btnCancel: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, backgroundColor: '#ddd' },
-  btnCancelText: { fontWeight: 'bold', color: '#555' },
-  btnConfirm: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, backgroundColor: colors.danger },
-  btnConfirmText: { fontWeight: 'bold', color: 'white' }
+  }
 });
