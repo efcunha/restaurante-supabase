@@ -14,6 +14,7 @@ import { getTodayKey } from '../services/FirebaseOptimizations';
 import { CARDAPIO_STATIC, fixDecimal, calcularPrecoItem } from '../utils/orderCalculator';
 import CancelOrderModal from '../components/comandas/CancelOrderModal';
 import BackgroundPattern from '../components/BackgroundPattern';
+import { confirmLogout } from '../utils/appUtils';
 
 // Keep Services as they are, assume they handle their own internal logic
 import PagamentosService from '../services/PagamentosService';
@@ -51,14 +52,7 @@ export default function ComandaGerenciamentoScreen() {
   // --- Actions ---
 
   const handleLogout = () => {
-    Alert.alert(
-      'Sair',
-      'Deseja realmente sair?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Sair', onPress: logout, style: 'destructive' }
-      ]
-    );
+    confirmLogout(logout);
   };
 
   const handlePrint = async (comandaData) => {
