@@ -1,13 +1,33 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Modal, StyleSheet, Alert } from 'react-native';
 import { colors } from '../../theme/colors';
 import { CARDAPIO_STATIC } from '../../utils/orderCalculator';
+import { useAuth } from '../../context/AuthContext';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../config/firebaseConfig';
 
 export default function AddItemsModal({ visible, onClose, onConfirm, comandaNumber }) {
+    const { user } = useAuth();
     const [itensSelecionados, setItensSelecionados] = useState([]);
     const [showPontoModal, setShowPontoModal] = useState(false);
     const [espetoParaPonto, setEspetoParaPonto] = useState(null); // { nome, tipo }
+    const [temperos, setTemperos] = useState(['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada']);
+
+    useEffect(() => {
+        if (visible && user?.companyId) {
+            const fetchTemperos = async () => {
+                try {
+                    const docRef = doc(db, 'companies', user.companyId, 'settings', 'cardapio_config');
+                    const docSnap = await getDoc(docRef);
+                    if (docSnap.exists() && docSnap.data().temperos) {
+                        setTemperos(docSnap.data().temperos);
+                    }
+                } catch (e) { console.error('Erro ao carregar temperos', e); }
+            };
+            fetchTemperos();
+        }
+    }, [visible, user]);
 
     const adicionarItemCarrinho = (nome, tipo) => {
         // Verificar se precisa de seleção extra (caldo/comida -> tempero)
@@ -113,7 +133,7 @@ export default function AddItemsModal({ visible, onClose, onConfirm, comandaNumb
                         <View style={styles.overlay}>
                             <View style={[styles.modalContainer, { maxHeight: 300 }]}>
                                 <Text style={[styles.title, { color: colors.text, marginBottom: 20 }]}>Selecione a Opção</Text>
-                                {['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada'].map(opt => (
+                                {temperos.map(opt => (
                                     <TouchableOpacity
                                         key={opt}
                                         style={styles.optionBtn}

@@ -57,61 +57,63 @@ const ProdutoItem = memo(({ item, produtos = {}, updateProduto }) => {
 });
 
 // Helper to render complex Caldo rows which are not just 1:1 with cardapio items
-const CaldoRow = memo(({ caldoBase, cardapioCaldos, produtos, updateProduto }) => {
-  const preco300 = cardapioCaldos.find(c => c.name.includes(caldoBase) && c.name.match(/300\s*ml/i))?.price || 15;
-  const preco180 = cardapioCaldos.find(c => c.name.includes(caldoBase) && c.name.match(/180\s*ml/i))?.price || 10;
+const CaldoRow = memo(({ caldoBase, cardapioCaldos, produtos, updateProduto, temperos }) => {
+  const item300 = cardapioCaldos.find(c => c.name.includes(caldoBase) && c.name.match(/300\s*ml/i));
+  const item180 = cardapioCaldos.find(c => c.name.includes(caldoBase) && c.name.match(/180\s*ml/i));
+
+  if (!item300 && !item180) return null;
+
+  const renderTemperos = (sizeLabel) => (
+    temperos.map((tempero, idx) => {
+      const nome = `${caldoBase} ${sizeLabel} (${tempero})`;
+      const qty = produtos[nome] || 0;
+      const cor = idx === 0 ? colors.warning : idx === 1 ? colors.success : colors.disabled;
+      // Simple icon logic or default
+      let icone = '⚪';
+      if (tempero.toLowerCase().includes('cebolinha') && tempero.toLowerCase().includes('coentro')) icone = '🌿';
+      else if (tempero.toLowerCase().includes('cebolinha')) icone = '🧅';
+      else if (tempero.toLowerCase().includes('sem nada')) icone = '⚪';
+      else icone = '🔸';
+
+      return (
+        <VariationRow
+          key={nome}
+          label={`${icone} ${tempero}`}
+          qty={qty}
+          color={cor}
+          onInc={() => updateProduto(nome, 1)}
+          onDec={() => updateProduto(nome, -1)}
+          last={idx === temperos.length - 1} // Logic for styling if needed
+        />
+      );
+    })
+  );
 
   return (
     <View style={styles.caldoCard}>
       <Text style={styles.produtoName}>{caldoBase}</Text>
 
       {/* 300ml Section */}
-      <Text style={styles.sizeTitle}>📏 300ml - R$ {preco300.toFixed(2)}</Text>
-      {['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada'].map((tempero, idx) => {
-        const nome = `${caldoBase} 300ml (${tempero})`;
-        const qty = produtos[nome] || 0;
-        const cor = idx === 0 ? colors.warning : idx === 1 ? colors.success : colors.disabled;
-        const icone = idx === 0 ? '🌿' : idx === 1 ? '🧅' : '⚪';
-
-        return (
-          <VariationRow
-            key={nome}
-            label={`${icone} ${tempero}`}
-            qty={qty}
-            color={cor}
-            onInc={() => updateProduto(nome, 1)}
-            onDec={() => updateProduto(nome, -1)}
-          />
-        );
-      })}
+      {item300 && (
+        <>
+          <Text style={styles.sizeTitle}>📏 300ml - R$ {item300.price.toFixed(2)}</Text>
+          {renderTemperos('300ml')}
+        </>
+      )}
 
       {/* 180ml Section */}
-      <Text style={styles.sizeTitle}>📏 180ml - R$ {preco180.toFixed(2)}</Text>
-      {['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada'].map((tempero, idx) => {
-        const nome = `${caldoBase} 180ml (${tempero})`;
-        const qty = produtos[nome] || 0;
-        const cor = idx === 0 ? colors.warning : idx === 1 ? colors.success : colors.disabled;
-        const icone = idx === 0 ? '🌿' : idx === 1 ? '🧅' : '⚪';
-
-        return (
-          <VariationRow
-            key={nome}
-            label={`${icone} ${tempero}`}
-            qty={qty}
-            color={cor}
-            onInc={() => updateProduto(nome, 1)}
-            onDec={() => updateProduto(nome, -1)}
-            last={idx === 2}
-          />
-        );
-      })}
+      {item180 && (
+        <>
+          <Text style={styles.sizeTitle}>📏 180ml - R$ {item180.price.toFixed(2)}</Text>
+          {renderTemperos('180ml')}
+        </>
+      )}
     </View>
   );
 });
 
 // Helper for other items (Comidas/Bebidas/Porcoes)
-const StandardRow = memo(({ item, produtos, updateProduto, type }) => {
-  // Original code had temperos for Comidas too!
+const StandardRow = memo(({ item, produtos, updateProduto, type, temperos }) => {
   const isComida = type === 'comidas';
   const isPorcao = type === 'porcoes';
   const isBebida = type === 'bebidas';
@@ -126,21 +128,28 @@ const StandardRow = memo(({ item, produtos, updateProduto, type }) => {
           </View>
         </View>
         {/* Comida Variations */}
-        {[
-          { label: '🌿 Cebolinha e Coentro', suffix: '(Cebolinha e Coentro)', color: colors.warning },
-          { label: '🧅 Cebolinha', suffix: '(Cebolinha)', color: colors.success },
-          { label: '⚪ Sem Nada', suffix: '(Sem Nada)', color: colors.disabled }
-        ].map((v, i) => (
-          <VariationRow
-            key={v.suffix}
-            label={v.label}
-            qty={produtos[`${item.name} ${v.suffix}`] || 0}
-            color={v.color}
-            onInc={() => updateProduto(`${item.name} ${v.suffix}`, 1)}
-            onDec={() => updateProduto(`${item.name} ${v.suffix}`, -1)}
-            last={i === 2}
-          />
-        ))}
+        {temperos.map((t, idx) => {
+          const suffix = `(${t})`;
+          const color = idx === 0 ? colors.warning : idx === 1 ? colors.success : colors.disabled;
+          let label = t;
+          // Add icons
+          if (t.toLowerCase().includes('cebolinha') && t.toLowerCase().includes('coentro')) label = `🌿 ${t}`;
+          else if (t.toLowerCase().includes('cebolinha')) label = `🧅 ${t}`;
+          else if (t.toLowerCase().includes('sem nada')) label = `⚪ ${t}`;
+          else label = `🔸 ${t}`;
+
+          return (
+            <VariationRow
+              key={suffix}
+              label={label}
+              qty={produtos[`${item.name} ${suffix}`] || 0}
+              color={color}
+              onInc={() => updateProduto(`${item.name} ${suffix}`, 1)}
+              onDec={() => updateProduto(`${item.name} ${suffix}`, -1)}
+              last={idx === temperos.length - 1}
+            />
+          );
+        })}
       </View>
     );
   }
@@ -247,7 +256,8 @@ export default function NovoPedidoScreen() {
     handleRemoveItem,
     handleSubmit,
     isSubmitting,
-    handleLogout
+    handleLogout,
+    temperos = ['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada'] // Default fallback
   } = useNovoPedido();
 
   // Prepare sections for SectionList (Must be before conditional return)
@@ -315,9 +325,9 @@ export default function NovoPedidoScreen() {
 
   const renderItem = ({ item, section }) => {
     if (section.type === 'caldos') {
-      return <CaldoRow caldoBase={item} cardapioCaldos={section.original} produtos={produtos} updateProduto={updateProdutoAnimated} />;
+      return <CaldoRow caldoBase={item} cardapioCaldos={section.original} produtos={produtos} updateProduto={updateProdutoAnimated} temperos={temperos} />;
     }
-    return <StandardRow item={item} produtos={produtos} updateProduto={updateProdutoAnimated} type={section.type} />;
+    return <StandardRow item={item} produtos={produtos} updateProduto={updateProdutoAnimated} type={section.type} temperos={temperos} />;
   };
 
   // ...

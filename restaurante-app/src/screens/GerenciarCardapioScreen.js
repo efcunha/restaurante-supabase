@@ -87,8 +87,14 @@ export default function GerenciarCardapioScreen() {
   const [showVariacoesModal, setShowVariacoesModal] = useState(false);
   const [variacoesSelecionadas, setVariacoesSelecionadas] = useState([]);
 
+  // Estados para Temperos/Opções
+  const [temperos, setTemperos] = useState(['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada']);
+  const [novoTempero, setNovoTempero] = useState('');
+  const [loadingTemperos, setLoadingTemperos] = useState(true);
+
   const categorias = [
     { value: 'caldo', label: '🍲 Caldos' },
+    { value: 'porcao', label: '🍟 Porção' },
     { value: 'bebida', label: '🥤 Bebida' },
     { value: 'comida', label: '🍽️ Comida' },
     { value: 'outro', label: '📦 Outro' }
@@ -96,7 +102,66 @@ export default function GerenciarCardapioScreen() {
 
   useEffect(() => {
     carregarProdutos();
+    carregarTemperos();
   }, []);
+
+  const carregarTemperos = async () => {
+    if (!user?.companyId) return;
+    try {
+      setLoadingTemperos(true);
+      const docRef = doc(db, 'companies', user.companyId, 'settings', 'cardapio_config');
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists() && docSnap.data().temperos) {
+        setTemperos(docSnap.data().temperos);
+      }
+    } catch (e) {
+      console.error('Erro ao carregar temperos:', e);
+    } finally {
+      setLoadingTemperos(false);
+    }
+  };
+
+  const adicionarTempero = async () => {
+    if (!novoTempero.trim()) return;
+    if (temperos.includes(novoTempero.trim())) {
+      Alert.alert('Erro', 'Este item já existe.');
+      return;
+    }
+
+    try {
+      const novos = [...temperos, novoTempero.trim()];
+      const docRef = doc(db, 'companies', user.companyId, 'settings', 'cardapio_config');
+      await setDoc(docRef, { temperos: novos }, { merge: true });
+      setTemperos(novos);
+      setNovoTempero('');
+      // Alert.alert('Sucesso', 'Item adicionado!');
+    } catch (e) {
+      console.error('Erro ao salvar tempero:', e);
+      Alert.alert('Erro', 'Falha ao salvar item.');
+    }
+  };
+
+  const removerTempero = async (index) => {
+    const item = temperos[index];
+
+    // Web strict confirm
+    if (Platform.OS === 'web') {
+      if (!window.confirm(`Remover "${item}"?`)) return;
+    } else {
+      // Mobile confirm logic could go here, but for simplicity we proceed or add Alert async
+      // Keeping it simple for now, synchronous-like
+    }
+
+    try {
+      const novos = [...temperos];
+      novos.splice(index, 1);
+      const docRef = doc(db, 'companies', user.companyId, 'settings', 'cardapio_config');
+      await setDoc(docRef, { temperos: novos }, { merge: true });
+      setTemperos(novos);
+    } catch (e) {
+      Alert.alert('Erro', 'Falha ao remover item.');
+    }
+  };
 
   const carregarProdutos = async () => {
     try {
@@ -121,9 +186,11 @@ export default function GerenciarCardapioScreen() {
       const ordemCategorias = {
         'espetinho-simples': 1,
         'espetinho-especial': 2,
-        'bebida': 3,
-        'comida': 4,
-        'outro': 5
+        'caldo': 3,
+        'porcao': 4,
+        'bebida': 5,
+        'comida': 6,
+        'outro': 7
       };
 
       produtosData.sort((a, b) => {
@@ -480,6 +547,8 @@ export default function GerenciarCardapioScreen() {
   const getCategoriaIcon = (cat) => {
     switch (cat) {
       case 'espetinho': return '';
+      case 'caldo': return '';
+      case 'porcao': return '';
       case 'bebida': return '';
       case 'comida': return '';
       default: return '';
@@ -490,6 +559,8 @@ export default function GerenciarCardapioScreen() {
     switch (cat) {
       case 'espetinho-simples': return 'Espetinho Simples';
       case 'espetinho-especial': return 'Espetinho Especial';
+      case 'caldo': return 'Caldo';
+      case 'porcao': return 'Porção';
       case 'bebida': return 'Bebida';
       case 'comida': return 'Comida';
       default: return 'Outro';
@@ -682,6 +753,41 @@ export default function GerenciarCardapioScreen() {
                 {loading ? 'Cadastrando...' : criarVariacoes ? 'CADASTRAR 4 VARIAÇÕES' : 'CADASTRAR PRODUTO'}
               </Text>
             </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* SEÇÃO EXTRA: GERENCIAR TEMPEROS */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>🌿 Gerenciar Opções (Temperos)</Text>
+          <View style={styles.form}>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TextInput
+                style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                placeholder="Novo Tempero/Opção"
+                value={novoTempero}
+                onChangeText={setNovoTempero}
+              />
+              <TouchableOpacity style={[styles.cadastrarBtn, { marginTop: 0, paddingHorizontal: 20 }]} onPress={adicionarTempero}>
+                <Text style={styles.cadastrarBtnText}>+</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={{ fontSize: 12, color: '#999', marginTop: 5, marginBottom: 10 }}>
+              Estes itens aparecerão como opções para Caldos e Comidas no Novo Pedido.
+            </Text>
+
+            {loadingTemperos ? <ActivityIndicator size="small" color="#8B2F2F" /> : (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {temperos.map((t, idx) => (
+                  <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F5F1E8', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 20, gap: 8, borderWidth: 1, borderColor: '#E5B84A' }}>
+                    <Text style={{ fontWeight: '600', color: '#555', fontSize: 13 }}>{t}</Text>
+                    <TouchableOpacity onPress={() => removerTempero(idx)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                      <Text style={{ color: '#DC3545', fontWeight: 'bold', fontSize: 14 }}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
         </View>
 
