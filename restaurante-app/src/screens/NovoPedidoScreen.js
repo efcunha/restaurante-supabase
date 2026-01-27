@@ -257,7 +257,8 @@ export default function NovoPedidoScreen() {
     handleSubmit,
     isSubmitting,
     handleLogout,
-    temperos = ['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada'] // Default fallback
+    temperosCaldos = ['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada'],
+    temperosComidas = ['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada']
   } = useNovoPedido();
 
   // Prepare sections for SectionList (Must be before conditional return)
@@ -325,9 +326,9 @@ export default function NovoPedidoScreen() {
 
   const renderItem = ({ item, section }) => {
     if (section.type === 'caldos') {
-      return <CaldoRow caldoBase={item} cardapioCaldos={section.original} produtos={produtos} updateProduto={updateProdutoAnimated} temperos={temperos} />;
+      return <CaldoRow caldoBase={item} cardapioCaldos={section.original} produtos={produtos} updateProduto={updateProdutoAnimated} temperos={temperosCaldos} />;
     }
-    return <StandardRow item={item} produtos={produtos} updateProduto={updateProdutoAnimated} type={section.type} temperos={temperos} />;
+    return <StandardRow item={item} produtos={produtos} updateProduto={updateProdutoAnimated} type={section.type} temperos={temperosComidas} />;
   };
 
   // ...

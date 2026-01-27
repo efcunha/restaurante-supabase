@@ -88,8 +88,12 @@ export default function GerenciarCardapioScreen() {
   const [variacoesSelecionadas, setVariacoesSelecionadas] = useState([]);
 
   // Estados para Temperos/Opções
-  const [temperos, setTemperos] = useState(['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada']);
+  // Estados para Temperos/Opções
+  const [temperosCaldos, setTemperosCaldos] = useState(['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada']);
+  const [temperosComidas, setTemperosComidas] = useState(['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada']);
+  const [tipoTemperoAtivo, setTipoTemperoAtivo] = useState('caldos'); // 'caldos' | 'comidas'
   const [novoTempero, setNovoTempero] = useState('');
+  const [editTemperoIndex, setEditTemperoIndex] = useState(-1);
   const [loadingTemperos, setLoadingTemperos] = useState(true);
 
   const categorias = [
@@ -111,8 +115,16 @@ export default function GerenciarCardapioScreen() {
       setLoadingTemperos(true);
       const docRef = doc(db, 'companies', user.companyId, 'settings', 'cardapio_config');
       const docSnap = await getDoc(docRef);
-      if (docSnap.exists() && docSnap.data().temperos) {
-        setTemperos(docSnap.data().temperos);
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.temperosCaldos) setTemperosCaldos(data.temperosCaldos);
+        if (data.temperosComidas) setTemperosComidas(data.temperosComidas);
+
+        // Legacy fallback
+        if (!data.temperosCaldos && !data.temperosComidas && data.temperos) {
+          setTemperosCaldos(data.temperos);
+          setTemperosComidas(data.temperos);
+        }
       }
     } catch (e) {
       console.error('Erro ao carregar temperos:', e);
@@ -121,43 +133,68 @@ export default function GerenciarCardapioScreen() {
     }
   };
 
+  const getListaAtiva = () => tipoTemperoAtivo === 'caldos' ? temperosCaldos : temperosComidas;
+
+  const salvarListas = async (novaListaCaldos, novaListaComidas) => {
+    const docRef = doc(db, 'companies', user.companyId, 'settings', 'cardapio_config');
+    await setDoc(docRef, {
+      temperosCaldos: novaListaCaldos !== undefined ? novaListaCaldos : temperosCaldos,
+      temperosComidas: novaListaComidas !== undefined ? novaListaComidas : temperosComidas
+    }, { merge: true });
+  };
+
   const adicionarTempero = async () => {
     if (!novoTempero.trim()) return;
-    if (temperos.includes(novoTempero.trim())) {
-      Alert.alert('Erro', 'Este item já existe.');
+    const listaAtual = getListaAtiva();
+
+    if (editTemperoIndex === -1 && listaAtual.includes(novoTempero.trim())) {
+      Alert.alert('Erro', 'Este item já existe nesta lista.');
       return;
     }
 
     try {
-      const novos = [...temperos, novoTempero.trim()];
-      const docRef = doc(db, 'companies', user.companyId, 'settings', 'cardapio_config');
-      await setDoc(docRef, { temperos: novos }, { merge: true });
-      setTemperos(novos);
+      let novos = [...listaAtual];
+      if (editTemperoIndex >= 0) {
+        novos[editTemperoIndex] = novoTempero.trim();
+      } else {
+        novos.push(novoTempero.trim());
+      }
+
+      const isCaldos = tipoTemperoAtivo === 'caldos';
+      if (isCaldos) setTemperosCaldos(novos);
+      else setTemperosComidas(novos);
+
+      await salvarListas(isCaldos ? novos : undefined, !isCaldos ? novos : undefined);
+
       setNovoTempero('');
-      // Alert.alert('Sucesso', 'Item adicionado!');
+      setEditTemperoIndex(-1);
     } catch (e) {
       console.error('Erro ao salvar tempero:', e);
       Alert.alert('Erro', 'Falha ao salvar item.');
     }
   };
 
+  const iniciarEdicaoTempero = (idx) => {
+    const lista = getListaAtiva();
+    setNovoTempero(lista[idx]);
+    setEditTemperoIndex(idx);
+  };
+
+  const cancelarEdicaoTempero = () => {
+    setNovoTempero('');
+    setEditTemperoIndex(-1);
+  };
+
   const removerTempero = async (index) => {
-    const item = temperos[index];
-
-    // Web strict confirm
-    if (Platform.OS === 'web') {
-      if (!window.confirm(`Remover "${item}"?`)) return;
-    } else {
-      // Mobile confirm logic could go here, but for simplicity we proceed or add Alert async
-      // Keeping it simple for now, synchronous-like
-    }
-
     try {
-      const novos = [...temperos];
+      const isCaldos = tipoTemperoAtivo === 'caldos';
+      const novos = [...getListaAtiva()];
       novos.splice(index, 1);
-      const docRef = doc(db, 'companies', user.companyId, 'settings', 'cardapio_config');
-      await setDoc(docRef, { temperos: novos }, { merge: true });
-      setTemperos(novos);
+
+      if (isCaldos) setTemperosCaldos(novos);
+      else setTemperosComidas(novos);
+
+      await salvarListas(isCaldos ? novos : undefined, !isCaldos ? novos : undefined);
     } catch (e) {
       Alert.alert('Erro', 'Falha ao remover item.');
     }
@@ -760,30 +797,56 @@ export default function GerenciarCardapioScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>🌿 Gerenciar Opções (Temperos)</Text>
           <View style={styles.form}>
+            {/* Tabs Selector */}
+            <View style={{ flexDirection: 'row', marginBottom: 15, backgroundColor: '#eee', borderRadius: 8, padding: 4 }}>
+              <TouchableOpacity
+                style={{ flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 6, backgroundColor: tipoTemperoAtivo === 'caldos' ? '#fff' : 'transparent', elevation: tipoTemperoAtivo === 'caldos' ? 2 : 0 }}
+                onPress={() => { setTipoTemperoAtivo('caldos'); setEditTemperoIndex(-1); setNovoTempero(''); }}
+              >
+                <Text style={{ fontWeight: 'bold', color: tipoTemperoAtivo === 'caldos' ? '#8B0000' : '#666' }}>🍲 Para Caldos</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 6, backgroundColor: tipoTemperoAtivo === 'comidas' ? '#fff' : 'transparent', elevation: tipoTemperoAtivo === 'comidas' ? 2 : 0 }}
+                onPress={() => { setTipoTemperoAtivo('comidas'); setEditTemperoIndex(-1); setNovoTempero(''); }}
+              >
+                <Text style={{ fontWeight: 'bold', color: tipoTemperoAtivo === 'comidas' ? '#8B0000' : '#666' }}>🍽️ Para Comidas</Text>
+              </TouchableOpacity>
+            </View>
+
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <TextInput
                 style={[styles.input, { flex: 1, marginBottom: 0 }]}
-                placeholder="Novo Tempero/Opção"
+                placeholder={editTemperoIndex >= 0 ? "Editando opção..." : `Novo item para ${tipoTemperoAtivo === 'caldos' ? 'Caldos' : 'Comidas'}`}
                 value={novoTempero}
                 onChangeText={setNovoTempero}
               />
+              {editTemperoIndex >= 0 && (
+                <TouchableOpacity style={[styles.cadastrarBtn, { marginTop: 0, paddingHorizontal: 15, backgroundColor: '#6c757d' }]} onPress={cancelarEdicaoTempero}>
+                  <Text style={styles.cadastrarBtnText}>✕</Text>
+                </TouchableOpacity>
+              )}
               <TouchableOpacity style={[styles.cadastrarBtn, { marginTop: 0, paddingHorizontal: 20 }]} onPress={adicionarTempero}>
-                <Text style={styles.cadastrarBtnText}>+</Text>
+                <Text style={styles.cadastrarBtnText}>{editTemperoIndex >= 0 ? 'Salvar' : '+'}</Text>
               </TouchableOpacity>
             </View>
 
             <Text style={{ fontSize: 12, color: '#999', marginTop: 5, marginBottom: 10 }}>
-              Estes itens aparecerão como opções para Caldos e Comidas no Novo Pedido.
+              Estes itens aparecerão nas opções de {tipoTemperoAtivo === 'caldos' ? 'Caldos' : 'Comidas'} no Novo Pedido.
             </Text>
 
             {loadingTemperos ? <ActivityIndicator size="small" color="#8B2F2F" /> : (
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                {temperos.map((t, idx) => (
-                  <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F5F1E8', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 20, gap: 8, borderWidth: 1, borderColor: '#E5B84A' }}>
+                {getListaAtiva().map((t, idx) => (
+                  <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: editTemperoIndex === idx ? '#FFF3CD' : '#F5F1E8', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 20, gap: 8, borderWidth: 1, borderColor: editTemperoIndex === idx ? '#FFC107' : '#E5B84A' }}>
                     <Text style={{ fontWeight: '600', color: '#555', fontSize: 13 }}>{t}</Text>
-                    <TouchableOpacity onPress={() => removerTempero(idx)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                      <Text style={{ color: '#DC3545', fontWeight: 'bold', fontSize: 14 }}>✕</Text>
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <TouchableOpacity onPress={() => iniciarEdicaoTempero(idx)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                        <Text style={{ fontSize: 14 }}>✏️</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => removerTempero(idx)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                        <Text style={{ color: '#DC3545', fontWeight: 'bold', fontSize: 14 }}>✕</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 ))}
               </View>
