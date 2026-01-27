@@ -177,6 +177,50 @@ const StandardRow = memo(({ item, produtos, updateProduto, type, temperos }) => 
   );
 });
 
+// Helper for Espetinhos (Simples/Especiais) with dynamic variations
+const EspetinhoRow = memo(({ baseName, cardapioEspetinhos, produtos, updateProduto, variacoes = [] }) => {
+  // 1. Map available variations to actual products
+  const itensVariaveis = variacoes.map(variacao => {
+    // Try to find exact match "Nome Variação"
+    const produto = cardapioEspetinhos.find(p => p.name === `${baseName} ${variacao}`);
+    return {
+      label: variacao,
+      produto: produto
+    };
+  }).filter(item => item.produto); // Filter only existing products
+
+  if (itensVariaveis.length === 0) return null;
+
+  // Cyclic colors for consistent UI
+  const rowColors = [colors.warning, colors.success, colors.disabled, '#4a90e2', '#9013fe']; // Add more if needed or cycle
+
+  return (
+    <View style={styles.caldoCard}>
+      <Text style={styles.produtoName}>{baseName}</Text>
+
+      {/* Dynamic Variation Rows */}
+      {itensVariaveis.map((item, idx) => {
+        const color = rowColors[idx % rowColors.length];
+        // Include price in label as these variations change price
+        const displayLabel = `${item.label} - R$ ${item.produto.price.toFixed(2)}`;
+        const qty = produtos[item.produto.name] || 0;
+
+        return (
+          <VariationRow
+            key={item.label}
+            label={displayLabel}
+            qty={qty}
+            color={color}
+            onInc={() => updateProduto(item.produto.name, 1)}
+            onDec={() => updateProduto(item.produto.name, -1)}
+            last={idx === itensVariaveis.length - 1}
+          />
+        );
+      })}
+    </View>
+  );
+});
+
 const VariationRow = ({ label, qty, color, onInc, onDec, last }) => (
   <View style={[styles.variationRow, last && { marginBottom: 12 }]}>
     <TouchableOpacity style={[styles.variationLabelBtn, { backgroundColor: color }]} onPress={onInc}>
@@ -256,9 +300,10 @@ export default function NovoPedidoScreen() {
     handleRemoveItem,
     handleSubmit,
     isSubmitting,
-    handleLogout,
+    handleLogout, // Logout handler
     temperosCaldos = ['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada'],
-    temperosComidas = ['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada']
+    temperosComidas = ['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada'],
+    variacoesEspetinho = ['Simples', 'com Arroz', 'com Macaxeira', 'Completo']
   } = useNovoPedido();
 
   // Prepare sections for SectionList (Must be before conditional return)
@@ -273,6 +318,40 @@ export default function NovoPedidoScreen() {
         data: caldosUnicos,
         type: 'caldos',
         original: cardapio.caldos
+      });
+    }
+
+    // Espetinhos Simples
+    if (cardapio.espetinhosSimples?.length > 0) {
+      const baseNames = [...new Set(cardapio.espetinhosSimples.map(p => {
+        let name = p.name;
+        variacoesEspetinho.forEach(v => {
+          name = name.replace(` ${v}`, '');
+        });
+        return name.trim();
+      }))];
+      sectionsData.push({
+        title: '🔥 Espetinhos Simples',
+        data: baseNames,
+        type: 'espetinhos-simples',
+        original: cardapio.espetinhosSimples
+      });
+    }
+
+    // Espetinhos Especiais
+    if (cardapio.espetinhosEspeciais?.length > 0) {
+      const baseNames = [...new Set(cardapio.espetinhosEspeciais.map(p => {
+        let name = p.name;
+        variacoesEspetinho.forEach(v => {
+          name = name.replace(` ${v}`, '');
+        });
+        return name.trim();
+      }))];
+      sectionsData.push({
+        title: '🌟 Espetinhos Especiais',
+        data: baseNames,
+        type: 'espetinhos-especiais',
+        original: cardapio.espetinhosEspeciais
       });
     }
 
@@ -327,6 +406,17 @@ export default function NovoPedidoScreen() {
   const renderItem = ({ item, section }) => {
     if (section.type === 'caldos') {
       return <CaldoRow caldoBase={item} cardapioCaldos={section.original} produtos={produtos} updateProduto={updateProdutoAnimated} temperos={temperosCaldos} />;
+    }
+    if (section.type === 'espetinhos-simples' || section.type === 'espetinhos-especiais') {
+      return (
+        <EspetinhoRow
+          baseName={item}
+          cardapioEspetinhos={section.original}
+          produtos={produtos}
+          updateProduto={updateProdutoAnimated}
+          variacoes={variacoesEspetinho}
+        />
+      );
     }
     return <StandardRow item={item} produtos={produtos} updateProduto={updateProdutoAnimated} type={section.type} temperos={temperosComidas} />;
   };
@@ -479,4 +569,7 @@ const styles = StyleSheet.create({
 
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { marginTop: 12, fontSize: 16, color: colors.primary },
+
+  // Espetinho Grid Styles (Unused after refactor)
+  priceLegend: { fontSize: 13, color: colors.textSecondary, textAlign: 'center', marginBottom: 12 }
 });

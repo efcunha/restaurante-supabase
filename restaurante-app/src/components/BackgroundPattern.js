@@ -3,7 +3,7 @@ import { View, StyleSheet, Image } from 'react-native';
 
 export default function BackgroundPattern() {
   return (
-    <View style={styles.container} pointerEvents="none">
+    <View style={styles.container}>
       <Image
         source={require('../assets/images/fundodetela1.webp')}
         style={styles.patternImage}
@@ -21,6 +21,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     zIndex: 0,
+    pointerEvents: 'none',
   },
   patternImage: {
     width: '100%',
