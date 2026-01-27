@@ -9,7 +9,7 @@ import { db } from '../config/firebaseConfig';
 import { getCompanyCollection } from '../utils/firestoreUtils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
-import { exitApp } from '../utils/appUtils';
+import { confirmLogout } from '../utils/appUtils';
 
 const CARDAPIO_CACHE_KEY = '@cardapio_cache';
 const CARDAPIO_CACHE_EXPIRY = 5 * 60 * 1000;
@@ -18,7 +18,7 @@ export const fixDecimal = (value) => Math.round((value + Number.EPSILON) * 100) 
 
 export function useNovoPedido() {
     const { addOrder } = useOrders();
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
     const { showToast } = useToast();
 
     const [comandaNumber, setComandaNumber] = useState('');
@@ -258,8 +258,8 @@ export function useNovoPedido() {
     };
 
     const handleLogout = useCallback(() => {
-        exitApp();
-    }, []);
+        confirmLogout(logout);
+    }, [logout]);
 
     return {
         user,

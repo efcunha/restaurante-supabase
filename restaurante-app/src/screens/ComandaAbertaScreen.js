@@ -281,8 +281,20 @@ export default function ComandaAbertaScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F1E8' },
-  header: { backgroundColor: '#8B2F2F', paddingTop: 50, paddingBottom: 20, paddingHorizontal: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  headerTitle: { color: '#fff', fontSize: 24, fontWeight: '600' },
+  header: {
+    backgroundColor: '#8B2F2F',
+    paddingTop: 50,
+    paddingBottom: 15,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    zIndex: 10,
+    elevation: 8,
+  },
+  headerTitle: { color: '#fff', fontSize: 28, fontWeight: 'bold' },
   logoutBtn: { backgroundColor: 'rgba(255,255,255,0.15)', paddingVertical: 8, paddingHorizontal: 14, borderRadius: 10 },
   logoutBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
   sectionTitle: { fontSize: 18, fontWeight: '700', color: '#8B2F2F', marginBottom: 12 },
