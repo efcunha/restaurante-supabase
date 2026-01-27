@@ -31,6 +31,7 @@ export function useNovoPedido() {
     const [cardapio, setCardapio] = useState({ caldos: [], comidas: [], bebidas: [], porcoes: [], outros: [] });
     const [temperosCaldos, setTemperosCaldos] = useState(['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada']);
     const [temperosComidas, setTemperosComidas] = useState(['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada']);
+    const [variacoesEspetinho, setVariacoesEspetinho] = useState(['Simples', 'com Arroz', 'com Macaxeira', 'Completo']);
     const [loadingCardapio, setLoadingCardapio] = useState(true);
 
     const cardapioLoadedRef = useRef(false);
@@ -79,7 +80,17 @@ export function useNovoPedido() {
                 .map(p => ({ name: p.name, price: p.price }))
                 .sort((a, b) => a.name.localeCompare(b.name));
 
-            const novoCardapio = { caldos, comidas, bebidas, porcoes, outros };
+            const espetinhosSimples = produtosDb
+                .filter(p => p.category === 'espetinho-simples')
+                .map(p => ({ name: p.name, price: p.price }))
+                .sort((a, b) => a.name.localeCompare(b.name));
+
+            const espetinhosEspeciais = produtosDb
+                .filter(p => p.category === 'espetinho-especial')
+                .map(p => ({ name: p.name, price: p.price }))
+                .sort((a, b) => a.name.localeCompare(b.name));
+
+            const novoCardapio = { caldos, comidas, bebidas, porcoes, outros, espetinhosSimples, espetinhosEspeciais };
 
             // Fetch configuration (temperos)
             try {
@@ -88,7 +99,9 @@ export function useNovoPedido() {
                 if (configSnap.exists()) {
                     const data = configSnap.data();
                     if (data.temperosCaldos) setTemperosCaldos(data.temperosCaldos);
+                    if (data.temperosCaldos) setTemperosCaldos(data.temperosCaldos);
                     if (data.temperosComidas) setTemperosComidas(data.temperosComidas);
+                    if (data.variacoesEspetinho) setVariacoesEspetinho(data.variacoesEspetinho);
 
                     // Legacy/Fallback: if only 'temperos' exists
                     if (!data.temperosCaldos && !data.temperosComidas && data.temperos) {
@@ -134,7 +147,7 @@ export function useNovoPedido() {
         useCallback(() => {
             const now = Date.now();
             if (cardapioLoadedRef.current && (now - lastLoadTimeRef.current) < CARDAPIO_CACHE_EXPIRY) {
-                return;
+                // return; // FORCE RELOAD for testing/updates
             }
             carregarCardapio();
         }, [carregarCardapio])
@@ -159,7 +172,9 @@ export function useNovoPedido() {
             ...(cardapio.bebidas || []),
             ...(cardapio.comidas || []),
             ...(cardapio.porcoes || []),
-            ...(cardapio.outros || [])
+            ...(cardapio.outros || []),
+            ...(cardapio.espetinhosSimples || []),
+            ...(cardapio.espetinhosEspeciais || [])
         ],
         [cardapio]
     );
@@ -302,6 +317,7 @@ export function useNovoPedido() {
         isSubmitting,
         handleLogout,
         temperosCaldos,
-        temperosComidas
+        temperosComidas,
+        variacoesEspetinho
     };
 }
