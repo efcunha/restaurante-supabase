@@ -1,6 +1,6 @@
 
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, TouchableOpacity, Alert } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Alert, Modal, TextInput, KeyboardAvoidingView } from 'react-native';
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useOrders } from '../context/OrderContext.firestore';
@@ -43,6 +43,8 @@ export default function ComandaGerenciamentoScreen() {
   } = useComandaManagement();
 
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false); // [NEW] Modal state
+  const [cancelReason, setCancelReason] = useState(''); // [NEW] Reason state
   const { showToast } = useToast();
 
   // --- Actions ---
@@ -142,16 +144,17 @@ export default function ComandaGerenciamentoScreen() {
     }
   };
 
-  const handleCancel = async () => {
+  const handleCancel = () => {
     if (!selectedComanda) return;
-    const motivo = prompt('Motivo do cancelamento:'); // Note: prompt might not work on all RN envs? Original code used it.
-    // If prompt is not supported in Expo Go on Android correctly without native modules or polyfills, 
-    // original code used standard `prompt` which works on iOS/Web or via polyfill?
-    // Actually standard RN doesn't have prompt. Original code might have been using a polyfill or just testing on Web?
-    // Or maybe Alert.prompt (iOS only)?
-    // For safety, I will assume it works or replace with Alert with text input if I could, but keeping original logic.
+    setCancelReason('');
+    setShowCancelModal(true);
+  };
 
-    if (!motivo) return;
+  const confirmCancel = async () => {
+    if (!cancelReason.trim()) {
+      Alert.alert('Erro', 'Por favor, informe o motivo do cancelamento.');
+      return;
+    }
 
     try {
       const docId = `comanda-${getTodayKey()}-${selectedComanda.comandaNumber}`;
@@ -160,10 +163,11 @@ export default function ComandaGerenciamentoScreen() {
         canceladaPor: user?.id || 'admin',
         canceladaPorNome: user?.nome || 'Admin',
         canceladaEm: new Date().toISOString(),
-        motivoCancelamento: motivo
+        motivoCancelamento: cancelReason.trim()
       });
       showToast('Comanda cancelada', 'info');
       setSelectedComanda(null);
+      setShowCancelModal(false); // Close Modal
       carregarComandas(true);
     } catch (e) {
       showToast(e.message, 'error');
@@ -381,6 +385,38 @@ export default function ComandaGerenciamentoScreen() {
       />
 
       <StatusBar style="dark" />
+
+      {/* MODAL CANCELAMENTO */}
+      <Modal
+        visible={showCancelModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowCancelModal(false)}
+      >
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Cancelar Comanda</Text>
+            <Text style={styles.modalSubtitle}>Informe o motivo do cancelamento:</Text>
+
+            <TextInput
+              style={styles.inputReason}
+              placeholder="Ex: Cliente desistiu"
+              value={cancelReason}
+              onChangeText={setCancelReason}
+              autoFocus={true}
+            />
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={styles.btnCancel} onPress={() => setShowCancelModal(false)}>
+                <Text style={styles.btnCancelText}>Voltar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.btnConfirm} onPress={confirmCancel}>
+                <Text style={styles.btnConfirmText}>Confirmar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -411,5 +447,26 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     justifyContent: 'center', alignItems: 'center',
     elevation: 5
-  }
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center', alignItems: 'center', padding: 20
+  },
+  modalContent: {
+    backgroundColor: colors.white, borderRadius: 12, padding: 20,
+    width: '100%', maxWidth: 400,
+    elevation: 10
+  },
+  modalTitle: { fontSize: 20, fontWeight: 'bold', color: colors.danger, marginBottom: 10, textAlign: 'center' },
+  modalSubtitle: { fontSize: 16, color: colors.textSecondary, marginBottom: 10 },
+  inputReason: {
+    borderWidth: 1, borderColor: colors.border, borderRadius: 8,
+    padding: 12, fontSize: 16, marginBottom: 20, backgroundColor: '#f9f9f9'
+  },
+  modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10 },
+  btnCancel: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, backgroundColor: '#ddd' },
+  btnCancelText: { fontWeight: 'bold', color: '#555' },
+  btnConfirm: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, backgroundColor: colors.danger },
+  btnConfirmText: { fontWeight: 'bold', color: 'white' }
 });
