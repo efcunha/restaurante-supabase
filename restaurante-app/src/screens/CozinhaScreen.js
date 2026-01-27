@@ -8,7 +8,7 @@ import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
 import { getCompanyCollection } from '../utils/firestoreUtils';
 import { getLocalDateKey } from '../utils/dateUtils';
-import { exitApp } from '../utils/appUtils';
+import { confirmLogout } from '../utils/appUtils';
 
 export default function CozinhaScreen() {
   const { user, logout } = useAuth();
@@ -107,7 +107,7 @@ export default function CozinhaScreen() {
           <Text style={styles.headerTitle}>🍲 Cozinha</Text>
           {user && <Text style={styles.userInfo}>{user.nome || user.email}</Text>}
         </View>
-        <TouchableOpacity style={styles.logoutBtn} onPress={exitApp}>
+        <TouchableOpacity style={styles.logoutBtn} onPress={() => confirmLogout(logout)}>
           <Text style={styles.logoutText}>Sair</Text>
         </TouchableOpacity>
       </View>
