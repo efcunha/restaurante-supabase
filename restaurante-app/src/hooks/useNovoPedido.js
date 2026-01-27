@@ -29,7 +29,8 @@ export function useNovoPedido() {
     const [produtos, setProdutos] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [cardapio, setCardapio] = useState({ caldos: [], comidas: [], bebidas: [], porcoes: [], outros: [] });
-    const [temperos, setTemperos] = useState(['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada']);
+    const [temperosCaldos, setTemperosCaldos] = useState(['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada']);
+    const [temperosComidas, setTemperosComidas] = useState(['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada']);
     const [loadingCardapio, setLoadingCardapio] = useState(true);
 
     const cardapioLoadedRef = useRef(false);
@@ -84,8 +85,16 @@ export function useNovoPedido() {
             try {
                 const configRef = doc(db, 'companies', user.companyId, 'settings', 'cardapio_config');
                 const configSnap = await getDoc(configRef);
-                if (configSnap.exists() && configSnap.data().temperos) {
-                    setTemperos(configSnap.data().temperos);
+                if (configSnap.exists()) {
+                    const data = configSnap.data();
+                    if (data.temperosCaldos) setTemperosCaldos(data.temperosCaldos);
+                    if (data.temperosComidas) setTemperosComidas(data.temperosComidas);
+
+                    // Legacy/Fallback: if only 'temperos' exists
+                    if (!data.temperosCaldos && !data.temperosComidas && data.temperos) {
+                        setTemperosCaldos(data.temperos);
+                        setTemperosComidas(data.temperos);
+                    }
                 }
             } catch (e) {
                 console.warn('Erro ao carregar temperos, usando padrão:', e);
@@ -292,6 +301,7 @@ export function useNovoPedido() {
         handleSubmit,
         isSubmitting,
         handleLogout,
-        temperos // Export dynamic temperos
+        temperosCaldos,
+        temperosComidas
     };
 }
