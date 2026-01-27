@@ -122,6 +122,33 @@ export default function ComandaDetails({ comanda, onClose, onPay, onPrint, onCan
                         <Text style={[styles.value, { color: colors.success }]}>R$ {comanda.totalPago.toFixed(2)}</Text>
                     </View>
 
+                    {/* DETALHES DO CANCELAMENTO */}
+                    {comanda.status === 'cancelada' && (
+                        <>
+                            <View style={styles.divider} />
+                            <Text style={[styles.receiptTitle, { fontSize: 14, marginVertical: 5, color: colors.danger }]}>CANCELAMENTO</Text>
+
+                            <View style={styles.infoRow}>
+                                <Text style={styles.label}>Cancelado por:</Text>
+                                <Text style={styles.value}>{comanda.canceladaPorNome || 'Desconhecido'}</Text>
+                            </View>
+
+                            {comanda.motivoCancelamento ? (
+                                <View style={styles.infoRow}>
+                                    <Text style={styles.label}>Motivo:</Text>
+                                    <Text style={[styles.value, { flex: 1, textAlign: 'right' }]}>{comanda.motivoCancelamento}</Text>
+                                </View>
+                            ) : null}
+
+                            {comanda.canceladaEm ? (
+                                <View style={styles.infoRow}>
+                                    <Text style={styles.label}>Data:</Text>
+                                    <Text style={styles.value}>{new Date(comanda.canceladaEm).toLocaleString('pt-BR')}</Text>
+                                </View>
+                            ) : null}
+                        </>
+                    )}
+
                     {/* DETALHES DO PAGAMENTO (Exibir se houver pagamentos) */}
                     {comanda.totalPago > 0 && (
                         <>

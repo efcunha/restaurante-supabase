@@ -77,7 +77,7 @@ export default function ItensCadastradosScreen() {
         <Text style={styles.section}>Espetinhos</Text>
         {espetinhos.map(p => (
           <View key={p.id} style={styles.card}>
-            <View style={{ flex:1 }}>
+            <View style={{ flex: 1 }}>
               <Text style={styles.nome}>{p.nome}</Text>
               <Text style={styles.preco}>R$ {Number(p.preco).toFixed(2)}</Text>
               <Text style={[styles.status, p.ativo ? styles.statusAtivo : styles.statusInativo]}>
@@ -98,7 +98,7 @@ export default function ItensCadastradosScreen() {
         <Text style={[styles.section, { marginTop: 20 }]}>Bebidas</Text>
         {bebidas.map(p => (
           <View key={p.id} style={styles.card}>
-            <View style={{ flex:1 }}>
+            <View style={{ flex: 1 }}>
               <Text style={styles.nome}>{p.nome}</Text>
               <Text style={styles.preco}>R$ {Number(p.preco).toFixed(2)}</Text>
               <Text style={[styles.status, p.ativo ? styles.statusAtivo : styles.statusInativo]}>
@@ -126,7 +126,7 @@ export default function ItensCadastradosScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             <Text style={styles.modalTitle}>Editar Produto</Text>
-            
+
             <Text style={styles.label}>Nome do Produto</Text>
             <TextInput
               style={styles.input}
@@ -156,7 +156,7 @@ export default function ItensCadastradosScreen() {
                   ESPETINHO
                 </Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={[styles.catChip, categoriaEdit === 'bebida' && styles.catChipActive]}
                 onPress={() => setCategoriaEdit('bebida')}
@@ -174,7 +174,7 @@ export default function ItensCadastradosScreen() {
               >
                 <Text style={styles.btnCancelarText}>Cancelar</Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={[styles.modalBtn, styles.btnSalvar]}
                 onPress={salvarEdicao}
@@ -193,22 +193,22 @@ export default function ItensCadastradosScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F1E8' },
-  header: { backgroundColor: '#8B2F2F', paddingTop: 50, paddingBottom: 20, paddingHorizontal: 20 },
-  headerTitle: { color: '#fff', fontSize: 24, fontWeight: '600' },
+  header: { backgroundColor: '#8B2F2F', paddingTop: 50, paddingBottom: 15, paddingHorizontal: 20, borderBottomLeftRadius: 20, borderBottomRightRadius: 20, zIndex: 10, elevation: 8 },
+  headerTitle: { color: '#fff', fontSize: 28, fontWeight: 'bold' },
   section: { fontSize: 18, fontWeight: '700', color: '#8B2F2F', marginBottom: 12 },
-  card: { backgroundColor:'#fff', borderRadius:12, padding:16, marginBottom:12, borderWidth:1, borderColor:'#F0EBE0', flexDirection:'row', alignItems:'center', gap:12 },
-  nome: { fontSize:16, fontWeight:'700', color:'#2C2C2C', marginBottom:4 },
-  preco: { fontSize:14, color:'#8B2F2F', marginBottom:4 },
-  status: { fontSize:12, fontWeight:'700', marginTop:4 },
-  statusAtivo: { color:'#28A745' },
-  statusInativo: { color:'#999' },
+  card: { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#F0EBE0', flexDirection: 'row', alignItems: 'center', gap: 12 },
+  nome: { fontSize: 16, fontWeight: '700', color: '#2C2C2C', marginBottom: 4 },
+  preco: { fontSize: 14, color: '#8B2F2F', marginBottom: 4 },
+  status: { fontSize: 12, fontWeight: '700', marginTop: 4 },
+  statusAtivo: { color: '#28A745' },
+  statusInativo: { color: '#999' },
   actionsContainer: { flexDirection: 'column', gap: 8 },
-  btn: { paddingVertical:10, paddingHorizontal:14, borderRadius:8 },
-  btnEditar: { backgroundColor:'#FFA500', paddingVertical:10, paddingHorizontal:14, borderRadius:8 },
-  btnAtivar: { backgroundColor:'#28A745' },
-  btnDesativar: { backgroundColor:'#DC3545' },
-  btnText: { color:'#fff', fontWeight:'700', fontSize:12, textAlign:'center' },
-  
+  btn: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 8 },
+  btnEditar: { backgroundColor: '#FFA500', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 8 },
+  btnAtivar: { backgroundColor: '#28A745' },
+  btnDesativar: { backgroundColor: '#DC3545' },
+  btnText: { color: '#fff', fontWeight: '700', fontSize: 12, textAlign: 'center' },
+
   // Modal styles
   modalOverlay: {
     flex: 1,

@@ -4,7 +4,7 @@ import { useOrders } from '../context/OrderContext.firestore';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { getNextComandaNumber, peekNextComandaNumber, formatComandaNumber } from '../services/ComandaService';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
 import { getCompanyCollection } from '../utils/firestoreUtils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -29,6 +29,7 @@ export function useNovoPedido() {
     const [produtos, setProdutos] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [cardapio, setCardapio] = useState({ caldos: [], comidas: [], bebidas: [], porcoes: [], outros: [] });
+    const [temperos, setTemperos] = useState(['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada']);
     const [loadingCardapio, setLoadingCardapio] = useState(true);
 
     const cardapioLoadedRef = useRef(false);
@@ -78,6 +79,18 @@ export function useNovoPedido() {
                 .sort((a, b) => a.name.localeCompare(b.name));
 
             const novoCardapio = { caldos, comidas, bebidas, porcoes, outros };
+
+            // Fetch configuration (temperos)
+            try {
+                const configRef = doc(db, 'companies', user.companyId, 'settings', 'cardapio_config');
+                const configSnap = await getDoc(configRef);
+                if (configSnap.exists() && configSnap.data().temperos) {
+                    setTemperos(configSnap.data().temperos);
+                }
+            } catch (e) {
+                console.warn('Erro ao carregar temperos, usando padrão:', e);
+            }
+
             setCardapio(novoCardapio);
             cardapioLoadedRef.current = true;
             lastLoadTimeRef.current = Date.now();
@@ -278,6 +291,7 @@ export function useNovoPedido() {
         handleRemoveItem,
         handleSubmit,
         isSubmitting,
-        handleLogout
+        handleLogout,
+        temperos // Export dynamic temperos
     };
 }

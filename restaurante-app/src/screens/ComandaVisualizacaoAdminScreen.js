@@ -12,9 +12,9 @@ const gerarMesesDisponiveis = () => {
     'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
   ];
-  
+
   const hoje = new Date();
-  
+
   for (let i = 0; i < 12; i++) {
     const data = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
     const ano = data.getFullYear();
@@ -22,10 +22,10 @@ const gerarMesesDisponiveis = () => {
     const valor = `${ano}-${String(mes + 1).padStart(2, '0')}`;
     const label = `${nomeMeses[mes]} ${ano}`;
     const isAtual = i === 0;
-    
+
     meses.push({ valor, label, isAtual });
   }
-  
+
   return meses;
 };
 
@@ -38,7 +38,7 @@ export default function ComandaVisualizacaoAdminScreen() {
   const [garcomSelecionado, setGarcomSelecionado] = useState(null);
   const [mesSelecionado, setMesSelecionado] = useState(null); // null = mês vigente
   const [modalMesVisible, setModalMesVisible] = useState(false);
-  
+
   // Lista de meses disponíveis para filtro
   const mesesDisponiveis = useMemo(() => gerarMesesDisponiveis(), []);
 
@@ -73,7 +73,7 @@ export default function ComandaVisualizacaoAdminScreen() {
     try {
       // Determinar o período para busca
       const periodo = mesSelecionado || 'mesVigente';
-      
+
       // Se é admin, pode visualizar todos os garçons ou um específico
       if (user.funcao === 'admin') {
         // 🔄 Carregar lista de garçons disponíveis
@@ -87,7 +87,7 @@ export default function ComandaVisualizacaoAdminScreen() {
         // Se nenhum garçom selecionado, mostrar TODOS (null)
         let garcomId = garcomSelecionado;
         let garcomNome = 'Todos os Garçons';
-        
+
         // garcomSelecionado = null significa "TODOS"
         if (garcomSelecionado === null) {
           garcomId = null;
@@ -100,12 +100,12 @@ export default function ComandaVisualizacaoAdminScreen() {
         console.log('[ComandaVisualizacao] Buscando estatísticas completas para garcomId:', garcomId || 'TODOS', 'período:', periodo);
         const stats = await getEstatisticasCompletas(garcomId, mesSelecionado); // passa mês selecionado
         console.log('[ComandaVisualizacao] Estatísticas recebidas:', JSON.stringify(stats, null, 2));
-        
+
         // Se não há garçons mas há pedidos, mostrar como "Geral"
         if (!garcomId && (!todosGarcons || todosGarcons.length === 0)) {
           garcomNome = 'Geral (Todos os Pedidos)';
         }
-        
+
         setEstatisticas({ ...stats, garcomNome });
       } else {
         // Garçom comum vê apenas suas próprias estatísticas
@@ -146,17 +146,17 @@ export default function ComandaVisualizacaoAdminScreen() {
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
-      
+
       <View style={styles.header}>
         <Text style={styles.headerTitle}>📊 Estatísticas dos Garçons</Text>
         <View style={styles.headerButtons}>
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => setModalMesVisible(true)}
             style={styles.filterBtn}
           >
             <Text style={styles.filterText}>📅</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={carregarEstatisticas}
             style={styles.refreshBtn}
           >
@@ -167,7 +167,7 @@ export default function ComandaVisualizacaoAdminScreen() {
 
       {/* Indicador do Mês Selecionado */}
       <View style={styles.mesIndicadorContainer}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.mesIndicador}
           onPress={() => setModalMesVisible(true)}
         >
@@ -194,7 +194,7 @@ export default function ComandaVisualizacaoAdminScreen() {
                 R$ {garconsDisponiveis.reduce((sum, g) => sum + (g.totalVendido || 0), 0).toFixed(2)}
               </Text>
             </TouchableOpacity>
-            
+
             {/* Chips individuais por garçom */}
             {garconsDisponiveis.map((garcom) => (
               <TouchableOpacity
@@ -315,11 +315,15 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: '#8B2F2F',
     paddingTop: 50,
-    paddingBottom: 20,
+    paddingBottom: 15,
     paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    zIndex: 10,
+    elevation: 8,
   },
   headerButtons: {
     flexDirection: 'row',
@@ -327,8 +331,8 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: 28,
+    fontWeight: 'bold',
     flex: 1,
   },
   filterBtn: {
