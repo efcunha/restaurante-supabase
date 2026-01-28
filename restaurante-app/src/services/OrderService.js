@@ -137,12 +137,29 @@ class OrderService {
     return 0;
   }
 
+  /* 
+   * Categorias que devem aparecer na cozinha/montagem
+   * Permite filtrar bebidas fora da visualização de produção
+   */
+  isKitchenCategory(category) {
+    const KITCHEN_CATEGORIES = [
+      'caldo',
+      'espetinho-simples',
+      'espetinho-especial',
+      'porcao',
+      'comida',
+      'outro' // 'outro' geralmente é algo genérico que precisa ser feito
+    ];
+    // Se não tiver categoria, assume que é produçã (fallback seguro)
+    if (!category) return true;
+    return KITCHEN_CATEGORIES.includes(category);
+  }
+
   /**
    * Cria um novo pedido
-   * - Agora nasce com status 'churrasqueira' (visualização inicial)
-   * - Montagem só registra quando transicionado explicitamente
+   * - Agora aceita categoryMap para enriquecer itens com categoria
    */
-  createOrder(orderId, clientName, items, observations, comandaNumber = '', createdBy = '', createdByName = '', totalPrice = 0, isPago = false, mesa = '') {
+  createOrder(orderId, clientName, items, observations, comandaNumber = '', createdBy = '', createdByName = '', totalPrice = 0, isPago = false, mesa = '', categoryMap = null) {
     const now = new Date();
     const nowISO = now.toISOString();
 
@@ -165,13 +182,34 @@ class OrderService {
     });
 
     // Criar estrutura de itens com status individual
-    const itemsWithStatus = items.map((itemName, index) => ({
-      id: `${orderId}-comanda-${comanda || 'temp'}-item-${index}`,
-      name: itemName,
-      status: 'churrasqueira', // churrasqueira | pronto
-      checked: false,
-      timestamp: nowISO
-    }));
+    const itemsWithStatus = items.map((itemName, index) => {
+      // Tentar encontrar a categoria
+      let category = 'outro'; // Default
+
+      if (categoryMap) {
+        // Limpar nome para busca (remover '2x ', trim, lowercase)
+        const cleanName = itemName.replace(/^\d+x?\s*/, '').replace(/\s*\(.*\)$/, '').trim().toLowerCase();
+
+        // Tentar encontrar no mapa
+        // O mapa pode ser direto (nome -> category) ou objeto (nome -> { category })
+        if (categoryMap[cleanName]) {
+          if (typeof categoryMap[cleanName] === 'string') {
+            category = categoryMap[cleanName];
+          } else if (categoryMap[cleanName].category) {
+            category = categoryMap[cleanName].category;
+          }
+        }
+      }
+
+      return {
+        id: `${orderId}-comanda-${comanda || 'temp'}-item-${index}`,
+        name: itemName,
+        status: 'churrasqueira', // churrasqueira | pronto
+        checked: false,
+        timestamp: nowISO,
+        category: category // ✅ Nova propriedade para filtragem
+      };
+    });
 
     const order = {
       id: orderId,

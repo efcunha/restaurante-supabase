@@ -4,7 +4,7 @@ import { useOrders } from '../context/OrderContext.firestore';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { getNextComandaNumber, peekNextComandaNumber, formatComandaNumber } from '../services/ComandaService';
-import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, query, where } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
 import { getCompanyCollection } from '../utils/firestoreUtils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -49,49 +49,59 @@ export function useNovoPedido() {
                 return;
             }
 
-            const snapshot = await getDocs(getCompanyCollection(user.companyId, 'cardapio'));
-            const produtosDb = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            })).filter(p => p.active);
+            // OTIMIZAÇÃO 1: Filtrar no Firestore (Server-Side)
+            const q = query(
+                getCompanyCollection(user.companyId, 'cardapio'),
+                where('active', '==', true)
+            );
 
-            const caldos = produtosDb
-                .filter(p => p.category === 'caldo')
-                .map(p => ({ name: p.name, price: p.price, inventoryItems: p.inventoryItems, id: p.id }))
-                .sort((a, b) => a.name.localeCompare(b.name));
+            const snapshot = await getDocs(q);
 
-            const comidas = produtosDb
-                .filter(p => p.category === 'comida')
-                .map(p => ({ name: p.name, price: p.price, inventoryItems: p.inventoryItems, id: p.id }))
-                .sort((a, b) => a.name.localeCompare(b.name));
+            // OTIMIZAÇÃO 2: Processamento em único loop (Single Pass)
+            const buckets = {
+                caldo: [],
+                comida: [],
+                bebida: [],
+                porcao: [],
+                outro: [],
+                'espetinho-simples': [],
+                'espetinho-especial': []
+            };
 
-            const bebidas = produtosDb
-                .filter(p => p.category === 'bebida')
-                .map(p => ({ name: p.name, price: p.price, inventoryItems: p.inventoryItems, id: p.id }))
-                .sort((a, b) => a.name.localeCompare(b.name));
+            snapshot.docs.forEach(doc => {
+                const data = doc.data();
+                const item = {
+                    id: doc.id,
+                    name: data.name,
+                    price: data.price,
+                    category: data.category || 'outro',
+                    inventoryItems: data.inventoryItems
+                };
 
-            const porcoes = produtosDb
-                .filter(p => p.category === 'porcao')
-                .map(p => ({ name: p.name, price: p.price, inventoryItems: p.inventoryItems, id: p.id }))
-                .sort((a, b) => a.name.localeCompare(b.name));
+                // Normalizar categoria para o bucket correto
+                let cat = item.category;
+                if (cat === 'outros') cat = 'outro';
 
-            // Fix: Fetch 'outro' (singular usually in DB) or 'outros'
-            const outros = produtosDb
-                .filter(p => p.category === 'outro' || p.category === 'outros')
-                .map(p => ({ name: p.name, price: p.price, inventoryItems: p.inventoryItems, id: p.id }))
-                .sort((a, b) => a.name.localeCompare(b.name));
+                if (buckets[cat]) {
+                    buckets[cat].push(item);
+                } else {
+                    // Fallback para 'outro' se categoria desconhecida
+                    buckets.outro.push(item);
+                }
+            });
 
-            const espetinhosSimples = produtosDb
-                .filter(p => p.category === 'espetinho-simples')
-                .map(p => ({ name: p.name, price: p.price, inventoryItems: p.inventoryItems, id: p.id }))
-                .sort((a, b) => a.name.localeCompare(b.name));
+            // Ordenação local (Client-Side) - Mais rápido que criar índices compostos por enquanto
+            const sortFn = (a, b) => a.name.localeCompare(b.name);
 
-            const espetinhosEspeciais = produtosDb
-                .filter(p => p.category === 'espetinho-especial')
-                .map(p => ({ name: p.name, price: p.price, inventoryItems: p.inventoryItems, id: p.id }))
-                .sort((a, b) => a.name.localeCompare(b.name));
-
-            const novoCardapio = { caldos, comidas, bebidas, porcoes, outros, espetinhosSimples, espetinhosEspeciais };
+            const novoCardapio = {
+                caldos: buckets.caldo.sort(sortFn),
+                comidas: buckets.comida.sort(sortFn),
+                bebidas: buckets.bebida.sort(sortFn),
+                porcoes: buckets.porcao.sort(sortFn),
+                outros: buckets.outro.sort(sortFn),
+                espetinhosSimples: buckets['espetinho-simples'].sort(sortFn),
+                espetinhosEspeciais: buckets['espetinho-especial'].sort(sortFn)
+            };
 
             // Fetch configuration (temperos)
             try {
@@ -99,7 +109,6 @@ export function useNovoPedido() {
                 const configSnap = await getDoc(configRef);
                 if (configSnap.exists()) {
                     const data = configSnap.data();
-                    if (data.temperosCaldos) setTemperosCaldos(data.temperosCaldos);
                     if (data.temperosCaldos) setTemperosCaldos(data.temperosCaldos);
                     if (data.temperosComidas) setTemperosComidas(data.temperosComidas);
                     if (data.variacoesEspetinho) setVariacoesEspetinho(data.variacoesEspetinho);
@@ -132,15 +141,32 @@ export function useNovoPedido() {
 
     const carregarCardapio = useCallback(async () => {
         try {
+            // OTIMIZAÇÃO 3: Usar cache primeiro (Stale-While-Revalidate)
             setLoadingCardapio(true);
-            // TEMPORÁRIO: Ignorar cache para forçar reload
-            await AsyncStorage.removeItem(CARDAPIO_CACHE_KEY);
 
+            const cached = await AsyncStorage.getItem(CARDAPIO_CACHE_KEY);
+            if (cached) {
+                const { data, timestamp } = JSON.parse(cached);
+
+                // Se cache for recente (< 30 min), usar e não bloquear
+                if (data && (Date.now() - timestamp < 30 * 60 * 1000)) {
+                    console.log('⚡ Usando cardápio do cache');
+                    setCardapio(data);
+                    cardapioLoadedRef.current = true;
+                    setLoadingCardapio(false); // Libera UI imediatamente
+
+                    // Atualiza em background
+                    carregarCardapioFirestore(true);
+                    return;
+                }
+            }
+
+            // Se não tem cache ou é muito velho, carrega normal
             await carregarCardapioFirestore(false);
         } catch (error) {
             console.error('❌ Erro ao carregar cardápio:', error);
-            Alert.alert('Erro', 'Não foi possível carregar o cardápio');
-            setLoadingCardapio(false);
+            // Fallback
+            await carregarCardapioFirestore(false);
         }
     }, []);
 
@@ -260,11 +286,14 @@ export function useNovoPedido() {
 
             const items = selectedItems.map(item => item.text);
 
-            // OTIMIZAÇÃO: Criar mapa de preços para evitar busca redundante no Firestore
+            // OTIMIZAÇÃO: Criar mapa de preços e categorias para evitar busca redundante no Firestore
             const priceMap = {};
+            const categoryMap = {}; // ✅ Novo mapa de categorias para filtragem correta
             cardapioCombinado.forEach(item => {
-                if (item.name && item.price) {
-                    priceMap[item.name.toLowerCase()] = item.price;
+                if (item.name) {
+                    const cleanName = item.name.toLowerCase();
+                    if (item.price) priceMap[cleanName] = item.price;
+                    if (item.category) categoryMap[cleanName] = item.category;
                 }
             });
 
@@ -278,7 +307,8 @@ export function useNovoPedido() {
                 parseFloat(total),
                 false, // isPago
                 mesa, // ✅ Passar mesa
-                priceMap // ✅ Passar mapa de preços cached
+                priceMap, // ✅ Passar mapa de preços cached
+                categoryMap // ✅ Passar mapa de categorias
             );
 
             showToast(`Pedido criado! Comanda ${novoNumeroComanda}`, 'success');
