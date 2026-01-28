@@ -102,12 +102,9 @@ export default function GerenciarCardapioScreen() {
   const [selectedStockId, setSelectedStockId] = useState('');
   const [qtyIngredient, setQtyIngredient] = useState('');
   const [unitIngredient, setUnitIngredient] = useState('ml');
+  const [tipoUnidade, setTipoUnidade] = useState('VOLUME'); // Default to VOLUME for recipes usually
 
-  const unidadesUI = [
-    ...SUPPORTED_UNITS.VOLUME,
-    ...SUPPORTED_UNITS.MASS,
-    ...SUPPORTED_UNITS.QUANTITY
-  ];
+  const unidadesUI = (SUPPORTED_UNITS[tipoUnidade] || []);
 
   const categorias = [
     { value: 'caldo', label: '🍲 Caldos' },
@@ -860,21 +857,9 @@ export default function GerenciarCardapioScreen() {
                     {/* BOTÃO MÁGICO: FICHA TÉCNICA */}
                     <TouchableOpacity
                       style={styles.stockBtn}
-                      onPress={() => abrirEstoque(primeiraVariacao)} // Abre para a primeira variação se for grupo?
-                    // Para grupos, a ficha técnica costuma ser por variação. 
-                    // Se for Produto Único, OK.
-                    // Se for Variação, melhor clicar em "Editar" e lá dentro ter a ficha.
-                    // AQUI: Vou deixar disponível se for produto único (sem variação automática)
-                    // Se tiver variações, o ideal seria configurar em cada variação ou no "Editar Variações".
-                    // O usuário clica em "Editar" -> Abre modal variacoes -> Cada item tem "Ficha Técnica"?
-                    // Simplicidade: Botão "Ficha" aqui abre modal para configurar a "receita base" ou abrir modal de seleção?
-                    // Se tem variações, eu teria que escolher qual variação configurar.
-                    // Vou simplificar: O botão "Estoque" aqui abre o modal. Se tiver variações, o modal pergunta qual variação editar?
-                    // OU: Removo este botão e coloco dentro do modal de Edição/Variações.
-                    // Solução: Botão Estoque aqui abre menu se tiver variações.
-                    // Mas para MVP: Clicar aqui abre a primeira variação se única.
+                      onPress={() => abrirEstoque(primeiraVariacao)}
                     >
-                      <Text style={styles.stockBtnText}>📦</Text>
+                      <Text style={styles.stockBtnText}>Ficha Técnica</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -1048,17 +1033,42 @@ export default function GerenciarCardapioScreen() {
                 onChangeText={setQtyIngredient}
                 keyboardType="numeric"
               />
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 0.6 }}>
-                {unidadesUI.map(u => (
-                  <TouchableOpacity
-                    key={u}
-                    style={{ padding: 10, backgroundColor: unitIngredient === u ? '#8B2F2F' : '#eee', borderRadius: 8, marginRight: 5, justifyContent: 'center' }}
-                    onPress={() => setUnitIngredient(u)}
-                  >
-                    <Text style={{ color: unitIngredient === u ? '#fff' : '#333', fontWeight: 'bold' }}>{u}</Text>
+              <View style={{ flex: 0.6 }}>
+                {/* TABS TIPO UNIDADE */}
+                <View style={[styles.unitTabs, { marginBottom: 5 }]}>
+                  <TouchableOpacity onPress={() => setTipoUnidade('QUANTITY')} style={[styles.unitTab, tipoUnidade === 'QUANTITY' && styles.unitTabActive]}>
+                    <Text style={[styles.unitTabText, tipoUnidade === 'QUANTITY' && styles.unitTabTextActive]}>Unid.</Text>
                   </TouchableOpacity>
-                ))}
-              </ScrollView>
+                  <TouchableOpacity onPress={() => setTipoUnidade('VOLUME')} style={[styles.unitTab, tipoUnidade === 'VOLUME' && styles.unitTabActive]}>
+                    <Text style={[styles.unitTabText, tipoUnidade === 'VOLUME' && styles.unitTabTextActive]}>Vol.</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setTipoUnidade('MASS')} style={[styles.unitTab, tipoUnidade === 'MASS' && styles.unitTabActive]}>
+                    <Text style={[styles.unitTabText, tipoUnidade === 'MASS' && styles.unitTabTextActive]}>Peso</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* LISTA FILTRADA */}
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  {unidadesUI.map(u => (
+                    <TouchableOpacity
+                      key={u}
+                      style={{
+                        paddingVertical: 8,
+                        paddingHorizontal: 12,
+                        backgroundColor: unitIngredient === u ? '#8B2F2F' : '#eee',
+                        borderRadius: 8,
+                        marginRight: 5,
+                        justifyContent: 'center',
+                        minWidth: 40,
+                        alignItems: 'center'
+                      }}
+                      onPress={() => setUnitIngredient(u)}
+                    >
+                      <Text style={{ color: unitIngredient === u ? '#fff' : '#333', fontWeight: 'bold', fontSize: 13 }}>{u}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
             </View>
 
             <TouchableOpacity style={styles.salvarBtn} onPress={addIngredient}>
@@ -1354,12 +1364,15 @@ const styles = StyleSheet.create({
   stockBtn: {
     backgroundColor: '#D2691E',
     paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     borderRadius: 8,
+    minWidth: 100,
     alignItems: 'center',
   },
   stockBtnText: {
-    fontSize: 14,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   stockLinkBtn: {
     backgroundColor: '#333',
@@ -1510,5 +1523,30 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
+  },
+  // Unit Tabs Styles
+  unitTabs: {
+    flexDirection: 'row',
+    backgroundColor: '#F5F1E8',
+    borderRadius: 8,
+    padding: 2
+  },
+  unitTab: {
+    flex: 1,
+    paddingVertical: 4,
+    alignItems: 'center',
+    borderRadius: 6
+  },
+  unitTabActive: {
+    backgroundColor: '#fff',
+    elevation: 2
+  },
+  unitTabText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#999'
+  },
+  unitTabTextActive: {
+    color: '#8B2F2F'
   },
 });

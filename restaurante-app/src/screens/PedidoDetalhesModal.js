@@ -14,7 +14,7 @@ import { useOrders } from '../context/OrderContext.firestore';
 
 export default function PedidoDetalhesModal({ visible, orderId, onClose }) {
   const { getOrderById, editOrder, deleteOrder } = useOrders();
-  
+
   // Helper para formatar valores em Real brasileiro
   const formatarMoeda = (valor) => {
     if (valor === null || valor === undefined || isNaN(valor)) return 'R$ 0,00';
@@ -23,7 +23,7 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }) {
     partes[0] = partes[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     return 'R$ ' + partes.join(',');
   };
-  
+
   const [isEditing, setIsEditing] = useState(false);
   const [editedClient, setEditedClient] = useState('');
   const [editedObservations, setEditedObservations] = useState('');
@@ -140,18 +140,37 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }) {
           <ScrollView style={styles.content}>
             {/* Cliente */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Cliente</Text>
-              {isEditing ? (
-                <TextInput
-                  style={styles.input}
-                  value={editedClient}
-                  onChangeText={setEditedClient}
-                  placeholder="Nome do cliente"
-                />
-              ) : (
-                <Text style={styles.clientName}>{order.client}</Text>
-              )}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.sectionTitle}>Cliente</Text>
+                  {isEditing ? (
+                    <TextInput
+                      style={styles.input}
+                      value={editedClient}
+                      onChangeText={setEditedClient}
+                      placeholder="Nome do cliente"
+                    />
+                  ) : (
+                    <Text style={styles.clientName}>{order.client}</Text>
+                  )}
+                </View>
+
+                {order.mesa && (
+                  <View style={{ marginLeft: 20 }}>
+                    <Text style={styles.sectionTitle}>Mesa</Text>
+                    <Text style={styles.clientName}>{order.mesa}</Text>
+                  </View>
+                )}
+              </View>
             </View>
+
+            {/* Garçom */}
+            {order.createdByName && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Garçom</Text>
+                <Text style={styles.clientName}>{order.createdByName}</Text>
+              </View>
+            )}
 
             {/* Itens do Pedido */}
             <View style={styles.section}>
