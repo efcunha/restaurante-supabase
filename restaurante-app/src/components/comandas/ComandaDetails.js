@@ -91,10 +91,10 @@ export default function ComandaDetails({ comanda, onClose, onPay, onPrint, onCan
                             <Text style={styles.value}>{comanda.mesa}</Text>
                         </View>
                     ) : null}
-                    {comanda.abertaPorNome ? (
+                    {(comanda.abertaPorNome || comanda.criadoPorNome) ? (
                         <View style={styles.infoRow}>
                             <Text style={styles.label}>Garçom:</Text>
-                            <Text style={styles.value}>{comanda.abertaPorNome}</Text>
+                            <Text style={styles.value}>{comanda.abertaPorNome || comanda.criadoPorNome}</Text>
                         </View>
                     ) : null}
                     <View style={styles.infoRow}>

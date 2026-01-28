@@ -23,8 +23,8 @@ const ComandaCard = memo(({ comanda, onPress }) => (
             {comanda.mesa ? (
                 <Text style={styles.mesaInfo}>🪑 Mesa: {comanda.mesa}</Text>
             ) : null}
-            {comanda.abertaPorNome ? (
-                <Text style={styles.garcomInfo}>🤵 Garçom: {comanda.abertaPorNome}</Text>
+            {(comanda.abertaPorNome || comanda.criadoPorNome) ? (
+                <Text style={styles.garcomInfo}>🤵 Garçom: {comanda.abertaPorNome || comanda.criadoPorNome}</Text>
             ) : null}
             <Text style={styles.timeInfo}>🕒 {comanda.horarioCriacao || '---'}</Text>
         </View>
