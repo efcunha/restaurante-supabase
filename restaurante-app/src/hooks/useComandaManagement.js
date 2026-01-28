@@ -233,6 +233,7 @@ export function useComandaManagement() {
                             c.ultimoPagamentoForma = data.ultimoPagamentoForma || c.ultimoPagamentoForma;
                             c.ultimoPagamentoEm = data.ultimoPagamentoEm || c.ultimoPagamentoEm;
                             c.mesa = data.mesa || c.mesa; // ✅ Sincronizar mesa do documento da comanda
+                            c.abertaPorNome = data.abertaPorNome || c.criadoPorNome; // ✅ Sincronizar nome do garçom
 
                             // ✅ Sincronizar cliente do documento da Comanda (PREVALECE sobre o pedido)
                             if (data.cliente && data.cliente !== 'Não informado' && data.cliente !== 'Cliente Balcão') {
