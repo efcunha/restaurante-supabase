@@ -1,15 +1,15 @@
 import { initializeApp, getApp, getApps } from 'firebase/app';
-import { 
-  getAuth, 
-  initializeAuth, 
-  getReactNativePersistence,
-  browserLocalPersistence
+import {
+    getAuth,
+    initializeAuth,
+    getReactNativePersistence,
+    browserLocalPersistence
 } from 'firebase/auth';
-import { 
-  getFirestore, 
-  initializeFirestore, 
-  persistentLocalCache, 
-  persistentMultipleTabManager 
+import {
+    getFirestore,
+    initializeFirestore,
+    persistentLocalCache,
+    persistentMultipleTabManager
 } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
@@ -17,13 +17,13 @@ import { Platform } from 'react-native';
 // Preferir variáveis de ambiente (Expo: usar prefixo EXPO_PUBLIC_*)
 // NÃO são segredos sensíveis, mas evitamos hardcode e logs em produção.
 const firebaseConfig = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || "AIzaSyCCQ1MCRyNt7wriW3o50WYp53kjdst0nFw",
-  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || "restaurante-dabf3.firebaseapp.com",
-  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || "restaurante-dabf3",
-  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || "restaurante-dabf3.firebasestorage.app",
-  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "1043883310626",
-  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || "1:1043883310626:web:52b52446afc4832553147b",
-  measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID || "G-LQX6VLVF3P"
+    apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || "AIzaSyCCQ1MCRyNt7wriW3o50WYp53kjdst0nFw",
+    authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || "restaurante-dabf3.firebaseapp.com",
+    projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || "restaurante-dabf3",
+    storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || "restaurante-dabf3.firebasestorage.app",
+    messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "1043883310626",
+    appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || "1:1043883310626:web:52b52446afc4832553147b",
+    measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID || "G-LQX6VLVF3P"
 };
 
 let app, auth, db;
@@ -31,7 +31,7 @@ let app, auth, db;
 if (!getApps().length) {
     try {
         app = initializeApp(firebaseConfig);
-        
+
         // Configuração Diferenciada de Auth (Web vs Native)
         if (Platform.OS === 'web') {
             auth = getAuth(app);
@@ -45,9 +45,10 @@ if (!getApps().length) {
 
         // Configuração do Firestore
         db = initializeFirestore(app, {
-            localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+            localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+            ignoreUndefinedProperties: true
         });
-        
+
         console.log('✅ Firebase inicializado COM persistência (Offline/Cache)');
     } catch (error) {
         console.error('❌ Erro ao inicializar Firebase:', error);

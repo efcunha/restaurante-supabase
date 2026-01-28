@@ -10,6 +10,7 @@ import { getCompanyCollection } from '../utils/firestoreUtils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { confirmLogout } from '../utils/appUtils';
+import InventoryService from '../services/InventoryService';
 
 const CARDAPIO_CACHE_KEY = '@cardapio_cache';
 const CARDAPIO_CACHE_EXPIRY = 5 * 60 * 1000;
@@ -56,38 +57,38 @@ export function useNovoPedido() {
 
             const caldos = produtosDb
                 .filter(p => p.category === 'caldo')
-                .map(p => ({ name: p.name, price: p.price }))
+                .map(p => ({ name: p.name, price: p.price, inventoryItems: p.inventoryItems, id: p.id }))
                 .sort((a, b) => a.name.localeCompare(b.name));
 
             const comidas = produtosDb
                 .filter(p => p.category === 'comida')
-                .map(p => ({ name: p.name, price: p.price }))
+                .map(p => ({ name: p.name, price: p.price, inventoryItems: p.inventoryItems, id: p.id }))
                 .sort((a, b) => a.name.localeCompare(b.name));
 
             const bebidas = produtosDb
                 .filter(p => p.category === 'bebida')
-                .map(p => ({ name: p.name, price: p.price }))
+                .map(p => ({ name: p.name, price: p.price, inventoryItems: p.inventoryItems, id: p.id }))
                 .sort((a, b) => a.name.localeCompare(b.name));
 
             const porcoes = produtosDb
                 .filter(p => p.category === 'porcao')
-                .map(p => ({ name: p.name, price: p.price }))
+                .map(p => ({ name: p.name, price: p.price, inventoryItems: p.inventoryItems, id: p.id }))
                 .sort((a, b) => a.name.localeCompare(b.name));
 
             // Fix: Fetch 'outro' (singular usually in DB) or 'outros'
             const outros = produtosDb
                 .filter(p => p.category === 'outro' || p.category === 'outros')
-                .map(p => ({ name: p.name, price: p.price }))
+                .map(p => ({ name: p.name, price: p.price, inventoryItems: p.inventoryItems, id: p.id }))
                 .sort((a, b) => a.name.localeCompare(b.name));
 
             const espetinhosSimples = produtosDb
                 .filter(p => p.category === 'espetinho-simples')
-                .map(p => ({ name: p.name, price: p.price }))
+                .map(p => ({ name: p.name, price: p.price, inventoryItems: p.inventoryItems, id: p.id }))
                 .sort((a, b) => a.name.localeCompare(b.name));
 
             const espetinhosEspeciais = produtosDb
                 .filter(p => p.category === 'espetinho-especial')
-                .map(p => ({ name: p.name, price: p.price }))
+                .map(p => ({ name: p.name, price: p.price, inventoryItems: p.inventoryItems, id: p.id }))
                 .sort((a, b) => a.name.localeCompare(b.name));
 
             const novoCardapio = { caldos, comidas, bebidas, porcoes, outros, espetinhosSimples, espetinhosEspeciais };
@@ -275,9 +276,44 @@ export function useNovoPedido() {
 
             setComandaNumber('');
             setClientName('');
-            setMesa(''); // ✅ Limpar mesa
+            setMesa('');
             setObservations('');
             setProdutos({});
+
+            // --- ESTOQUE INTEGRATION ---
+            // Processar baixa de estoque em background (sem bloquear UI)
+            setTimeout(() => {
+                const stockItemsToDeduct = [];
+                for (const [name, qty] of Object.entries(produtos)) {
+                    if (qty <= 0) continue;
+
+                    // Tentar encontrar o produto completo (com inventoryItems)
+                    const nomeBase = name.replace(/\s*\(.*\)$/, '');
+                    let produtoEncontrado = cardapioCombinado.find(p => p.name === nomeBase);
+
+                    // Fallback de prefixo se não achar exato
+                    if (!produtoEncontrado) {
+                        produtoEncontrado = cardapioCombinado.find(p => name.startsWith(p.name));
+                    }
+
+                    if (produtoEncontrado) {
+                        // Clonar e ajustar quantidade para o pedido atual
+                        // O InventoryService espera objetos que tenham 'inventoryItems' 
+                        // e vamos injetar a 'quantidade' do pedido (qty) no nível do item ou tratar lá.
+                        // O service atual lê 'item.quantidade' OU '2x Item'.
+                        // Vamos passar um objeto estruturado para ser limpo.
+                        stockItemsToDeduct.push({
+                            ...produtoEncontrado,
+                            quantidade: qty // Quantidade pedida
+                        });
+                    }
+                }
+
+                if (stockItemsToDeduct.length > 0) {
+                    InventoryService.deductStock(user.companyId, stockItemsToDeduct);
+                }
+            }, 100);
+            // ---------------------------
         } catch (error) {
             console.error('❌ Erro ao criar pedido:', error);
             if (error.message?.includes('Caixa não está aberto')) {
