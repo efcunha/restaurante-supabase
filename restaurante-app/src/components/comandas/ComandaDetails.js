@@ -91,6 +91,12 @@ export default function ComandaDetails({ comanda, onClose, onPay, onPrint, onCan
                             <Text style={styles.value}>{comanda.mesa}</Text>
                         </View>
                     ) : null}
+                    {comanda.abertaPorNome ? (
+                        <View style={styles.infoRow}>
+                            <Text style={styles.label}>Garçom:</Text>
+                            <Text style={styles.value}>{comanda.abertaPorNome}</Text>
+                        </View>
+                    ) : null}
                     <View style={styles.infoRow}>
                         <Text style={styles.label}>Status:</Text>
                         <Text style={[styles.value, { color: comanda.status === 'paga' ? colors.success : colors.warning }]}>
