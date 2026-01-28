@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useOrders } from '../context/OrderContext.firestore';
 import { useAuth } from '../context/AuthContext';
 import BackgroundPattern from '../components/BackgroundPattern';
+import OrderService from '../services/OrderService';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
 import { getCompanyCollection } from '../utils/firestoreUtils';
@@ -37,7 +38,7 @@ export default function CozinhaScreen() {
 
   const ordersRaw = allOrders.filter(order => order.status === 'montagem');
 
-  const bebidas = ['refrigerante', 'refri', 'água', 'agua', 'suco', 'cerveja', 'coca', 'pepsi', 'guaraná', 'guarana', 'sprite'];
+
   const seenItemIds = new Set();
 
   const allValidItems = [];
@@ -46,8 +47,14 @@ export default function CozinhaScreen() {
     if (!order.itemsWithStatus || order.itemsWithStatus.length === 0) return;
 
     order.itemsWithStatus.forEach(item => {
-      const isBebida = bebidas.some(bebida => item.name.toLowerCase().includes(bebida));
-      if (item.status !== 'pronto' && !item.checked && !seenItemIds.has(item.id) && !isBebida) {
+      // Filtragem dinâmica:
+      // 1. Se tiver categoria, checa se é de cozinha
+      // 2. Fallback: Se não tiver categoria (legacy), checa nome usando OrderService
+      const isKitchenItem = item.category
+        ? OrderService.isKitchenCategory(item.category)
+        : OrderService.extractBebidas([item.name]).length === 0;
+
+      if (item.status !== 'pronto' && !item.checked && !seenItemIds.has(item.id) && isKitchenItem) {
         seenItemIds.add(item.id);
         allValidItems.push({
           ...item,

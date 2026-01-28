@@ -221,7 +221,7 @@ export const OrderProvider = ({ children }) => {
 
   // Adicionar novo pedido - salva no Firestore
   // OTIMIZADO: Operações em paralelo onde possível
-  const addOrder = useCallback(async (clientName, items, observations, comandaNumber = '', createdBy = '', createdByName = '', totalPrice = 0, isPago = false, mesa = '', priceMap = null) => {
+  const addOrder = useCallback(async (clientName, items, observations, comandaNumber = '', createdBy = '', createdByName = '', totalPrice = 0, isPago = false, mesa = '', priceMap = null, categoryMap = null) => {
     const orderId = OrderService.generateOrderId(orderCounter);
 
     console.log('🔵 [OrderContext] addOrder chamado, isOnline:', isOnline);
@@ -268,8 +268,8 @@ export const OrderProvider = ({ children }) => {
         console.log('🔵 [OrderContext] Total calculado:', calculatedTotal);
 
         console.log('🔵 [OrderContext] Criando order object...');
-        // ✅ Passar MESA para createOrder
-        const order = OrderService.createOrder(orderId, clientName, items, observations, comandaNumber, createdBy, createdByName, calculatedTotal, false, mesa);
+        // ✅ Passar MESA e CATEGORYMAP para createOrder
+        const order = OrderService.createOrder(orderId, clientName, items, observations, comandaNumber, createdBy, createdByName, calculatedTotal, false, mesa, categoryMap);
         const valorPedido = order.totalPrice || 0;
         console.log('🔵 [OrderContext] Order criado:', { orderId, comandaNumber, valorPedido, itemsCount: items.length });
 

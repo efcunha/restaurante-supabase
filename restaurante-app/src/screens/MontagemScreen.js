@@ -11,6 +11,7 @@ import { getCompanyCollection, getCompanyDoc } from '../utils/firestoreUtils';
 import { exitApp } from '../utils/appUtils';
 
 import { getLocalDateKey } from '../utils/dateUtils';
+import OrderService from '../services/OrderService';
 
 export default function MontagemScreen() {
   const { moveToProntos, updateItemStatus } = useOrders();
@@ -46,7 +47,7 @@ export default function MontagemScreen() {
   // Agrupar por comandaNumber para unificar pedidos da mesma comanda
   const comandasMap = new Map();
   const seenItemIds = new Set();
-  const bebidas = ['refrigerante', 'refri', 'água', 'agua', 'suco', 'cerveja', 'coca', 'pepsi', 'guaraná', 'guarana', 'sprite'];
+
 
   ordersRaw.forEach(order => {
     if (!order.itemsWithStatus || order.itemsWithStatus.length === 0) {
@@ -57,9 +58,13 @@ export default function MontagemScreen() {
     // Na tela de Montagem, mostrar itens que ainda não estão prontos (independente do status do item)
     const itemsParaMontar = order.itemsWithStatus
       .filter(item => {
-        const isBebida = bebidas.some(bebida => item.name.toLowerCase().includes(bebida));
+        // Filtragem dinâmica via OrderService
+        const isKitchenItem = item.category
+          ? OrderService.isKitchenCategory(item.category)
+          : OrderService.extractBebidas([item.name]).length === 0;
+
         // Mostrar itens que não estão prontos e não são bebidas
-        return item.status !== 'pronto' && !item.checked && !seenItemIds.has(item.id) && !isBebida;
+        return item.status !== 'pronto' && !item.checked && !seenItemIds.has(item.id) && isKitchenItem;
       })
       // ✅ CORREÇÃO: Guardar o orderId original em cada item para atualização correta
       .map(item => ({
