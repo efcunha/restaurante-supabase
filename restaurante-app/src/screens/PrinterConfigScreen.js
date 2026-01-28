@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  Platform
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import PrinterService from '../services/PrinterService';
@@ -85,9 +84,11 @@ export default function PrinterConfigScreen({ navigation }) {
     }
   };
 
+  /*
   const toggleWidth = () => {
     setPrinterWidth(prev => prev === 48 ? 32 : 48);
   };
+  */
 
   if (!PrinterService.isAvailable()) {
     return (
@@ -222,7 +223,7 @@ export default function PrinterConfigScreen({ navigation }) {
           <Text style={styles.instructionText}>1. Ligue a impressora</Text>
           <Text style={styles.instructionText}>2. Ative o Bluetooth do celular</Text>
           <Text style={styles.instructionText}>3. Pareie a impressora (Config. do Android)</Text>
-          <Text style={styles.instructionText}>4. Clique em "Buscar Impressoras"</Text>
+          <Text style={styles.instructionText}>4. Clique em &quot;Buscar Impressoras&quot;</Text>
           <Text style={styles.instructionText}>5. Selecione sua impressora</Text>
           <Text style={styles.instructionText}>6. Faça um teste de impressão</Text>
         </View>

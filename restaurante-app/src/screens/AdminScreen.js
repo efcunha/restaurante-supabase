@@ -325,6 +325,7 @@ export default function AdminScreen() {
         await batch1.commit();
         totalPedidos = countBatch1;
       } else {
+        // empty
       }
 
       // 2. Apagar comandas antigas
@@ -347,6 +348,7 @@ export default function AdminScreen() {
         await batch2.commit();
         totalComandas = countBatch2;
       } else {
+        // empty
       }
 
       // 3. Apagar pagamentos antigos
@@ -369,6 +371,7 @@ export default function AdminScreen() {
         await batch3.commit();
         totalPagamentos = countBatch3;
       } else {
+        // empty
       }
       if (typeof window !== 'undefined' && window.alert) {
         window.alert(`✅ Dados antigos removidos!\n\n` +
@@ -674,6 +677,7 @@ export default function AdminScreen() {
             totalItens += qty;
           });
         } else {
+          // do nothing
         }
 
         // Calcular tempo médio se tiver timestamps
@@ -977,29 +981,34 @@ export default function AdminScreen() {
           onPress: async () => {
             try {
               // sinalizar limpeza para listeners
-              try { if (typeof window !== 'undefined' && window.localStorage) window.localStorage.setItem('limpezaEmAndamento', '1'); } catch { }
+              try { if (typeof window !== 'undefined' && window.localStorage) window.localStorage.setItem('limpezaEmAndamento', '1'); } catch { // ignore
+              }
 
               // Sinalizar para outros clientes via Firestore (maintenance flag)
               try {
                 const maintenanceRef = doc(db, 'maintenance', 'limpeza');
                 await setDoc(maintenanceRef, { startedAt: serverTimestamp(), by: (user && user.id) ? user.id : 'admin' });
               } catch (e) {
+                // ignore
               }
               setLoadingLimpar(true);
               const result = await ensureColecaoVazia('comandas', 10, 1200);
               const resumo = result.ok ? `✅ Todas as comandas apagadas (${result.attempts} tentativas)` : `❌ Falha ao apagar comandas (restam ${result.remaining})`;
               Alert.alert('Resultado', resumo);
-              try { if (typeof window !== 'undefined' && window.location && window.location.reload) setTimeout(() => window.location.reload(), 700); } catch { }
+              try { if (typeof window !== 'undefined' && window.location && window.location.reload) setTimeout(() => window.location.reload(), 700); } catch { // ignore
+              }
             } catch (e) {
               console.error('❌ Erro ao apagar comandas:', e);
               Alert.alert('Erro', `Falha: ${e.message}`);
             } finally {
-              try { if (typeof window !== 'undefined' && window.localStorage) window.localStorage.removeItem('limpezaEmAndamento'); } catch { }
+              try { if (typeof window !== 'undefined' && window.localStorage) window.localStorage.removeItem('limpezaEmAndamento'); } catch { // ignore
+              }
               // remover flag de manutenção
               try {
                 const maintenanceRef = doc(db, 'maintenance', 'limpeza');
                 await deleteDoc(maintenanceRef);
               } catch (e) {
+                // ignore
               }
               setLoadingLimpar(false);
             }

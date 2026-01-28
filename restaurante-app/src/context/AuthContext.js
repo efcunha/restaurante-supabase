@@ -69,7 +69,8 @@ export const AuthProvider = ({ children }) => {
         try {
           await signOut(auth);
           await AsyncStorage.clear();
-        } catch (error) { }
+        } catch (error) { // ignore
+        }
       }
 
       if (mounted) {
@@ -94,7 +95,8 @@ export const AuthProvider = ({ children }) => {
       try {
         await signOut(auth);
         await AsyncStorage.clear();
-      } catch (e) { }
+      } catch (e) { // ignore
+      }
 
       // SEGUNDO: Marcar como login manual
       isManualLoginRef.current = true;
@@ -219,7 +221,8 @@ export const AuthProvider = ({ children }) => {
       try {
         await signOut(auth);
         await AsyncStorage.clear();
-      } catch (e) { }
+      } catch (e) { // ignore
+      }
 
       // SEGUNDO: Marcar como login manual para evitar auto-logout
       isManualLoginRef.current = true;

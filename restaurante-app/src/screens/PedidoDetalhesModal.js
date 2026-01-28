@@ -317,8 +317,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
     overflow: 'hidden',
-    borderRadius: 20,
-    overflow: 'hidden',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
