@@ -1,19 +1,16 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
 import { useState, useEffect } from 'react';
-import { useOrders } from '../context/OrderContext.firestore';
 import { useAuth } from '../context/AuthContext';
 import BackgroundPattern from '../components/BackgroundPattern';
 import PedidoDetalhesModal from './PedidoDetalhesModal';
-import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore';
-import { db } from '../config/firebaseConfig';
 import { getCompanyCollection, getCompanyDoc } from '../utils/firestoreUtils';
+import { query, where, onSnapshot, updateDoc } from 'firebase/firestore';
 import { getLocalDateKey } from '../utils/dateUtils';
 import { exitApp } from '../utils/appUtils';
 
 export default function PedidosProntosScreen() {
-  const { markItemAsDelivered } = useOrders();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [processingItems, setProcessingItems] = useState(new Set()); // Loading state
@@ -173,10 +170,12 @@ export default function PedidosProntosScreen() {
     }
   };
 
+  /*
   const handleOpenDetails = (orderId) => {
     setSelectedOrderId(orderId);
     setModalVisible(true);
   };
+  */
 
   const handleCloseModal = () => {
     setModalVisible(false);
@@ -210,7 +209,7 @@ export default function PedidosProntosScreen() {
             <Text style={styles.emptySubtext}>Marque itens na montagem e eles aparecerão aqui</Text>
           </View>
         ) : (
-          readyItems.map((item, index) => (
+          readyItems.map((item) => (
             <View
               key={`${item.orderId}-${item.id}`}
               style={styles.itemCard}
@@ -238,7 +237,9 @@ export default function PedidosProntosScreen() {
                 style={styles.deliverBtn}
                 onPress={() => handleDeliver(item.orderId, item.id)}
               >
-                <Text style={styles.deliverBtnText}>ENTREGUE</Text>
+                <Text style={styles.deliverBtnText}>
+                  {processingItems.has(`${item.orderId}-${item.id}`) ? 'AGUARDE...' : 'ENTREGUE'}
+                </Text>
               </TouchableOpacity>
             </View>
           ))

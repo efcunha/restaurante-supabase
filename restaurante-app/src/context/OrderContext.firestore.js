@@ -1,7 +1,6 @@
-import React, { createContext, useState, useContext, useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { createContext, useState, useContext, useCallback, useEffect, useMemo } from 'react';
 import { Platform } from 'react-native';
-import { writeBatch, doc, collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '../config/firebaseConfig';
+import { getDocs } from 'firebase/firestore';
 import { getCompanyCollection } from '../utils/firestoreUtils';
 import OrderService from '../services/OrderService.js';
 import OrderFirestoreService from '../services/OrderFirestoreService';
@@ -221,7 +220,7 @@ export const OrderProvider = ({ children }) => {
 
   // Adicionar novo pedido - salva no Firestore
   // OTIMIZADO: Operações em paralelo onde possível
-  const addOrder = useCallback(async (clientName, items, observations, comandaNumber = '', createdBy = '', createdByName = '', totalPrice = 0, isPago = false, mesa = '', priceMap = null, categoryMap = null) => {
+  const addOrder = useCallback(async (clientName, items, observations, comandaNumber = '', createdBy = '', createdByName = '', totalPrice = 0, _isPago = false, mesa = '', priceMap = null, categoryMap = null) => {
     const orderId = OrderService.generateOrderId(orderCounter);
 
     console.log('🔵 [OrderContext] addOrder chamado, isOnline:', isOnline);
@@ -300,75 +299,61 @@ export const OrderProvider = ({ children }) => {
 
       // Lançar erro para o componente tratar
       throw error;
-      // 🔒 SEGURANÇA: Forçar isPago = false
-      const newOrder = OrderService.createOrder(orderId, clientName, items, observations, comandaNumber, createdBy, createdByName, totalPrice, false, mesa);
-      setOrders(prevOrders => [newOrder, ...prevOrders]);
-      setOrderCounter(prev => prev + 1);
-
-      return orderId;
     }
   }, [orderCounter, isOnline]);
 
   // Editar pedido - atualiza no Firestore
   const editOrder = useCallback(async (orderId, updatedData) => {
-    try {
-      // 🔒 SEGURANÇA: Bloquear alterações de isPago
-      if ('isPago' in updatedData) {
-        throw new Error('isPago só pode ser alterado pelo PagamentosService.');
+    // 🔒 SEGURANÇA: Bloquear alterações de isPago
+    if ('isPago' in updatedData) {
+      throw new Error('isPago só pode ser alterado pelo PagamentosService.');
+    }
+
+    const firestoreDocId = firestoreDocMap[orderId];
+
+    if (isOnline && firestoreDocId) {
+      // Validar antes de enviar
+      const order = OrderService.findOrderById(orders, orderId);
+
+      if (order) {
+        OrderService.updateOrder(order, updatedData);
       }
 
-      const firestoreDocId = firestoreDocMap[orderId];
-
-      if (isOnline && firestoreDocId) {
-        // Validar antes de enviar
-        const order = OrderService.findOrderById(orders, orderId);
-
-        if (order) {
-          OrderService.updateOrder(order, updatedData);
-        }
-
-        // Atualizar no Firestore
-        await OrderFirestoreService.updateOrder(user.companyId, firestoreDocId, updatedData);
-      } else {
-        // Fallback local
-        setOrders(prevOrders =>
-          prevOrders.map(order => {
-            if (order.id === orderId) {
-              return OrderService.updateOrder(order, updatedData);
-            }
-            return order;
-          })
-        );
-      }
-    } catch (error) {
-      throw error;
+      // Atualizar no Firestore
+      await OrderFirestoreService.updateOrder(user.companyId, firestoreDocId, updatedData);
+    } else {
+      // Fallback local
+      setOrders(prevOrders =>
+        prevOrders.map(order => {
+          if (order.id === orderId) {
+            return OrderService.updateOrder(order, updatedData);
+          }
+          return order;
+        })
+      );
     }
   }, [orders, firestoreDocMap, isOnline]);
 
   // Cancelar/Excluir pedido - remove do Firestore
   const deleteOrder = useCallback(async (orderId) => {
-    try {
-      const order = OrderService.findOrderById(orders, orderId);
-      if (order) {
-        OrderService.validateDelete(order);
-      }
+    const order = OrderService.findOrderById(orders, orderId);
+    if (order) {
+      OrderService.validateDelete(order);
+    }
 
-      const firestoreDocId = firestoreDocMap[orderId];
+    const firestoreDocId = firestoreDocMap[orderId];
 
-      if (isOnline && firestoreDocId) {
-        await OrderFirestoreService.deleteOrder(user.companyId, firestoreDocId);
-        // Remover do mapa
-        setFirestoreDocMap(prev => {
-          const newMap = { ...prev };
-          delete newMap[orderId];
-          return newMap;
-        });
-      } else {
-        // Fallback local
-        setOrders(prevOrders => prevOrders.filter(o => o.id !== orderId));
-      }
-    } catch (error) {
-      throw error;
+    if (isOnline && firestoreDocId) {
+      await OrderFirestoreService.deleteOrder(user.companyId, firestoreDocId);
+      // Remover do mapa
+      setFirestoreDocMap(prev => {
+        const newMap = { ...prev };
+        delete newMap[orderId];
+        return newMap;
+      });
+    } else {
+      // Fallback local
+      setOrders(prevOrders => prevOrders.filter(o => o.id !== orderId));
     }
   }, [orders, firestoreDocMap, isOnline]);
 
@@ -492,185 +477,177 @@ export const OrderProvider = ({ children }) => {
   // Atualizar status de item individual
   // VERSÃO ROBUSTA: Busca por itemId que contém o orderId embutido
   const updateItemStatus = useCallback(async (orderId, itemId, newStatus) => {
-    try {
-      let order = null;
-      let actualOrderId = orderId;
-      let firestoreDocId = null;
-      let updatePayload = null;
+    let order = null;
+    let actualOrderId = orderId;
+    let firestoreDocId = null;
+    let updatePayload = null;
 
-      // PASSO 1: Encontrar o pedido localmente pelo itemId (mais confiável)
-      // O itemId tem formato #XXX-item-N, onde #XXX é o orderId original
-      for (const o of orders) {
-        if (o.itemsWithStatus && o.itemsWithStatus.some(item => item.id === itemId)) {
-          order = o;
-          actualOrderId = o.id;
-          firestoreDocId = firestoreDocMap[o.id];
-          break;
+    // PASSO 1: Encontrar o pedido localmente pelo itemId (mais confiável)
+    // O itemId tem formato #XXX-item-N, onde #XXX é o orderId original
+    for (const o of orders) {
+      if (o.itemsWithStatus && o.itemsWithStatus.some(item => item.id === itemId)) {
+        order = o;
+        actualOrderId = o.id;
+        firestoreDocId = firestoreDocMap[o.id];
+        break;
+      }
+    }
+
+    // Se não encontrou localmente, tentar pelo orderId passado
+    if (!order) {
+      order = orders.find(o => o.id === orderId);
+      if (order) {
+        actualOrderId = order.id;
+        firestoreDocId = firestoreDocMap[order.id];
+      }
+    }
+
+    // PASSO 2: Se não encontrou firestoreDocId no mapa, buscar no Firestore pelo itemId
+    if (!firestoreDocId && isOnline) {
+      const result = await OrderFirestoreService.findDocByItemId(user.companyId, itemId);
+      if (result) {
+        firestoreDocId = result.docId;
+        actualOrderId = result.orderId;
+        // Atualizar mapa para futuras operações
+        setFirestoreDocMap(prev => ({ ...prev, [result.orderId]: result.docId }));
+
+        // Se não tinha encontrado o pedido localmente, buscar agora
+        if (!order) {
+          order = orders.find(o => o.id === result.orderId);
         }
       }
+    }
 
-      // Se não encontrou localmente, tentar pelo orderId passado
-      if (!order) {
-        order = orders.find(o => o.id === orderId);
-        if (order) {
-          actualOrderId = order.id;
-          firestoreDocId = firestoreDocMap[order.id];
-        }
+    // PASSO 3: Se ainda não temos o pedido, é erro fatal
+    if (!order) {
+      throw new Error(`Pedido não encontrado para itemId=${itemId}`);
+    }
+
+    if (!order.itemsWithStatus) {
+      throw new Error('Pedido não possui itemsWithStatus');
+    }
+
+    // Verificar se o item existe
+    const itemFound = order.itemsWithStatus.some(item => item.id === itemId);
+    if (!itemFound) {
+      throw new Error(`Item ${itemId} não encontrado no pedido ${actualOrderId}`);
+    }
+
+    // PASSO 4: Preparar payload de atualização
+    const now = new Date().toISOString();
+
+    const updatedItems = order.itemsWithStatus.map(item => {
+      if (item.id === itemId) {
+        return {
+          ...item,
+          status: newStatus,
+          checked: newStatus === 'pronto',
+          timestamp: now
+        };
       }
+      return item;
+    });
 
-      // PASSO 2: Se não encontrou firestoreDocId no mapa, buscar no Firestore pelo itemId
-      if (!firestoreDocId && isOnline) {
-        const result = await OrderFirestoreService.findDocByItemId(user.companyId, itemId);
-        if (result) {
-          firestoreDocId = result.docId;
-          actualOrderId = result.orderId;
-          // Atualizar mapa para futuras operações
-          setFirestoreDocMap(prev => ({ ...prev, [result.orderId]: result.docId }));
+    // Detectar se TODOS os itens estão prontos
+    const allItemsChecked = updatedItems.every(item => item.checked === true);
 
-          // Se não tinha encontrado o pedido localmente, buscar agora
-          if (!order) {
-            order = orders.find(o => o.id === result.orderId);
+    updatePayload = {
+      itemsWithStatus: updatedItems
+    };
+
+    // Se todos os itens estão prontos E timeInProntos ainda é null, adicionar
+    if (allItemsChecked && !order.timeInProntos) {
+      updatePayload.timeInProntos = now;
+    }
+
+    // PASSO 5: Atualizar estado local (otimista) com timestamp de atualização
+    setOrders(prevOrders =>
+      prevOrders.map(o =>
+        o.id === actualOrderId
+          ? {
+            ...o,
+            ...updatePayload,
+            // ✅ CORREÇÃO: Adicionar timestamp de atualização local
+            atualizado: now
           }
-        }
-      }
+          : o
+      )
+    );
 
-      // PASSO 3: Se ainda não temos o pedido, é erro fatal
-      if (!order) {
-        throw new Error(`Pedido não encontrado para itemId=${itemId}`);
-      }
-
-      if (!order.itemsWithStatus) {
-        throw new Error('Pedido não possui itemsWithStatus');
-      }
-
-      // Verificar se o item existe
-      const itemFound = order.itemsWithStatus.some(item => item.id === itemId);
-      if (!itemFound) {
-        throw new Error(`Item ${itemId} não encontrado no pedido ${actualOrderId}`);
-      }
-
-      // PASSO 4: Preparar payload de atualização
-      const now = new Date().toISOString();
-
-      const updatedItems = order.itemsWithStatus.map(item => {
-        if (item.id === itemId) {
-          return {
-            ...item,
-            status: newStatus,
-            checked: newStatus === 'pronto',
-            timestamp: now
-          };
-        }
-        return item;
-      });
-
-      // Detectar se TODOS os itens estão prontos
-      const allItemsChecked = updatedItems.every(item => item.checked === true);
-
-      updatePayload = {
-        itemsWithStatus: updatedItems
-      };
-
-      // Se todos os itens estão prontos E timeInProntos ainda é null, adicionar
-      if (allItemsChecked && !order.timeInProntos) {
-        updatePayload.timeInProntos = now;
-      }
-
-      // PASSO 5: Atualizar estado local (otimista) com timestamp de atualização
-      setOrders(prevOrders =>
-        prevOrders.map(o =>
-          o.id === actualOrderId
-            ? {
-              ...o,
-              ...updatePayload,
-              // ✅ CORREÇÃO: Adicionar timestamp de atualização local
-              atualizado: now
-            }
-            : o
-        )
-      );
-
-      // PASSO 6: Atualizar no Firestore
-      if (isOnline && updatePayload) {
-        if (firestoreDocId) {
-          await OrderFirestoreService.updateOrder(user.companyId, firestoreDocId, updatePayload);
+    // PASSO 6: Atualizar no Firestore
+    if (isOnline && updatePayload) {
+      if (firestoreDocId) {
+        await OrderFirestoreService.updateOrder(user.companyId, firestoreDocId, updatePayload);
+      } else {
+        // Última tentativa: buscar por orderId
+        const docId = await OrderFirestoreService.findDocIdByOrderId(user.companyId, actualOrderId);
+        if (docId) {
+          await OrderFirestoreService.updateOrder(user.companyId, docId, updatePayload);
+          setFirestoreDocMap(prev => ({ ...prev, [actualOrderId]: docId }));
         } else {
-          // Última tentativa: buscar por orderId
-          const docId = await OrderFirestoreService.findDocIdByOrderId(user.companyId, actualOrderId);
-          if (docId) {
-            await OrderFirestoreService.updateOrder(user.companyId, docId, updatePayload);
-            setFirestoreDocMap(prev => ({ ...prev, [actualOrderId]: docId }));
+          // Fallback final: buscar por itemId
+          const result = await OrderFirestoreService.findDocByItemId(user.companyId, itemId);
+          if (result) {
+            await OrderFirestoreService.updateOrder(user.companyId, result.docId, updatePayload);
+            setFirestoreDocMap(prev => ({ ...prev, [result.orderId]: result.docId }));
           } else {
-            // Fallback final: buscar por itemId
-            const result = await OrderFirestoreService.findDocByItemId(user.companyId, itemId);
-            if (result) {
-              await OrderFirestoreService.updateOrder(user.companyId, result.docId, updatePayload);
-              setFirestoreDocMap(prev => ({ ...prev, [result.orderId]: result.docId }));
-            } else {
-              throw new Error(`Documento Firestore não encontrado para itemId=${itemId}`);
-            }
+            throw new Error(`Documento Firestore não encontrado para itemId=${itemId}`);
           }
         }
       }
-    } catch (error) {
-      throw error;
     }
   }, [orders, firestoreDocMap, isOnline]);
 
   // Marcar item individual como entregue
   const markItemAsDelivered = useCallback(async (orderId, itemId) => {
-    try {
-      const order = OrderService.findOrderById(orders, orderId);
-      if (!order || !order.itemsWithStatus) {
-        throw new Error('Pedido ou itemsWithStatus não encontrado');
-      }
+    const order = OrderService.findOrderById(orders, orderId);
+    if (!order || !order.itemsWithStatus) {
+      throw new Error('Pedido ou itemsWithStatus não encontrado');
+    }
 
-      const now = new Date().toISOString();
+    const now = new Date().toISOString();
 
-      // Atualizar item - adicionar campo delivered
-      const updatedItems = order.itemsWithStatus.map(item =>
-        item.id === itemId
-          ? { ...item, delivered: true, deliveredAt: now, timestamp: now }
-          : item
-      );
+    // Atualizar item - adicionar campo delivered
+    const updatedItems = order.itemsWithStatus.map(item =>
+      item.id === itemId
+        ? { ...item, delivered: true, deliveredAt: now, timestamp: now }
+        : item
+    );
 
-      // Verificar se todos os itens foram entregues
-      const allDelivered = updatedItems.every(item => item.delivered === true);
+    // Verificar se todos os itens foram entregues
+    const allDelivered = updatedItems.every(item => item.delivered === true);
 
-      // ✅ CORREÇÃO: Sempre garantir que timeInProntos existe
-      const updatePayload = {
-        itemsWithStatus: updatedItems,
-        timeInProntos: order.timeInProntos || now, // Garantir que sempre tenha
-      };
+    // ✅ CORREÇÃO: Sempre garantir que timeInProntos existe
+    const updatePayload = {
+      itemsWithStatus: updatedItems,
+      timeInProntos: order.timeInProntos || now, // Garantir que sempre tenha
+    };
 
-      // Se todos os itens foram entregues, mudar status do pedido para 'delivered'
-      if (allDelivered) {
-        updatePayload.status = 'delivered';
-        updatePayload.deliveredAt = now;
-        updatePayload.entreguePor = user?.id || null;
-        updatePayload.entreguePorNome = user?.nome || null;
-      }
+    // Se todos os itens foram entregues, mudar status do pedido para 'delivered'
+    if (allDelivered) {
+      updatePayload.status = 'delivered';
+      updatePayload.deliveredAt = now;
+      updatePayload.entreguePor = user?.id || null;
+      updatePayload.entreguePorNome = user?.nome || null;
+    }
 
-      // Atualizar estado local primeiro (otimista)
-      setOrders(prevOrders =>
-        prevOrders.map(o =>
-          o.id === orderId
-            ? {
-              ...o,
-              ...updatePayload,
-              // ✅ CORREÇÃO: Adicionar timestamp de atualização local
-              atualizado: now
-            }
-            : o
-        )
-      );
+    // Atualizar estado local primeiro (otimista)
+    setOrders(prevOrders =>
+      prevOrders.map(o =>
+        o.id === orderId
+          ? {
+            ...o,
+            ...updatePayload,
+            // ✅ CORREÇÃO: Adicionar timestamp de atualização local
+            atualizado: now
+          }
+          : o
+      )
+    );
 
-      const firestoreDocId = firestoreDocMap[orderId];
-      if (isOnline && firestoreDocId) {
-        await OrderFirestoreService.updateOrder(user.companyId, firestoreDocId, updatePayload);
-      }
-    } catch (error) {
-      throw error;
+    const firestoreDocId = firestoreDocMap[orderId];
+    if (isOnline && firestoreDocId) {
+      await OrderFirestoreService.updateOrder(user.companyId, firestoreDocId, updatePayload);
     }
   }, [orders, firestoreDocMap, isOnline, user]);
 

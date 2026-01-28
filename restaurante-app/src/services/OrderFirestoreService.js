@@ -8,27 +8,23 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
-  doc,
   query,
   where,
-  orderBy,
   onSnapshot,
   serverTimestamp,
   getDocs,
-  writeBatch,
+  limit,
 } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
 import { getCompanyCollection, getCompanyDoc } from '../utils/firestoreUtils';
 import OrderService from './OrderService.js';
 import {
   cachedQuery,
+  getDateKeyRange,
   invalidateCache,
   debouncedCallback,
   saveToOfflineCache,
-  getFromOfflineCache,
   getTodayKey,
-  getDateKeyRange,
-  throttle
 } from './FirebaseOptimizations';
 
 const PEDIDOS_COLLECTION = 'pedidos';
@@ -49,7 +45,7 @@ const normalizeComandaNumber = (value) => {
  * @returns {Promise<Array>} Lista de pedidos encontrados
  */
 const findOrdersByComanda = async (comandaNumber) => {
-  const { robustFirestoreQuery, queryWithFallbacks } = await import('../utils/errorHandling');
+  const { robustFirestoreQuery } = await import('../utils/errorHandling');
 
   const normalized = normalizeComandaNumber(comandaNumber);
 
@@ -163,7 +159,9 @@ const firestoreToOrder = (docId, data) => {
   if (!ts) {
     try {
       ts = data.criadoEm ? new Date(data.criadoEm) : null;
-    } catch { }
+    } catch {
+      // ignore date parse error
+    }
   }
   // Se não houver timestamp válido nos dados, usar uma data "antiga" para não cair como hoje
   const timestamp = ts && !isNaN(ts.getTime()) ? ts : new Date('1970-01-01T00:00:00.000Z');
@@ -267,7 +265,7 @@ class OrderFirestoreService {
       return () => { };
     }
     const setupListener = async () => {
-      const { withErrorHandling, createUserFriendlyErrorMessage, retryWithBackoff } = await import('../utils/errorHandling');
+      const { withErrorHandling, createUserFriendlyErrorMessage } = await import('../utils/errorHandling');
 
       // Usar dateKey para filtrar pedidos do dia (mais eficiente e confiável)
       const todayKey = getTodayKey(); // YYYY-MM-DD
@@ -288,7 +286,7 @@ class OrderFirestoreService {
             if (typeof window !== 'undefined' && window.localStorage && window.localStorage.getItem('limpezaEmAndamento') === '1') {
               return;
             }
-          } catch (e) {
+          } catch {
             // Ignore localStorage errors
           }
 
@@ -445,17 +443,13 @@ class OrderFirestoreService {
    * @returns {Promise<string>} ID do documento criado
    */
   async saveOrder(companyId, order) {
-    try {
-      const firestoreData = orderToFirestore(order);
-      const docRef = await addDoc(getCompanyCollection(companyId, 'pedidos'), firestoreData);
+    const firestoreData = orderToFirestore(order);
+    const docRef = await addDoc(getCompanyCollection(companyId, 'pedidos'), firestoreData);
 
-      // OTIMIZAÇÃO: Invalidar cache de estatísticas após criar pedido
-      invalidateCache('stats_');
+    // OTIMIZAÇÃO: Invalidar cache de estatísticas após criar pedido
+    invalidateCache('stats_');
 
-      return docRef.id;
-    } catch (error) {
-      throw error;
-    }
+    return docRef.id;
   }
 
   /**
@@ -490,7 +484,7 @@ class OrderFirestoreService {
       }
 
       return null;
-    } catch (error) {
+    } catch {
       return null;
     }
   }
@@ -554,7 +548,7 @@ class OrderFirestoreService {
       }
 
       return null;
-    } catch (error) {
+    } catch {
       return null;
     }
   }
@@ -568,18 +562,14 @@ class OrderFirestoreService {
    * @returns {Promise<string>} ID do documento criado
    */
   async createOrder(orderId, client, items, observations, comandaNumber = '', createdBy = '', createdByName = '', mesa = '') {
-    try {
-      const order = OrderService.createOrder(orderId, client, items, observations, comandaNumber, createdBy, createdByName, 0, false, mesa);
-      const firestoreData = orderToFirestore(order);
-      const docRef = await addDoc(collection(db, PEDIDOS_COLLECTION), firestoreData);
+    const order = OrderService.createOrder(orderId, client, items, observations, comandaNumber, createdBy, createdByName, 0, false, mesa);
+    const firestoreData = orderToFirestore(order);
+    const docRef = await addDoc(collection(db, PEDIDOS_COLLECTION), firestoreData);
 
-      // OTIMIZAÇÃO: Invalidar cache de estatísticas após criar pedido
-      invalidateCache('stats_');
+    // OTIMIZAÇÃO: Invalidar cache de estatísticas após criar pedido
+    invalidateCache('stats_');
 
-      return docRef.id;
-    } catch (error) {
-      throw error;
-    }
+    return docRef.id;
   }
 
   /**
@@ -590,20 +580,17 @@ class OrderFirestoreService {
    * @param {Object} timestamps - Timestamps a adicionar
    */
   async updateOrderStatus(companyId, firestoreDocId, newStatus, timestamps = {}) {
-    try {
-      const pedidoRef = getCompanyDoc(companyId, 'pedidos', firestoreDocId);
+    const pedidoRef = getCompanyDoc(companyId, 'pedidos', firestoreDocId);
 
-      // 🔒 SEGURANÇA: Remover isPago dos timestamps
-      const { isPago, ...safeTimestamps } = timestamps;
+    // 🔒 SEGURANÇA: Remover isPago dos timestamps
+    // eslint-disable-next-line no-unused-vars
+    const { isPago, ...safeTimestamps } = timestamps;
 
-      await updateDoc(pedidoRef, {
-        status: newStatus,
-        ...safeTimestamps,
-        atualizado: serverTimestamp(),
-      });
-    } catch (error) {
-      throw error;
-    }
+    await updateDoc(pedidoRef, {
+      status: newStatus,
+      ...safeTimestamps,
+      atualizado: serverTimestamp(),
+    });
   }
 
   /**
@@ -613,38 +600,35 @@ class OrderFirestoreService {
    * @param {Object} updatedData - Dados atualizados
    */
   async updateOrder(companyId, firestoreDocId, updatedData) {
-    try {
-      const pedidoRef = getCompanyDoc(companyId, 'pedidos', firestoreDocId);
+    const pedidoRef = getCompanyDoc(companyId, 'pedidos', firestoreDocId);
 
-      // 🔒 SEGURANÇA: Remover isPago se vier nos dados
-      const { isPago, ...safeData } = updatedData;
+    // 🔒 SEGURANÇA: Remover isPago se vier nos dados
+    // eslint-disable-next-line no-unused-vars
+    const { isPago, ...safeData } = updatedData;
 
-      const updatePayload = {
-        atualizado: serverTimestamp(),
-        // ✅ CORREÇÃO: Adicionar timestamp local para comparação
-        timestampLocal: new Date().toISOString(),
-      };
+    const updatePayload = {
+      atualizado: serverTimestamp(),
+      // ✅ CORREÇÃO: Adicionar timestamp local para comparação
+      timestampLocal: new Date().toISOString(),
+    };
 
-      // ✅ CORREÇÃO: Mapear todos os campos corretamente
-      if (safeData.client) updatePayload.cliente = safeData.client;
-      if (safeData.mesa !== undefined) updatePayload.mesa = safeData.mesa; // ✅ Atualizar mesa
-      if (safeData.items) updatePayload.itens = safeData.items;
-      if (safeData.observations !== undefined) updatePayload.observacoes = safeData.observations;
-      if (safeData.totalPrice) updatePayload.totalPrice = safeData.totalPrice;
-      if (safeData.itemsWithStatus) updatePayload.itemsWithStatus = safeData.itemsWithStatus;
-      if (safeData.status) updatePayload.status = safeData.status;
-      if (safeData.timeInMontagem) updatePayload.timeInMontagem = safeData.timeInMontagem;
-      if (safeData.timeInProntos) updatePayload.timeInProntos = safeData.timeInProntos;
-      if (safeData.deliveredAt) updatePayload.deliveredAt = safeData.deliveredAt;
-      if (safeData.movidoParaMontagemPor) updatePayload.movidoParaMontagemPor = safeData.movidoParaMontagemPor;
-      if (safeData.movidoParaMontagemPorNome) updatePayload.movidoParaMontagemPorNome = safeData.movidoParaMontagemPorNome;
-      if (safeData.entreguePor) updatePayload.entreguePor = safeData.entreguePor;
-      if (safeData.entreguePorNome) updatePayload.entreguePorNome = safeData.entreguePorNome;
+    // ✅ CORREÇÃO: Mapear todos os campos corretamente
+    if (safeData.client) updatePayload.cliente = safeData.client;
+    if (safeData.mesa !== undefined) updatePayload.mesa = safeData.mesa; // ✅ Atualizar mesa
+    if (safeData.items) updatePayload.itens = safeData.items;
+    if (safeData.observations !== undefined) updatePayload.observacoes = safeData.observations;
+    if (safeData.totalPrice) updatePayload.totalPrice = safeData.totalPrice;
+    if (safeData.itemsWithStatus) updatePayload.itemsWithStatus = safeData.itemsWithStatus;
+    if (safeData.status) updatePayload.status = safeData.status;
+    if (safeData.timeInMontagem) updatePayload.timeInMontagem = safeData.timeInMontagem;
+    if (safeData.timeInProntos) updatePayload.timeInProntos = safeData.timeInProntos;
+    if (safeData.deliveredAt) updatePayload.deliveredAt = safeData.deliveredAt;
+    if (safeData.movidoParaMontagemPor) updatePayload.movidoParaMontagemPor = safeData.movidoParaMontagemPor;
+    if (safeData.movidoParaMontagemPorNome) updatePayload.movidoParaMontagemPorNome = safeData.movidoParaMontagemPorNome;
+    if (safeData.entreguePor) updatePayload.entreguePor = safeData.entreguePor;
+    if (safeData.entreguePorNome) updatePayload.entreguePorNome = safeData.entreguePorNome;
 
-      await updateDoc(pedidoRef, updatePayload);
-    } catch (error) {
-      throw error;
-    }
+    await updateDoc(pedidoRef, updatePayload);
   }
 
   /**
@@ -653,11 +637,7 @@ class OrderFirestoreService {
    * @param {string} firestoreDocId - ID do documento
    */
   async deleteOrder(companyId, firestoreDocId) {
-    try {
-      await deleteDoc(getCompanyDoc(companyId, 'pedidos', firestoreDocId));
-    } catch (error) {
-      throw error;
-    }
+    await deleteDoc(getCompanyDoc(companyId, 'pedidos', firestoreDocId));
   }
 
   /**
@@ -666,7 +646,7 @@ class OrderFirestoreService {
    * @param {Array} orders - Lista de orders do snapshot
    * @returns {string|null} ID do documento Firestore
    */
-  findFirestoreDocId(formattedId) {
+  findFirestoreDocId() {
     // Implementação temporária: você precisará manter um mapa id -> docId
     // Ou armazenar o docId no objeto Order
     // Por enquanto, retorna null e você precisa adaptar
@@ -1003,7 +983,7 @@ class OrderFirestoreService {
         totalPago: comandas.reduce((sum, c) => sum + c.totalPago, 0),
         saldoAberto: comandas.reduce((sum, c) => sum + c.saldoAberto, 0),
       };
-    } catch (error) {
+    } catch {
       return {
         total: 0,
         abertas: 0,

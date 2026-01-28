@@ -31,7 +31,7 @@ class OfflineQueueService {
         try {
             const json = await AsyncStorage.getItem(QUEUE_KEY);
             return json ? JSON.parse(json) : [];
-        } catch (error) {
+        } catch {
             return [];
         }
     }
@@ -85,7 +85,7 @@ class OfflineQueueService {
 
     async executeTask(task) {
         switch (task.type) {
-            case 'STOCK_DEDUCTION':
+            case 'STOCK_DEDUCTION': {
                 // Lazy require para evitar ciclo de importação
                 const InventoryService = require('./InventoryService').default;
                 await InventoryService.processStockDeduction(task.payload.companyId, task.payload.orderItems, true);
@@ -93,6 +93,7 @@ class OfflineQueueService {
                 // Se falhar aqui (rede), vai cair no catch do processQueue e tentar de novo depois.
                 // Importante: processStockDeduction NÃO deve chamar addTask se isRetry=true e o erro for de rede.
                 break;
+            }
 
             default:
                 console.warn(`[OfflineQueue] Tipo de tarefa desconhecido: ${task.type}`);

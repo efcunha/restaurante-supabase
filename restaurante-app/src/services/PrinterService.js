@@ -12,7 +12,7 @@ let EscPosPrinter = null;
 if (Platform.OS !== 'web') {
   try {
     EscPosPrinter = require('react-native-esc-pos-printer');
-  } catch (error) {
+  } catch {
     // Usar mock como fallback
     EscPosPrinter = require('./PrinterService.mock').default;
   }
@@ -82,7 +82,7 @@ class PrinterService {
     try {
       const printers = await EscPosPrinter.discover();
       return printers || [];
-    } catch (error) {
+    } catch {
       Alert.alert('Erro', 'Não foi possível buscar impressoras. Ative o Bluetooth.');
       return [];
     }
@@ -107,7 +107,7 @@ class PrinterService {
       await AsyncStorage.setItem(PRINTER_CONFIG_KEY, JSON.stringify({ printer, width }));
 
       return true;
-    } catch (error) {
+    } catch {
       Alert.alert('Erro', 'Não foi possível conectar com a impressora.');
       return false;
     }
@@ -122,7 +122,8 @@ class PrinterService {
         await EscPosPrinter.disconnect();
       }
       this.connectedPrinter = null;
-    } catch (error) {
+    } catch {
+      // ignore
     }
   }
 
@@ -160,7 +161,7 @@ class PrinterService {
       await EscPosPrinter.cutPaper();
 
       return true;
-    } catch (error) {
+    } catch {
       Alert.alert('Erro', 'Falha ao imprimir. Verifique a conexão.');
       return false;
     }
@@ -263,7 +264,7 @@ class PrinterService {
       await EscPosPrinter.cutPaper();
 
       return true;
-    } catch (error) {
+    } catch {
       Alert.alert('Erro', 'Falha ao imprimir comanda. Verifique a conexão.');
       return false;
     }
@@ -333,7 +334,7 @@ class PrinterService {
       await EscPosPrinter.cutPaper();
 
       return true;
-    } catch (error) {
+    } catch {
       Alert.alert('Erro', 'Falha ao imprimir pedido. Verifique a conexão.');
       return false;
     }

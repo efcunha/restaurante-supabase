@@ -35,6 +35,7 @@ const ComandaCard = memo(({ comanda, onPress }) => (
         </View>
     </TouchableOpacity>
 ));
+ComandaCard.displayName = 'ComandaCard';
 
 export default function ComandaList({ comandas, onSelectComanda, refreshing, onRefresh, onLoadMore, loadingMore }) {
     if (comandas.length === 0) {
