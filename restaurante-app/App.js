@@ -27,6 +27,7 @@ import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { ToastProvider } from './src/context/ToastContext';
 import { canAccessScreen } from './src/auth/roles';
 import OfflineNotice from './src/components/OfflineNotice';
+import OfflineQueueManager from './src/components/OfflineQueueManager';
 import PrinterService from './src/services/PrinterService';
 import { useEffect } from 'react'; // Ensure useEffect is imported if not already
 
@@ -122,7 +123,7 @@ function AppContent() {
       <SafeAreaProvider key={`auth-${sessionKey}-${Date.now()}`}>
         <StatusBar barStyle="dark-content" backgroundColor="#F5F1E8" translucent={false} />
         <NavigationContainer>
-             <AuthStack />
+          <AuthStack />
         </NavigationContainer>
       </SafeAreaProvider>
     );
@@ -135,6 +136,7 @@ function AppContent() {
     <SafeAreaProvider key={`app-${sessionKey}-${Date.now()}`}>
       <StatusBar barStyle="dark-content" backgroundColor="#F5F1E8" translucent={false} />
       <OfflineNotice />
+      <OfflineQueueManager />
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <MainApp sessionKey={sessionKey} />
       </SafeAreaView>

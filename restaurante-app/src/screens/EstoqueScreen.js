@@ -1,12 +1,29 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, Modal } from 'react-native';
 import { useState, useEffect } from 'react';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
+import { useAuth } from '../context/AuthContext';
+import { getCompanyCollection, getCompanyDoc } from '../utils/firestoreUtils';
 import BackgroundPattern from '../components/BackgroundPattern';
+import { Ionicons } from '@expo/vector-icons';
 
-export default function EstoqueScreen() {
-  const [categoriaAtiva, setCategoriaAtiva] = useState('descartaveis');
+// Novas telas e utilitários
+import GerenciarFornecedoresScreen from './GerenciarFornecedoresScreen';
+import ConfiguracaoEstoqueScreen from './ConfiguracaoEstoqueScreen';
+import { SUPPORTED_UNITS, getUnitType } from '../utils/unitConversion';
+
+export default function EstoqueScreen({ onClose }) {
+  const { user } = useAuth();
+
+  // Navigation states
+  const [showFornecedores, setShowFornecedores] = useState(false);
+  const [showConfig, setShowConfig] = useState(false);
+
+  // Data states
+  const [categoriaAtiva, setCategoriaAtiva] = useState(null);
+  const [categorias, setCategorias] = useState([]);
+  const [fornecedores, setFornecedores] = useState([]);
   const [itensEstoque, setItensEstoque] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -16,27 +33,66 @@ export default function EstoqueScreen() {
   const [quantidade, setQuantidade] = useState('');
   const [unidade, setUnidade] = useState('un');
   const [quantidadeMinima, setQuantidadeMinima] = useState('');
-  const [fornecedor, setFornecedor] = useState('');
+  const [fornecedorSelecionado, setFornecedorSelecionado] = useState('');
   const [observacoes, setObservacoes] = useState('');
   const [editandoId, setEditandoId] = useState(null);
 
-  const categorias = [
-    { id: 'descartaveis', nome: 'Descartáveis', icon: '🥤' },
-    { id: 'mercearia', nome: 'Mercearia', icon: '🛒' },
-    { id: 'carnes', nome: 'Carnes', icon: '🥩' },
-    { id: 'verduras', nome: 'Verduras', icon: '🥬' },
-  ];
-
-  const unidades = ['un', 'kg', 'g', 'L', 'ml', 'cx', 'pct'];
+  // Unit Context State
+  const [tipoUnidade, setTipoUnidade] = useState('QUANTITY'); // QUANTITY | MASS | VOLUME
 
   useEffect(() => {
-    carregarItens();
-  }, [categoriaAtiva]);
+    if (user?.companyId) {
+      carregarConfigECategorias();
+      carregarFornecedores();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (categoriaAtiva && user?.companyId) {
+      carregarItens();
+    }
+  }, [categoriaAtiva, user]);
+
+  const carregarConfigECategorias = async () => {
+    try {
+      const docRef = getCompanyDoc(user.companyId, 'settings', 'estoque_config');
+      const docSnap = await getDoc(docRef);
+
+      let cats = [];
+      if (docSnap.exists() && docSnap.data().stockCategories) {
+        cats = docSnap.data().stockCategories;
+      } else {
+        cats = [
+          { id: 'descartaveis', nome: 'Descartáveis', icon: '🥤' },
+          { id: 'mercearia', nome: 'Mercearia', icon: '🛒' },
+          { id: 'carnes', nome: 'Carnes', icon: '🥩' },
+          { id: 'verduras', nome: 'Verduras', icon: '🥬' },
+        ];
+      }
+      setCategorias(cats);
+      if (cats.length > 0 && !categoriaAtiva) {
+        setCategoriaAtiva(cats[0].id);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar categorias:', error);
+    }
+  };
+
+  const carregarFornecedores = async () => {
+    try {
+      const snapshot = await getDocs(getCompanyCollection(user.companyId, 'suppliers'));
+      const lista = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      setFornecedores(lista.sort((a, b) => a.nome.localeCompare(b.nome)));
+    } catch (error) {
+      console.error('Erro ao carregar fornecedores:', error);
+    }
+  };
 
   const carregarItens = async () => {
+    if (!user?.companyId || !categoriaAtiva) return;
     try {
       setLoading(true);
-      const snapshot = await getDocs(collection(db, 'estoque'));
+      const snapshot = await getDocs(getCompanyCollection(user.companyId, 'estoque'));
       const items = snapshot.docs
         .map(doc => ({ id: doc.id, ...doc.data() }))
         .filter(item => item.categoria === categoriaAtiva)
@@ -54,8 +110,9 @@ export default function EstoqueScreen() {
     setNomeItem('');
     setQuantidade('');
     setUnidade('un');
+    setTipoUnidade('QUANTITY');
     setQuantidadeMinima('');
-    setFornecedor('');
+    setFornecedorSelecionado('');
     setObservacoes('');
     setEditandoId(null);
   };
@@ -77,17 +134,18 @@ export default function EstoqueScreen() {
         quantidade: parseFloat(quantidade),
         unidade,
         quantidadeMinima: quantidadeMinima ? parseFloat(quantidadeMinima) : 0,
-        fornecedor: fornecedor.trim(),
+        fornecedorId: fornecedorSelecionado,
+        fornecedorNome: fornecedores.find(f => f.id === fornecedorSelecionado)?.nome || '',
         observacoes: observacoes.trim(),
         categoria: categoriaAtiva,
         atualizadoEm: serverTimestamp(),
       };
 
       if (editandoId) {
-        await updateDoc(doc(db, 'estoque', editandoId), itemData);
+        await updateDoc(getCompanyDoc(user.companyId, 'estoque', editandoId), itemData);
         Alert.alert('Sucesso', 'Item atualizado com sucesso!');
       } else {
-        await addDoc(collection(db, 'estoque'), {
+        await addDoc(getCompanyCollection(user.companyId, 'estoque'), {
           ...itemData,
           criadoEm: serverTimestamp(),
         });
@@ -108,11 +166,20 @@ export default function EstoqueScreen() {
   const editarItem = (item) => {
     setNomeItem(item.nome);
     setQuantidade(item.quantidade.toString());
-    setUnidade(item.unidade);
+    setUnidade(item.unidade || 'un');
     setQuantidadeMinima(item.quantidadeMinima?.toString() || '');
-    setFornecedor(item.fornecedor || '');
+    setFornecedorSelecionado(item.fornecedorId || '');
     setObservacoes(item.observacoes || '');
     setEditandoId(item.id);
+
+    // Auto-detect unit type
+    const u = item.unidade || 'un';
+    const type = getUnitType(u); // assuming helper returns 'VOLUME', 'MASS', etc.
+    // Map internal type to supported keys if needed, or just specific cases
+    if (SUPPORTED_UNITS.VOLUME.includes(u)) setTipoUnidade('VOLUME');
+    else if (SUPPORTED_UNITS.MASS.includes(u)) setTipoUnidade('MASS');
+    else setTipoUnidade('QUANTITY');
+
     setShowForm(true);
   };
 
@@ -127,7 +194,7 @@ export default function EstoqueScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await deleteDoc(doc(db, 'estoque', itemId));
+              await deleteDoc(getCompanyDoc(user.companyId, 'estoque', itemId));
               Alert.alert('Sucesso', 'Item excluído do estoque');
               carregarItens();
             } catch (error) {
@@ -140,22 +207,20 @@ export default function EstoqueScreen() {
     );
   };
 
-  const ajustarQuantidade = async (itemId, itemNome, quantidadeAtual, ajuste) => {
+  const ajustarQuantidade = async (itemId, quantidadeAtual, ajuste) => {
     const novaQuantidade = quantidadeAtual + ajuste;
     if (novaQuantidade < 0) {
       Alert.alert('Atenção', 'Quantidade não pode ser negativa');
       return;
     }
-
     try {
-      await updateDoc(doc(db, 'estoque', itemId), {
+      await updateDoc(getCompanyDoc(user.companyId, 'estoque', itemId), {
         quantidade: novaQuantidade,
         atualizadoEm: serverTimestamp(),
       });
       carregarItens();
     } catch (error) {
       console.error('Erro ao ajustar quantidade:', error);
-      Alert.alert('Erro', 'Não foi possível ajustar a quantidade');
     }
   };
 
@@ -163,30 +228,56 @@ export default function EstoqueScreen() {
     return item.quantidadeMinima > 0 && item.quantidade <= item.quantidadeMinima;
   };
 
+  if (showFornecedores) {
+    return (<GerenciarFornecedoresScreen onClose={() => { setShowFornecedores(false); carregarFornecedores(); }} />);
+  }
+
+  if (showConfig) {
+    return (<ConfiguracaoEstoqueScreen onClose={() => { setShowConfig(false); carregarConfigECategorias(); }} />);
+  }
+
   return (
     <View style={styles.container}>
       <BackgroundPattern />
 
       <View style={styles.header}>
+        {onClose && (
+          <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+            <Ionicons name="close" size={24} color="#FFF" />
+          </TouchableOpacity>
+        )}
         <Text style={styles.headerTitle}>📦 Gerenciar Estoque</Text>
+
+        <View style={styles.headerActions}>
+          <TouchableOpacity onPress={() => setShowConfig(true)} style={styles.iconBtn}>
+            <Ionicons name="settings-outline" size={24} color="#FFF" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setShowFornecedores(true)} style={styles.iconBtn}>
+            <Ionicons name="people-outline" size={24} color="#FFF" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Categorias */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriasScroll}>
-          {categorias.map(cat => (
-            <TouchableOpacity
-              key={cat.id}
-              style={[styles.categoriaBtn, categoriaAtiva === cat.id && styles.categoriaBtnActive]}
-              onPress={() => setCategoriaAtiva(cat.id)}
-            >
-              <Text style={styles.categoriaIcon}>{cat.icon}</Text>
-              <Text style={[styles.categoriaText, categoriaAtiva === cat.id && styles.categoriaTextActive]}>
-                {cat.nome}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        {categorias.length === 0 ? (
+          <ActivityIndicator color="#8B2F2F" />
+        ) : (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriasScroll}>
+            {categorias.map(cat => (
+              <TouchableOpacity
+                key={cat.id}
+                style={[styles.categoriaBtn, categoriaAtiva === cat.id && styles.categoriaBtnActive]}
+                onPress={() => setCategoriaAtiva(cat.id)}
+              >
+                <Text style={styles.categoriaIcon}>{cat.icon}</Text>
+                <Text style={[styles.categoriaText, categoriaAtiva === cat.id && styles.categoriaTextActive]}>
+                  {cat.nome}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
 
         {/* Botão Adicionar */}
         <TouchableOpacity
@@ -219,7 +310,7 @@ export default function EstoqueScreen() {
             <View style={styles.row}>
               <TextInput
                 style={[styles.input, styles.inputSmall]}
-                placeholder="Quantidade *"
+                placeholder="Qtd *"
                 keyboardType="numeric"
                 value={quantidade}
                 onChangeText={setQuantidade}
@@ -227,8 +318,22 @@ export default function EstoqueScreen() {
               />
 
               <View style={styles.unidadeContainer}>
+                {/* TABS DE TIPO DE UNIDADE */}
+                <View style={styles.unitTabs}>
+                  <TouchableOpacity onPress={() => setTipoUnidade('QUANTITY')} style={[styles.unitTab, tipoUnidade === 'QUANTITY' && styles.unitTabActive]}>
+                    <Text style={[styles.unitTabText, tipoUnidade === 'QUANTITY' && styles.unitTabTextActive]}>Unid.</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setTipoUnidade('VOLUME')} style={[styles.unitTab, tipoUnidade === 'VOLUME' && styles.unitTabActive]}>
+                    <Text style={[styles.unitTabText, tipoUnidade === 'VOLUME' && styles.unitTabTextActive]}>Volume</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setTipoUnidade('MASS')} style={[styles.unitTab, tipoUnidade === 'MASS' && styles.unitTabActive]}>
+                    <Text style={[styles.unitTabText, tipoUnidade === 'MASS' && styles.unitTabTextActive]}>Peso</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* LISTA DE UNIDADES FILTRADA */}
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  {unidades.map(un => (
+                  {(SUPPORTED_UNITS[tipoUnidade] || []).map(un => (
                     <TouchableOpacity
                       key={un}
                       style={[styles.unidadeBtn, unidade === un && styles.unidadeBtnActive]}
@@ -243,20 +348,33 @@ export default function EstoqueScreen() {
               </View>
             </View>
 
+            <Text style={styles.label}>Fornecedor:</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.fornecedorScroll}>
+              <TouchableOpacity
+                style={[styles.chip, !fornecedorSelecionado && styles.chipActive]}
+                onPress={() => setFornecedorSelecionado('')}
+              >
+                <Text style={[styles.chipText, !fornecedorSelecionado && styles.chipTextActive]}>Nenhum</Text>
+              </TouchableOpacity>
+              {fornecedores.map(f => (
+                <TouchableOpacity
+                  key={f.id}
+                  style={[styles.chip, fornecedorSelecionado === f.id && styles.chipActive]}
+                  onPress={() => setFornecedorSelecionado(f.id)}
+                >
+                  <Text style={[styles.chipText, fornecedorSelecionado === f.id && styles.chipTextActive]}>
+                    {f.nome}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
             <TextInput
-              style={styles.input}
-              placeholder="Quantidade mínima (alerta)"
+              style={[styles.input, { marginTop: 10 }]}
+              placeholder="Qtd Mínima (alerta)"
               keyboardType="numeric"
               value={quantidadeMinima}
               onChangeText={setQuantidadeMinima}
-              placeholderTextColor="#999"
-            />
-
-            <TextInput
-              style={styles.input}
-              placeholder="Fornecedor"
-              value={fornecedor}
-              onChangeText={setFornecedor}
               placeholderTextColor="#999"
             />
 
@@ -284,15 +402,15 @@ export default function EstoqueScreen() {
 
         {/* Lista de Itens */}
         <Text style={styles.sectionTitle}>
-          {categorias.find(c => c.id === categoriaAtiva)?.icon} {categorias.find(c => c.id === categoriaAtiva)?.nome}
+          {categorias.find(c => c.id === categoriaAtiva)?.icon || '📦'} {categorias.find(c => c.id === categoriaAtiva)?.nome || 'Itens'}
         </Text>
 
         {loading ? (
           <ActivityIndicator size="large" color="#8B2F2F" style={styles.loader} />
         ) : itensEstoque.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>📭 Nenhum item cadastrado</Text>
-            <Text style={styles.emptySubtext}>Adicione itens ao estoque usando o botão acima</Text>
+            <Text style={styles.emptyText}>📭 Nenhum item nesta categoria</Text>
+            <Text style={styles.emptySubtext}>Nenhum item cadastrado para a empresa atual.</Text>
           </View>
         ) : (
           itensEstoque.map(item => (
@@ -304,7 +422,7 @@ export default function EstoqueScreen() {
                 <Text style={styles.itemNome}>{item.nome}</Text>
                 {isEstoqueBaixo(item) && (
                   <View style={styles.alertaBadge}>
-                    <Text style={styles.alertaText}>⚠️ Estoque baixo</Text>
+                    <Text style={styles.alertaText}>⚠️ Baixo</Text>
                   </View>
                 )}
               </View>
@@ -313,7 +431,7 @@ export default function EstoqueScreen() {
                 <View style={styles.quantidadeContainer}>
                   <TouchableOpacity
                     style={styles.btnAjuste}
-                    onPress={() => ajustarQuantidade(item.id, item.nome, item.quantidade, -1)}
+                    onPress={() => ajustarQuantidade(item.id, item.quantidade, -1)}
                   >
                     <Text style={styles.btnAjusteText}>−</Text>
                   </TouchableOpacity>
@@ -324,7 +442,7 @@ export default function EstoqueScreen() {
 
                   <TouchableOpacity
                     style={styles.btnAjuste}
-                    onPress={() => ajustarQuantidade(item.id, item.nome, item.quantidade, 1)}
+                    onPress={() => ajustarQuantidade(item.id, item.quantidade, 1)}
                   >
                     <Text style={styles.btnAjusteText}>+</Text>
                   </TouchableOpacity>
@@ -333,12 +451,12 @@ export default function EstoqueScreen() {
                 {item.quantidadeMinima > 0 && (
                   <Text style={styles.infoText}>Mínimo: {item.quantidadeMinima} {item.unidade}</Text>
                 )}
-                {item.fornecedor && (
-                  <Text style={styles.infoText}>Fornecedor: {item.fornecedor}</Text>
-                )}
-                {item.observacoes && (
-                  <Text style={styles.obsText}>{item.observacoes}</Text>
-                )}
+                {item.fornecedorNome ? (
+                  <Text style={styles.infoText}>🏢 {item.fornecedorNome}</Text>
+                ) : null}
+                {item.observacoes ? (
+                  <Text style={styles.obsText}>📝 {item.observacoes}</Text>
+                ) : null}
               </View>
 
               <View style={styles.itemActions}>
@@ -378,18 +496,32 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
-    zIndex: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     elevation: 8,
   },
   headerTitle: {
     color: '#FFFFFF',
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: 'bold',
+    flex: 1,
     textAlign: 'center',
+    marginLeft: 40 // offset close btn
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 15
+  },
+  iconBtn: {
+    padding: 5
+  },
+  closeBtn: {
+    padding: 5,
+    position: 'absolute',
+    left: 20,
+    top: 50,
+    zIndex: 20
   },
   content: {
     flex: 1,
@@ -406,11 +538,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 3,
+    elevation: 2,
   },
   categoriaBtnActive: {
     backgroundColor: '#8B2F2F',
@@ -433,11 +561,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     marginBottom: 20,
-    shadowColor: '#E5B84A',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 5,
+    elevation: 3,
   },
   addBtnText: {
     color: '#2C2C2C',
@@ -449,10 +573,6 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     padding: 20,
     marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
     elevation: 5,
   },
   formTitle: {
@@ -464,65 +584,107 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: '#F5F1E8',
     borderRadius: 10,
-    padding: 15,
+    padding: 12,
     fontSize: 16,
-    color: '#2C2C2C',
-    marginBottom: 12,
     borderWidth: 1,
     borderColor: '#E5B84A',
+    marginBottom: 10
   },
   row: {
     flexDirection: 'row',
     gap: 10,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   inputSmall: {
-    flex: 1,
+    flex: 0.4,
     marginBottom: 0,
   },
   unidadeContainer: {
+    flex: 0.6,
+  },
+  unitTabs: {
+    flexDirection: 'row',
+    marginBottom: 8,
+    backgroundColor: '#F5F1E8',
+    borderRadius: 8,
+    padding: 2
+  },
+  unitTab: {
     flex: 1,
+    paddingVertical: 6,
+    alignItems: 'center',
+    borderRadius: 6
+  },
+  unitTabActive: {
+    backgroundColor: '#fff',
+    elevation: 2
+  },
+  unitTabText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#999'
+  },
+  unitTabTextActive: {
+    color: '#8B2F2F'
   },
   unidadeBtn: {
     backgroundColor: '#F5F1E8',
-    paddingVertical: 15,
+    paddingVertical: 10,
     paddingHorizontal: 15,
     borderRadius: 10,
     marginRight: 8,
     borderWidth: 1,
     borderColor: '#E5B84A',
+    minWidth: 45,
+    alignItems: 'center'
   },
   unidadeBtnActive: {
     backgroundColor: '#8B2F2F',
     borderColor: '#8B2F2F',
   },
   unidadeText: {
-    fontSize: 14,
     fontWeight: '600',
     color: '#8B2F2F',
   },
   unidadeTextActive: {
     color: '#FFFFFF',
   },
+  // Chips for suppliers
+  label: { fontSize: 14, fontWeight: 'bold', color: '#666', marginBottom: 5 },
+  fornecedorScroll: {
+    flexDirection: 'row',
+    marginBottom: 10,
+    maxHeight: 50
+  },
+  chip: {
+    backgroundColor: '#F0F0F0',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#DDD'
+  },
+  chipActive: {
+    backgroundColor: '#E5B84A',
+    borderColor: '#DAA520'
+  },
+  chipText: { color: '#666' },
+  chipTextActive: { color: '#2C2C2C', fontWeight: 'bold' },
+
   textArea: {
     height: 80,
     textAlignVertical: 'top',
   },
   saveBtn: {
     backgroundColor: '#8B2F2F',
-    paddingVertical: 15,
+    padding: 15,
     borderRadius: 12,
     alignItems: 'center',
     marginTop: 10,
-    shadowColor: '#8B2F2F',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 5,
   },
   saveBtnText: {
     color: '#FFFFFF',
-    fontSize: 16,
     fontWeight: '700',
   },
   sectionTitle: {
@@ -539,24 +701,18 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
   },
   emptyText: {
-    fontSize: 18,
     fontWeight: '600',
     color: '#999',
-    marginBottom: 5,
   },
   emptySubtext: {
-    fontSize: 14,
     color: '#999',
+    marginTop: 5
   },
   itemCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 15,
     padding: 15,
     marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
     elevation: 3,
   },
   itemCardAlerta: {
@@ -577,18 +733,12 @@ const styles = StyleSheet.create({
   },
   alertaBadge: {
     backgroundColor: '#FF6B6B',
-    paddingVertical: 4,
-    paddingHorizontal: 10,
     borderRadius: 12,
+    paddingVertical: 2,
+    paddingHorizontal: 8
   },
-  alertaText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  itemInfo: {
-    marginBottom: 15,
-  },
+  alertaText: { color: '#FFF', fontSize: 10, fontWeight: 'bold' },
+  itemInfo: { marginBottom: 15 },
   quantidadeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -598,35 +748,16 @@ const styles = StyleSheet.create({
   },
   btnAjuste: {
     backgroundColor: '#8B2F2F',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  btnAjusteText: {
-    color: '#FFFFFF',
-    fontSize: 24,
-    fontWeight: '700',
-  },
-  quantidadeText: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#8B2F2F',
-    minWidth: 100,
-    textAlign: 'center',
-  },
-  infoText: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 3,
-  },
-  obsText: {
-    fontSize: 13,
-    color: '#999',
-    fontStyle: 'italic',
-    marginTop: 5,
-  },
+  btnAjusteText: { color: '#FFF', fontSize: 20 },
+  quantidadeText: { fontSize: 22, fontWeight: 'bold', color: '#8B2F2F' },
+  infoText: { fontSize: 13, color: '#666' },
+  obsText: { fontSize: 13, color: '#999', fontStyle: 'italic', marginTop: 4 },
   itemActions: {
     flexDirection: 'row',
     gap: 10,
@@ -634,20 +765,16 @@ const styles = StyleSheet.create({
   btnEditar: {
     flex: 1,
     backgroundColor: '#E5B84A',
-    paddingVertical: 10,
+    padding: 10,
     borderRadius: 8,
     alignItems: 'center',
   },
   btnDeletar: {
     flex: 1,
     backgroundColor: '#FF6B6B',
-    paddingVertical: 10,
+    padding: 10,
     borderRadius: 8,
     alignItems: 'center',
   },
-  btnText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
+  btnText: { color: '#FFF', fontWeight: 'bold' }
 });

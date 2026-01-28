@@ -16,8 +16,8 @@ import { db } from '../config/firebaseConfig';
 import { useAuth } from '../context/AuthContext';
 import { getCompanyCollection, getCompanyDoc } from '../utils/firestoreUtils';
 import BackgroundPattern from '../components/BackgroundPattern';
+import { SUPPORTED_UNITS } from '../utils/unitConversion';
 
-// Componente para cada item de variação
 // Componente para cada item de variação
 function VariacaoItem({ variacao, onSalvar }) {
   const [precoTemp, setPrecoTemp] = useState(variacao.price.toString());
@@ -36,7 +36,7 @@ function VariacaoItem({ variacao, onSalvar }) {
         />
 
         <View style={styles.variacaoPrecoContainer}>
-          <Text style={styles.variacaoLabel}>R$</Text>
+          <Text style={styles.variacaoLabelLarge}>R$</Text>
           <TextInput
             style={styles.variacaoPrecoInput}
             value={precoTemp}
@@ -86,13 +86,28 @@ export default function GerenciarCardapioScreen() {
   const [variacoesSelecionadas, setVariacoesSelecionadas] = useState([]);
 
   // Estados para Temperos/Opções
-  // Estados para Temperos/Opções
-  const [temperosCaldos, setTemperosCaldos] = useState(['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada']);
-  const [temperosComidas, setTemperosComidas] = useState(['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada']);
+  const [temperosCaldos, setTemperosCaldos] = useState([]);
+  const [temperosComidas, setTemperosComidas] = useState([]);
   const [tipoTemperoAtivo, setTipoTemperoAtivo] = useState('caldos'); // 'caldos' | 'comidas' | 'variacoes'
   const [novoTempero, setNovoTempero] = useState('');
   const [editTemperoIndex, setEditTemperoIndex] = useState(-1);
   const [loadingTemperos, setLoadingTemperos] = useState(true);
+
+  // Estados para Ficha Técnica (Estoque)
+  const [showStockModal, setShowStockModal] = useState(false);
+  const [currentProductForStock, setCurrentProductForStock] = useState(null);
+  const [stockItems, setStockItems] = useState([]);
+  const [loadingStock, setLoadingStock] = useState(false);
+  // Form Ficha Técnica
+  const [selectedStockId, setSelectedStockId] = useState('');
+  const [qtyIngredient, setQtyIngredient] = useState('');
+  const [unitIngredient, setUnitIngredient] = useState('ml');
+
+  const unidadesUI = [
+    ...SUPPORTED_UNITS.VOLUME,
+    ...SUPPORTED_UNITS.MASS,
+    ...SUPPORTED_UNITS.QUANTITY
+  ];
 
   const categorias = [
     { value: 'caldo', label: '🍲 Caldos' },
@@ -219,8 +234,6 @@ export default function GerenciarCardapioScreen() {
   const carregarProdutos = async () => {
     try {
       setLoadingProdutos(true);
-      // console.log('📦 Carregando produtos do Firestore...');
-
       if (!user?.companyId) {
         console.warn('⚠️ Usuário sem empresa vinculada');
         setLoadingProdutos(false);
@@ -228,8 +241,6 @@ export default function GerenciarCardapioScreen() {
       }
 
       const snapshot = await getDocs(getCompanyCollection(user.companyId, 'cardapio'));
-      // console.log(`📦 ${snapshot.size} produtos encontrados`);
-
       const produtosData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -257,7 +268,6 @@ export default function GerenciarCardapioScreen() {
       });
 
       setProdutos(produtosData);
-      // console.log('✅ Produtos carregados com sucesso');
     } catch (error) {
       console.error('❌ Erro ao carregar produtos:', error);
       Alert.alert('Erro', 'Não foi possível carregar os produtos');
@@ -274,7 +284,6 @@ export default function GerenciarCardapioScreen() {
 
     // Se for espetinho e criar variações estiver marcado
     if (criarVariacoes && (categoria === 'espetinho-simples' || categoria === 'espetinho-especial')) {
-      // Verificar se algum preço está vazio para as variações ativas
       const algumVazio = variacoesEspetinho.some(v => !precosVariacoes[v]);
       if (algumVazio) {
         window.alert('Preencha todos os preços das variações');
@@ -283,8 +292,6 @@ export default function GerenciarCardapioScreen() {
 
       try {
         setLoading(true);
-        // console.log('➕ Cadastrando produto com variações:', nome);
-
         const variacoes = variacoesEspetinho.map(v => ({
           nome: `${nome.trim()} ${v}`,
           preco: parseFloat(precosVariacoes[v])
@@ -304,15 +311,9 @@ export default function GerenciarCardapioScreen() {
         });
 
         await batch.commit();
-        // console.log('✅ 4 variações cadastradas com sucesso');
-
         window.alert(`✅ Sucesso! ${nome} cadastrado com ${variacoes.length} variações!`);
-
-        // Limpar campos
         setNome('');
         setPrecosVariacoes({});
-
-        // Recarregar lista
         carregarProdutos();
       } catch (error) {
         console.error('❌ Erro ao cadastrar variações:', error);
@@ -321,7 +322,6 @@ export default function GerenciarCardapioScreen() {
         setLoading(false);
       }
     } else {
-      // Cadastro normal (produto único)
       if (!preco || isNaN(parseFloat(preco))) {
         window.alert('Digite um preço válido');
         return;
@@ -329,8 +329,6 @@ export default function GerenciarCardapioScreen() {
 
       try {
         setLoading(true);
-        // console.log('➕ Cadastrando produto:', { nome, preco, categoria });
-
         const novoProduto = {
           name: nome.trim(),
           price: parseFloat(preco),
@@ -340,15 +338,9 @@ export default function GerenciarCardapioScreen() {
         };
 
         await addDoc(getCompanyCollection(user.companyId, 'cardapio'), novoProduto);
-        // console.log('✅ Produto cadastrado com sucesso');
-
         window.alert('✅ Produto cadastrado com sucesso!');
-
-        // Limpar campos
         setNome('');
         setPreco('');
-
-        // Recarregar lista
         carregarProdutos();
       } catch (error) {
         console.error('❌ Erro ao cadastrar produto:', error);
@@ -380,8 +372,6 @@ export default function GerenciarCardapioScreen() {
 
     try {
       setLoading(true);
-      // console.log('✏️ Editando produto:', editando.id);
-
       const produtoRef = getCompanyDoc(user.companyId, 'cardapio', editando.id);
       await updateDoc(produtoRef, {
         name: editNome.trim(),
@@ -389,9 +379,7 @@ export default function GerenciarCardapioScreen() {
         category: editCategoria
       });
 
-      // console.log('✅ Produto editado com sucesso');
       Alert.alert('Sucesso', 'Produto atualizado com sucesso!');
-
       setShowEditModal(false);
       setEditando(null);
       carregarProdutos();
@@ -405,14 +393,10 @@ export default function GerenciarCardapioScreen() {
 
   const toggleAtivo = async (produto) => {
     try {
-      // console.log(`🔄 ${produto.active ? 'Desativando' : 'Ativando'} produto:`, produto.id);
-
       const produtoRef = getCompanyDoc(user.companyId, 'cardapio', produto.id);
       await updateDoc(produtoRef, {
         active: !produto.active
       });
-
-      // console.log('✅ Status atualizado');
       carregarProdutos();
     } catch (error) {
       console.error('❌ Erro ao atualizar status:', error);
@@ -420,110 +404,111 @@ export default function GerenciarCardapioScreen() {
     }
   };
 
-  const migrarCategorias = async () => {
-    const confirmado = window.confirm(
-      '🔄 MIGRAÇÃO DE CATEGORIAS\n\nIsso atualizará todos os espetinhos da categoria "espetinho" para "espetinho-simples" ou "espetinho-especial".\n\nDeseja continuar?'
-    );
-
-    if (!confirmado) return;
-
+  // --- LÓGICA DE FICHA TÉCNICA (ESTOQUE) ---
+  const fetchStockItems = async () => {
     try {
-      setLoading(true);
-      // console.log('🔄 Iniciando migração de categorias...');
-
-      const snapshot = await getDocs(getCompanyCollection(user.companyId, 'cardapio'));
-      const especiais = ['Carneiro', 'Cupim', 'Picanha'];
-
-      let countSimples = 0;
-      let countEspecial = 0;
-
-      for (const docSnap of snapshot.docs) {
-        const produto = docSnap.data();
-        const nome = produto.name || '';
-        const categoriaAtual = produto.category;
-
-        if (categoriaAtual === 'espetinho') {
-          let novaCategoria = 'espetinho-simples';
-
-          for (const especial of especiais) {
-            if (nome.includes(especial)) {
-              novaCategoria = 'espetinho-especial';
-              break;
-            }
-          }
-
-          await updateDoc(getCompanyDoc(user.companyId, 'cardapio', docSnap.id), {
-            category: novaCategoria
-          });
-
-          if (novaCategoria === 'espetinho-simples') {
-            countSimples++;
-          } else {
-            countEspecial++;
-          }
-
-          // console.log(`✅ ${nome} → ${novaCategoria}`);
-        }
-      }
-
-      // console.log('✅ Migração concluída!');
-      window.alert(`✅ Migração concluída!\n\nEspetinhos Simples: ${countSimples}\nEspetinhos Especiais: ${countEspecial}`);
-      carregarProdutos();
+      setLoadingStock(true);
+      const snapshot = await getDocs(getCompanyCollection(user.companyId, 'estoque'));
+      const items = snapshot.docs.map(doc => ({
+        id: doc.id,
+        nome: doc.data().nome,
+        unidadeOriginal: doc.data().unidade
+      })).sort((a, b) => a.nome.localeCompare(b.nome));
+      setStockItems(items);
     } catch (error) {
-      console.error('❌ Erro na migração:', error);
-      window.alert('❌ Erro: Não foi possível migrar as categorias');
+      console.error('Erro ao buscar estoque:', error);
     } finally {
-      setLoading(false);
+      setLoadingStock(false);
     }
   };
 
-  const limparDuplicados = async () => {
-    const confirmado = window.confirm(
-      '🗑️ LIMPEZA DE DUPLICADOS\n\nIsso removerá produtos espetinhos que NÃO tenham variação no nome (Simples, com Arroz, com Macaxeira, Completo).\n\nExemplos que serão removidos:\n- "Carneiro" (mantém "Carneiro Simples")\n- "Carne" (mantém "Carne Completo")\n\nDeseja continuar?'
-    );
-
-    if (!confirmado) return;
-
-    try {
-      setLoading(true);
-      // console.log('🔄 Limpando produtos duplicados...');
-
-      const snapshot = await getDocs(getCompanyCollection(user.companyId, 'cardapio'));
-      const variacoes = variacoesEspetinho;
-
-      let countDeletados = 0;
-
-      for (const docSnap of snapshot.docs) {
-        const produto = docSnap.data();
-        const nome = produto.name || '';
-        const categoria = produto.category;
-
-        // Verificar se é espetinho sem variação especificada
-        if (categoria === 'espetinho' || categoria === 'espetinho-simples' || categoria === 'espetinho-especial') {
-          const temVariacao = variacoes.some(v => nome.includes(v));
-
-          if (!temVariacao) {
-            await deleteDoc(getCompanyDoc(user.companyId, 'cardapio', docSnap.id));
-            countDeletados++;
-            // console.log(`🗑️  Removido: ${nome}`);
-          }
-        }
-      }
-
-      // console.log('✅ Limpeza concluída!');
-      window.alert(`✅ Limpeza concluída!\n\nProdutos removidos: ${countDeletados}`);
-      carregarProdutos();
-    } catch (error) {
-      console.error('❌ Erro na limpeza:', error);
-      window.alert('❌ Erro: Não foi possível limpar os duplicados');
-    } finally {
-      setLoading(false);
+  const abrirEstoque = (produto) => {
+    setCurrentProductForStock(produto);
+    setShowStockModal(true);
+    if (stockItems.length === 0) {
+      fetchStockItems();
     }
   };
 
-  // Função para extrair o nome base do produto (sem a variação)
+  const addIngredient = async () => {
+    if (!selectedStockId || !qtyIngredient || isNaN(qtyIngredient)) {
+      Alert.alert('Erro', 'Selecione um item e uma quantidade válida.');
+      return;
+    }
+
+    // Buscar nome do item selecionado
+    const selectedItem = stockItems.find(s => s.id === selectedStockId);
+    if (!selectedItem) return;
+
+    // Atualizar lista de inventoryItems do produto
+    try {
+      const currentIngredients = currentProductForStock.inventoryItems || [];
+      const newIngredient = {
+        id: selectedStockId,
+        nome: selectedItem.nome,
+        qt: parseFloat(qtyIngredient),
+        un: unitIngredient
+      };
+
+      // Substituir se já existe
+      const newIngredients = [
+        ...currentIngredients.filter(i => i.id !== selectedStockId),
+        newIngredient
+      ];
+
+      const produtoRef = getCompanyDoc(user.companyId, 'cardapio', currentProductForStock.id);
+      await updateDoc(produtoRef, {
+        inventoryItems: newIngredients
+      });
+
+      // Atualizar estado local
+      setCurrentProductForStock({
+        ...currentProductForStock,
+        inventoryItems: newIngredients
+      });
+
+      // Atualizar lista principal
+      const updatedProdutos = produtos.map(p =>
+        p.id === currentProductForStock.id ? { ...p, inventoryItems: newIngredients } : p
+      );
+      setProdutos(updatedProdutos);
+
+      // Reset fields
+      setQtyIngredient('');
+      // Manter unidade ou resetar? Resetar pra ml é seguro.
+    } catch (error) {
+      console.error('Erro ao adicionar ingrediente:', error);
+      Alert.alert('Erro', 'Falha ao salvar ficha técnica.');
+    }
+  };
+
+  const removeIngredient = async (ingredientId) => {
+    try {
+      const newIngredients = (currentProductForStock.inventoryItems || []).filter(i => i.id !== ingredientId);
+
+      const produtoRef = getCompanyDoc(user.companyId, 'cardapio', currentProductForStock.id);
+      await updateDoc(produtoRef, {
+        inventoryItems: newIngredients
+      });
+
+      setCurrentProductForStock({
+        ...currentProductForStock,
+        inventoryItems: newIngredients
+      });
+
+      const updatedProdutos = produtos.map(p =>
+        p.id === currentProductForStock.id ? { ...p, inventoryItems: newIngredients } : p
+      );
+      setProdutos(updatedProdutos);
+
+    } catch (error) {
+      console.error('Erro ao remover ingrediente:', error);
+    }
+  };
+
+  // --- FIM LÓGICA FICHA TÉCNICA ---
+
   const getNomeBase = (nomeProduto) => {
-    // Remove as variações do nome
     let nome = nomeProduto;
     variacoesEspetinho.forEach(v => {
       nome = nome.replace(` ${v}`, '');
@@ -531,10 +516,8 @@ export default function GerenciarCardapioScreen() {
     return nome.trim();
   };
 
-  // Função para agrupar produtos por nome base
   const agruparProdutos = (listaProdutos) => {
     const grupos = {};
-
     listaProdutos.forEach(produto => {
       const nomeBase = getNomeBase(produto.name);
       if (!grupos[nomeBase]) {
@@ -542,18 +525,15 @@ export default function GerenciarCardapioScreen() {
       }
       grupos[nomeBase].push(produto);
     });
-
     return grupos;
   };
 
-  // Função para abrir modal de variações
   const abrirVariacoes = (nomeBase) => {
     const variacoes = produtosAgrupados[nomeBase] || [];
     setVariacoesSelecionadas(variacoes);
     setShowVariacoesModal(true);
   };
 
-  // Função para salvar alteração de uma variação
   const salvarVariacao = async (produto, novoPreco, novoNome) => {
     try {
       const precoNum = parseFloat(novoPreco);
@@ -572,10 +552,8 @@ export default function GerenciarCardapioScreen() {
         name: novoNome.trim()
       });
 
-      // console.log(`✅ Produto ${produto.name} atualizado`);
       carregarProdutos();
 
-      // Atualizar a lista de variações no modal
       const variacoesAtualizadas = variacoesSelecionadas.map(v =>
         v.id === produto.id ? { ...v, price: precoNum, name: novoNome.trim() } : v
       );
@@ -593,33 +571,9 @@ export default function GerenciarCardapioScreen() {
 
   const produtosAgrupados = agruparProdutos(produtosFiltrados);
 
-  const getCategoriaIcon = (cat) => {
-    switch (cat) {
-      case 'espetinho': return '';
-      case 'caldo': return '';
-      case 'porcao': return '';
-      case 'bebida': return '';
-      case 'comida': return '';
-      default: return '';
-    }
-  };
-
-  const getCategoriaLabel = (cat) => {
-    switch (cat) {
-      case 'espetinho-simples': return 'Espetinho Simples';
-      case 'espetinho-especial': return 'Espetinho Especial';
-      case 'caldo': return 'Caldo';
-      case 'porcao': return 'Porção';
-      case 'bebida': return 'Bebida';
-      case 'comida': return 'Comida';
-      default: return 'Outro';
-    }
-  };
-
   const excluirProduto = async (variacoes) => {
     const nomeBase = getNomeBase(variacoes[0].name);
 
-    // Check compatibility with web and mobile for confirm
     let confirmed = false;
     if (Platform.OS === 'web') {
       confirmed = window.confirm(`Tem certeza que deseja excluir "${nomeBase}" e todas as suas variações?`);
@@ -647,7 +601,6 @@ export default function GerenciarCardapioScreen() {
       });
 
       await batch.commit();
-      // console.log('✅ Produto excluído');
 
       if (Platform.OS !== 'web') {
         Alert.alert('Sucesso', 'Produto excluído com sucesso');
@@ -668,8 +621,6 @@ export default function GerenciarCardapioScreen() {
       <BackgroundPattern />
 
       <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }}>
-        {/* Botões de ação rápida */}
-
 
         {/* SEÇÃO 1: CADASTRAR PRODUTO */}
         <View style={styles.section}>
@@ -695,7 +646,6 @@ export default function GerenciarCardapioScreen() {
                   ]}
                   onPress={() => {
                     setCategoria(cat.value);
-                    // Se mudar para espetinho, sugerir criar variações
                     if (cat.value === 'espetinho-simples' || cat.value === 'espetinho-especial') {
                       setCriarVariacoes(true);
                     } else {
@@ -713,7 +663,6 @@ export default function GerenciarCardapioScreen() {
               ))}
             </View>
 
-            {/* Se for espetinho, mostrar opção de criar variações */}
             {(categoria === 'espetinho-simples' || categoria === 'espetinho-especial') && (
               <TouchableOpacity
                 style={styles.variacaoToggle}
@@ -728,7 +677,6 @@ export default function GerenciarCardapioScreen() {
               </TouchableOpacity>
             )}
 
-            {/* Se criar variações estiver marcado, mostrar campos de preço dinâmicos */}
             {criarVariacoes && (categoria === 'espetinho-simples' || categoria === 'espetinho-especial') ? (
               <>
                 <Text style={styles.label}>Preços das variações:</Text>
@@ -901,13 +849,32 @@ export default function GerenciarCardapioScreen() {
                     <TouchableOpacity
                       style={[styles.statusBtn, todosAtivos ? styles.statusBtnAtivo : styles.statusBtnInativo]}
                       onPress={() => {
-                        // Toggle de todas as variações
                         variacoes.forEach(v => toggleAtivo(v));
                       }}
                     >
                       <Text style={styles.statusBtnText}>
                         {todosAtivos ? 'ATIVO' : 'DESATIVADO'}
                       </Text>
+                    </TouchableOpacity>
+
+                    {/* BOTÃO MÁGICO: FICHA TÉCNICA */}
+                    <TouchableOpacity
+                      style={styles.stockBtn}
+                      onPress={() => abrirEstoque(primeiraVariacao)} // Abre para a primeira variação se for grupo?
+                    // Para grupos, a ficha técnica costuma ser por variação. 
+                    // Se for Produto Único, OK.
+                    // Se for Variação, melhor clicar em "Editar" e lá dentro ter a ficha.
+                    // AQUI: Vou deixar disponível se for produto único (sem variação automática)
+                    // Se tiver variações, o ideal seria configurar em cada variação ou no "Editar Variações".
+                    // O usuário clica em "Editar" -> Abre modal variacoes -> Cada item tem "Ficha Técnica"?
+                    // Simplicidade: Botão "Ficha" aqui abre modal para configurar a "receita base" ou abrir modal de seleção?
+                    // Se tem variações, eu teria que escolher qual variação configurar.
+                    // Vou simplificar: O botão "Estoque" aqui abre o modal. Se tiver variações, o modal pergunta qual variação editar?
+                    // OU: Removo este botão e coloco dentro do modal de Edição/Variações.
+                    // Solução: Botão Estoque aqui abre menu se tiver variações.
+                    // Mas para MVP: Clicar aqui abre a primeira variação se única.
+                    >
+                      <Text style={styles.stockBtnText}>📦</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -932,7 +899,7 @@ export default function GerenciarCardapioScreen() {
 
       </ScrollView>
 
-      {/* MODAL DE EDIÇÃO */}
+      {/* MODAL DE EDIÇÃO (Produto Único) */}
       <Modal visible={showEditModal} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -981,6 +948,14 @@ export default function GerenciarCardapioScreen() {
               ))}
             </View>
 
+            {/* Link para Ficha Técnica direto na edição */}
+            <TouchableOpacity
+              style={styles.stockLinkBtn}
+              onPress={() => { setShowEditModal(false); abrirEstoque(editando); }}
+            >
+              <Text style={styles.stockLinkText}>📦 Configurar Ficha Técnica / Estoque</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity
               style={[styles.salvarBtn, loading && styles.salvarBtnDisabled]}
               onPress={salvarEdicao}
@@ -994,7 +969,7 @@ export default function GerenciarCardapioScreen() {
         </View>
       </Modal>
 
-      {/* MODAL DE VARIAÇÕES */}
+      {/* MODAL DE VARIAÇÕES (Espetinhos) */}
       <Modal visible={showVariacoesModal} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -1007,12 +982,19 @@ export default function GerenciarCardapioScreen() {
 
             <ScrollView style={styles.variacoesLista}>
               {variacoesSelecionadas.map(variacao => (
-                <VariacaoItem
-                  key={variacao.id}
-                  variacao={variacao}
-                  onSalvar={salvarVariacao}
-                  onToggleStatus={toggleAtivo}
-                />
+                <View key={variacao.id}>
+                  <VariacaoItem
+                    variacao={variacao}
+                    onSalvar={salvarVariacao}
+                  />
+                  {/* Botão para estoque específico da variação */}
+                  <TouchableOpacity
+                    style={styles.miniStockBtn}
+                    onPress={() => { setShowVariacoesModal(false); abrirEstoque(variacao); }}
+                  >
+                    <Text style={styles.miniStockText}>📦 Ficha Técnica ({variacao.inventoryItems?.length || 0} itens)</Text>
+                  </TouchableOpacity>
+                </View>
               ))}
             </ScrollView>
 
@@ -1025,6 +1007,84 @@ export default function GerenciarCardapioScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* MODAL FICHA TÉCNICA (ESTOQUE) */}
+      <Modal visible={showStockModal} animationType="slide" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>📦 Ficha Técnica</Text>
+              <TouchableOpacity onPress={() => setShowStockModal(false)}>
+                <Text style={styles.modalClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={{ marginBottom: 15, fontSize: 16 }}>
+              Produto: <Text style={{ fontWeight: 'bold' }}>{currentProductForStock?.name}</Text>
+            </Text>
+
+            <Text style={styles.label}>Adicionar Ingrediente do Estoque:</Text>
+
+            {/* Seleção de Item (Dropdown simples ou scroll horizontal) */}
+            <ScrollView style={{ maxHeight: 150, marginBottom: 10, borderWidth: 1, borderColor: '#eee', borderRadius: 8 }}>
+              {stockItems.map(item => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={{ padding: 10, backgroundColor: selectedStockId === item.id ? '#FFE4B5' : '#fff', borderBottomWidth: 1, borderColor: '#eee' }}
+                  onPress={() => setSelectedStockId(item.id)}
+                >
+                  <Text>{item.nome} ({item.unidadeOriginal})</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            {stockItems.length === 0 && <Text style={{ color: '#999', fontStyle: 'italic', marginBottom: 10 }}>Nenhum item no estoque.</Text>}
+
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TextInput
+                style={[styles.input, { flex: 0.4 }]}
+                placeholder="Qtd (Receita)"
+                cursorColor='#8B2F2F'
+                value={qtyIngredient}
+                onChangeText={setQtyIngredient}
+                keyboardType="numeric"
+              />
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 0.6 }}>
+                {unidadesUI.map(u => (
+                  <TouchableOpacity
+                    key={u}
+                    style={{ padding: 10, backgroundColor: unitIngredient === u ? '#8B2F2F' : '#eee', borderRadius: 8, marginRight: 5, justifyContent: 'center' }}
+                    onPress={() => setUnitIngredient(u)}
+                  >
+                    <Text style={{ color: unitIngredient === u ? '#fff' : '#333', fontWeight: 'bold' }}>{u}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+
+            <TouchableOpacity style={styles.salvarBtn} onPress={addIngredient}>
+              <Text style={styles.salvarBtnText}>+ Adicionar Ingrediente</Text>
+            </TouchableOpacity>
+
+            <Text style={[styles.label, { marginTop: 20 }]}>Ingredientes Vinculados:</Text>
+            <ScrollView style={{ maxHeight: 200 }}>
+              {(currentProductForStock?.inventoryItems || []).length === 0 ? (
+                <Text style={{ fontStyle: 'italic', color: '#999' }}>Nenhum ingrediente vinculado.</Text>
+              ) : (
+                (currentProductForStock?.inventoryItems || []).map((ing, idx) => (
+                  <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 10, borderBottomWidth: 1, borderColor: '#eee' }}>
+                    <Text style={{ flex: 1 }}>{ing.nome} - {ing.qt} {ing.un}</Text>
+                    <TouchableOpacity onPress={() => removeIngredient(ing.id)}>
+                      <Text style={{ color: 'red' }}>🗑️</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+
+          </View>
+        </View>
+      </Modal>
+
     </View>
   );
 }
@@ -1037,10 +1097,6 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 20,
-  },
-  quickActions: {
-    gap: 10,
-    marginBottom: 20,
   },
   section: {
     marginBottom: 30,
@@ -1178,24 +1234,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 1,
   },
-  popularBtn: {
-    backgroundColor: '#28A745',
-    padding: 15,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginBottom: 30,
-    shadowColor: '#28A745',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 5,
-  },
-  popularBtnText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
   filtros: {
     flexDirection: 'row',
     marginBottom: 15,
@@ -1261,10 +1299,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
   },
-  produtoIcon: {
-    fontSize: 32,
-    marginRight: 12,
-  },
   produtoInfo: {
     flex: 1,
   },
@@ -1274,23 +1308,17 @@ const styles = StyleSheet.create({
     color: '#2C2C2C',
     marginBottom: 4,
   },
-  produtoPreco: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#8B2F2F',
-    marginBottom: 2,
-  },
-  produtoCategoria: {
+  produtoVariacoes: {
     fontSize: 12,
     color: '#999',
-    fontStyle: 'italic',
+    marginTop: 2,
   },
   produtoActions: {
     flexDirection: 'row',
     gap: 8,
     justifyContent: 'flex-end',
-    flexWrap: 'wrap', // Allow wrapping if screen is narrow
-    maxWidth: '50%',  // Limit width so it doesn't crush the name too much
+    flexWrap: 'wrap',
+    maxWidth: '50%',
   },
   statusBtn: {
     paddingVertical: 8,
@@ -1323,74 +1351,48 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#2C2C2C',
   },
-  addPadroesBtn: {
-    backgroundColor: '#8B2F2F',
-    borderRadius: 15,
-    padding: 20,
+  stockBtn: {
+    backgroundColor: '#D2691E',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
     alignItems: 'center',
-    shadowColor: '#8B2F2F',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 15,
-    elevation: 5,
   },
-  addPadroesBtnText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 5,
-    letterSpacing: 0.5,
+  stockBtnText: {
+    fontSize: 14,
   },
-  addPadroesSubtext: {
-    color: '#E5B84A',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  migrarBtn: {
-    backgroundColor: '#FF8C00',
-    borderRadius: 15,
-    padding: 20,
+  stockLinkBtn: {
+    backgroundColor: '#333',
+    padding: 10,
+    borderRadius: 10,
     alignItems: 'center',
-    shadowColor: '#FF8C00',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 15,
-    elevation: 5,
+    marginVertical: 10,
   },
-  migrarBtnText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 5,
-    letterSpacing: 0.5,
+  stockLinkText: {
+    color: '#FFF',
+    fontWeight: 'bold',
   },
-  migrarSubtext: {
-    color: '#FFE4B5',
-    fontSize: 12,
-    fontWeight: '600',
+  miniStockBtn: {
+    backgroundColor: '#eee',
+    padding: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 10
   },
-  limparBtn: {
+  miniStockText: { color: '#333', fontSize: 12 },
+  deleteBtn: {
     backgroundColor: '#DC3545',
-    borderRadius: 15,
-    padding: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    minWidth: 100,
     alignItems: 'center',
-    shadowColor: '#DC3545',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 15,
-    elevation: 5,
+    justifyContent: 'center',
   },
-  limparBtnText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 5,
-    letterSpacing: 0.5,
-  },
-  limparSubtext: {
-    color: '#FFB3BA',
+  deleteBtnText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   modalOverlay: {
     flex: 1,
@@ -1441,32 +1443,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
-  produtoVariacoes: {
-    fontSize: 12,
-    color: '#999',
-    marginTop: 2,
-  },
   variacoesLista: {
     maxHeight: 400,
   },
   variacaoItem: {
     backgroundColor: '#F5F1E8',
     borderRadius: 12,
-    padding: 15,
+    padding: 8,
     marginBottom: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
   },
   variacaoInfo: {
-    flex: 1,
     marginRight: 10,
-  },
-  variacaoNome: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#2C2C2C',
-    marginBottom: 8,
   },
   variacaoNomeInput: {
     fontSize: 15,
@@ -1512,24 +1499,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
   },
-  variacaoStatusBtn: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-    minWidth: 70,
-    alignItems: 'center',
-  },
-  variacaoStatusAtivo: {
-    backgroundColor: '#7ED321',
-  },
-  variacaoStatusInativo: {
-    backgroundColor: '#DC3545',
-  },
-  variacaoStatusText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
   fecharBtn: {
     backgroundColor: '#999',
     padding: 15,
@@ -1541,19 +1510,5 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
-  },
-  deleteBtn: {
-    backgroundColor: '#DC3545',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    minWidth: 100,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  deleteBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#FFFFFF',
   },
 });
