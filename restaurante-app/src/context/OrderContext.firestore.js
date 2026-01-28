@@ -8,19 +8,29 @@ import OrderFirestoreService from '../services/OrderFirestoreService';
 import { useAuth } from './AuthContext';
 
 // Função auxiliar para calcular total buscando preços do Firestore
-const calculateTotalFromFirestore = async (companyId, items) => {
+// Função auxiliar para calcular total buscando preços do Firestore ou usando cache
+const calculateTotalFromFirestore = async (companyId, items, priceMap = null) => {
   try {
     if (!companyId) return 0;
-    // Buscar todos os itens do cardápio
-    const cardapioSnap = await getDocs(getCompanyCollection(companyId, 'cardapio'));
-    const cardapioMap = {};
 
-    cardapioSnap.forEach(doc => {
-      const data = doc.data();
-      if (data.name && data.price) {
-        cardapioMap[data.name.toLowerCase()] = data.price;
-      }
-    });
+    let cardapioMap = {};
+
+    // OTIMIZAÇÃO: Se priceMap foi fornecido, usar ele diretamente e evitar fetch no Firestore
+    if (priceMap && Object.keys(priceMap).length > 0) {
+      console.log('⚡ [OrderContext] Usando priceMap fornecido (Cache)');
+      cardapioMap = priceMap;
+    } else {
+      console.log('⚠️ [OrderContext] priceMap não fornecido, buscando cardápio no Firestore...');
+      // Buscar todos os itens do cardápio
+      const cardapioSnap = await getDocs(getCompanyCollection(companyId, 'cardapio'));
+
+      cardapioSnap.forEach(doc => {
+        const data = doc.data();
+        if (data.name && data.price) {
+          cardapioMap[data.name.toLowerCase()] = data.price;
+        }
+      });
+    }
 
     let total = 0;
 
@@ -41,7 +51,14 @@ const calculateTotalFromFirestore = async (companyId, items) => {
       } else {
         // Buscar preço no mapa
         const itemLower = itemName.toLowerCase();
+        // Tentar match exato ou parcial se necessário (mas o mapa geralmente tem chaves exatas se vindo do Firestore)
         price = cardapioMap[itemLower] || 0;
+
+        // Fallback para pesquisa caso não ache exato (para lidar com variações se o map for simples)
+        if (price === 0 && !priceMap) {
+          // Se veio do Firestore, já construímos lowercase.
+          // Se veio do priceMap externo, ele deve estar preparado.
+        }
       }
 
       total += quantity * price;
@@ -204,7 +221,7 @@ export const OrderProvider = ({ children }) => {
 
   // Adicionar novo pedido - salva no Firestore
   // OTIMIZADO: Operações em paralelo onde possível
-  const addOrder = useCallback(async (clientName, items, observations, comandaNumber = '', createdBy = '', createdByName = '', totalPrice = 0, isPago = false, mesa = '') => {
+  const addOrder = useCallback(async (clientName, items, observations, comandaNumber = '', createdBy = '', createdByName = '', totalPrice = 0, isPago = false, mesa = '', priceMap = null) => {
     const orderId = OrderService.generateOrderId(orderCounter);
 
     console.log('🔵 [OrderContext] addOrder chamado, isOnline:', isOnline);
@@ -245,9 +262,9 @@ export const OrderProvider = ({ children }) => {
 
         await ComandasService.ensureComandaAberta(user.companyId, comandaNumber, createdBy, createdByName, mesa, clientName);
 
-        // Calcular total buscando preços do Firestore
+        // Calcular total buscando preços do Firestore (ou cache)
         console.log('🔵 [OrderContext] Calculando total do pedido...');
-        const calculatedTotal = await calculateTotalFromFirestore(user.companyId, items);
+        const calculatedTotal = await calculateTotalFromFirestore(user.companyId, items, priceMap);
         console.log('🔵 [OrderContext] Total calculado:', calculatedTotal);
 
         console.log('🔵 [OrderContext] Criando order object...');
