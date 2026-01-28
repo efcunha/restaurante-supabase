@@ -86,8 +86,12 @@ export default function LoginScreen({ navigation }) {
             {/* Logo/Título */}
             <View style={styles.header}>
               <Image
-                source={require('../assets/images/login.png')}
-                style={[styles.logo, { width: logoSize, height: logoSize }]}
+                source={require('../assets/images/login_v12.png')}
+                style={{
+                  width: '100%',
+                  height: 260, // Reduced as requested
+                  marginBottom: 10
+                }}
                 resizeMode="contain"
               />
             </View>
@@ -195,7 +199,7 @@ export default function LoginScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#8B2F2F',
+    backgroundColor: '#7f2821', // Updated to match the image background perfectly
   },
   content: {
     padding: 20,
@@ -243,7 +247,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#8B2F2F',
+    color: '#7f2821', // Updated primary color
     marginBottom: 6,
     marginTop: 10, // Menos margem
   },
@@ -275,12 +279,12 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   loginBtn: {
-    backgroundColor: '#8B2F2F',
+    backgroundColor: '#7f2821', // Updated primary color
     padding: 15, // Menos padding vertical
     borderRadius: 12,
     alignItems: 'center',
     marginTop: 20,
-    shadowColor: '#8B2F2F',
+    shadowColor: '#7f2821', // Updated shadow color
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.3,
     shadowRadius: 10,
@@ -309,7 +313,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   forgotPasswordText: {
-    color: '#8B2F2F',
+    color: '#7f2821', // Updated link color
     fontSize: 14,
     textDecorationLine: 'underline',
     fontWeight: '600',
