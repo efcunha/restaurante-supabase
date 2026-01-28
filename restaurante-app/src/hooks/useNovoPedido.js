@@ -260,6 +260,14 @@ export function useNovoPedido() {
 
             const items = selectedItems.map(item => item.text);
 
+            // OTIMIZAÇÃO: Criar mapa de preços para evitar busca redundante no Firestore
+            const priceMap = {};
+            cardapioCombinado.forEach(item => {
+                if (item.name && item.price) {
+                    priceMap[item.name.toLowerCase()] = item.price;
+                }
+            });
+
             await addOrder(
                 clientName.trim() || 'Cliente',
                 items,
@@ -269,7 +277,8 @@ export function useNovoPedido() {
                 user?.nome || user?.email || 'Garçom',
                 parseFloat(total),
                 false, // isPago
-                mesa // ✅ Passar mesa
+                mesa, // ✅ Passar mesa
+                priceMap // ✅ Passar mapa de preços cached
             );
 
             showToast(`Pedido criado! Comanda ${novoNumeroComanda}`, 'success');
