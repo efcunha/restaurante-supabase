@@ -4,10 +4,10 @@
     "slug": "comandapraia-dona-cida",
     "version": "1.0.1",
     "orientation": "default",
-    "icon": "./imagem/icone.png",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./imagem/icone.png",
+      "image": "./assets/icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#8B2F2F"
     },
@@ -38,7 +38,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./imagem/icone.png",
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#8B2F2F"
       },
       "package": "com.comandapraia.donacida",
