@@ -23,6 +23,9 @@ const ComandaCard = memo(({ comanda, onPress }) => (
             {comanda.mesa ? (
                 <Text style={styles.mesaInfo}>🪑 Mesa: {comanda.mesa}</Text>
             ) : null}
+            {comanda.abertaPorNome ? (
+                <Text style={styles.garcomInfo}>🤵 Garçom: {comanda.abertaPorNome}</Text>
+            ) : null}
             <Text style={styles.timeInfo}>🕒 {comanda.horarioCriacao || '---'}</Text>
         </View>
 
@@ -143,6 +146,11 @@ const styles = StyleSheet.create({
         fontSize: 15,
         color: colors.text,
         fontWeight: '600',
+        marginBottom: 4,
+    },
+    garcomInfo: {
+        fontSize: 14,
+        color: colors.textSecondary,
         marginBottom: 4,
     },
     cardFooter: {
