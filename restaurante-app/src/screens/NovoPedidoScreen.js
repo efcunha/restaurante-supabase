@@ -464,6 +464,11 @@ export default function NovoPedidoScreen() {
         ListHeaderComponent={<HeaderComponent clientName={clientName} setClientName={setClientName} mesa={mesa} setMesa={setMesa} />}
         ListFooterComponent={<FooterComponent selectedItems={selectedItems} onRemoveItem={handleRemoveItemAnimated} />}
         stickySectionHeadersEnabled={false}
+        initialNumToRender={12}
+        windowSize={5}
+        maxToRenderPerBatch={10}
+        updateCellsBatchingPeriod={50}
+        removeClippedSubviews={Platform.OS === 'android'}
       />
 
       <View style={styles.stickyFooter}>
