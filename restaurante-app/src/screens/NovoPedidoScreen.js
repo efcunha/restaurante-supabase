@@ -38,19 +38,8 @@ const SelectedItem = memo(({ item, price, onRemove }) => (
 ));
 
 const ProdutoItem = memo(({ item, produtos = {}, updateProduto }) => {
-  // Logic from original: Caldos have variations (300ml, 180ml + temperos).
-  // Others have tempeors active too.
-  // The original rendered these inline. Here we need to replicate that structure but componentized.
-
-  // Actually, to fully optimize, we should move the mapping logic to `useNovoPedido`'s data preparation
-  // OR handle it here. Since the original screen had logic to create "Caldos Unicos" and then expand,
-  // SectionList data needs to be pre-processed.
-
   return (
     <View style={styles.produtoContainer}>
-      {/* Placeholder for complex rendering if we just pass raw items. 
-           But SectionList expects data array. 
-           For this refactor, let's keep it simple first and assume we render item rows. */}
       <Text>{item.name}</Text>
     </View>
   );
@@ -201,14 +190,13 @@ const EspetinhoRow = memo(({ baseName, cardapioEspetinhos, produtos, updateProdu
       {/* Dynamic Variation Rows */}
       {itensVariaveis.map((item, idx) => {
         const color = rowColors[idx % rowColors.length];
-        // Include price in label as these variations change price
-        const displayLabel = `${item.label} - R$ ${item.produto.price.toFixed(2)}`;
         const qty = produtos[item.produto.name] || 0;
 
         return (
-          <VariationRow
+          <StackedVariationRow
             key={item.label}
-            label={displayLabel}
+            name={item.label}
+            price={item.produto.price}
             qty={qty}
             color={color}
             onInc={() => updateProduto(item.produto.name, 1)}
@@ -221,10 +209,42 @@ const EspetinhoRow = memo(({ baseName, cardapioEspetinhos, produtos, updateProdu
   );
 });
 
-const VariationRow = ({ label, qty, color, onInc, onDec, last }) => (
+const StackedVariationRow = ({ name, price, qty, color, onInc, onDec, last }) => (
+  <View style={[styles.stackedRowContainer, last && { marginBottom: 12 }]}>
+    {/* Left Side: Info Card (Name + Price) */}
+    <TouchableOpacity
+      style={[styles.stackedInfoCard, { backgroundColor: color }]}
+      onPress={onInc}
+      activeOpacity={0.8}
+    >
+      <Text style={styles.stackedNameText}>{name}</Text>
+      <Text style={styles.stackedPriceText}>R$ {price.toFixed(2)}</Text>
+    </TouchableOpacity>
+
+    {/* Right Side: Controls (Outside) */}
+    <View style={styles.variationControlsOutside}>
+      <TouchableOpacity style={[styles.roundBtn, { backgroundColor: colors.danger }]} onPress={onDec}>
+        <Text style={styles.roundBtnText}>−</Text>
+      </TouchableOpacity>
+      <Text style={styles.qtyText}>{qty}</Text>
+      <TouchableOpacity style={[styles.roundBtn, { backgroundColor: color }]} onPress={onInc}>
+        <Text style={styles.roundBtnText}>+</Text>
+      </TouchableOpacity>
+    </View>
+  </View>
+);
+
+const VariationRow = ({ label, qty, color, onInc, onDec, last, forceOneLine = false }) => (
   <View style={[styles.variationRow, last && { marginBottom: 12 }]}>
     <TouchableOpacity style={[styles.variationLabelBtn, { backgroundColor: color }]} onPress={onInc}>
-      <Text style={styles.variationLabelText}>{label}</Text>
+      <Text
+        style={styles.variationLabelText}
+        numberOfLines={forceOneLine ? 1 : undefined}
+        adjustsFontSizeToFit={forceOneLine}
+        minimumFontScale={0.6}
+      >
+        {label}
+      </Text>
     </TouchableOpacity>
     <View style={styles.variationControls}>
       <TouchableOpacity style={[styles.roundBtn, { backgroundColor: colors.danger }]} onPress={onDec}>
@@ -421,10 +441,6 @@ export default function NovoPedidoScreen() {
     return <StandardRow item={item} produtos={produtos} updateProduto={updateProdutoAnimated} type={section.type} temperos={temperosComidas} />;
   };
 
-  // ...
-
-
-
   return (
     <View style={styles.container}>
       <BackgroundPattern />
@@ -529,8 +545,45 @@ const styles = StyleSheet.create({
   // Variation Rows
   variationRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
   variationLabelBtn: { flex: 1, padding: 10, borderRadius: 8 },
-  variationLabelText: { color: colors.shadow, fontSize: 16, fontWeight: '700', textAlign: 'center' }, // Shadow color as text color for contrast on warning/success bg? Or black? 
-  // Wait, original used black for text on colored bg.
+  variationLabelText: { color: colors.shadow, fontSize: 16, fontWeight: '700', textAlign: 'center' },
+
+  // NEW STYLES FOR STACKED VARIATION
+  stackedRowContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 8,
+  },
+  stackedInfoCard: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    // Background color applied inline to this card
+  },
+  variationControlsOutside: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+
+  stackedNameText: {
+    color: colors.white,
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 4,
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  },
+  stackedPriceText: {
+    color: colors.white,
+    fontSize: 17,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
 
   variationControls: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   roundBtn: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
@@ -570,6 +623,5 @@ const styles = StyleSheet.create({
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { marginTop: 12, fontSize: 16, color: colors.primary },
 
-  // Espetinho Grid Styles (Unused after refactor)
   priceLegend: { fontSize: 13, color: colors.textSecondary, textAlign: 'center', marginBottom: 12 }
 });
