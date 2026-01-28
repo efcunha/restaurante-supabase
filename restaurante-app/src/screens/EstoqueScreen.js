@@ -32,6 +32,7 @@ export default function EstoqueScreen({ onClose }) {
   const [nomeItem, setNomeItem] = useState('');
   const [quantidade, setQuantidade] = useState('');
   const [unidade, setUnidade] = useState('un');
+  const [precoCusto, setPrecoCusto] = useState(''); // New State
   const [quantidadeMinima, setQuantidadeMinima] = useState('');
   const [fornecedorSelecionado, setFornecedorSelecionado] = useState('');
   const [observacoes, setObservacoes] = useState('');
@@ -112,6 +113,7 @@ export default function EstoqueScreen({ onClose }) {
     setUnidade('un');
     setTipoUnidade('QUANTITY');
     setQuantidadeMinima('');
+    setPrecoCusto(''); // Reset cost price
     setFornecedorSelecionado('');
     setObservacoes('');
     setEditandoId(null);
@@ -133,6 +135,7 @@ export default function EstoqueScreen({ onClose }) {
         nome: nomeItem.trim(),
         quantidade: parseFloat(quantidade),
         unidade,
+        precoCusto: precoCusto ? parseFloat(precoCusto.replace(',', '.')) : 0, // Save cost price
         quantidadeMinima: quantidadeMinima ? parseFloat(quantidadeMinima) : 0,
         fornecedorId: fornecedorSelecionado,
         fornecedorNome: fornecedores.find(f => f.id === fornecedorSelecionado)?.nome || '',
@@ -167,6 +170,7 @@ export default function EstoqueScreen({ onClose }) {
     setNomeItem(item.nome);
     setQuantidade(item.quantidade.toString());
     setUnidade(item.unidade || 'un');
+    setPrecoCusto(item.precoCusto ? item.precoCusto.toString() : ''); // Set cost price
     setQuantidadeMinima(item.quantidadeMinima?.toString() || '');
     setFornecedorSelecionado(item.fornecedorId || '');
     setObservacoes(item.observacoes || '');
@@ -348,6 +352,15 @@ export default function EstoqueScreen({ onClose }) {
               </View>
             </View>
 
+            <TextInput
+              style={[styles.input, { marginTop: 10 }]}
+              placeholder="Preço de Custo (R$) - Opcional"
+              keyboardType="numeric"
+              value={precoCusto}
+              onChangeText={setPrecoCusto}
+              placeholderTextColor="#999"
+            />
+
             <Text style={styles.label}>Fornecedor:</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.fornecedorScroll}>
               <TouchableOpacity
@@ -448,6 +461,9 @@ export default function EstoqueScreen({ onClose }) {
                   </TouchableOpacity>
                 </View>
 
+                {item.precoCusto > 0 && (
+                  <Text style={styles.infoText}>Custo: R$ {item.precoCusto.toFixed(2)}</Text>
+                )}
                 {item.quantidadeMinima > 0 && (
                   <Text style={styles.infoText}>Mínimo: {item.quantidadeMinima} {item.unidade}</Text>
                 )}

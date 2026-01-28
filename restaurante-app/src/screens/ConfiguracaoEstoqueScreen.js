@@ -135,13 +135,15 @@ export default function ConfiguracaoEstoqueScreen({ onClose }) {
             <View style={styles.content}>
                 <View style={styles.addSection}>
                     <Text style={styles.label}>{editingIndex !== null ? 'Editar Categoria:' : 'Nova Categoria:'}</Text>
+
+                    <TextInput
+                        style={[styles.input, { width: '100%', marginBottom: 15 }]}
+                        placeholder="Nome (ex: Limpeza)"
+                        value={newCatName}
+                        onChangeText={setNewCatName}
+                    />
+
                     <View style={styles.row}>
-                        <TextInput
-                            style={[styles.input, { flex: 1, marginBottom: 0 }]}
-                            placeholder="Nome (ex: Limpeza)"
-                            value={newCatName}
-                            onChangeText={setNewCatName}
-                        />
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.iconScroll}>
                             {icons.map(ic => (
                                 <TouchableOpacity
@@ -154,15 +156,17 @@ export default function ConfiguracaoEstoqueScreen({ onClose }) {
                             ))}
                         </ScrollView>
 
-                        <TouchableOpacity style={styles.plusBtn} onPress={salvarCategoria}>
-                            <Ionicons name={editingIndex !== null ? "checkmark" : "add"} size={24} color="#FFF" />
-                        </TouchableOpacity>
-
-                        {editingIndex !== null && (
-                            <TouchableOpacity style={[styles.plusBtn, { backgroundColor: '#999', marginLeft: 5 }]} onPress={limparForm}>
-                                <Ionicons name="close" size={24} color="#FFF" />
+                        <View style={{ flexDirection: 'row' }}>
+                            <TouchableOpacity style={styles.plusBtn} onPress={salvarCategoria}>
+                                <Ionicons name={editingIndex !== null ? "checkmark" : "add"} size={24} color="#FFF" />
                             </TouchableOpacity>
-                        )}
+
+                            {editingIndex !== null && (
+                                <TouchableOpacity style={[styles.plusBtn, { backgroundColor: '#999', marginLeft: 5 }]} onPress={limparForm}>
+                                    <Ionicons name="close" size={24} color="#FFF" />
+                                </TouchableOpacity>
+                            )}
+                        </View>
                     </View>
                 </View>
 
@@ -228,7 +232,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#E5B84A'
     },
-    iconScroll: { maxHeight: 50, marginLeft: 5 },
+    iconScroll: { maxHeight: 50 },
     iconBtn: { padding: 8, borderRadius: 8, marginRight: 5 },
     iconBtnActive: { backgroundColor: '#E5B84A' },
     iconText: { fontSize: 20 },
