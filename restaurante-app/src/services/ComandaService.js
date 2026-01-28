@@ -33,7 +33,7 @@ export const peekNextComandaNumber = async () => {
     const data = snap.data();
     const current = typeof data.current === 'number' ? data.current : 0;
     return current + 1;
-  } catch (error) {
+  } catch {
     return null;
   }
 };
@@ -46,33 +46,29 @@ export const peekNextComandaNumber = async () => {
 export const getNextComandaNumber = async () => {
   const dateKey = getDateKey();
   const docRef = doc(db, COUNTERS_COLLECTION, `comandas-${dateKey}`);
-  try {
-    const nextNumber = await runTransaction(db, async (transaction) => {
-      const snap = await transaction.get(docRef);
-      if (!snap.exists()) {
-        // inicia contador em 1
-        transaction.set(docRef, {
-          current: 1,
-          date: dateKey,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
-        return 1;
-      } else {
-        const data = snap.data();
-        const current = typeof data.current === 'number' ? data.current : 0;
-        const updated = current + 1;
-        transaction.update(docRef, {
-          current: updated,
-          updatedAt: serverTimestamp(),
-        });
-        return updated;
-      }
-    });
-    return nextNumber;
-  } catch (error) {
-    throw error;
-  }
+  const nextNumber = await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(docRef);
+    if (!snap.exists()) {
+      // inicia contador em 1
+      transaction.set(docRef, {
+        current: 1,
+        date: dateKey,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      return 1;
+    } else {
+      const data = snap.data();
+      const current = typeof data.current === 'number' ? data.current : 0;
+      const updated = current + 1;
+      transaction.update(docRef, {
+        current: updated,
+        updatedAt: serverTimestamp(),
+      });
+      return updated;
+    }
+  });
+  return nextNumber;
 };
 
 /**

@@ -16,6 +16,7 @@ export const sanitizeString = (text) => {
     // Remove HTML tags
     .replace(/<[^>]*>/g, '')
     // Remove caracteres de controle
+    // eslint-disable-next-line no-control-regex
     .replace(/[\x00-\x1F\x7F]/g, '')
     // Escapa caracteres especiais (não remove, apenas protege)
     .replace(/[&<>"']/g, (c) => ({

@@ -83,11 +83,11 @@ export default function RegisterCompanyScreen({ navigation }) {
       return;
     }
 
+    const emailSanitized = email.toLowerCase().trim();
+    const passwordSanitized = password.trim();
+
     try {
       setLoading(true);
-
-      const emailSanitized = email.toLowerCase().trim();
-      const passwordSanitized = password.trim();
 
 
       // 1. Create Auth User via Context (prevents auto-logout)

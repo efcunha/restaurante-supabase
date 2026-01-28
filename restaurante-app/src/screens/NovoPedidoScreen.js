@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, SectionList, TouchableOpacity, TextInput, ActivityIndicator, LayoutAnimation, Platform, UIManager } from 'react-native';
-import React, { memo, useCallback, useEffect } from 'react';
+import React, { memo, useCallback } from 'react';
 import BackgroundPattern from '../components/BackgroundPattern';
 import { useNovoPedido } from '../hooks/useNovoPedido';
 import { colors } from '../theme/colors';
@@ -16,6 +16,7 @@ const QuantityButton = memo(({ onPress, text }) => (
     <Text style={styles.quantityBtnText}>{text}</Text>
   </TouchableOpacity>
 ));
+QuantityButton.displayName = 'QuantityButton';
 
 const QuantityControl = memo(({ value, onIncrement, onDecrement }) => (
   <View style={styles.quantityControl}>
@@ -24,6 +25,7 @@ const QuantityControl = memo(({ value, onIncrement, onDecrement }) => (
     <QuantityButton onPress={onIncrement} text="+" />
   </View>
 ));
+QuantityControl.displayName = 'QuantityControl';
 
 const SelectedItem = memo(({ item, price, onRemove }) => (
   <View style={styles.selectedItem}>
@@ -36,14 +38,16 @@ const SelectedItem = memo(({ item, price, onRemove }) => (
     </TouchableOpacity>
   </View>
 ));
+SelectedItem.displayName = 'SelectedItem';
 
-const ProdutoItem = memo(({ item, produtos = {}, updateProduto }) => {
+const ProdutoItem = memo(({ item }) => {
   return (
     <View style={styles.produtoContainer}>
       <Text>{item.name}</Text>
     </View>
   );
 });
+ProdutoItem.displayName = 'ProdutoItem';
 
 // Helper to render complex Caldo rows which are not just 1:1 with cardapio items
 const CaldoRow = memo(({ caldoBase, cardapioCaldos, produtos, updateProduto, temperos }) => {
@@ -100,12 +104,12 @@ const CaldoRow = memo(({ caldoBase, cardapioCaldos, produtos, updateProduto, tem
     </View>
   );
 });
+CaldoRow.displayName = 'CaldoRow';
 
 // Helper for other items (Comidas/Bebidas/Porcoes)
 const StandardRow = memo(({ item, produtos, updateProduto, type, temperos }) => {
   const isComida = type === 'comidas';
-  const isPorcao = type === 'porcoes';
-  const isBebida = type === 'bebidas';
+
 
   if (isComida) {
     return (
@@ -165,6 +169,7 @@ const StandardRow = memo(({ item, produtos, updateProduto, type, temperos }) => 
     </View>
   );
 });
+StandardRow.displayName = 'StandardRow';
 
 // Helper for Espetinhos (Simples/Especiais) with dynamic variations
 const EspetinhoRow = memo(({ baseName, cardapioEspetinhos, produtos, updateProduto, variacoes = [] }) => {
@@ -208,6 +213,7 @@ const EspetinhoRow = memo(({ baseName, cardapioEspetinhos, produtos, updateProdu
     </View>
   );
 });
+EspetinhoRow.displayName = 'EspetinhoRow';
 
 const StackedVariationRow = ({ name, price, qty, color, onInc, onDec, last }) => (
   <View style={[styles.stackedRowContainer, last && { marginBottom: 12 }]}>
@@ -288,6 +294,7 @@ const HeaderComponent = memo(({ clientName, setClientName, mesa, setMesa }) => (
     </View>
   </View>
 ));
+HeaderComponent.displayName = 'HeaderComponent';
 
 const FooterComponent = memo(({ selectedItems, onRemoveItem }) => (
   <View style={styles.listFooter}>
@@ -302,6 +309,7 @@ const FooterComponent = memo(({ selectedItems, onRemoveItem }) => (
     <View style={styles.totalSpace} />
   </View>
 ));
+FooterComponent.displayName = 'FooterComponent';
 
 
 export default function NovoPedidoScreen() {
@@ -459,7 +467,7 @@ export default function NovoPedidoScreen() {
         sections={sections}
         renderItem={renderItem}
         renderSectionHeader={renderSectionHeader}
-        keyExtractor={(item, index) => item.name || item}
+        keyExtractor={(item) => item.name || item}
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={<HeaderComponent clientName={clientName} setClientName={setClientName} mesa={mesa} setMesa={setMesa} />}
         ListFooterComponent={<FooterComponent selectedItems={selectedItems} onRemoveItem={handleRemoveItemAnimated} />}

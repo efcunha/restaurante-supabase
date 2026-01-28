@@ -1,0 +1,271 @@
+
+> restaurante@1.0.0 lint
+> eslint .
+
+(node:397948) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/efcunha/Projeto/restaurante/restaurante-app/eslint.config.js?mtime=1769629593756 is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /home/efcunha/Projeto/restaurante/restaurante-app/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/components/EstatisticasGarcom.js
+  221:31  warning  'comandas' is assigned a value but never used  no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/components/OfflineQueueManager.js
+  1:8  warning  'React' is defined but never used  no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/components/comandas/AddItemsModal.js
+  83:50  warning  'type' is assigned a value but never used  no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/components/comandas/ComandaDetails.js
+  3:64  warning  'Alert' is defined but never used  no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/components/ui/Toast.js
+  2:10  warning  'View' is defined but never used            no-unused-vars
+  6:9   warning  'width' is assigned a value but never used  no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/config/firebaseConfig.js
+  6:5  warning  'browserLocalPersistence' is defined but never used  no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/context/AuthContext.RADICAL.js
+  3:47  warning  'onAuthStateChanged' is defined but never used  no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/context/AuthContext.complex.js
+  53:9  warning  'cleanupListenersOnLogout' is assigned a value but never used  no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/context/AuthContext.final.js
+  77:26  warning  'permission' is defined but never used  no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/context/AuthContext.js
+    4:99   warning  'setPersistence' is defined but never used           no-unused-vars
+    4:115  warning  'browserLocalPersistence' is defined but never used  no-unused-vars
+   43:16   warning  'error' is defined but never used                    no-unused-vars
+   72:18   warning  'error' is defined but never used                    no-unused-vars
+   98:16   warning  'e' is defined but never used                        no-unused-vars
+  206:14   warning  'error' is defined but never used                    no-unused-vars
+  224:16   warning  'e' is defined but never used                        no-unused-vars
+  243:9    warning  'switchUser' is assigned a value but never used      no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/context/AuthContext.test.js
+  16:19  warning  'setLoading' is assigned a value but never used  no-unused-vars
+  46:26  warning  'perm' is defined but never used                 no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/context/OrderContext.firestore.js
+  223:144  warning  '_isPago' is assigned a value but never used  no-unused-vars
+  390:14   warning  'error' is defined but never used             no-unused-vars
+  417:14   warning  'error' is defined but never used             no-unused-vars
+  453:14   warning  'error' is defined but never used             no-unused-vars
+  686:14   warning  'error' is defined but never used             no-unused-vars
+  698:14   warning  'error' is defined but never used             no-unused-vars
+  711:14   warning  'error' is defined but never used             no-unused-vars
+  729:14   warning  'error' is defined but never used             no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/hooks/useComandaManagement.js
+    2:52  warning  'useMemo' is defined but never used                        no-unused-vars
+    3:57  warning  'limit' is defined but never used                          no-unused-vars
+    3:64  warning  'startAfter' is defined but never used                     no-unused-vars
+    3:76  warning  'orderBy' is defined but never used                        no-unused-vars
+   10:10  warning  'Alert' is defined but never used                          no-unused-vars
+   21:22  warning  'setLastDocs' is assigned a value but never used           no-unused-vars
+   24:11  warning  'PAGE_SIZE' is assigned a value but never used             no-unused-vars
+   25:11  warning  'reloadTimeout' is assigned a value but never used         no-unused-vars
+  119:45  warning  'forcarBuscaFirestore' is assigned a value but never used  no-unused-vars
+  119:75  warning  'onlyOpen' is assigned a value but never used              no-unused-vars
+  330:23  warning  'q' is assigned a value but never used                     no-unused-vars
+  336:23  warning  'q2' is assigned a value but never used                    no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/hooks/useNovoPedido.js
+    6:32  warning  'peekNextComandaNumber' is defined but never used       no-unused-vars
+    7:10  warning  'collection' is defined but never used                  no-unused-vars
+   25:12  warning  'comandaNumber' is assigned a value but never used      no-unused-vars
+   26:12  warning  'loadingComanda' is assigned a value but never used     no-unused-vars
+   26:28  warning  'setLoadingComanda' is assigned a value but never used  no-unused-vars
+  189:37  warning  '_' is assigned a value but never used                  no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/screens/AdminScreen.js
+     2:64  warning  'TextInput' is defined but never used                           no-unused-vars
+    71:10  warning  'alertasEstoque' is assigned a value but never used             no-unused-vars
+    72:10  warning  'loadingAlertas' is assigned a value but never used             no-unused-vars
+   133:8   warning  'snapshot' is defined but never used                            no-unused-vars
+   147:13  warning  'abertas' is assigned a value but never used                    no-unused-vars
+   148:13  warning  'fechadas' is assigned a value but never used                   no-unused-vars
+   185:17  warning  'amostra' is assigned a value but never used                    no-unused-vars
+   248:9   warning  'limparTodasComandas' is assigned a value but never used        no-unused-vars
+   249:11  warning  'today' is assigned a value but never used                      no-unused-vars
+   270:11  warning  'totalComandas' is assigned a value but never used              no-unused-vars
+   271:11  warning  'totalPedidos' is assigned a value but never used               no-unused-vars
+   284:9   warning  'limparDadosAntigos' is assigned a value but never used         no-unused-vars
+   398:9   warning  'migrarRecebidoPor' is assigned a value but never used          no-unused-vars
+   513:11  warning  'erros' is assigned a value but never used                      no-unused-vars
+   541:9   warning  'corrigirGarconsRetroativo' is assigned a value but never used  no-unused-vars
+   588:11  warning  'pulados' is assigned a value but never used                    no-unused-vars
+   877:9   warning  'carregarAlertasEstoque' is assigned a value but never used     no-unused-vars
+   912:9   warning  'corrigirDateKeyPedidos' is assigned a value but never used     no-unused-vars
+   972:9   warning  'limparSomenteComandas' is assigned a value but never used      no-unused-vars
+   991:24  warning  'e' is defined but never used                                   no-unused-vars
+  1010:24  warning  'e' is defined but never used                                   no-unused-vars
+  1022:9   warning  'migrarItemsWithStatus' is assigned a value but never used      no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/screens/CadastroProdutoScreen.js
+  8:11  warning  'user' is assigned a value but never used  no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/screens/CaixaFechamentoScreen.js
+  2:63  warning  'Alert' is defined but never used  no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/screens/ComandaAbertaScreen.js
+   5:10  warning  'collection' is defined but never used       no-unused-vars
+   5:45  warning  'doc' is defined but never used              no-unused-vars
+   5:50  warning  'getDoc' is defined but never used           no-unused-vars
+   6:10  warning  'db' is defined but never used               no-unused-vars
+  18:17  warning  'logout' is assigned a value but never used  no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/screens/ComandaGerenciamentoScreen.js
+    3:59  warning  'Modal' is defined but never used                          no-unused-vars
+    3:66  warning  'TextInput' is defined but never used                      no-unused-vars
+    3:77  warning  'KeyboardAvoidingView' is defined but never used           no-unused-vars
+   14:10  warning  'CARDAPIO_STATIC' is defined but never used                no-unused-vars
+  182:9   warning  'handleWrapperPayment' is assigned a value but never used  no-unused-vars
+  300:14  warning  'e' is defined but never used                              no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/screens/ConfiguracaoEstoqueScreen.js
+   3:10  warning  'doc' is defined but never used    no-unused-vars
+   4:10  warning  'db' is defined but never used     no-unused-vars
+  56:18  warning  'error' is defined but never used  no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/screens/CozinhaScreen.js
+  2:64  warning  'Alert' is defined but never used       no-unused-vars
+  4:10  warning  'useOrders' is defined but never used   no-unused-vars
+  8:10  warning  'collection' is defined but never used  no-unused-vars
+  9:10  warning  'db' is defined but never used          no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/screens/EstoqueScreen.js
+    2:101  warning  'Modal' is defined but never used          no-unused-vars
+    4:10   warning  'collection' is defined but never used     no-unused-vars
+    4:61   warning  'doc' is defined but never used            no-unused-vars
+    5:10   warning  'db' is defined but never used             no-unused-vars
+  181:11   warning  'type' is assigned a value but never used  no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/screens/FuncionariosScreen.js
+    6:10  warning  'corrigirLu' is defined but never used                 no-unused-vars
+   12:17  warning  'logout' is assigned a value but never used            no-unused-vars
+   94:9   error    Duplicate key 'email'                                  no-dupe-keys
+  165:9   warning  'handleCorrigirLu' is assigned a value but never used  no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/screens/GerenciarCardapioScreen.js
+   14:10  warning  'collection' is defined but never used             no-unused-vars
+   14:83  warning  'deleteDoc' is defined but never used              no-unused-vars
+   14:94  warning  'serverTimestamp' is defined but never used        no-unused-vars
+  100:10  warning  'loadingStock' is assigned a value but never used  no-unused-vars
+  226:14  warning  'e' is defined but never used                      no-unused-vars
+  351:9   warning  'abrirEdicao' is assigned a value but never used   no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/screens/GerenciarFornecedoresScreen.js
+    3:10  warning  'collection' is defined but never used  no-unused-vars
+    3:61  warning  'doc' is defined but never used         no-unused-vars
+    4:10  warning  'db' is defined but never used          no-unused-vars
+  209:34  warning  'error' is defined but never used       no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/screens/LoginScreen.js
+   3:20  warning  'useEffect' is defined but never used          no-unused-vars
+  21:9   warning  'logoSize' is assigned a value but never used  no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/screens/MontagemScreen.js
+    8:10  warning  'collection' is defined but never used                 no-unused-vars
+    8:48  warning  'doc' is defined but never used                        no-unused-vars
+    9:10  warning  'db' is defined but never used                         no-unused-vars
+   17:11  warning  'moveToProntos' is assigned a value but never used     no-unused-vars
+   17:26  warning  'updateItemStatus' is assigned a value but never used  no-unused-vars
+   18:17  warning  'logout' is assigned a value but never used            no-unused-vars
+   19:10  warning  'processingItems' is assigned a value but never used   no-unused-vars
+  111:10  warning  'forceUpdate' is assigned a value but never used       no-unused-vars
+  111:23  warning  'setForceUpdate' is assigned a value but never used    no-unused-vars
+  283:52  warning  'idx' is defined but never used                        no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/screens/PagamentoScreen.js
+   5:8   warning  'CaixaService' is defined but never used  no-unused-vars
+  10:18  warning  'collection' is defined but never used    no-unused-vars
+  11:10  warning  'db' is defined but never used            no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/screens/UpdateCardapioScreen.js
+  3:27  warning  'getDoc' is defined but never used     no-unused-vars
+  3:63  warning  'updateDoc' is defined but never used  no-unused-vars
+  3:74  warning  'addDoc' is defined but never used     no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/services/CaixaService.js
+    4:56  warning  'setDoc' is defined but never used                          no-unused-vars
+    4:64  warning  'collection' is defined but never used                      no-unused-vars
+    9:7   warning  'MOVIMENTOS_COLLECTION' is assigned a value but never used  no-unused-vars
+  131:16  warning  'counterError' is defined but never used                    no-unused-vars
+  332:11  warning  'comandasMovidas' is assigned a value but never used        no-unused-vars
+  337:11  warning  'comandasAbertas' is assigned a value but never used        no-unused-vars
+  353:11  warning  'pedidosExcluidos' is assigned a value but never used       no-unused-vars
+  356:14  warning  'error' is defined but never used                           no-unused-vars
+  371:14  warning  'e' is defined but never used                               no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/services/ComandasService.js
+    4:10  warning  'doc' is defined but never used                     no-unused-vars
+    4:48  warning  'getDoc' is defined but never used                  no-unused-vars
+    4:56  warning  'setDoc' is defined but never used                  no-unused-vars
+    4:64  warning  'collection' is defined but never used              no-unused-vars
+    7:8   warning  'PagamentosService' is defined but never used       no-unused-vars
+  172:13  warning  'totalAnterior' is assigned a value but never used  no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/services/FirebaseOptimizations.js
+  15:3  warning  'enableIndexedDbPersistence' is defined but never used          no-unused-vars
+  16:3  warning  'enableMultiTabIndexedDbPersistence' is defined but never used  no-unused-vars
+  17:3  warning  'CACHE_SIZE_UNLIMITED' is defined but never used                no-unused-vars
+  18:3  warning  'initializeFirestore' is defined but never used                 no-unused-vars
+  19:3  warning  'persistentLocalCache' is defined but never used                no-unused-vars
+  20:3  warning  'persistentMultipleTabManager' is defined but never used        no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/services/InventoryService.js
+  1:22  warning  'doc' is defined but never used                   no-unused-vars
+  3:25  warning  'getCompanyCollection' is defined but never used  no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/services/PDFService.js
+  43:11  warning  'pagamentosHtml' is assigned a value but never used  no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/services/PagamentosService.js
+    4:10  warning  'collection' is defined but never used                      no-unused-vars
+    4:63  warning  'doc' is defined but never used                             no-unused-vars
+    4:76  warning  'setDoc' is defined but never used                          no-unused-vars
+    9:7   warning  'PAGAMENTOS_COLLECTION' is assigned a value but never used  no-unused-vars
+   10:7   warning  'COMANDAS_COLLECTION' is assigned a value but never used    no-unused-vars
+   28:13  warning  'collection' is assigned a value but never used             no-unused-vars
+   28:59  warning  'doc' is assigned a value but never used                    no-unused-vars
+   29:13  warning  'db' is assigned a value but never used                     no-unused-vars
+  118:31  warning  'pagamentoResult' is assigned a value but never used        no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/services/auth.js
+  90:12  warning  'error' is defined but never used  no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/services/funcionarios.js
+   8:3   warning  'addDoc' is defined but never used          no-unused-vars
+  17:3   warning  'orderBy' is defined but never used         no-unused-vars
+  20:42  warning  'updatePassword' is defined but never used  no-unused-vars
+  20:58  warning  'deleteUser' is defined but never used      no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/services/pedidos.js
+   12:3   warning  'Timestamp' is defined but never used  no-unused-vars
+  115:12  warning  'error' is defined but never used      no-unused-vars
+  158:12  warning  'error' is defined but never used      no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/services/produtos.js
+  9:3  warning  'orderBy' is defined but never used  no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/utils/adicionarTemperos.js
+  1:10  warning  'getFirestore' is defined but never used  no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/utils/appRestart.js
+  15:16  warning  'updateError' is defined but never used   no-unused-vars
+  23:16  warning  'backError' is defined but never used     no-unused-vars
+  32:16  warning  'restartError' is defined but never used  no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/utils/errorHandling.js
+  202:11  warning  'response' is assigned a value but never used  no-unused-vars
+
+/home/efcunha/Projeto/restaurante/restaurante-app/src/utils/logger.js
+   19:12  warning  'error' is defined but never used  no-unused-vars
+  128:14  warning  'e' is defined but never used      no-unused-vars
+
+✖ 174 problems (1 error, 173 warnings)
+
