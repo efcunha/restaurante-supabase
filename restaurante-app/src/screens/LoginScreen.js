@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Image, BackHandler, ScrollView, TouchableWithoutFeedback, Keyboard, useWindowDimensions } from 'react-native';
-import { useState, useEffect } from 'react';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Image, BackHandler, ScrollView, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,9 +16,6 @@ export default function LoginScreen({ navigation }) {
   const [mostrarSenha, setMostrarSenha] = useState(false);
 
   // Responsividade
-  const { height } = useWindowDimensions();
-  // Logo ocupa 20% da tela, máximo de 180px, mínimo de 100px
-  const logoSize = Math.min(Math.max(height * 0.20, 100), 180);
 
   // ... (useEffect kept as is)
 
@@ -238,10 +235,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
     padding: 20, // Reduzido de 25
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
+    boxShadow: '0px 10px 20px rgba(0, 0, 0, 0.3)',
     elevation: 10,
   },
   label: {
@@ -284,10 +278,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     marginTop: 20,
-    shadowColor: '#7f2821', // Updated shadow color
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
+    boxShadow: '0px 5px 10px rgba(127, 40, 33, 0.3)',
     elevation: 5,
   },
   loginBtnDisabled: {

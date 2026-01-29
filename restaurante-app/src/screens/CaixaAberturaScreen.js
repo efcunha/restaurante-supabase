@@ -1,11 +1,11 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, TouchableOpacity, TextInput, Alert, ScrollView } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, TextInput, Alert, ScrollView, Platform } from 'react-native';
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import CaixaService from '../services/CaixaService';
 
 // VERSÃO SIMPLIFICADA - similar ao CaixaOperacoesScreen que funciona
-export default function CaixaAberturaScreen() {
+export default function CaixaAberturaScreen({ onSuccess }) {
   const { user } = useAuth();
   const [valorInicial, setValorInicial] = useState('0');
   const [loading, setLoading] = useState(false);
@@ -30,7 +30,17 @@ export default function CaixaAberturaScreen() {
 
       setLoading(true);
       await CaixaService.abrirCaixa(user.companyId, valor, userId, userName);
-      Alert.alert('Sucesso', `Caixa aberto!\nValor: R$ ${valor.toFixed(2)}`);
+
+      Alert.alert(
+        'Sucesso',
+        `Caixa aberto!\nValor: R$ ${valor.toFixed(2)}`,
+        [{ text: 'OK', onPress: () => onSuccess && onSuccess() }]
+      );
+
+      // Para Web onde Alert pode não ser bloqueante ou usar window.alert
+      if (Platform.OS === 'web') {
+        if (onSuccess) onSuccess();
+      }
 
     } catch (e) {
       Alert.alert('Erro', e?.message || 'Erro ao abrir caixa.');

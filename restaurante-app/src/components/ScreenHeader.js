@@ -16,14 +16,14 @@ export default function ScreenHeader({ title, onBack = null }) {
           <Text style={styles.backBtnText}>← Voltar</Text>
         </TouchableOpacity>
       )}
-      
+
       <View style={styles.headerCenter}>
         <Text style={styles.headerTitle}>{title}</Text>
         {user?.nome && (
           <Text style={styles.userInfo}>{user.nome}</Text>
         )}
       </View>
-      
+
       <TouchableOpacity onPress={logout} style={styles.sairBtn}>
         <Text style={styles.sairBtnText}>Sair</Text>
       </TouchableOpacity>
@@ -40,11 +40,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
     elevation: 5,
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.25)',
   },
   backBtn: {
     padding: 5,
