@@ -110,7 +110,8 @@ export default function FinancialDashboardScreen({ onClose }) {
             snapPagamentos.forEach(doc => {
                 const p = doc.data();
                 const valor = parseFloat(p.valor || 0);
-                let metodo = p.metodo || 'outros';
+                // Fix: Field name is 'forma', fallback to 'metodo' just in case
+                let metodo = p.forma || p.metodo || 'outros';
                 metodo = metodo.toLowerCase();
 
                 if (metodo.includes('dinheiro')) formasPagamento.dinheiro += valor;
