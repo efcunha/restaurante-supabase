@@ -1280,48 +1280,28 @@ export default function AdminScreen() {
         )}
 
 
-        {/* CONFIGURAÇÃO FINANCEIRA (NOVO) */}
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => setShowFinancialConfig(true)}
-        >
-          <View style={[styles.menuIconContainer, { backgroundColor: '#E5B84A' }]}>
-            <Text style={styles.menuIcon}>⚙️</Text>
-          </View>
-          <View style={styles.menuTextContainer}>
-            <Text style={styles.menuTitle}>Config. Financeira</Text>
-            <Text style={styles.menuSubtitle}>Fechamento cego e opções</Text>
-          </View>
-          <Text style={styles.menuArrow}>→</Text>
-        </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => setShowCaixaHistorico(true)}
-        >
-          <View style={[styles.menuIconContainer, { backgroundColor: '#5D4037' }]}>
-            <Text style={styles.menuIcon}>📜</Text>
-          </View>
-          <View style={styles.menuTextContainer}>
-            <Text style={styles.menuTitle}>Histórico de Caixas</Text>
-            <Text style={styles.menuSubtitle}>Ver caixas fechados anteriormente</Text>
-          </View>
-          <Text style={styles.menuArrow}>→</Text>
-        </TouchableOpacity>
+        <View style={styles.divider} />
+        {/* --- FINANCEIRO --- */}
+        <Text style={styles.sectionHeader}>FINANCEIRO</Text>
 
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => setShowDashboard(true)}
-        >
-          <View style={[styles.menuIconContainer, { backgroundColor: '#4CAF50' }]}>
-            <Text style={styles.menuIcon}>📊</Text>
-          </View>
-          <View style={styles.menuTextContainer}>
-            <Text style={styles.menuTitle}>Dashboard Financeiro</Text>
-            <Text style={styles.menuSubtitle}>KPIs e Gráficos de Vendas</Text>
-          </View>
-          <Text style={styles.menuArrow}>→</Text>
-        </TouchableOpacity>
+        {[
+          { name: 'Dashboard Financeiro', icon: '📊', action: () => setShowDashboard(true) },
+          { name: 'Histórico de Caixas', icon: '📜', action: () => setShowCaixaHistorico(true) },
+          { name: 'Config. Financeira', icon: '⚙️', action: () => setShowFinancialConfig(true) },
+        ].map((report, index) => (
+          <TouchableOpacity
+            key={`fin-${index}`}
+            style={[styles.reportCard]}
+            onPress={report.action}
+          >
+            <View style={styles.reportLeft}>
+              <Text style={styles.reportIcon}>{report.icon}</Text>
+              <Text style={styles.reportName}>{report.name}</Text>
+            </View>
+            <Text style={styles.reportArrow}>›</Text>
+          </TouchableOpacity>
+        ))}
 
         <View style={styles.divider} />
         {/* --- SISTEMA --- */}

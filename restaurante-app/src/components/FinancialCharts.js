@@ -88,13 +88,13 @@ export const SalesByPaymentChart = ({ data }) => {
       <Text style={styles.chartTitle}>Meios de Pagamento</Text>
       <PieChart
         data={data}
-        width={screenWidth - 100}
+        width={screenWidth - 48}
         height={220}
         chartConfig={chartConfig}
         accessor={"population"}
         backgroundColor={"transparent"}
         paddingLeft={"15"}
-        center={[10, 0]}
+        center={[0, 0]}
         absolute
       />
     </View>
