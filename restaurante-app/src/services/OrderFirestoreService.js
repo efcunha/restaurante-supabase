@@ -793,11 +793,11 @@ class OrderFirestoreService {
         let q;
         if (periodo === 'hoje') {
           q = query(
-            collection(db, PEDIDOS_COLLECTION),
+            getCompanyCollection(companyId, 'pedidos'),
             where('dateKey', '==', startKey)
           );
         } else {
-          q = query(collection(db, PEDIDOS_COLLECTION));
+          q = query(getCompanyCollection(companyId, 'pedidos'));
         }
 
         const snapshot = await getDocs(q);
@@ -814,6 +814,28 @@ class OrderFirestoreService {
         });
 
         console.log(`[OrderFirestoreService] Pedidos após filtro de data: ${pedidosFiltrados.length}`);
+
+        // BUSCAR PAGAMENTOS
+        const qPagamentos = query(getCompanyCollection(companyId, 'pagamentos'));
+        const snapshotPagamentos = await getDocs(qPagamentos);
+        const pagamentosFiltrados = [];
+
+        snapshotPagamentos.forEach((doc) => {
+          const data = doc.data();
+          const dateKey = data.dateKey || '';
+          if (dateKey >= startKey && dateKey <= endKey) {
+            pagamentosFiltrados.push({
+              id: doc.id,
+              ...data,
+              valor: data.valor || 0,
+              forma: data.forma || '',
+              garcom: data.garcom || '',
+              garcomNome: data.garcomNome || '',
+            });
+          }
+        });
+
+        console.log(`[OrderFirestoreService] Pagamentos após filtro de data: ${pagamentosFiltrados.length}`);
 
         const pedidosPorGarcom = {};
 
@@ -853,11 +875,16 @@ class OrderFirestoreService {
         });
 
         // Calcular estatísticas para cada garçom
-        const resultado = Object.values(pedidosPorGarcom).map(({ garcomId, garcomNome, pedidos }) => ({
-          garcomId,
-          garcomNome,
-          ...this._calcularEstatisticas(pedidos, []),
-        }));
+        const resultado = Object.values(pedidosPorGarcom).map(({ garcomId, garcomNome, pedidos }) => {
+          // Filtrar pagamentos para este garçom
+          const pagamentosDoGarcom = pagamentosFiltrados.filter(p => p.garcom === garcomId);
+
+          return {
+            garcomId,
+            garcomNome,
+            ...this._calcularEstatisticas(pedidos, pagamentosDoGarcom),
+          };
+        });
 
         // Ordenar por total vendido (maior primeiro)
         resultado.sort((a, b) => b.totalVendido - a.totalVendido);
