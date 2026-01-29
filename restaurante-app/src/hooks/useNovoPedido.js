@@ -3,8 +3,8 @@ import { Alert } from 'react-native';
 import { useOrders } from '../context/OrderContext.firestore';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { getNextComandaNumber, peekNextComandaNumber, formatComandaNumber } from '../services/ComandaService';
-import { collection, getDocs, doc, getDoc, query, where } from 'firebase/firestore';
+import { getNextComandaNumber, formatComandaNumber } from '../services/ComandaService';
+import { getDocs, doc, getDoc, query, where } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
 import { getCompanyCollection } from '../utils/firestoreUtils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -18,7 +18,7 @@ const CARDAPIO_CACHE_EXPIRY = 5 * 60 * 1000;
 export const fixDecimal = (value) => Math.round((value + Number.EPSILON) * 100) / 100;
 
 export function useNovoPedido() {
-    const { addOrder } = useOrders();
+    const { addOrder, editOrder } = useOrders();
     const { user, logout } = useAuth();
     const { showToast } = useToast();
 
@@ -297,7 +297,7 @@ export function useNovoPedido() {
                 }
             });
 
-            await addOrder(
+            const createdOrderId = await addOrder(
                 clientName.trim() || 'Cliente',
                 items,
                 observations.trim(),
@@ -321,7 +321,7 @@ export function useNovoPedido() {
 
             // --- ESTOQUE INTEGRATION ---
             // Processar baixa de estoque em background (sem bloquear UI)
-            setTimeout(() => {
+            setTimeout(async () => {
                 const stockItemsToDeduct = [];
                 for (const [name, qty] of Object.entries(produtos)) {
                     if (qty <= 0) continue;
@@ -349,7 +349,14 @@ export function useNovoPedido() {
                 }
 
                 if (stockItemsToDeduct.length > 0) {
-                    InventoryService.deductStock(user.companyId, stockItemsToDeduct);
+                    const result = await InventoryService.deductStock(user.companyId, stockItemsToDeduct);
+
+                    // Se houve custo calculado, atualizar o pedido com o CMV
+                    if (result && result.totalCost > 0 && createdOrderId) {
+                        console.log(`[useNovoPedido] Atualizando pedido ${createdOrderId} com custo R$ ${result.totalCost}`);
+                        // Usar editOrder do Contexto para salvar no Firestore (mesmo em background)
+                        editOrder(createdOrderId, { custoTotal: result.totalCost });
+                    }
                 }
             }, 100);
             // ---------------------------

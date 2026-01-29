@@ -5,12 +5,12 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
  * OrderCard - Card otimizado para exibir pedido
  * Usa React.memo para evitar re-renders desnecessários
  */
-const OrderCard = React.memo(({ 
-  order, 
-  onPress, 
-  onAction, 
-  actionLabel, 
-  isUrgent = false 
+const OrderCard = React.memo(({
+  order,
+  onPress,
+  onAction,
+  actionLabel,
+  isUrgent = false
 }) => {
   return (
     <TouchableOpacity
@@ -20,11 +20,11 @@ const OrderCard = React.memo(({
     >
       <Text style={styles.orderNumber}>{order.id}</Text>
       <Text style={styles.orderClient}>{order.client}</Text>
-      
+
       {order.observations && (
         <Text style={styles.orderObs}>Obs: {order.observations}</Text>
       )}
-      
+
       <View style={styles.orderItems}>
         {order.items.map((item, idx) => (
           <View key={idx} style={styles.orderItem}>
@@ -33,7 +33,7 @@ const OrderCard = React.memo(({
           </View>
         ))}
       </View>
-      
+
       {actionLabel && onAction && (
         <TouchableOpacity
           style={styles.actionBtn}
@@ -57,10 +57,7 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     padding: 18,
     marginBottom: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
+    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.06)',
     elevation: 2,
     borderWidth: 1,
     borderColor: '#F0EBE0',
@@ -116,10 +113,7 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 12,
     alignItems: 'center',
-    shadowColor: '#8B2F2F',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
+    boxShadow: '0px 3px 10px rgba(139, 47, 47, 0.2)',
     elevation: 3,
   },
   actionBtnText: {

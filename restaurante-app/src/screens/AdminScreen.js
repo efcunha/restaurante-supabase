@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Modal, Alert, ActivityIndicator, AppState } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Modal, Alert, ActivityIndicator, AppState } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { collection, getDocs, doc, writeBatch, setDoc, deleteDoc, serverTimestamp, query, where, onSnapshot } from 'firebase/firestore';
@@ -19,6 +19,8 @@ import GerenciarCardapioScreen from './GerenciarCardapioScreen';
 import EstoqueScreen from './EstoqueScreen';
 import PrinterConfigScreen from './PrinterConfigScreen';
 import EditarEmpresaScreen from './EditarEmpresaScreen';
+import FinancialConfigScreen from './FinancialConfigScreen';
+import FinancialDashboardScreen from './FinancialDashboardScreen';
 import { confirmLogout } from '../utils/appUtils';
 
 export default function AdminScreen() {
@@ -44,6 +46,8 @@ export default function AdminScreen() {
   const [showEstoque, setShowEstoque] = useState(false);
   const [showPrinterConfig, setShowPrinterConfig] = useState(false);
   const [showEditarEmpresa, setShowEditarEmpresa] = useState(false);
+  const [showFinancialConfig, setShowFinancialConfig] = useState(false);
+  const [showDashboard, setShowDashboard] = useState(false);
   const [loadingLimpar, setLoadingLimpar] = useState(false);
 
   // Estados para estatísticas
@@ -1276,9 +1280,52 @@ export default function AdminScreen() {
         )}
 
 
+        {/* CONFIGURAÇÃO FINANCEIRA (NOVO) */}
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => setShowFinancialConfig(true)}
+        >
+          <View style={[styles.menuIconContainer, { backgroundColor: '#E5B84A' }]}>
+            <Text style={styles.menuIcon}>⚙️</Text>
+          </View>
+          <View style={styles.menuTextContainer}>
+            <Text style={styles.menuTitle}>Config. Financeira</Text>
+            <Text style={styles.menuSubtitle}>Fechamento cego e opções</Text>
+          </View>
+          <Text style={styles.menuArrow}>→</Text>
+        </TouchableOpacity>
 
-        {/* Reports Section */}
-        <Text style={styles.reportsTitle}>Relatórios</Text>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => setShowCaixaHistorico(true)}
+        >
+          <View style={[styles.menuIconContainer, { backgroundColor: '#5D4037' }]}>
+            <Text style={styles.menuIcon}>📜</Text>
+          </View>
+          <View style={styles.menuTextContainer}>
+            <Text style={styles.menuTitle}>Histórico de Caixas</Text>
+            <Text style={styles.menuSubtitle}>Ver caixas fechados anteriormente</Text>
+          </View>
+          <Text style={styles.menuArrow}>→</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => setShowDashboard(true)}
+        >
+          <View style={[styles.menuIconContainer, { backgroundColor: '#4CAF50' }]}>
+            <Text style={styles.menuIcon}>📊</Text>
+          </View>
+          <View style={styles.menuTextContainer}>
+            <Text style={styles.menuTitle}>Dashboard Financeiro</Text>
+            <Text style={styles.menuSubtitle}>KPIs e Gráficos de Vendas</Text>
+          </View>
+          <Text style={styles.menuArrow}>→</Text>
+        </TouchableOpacity>
+
+        <View style={styles.divider} />
+        {/* --- SISTEMA --- */}
+        <Text style={styles.sectionHeader}>SISTEMA</Text>
 
         {loadingLimpar && (
           <View style={styles.loadingContainer}>
@@ -1393,7 +1440,7 @@ export default function AdminScreen() {
               <Text style={styles.closeButton}>← Voltar</Text>
             </TouchableOpacity>
           </View>
-          {showCaixaAbertura && <CaixaAberturaScreen />}
+          {showCaixaAbertura && <CaixaAberturaScreen onSuccess={() => setShowCaixaAbertura(false)} />}
         </View>
       </Modal>
 
@@ -1517,6 +1564,24 @@ export default function AdminScreen() {
         onRequestClose={() => setShowEditarEmpresa(false)}
       >
         <EditarEmpresaScreen onBack={() => setShowEditarEmpresa(false)} />
+      </Modal>
+
+      {/* Modal Configuração Financeira */}
+      <Modal
+        visible={showFinancialConfig}
+        animationType="slide"
+        onRequestClose={() => setShowFinancialConfig(false)}
+      >
+        <FinancialConfigScreen onClose={() => setShowFinancialConfig(false)} />
+      </Modal>
+
+      {/* Modal Dashboard Financeiro */}
+      <Modal
+        visible={showDashboard}
+        animationType="slide"
+        onRequestClose={() => setShowDashboard(false)}
+      >
+        <FinancialDashboardScreen onClose={() => setShowDashboard(false)} />
       </Modal>
 
       <StatusBar style="light" />

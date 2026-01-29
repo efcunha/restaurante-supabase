@@ -36,7 +36,7 @@ export const SalesByDayChart = ({ data }) => {
   }
 
   // data format: { labels: ['Seg', 'Ter', ...], datasets: [{ data: [100, 200, ...] }] }
-  
+
   if (!data || !data.datasets || data.datasets[0].data.length === 0) {
     return (
       <View style={styles.emptyContainer}>
@@ -108,10 +108,7 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 20,
     elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
   },
   chartTitle: {
     fontSize: 16,

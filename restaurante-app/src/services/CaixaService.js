@@ -1,12 +1,11 @@
 /**
  * CaixaService - Gerencia operações de caixa (abertura, reforço, sangria, fechamento, histórico).
  */
-import { doc, runTransaction, serverTimestamp, getDoc, setDoc, collection, addDoc, query, where, getDocs, orderBy, deleteDoc } from 'firebase/firestore';
+import { doc, runTransaction, serverTimestamp, getDoc, addDoc, query, where, getDocs, orderBy, deleteDoc } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
 import { getCompanyCollection, getCompanyDoc } from '../utils/firestoreUtils';
 
 const CAIXA_COLLECTION = 'caixas'; // documentos por dia: caixa-YYYY-MM-DD
-const MOVIMENTOS_COLLECTION = 'movimentosCaixa';
 
 const dateKey = () => {
   const d = new Date();
@@ -128,7 +127,7 @@ class CaixaService {
             });
           }
         });
-      } catch (counterError) {
+      } catch {
         // Falha ao resetar contador; seguir com abertura
       }
       return result;
@@ -207,25 +206,49 @@ class CaixaService {
     this.invalidateCache();
   }
 
-  async registrarVenda(companyId, forma, valor) {
-    if (!companyId) return; // Silent return for now or throw
+  async registrarVenda(companyId, forma, valor, dateStr = null) {
+    if (!companyId) return;
     const formasValidas = ['dinheiro', 'pix', 'debito', 'credito'];
     if (!formasValidas.includes(forma)) throw new Error('Forma de pagamento inválida.');
     const valorNum = parseFloat(valor);
     if (!(valorNum > 0)) throw new Error('Valor de venda inválido.');
 
-    const caixaRef = doc(db, CAIXA_COLLECTION, buildCaixaDocId());
+    // ESTRATÉGIA:
+    // 1. Tenta pegar a data informada ou Hoje.
+    // 2. Se o caixa dessa data NÃO estiver aberto, procura SE existe algum outro caixa aberto (o último).
+    // Isso resolve o caso do usuário que esqueceu de fechar o caixa de ontem e continua vendendo hoje.
+
+    let targetDate = dateStr || dateKey();
+    let caixaRef = getCompanyDoc(companyId, 'caixas', buildCaixaDocId(targetDate));
+
+    // Verificar se existe e está aberto na data alvo
+    const snapshotAlvo = await getDoc(caixaRef);
+    let usarTarget = snapshotAlvo.exists() && snapshotAlvo.data().status === 'aberto';
+
+    if (!usarTarget) {
+      // Fallback: Buscar último caixa aberto
+      const abertos = await this.getCaixasAbertos(companyId);
+      if (abertos.length > 0) {
+        // Usa o mais recente aberto (ou o mais antigo? Geralmente só tem 1).
+        // Se tiver 2 abertos, vamos assumir o mais recente para novos pagamentos?
+        // Ou o mais antigo? "Esquecido".
+        // Vamos usar o ÚLTIMO da lista (que classifiquei como mais recente no sort da outra função? Não, classifiquei antigos primeiro).
+        // Pega o último do array (mais recente).
+        const ultimoAberto = abertos[abertos.length - 1]; // data mais futura
+        targetDate = ultimoAberto.data;
+        caixaRef = getCompanyDoc(companyId, 'caixas', buildCaixaDocId(targetDate));
+        console.log(`Redirecionando venda para caixa aberto de: ${targetDate}`);
+      } else {
+        // Nenhum aberto. Erro.
+        throw new Error('Nenhum caixa aberto para registrar a venda.');
+      }
+    }
+
     await runTransaction(db, async (tx) => {
       const snap = await tx.get(caixaRef);
-
-      if (!snap.exists()) {
-        throw new Error('Caixa não está aberto.');
-      }
-
+      if (!snap.exists()) throw new Error(`Caixa de ${targetDate} não encontrado.`);
       const dados = snap.data();
-      if (dados.status !== 'aberto') {
-        throw new Error('Caixa não está aberto.');
-      }
+      if (dados.status !== 'aberto') throw new Error(`Caixa de ${targetDate} fechado.`);
 
       const porForma = dados.porForma || { dinheiro: 0, pix: 0, debito: 0, credito: 0 };
       const valorAnterior = porForma[forma] || 0;
@@ -236,6 +259,7 @@ class CaixaService {
 
       const saldoAnterior = dados.saldoEsperado || 0;
       const saldoEsperado = saldoAnterior + valorNum;
+
       tx.update(caixaRef, {
         porForma,
         vendasTotal,
@@ -246,14 +270,33 @@ class CaixaService {
     this.invalidateCache();
   }
 
-  async fecharCaixa(companyId, usuarioId, usuarioNome, saldoRealContado) {
+  async getCaixasAbertos(companyId) {
+    if (!companyId) return [];
+    try {
+      const q = query(
+        getCompanyCollection(companyId, CAIXA_COLLECTION),
+        where('status', '==', 'aberto'),
+        orderBy('data', 'asc') // Antigos primeiro
+      );
+      const snap = await getDocs(q);
+      return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+      console.error("Erro ao buscar caixas abertos:", error);
+      return [];
+    }
+  }
+
+  async fecharCaixa(companyId, usuarioId, usuarioNome, saldoRealContado, dataCaixa = null) {
     if (!companyId) throw new Error("Company ID required");
-    const caixaRef = getCompanyDoc(companyId, 'caixas', buildCaixaDocId());
+    const caixaDate = dataCaixa || dateKey();
+    const caixaRef = getCompanyDoc(companyId, 'caixas', buildCaixaDocId(caixaDate));
+
     const result = await runTransaction(db, async (tx) => {
       const snap = await tx.get(caixaRef);
-      if (!snap.exists()) throw new Error('Caixa não encontrado.');
+      if (!snap.exists()) throw new Error('Caixa não encontrado para a data informada.');
       const dados = snap.data();
       if (dados.status !== 'aberto') throw new Error('Caixa já fechado.');
+
       const saldoReal = parseFloat(saldoRealContado);
       const saldoEsperado = dados.saldoEsperado || 0;
       const diferenca = saldoReal - saldoEsperado;
@@ -274,13 +317,13 @@ class CaixaService {
         atualizado: serverTimestamp(),
       });
 
-      return { diferenca, saldoEsperado, saldoReal };
+      return { diferenca, saldoEsperado, saldoReal, data: caixaDate };
     });
 
     this.invalidateCache();
 
-    // APÓS fechar o caixa, fazer limpeza do dia
-    await this.limparDadosDoDia(companyId);
+    // APÓS fechar o caixa, fazer limpeza do dia específico
+    await this.limparDadosDoDia(companyId, caixaDate);
     return result;
   }
 
@@ -302,6 +345,22 @@ class CaixaService {
     return registros.slice(0, limit);
   }
 
+  async getComandasFechadas(companyId, dateStr) {
+    if (!companyId || !dateStr) return [];
+    try {
+      const q = query(
+        getCompanyCollection(companyId, 'comandas'),
+        where('dateKey', '==', dateStr),
+        where('status', '==', 'fechada')
+      );
+      const snap = await getDocs(q);
+      return snap.docs.map(d => d.data());
+    } catch (e) {
+      console.error("Erro ao buscar comandas fechadas:", e);
+      return [];
+    }
+  }
+
   /**
    * Limpa dados do dia ao fechar o caixa
    * 1. Move comandas FECHADAS (pagas) para histórico
@@ -309,19 +368,15 @@ class CaixaService {
    * 3. Exclui pedidos não pagos
    * PRESERVA: Comandas fechadas de dias anteriores, histórico de vendas
    */
-  async limparDadosDoDia(companyId) {
+  async limparDadosDoDia(companyId, dateStr = dateKey()) {
     if (!companyId) return;
     try {
-      const hoje = dateKey();
-
-      let comandasMovidas = 0;
-      let comandasAbertas = 0;
-      let pedidosExcluidos = 0;
+      const targetDate = dateStr;
       const comandasAbertasIds = [];
 
-      // 1. Buscar comandas de HOJE
+      // 1. Buscar comandas do dia alvo
       const comandasSnapshot = await getDocs(
-        query(getCompanyCollection(companyId, 'comandas'), where('dateKey', '==', hoje))
+        query(getCompanyCollection(companyId, 'comandas'), where('dateKey', '==', targetDate))
       );
 
       for (const docSnapshot of comandasSnapshot.docs) {
@@ -329,18 +384,16 @@ class CaixaService {
 
         if (comanda.status === 'fechada') {
           // Comanda FECHADA: já está no banco como histórico, não precisa mover
-          comandasMovidas++;
         } else if (comanda.status === 'aberta') {
           // Comanda ABERTA: remover (abandonada)
           await deleteDoc(docSnapshot.ref);
           comandasAbertasIds.push(comanda.numeroComanda || comanda.comandaNumber);
-          comandasAbertas++;
         }
       }
 
-      // 2. Excluir pedidos não pagos de hoje ou de comandas abertas
+      // 2. Excluir pedidos não pagos desse dia ou de comandas abertas desse dia
       const pedidosSnapshot = await getDocs(
-        query(getCompanyCollection(companyId, 'pedidos'), where('dateKey', '==', hoje))
+        query(getCompanyCollection(companyId, 'pedidos'), where('dateKey', '==', targetDate))
       );
 
       for (const docSnapshot of pedidosSnapshot.docs) {
@@ -350,11 +403,10 @@ class CaixaService {
 
         if (naoPago || eraComandaAberta) {
           await deleteDoc(docSnapshot.ref);
-          pedidosExcluidos++;
         }
       }
     } catch (error) {
-      // Não bloquear fechamento do caixa se a limpeza falhar
+      console.warn("Erro ao limpar dados do dia:", error);
       // Não bloquear fechamento do caixa se a limpeza falhar
     }
   }
@@ -368,7 +420,7 @@ class CaixaService {
       } else if (typeof timestamp === 'string') {
         return timestamp.split('T')[0];
       }
-    } catch (e) {
+    } catch {
       return null;
     }
     return null;

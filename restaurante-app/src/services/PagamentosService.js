@@ -1,14 +1,10 @@
 /**
  * PagamentosService - OTIMIZADO - Registra pagamentos por comanda e integra com CaixaService.
  */
-import { collection, addDoc, serverTimestamp, runTransaction, doc, getDoc, setDoc, query, where, getDocs } from 'firebase/firestore';
+import { addDoc, serverTimestamp, runTransaction, getDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
 import { getCompanyCollection, getCompanyDoc } from '../utils/firestoreUtils';
 import CaixaService from './CaixaService';
-
-const PAGAMENTOS_COLLECTION = 'pagamentos';
-const COMANDAS_COLLECTION = 'comandas';
-
 const comandaDocId = (dateKey, numero) => `comanda-${dateKey}-${String(numero)}`;
 
 class PagamentosService {
@@ -25,8 +21,7 @@ class PagamentosService {
       throw new Error('Lista de pedidos inválida');
     }
 
-    const { collection, query, where, getDocs, updateDoc, doc } = await import('firebase/firestore');
-    const { db } = await import('../config/firebaseConfig');
+    const { query, where, getDocs, updateDoc } = await import('firebase/firestore');
 
     const updatePromises = [];
 
@@ -115,7 +110,7 @@ class PagamentosService {
     const comandaData = comandaDoc.data();
 
     // 🚀 OTIMIZAÇÃO: Executar operações em paralelo
-    const [transactionResult, pagamentoResult] = await Promise.all([
+    const [transactionResult] = await Promise.all([
       // Atualizar comanda
       runTransaction(db, async (tx) => {
         const snap = await tx.get(comandaRefFinal);
