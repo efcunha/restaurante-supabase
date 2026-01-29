@@ -1,6 +1,6 @@
-import { writeBatch, doc, getDoc, increment, serverTimestamp } from 'firebase/firestore';
+import { writeBatch, getDoc, increment, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
-import { getCompanyDoc, getCompanyCollection } from '../utils/firestoreUtils';
+import { getCompanyDoc } from '../utils/firestoreUtils';
 import { convertUnit } from '../utils/unitConversion';
 import OfflineQueueService from './OfflineQueueService';
 
@@ -13,13 +13,15 @@ class InventoryService {
     async deductStock(companyId, orderItems) {
         // Chama o processamento interno, mas captura erro para fila se necessário
         try {
-            await this.processStockDeduction(companyId, orderItems, false);
+            const result = await this.processStockDeduction(companyId, orderItems, false);
             /* console.log('[InventoryService] Baixa de estoque solicitada.'); */
+            return result; // Retorna { totalCost }
         } catch (error) {
             console.error('[InventoryService] Erro inicial ao baixar estoque. Adicionando à fila.', error);
             // O processStockDeduction já deve ter cuidado da fila se fosse um erro de execução,
             // mas se falhar ANTES, garantimos aqui.
             // Na verdade, a lógica de fila deve ser tratada com cuidado.
+            return { totalCost: 0, error };
         }
     }
 
@@ -28,9 +30,10 @@ class InventoryService {
      * @param {string} companyId 
      * @param {Array} orderItems 
      * @param {boolean} isRetry - Indica se é uma re-tentativa da fila (para não loopear)
+     * @returns {Promise<{totalCost: number}>}
      */
     async processStockDeduction(companyId, orderItems, isRetry = false) {
-        if (!companyId || !orderItems || orderItems.length === 0) return;
+        if (!companyId || !orderItems || orderItems.length === 0) return { totalCost: 0 };
 
         try {
             // 1. Identificar quais itens de estoque precisamos ler
@@ -69,21 +72,21 @@ class InventoryService {
 
             if (!hasInventoryItems) {
                 // console.log('[InventoryService] Nenhum item do pedido possui vínculo com estoque.');
-                return;
+                return { totalCost: 0 };
             }
 
-            if (stockIdsToFetch.size === 0) return;
+            if (stockIdsToFetch.size === 0) return { totalCost: 0 };
 
-            // 2. Buscar dados atuais do estoque (para saber a Unidade de Destino)
+            // 2. Buscar dados atuais do estoque (para saber a Unidade de Destino e Preço de Custo)
             // Firestore não suporta 'whereIn' com IDs de documento diretamente de forma fácil para collection group ou subcollection customizada sem index,
-            // mas podemos fazer leituras paralelas (getAll não existe no client SDK exatamente como no Admin, usamos Promise.all).
+            // mas podemos fazer leituras paralelas.
 
             const stockDocsPromises = Array.from(stockIdsToFetch).map(id =>
                 getDoc(getCompanyDoc(companyId, 'estoque', id))
             );
 
             const stockSnapshots = await Promise.all(stockDocsPromises);
-            const stockMap = {}; // { id: { unidade: 'L', ... } }
+            const stockMap = {}; // { id: { unidade: 'L', precoCusto: 10, ... } }
 
             stockSnapshots.forEach(snap => {
                 if (snap.exists()) {
@@ -91,9 +94,10 @@ class InventoryService {
                 }
             });
 
-            // 3. Preparar Batch
+            // 3. Preparar Batch e Calcular Custo
             const batch = writeBatch(db);
             let operationsCount = 0;
+            let totalCost = 0;
 
             for (const ded of deductions) {
                 const stockItem = stockMap[ded.stockId];
@@ -115,6 +119,17 @@ class InventoryService {
                         atualizadoEm: serverTimestamp()
                     });
                     operationsCount++;
+
+                    // 💰 Cálculo de Custo (CMV)
+                    // Custo = Preço de Custo Total do Item / Quantidade Total do Item * Quantidade Consumida?
+                    // NÃO: precoCusto geralmente é unitário da unidade de compra/estoque.
+                    // Se precoCusto = 10 e unidade = 'L', entende-se R$ 10,00 por Litro?
+                    // Assumiremos que sim: precoCusto é "Preço por 1 Unidade do Estoque".
+                    if (stockItem.precoCusto) {
+                        const custoParcela = Number(stockItem.precoCusto) * convertedAmount;
+                        totalCost += custoParcela;
+                    }
+
                 } else {
                     console.warn(`[InventoryService] Falha na conversão ou valor zero: ${ded.reqQty} ${ded.reqUnit} -> ${stockItem.unidade}`);
                 }
@@ -122,8 +137,10 @@ class InventoryService {
 
             if (operationsCount > 0) {
                 await batch.commit();
-                console.log(`[InventoryService] Baixa efetuada em ${operationsCount} itens.`);
+                console.log(`[InventoryService] Baixa efetuada em ${operationsCount} itens. Custo Total (CMV): R$ ${totalCost.toFixed(2)}`);
             }
+
+            return { totalCost };
 
         } catch (error) {
             console.error('[InventoryService] Erro no processStockDeduction:', error);
@@ -138,6 +155,7 @@ class InventoryService {
                 // Se já é retry, joga erro para o QueueService saber que falhou
                 throw error;
             }
+            return { totalCost: 0 };
         }
     }
 }
