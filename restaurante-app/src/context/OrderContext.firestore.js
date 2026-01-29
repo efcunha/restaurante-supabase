@@ -694,11 +694,11 @@ export const OrderProvider = ({ children }) => {
    */
   const getEstatisticasTodosGarcons = useCallback(async (periodo = 'hoje') => {
     try {
-      return await OrderFirestoreService.getEstatisticasTodosGarcons(periodo);
+      return await OrderFirestoreService.getEstatisticasTodosGarcons(user.companyId, periodo);
     } catch (error) {
       return [];
     }
-  }, []);
+  }, [user]);
 
   /**
    * Hook para buscar estatísticas de pagamentos por método
@@ -707,7 +707,7 @@ export const OrderProvider = ({ children }) => {
    */
   const getEstatisticasPagamentos = useCallback(async (garcomId = null, periodo = 'hoje') => {
     try {
-      return await OrderFirestoreService.getEstatisticasPagamentos(garcomId, periodo);
+      return await OrderFirestoreService.getEstatisticasPagamentos(user.companyId, garcomId, periodo);
     } catch (error) {
       return {
         dinheiro: { total: 0, quantidade: 0 },
@@ -716,7 +716,7 @@ export const OrderProvider = ({ children }) => {
         credito: { total: 0, quantidade: 0 },
       };
     }
-  }, []);
+  }, [user]);
 
   /**
    * Hook para buscar estatísticas de comandas
@@ -725,7 +725,7 @@ export const OrderProvider = ({ children }) => {
    */
   const getEstatisticasComandas = useCallback(async (garcomId = null, periodo = 'hoje') => {
     try {
-      return await OrderFirestoreService.getEstatisticasComandas(garcomId, periodo);
+      return await OrderFirestoreService.getEstatisticasComandas(user.companyId, garcomId, periodo);
     } catch (error) {
       return {
         total: 0,
@@ -736,7 +736,7 @@ export const OrderProvider = ({ children }) => {
         saldoAberto: 0,
       };
     }
-  }, []);
+  }, [user]);
 
   /**
    * Hook completo para buscar todas as estatísticas de um garçom
