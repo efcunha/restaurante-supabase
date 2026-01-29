@@ -900,11 +900,12 @@ class OrderFirestoreService {
 
   /**
    * Busca estatísticas de pagamentos por método de pagamento (OTIMIZADO)
+   * @param {string} companyId - ID da empresa
    * @param {string} garcomId - ID do garçom (null para todos)
    * @param {string} periodo - 'hoje', 'semana', 'mes'
    * @returns {Promise<Object>} Estatísticas de pagamentos por método
    */
-  async getEstatisticasPagamentos(garcomId = null, periodo = 'hoje') {
+  async getEstatisticasPagamentos(companyId, garcomId = null, periodo = 'hoje') {
     try {
       const { startDate, endDate } = this._getDateRange(periodo);
       // CORREÇÃO: Usar formato de data LOCAL
@@ -918,7 +919,7 @@ class OrderFirestoreService {
       const endDateKey = formatLocalDate(endDate);
 
       // CORREÇÃO: Buscar collection PAGAMENTOS em vez de pedidos
-      const q = query(collection(db, 'pagamentos'));
+      const q = query(getCompanyCollection(companyId, 'pagamentos'));
       const snapshot = await getDocs(q);
 
       const pagamentosPorMetodo = {
@@ -961,17 +962,18 @@ class OrderFirestoreService {
 
   /**
    * Busca comandas associadas a um garçom (OTIMIZADO)
+   * @param {string} companyId - ID da empresa
    * @param {string} garcomId - ID do garçom
    * @param {string} periodo - 'hoje', 'semana', 'mes'
    * @returns {Promise<Object>} Estatísticas de comandas
    */
-  async getEstatisticasComandas(garcomId = null, periodo = 'hoje') {
+  async getEstatisticasComandas(companyId, garcomId = null, periodo = 'hoje') {
     try {
       const { startDate, endDate } = this._getDateRange(periodo);
 
       // OTIMIZADO: Comandas geralmente são poucas, filtrar no cliente é OK
       const q = query(
-        collection(db, 'comandas'),
+        getCompanyCollection(companyId, 'comandas'),
         limit(200) // Proteger contra crescimento infinito
       );
 
