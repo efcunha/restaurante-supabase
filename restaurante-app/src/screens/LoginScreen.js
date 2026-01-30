@@ -83,7 +83,7 @@ export default function LoginScreen({ navigation }) {
             {/* Logo/Título */}
             <View style={styles.header}>
               <Image
-                source={require('../assets/images/login_v12.png')}
+                source={require('../assets/images/login_v13.png')}
                 style={{
                   width: '100%',
                   height: 260, // Reduced as requested
