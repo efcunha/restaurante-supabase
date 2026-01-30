@@ -12,7 +12,7 @@ import {
   Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { collection, getDocs, addDoc, updateDoc, doc, getDoc, setDoc, writeBatch, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, getDocs, setDoc, updateDoc, writeBatch, addDoc } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
 import { useAuth } from '../context/AuthContext';
 import { getCompanyCollection, getCompanyDoc } from '../utils/firestoreUtils';
@@ -22,7 +22,7 @@ import { SUPPORTED_UNITS } from '../utils/unitConversion';
 
 // Componente para cada item de variação
 function VariacaoItem({ variacao, onSalvar }) {
-  const [precoTemp, setPrecoTemp] = useState(variacao.price.toString());
+  const [precoTemp, setPrecoTemp] = useState(variacao.price !== undefined ? variacao.price.toString() : '0');
   const [nomeTemp, setNomeTemp] = useState(variacao.name);
 
   return (
@@ -96,7 +96,11 @@ export default function GerenciarCardapioScreen({ onClose }) {
   const [loadingTemperos, setLoadingTemperos] = useState(true);
 
   // Estados para Pizza
-  const [pizzaConfig, setPizzaConfig] = useState(null);
+  const [pizzaConfig, setPizzaConfig] = useState({ sizes: [] });
+  const [pizzaSizes, setPizzaSizes] = useState([]); // Local state for editing sizes
+  const [novoTamanho, setNovoTamanho] = useState('');
+  const [novosSaboresMax, setNovosSaboresMax] = useState('');
+  const [editTamanhoIndex, setEditTamanhoIndex] = useState(-1); // TRACK EDIT INDEX
   const [precosPizza, setPrecosPizza] = useState({}); // { 'Fatia': '5.00', 'Grande': '40.00' }
   const [ingredientesPizza, setIngredientesPizza] = useState([]); // from config
   const [ingredientesSelecionados, setIngredientesSelecionados] = useState([]); // for current product
@@ -159,12 +163,25 @@ export default function GerenciarCardapioScreen({ onClose }) {
           setPizzaConfig({
             sizes: [
               { name: 'Fatia', maxFlavors: 1 },
-              { name: 'Broto', maxFlavors: 2 },
-              { name: 'Média', maxFlavors: 3 },
+              { name: 'Broto', maxFlavors: 1 },
+              { name: 'Média', maxFlavors: 2 },
               { name: 'Grande', maxFlavors: 4 }
             ],
             pricingMode: 'HIGHER'
           });
+        }
+
+        // Sync local sizes state
+        if (data.pizzaConfig?.sizes) {
+          setPizzaSizes(data.pizzaConfig.sizes);
+        } else {
+          // Default sync
+          setPizzaSizes([
+            { name: 'Fatia', maxFlavors: 1 },
+            { name: 'Broto', maxFlavors: 1 },
+            { name: 'Média', maxFlavors: 2 },
+            { name: 'Grande', maxFlavors: 4 }
+          ]);
         }
 
         // Legacy fallback
@@ -193,8 +210,16 @@ export default function GerenciarCardapioScreen({ onClose }) {
       temperosCaldos: novaListaCaldos !== undefined ? novaListaCaldos : temperosCaldos,
       temperosComidas: novaListaComidas !== undefined ? novaListaComidas : temperosComidas,
       variacoesEspetinho: novaListaVariacoes !== undefined ? novaListaVariacoes : variacoesEspetinho,
-      ingredientesPizza: novaListaPizzas !== undefined ? novaListaPizzas : ingredientesPizza
+      ingredientesPizza: novaListaPizzas !== undefined ? novaListaPizzas : ingredientesPizza,
+      pizzaConfig: { ...pizzaConfig, sizes: pizzaSizes } // Save updated sizes
     }, { merge: true });
+  };
+
+  const salvarPizzaSizes = async (novosTamanhos) => {
+    const docRef = doc(db, 'companies', user.companyId, 'settings', 'cardapio_config');
+    const newConfig = { ...pizzaConfig, sizes: novosTamanhos };
+    setPizzaConfig(newConfig);
+    await setDoc(docRef, { pizzaConfig: newConfig }, { merge: true });
   };
 
   const adicionarTempero = async () => {
@@ -234,6 +259,62 @@ export default function GerenciarCardapioScreen({ onClose }) {
       console.error('Erro ao salvar tempero:', e);
       Alert.alert('Erro', 'Falha ao salvar item.');
     }
+  };
+
+  const adicionarTamanhoPizza = async () => {
+    if (!novoTamanho.trim() || !novosSaboresMax) {
+      Alert.alert('Erro', 'Preencha nome e quantidades de sabores.');
+      return;
+    }
+    const max = parseInt(novosSaboresMax);
+    if (isNaN(max) || max < 1) {
+      Alert.alert('Erro', 'Quantidade de sabores inválida.');
+      return;
+    }
+
+    const novos = [...pizzaSizes];
+    if (editTamanhoIndex >= 0) {
+      // UPDATE EXISTING (maintain active status)
+      novos[editTamanhoIndex] = { ...novos[editTamanhoIndex], name: novoTamanho.trim(), maxFlavors: max };
+    } else {
+      // ADD NEW (default active)
+      novos.push({ name: novoTamanho.trim(), maxFlavors: max, active: true });
+    }
+
+    setPizzaSizes(novos);
+    await salvarPizzaSizes(novos);
+    setNovoTamanho('');
+    setNovosSaboresMax('');
+    setEditTamanhoIndex(-1);
+  };
+
+  const iniciarEdicaoTamanho = (index) => {
+    const item = pizzaSizes[index];
+    setNovoTamanho(item.name);
+    setNovosSaboresMax(item.maxFlavors.toString());
+    setEditTamanhoIndex(index);
+  };
+
+  const cancelarEdicaoTamanho = () => {
+    setNovoTamanho('');
+    setNovosSaboresMax('');
+    setEditTamanhoIndex(-1);
+  };
+
+  const removerTamanhoPizza = async (index) => {
+    const novos = [...pizzaSizes];
+    novos.splice(index, 1);
+    setPizzaSizes(novos);
+    await salvarPizzaSizes(novos);
+  };
+
+  const toggleTamanhoAtivo = async (index) => {
+    const novos = [...pizzaSizes];
+    // Toggle logic: if active is undefined, assume it was true, so now false.
+    const currentStatus = novos[index].active !== false;
+    novos[index].active = !currentStatus;
+    setPizzaSizes(novos);
+    await salvarPizzaSizes(novos);
   };
 
   const iniciarEdicaoTempero = (idx) => {
@@ -368,8 +449,9 @@ export default function GerenciarCardapioScreen({ onClose }) {
 
       sizes.forEach(size => {
         const p = precosPizza[size.name];
-        if (p && !isNaN(parseFloat(p))) {
-          pricesToSave[size.name] = parseFloat(p);
+        if (p) {
+          const sanitized = p.toString().replace(',', '.');
+          pricesToSave[size.name] = parseFloat(sanitized) || 0;
           hasPrice = true;
         }
       });
@@ -399,8 +481,6 @@ export default function GerenciarCardapioScreen({ onClose }) {
 
         window.alert('✅ Pizza cadastrada com sucesso!');
         setNome('');
-        window.alert('✅ Pizza cadastrada com sucesso!');
-        setNome('');
         setPrecosPizza({});
         setIngredientesSelecionados([]);
         setIngredientesPersonalizados('');
@@ -413,7 +493,7 @@ export default function GerenciarCardapioScreen({ onClose }) {
       }
 
     } else {
-      if (!preco || isNaN(parseFloat(preco))) {
+      if (!preco || isNaN(parseFloat(preco.toString().replace(',', '.')))) {
         window.alert('Digite um preço válido');
         return;
       }
@@ -422,7 +502,7 @@ export default function GerenciarCardapioScreen({ onClose }) {
         setLoading(true);
         const novoProduto = {
           name: nome.trim(),
-          price: parseFloat(preco),
+          price: parseFloat(preco.toString().replace(',', '.')) || 0,
           category: categoria,
           active: true,
           createdAt: Date.now()
@@ -445,8 +525,16 @@ export default function GerenciarCardapioScreen({ onClose }) {
   const abrirEdicao = (produto) => {
     setEditando(produto);
     setEditNome(produto.name);
-    setEditPreco(produto.price.toString());
+    setEditPreco(produto.price ? produto.price.toString() : '0');
     setEditCategoria(produto.category);
+
+    // Load pizza prices if applicable
+    if (produto.category === 'pizza') {
+      setPrecosPizza(produto.prices || {});
+    } else {
+      setPrecosPizza({});
+    }
+
     setShowEditModal(true);
   };
 
@@ -456,7 +544,8 @@ export default function GerenciarCardapioScreen({ onClose }) {
       return;
     }
 
-    if (!editPreco || isNaN(parseFloat(editPreco))) {
+    const sanitizedPreco = editPreco?.toString().replace(',', '.');
+    if (!editPreco || isNaN(parseFloat(sanitizedPreco))) {
       Alert.alert('Atenção', 'Digite um preço válido');
       return;
     }
@@ -464,11 +553,29 @@ export default function GerenciarCardapioScreen({ onClose }) {
     try {
       setLoading(true);
       const produtoRef = getCompanyDoc(user.companyId, 'cardapio', editando.id);
-      await updateDoc(produtoRef, {
+      const updateData = {
         name: editNome.trim(),
-        price: parseFloat(editPreco),
         category: editCategoria
-      });
+      };
+
+      if (editCategoria === 'pizza') {
+        // Garantir que todos os valores no mapa de preços sejam números (parseFloat)
+        const pricesAsNumbers = {};
+        Object.keys(precosPizza).forEach(key => {
+          const val = precosPizza[key];
+          if (val !== undefined && val !== '') {
+            const sanitized = val.toString().replace(',', '.');
+            pricesAsNumbers[key] = parseFloat(sanitized) || 0;
+          }
+        });
+        updateData.prices = pricesAsNumbers;
+        // Optionally clear single price to keep data clean
+        updateData.price = 0;
+      } else {
+        updateData.price = parseFloat(sanitizedPreco);
+      }
+
+      await updateDoc(produtoRef, updateData);
 
       Alert.alert('Sucesso', 'Produto atualizado com sucesso!');
       setShowEditModal(false);
@@ -621,8 +728,14 @@ export default function GerenciarCardapioScreen({ onClose }) {
 
   const abrirVariacoes = (nomeBase) => {
     const variacoes = produtosAgrupados[nomeBase] || [];
-    setVariacoesSelecionadas(variacoes);
-    setShowVariacoesModal(true);
+
+    // Se for apenas uma variação ou se for pizza, abre o editor principal (que é mais completo para pizzas)
+    if (variacoes.length === 1 || (variacoes.length > 0 && variacoes[0].category === 'pizza')) {
+      abrirEdicao(variacoes[0]);
+    } else {
+      setVariacoesSelecionadas(variacoes);
+      setShowVariacoesModal(true);
+    }
   };
 
   const salvarVariacao = async (produto, novoPreco, novoNome) => {
@@ -898,48 +1011,112 @@ export default function GerenciarCardapioScreen({ onClose }) {
                 style={{ flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 6, backgroundColor: tipoTemperoAtivo === 'variacoes' ? '#fff' : 'transparent', elevation: tipoTemperoAtivo === 'variacoes' ? 2 : 0 }}
                 onPress={() => { setTipoTemperoAtivo('variacoes'); setEditTemperoIndex(-1); setNovoTempero(''); }}
               >
-                <Text style={{ fontWeight: 'bold', color: tipoTemperoAtivo === 'variacoes' ? '#8B0000' : '#666' }}>🍢 Variações</Text>
+                <Text style={{ fontWeight: 'bold', color: tipoTemperoAtivo === 'variacoes' ? '#8B0000' : '#666' }}>🔥 Variações Espet.</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{ flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 6, backgroundColor: tipoTemperoAtivo === 'tamanhos' ? '#fff' : 'transparent', elevation: tipoTemperoAtivo === 'tamanhos' ? 2 : 0 }}
+                onPress={() => { setTipoTemperoAtivo('tamanhos'); }}
+              >
+                <Text style={{ fontWeight: 'bold', color: tipoTemperoAtivo === 'tamanhos' ? '#8B0000' : '#666' }}>🍕 Tamanhos</Text>
               </TouchableOpacity>
             </View>
 
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <TextInput
-                style={[styles.input, { flex: 1, marginBottom: 0 }]}
-                placeholder={editTemperoIndex >= 0 ? "Editando opção..." : `Novo item para ${tipoTemperoAtivo === 'caldos' ? 'Caldos' : tipoTemperoAtivo === 'comidas' ? 'Comidas' : 'Variações'}`}
-                value={novoTempero}
-                onChangeText={setNovoTempero}
-              />
-              {editTemperoIndex >= 0 && (
-                <TouchableOpacity style={[styles.cadastrarBtn, { marginTop: 0, paddingHorizontal: 15, backgroundColor: '#6c757d' }]} onPress={cancelarEdicaoTempero}>
-                  <Text style={styles.cadastrarBtnText}>✕</Text>
-                </TouchableOpacity>
-              )}
-              <TouchableOpacity style={[styles.cadastrarBtn, { marginTop: 0, paddingHorizontal: 20 }]} onPress={adicionarTempero}>
-                <Text style={styles.cadastrarBtnText}>{editTemperoIndex >= 0 ? 'Salvar' : '+'}</Text>
-              </TouchableOpacity>
-            </View>
+            {/* TAB: TAMANHOS DE PIZZA */}
+            {tipoTemperoAtivo === 'tamanhos' ? (
+              <View>
+                <View style={{ flexDirection: 'row', gap: 10, marginBottom: 15 }}>
+                  <TextInput
+                    style={[styles.input, { flex: 2, marginBottom: 0 }]}
+                    placeholder="Nome (ex: Gigante)"
+                    value={novoTamanho}
+                    onChangeText={setNovoTamanho}
+                  />
+                  <TextInput
+                    style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                    placeholder="Max Sabores"
+                    value={novosSaboresMax}
+                    onChangeText={setNovosSaboresMax}
+                    keyboardType="numeric"
+                  />
+                  <TouchableOpacity style={styles.addBtn} onPress={adicionarTamanhoPizza}>
+                    <Ionicons name={editTamanhoIndex >= 0 ? "checkmark" : "add"} size={24} color="#fff" />
+                  </TouchableOpacity>
+                  {editTamanhoIndex >= 0 && (
+                    <TouchableOpacity style={[styles.addBtn, { backgroundColor: '#999' }]} onPress={cancelarEdicaoTamanho}>
+                      <Ionicons name="close" size={24} color="#fff" />
+                    </TouchableOpacity>
+                  )}
+                </View>
 
-            <Text style={{ fontSize: 12, color: '#999', marginTop: 5, marginBottom: 10 }}>
-              {tipoTemperoAtivo === 'variacoes'
-                ? 'Estes sufixos serão usados para gerar os itens automaticamente (ex: "com Baião").'
-                : `Estes itens aparecerão nas opções de ${tipoTemperoAtivo === 'caldos' ? 'Caldos' : 'Comidas'} no Novo Pedido.`}
-            </Text>
-
-            {loadingTemperos ? <ActivityIndicator size="small" color="#8B2F2F" /> : (
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                {getListaAtiva().map((t, idx) => (
-                  <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: editTemperoIndex === idx ? '#FFF3CD' : '#F5F1E8', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 20, gap: 8, borderWidth: 1, borderColor: editTemperoIndex === idx ? '#FFC107' : '#E5B84A' }}>
-                    <Text style={{ fontWeight: '600', color: '#555', fontSize: 13 }}>{t}</Text>
-                    <View style={{ flexDirection: 'row', gap: 8 }}>
-                      <TouchableOpacity onPress={() => iniciarEdicaoTempero(idx)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                        <Text style={{ fontSize: 14 }}>✏️</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity onPress={() => removerTempero(idx)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                        <Text style={{ color: '#DC3545', fontWeight: 'bold', fontSize: 14 }}>✕</Text>
-                      </TouchableOpacity>
+                {/* LISTING SIZES WITH SORTING */}
+                {pizzaSizes.map((size, index) => ({ ...size, originalIndex: index }))
+                  .sort((a, b) => {
+                    const order = ['Fatia', 'Broto', 'Média', 'Grande'];
+                    const idxA = order.indexOf(a.name);
+                    const idxB = order.indexOf(b.name);
+                    // Known items first, then others alphabetically
+                    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                    if (idxA !== -1) return -1;
+                    if (idxB !== -1) return 1;
+                    return a.name.localeCompare(b.name);
+                  })
+                  .map((size, idx) => (
+                    <View key={idx} style={[styles.temperoRow, size.active === false && { opacity: 0.5, backgroundColor: '#f0f0f0' }]}>
+                      <Text style={styles.temperoText}>
+                        {size.name} ({size.maxFlavors} sabores) {size.active === false ? '(Desativado)' : ''}
+                      </Text>
+                      <View style={{ flexDirection: 'row', gap: 10 }}>
+                        <TouchableOpacity onPress={() => toggleTamanhoAtivo(size.originalIndex)}>
+                          <Ionicons name={size.active !== false ? "eye" : "eye-off"} size={20} color={size.active !== false ? "#2e7d32" : "#999"} />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => iniciarEdicaoTamanho(size.originalIndex)}>
+                          <Ionicons name="pencil" size={20} color="#444" />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => removerTamanhoPizza(size.originalIndex)}>
+                          <Ionicons name="trash-outline" size={20} color="#FF4444" />
+                        </TouchableOpacity>
+                      </View>
                     </View>
+                  ))}
+              </View>
+            ) : (
+              /* EXISTING LOGIC FOR OTHERS */
+              <View>
+                <View style={styles.addTemperoRow}>
+                  <TextInput
+                    style={styles.inputTempero}
+                    placeholder={editTemperoIndex >= 0 ? "Editar item..." : "Novo item..."}
+                    value={novoTempero}
+                    onChangeText={setNovoTempero}
+                  />
+                  <TouchableOpacity style={styles.addBtn} onPress={adicionarTempero}>
+                    <Ionicons name={editTemperoIndex >= 0 ? "checkmark" : "add"} size={24} color="#fff" />
+                  </TouchableOpacity>
+                  {editTemperoIndex >= 0 && (
+                    <TouchableOpacity style={[styles.addBtn, { backgroundColor: '#999' }]} onPress={cancelarEdicaoTempero}>
+                      <Ionicons name="close" size={24} color="#fff" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                {loadingTemperos ? <ActivityIndicator color="#8B0000" /> : (
+                  <View style={styles.listaTemperos}>
+                    {getListaAtiva().map((item, index) => (
+                      <View key={index} style={styles.temperoRow}>
+                        <Text style={styles.temperoText}>{item}</Text>
+                        <View style={{ flexDirection: 'row', gap: 10 }}>
+                          <TouchableOpacity onPress={() => iniciarEdicaoTempero(index)}>
+                            <Ionicons name="pencil" size={20} color="#444" />
+                          </TouchableOpacity>
+                          <TouchableOpacity onPress={() => removerTempero(index)}>
+                            <Ionicons name="trash-outline" size={20} color="#FF4444" />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    ))}
                   </View>
-                ))}
+                )}
               </View>
             )}
           </View>
@@ -1049,7 +1226,7 @@ export default function GerenciarCardapioScreen({ onClose }) {
       {/* MODAL DE EDIÇÃO (Produto Único) */}
       < Modal visible={showEditModal} animationType="slide" transparent={true} >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { maxHeight: '90%' }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>✏️ Editar Produto</Text>
               <TouchableOpacity onPress={() => setShowEditModal(false)}>
@@ -1057,61 +1234,88 @@ export default function GerenciarCardapioScreen({ onClose }) {
               </TouchableOpacity>
             </View>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Nome do produto"
-              placeholderTextColor="#999"
-              value={editNome}
-              onChangeText={setEditNome}
-            />
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={styles.label}>Nome:</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Nome do produto"
+                placeholderTextColor="#999"
+                value={editNome}
+                onChangeText={setEditNome}
+              />
 
-            <TextInput
-              style={styles.input}
-              placeholder="Preço"
-              placeholderTextColor="#999"
-              value={editPreco}
-              onChangeText={setEditPreco}
-              keyboardType="numeric"
-            />
+              {editCategoria === 'pizza' ? (
+                <>
+                  <Text style={styles.label}>Preços por tamanho:</Text>
+                  <View style={styles.variacoesGrid}>
+                    {pizzaConfig?.sizes?.map((size, idx) => (
+                      <View key={idx} style={styles.variacaoField}>
+                        <Text style={styles.variacaoLabel}>{size.name} ({size.maxFlavors} sab)</Text>
+                        <TextInput
+                          style={styles.inputVariacao}
+                          placeholder="0.00"
+                          placeholderTextColor="#999"
+                          value={precosPizza[size.name] || ''}
+                          onChangeText={(text) => setPrecosPizza(prev => ({ ...prev, [size.name]: text }))}
+                          keyboardType="numeric"
+                        />
+                      </View>
+                    ))}
+                  </View>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.label}>Preço:</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Preço"
+                    placeholderTextColor="#999"
+                    value={editPreco}
+                    onChangeText={setEditPreco}
+                    keyboardType="numeric"
+                  />
+                </>
+              )}
 
-            <Text style={styles.label}>Categoria:</Text>
-            <View style={styles.categoriaButtons}>
-              {categorias.map(cat => (
-                <TouchableOpacity
-                  key={cat.value}
-                  style={[
-                    styles.categoriaBtn,
-                    editCategoria === cat.value && styles.categoriaBtnActive
-                  ]}
-                  onPress={() => setEditCategoria(cat.value)}
-                >
-                  <Text style={[
-                    styles.categoriaBtnText,
-                    editCategoria === cat.value && styles.categoriaBtnTextActive
-                  ]}>
-                    {cat.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+              <Text style={styles.label}>Categoria:</Text>
+              <View style={styles.categoriaButtons}>
+                {categorias.map(cat => (
+                  <TouchableOpacity
+                    key={cat.value}
+                    style={[
+                      styles.categoriaBtn,
+                      editCategoria === cat.value && styles.categoriaBtnActive
+                    ]}
+                    onPress={() => setEditCategoria(cat.value)}
+                  >
+                    <Text style={[
+                      styles.categoriaBtnText,
+                      editCategoria === cat.value && styles.categoriaBtnTextActive
+                    ]}>
+                      {cat.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
 
-            {/* Link para Ficha Técnica direto na edição */}
-            <TouchableOpacity
-              style={styles.stockLinkBtn}
-              onPress={() => { setShowEditModal(false); abrirEstoque(editando); }}
-            >
-              <Text style={styles.stockLinkText}>📦 Configurar Ficha Técnica / Estoque</Text>
-            </TouchableOpacity>
+              {/* Link para Ficha Técnica direto na edição */}
+              <TouchableOpacity
+                style={styles.stockLinkBtn}
+                onPress={() => { setShowEditModal(false); abrirEstoque(editando); }}
+              >
+                <Text style={styles.stockLinkText}>📦 Configurar Ficha Técnica / Estoque</Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.salvarBtn, loading && styles.salvarBtnDisabled]}
-              onPress={salvarEdicao}
-              disabled={loading}
-            >
-              <Text style={styles.salvarBtnText}>
-                {loading ? 'Salvando...' : 'SALVAR ALTERAÇÕES'}
-              </Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.salvarBtn, loading && styles.salvarBtnDisabled, { marginTop: 10 }]}
+                onPress={salvarEdicao}
+                disabled={loading}
+              >
+                <Text style={styles.salvarBtnText}>
+                  {loading ? 'Salvando...' : 'SALVAR ALTERAÇÕES'}
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
           </View>
         </View>
       </Modal >
@@ -1347,7 +1551,55 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
+    marginBottom: 5,
+  },
+  addTemperoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 15,
+  },
+  addBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#8B2F2F',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 10,
+    elevation: 2,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 2
+  },
+  inputTempero: {
+    flex: 1,
+    backgroundColor: '#F5F1E8',
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#E5B84A',
+  },
+  listaTemperos: {
+    marginTop: 10,
+  },
+  temperoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#fff',
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    borderRadius: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#eee',
+    elevation: 1,
+  },
+  temperoText: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '500',
+    flex: 1,
+    marginRight: 10,
   },
   categoriaBtn: {
     backgroundColor: '#F5F1E8',
