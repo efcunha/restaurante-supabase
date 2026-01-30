@@ -1,8 +1,12 @@
 import { getLocalDateKey } from '../utils/dateUtils';
 /**
- * OrderService - Lógica de negócio para gerenciamento de pedidos
+ * OrderService - Business Logic for Order Management
+ * 
+ * Handles creation, validation, and status transitions for orders.
+ * Recent updates:
+ * - Standardized date keys using utils/dateUtils
+ * - Improved kitchen category detection (Pizza support)
  */
-
 // Cardápio
 const CARDAPIO = {
   espetinhos: {
