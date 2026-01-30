@@ -200,7 +200,7 @@ export default function PedidosProntosScreen() {
         <View style={styles.headerCenter}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Ionicons name="checkmark-done-circle-outline" size={24} color="#FFF" />
-            <Text style={styles.headerTitle}>Prontos</Text>
+            <Text style={styles.headerTitle}>Prontos para entrega</Text>
           </View>
         </View>
         <TouchableOpacity style={styles.logoutBtn} onPress={exitApp}>
