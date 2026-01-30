@@ -1,5 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import BackgroundPattern from '../components/BackgroundPattern';
@@ -189,16 +190,21 @@ export default function PedidosProntosScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={styles.headerTitle}>Pedidos Prontos</Text>
           {user && (
-            <Text style={styles.userInfo}>{user.nome || user.email}</Text>
+            <View>
+              <Text style={styles.userInfoLabel}>Olá,</Text>
+              <Text style={styles.userInfo}>{user.nome || user.email}</Text>
+            </View>
           )}
         </View>
-        <TouchableOpacity
-          style={styles.logoutBtn}
-          onPress={exitApp}
-        >
-          <Text style={styles.logoutBtnText}>Sair</Text>
+        <View style={styles.headerCenter}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Ionicons name="checkmark-done-circle-outline" size={24} color="#FFF" />
+            <Text style={styles.headerTitle}>Prontos</Text>
+          </View>
+        </View>
+        <TouchableOpacity style={styles.logoutBtn} onPress={exitApp}>
+          <Ionicons name="log-out-outline" size={24} color="#FFF" />
         </TouchableOpacity>
       </View>
 
@@ -275,36 +281,42 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
     zIndex: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 15,
     elevation: 8,
+    ...Platform.select({
+      web: { boxShadow: '0px 4px 15px rgba(0, 0, 0, 0.2)' },
+      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 15 }
+    }),
   },
   headerLeft: {
     flex: 1,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  headerCenter: {
+    flex: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
     color: '#FFFFFF',
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  userInfoLabel: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 10,
   },
   userInfo: {
     color: '#E5B84A',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
-    marginTop: 4,
   },
   logoutBtn: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-  },
-  logoutBtnText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
+    flex: 1,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    padding: 5,
   },
   content: {
     flex: 1,

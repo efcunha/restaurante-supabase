@@ -140,10 +140,10 @@ export default function CashFlowScreen({ caixa, onClose }) {
         <View style={styles.container}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-                    <Text style={styles.closeText}>Fechar</Text>
+                    <Ionicons name="close" size={24} color="#FFF" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Livro Caixa - {formatDate(caixa?.data)}</Text>
-                <View style={{ width: 50 }} />
+                <Text style={styles.headerTitle}>Livro Caixa - {formatDate(caixa?.data)}</Text>
+                <View style={{ width: 40 }} />
             </View>
 
             {loading ? (
@@ -186,12 +186,23 @@ export default function CashFlowScreen({ caixa, onClose }) {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#FFF' }, // Branco para modal
     header: {
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-        padding: 15, borderBottomWidth: 1, borderBottomColor: '#EEE', backgroundColor: '#F5F5F5'
+        backgroundColor: '#8B2F2F',
+        paddingTop: 20, // Reduced top padding since it's a modal likely inside a safe area or centered
+        paddingBottom: 20,
+        paddingHorizontal: 20,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        borderBottomLeftRadius: 20,
+        borderBottomRightRadius: 20,
+        elevation: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
     },
-    closeBtn: { padding: 10 },
-    closeText: { color: '#8B2F2F', fontWeight: 'bold' },
-    title: { fontSize: 16, fontWeight: 'bold' },
+    closeBtn: { padding: 5 },
+    headerTitle: { color: '#FFF', fontSize: 18, fontWeight: 'bold' },
     content: { padding: 20 },
     emptyText: { textAlign: 'center', color: '#999', marginTop: 20 },
 

@@ -1,5 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, Modal } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect, useMemo } from 'react';
 import { useOrders } from '../context/OrderContext.firestore';
 import { useAuth } from '../context/AuthContext';
@@ -29,7 +30,7 @@ const gerarMesesDisponiveis = () => {
   return meses;
 };
 
-export default function ComandaVisualizacaoAdminScreen() {
+export default function ComandaVisualizacaoAdminScreen({ onClose }) {
   const { user } = useAuth();
   const { getEstatisticasCompletas, getEstatisticasTodosGarcons } = useOrders();
   const [estatisticas, setEstatisticas] = useState(null);
@@ -148,20 +149,33 @@ export default function ComandaVisualizacaoAdminScreen() {
       <StatusBar style="light" />
 
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>📊 Estatísticas dos Garçons</Text>
-        <View style={styles.headerButtons}>
-          <TouchableOpacity
-            onPress={() => setModalMesVisible(true)}
-            style={styles.filterBtn}
-          >
-            <Text style={styles.filterText}>📅</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={carregarEstatisticas}
-            style={styles.refreshBtn}
-          >
-            <Text style={styles.refreshText}>🔄</Text>
-          </TouchableOpacity>
+        <View style={styles.headerLeft}>
+          {onClose && (
+            <TouchableOpacity onPress={onClose} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color="#FFF" />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>📊 Estatísticas dos Garçons</Text>
+        </View>
+
+        <View style={styles.headerRight}>
+          <View style={styles.headerButtons}>
+            <TouchableOpacity
+              onPress={() => setModalMesVisible(true)}
+              style={styles.filterBtn}
+            >
+              <Text style={styles.filterText}>📅</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={carregarEstatisticas}
+              style={styles.refreshBtn}
+            >
+              <Text style={styles.refreshText}>🔄</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
@@ -316,7 +330,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#8B2F2F',
     paddingTop: 50,
     paddingBottom: 15,
-    paddingHorizontal: 20,
+    paddingHorizontal: 15,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -325,15 +339,33 @@ const styles = StyleSheet.create({
     zIndex: 10,
     elevation: 8,
   },
+  headerLeft: {
+    flex: 1,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  headerCenter: {
+    flex: 4, // More space for title
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerRight: {
+    flex: 1,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
   headerButtons: {
     flexDirection: 'row',
     alignItems: 'center',
   },
+  backButton: {
+    padding: 5,
+  },
   headerTitle: {
     color: '#FFFFFF',
-    fontSize: 28,
+    fontSize: 20, // Slightly smaller to fit
     fontWeight: 'bold',
-    flex: 1,
+    textAlign: 'center',
   },
   filterBtn: {
     backgroundColor: 'rgba(255,255,255,0.2)',

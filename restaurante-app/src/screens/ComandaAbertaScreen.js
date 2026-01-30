@@ -1,5 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, RefreshControl } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
@@ -180,12 +181,22 @@ export default function ComandaAbertaScreen() {
     <View style={styles.container}>
       <BackgroundPattern />
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Comandas Abertas</Text>
-        <TouchableOpacity
-          style={styles.logoutBtn}
-          onPress={exitApp}
-        >
-          <Text style={styles.logoutBtnText}>Sair</Text>
+        <View style={styles.headerLeft}>
+          {user && (
+            <View>
+              <Text style={styles.userInfoLabel}>Olá,</Text>
+              <Text style={styles.userInfo}>{user.nome || user.email}</Text>
+            </View>
+          )}
+        </View>
+        <View style={styles.headerCenter}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Ionicons name="receipt-outline" size={24} color="#FFF" />
+            <Text style={styles.headerTitle}>Comandas Abertas</Text>
+          </View>
+        </View>
+        <TouchableOpacity style={styles.logoutBtn} onPress={exitApp}>
+          <Ionicons name="log-out-outline" size={24} color="#FFF" />
         </TouchableOpacity>
       </View>
 
@@ -287,16 +298,44 @@ const styles = StyleSheet.create({
     paddingBottom: 15,
     paddingHorizontal: 20,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
     zIndex: 10,
     elevation: 8,
   },
-  headerTitle: { color: '#fff', fontSize: 28, fontWeight: 'bold' },
-  logoutBtn: { backgroundColor: 'rgba(255,255,255,0.15)', paddingVertical: 8, paddingHorizontal: 14, borderRadius: 10 },
-  logoutBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  headerLeft: {
+    flex: 1,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  headerCenter: {
+    flex: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  userInfoLabel: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 10,
+  },
+  userInfo: {
+    color: '#E5B84A',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  logoutBtn: {
+    flex: 1,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    padding: 5,
+  },
   sectionTitle: { fontSize: 18, fontWeight: '700', color: '#8B2F2F', marginBottom: 12 },
   card: { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#F0EBE0' },
   cardTitle: { fontSize: 18, fontWeight: '700', color: '#8B2F2F', marginBottom: 8 },
