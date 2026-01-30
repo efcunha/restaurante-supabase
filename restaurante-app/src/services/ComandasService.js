@@ -92,7 +92,6 @@ class ComandasService {
       const snap = await tx.get(ref);
       if (!snap.exists()) throw new Error('Comanda não encontrada');
       const data = snap.data();
-
       const totalAnterior = data.totalConsumido || 0;
       const novoTotal = totalAnterior + valor;
       const saldoAberto = Math.max(0, novoTotal - (data.totalPago || 0));
