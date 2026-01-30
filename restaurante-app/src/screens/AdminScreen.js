@@ -1,5 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Modal, Alert, ActivityIndicator, AppState } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { collection, getDocs, doc, writeBatch, setDoc, deleteDoc, serverTimestamp, query, where, onSnapshot } from 'firebase/firestore';
@@ -1164,17 +1165,27 @@ export default function AdminScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={styles.headerTitle}>Admin</Text>
           {user && (
-            <Text style={styles.userInfo}>{user.nome || user.email}</Text>
+            <View>
+              <Text style={styles.userInfoLabel}>Olá,</Text>
+              <Text style={styles.userInfo}>{user.nome || user.email}</Text>
+            </View>
           )}
         </View>
-        <TouchableOpacity
-          style={styles.logoutBtn}
-          onPress={() => confirmLogout(logout)}
-        >
-          <Text style={styles.logoutBtnText}>Sair</Text>
-        </TouchableOpacity>
+        <View style={styles.headerCenter}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Ionicons name="shield-checkmark-outline" size={24} color="#FFF" />
+            <Text style={styles.headerTitle}>Admin</Text>
+          </View>
+        </View>
+        <View style={styles.headerRight}>
+          <TouchableOpacity
+            style={styles.logoutBtn}
+            onPress={() => confirmLogout(logout)}
+          >
+            <Ionicons name="log-out-outline" size={24} color="#FFF" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }}>
@@ -1273,7 +1284,7 @@ export default function AdminScreen() {
 
         {/* Dashboards Gráficos */}
         {!loadingVendas && chartData.salesByDay && (
-          <View style={{ marginTop: 20, paddingHorizontal: 20 }}>
+          <View style={{ marginTop: 20 }}>
             <SalesByDayChart data={chartData.salesByDay} />
             <SalesByPaymentChart data={chartData.salesByPayment} />
           </View>
@@ -1337,12 +1348,7 @@ export default function AdminScreen() {
         onRequestClose={() => setShowFuncionarios(false)}
       >
         <View style={{ flex: 1, backgroundColor: '#F5F1E8' }}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowFuncionarios(false)}>
-              <Text style={styles.closeButton}>← Voltar</Text>
-            </TouchableOpacity>
-          </View>
-          <FuncionariosScreen />
+          <FuncionariosScreen onClose={() => setShowFuncionarios(false)} />
         </View>
       </Modal>
 
@@ -1469,12 +1475,9 @@ export default function AdminScreen() {
         hardwareAccelerated={true}
       >
         <View style={{ flex: 1, backgroundColor: '#F5F1E8' }}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowCaixaHistorico(false)}>
-              <Text style={styles.closeButton}>← Voltar</Text>
-            </TouchableOpacity>
-          </View>
-          {showCaixaHistorico && <CaixaHistoricoScreen />}
+          {showCaixaHistorico && (
+            <CaixaHistoricoScreen onClose={() => setShowCaixaHistorico(false)} />
+          )}
         </View>
       </Modal>
 
@@ -1485,12 +1488,7 @@ export default function AdminScreen() {
         onRequestClose={() => setShowComandasVisualizacao(false)}
       >
         <View style={{ flex: 1, backgroundColor: '#F5F1E8' }}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowComandasVisualizacao(false)}>
-              <Text style={styles.closeButton}>← Voltar</Text>
-            </TouchableOpacity>
-          </View>
-          <ComandaVisualizacaoAdminScreen />
+          <ComandaVisualizacaoAdminScreen onClose={() => setShowComandasVisualizacao(false)} />
         </View>
       </Modal>
 
@@ -1501,12 +1499,7 @@ export default function AdminScreen() {
         onRequestClose={() => setShowGerenciarCardapio(false)}
       >
         <View style={{ flex: 1, backgroundColor: '#F5F1E8' }}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowGerenciarCardapio(false)}>
-              <Text style={styles.closeButton}>← Voltar</Text>
-            </TouchableOpacity>
-          </View>
-          <GerenciarCardapioScreen />
+          <GerenciarCardapioScreen onClose={() => setShowGerenciarCardapio(false)} />
         </View>
       </Modal>
 
@@ -1517,12 +1510,7 @@ export default function AdminScreen() {
         onRequestClose={() => setShowEstoque(false)}
       >
         <View style={{ flex: 1, backgroundColor: '#F5F1E8' }}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowEstoque(false)}>
-              <Text style={styles.closeButton}>← Voltar</Text>
-            </TouchableOpacity>
-          </View>
-          <EstoqueScreen />
+          <EstoqueScreen onClose={() => setShowEstoque(false)} />
         </View>
       </Modal>
 
@@ -1585,37 +1573,40 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
     zIndex: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 15,
     elevation: 8,
   },
   headerLeft: {
     flex: 1,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  headerCenter: {
+    flex: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerRight: {
+    flex: 1,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
   },
   headerTitle: {
     color: '#FFFFFF',
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  userInfoLabel: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 10,
   },
   userInfo: {
     color: '#E5B84A',
-    fontSize: 13,
-    marginTop: 4,
+    fontSize: 12,
     fontWeight: '600',
   },
   logoutBtn: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-  },
-  logoutBtnText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: 0.5,
+    padding: 5,
   },
   content: {
     flex: 1,
@@ -1796,6 +1787,14 @@ const styles = StyleSheet.create({
     paddingTop: 50,
     paddingBottom: 15,
     paddingHorizontal: 20,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    zIndex: 10,
   },
   closeButton: {
     color: '#FFFFFF',

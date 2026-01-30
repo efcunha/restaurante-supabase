@@ -247,7 +247,7 @@ export default function EstoqueScreen({ onClose }) {
       <View style={styles.header}>
         {onClose && (
           <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-            <Ionicons name="close" size={24} color="#FFF" />
+            <Ionicons name="arrow-back" size={24} color="#FFF" />
           </TouchableOpacity>
         )}
         <Text style={styles.headerTitle}>📦 Gerenciar Estoque</Text>

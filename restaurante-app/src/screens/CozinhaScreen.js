@@ -1,5 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect } from 'react';
 import { useOrders } from '../context/OrderContext.firestore';
 import { useAuth } from '../context/AuthContext';
@@ -111,11 +112,21 @@ export default function CozinhaScreen() {
 
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={styles.headerTitle}>🍲 Cozinha</Text>
-          {user && <Text style={styles.userInfo}>{user.nome || user.email}</Text>}
+          {user && (
+            <View>
+              <Text style={styles.userInfoLabel}>Olá,</Text>
+              <Text style={styles.userInfo}>{user.nome || user.email}</Text>
+            </View>
+          )}
+        </View>
+        <View style={styles.headerCenter}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Ionicons name="restaurant-outline" size={24} color="#FFF" />
+            <Text style={styles.headerTitle}>Cozinha</Text>
+          </View>
         </View>
         <TouchableOpacity style={styles.logoutBtn} onPress={() => confirmLogout(logout)}>
-          <Text style={styles.logoutText}>Sair</Text>
+          <Ionicons name="log-out-outline" size={24} color="#FFF" />
         </TouchableOpacity>
       </View>
 
@@ -172,29 +183,39 @@ const styles = StyleSheet.create({
     backgroundColor: '#8B2F2F',
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
+    elevation: 8,
+    zIndex: 10,
   },
   headerLeft: {
     flex: 1,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  headerCenter: {
+    flex: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#FFF',
+    textAlign: 'center',
+  },
+  userInfoLabel: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 10,
   },
   userInfo: {
     fontSize: 12,
-    color: '#FFD7A8',
-    marginTop: 4,
+    color: '#E5B84A', // Using the gold color found in other files or just keeping similar tone
+    fontWeight: '600',
   },
   logoutBtn: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  logoutText: {
-    color: '#FFF',
-    fontWeight: '600',
+    flex: 1,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    padding: 5,
   },
   content: {
     flex: 1,

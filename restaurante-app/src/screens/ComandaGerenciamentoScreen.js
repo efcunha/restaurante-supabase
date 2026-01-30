@@ -1,6 +1,7 @@
 
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, TouchableOpacity, Alert, Modal, TextInput, KeyboardAvoidingView } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useOrders } from '../context/OrderContext.firestore';
@@ -342,13 +343,22 @@ export default function ComandaGerenciamentoScreen() {
       <BackgroundPattern />
 
       <View style={styles.header}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Gerenciamento</Text>
-          <Text style={styles.userInfo}>{user?.nome || user?.email}</Text>
+        <View style={styles.headerLeft}>
+          {user && (
+            <View>
+              <Text style={styles.userInfoLabel}>Olá,</Text>
+              <Text style={styles.userInfo}>{user.nome || user.email}</Text>
+            </View>
+          )}
         </View>
-
+        <View style={styles.headerCenter}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Ionicons name="clipboard-outline" size={24} color={colors.white} />
+            <Text style={styles.headerTitle}>Gerenciamento</Text>
+          </View>
+        </View>
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-          <Text style={styles.logoutText}>Sair</Text>
+          <Ionicons name="log-out-outline" size={24} color={colors.white} />
         </TouchableOpacity>
       </View>
 
@@ -426,15 +436,37 @@ const styles = StyleSheet.create({
     elevation: 4,
     zIndex: 10,
   },
-  headerTitle: { fontSize: 28, fontWeight: 'bold', color: colors.white },
-  userInfo: { fontSize: 12, color: colors.userInfo, marginTop: 4 },
-  logoutBtn: {
-    backgroundColor: colors.logoutBg,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+  headerLeft: {
+    flex: 1,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
   },
-  logoutText: { color: colors.white, fontWeight: '600' },
+  headerCenter: {
+    flex: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.white,
+    textAlign: 'center',
+  },
+  userInfoLabel: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 10,
+  },
+  userInfo: {
+    fontSize: 12,
+    color: colors.userInfo,
+    fontWeight: '600',
+  },
+  logoutBtn: {
+    flex: 1,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    padding: 5,
+  },
   tabs: { flexDirection: 'row', padding: 10, gap: 10 },
   tab: { flex: 1, padding: 10, alignItems: 'center', borderRadius: 8, backgroundColor: '#E0E0E0' },
   activeTab: { backgroundColor: colors.primary },

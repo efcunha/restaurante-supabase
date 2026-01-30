@@ -66,7 +66,7 @@ function TabNavigator() {
       {canAccessScreen(user?.funcao, 'Comandas') && <Tab.Screen name="Comandas" component={ComandaGerenciamentoScreen} />}
       {canAccessScreen(user?.funcao, 'Cozinha') && <Tab.Screen name="Cozinha" component={CozinhaScreen} />}
       {canAccessScreen(user?.funcao, 'Montagem') && <Tab.Screen name="Montagem" component={MontagemScreen} />}
-      {canAccessScreen(user?.funcao, 'Prontos') && <Tab.Screen name="Prontos" component={PedidosProntosScreen} />}
+      {canAccessScreen(user?.funcao, 'Prontos') && <Tab.Screen name="Prontos" component={PedidosProntosScreen} options={{ tabBarLabel: 'Pronto para entrega' }} />}
       {canAccessScreen(user?.funcao, 'Admin') && <Tab.Screen name="Admin" component={AdminScreen} />}
     </Tab.Navigator>
   );

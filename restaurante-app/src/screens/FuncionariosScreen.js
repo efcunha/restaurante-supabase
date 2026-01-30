@@ -1,15 +1,16 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Alert, Modal } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { criarFuncionario, listarFuncionarios, deletarFuncionario, atualizarFuncionario } from '../services/funcionarios';
-import { corrigirLu } from '../services/corrigir-funcionarios';
+
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../config/firebaseConfig';
-import { exitApp } from '../utils/appUtils';
 
-export default function FuncionariosScreen() {
-  const { user, logout } = useAuth();
+
+export default function FuncionariosScreen({ onClose }) {
+  const { user } = useAuth();
   const [funcionarios, setFuncionarios] = useState([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -162,30 +163,7 @@ export default function FuncionariosScreen() {
     setFuncionarioParaExcluir(null);
   };
 
-  const handleCorrigirLu = async () => {
-    alert('🔍 Diagnóstico do Firestore\n\nVerificando cadastros...');
-    const result = await listarFuncionarios();
 
-    if (result.success) {
-      const total = result.funcionarios.length;
-      const ativos = result.funcionarios.filter(f => f.ativo === true).length;
-      const inativos = result.funcionarios.filter(f => f.ativo === false).length;
-      const semStatus = result.funcionarios.filter(f => f.ativo === undefined).length;
-
-      let detalhes = result.funcionarios.map(f =>
-        `• ${f.nome || 'SEM NOME'} (${f.email || 'SEM EMAIL'})\n  Status: ${f.ativo === true ? '✅ Ativo' : f.ativo === false ? '❌ Inativo' : '⚠️ Sem status'}`
-      ).join('\n\n');
-
-      alert(`📊 DIAGNÓSTICO FIRESTORE\n\n` +
-        `Total: ${total} cadastros\n` +
-        `Ativos: ${ativos}\n` +
-        `Inativos: ${inativos}\n` +
-        `Sem status: ${semStatus}\n\n` +
-        `DETALHES:\n${detalhes}`);
-    } else {
-      alert('❌ Erro ao buscar: ' + result.error);
-    }
-  };
 
   const limparForm = () => {
     setNome('');
@@ -222,16 +200,21 @@ export default function FuncionariosScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>Funcionários</Text>
+        {onClose ? (
+          <TouchableOpacity onPress={onClose} style={styles.headerLeftButton}>
+            <Ionicons name="arrow-back" size={24} color="#FFF" />
+          </TouchableOpacity>
+        ) : <View style={styles.headerLeftButton} />}
+
+        <View style={styles.headerCenter}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Ionicons name="people" size={28} color="#FFF" />
+            <Text style={styles.headerTitle}>Funcionários</Text>
+          </View>
           <Text style={styles.headerSubtitle}>Logado: {user?.nome}</Text>
         </View>
-        <TouchableOpacity
-          onPress={exitApp}
-          style={styles.logoutBtn}
-        >
-          <Text style={styles.logoutText}>Sair</Text>
-        </TouchableOpacity>
+
+        <View style={styles.headerRightButton} />
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }}>
@@ -494,16 +477,32 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: '#8B2F2F',
     paddingTop: 50,
-    paddingBottom: 20,
+    paddingBottom: 15,
     paddingHorizontal: 20,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    zIndex: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 15,
     elevation: 8,
+  },
+  headerLeftButton: {
+    width: 40,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+  },
+  headerRightButton: {
+    width: 40,
+  },
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
     color: '#FFFFFF',
@@ -515,17 +514,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 4,
   },
-  logoutBtn: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-  },
-  logoutText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
+
   content: {
     flex: 1,
     padding: 20,
@@ -548,20 +537,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 1,
   },
-  corrigirButton: {
-    backgroundColor: '#4A90E2',
-    padding: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginBottom: 25,
-    borderWidth: 2,
-    borderColor: '#357ABD',
-  },
-  corrigirButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
+
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
@@ -581,9 +557,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOpacity: 0.1,
+    shadowRadius: 15,
+    elevation: 5,
   },
   funcionarioHeader: {
     flexDirection: 'row',
@@ -691,8 +667,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F1E8',
     borderWidth: 1,
     borderColor: '#E0D8C8',
-    borderRadius: 10,
-    padding: 12,
+    borderRadius: 12,
+    padding: 14,
     fontSize: 15,
   },
   inputDisabled: {
@@ -711,7 +687,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F1E8',
     borderWidth: 1,
     borderColor: '#E0D8C8',
-    borderRadius: 10,
+    borderRadius: 12,
   },
   passwordInput: {
     flex: 1,

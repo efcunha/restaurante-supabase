@@ -88,7 +88,7 @@ export const SalesByPaymentChart = ({ data }) => {
       <Text style={styles.chartTitle}>Meios de Pagamento</Text>
       <PieChart
         data={data}
-        width={screenWidth - 48}
+        width={screenWidth - 80}
         height={220}
         chartConfig={chartConfig}
         accessor={"population"}
@@ -103,12 +103,16 @@ export const SalesByPaymentChart = ({ data }) => {
 
 const styles = StyleSheet.create({
   chartContainer: {
-    backgroundColor: '#FFF',
-    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 15,
     padding: 16,
     marginBottom: 20,
-    elevation: 2,
-    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 15,
+    elevation: 5,
   },
   chartTitle: {
     fontSize: 16,
@@ -122,12 +126,17 @@ const styles = StyleSheet.create({
     marginVertical: 8,
   },
   emptyContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 15,
     padding: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F9F9F9',
-    borderRadius: 12,
     marginBottom: 20,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 15,
   },
   emptyText: {
     color: '#999',
