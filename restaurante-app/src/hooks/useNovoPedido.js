@@ -119,13 +119,30 @@ export function useNovoPedido() {
                     if (data.variacoesEspetinho) setVariacoesEspetinho(data.variacoesEspetinho);
 
                     if (data.pizzaConfig) {
-                        setPizzaConfig(data.pizzaConfig);
+                        // FILTER and SORT sizes
+                        let processedSizes = data.pizzaConfig.sizes || [];
+
+                        // 1. Filter active
+                        processedSizes = processedSizes.filter(s => s.active !== false);
+
+                        // 2. Sort
+                        processedSizes.sort((a, b) => {
+                            const order = ['Fatia', 'Broto', 'Média', 'Grande'];
+                            const idxA = order.indexOf(a.name);
+                            const idxB = order.indexOf(b.name);
+                            if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                            if (idxA !== -1) return -1;
+                            if (idxB !== -1) return 1;
+                            return a.name.localeCompare(b.name);
+                        });
+
+                        setPizzaConfig({ ...data.pizzaConfig, sizes: processedSizes });
                     } else {
                         setPizzaConfig({
                             sizes: [
                                 { name: 'Fatia', maxFlavors: 1 },
-                                { name: 'Broto', maxFlavors: 2 },
-                                { name: 'Média', maxFlavors: 3 },
+                                { name: 'Broto', maxFlavors: 1 },
+                                { name: 'Média', maxFlavors: 2 },
                                 { name: 'Grande', maxFlavors: 4 }
                             ],
                             pricingMode: 'HIGHER'

@@ -316,6 +316,7 @@ FooterComponent.displayName = 'FooterComponent';
 
 export default function NovoPedidoScreen() {
   const [showPizzaModal, setShowPizzaModal] = useState(false);
+  const [selectedPizza, setSelectedPizza] = useState(null);
 
   const {
     user,
@@ -344,29 +345,53 @@ export default function NovoPedidoScreen() {
   const sections = React.useMemo(() => {
     const sectionsData = [];
 
+    // Helper to check if item is active
+    const isActive = (item) => item.active !== false;
+
     // Section for Pizza Builder
     if (cardapio.pizzas && cardapio.pizzas.length > 0) {
+      // Deduplicate pizzas by name (Case Insensitive) AND Filter Active
+      const uniquePizzas = [];
+      const seenNames = new Set();
+      cardapio.pizzas.forEach(p => {
+        if (!isActive(p)) return;
+        const normalizedName = p.name ? p.name.trim().toLowerCase() : '';
+        if (normalizedName && !seenNames.has(normalizedName)) {
+          seenNames.add(normalizedName);
+          uniquePizzas.push(p);
+        }
+      });
+
       sectionsData.push({
-        title: '🍕 Pizzas',
-        data: [{ name: 'Montar Pizza', type: 'builder' }, ...cardapio.pizzas],
-        type: 'pizza-builder'
+        title: '🍕 SABORES',
+        data: uniquePizzas,
+        type: 'pizzas-v2'
       });
     }
 
+    // Helper strict filter to avoid pizzas appearing in other categories
+    const isPizza = (name) => {
+      // Safe check even if uniquePizzas is empty
+      const pizzas = cardapio.pizzas || [];
+      return pizzas.some(p => p.name.trim().toLowerCase() === name.trim().toLowerCase());
+    };
+
     // Caldos: Aggregate by base name
     if (cardapio.caldos?.length > 0) {
-      const caldosUnicos = [...new Set(cardapio.caldos.map(c => c.name.replace(/\s*\(?\s*(300|180)\s*ml\s*\)?/gi, '').trim()))];
+      const activeCaldos = cardapio.caldos.filter(isActive);
+      const caldosUnicos = [...new Set(activeCaldos.map(c => c.name.replace(/\s*\(?\s*(300|180)\s*ml\s*\)?/gi, '').trim()))];
       sectionsData.push({
         title: '🍲 Caldos',
         data: caldosUnicos,
         type: 'caldos',
-        original: cardapio.caldos
+        original: activeCaldos
       });
     }
 
     // Espetinhos Simples
     if (cardapio.espetinhosSimples?.length > 0) {
-      const baseNames = [...new Set(cardapio.espetinhosSimples.map(p => {
+      const activeEspetinhos = cardapio.espetinhosSimples.filter(isActive);
+      const baseNames = [...new Set(activeEspetinhos.map(p => {
         let name = p.name;
         variacoesEspetinho.forEach(v => {
           name = name.replace(` ${v}`, '');
@@ -377,13 +402,14 @@ export default function NovoPedidoScreen() {
         title: '🔥 Espetinhos Simples',
         data: baseNames,
         type: 'espetinhos-simples',
-        original: cardapio.espetinhosSimples
+        original: activeEspetinhos
       });
     }
 
     // Espetinhos Especiais
     if (cardapio.espetinhosEspeciais?.length > 0) {
-      const baseNames = [...new Set(cardapio.espetinhosEspeciais.map(p => {
+      const activeEspetinhos = cardapio.espetinhosEspeciais.filter(isActive);
+      const baseNames = [...new Set(activeEspetinhos.map(p => {
         let name = p.name;
         variacoesEspetinho.forEach(v => {
           name = name.replace(` ${v}`, '');
@@ -394,24 +420,31 @@ export default function NovoPedidoScreen() {
         title: '🌟 Espetinhos Especiais',
         data: baseNames,
         type: 'espetinhos-especiais',
-        original: cardapio.espetinhosEspeciais
+        original: activeEspetinhos
       });
     }
 
     if (cardapio.comidas?.length > 0) {
-      sectionsData.push({ title: '🍽️ Comidas', data: cardapio.comidas, type: 'comidas' });
+      // Filter out items that are actually pizzas AND inactive items
+      const filteredComidas = cardapio.comidas.filter(c => !isPizza(c.name) && isActive(c));
+      if (filteredComidas.length > 0) {
+        sectionsData.push({ title: '🍽️ Comidas', data: filteredComidas, type: 'comidas' });
+      }
     }
 
     if (cardapio.porcoes?.length > 0) {
-      sectionsData.push({ title: '🍟 Porções', data: cardapio.porcoes, type: 'porcoes' });
+      const activePorcoes = cardapio.porcoes.filter(isActive);
+      sectionsData.push({ title: '🍟 Porções', data: activePorcoes, type: 'porcoes' });
     }
 
     if (cardapio.outros?.length > 0) {
-      sectionsData.push({ title: '📦 Outros', data: cardapio.outros, type: 'outros' });
+      const activeOutros = cardapio.outros.filter(isActive);
+      sectionsData.push({ title: '📦 Outros', data: activeOutros, type: 'outros' });
     }
 
     if (cardapio.bebidas?.length > 0) {
-      sectionsData.push({ title: '🥤 Bebidas', data: cardapio.bebidas, type: 'bebidas' });
+      const activeBebidas = cardapio.bebidas.filter(isActive);
+      sectionsData.push({ title: '🥤 Bebidas', data: activeBebidas, type: 'bebidas' });
     }
 
     return sectionsData;
@@ -447,35 +480,30 @@ export default function NovoPedidoScreen() {
   );
 
   const renderItem = ({ item, section }) => {
-    if (section.type === 'pizza-builder') {
-      if (item.type === 'builder') {
-        return (
-          <View style={styles.standardCard}>
-            <TouchableOpacity
-              style={[styles.submitBtn, { backgroundColor: colors.secondary || '#E5B84A' }]}
-              onPress={() => setShowPizzaModal(true)}
-            >
-              <Text style={[styles.submitBtnText, { color: '#333' }]}>🍕 MONTAR PIZZA / ESCOLHER SABORES</Text>
-            </TouchableOpacity>
-            <Text style={styles.priceLegend}>Escolha até 4 sabores • Venda por fatia ou inteira</Text>
-          </View>
-        );
-      }
-
-      // Render Standard Pizza Item Row
+    if (section.type === 'pizzas-v2') {
+      // Render Pizza Item Row with Espetinho-like Styling
       const minPrice = item.prices ? Math.min(...Object.values(item.prices).filter(p => !isNaN(p))) : 0;
       const ingredientsText = item.ingredients ? item.ingredients.join(', ') : item.description || '';
 
+      // Cycle colors to look like the example (Orange, Green, Gray, Blue...)
+      const rowColors = [colors.warning, colors.success, colors.disabled, '#4a90e2', '#9013fe'];
+      // FIX: Ensure hash is safe for strings
+      const hash = item.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      const colorIndex = hash % rowColors.length;
+      const cardColor = rowColors[colorIndex] || colors.primary; // Fallback
+
       return (
+        // ... (inside renderItem for pizzas-v2)
         <TouchableOpacity
-          style={styles.standardCard}
-          onPress={() => setShowPizzaModal(true)}
+          style={[styles.stackedInfoCard, { backgroundColor: cardColor, marginBottom: 12, elevation: 2 }]}
+          onPress={() => { setSelectedPizza(item); setShowPizzaModal(true); }}
+          activeOpacity={0.8}
         >
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <Text style={styles.itemName}>{item.name}</Text>
-            <Text style={styles.itemPrice}>A partir de R$ {minPrice.toFixed(2)}</Text>
+          <View style={{ alignItems: 'center' }}>
+            <Text style={styles.stackedNameText}>{item.name}</Text>
+            {ingredientsText ? <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 13, textAlign: 'center', marginBottom: 4, fontStyle: 'italic' }}>{ingredientsText}</Text> : null}
+            <Text style={styles.stackedPriceText}>A partir de R$ {minPrice.toFixed(2)}</Text>
           </View>
-          <Text style={styles.itemDescription}>{ingredientsText}</Text>
         </TouchableOpacity>
       );
     }
@@ -555,10 +583,11 @@ export default function NovoPedidoScreen() {
 
       <PizzaBuilderModal
         visible={showPizzaModal}
-        onClose={() => setShowPizzaModal(false)}
+        onClose={() => { setShowPizzaModal(false); setSelectedPizza(null); }}
         onConfirm={addPizzaToOrder}
         sizes={pizzaConfig?.sizes}
         pizzas={cardapio.pizzas}
+        initialFlavor={selectedPizza}
       />
 
       <StatusBar style="dark" />
