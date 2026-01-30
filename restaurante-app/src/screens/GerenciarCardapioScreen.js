@@ -16,6 +16,7 @@ import { collection, getDocs, addDoc, updateDoc, doc, getDoc, setDoc, writeBatch
 import { db } from '../config/firebaseConfig';
 import { useAuth } from '../context/AuthContext';
 import { getCompanyCollection, getCompanyDoc } from '../utils/firestoreUtils';
+import { seedPizzas } from '../utils/seedPizzas';
 import BackgroundPattern from '../components/BackgroundPattern';
 import { SUPPORTED_UNITS } from '../utils/unitConversion';
 
@@ -730,6 +731,25 @@ export default function GerenciarCardapioScreen({ onClose }) {
         <View style={styles.headerRight} />
       </View>
       <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }}>
+
+        {/* DATA SEED BUTTON (TEMPORARY) */}
+        <TouchableOpacity
+          style={{ backgroundColor: '#2e7d32', padding: 10, borderRadius: 8, flexDirection: 'row', justifyContent: 'center', marginBottom: 20 }}
+          onPress={async () => {
+            if (window.confirm('Isso irá adicionar pizzas de teste ao cardápio. Continuar?')) {
+              setLoading(true);
+              await seedPizzas(user.companyId);
+              carregarProdutos();
+              carregarConfig();
+              setLoading(false);
+              window.alert('Cardápio importado!');
+            }
+          }}
+        >
+          <Text style={{ color: '#fff', fontWeight: 'bold' }}>📥 Importar Pizzas (Teste)</Text>
+        </TouchableOpacity>
+
+
 
         {/* SEÇÃO 1: CADASTRAR PRODUTO */}
         <View style={styles.section}>
