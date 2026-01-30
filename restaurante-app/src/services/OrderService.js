@@ -1,3 +1,4 @@
+import { getLocalDateKey } from '../utils/dateUtils';
 /**
  * OrderService - Lógica de negócio para gerenciamento de pedidos
  */
@@ -148,6 +149,7 @@ class OrderService {
       'espetinho-especial',
       'porcao',
       'comida',
+      'pizza', // ✅ Adicionado para aparecer na cozinha/montagem
       'outro' // 'outro' geralmente é algo genérico que precisa ser feito
     ];
     // Se não tiver categoria, assume que é produçã (fallback seguro)
@@ -163,11 +165,8 @@ class OrderService {
     const now = new Date();
     const nowISO = now.toISOString();
 
-    // CORREÇÃO: Usar data LOCAL para dateKey (consistente com getTodayKey)
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const dateKey = `${year}-${month}-${day}`;
+    // CORREÇÃO: Usar data LOCAL consistente com o restante do app
+    const dateKey = getLocalDateKey(now);
 
     const comanda = comandaNumber?.trim() || '';
     const calculatedTotal = totalPrice > 0 ? totalPrice : this.calculateOrderTotal(items);
@@ -198,6 +197,14 @@ class OrderService {
           } else if (categoryMap[cleanName].category) {
             category = categoryMap[cleanName].category;
           }
+        }
+      }
+
+      // DEBUG:
+      if (category === 'pizza' || itemName.toLowerCase().includes('pizza')) {
+        // Se a categoria ainda é 'outro' mas o nome tem 'pizza', force 'pizza'
+        if (category === 'outro' && itemName.toLowerCase().includes('pizza')) {
+          category = 'pizza';
         }
       }
 

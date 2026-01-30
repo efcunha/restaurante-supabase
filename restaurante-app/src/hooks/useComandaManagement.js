@@ -304,9 +304,11 @@ export function useComandaManagement() {
     useEffect(() => {
         if (activeTab !== 'abertas') return;
 
+        if (!user?.companyId) return;
+
         const dateKey = todayKey();
-        const pedidosQuery = query(collection(db, 'pedidos'), where('dateKey', '==', dateKey));
-        const comandasQuery = query(collection(db, 'comandas'), where('dateKey', '==', dateKey));
+        const pedidosQuery = query(getCompanyCollection(user.companyId, 'pedidos'), where('dateKey', '==', dateKey));
+        const comandasQuery = query(getCompanyCollection(user.companyId, 'comandas'), where('dateKey', '==', dateKey));
 
         const unsubPedidos = onSnapshot(pedidosQuery, () => carregarComandas(true));
         const unsubComandas = onSnapshot(comandasQuery, () => carregarComandas(true));

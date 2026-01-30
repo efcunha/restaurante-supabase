@@ -3,8 +3,7 @@ import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, RefreshCon
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
-import { db } from '../config/firebaseConfig';
+import { query, where, getDocs } from 'firebase/firestore';
 import { getCompanyCollection } from '../utils/firestoreUtils';
 import ComandasService from '../services/ComandasService';
 import PagamentosService from '../services/PagamentosService';
@@ -16,7 +15,7 @@ import { exitApp } from '../utils/appUtils';
 const todayKey = getTodayKey;
 
 export default function ComandaAbertaScreen() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [comandasAbertas, setComandasAbertas] = useState([]);
   const [selected, setSelected] = useState(null);
   const [pedidos, setPedidos] = useState([]);
