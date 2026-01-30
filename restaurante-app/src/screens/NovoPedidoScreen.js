@@ -1,10 +1,11 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, SectionList, TouchableOpacity, TextInput, ActivityIndicator, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import React, { memo, useCallback } from 'react';
+import React, { memo, useCallback, useState } from 'react';
 import BackgroundPattern from '../components/BackgroundPattern';
 import { useNovoPedido } from '../hooks/useNovoPedido';
 import { colors } from '../theme/colors';
+import PizzaBuilderModal from '../components/PizzaBuilderModal';
 
 if (Platform.OS === 'android') {
   if (UIManager.setLayoutAnimationEnabledExperimental) {
@@ -314,6 +315,8 @@ FooterComponent.displayName = 'FooterComponent';
 
 
 export default function NovoPedidoScreen() {
+  const [showPizzaModal, setShowPizzaModal] = useState(false);
+
   const {
     user,
     loadingCardapio,
@@ -332,12 +335,23 @@ export default function NovoPedidoScreen() {
     handleLogout, // Logout handler
     temperosCaldos = ['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada'],
     temperosComidas = ['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada'],
-    variacoesEspetinho = ['Simples', 'com Arroz', 'com Macaxeira', 'Completo']
+    variacoesEspetinho = ['Simples', 'com Arroz', 'com Macaxeira', 'Completo'],
+    pizzaConfig,
+    addPizzaToOrder
   } = useNovoPedido();
 
   // Prepare sections for SectionList (Must be before conditional return)
   const sections = React.useMemo(() => {
     const sectionsData = [];
+
+    // Section for Pizza Builder
+    if (cardapio.pizzas && cardapio.pizzas.length > 0) {
+      sectionsData.push({
+        title: '🍕 Pizzas',
+        data: [{ name: 'Montar Pizza', type: 'builder' }],
+        type: 'pizza-builder'
+      });
+    }
 
     // Caldos: Aggregate by base name
     if (cardapio.caldos?.length > 0) {
@@ -433,6 +447,19 @@ export default function NovoPedidoScreen() {
   );
 
   const renderItem = ({ item, section }) => {
+    if (section.type === 'pizza-builder') {
+      return (
+        <View style={styles.standardCard}>
+          <TouchableOpacity
+            style={[styles.submitBtn, { backgroundColor: colors.secondary || '#E5B84A' }]}
+            onPress={() => setShowPizzaModal(true)}
+          >
+            <Text style={[styles.submitBtnText, { color: '#333' }]}>🍕 MONTAR PIZZA / ESCOLHER SABORES</Text>
+          </TouchableOpacity>
+          <Text style={styles.priceLegend}>Escolha até 4 sabores • Venda por fatia ou inteira</Text>
+        </View>
+      );
+    }
     if (section.type === 'caldos') {
       return <CaldoRow caldoBase={item} cardapioCaldos={section.original} produtos={produtos} updateProduto={updateProdutoAnimated} temperos={temperosCaldos} />;
     }
@@ -506,6 +533,14 @@ export default function NovoPedidoScreen() {
           </Text>
         </TouchableOpacity>
       </View>
+
+      <PizzaBuilderModal
+        visible={showPizzaModal}
+        onClose={() => setShowPizzaModal(false)}
+        onConfirm={addPizzaToOrder}
+        sizes={pizzaConfig?.sizes}
+        pizzas={cardapio.pizzas}
+      />
 
       <StatusBar style="dark" />
     </View>

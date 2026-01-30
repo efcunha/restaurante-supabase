@@ -33,6 +33,8 @@ export function useNovoPedido() {
     const [temperosCaldos, setTemperosCaldos] = useState(['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada']);
     const [temperosComidas, setTemperosComidas] = useState(['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada']);
     const [variacoesEspetinho, setVariacoesEspetinho] = useState(['Simples', 'com Arroz', 'com Macaxeira', 'Completo']);
+    const [pizzaConfig, setPizzaConfig] = useState(null);
+    const [customPrices, setCustomPrices] = useState({}); // { 'Pizza Grande (Calabresa)': 40.00 }
     const [loadingCardapio, setLoadingCardapio] = useState(true);
 
     const cardapioLoadedRef = useRef(false);
@@ -65,7 +67,8 @@ export function useNovoPedido() {
                 porcao: [],
                 outro: [],
                 'espetinho-simples': [],
-                'espetinho-especial': []
+                'espetinho-especial': [],
+                'pizza': []
             };
 
             snapshot.docs.forEach(doc => {
@@ -74,6 +77,7 @@ export function useNovoPedido() {
                     id: doc.id,
                     name: data.name,
                     price: data.price,
+                    prices: data.prices, // Map de preços para Pizza
                     category: data.category || 'outro',
                     inventoryItems: data.inventoryItems
                 };
@@ -100,7 +104,8 @@ export function useNovoPedido() {
                 porcoes: buckets.porcao.sort(sortFn),
                 outros: buckets.outro.sort(sortFn),
                 espetinhosSimples: buckets['espetinho-simples'].sort(sortFn),
-                espetinhosEspeciais: buckets['espetinho-especial'].sort(sortFn)
+                espetinhosEspeciais: buckets['espetinho-especial'].sort(sortFn),
+                pizzas: buckets['pizza'].sort(sortFn)
             };
 
             // Fetch configuration (temperos)
@@ -112,6 +117,20 @@ export function useNovoPedido() {
                     if (data.temperosCaldos) setTemperosCaldos(data.temperosCaldos);
                     if (data.temperosComidas) setTemperosComidas(data.temperosComidas);
                     if (data.variacoesEspetinho) setVariacoesEspetinho(data.variacoesEspetinho);
+
+                    if (data.pizzaConfig) {
+                        setPizzaConfig(data.pizzaConfig);
+                    } else {
+                        setPizzaConfig({
+                            sizes: [
+                                { name: 'Fatia', maxFlavors: 1 },
+                                { name: 'Broto', maxFlavors: 2 },
+                                { name: 'Média', maxFlavors: 3 },
+                                { name: 'Grande', maxFlavors: 4 }
+                            ],
+                            pricingMode: 'HIGHER'
+                        });
+                    }
 
                     // Legacy/Fallback: if only 'temperos' exists
                     if (!data.temperosCaldos && !data.temperosComidas && data.temperos) {
@@ -201,19 +220,28 @@ export function useNovoPedido() {
             ...(cardapio.porcoes || []),
             ...(cardapio.outros || []),
             ...(cardapio.espetinhosSimples || []),
-            ...(cardapio.espetinhosEspeciais || [])
+            ...(cardapio.espetinhosSimples || []),
+            ...(cardapio.espetinhosEspeciais || []),
+            ...(cardapio.pizzas || [])
         ],
         [cardapio]
     );
 
     // Helper to calculate price for a single item (extracted for reuse)
     const calculateItemPrice = useCallback((itemName, qty = 1) => {
+        // 1. Verificar se é preço customizado (Pizza)
+        if (customPrices[itemName]) {
+            return qty * customPrices[itemName];
+        }
+
         const nomeBase = itemName.replace(/\s*\(.*\)$/, '');
 
-        // 1. Tentar encontrar item exato no cardápio
+        // 2. Tentar encontrar item exato no cardápio
         const produtoExato = cardapioCombinado.find(p => p.name === nomeBase);
 
         if (produtoExato) {
+            // Se for pizza e tiver map de prices, tentar pegar. Mas aqui geralmente é produto simples.
+            // Pizzas montadas cairão no customPrices.
             return qty * produtoExato.price;
         }
 
@@ -226,14 +254,14 @@ export function useNovoPedido() {
             }
         }
 
-        // 2. Fallback: procurar por prefixo
+        // 3. Fallback: procurar por prefixo
         const produtoPartial = cardapioCombinado.find(p => itemName.startsWith(p.name));
         if (produtoPartial) {
             return qty * produtoPartial.price;
         }
 
         return 0;
-    }, [cardapioCombinado]);
+    }, [cardapioCombinado, customPrices]);
 
     const total = useMemo(() => {
         let totalCalc = 0;
@@ -271,6 +299,48 @@ export function useNovoPedido() {
             }
             return newProdutos;
         });
+    }, []);
+
+    const addPizzaToOrder = useCallback((sizeName, flavors) => {
+        if (!flavors || flavors.length === 0) return;
+
+        // 1. Calcular preço
+        // Se pricingMode for HIGHER (padrão), pega o maior preço entre os sabores para aquele tamanho
+        let finalPrice = 0;
+        const prices = flavors.map(f => {
+            // f é o objeto produto do cardápio array
+            // ele deve ter .prices[sizeName]
+            return f.prices ? (f.prices[sizeName] || 0) : 0;
+        });
+
+        // Modo padrão: Maior valor
+        finalPrice = Math.max(...prices);
+
+        // TODO: Suportar 'AVERAGE' se configurado no futuro
+
+        // 2. Gerar nome
+        // Ex: "Pizza Grande (1/2 Calabresa, 1/2 Frango)" ou "Pizza Fatia (Calabresa)"
+        const flavorsNames = flavors.map(f => f.name).join(', ');
+        const fraction = flavors.length > 1 ? `1/${flavors.length} ` : '';
+
+        // Melhor formatação de nome:
+        let flavorsString = "";
+        if (flavors.length === 1) {
+            flavorsString = flavors[0].name;
+        } else {
+            flavorsString = flavors.map(f => `1/${flavors.length} ${f.name}`).join(', ');
+        }
+
+        const itemName = `Pizza ${sizeName} (${flavorsString})`;
+
+        setCustomPrices(prev => ({ ...prev, [itemName]: finalPrice }));
+
+        setProdutos(prev => {
+            const currentQty = prev[itemName] || 0;
+            return { ...prev, [itemName]: currentQty + 1 };
+        });
+
+        showToast('Pizza adicionada!', 'success');
     }, []);
 
     const handleSubmit = async () => {
@@ -400,6 +470,8 @@ export function useNovoPedido() {
         handleLogout,
         temperosCaldos,
         temperosComidas,
-        variacoesEspetinho
+        variacoesEspetinho,
+        pizzaConfig,
+        addPizzaToOrder
     };
 }
