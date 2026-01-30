@@ -1,10 +1,9 @@
 /**
  * ComandasService - Gerencia contas abertas (comandas), totais e fechamento.
  */
-import { doc, runTransaction, serverTimestamp, getDoc, setDoc, collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { runTransaction, serverTimestamp, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
 import { getCompanyDoc, getCompanyCollection } from '../utils/firestoreUtils';
-import PagamentosService from './PagamentosService';
 
 const COMANDAS_COLLECTION = 'comandas';
 
@@ -169,7 +168,6 @@ class ComandasService {
       }
 
       const data = snap.data();
-      const totalAnterior = data.totalConsumido || 0;
       const saldoAberto = Math.max(0, totalReal - (data.totalPago || 0));
       tx.update(ref, {
         totalConsumido: totalReal,

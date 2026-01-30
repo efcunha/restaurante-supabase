@@ -22,8 +22,7 @@ export function useNovoPedido() {
     const { user, logout } = useAuth();
     const { showToast } = useToast();
 
-    const [comandaNumber, setComandaNumber] = useState('');
-    const [loadingComanda, setLoadingComanda] = useState(false);
+    // Removed unused loadingComanda state
     const [clientName, setClientName] = useState('');
     const [mesa, setMesa] = useState(''); // ✅ Novo estado para Mesa
     const [observations, setObservations] = useState('');
@@ -222,8 +221,9 @@ export function useNovoPedido() {
             const currentQty = prev[itemName] || 0;
             const newQty = Math.max(0, currentQty + delta);
             if (newQty === 0) {
-                const { [itemName]: _, ...rest } = prev;
-                return rest;
+                const newObj = { ...prev };
+                delete newObj[itemName];
+                return newObj;
             }
             return { ...prev, [itemName]: newQty };
         });
@@ -336,9 +336,6 @@ export function useNovoPedido() {
         // TODO: Suportar 'AVERAGE' se configurado no futuro
 
         // 2. Gerar nome
-        // Ex: "Pizza Grande (1/2 Calabresa, 1/2 Frango)" ou "Pizza Fatia (Calabresa)"
-        const flavorsNames = flavors.map(f => f.name).join(', ');
-        const fraction = flavors.length > 1 ? `1/${flavors.length} ` : '';
 
         // Melhor formatação de nome:
         let flavorsString = "";
@@ -400,7 +397,6 @@ export function useNovoPedido() {
 
             showToast(`Pedido criado! Comanda ${novoNumeroComanda}`, 'success');
 
-            setComandaNumber('');
             setClientName('');
             setMesa('');
             setObservations('');
