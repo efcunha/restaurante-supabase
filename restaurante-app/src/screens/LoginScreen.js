@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Image, BackHandler, ScrollView, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Image, BackHandler, ScrollView, TouchableWithoutFeedback, Keyboard, useWindowDimensions } from 'react-native';
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -14,6 +14,8 @@ export default function LoginScreen({ navigation }) {
   const [senha, setSenha] = useState('');
   const [loading, setLoading] = useState(false);
   const [mostrarSenha, setMostrarSenha] = useState(false);
+
+  const { height } = useWindowDimensions();
 
   // Responsividade
 
@@ -86,8 +88,9 @@ export default function LoginScreen({ navigation }) {
                 source={require('../assets/images/login_v13.png')}
                 style={{
                   width: '100%',
-                  height: 260, // Reduced as requested
-                  marginBottom: 10
+                  height: height * 0.32,
+                  marginBottom: 10,
+                  maxHeight: 300
                 }}
                 resizeMode="contain"
               />
@@ -201,7 +204,7 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
     paddingHorizontal: 25,
-    paddingTop: 10, // Menos padding no topo
+    paddingTop: 10,
     width: '100%',
   },
 
@@ -217,14 +220,14 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(0, 0, 0, 0.2)', // Darker background for visibility
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 10, // Menos margem
+    marginBottom: 0,
     marginTop: 0,
   },
   logo: {
