@@ -1,5 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, SectionList, TouchableOpacity, TextInput, ActivityIndicator, LayoutAnimation, Platform, UIManager } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import React, { memo, useCallback } from 'react';
 import BackgroundPattern from '../components/BackgroundPattern';
 import { useNovoPedido } from '../hooks/useNovoPedido';
@@ -455,11 +456,21 @@ export default function NovoPedidoScreen() {
 
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={styles.headerTitle}>Novo Pedido</Text>
-          {user && <Text style={styles.userInfo}>{user.nome || user.email}</Text>}
+          {user && (
+            <View>
+              <Text style={styles.userInfoLabel}>Olá,</Text>
+              <Text style={styles.userInfo}>{user.nome || user.email}</Text>
+            </View>
+          )}
+        </View>
+        <View style={styles.headerCenter}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Ionicons name="add-circle-outline" size={26} color={colors.white} />
+            <Text style={styles.headerTitle}>Novo Pedido</Text>
+          </View>
         </View>
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-          <Text style={styles.logoutText}>Sair</Text>
+          <Ionicons name="log-out-outline" size={24} color={colors.white} />
         </TouchableOpacity>
       </View>
 
@@ -514,17 +525,39 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
     zIndex: 10,
+    elevation: 8,
   },
-  headerLeft: { flex: 1 },
-  headerTitle: { fontSize: 28, fontWeight: 'bold', color: colors.white },
-  userInfo: { fontSize: 12, color: colors.userInfo, marginTop: 4 },
+  headerLeft: {
+    flex: 1,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  headerCenter: {
+    flex: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.white,
+    textAlign: 'center',
+  },
+  userInfoLabel: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 10,
+  },
+  userInfo: {
+    fontSize: 12,
+    color: colors.userInfo, // or '#E5B84A' if colors.userInfo is not suitable
+    fontWeight: '600',
+  },
   logoutBtn: {
-    backgroundColor: colors.logoutBg,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+    flex: 1,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    padding: 5,
   },
-  logoutText: { color: colors.white, fontWeight: '600' },
   listContent: { padding: 20, paddingBottom: 120 },
   headerForm: { marginBottom: 20 },
   label: { fontSize: 16, color: colors.text, marginBottom: 6, fontWeight: 'bold' },

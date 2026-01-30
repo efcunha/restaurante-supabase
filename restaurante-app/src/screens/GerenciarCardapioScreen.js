@@ -11,6 +11,7 @@ import {
   Modal,
   Platform
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { collection, getDocs, addDoc, updateDoc, doc, getDoc, setDoc, writeBatch, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
 import { useAuth } from '../context/AuthContext';
@@ -56,7 +57,7 @@ function VariacaoItem({ variacao, onSalvar }) {
   );
 }
 
-export default function GerenciarCardapioScreen() {
+export default function GerenciarCardapioScreen({ onClose }) {
   const { user } = useAuth();
   // Estados para cadastro
   const [nome, setNome] = useState('');
@@ -617,6 +618,25 @@ export default function GerenciarCardapioScreen() {
     <View style={styles.container}>
       <BackgroundPattern />
 
+      {/* Header Padronizado */}
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          {onClose && (
+            <TouchableOpacity onPress={onClose} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color="#FFF" />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <View style={styles.headerCenter}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Ionicons name="restaurant-outline" size={24} color="#FFF" />
+            <Text style={styles.headerTitle}>Gerenciar Cardápio</Text>
+          </View>
+        </View>
+
+        <View style={styles.headerRight} />
+      </View>
       <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }}>
 
         {/* SEÇÃO 1: CADASTRAR PRODUTO */}
@@ -1104,6 +1124,43 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F5F1E8',
   },
+  header: {
+    backgroundColor: '#8B2F2F',
+    paddingTop: 50,
+    paddingBottom: 15,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    zIndex: 10,
+    elevation: 8,
+  },
+  headerLeft: {
+    width: 40,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerRight: {
+    width: 40,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  backButton: {
+    padding: 5,
+  },
+  headerTitle: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
   content: {
     flex: 1,
     padding: 20,
@@ -1129,8 +1186,8 @@ const styles = StyleSheet.create({
   },
   input: {
     backgroundColor: '#F5F1E8',
-    borderRadius: 10,
-    padding: 15,
+    borderRadius: 12,
+    padding: 14,
     fontSize: 16,
     color: '#2C2C2C',
     marginBottom: 12,

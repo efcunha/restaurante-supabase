@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import PrinterService from '../services/PrinterService';
 import BackgroundPattern from '../components/BackgroundPattern';
@@ -95,10 +96,18 @@ export default function PrinterConfigScreen({ navigation }) {
       <View style={styles.container}>
         <BackgroundPattern />
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Text style={styles.backButtonText}>← Voltar</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Configurar Impressora</Text>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color="#FFF" />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.headerCenter}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Ionicons name="print-outline" size={24} color="#FFF" />
+              <Text style={styles.headerTitle}>Configurar Impressora</Text>
+            </View>
+          </View>
+          <View style={styles.headerRight} />
         </View>
         <View style={styles.unavailableContainer}>
           <Text style={styles.unavailableText}>⚠️</Text>
@@ -121,10 +130,18 @@ export default function PrinterConfigScreen({ navigation }) {
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backButtonText}>← Voltar</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Configurar Impressora</Text>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="#FFF" />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.headerCenter}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Ionicons name="print-outline" size={24} color="#FFF" />
+            <Text style={styles.headerTitle}>Configurar Impressora</Text>
+          </View>
+        </View>
+        <View style={styles.headerRight} />
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }}>
@@ -244,26 +261,37 @@ const styles = StyleSheet.create({
     paddingTop: 50,
     paddingBottom: 15,
     paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
     zIndex: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 15,
     elevation: 8,
   },
-  backButton: {
-    marginBottom: 10,
+  headerLeft: {
+    width: 40,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
   },
-  backButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerRight: {
+    width: 40,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  backButton: {
+    padding: 5,
   },
   headerTitle: {
     color: '#FFFFFF',
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: 'bold',
+    textAlign: 'center',
   },
   content: {
     flex: 1,

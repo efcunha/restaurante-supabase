@@ -161,11 +161,18 @@ export default function EditarEmpresaScreen({ onBack }) {
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <TouchableOpacity onPress={onBack} style={styles.backButton}>
-                    <Ionicons name="arrow-back" size={24} color="#FFF" />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>Dados da Empresa</Text>
-                <View style={{ width: 40 }} />
+                <View style={styles.headerLeft}>
+                    <TouchableOpacity onPress={onBack} style={styles.backButton}>
+                        <Ionicons name="arrow-back" size={24} color="#FFF" />
+                    </TouchableOpacity>
+                </View>
+                <View style={styles.headerCenter}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Ionicons name="business-outline" size={24} color="#FFF" />
+                        <Text style={styles.headerTitle}>Dados da Empresa</Text>
+                    </View>
+                </View>
+                <View style={styles.headerRight} />
             </View>
 
             <KeyboardAvoidingView
@@ -249,19 +256,31 @@ const styles = StyleSheet.create({
         borderBottomLeftRadius: 20,
         borderBottomRightRadius: 20,
         zIndex: 10,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 15,
         elevation: 8,
+    },
+    headerLeft: {
+        width: 40,
+        alignItems: 'flex-start',
+        justifyContent: 'center',
+    },
+    headerCenter: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    headerRight: {
+        width: 40,
+        alignItems: 'flex-end',
+        justifyContent: 'center',
     },
     headerTitle: {
         color: '#FFFFFF',
-        fontSize: 28,
+        fontSize: 20,
         fontWeight: 'bold',
+        textAlign: 'center',
     },
     backButton: {
-        padding: 8,
+        padding: 5,
     },
     content: {
         flex: 1,
