@@ -33,11 +33,24 @@ export default function PizzaBuilderModal({
 
     const maxFlavors = currentSizeConfig?.maxFlavors || 1;
 
-    // Filter flavors
+    // Filter flavors and Deduplicate
     const filteredPizzas = useMemo(() => {
         if (!pizzas) return [];
-        if (!searchText) return pizzas;
-        return pizzas.filter(p => p.name.toLowerCase().includes(searchText.toLowerCase()));
+        let list = pizzas;
+        if (searchText) {
+            list = list.filter(p => p.name.toLowerCase().includes(searchText.toLowerCase()));
+        }
+
+        // Deduplicate by name
+        const unique = [];
+        const seen = new Set();
+        list.forEach(p => {
+            if (!seen.has(p.name)) {
+                seen.add(p.name);
+                unique.push(p);
+            }
+        });
+        return unique;
     }, [pizzas, searchText]);
 
     const handleSelectSize = (size) => {
@@ -45,6 +58,7 @@ export default function PizzaBuilderModal({
 
         // Auto-select initial flavor if present
         if (initialFlavor) {
+            // Check if flavor exists in deduplicated list or use the initial object
             setSelectedFlavors([initialFlavor]);
         }
 
@@ -52,15 +66,16 @@ export default function PizzaBuilderModal({
     };
 
     const toggleFlavor = (pizza) => {
-        // Locked flavor for single-flavor sizes (Fatia/Broto)
-        if (maxFlavors === 1 && initialFlavor) {
+        // Locked flavor: Cannot deselect the initial flavor
+        if (initialFlavor && pizza.id === initialFlavor.id) {
             return;
         }
 
-        if (selectedFlavors.find(p => p.id === pizza.id)) {
-            // Prevent unselecting the only flavor in single-flavor mode
-            if (maxFlavors === 1) return;
-            setSelectedFlavors(prev => prev.filter(p => p && p.id !== pizza.id));
+        if (selectedFlavors.find(p => p.id === pizza.id || p.name === pizza.name)) {
+            // Second check for safety: if trying to remove initial flavor by name match
+            if (initialFlavor && pizza.name === initialFlavor.name) return;
+
+            setSelectedFlavors(prev => prev.filter(p => p.id !== pizza.id));
         } else {
             if (selectedFlavors.length >= maxFlavors) {
                 return;
@@ -147,10 +162,11 @@ export default function PizzaBuilderModal({
 
             <ScrollView style={{ flex: 1 }}>
                 {filteredPizzas.map(pizza => {
-                    const isSelected = !!selectedFlavors.find(p => p.id === pizza.id);
+                    const isSelected = !!selectedFlavors.find(p => p.name === pizza.name); // Match by name for robustness
+
                     const rawPrice = pizza.prices && pizza.prices[selectedSize] ? pizza.prices[selectedSize] : 0;
 
-                    // Robust parsing for string (handles commas) or number
+                    // Robust parsing
                     let priceForSize = 0;
                     if (typeof rawPrice === 'string') {
                         priceForSize = parseFloat(rawPrice.replace(',', '.')) || 0;
@@ -161,6 +177,9 @@ export default function PizzaBuilderModal({
                     // Disable selection if full and not selected
                     const isDisabled = !isSelected && selectedFlavors.length >= maxFlavors;
 
+                    // Check if this is the locked initial flavor
+                    const isLocked = initialFlavor && pizza.name === initialFlavor.name;
+
                     return (
                         <TouchableOpacity
                             key={pizza.id}
@@ -168,10 +187,10 @@ export default function PizzaBuilderModal({
                                 styles.flavorRow,
                                 isSelected && styles.flavorRowActive,
                                 isDisabled && styles.flavorRowDisabled,
-                                (isSelected && maxFlavors === 1 && initialFlavor) ? { borderColor: '#2e7d32', backgroundColor: '#F1F8E9' } : null
+                                isLocked ? { borderColor: '#2e7d32', backgroundColor: '#F1F8E9' } : null
                             ]}
                             onPress={() => !isDisabled && toggleFlavor(pizza)}
-                            disabled={isDisabled || (maxFlavors === 1 && !!initialFlavor)}
+                            disabled={isDisabled || isLocked}
                         >
                             <View style={{ flex: 1 }}>
                                 <Text style={[styles.flavorName, isDisabled && { color: '#999' }]}>{pizza.name}</Text>
