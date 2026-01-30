@@ -94,6 +94,13 @@ export default function GerenciarCardapioScreen({ onClose }) {
   const [editTemperoIndex, setEditTemperoIndex] = useState(-1);
   const [loadingTemperos, setLoadingTemperos] = useState(true);
 
+  // Estados para Pizza
+  const [pizzaConfig, setPizzaConfig] = useState(null);
+  const [precosPizza, setPrecosPizza] = useState({}); // { 'Fatia': '5.00', 'Grande': '40.00' }
+  const [ingredientesPizza, setIngredientesPizza] = useState([]); // from config
+  const [ingredientesSelecionados, setIngredientesSelecionados] = useState([]); // for current product
+  const [ingredientesPersonalizados, setIngredientesPersonalizados] = useState(''); // text field
+
   // Estados para Ficha Técnica (Estoque)
   const [showStockModal, setShowStockModal] = useState(false);
   const [currentProductForStock, setCurrentProductForStock] = useState(null);
@@ -113,7 +120,9 @@ export default function GerenciarCardapioScreen({ onClose }) {
     { value: 'espetinho-especial', label: '🌟 Espetinho Especial' },
     { value: 'porcao', label: '🍟 Porção' },
     { value: 'bebida', label: '🥤 Bebida' },
+
     { value: 'comida', label: '🍽️ Comida' },
+    { value: 'pizza', label: '🍕 Pizza' },
     { value: 'outro', label: '📦 Outro' }
   ];
 
@@ -132,7 +141,30 @@ export default function GerenciarCardapioScreen({ onClose }) {
         const data = docSnap.data();
         if (data.temperosCaldos) setTemperosCaldos(data.temperosCaldos);
         if (data.temperosComidas) setTemperosComidas(data.temperosComidas);
+        if (data.temperosCaldos) setTemperosCaldos(data.temperosCaldos);
+        if (data.temperosComidas) setTemperosComidas(data.temperosComidas);
         if (data.variacoesEspetinho) setVariacoesEspetinho(data.variacoesEspetinho);
+        if (data.ingredientesPizza) setIngredientesPizza(data.ingredientesPizza);
+
+        if (data.temperosCaldos) setTemperosCaldos(data.temperosCaldos);
+        if (data.temperosComidas) setTemperosComidas(data.temperosComidas);
+        if (data.variacoesEspetinho) setVariacoesEspetinho(data.variacoesEspetinho);
+
+        // Carregar configuração de Pizza (ou usar padrão)
+        if (data.pizzaConfig) {
+          setPizzaConfig(data.pizzaConfig);
+        } else {
+          // Default config if none exists
+          setPizzaConfig({
+            sizes: [
+              { name: 'Fatia', maxFlavors: 1 },
+              { name: 'Broto', maxFlavors: 2 },
+              { name: 'Média', maxFlavors: 3 },
+              { name: 'Grande', maxFlavors: 4 }
+            ],
+            pricingMode: 'HIGHER'
+          });
+        }
 
         // Legacy fallback
         if (!data.temperosCaldos && !data.temperosComidas && data.temperos) {
@@ -150,15 +182,17 @@ export default function GerenciarCardapioScreen({ onClose }) {
   const getListaAtiva = () => {
     if (tipoTemperoAtivo === 'caldos') return temperosCaldos || [];
     if (tipoTemperoAtivo === 'comidas') return temperosComidas || [];
+    if (tipoTemperoAtivo === 'pizza') return ingredientesPizza || [];
     return variacoesEspetinho || [];
   };
 
-  const salvarListas = async (novaListaCaldos, novaListaComidas, novaListaVariacoes) => {
+  const salvarListas = async (novaListaCaldos, novaListaComidas, novaListaVariacoes, novaListaPizzas) => {
     const docRef = doc(db, 'companies', user.companyId, 'settings', 'cardapio_config');
     await setDoc(docRef, {
       temperosCaldos: novaListaCaldos !== undefined ? novaListaCaldos : temperosCaldos,
       temperosComidas: novaListaComidas !== undefined ? novaListaComidas : temperosComidas,
-      variacoesEspetinho: novaListaVariacoes !== undefined ? novaListaVariacoes : variacoesEspetinho
+      variacoesEspetinho: novaListaVariacoes !== undefined ? novaListaVariacoes : variacoesEspetinho,
+      ingredientesPizza: novaListaPizzas !== undefined ? novaListaPizzas : ingredientesPizza
     }, { merge: true });
   };
 
@@ -184,10 +218,13 @@ export default function GerenciarCardapioScreen({ onClose }) {
         await salvarListas(novos, undefined, undefined);
       } else if (tipoTemperoAtivo === 'comidas') {
         setTemperosComidas(novos);
-        await salvarListas(undefined, novos, undefined);
+        await salvarListas(undefined, novos, undefined, undefined);
+      } else if (tipoTemperoAtivo === 'pizza') {
+        setIngredientesPizza(novos);
+        await salvarListas(undefined, undefined, undefined, novos);
       } else {
         setVariacoesEspetinho(novos);
-        await salvarListas(undefined, undefined, novos);
+        await salvarListas(undefined, undefined, novos, undefined);
       }
 
       setNovoTempero('');
@@ -219,10 +256,13 @@ export default function GerenciarCardapioScreen({ onClose }) {
         await salvarListas(novos, undefined, undefined);
       } else if (tipoTemperoAtivo === 'comidas') {
         setTemperosComidas(novos);
-        await salvarListas(undefined, novos, undefined);
+        await salvarListas(undefined, novos, undefined, undefined);
+      } else if (tipoTemperoAtivo === 'pizza') {
+        setIngredientesPizza(novos);
+        await salvarListas(undefined, undefined, undefined, novos);
       } else {
         setVariacoesEspetinho(novos);
-        await salvarListas(undefined, undefined, novos);
+        await salvarListas(undefined, undefined, novos, undefined);
       }
     } catch (e) {
       Alert.alert('Erro', 'Falha ao remover item.');
@@ -319,6 +359,58 @@ export default function GerenciarCardapioScreen({ onClose }) {
       } finally {
         setLoading(false);
       }
+    } else if (categoria === 'pizza') {
+      // Validação Pizza
+      const sizes = pizzaConfig?.sizes || [];
+      const pricesToSave = {};
+      let hasPrice = false;
+
+      sizes.forEach(size => {
+        const p = precosPizza[size.name];
+        if (p && !isNaN(parseFloat(p))) {
+          pricesToSave[size.name] = parseFloat(p);
+          hasPrice = true;
+        }
+      });
+
+      if (!hasPrice) {
+        window.alert('Preencha pelo menos um preço para a pizza');
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const novoProduto = {
+          name: nome.trim(),
+          category: 'pizza',
+          active: true,
+          createdAt: Date.now(),
+          prices: pricesToSave, // Save map of prices
+          ingredients: ingredientesSelecionados,
+          customIngredients: ingredientesPersonalizados
+        };
+
+        await addDoc(getCompanyCollection(user.companyId, 'cardapio'), novoProduto);
+
+        // Also ensure config is saved if it was default
+        const configRef = doc(db, 'companies', user.companyId, 'settings', 'cardapio_config');
+        await setDoc(configRef, { pizzaConfig }, { merge: true });
+
+        window.alert('✅ Pizza cadastrada com sucesso!');
+        setNome('');
+        window.alert('✅ Pizza cadastrada com sucesso!');
+        setNome('');
+        setPrecosPizza({});
+        setIngredientesSelecionados([]);
+        setIngredientesPersonalizados('');
+        carregarProdutos();
+      } catch (error) {
+        console.error('❌ Erro ao cadastrar pizza:', error);
+        window.alert('Erro ao cadastrar a pizza');
+      } finally {
+        setLoading(false);
+      }
+
     } else {
       if (!preco || isNaN(parseFloat(preco))) {
         window.alert('Digite um preço válido');
@@ -713,6 +805,26 @@ export default function GerenciarCardapioScreen({ onClose }) {
                   ))}
                 </View>
               </>
+
+            ) : categoria === 'pizza' ? (
+              <>
+                <Text style={styles.label}>Preços por tamanho:</Text>
+                <View style={styles.variacoesGrid}>
+                  {pizzaConfig?.sizes?.map((size, idx) => (
+                    <View key={idx} style={styles.variacaoField}>
+                      <Text style={styles.variacaoLabel}>{size.name} ({size.maxFlavors} sab)</Text>
+                      <TextInput
+                        style={styles.inputVariacao}
+                        placeholder="0.00"
+                        placeholderTextColor="#999"
+                        value={precosPizza[size.name] || ''}
+                        onChangeText={(text) => setPrecosPizza(prev => ({ ...prev, [size.name]: text }))}
+                        keyboardType="numeric"
+                      />
+                    </View>
+                  ))}
+                </View>
+              </>
             ) : (
               <TextInput
                 style={styles.input}
@@ -734,10 +846,10 @@ export default function GerenciarCardapioScreen({ onClose }) {
               </Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </View >
 
         {/* SEÇÃO EXTRA: GERENCIAR TEMPEROS */}
-        <View style={styles.section}>
+        < View style={styles.section} >
           <Text style={styles.sectionTitle}>🌿 Gerenciar Opções (Temperos)</Text>
           <View style={styles.form}>
             {/* Tabs Selector */}
@@ -752,8 +864,16 @@ export default function GerenciarCardapioScreen({ onClose }) {
                 style={{ flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 6, backgroundColor: tipoTemperoAtivo === 'comidas' ? '#fff' : 'transparent', elevation: tipoTemperoAtivo === 'comidas' ? 2 : 0 }}
                 onPress={() => { setTipoTemperoAtivo('comidas'); setEditTemperoIndex(-1); setNovoTempero(''); }}
               >
-                <Text style={{ fontWeight: 'bold', color: tipoTemperoAtivo === 'comidas' ? '#8B0000' : '#666' }}>🍽️ Para Comidas</Text>
+                <Text style={{ fontWeight: 'bold', color: tipoTemperoAtivo === 'comidas' ? '#8B0000' : '#666' }}>🍽️ Para Comida</Text>
               </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{ flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 6, backgroundColor: tipoTemperoAtivo === 'pizza' ? '#fff' : 'transparent', elevation: tipoTemperoAtivo === 'pizza' ? 2 : 0 }}
+                onPress={() => { setTipoTemperoAtivo('pizza'); setEditTemperoIndex(-1); setNovoTempero(''); }}
+              >
+                <Text style={{ fontWeight: 'bold', color: tipoTemperoAtivo === 'pizza' ? '#8B0000' : '#666' }}>🍕 Ingredientes</Text>
+              </TouchableOpacity>
+
               <TouchableOpacity
                 style={{ flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 6, backgroundColor: tipoTemperoAtivo === 'variacoes' ? '#fff' : 'transparent', elevation: tipoTemperoAtivo === 'variacoes' ? 2 : 0 }}
                 onPress={() => { setTipoTemperoAtivo('variacoes'); setEditTemperoIndex(-1); setNovoTempero(''); }}
@@ -803,10 +923,10 @@ export default function GerenciarCardapioScreen({ onClose }) {
               </View>
             )}
           </View>
-        </View>
+        </View >
 
         {/* SEÇÃO 2: LISTAR PRODUTOS POR CATEGORIA */}
-        <View style={styles.section}>
+        < View style={styles.section} >
           <Text style={styles.sectionTitle}>📋 Produtos Cadastrados</Text>
 
           {/* Filtros de categoria */}
@@ -833,79 +953,81 @@ export default function GerenciarCardapioScreen({ onClose }) {
             ))}
           </ScrollView>
 
-          {loadingProdutos ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#8B2F2F" />
-              <Text style={styles.loadingText}>Carregando produtos...</Text>
-            </View>
-          ) : produtosFiltrados.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>Nenhum produto cadastrado</Text>
-            </View>
-          ) : (
-            Object.keys(produtosAgrupados).map(nomeBase => {
-              const variacoes = produtosAgrupados[nomeBase];
-              const primeiraVariacao = variacoes[0];
-              const todosAtivos = variacoes.every(v => v.active);
+          {
+            loadingProdutos ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#8B2F2F" />
+                <Text style={styles.loadingText}>Carregando produtos...</Text>
+              </View>
+            ) : produtosFiltrados.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>Nenhum produto cadastrado</Text>
+              </View>
+            ) : (
+              Object.keys(produtosAgrupados).map(nomeBase => {
+                const variacoes = produtosAgrupados[nomeBase];
+                const primeiraVariacao = variacoes[0];
+                const todosAtivos = variacoes.every(v => v.active);
 
-              return (
-                <View key={nomeBase} style={styles.produtoCard}>
-                  <View style={styles.produtoLeft}>
-                    <View style={styles.produtoInfo}>
-                      <Text style={styles.produtoNome}>{nomeBase}</Text>
-                      <Text style={styles.produtoVariacoes}>
-                        {variacoes.length === 1
-                          ? `R$ ${Number(primeiraVariacao.price).toFixed(2)}`
-                          : `${variacoes.length} variações`
-                        }
-                      </Text>
+                return (
+                  <View key={nomeBase} style={styles.produtoCard}>
+                    <View style={styles.produtoLeft}>
+                      <View style={styles.produtoInfo}>
+                        <Text style={styles.produtoNome}>{nomeBase}</Text>
+                        <Text style={styles.produtoVariacoes}>
+                          {variacoes.length === 1
+                            ? `R$ ${Number(primeiraVariacao.price).toFixed(2)}`
+                            : `${variacoes.length} variações`
+                          }
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.produtoActions}>
+                      <TouchableOpacity
+                        style={[styles.statusBtn, todosAtivos ? styles.statusBtnAtivo : styles.statusBtnInativo]}
+                        onPress={() => {
+                          variacoes.forEach(v => toggleAtivo(v));
+                        }}
+                      >
+                        <Text style={styles.statusBtnText}>
+                          {todosAtivos ? 'ATIVO' : 'DESATIVADO'}
+                        </Text>
+                      </TouchableOpacity>
+
+                      {/* BOTÃO MÁGICO: FICHA TÉCNICA */}
+                      <TouchableOpacity
+                        style={styles.stockBtn}
+                        onPress={() => abrirEstoque(primeiraVariacao)}
+                      >
+                        <Text style={styles.stockBtnText}>Ficha Técnica</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={styles.editBtn}
+                        onPress={() => abrirVariacoes(nomeBase)}
+                      >
+                        <Text style={styles.editBtnText}>Editar</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={styles.deleteBtn}
+                        onPress={() => excluirProduto(variacoes)}
+                      >
+                        <Text style={styles.deleteBtnText}>Excluir</Text>
+                      </TouchableOpacity>
                     </View>
                   </View>
+                );
+              })
+            )
+          }
+        </View >
 
-                  <View style={styles.produtoActions}>
-                    <TouchableOpacity
-                      style={[styles.statusBtn, todosAtivos ? styles.statusBtnAtivo : styles.statusBtnInativo]}
-                      onPress={() => {
-                        variacoes.forEach(v => toggleAtivo(v));
-                      }}
-                    >
-                      <Text style={styles.statusBtnText}>
-                        {todosAtivos ? 'ATIVO' : 'DESATIVADO'}
-                      </Text>
-                    </TouchableOpacity>
-
-                    {/* BOTÃO MÁGICO: FICHA TÉCNICA */}
-                    <TouchableOpacity
-                      style={styles.stockBtn}
-                      onPress={() => abrirEstoque(primeiraVariacao)}
-                    >
-                      <Text style={styles.stockBtnText}>Ficha Técnica</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={styles.editBtn}
-                      onPress={() => abrirVariacoes(nomeBase)}
-                    >
-                      <Text style={styles.editBtnText}>Editar</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={styles.deleteBtn}
-                      onPress={() => excluirProduto(variacoes)}
-                    >
-                      <Text style={styles.deleteBtnText}>Excluir</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              );
-            })
-          )}
-        </View>
-
-      </ScrollView>
+      </ScrollView >
 
       {/* MODAL DE EDIÇÃO (Produto Único) */}
-      <Modal visible={showEditModal} animationType="slide" transparent={true}>
+      < Modal visible={showEditModal} animationType="slide" transparent={true} >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
@@ -972,10 +1094,10 @@ export default function GerenciarCardapioScreen({ onClose }) {
             </TouchableOpacity>
           </View>
         </View>
-      </Modal>
+      </Modal >
 
       {/* MODAL DE VARIAÇÕES (Espetinhos) */}
-      <Modal visible={showVariacoesModal} animationType="slide" transparent={true}>
+      < Modal visible={showVariacoesModal} animationType="slide" transparent={true} >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
@@ -1011,10 +1133,10 @@ export default function GerenciarCardapioScreen({ onClose }) {
             </TouchableOpacity>
           </View>
         </View>
-      </Modal>
+      </Modal >
 
       {/* MODAL FICHA TÉCNICA (ESTOQUE) */}
-      <Modal visible={showStockModal} animationType="slide" transparent={true}>
+      < Modal visible={showStockModal} animationType="slide" transparent={true} >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
@@ -1113,9 +1235,9 @@ export default function GerenciarCardapioScreen({ onClose }) {
 
           </View>
         </View>
-      </Modal>
+      </Modal >
 
-    </View>
+    </View >
   );
 }
 
