@@ -348,7 +348,7 @@ export default function NovoPedidoScreen() {
     if (cardapio.pizzas && cardapio.pizzas.length > 0) {
       sectionsData.push({
         title: '🍕 Pizzas',
-        data: [{ name: 'Montar Pizza', type: 'builder' }],
+        data: [{ name: 'Montar Pizza', type: 'builder' }, ...cardapio.pizzas],
         type: 'pizza-builder'
       });
     }
@@ -448,16 +448,35 @@ export default function NovoPedidoScreen() {
 
   const renderItem = ({ item, section }) => {
     if (section.type === 'pizza-builder') {
+      if (item.type === 'builder') {
+        return (
+          <View style={styles.standardCard}>
+            <TouchableOpacity
+              style={[styles.submitBtn, { backgroundColor: colors.secondary || '#E5B84A' }]}
+              onPress={() => setShowPizzaModal(true)}
+            >
+              <Text style={[styles.submitBtnText, { color: '#333' }]}>🍕 MONTAR PIZZA / ESCOLHER SABORES</Text>
+            </TouchableOpacity>
+            <Text style={styles.priceLegend}>Escolha até 4 sabores • Venda por fatia ou inteira</Text>
+          </View>
+        );
+      }
+
+      // Render Standard Pizza Item Row
+      const minPrice = item.prices ? Math.min(...Object.values(item.prices).filter(p => !isNaN(p))) : 0;
+      const ingredientsText = item.ingredients ? item.ingredients.join(', ') : item.description || '';
+
       return (
-        <View style={styles.standardCard}>
-          <TouchableOpacity
-            style={[styles.submitBtn, { backgroundColor: colors.secondary || '#E5B84A' }]}
-            onPress={() => setShowPizzaModal(true)}
-          >
-            <Text style={[styles.submitBtnText, { color: '#333' }]}>🍕 MONTAR PIZZA / ESCOLHER SABORES</Text>
-          </TouchableOpacity>
-          <Text style={styles.priceLegend}>Escolha até 4 sabores • Venda por fatia ou inteira</Text>
-        </View>
+        <TouchableOpacity
+          style={styles.standardCard}
+          onPress={() => setShowPizzaModal(true)}
+        >
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <Text style={styles.itemName}>{item.name}</Text>
+            <Text style={styles.itemPrice}>A partir de R$ {minPrice.toFixed(2)}</Text>
+          </View>
+          <Text style={styles.itemDescription}>{ingredientsText}</Text>
+        </TouchableOpacity>
       );
     }
     if (section.type === 'caldos') {
@@ -505,7 +524,7 @@ export default function NovoPedidoScreen() {
         sections={sections}
         renderItem={renderItem}
         renderSectionHeader={renderSectionHeader}
-        keyExtractor={(item) => item.name || item}
+        keyExtractor={(item, index) => item.id || item.name + index}
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={<HeaderComponent clientName={clientName} setClientName={setClientName} mesa={mesa} setMesa={setMesa} />}
         ListFooterComponent={<FooterComponent selectedItems={selectedItems} onRemoveItem={handleRemoveItemAnimated} />}
