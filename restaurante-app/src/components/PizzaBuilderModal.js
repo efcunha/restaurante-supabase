@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
 
     checkbox: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: '#ddd', justifyContent: 'center', alignItems: 'center' },
 
-    footer: { borderTopWidth: 1, borderTopColor: '#f0f0f0', paddingTop: 20, marginTop: 10 },
+    footer: { borderTopWidth: 1, borderTopColor: '#f0f0f0', paddingTop: 20, marginTop: 10, paddingBottom: 30 },
     totalText: { fontSize: 24, fontWeight: 'bold', color: colors.primary },
     confirmBtn: { backgroundColor: colors.success, padding: 18, borderRadius: 14, alignItems: 'center' },
     disabledBtn: { backgroundColor: '#ccc' },
