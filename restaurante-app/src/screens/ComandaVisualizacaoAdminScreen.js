@@ -54,9 +54,18 @@ export default function ComandaVisualizacaoAdminScreen({ onClose }) {
     }
   }, [user]);
 
+  // Carregamento inicial e auto-refresh
   useEffect(() => {
     if (user && user.funcao === 'admin') {
+      // Carregamento inicial
       carregarEstatisticas();
+
+      // Auto-refresh a cada 30 segundos (silenciosamente)
+      const intervalId = setInterval(() => {
+        carregarEstatisticas(true);
+      }, 30000);
+
+      return () => clearInterval(intervalId);
     }
   }, [user, garcomSelecionado, mesSelecionado]);
 
@@ -69,8 +78,8 @@ export default function ComandaVisualizacaoAdminScreen({ onClose }) {
     return mes ? mes.label : 'Mês Vigente';
   };
 
-  const carregarEstatisticas = async () => {
-    setLoadingEstatisticas(true);
+  const carregarEstatisticas = async (silent = false) => {
+    if (!silent) setLoadingEstatisticas(true);
     try {
       // Determinar o período para busca
       const periodo = mesSelecionado || 'mesVigente';
@@ -78,11 +87,7 @@ export default function ComandaVisualizacaoAdminScreen({ onClose }) {
       // Se é admin, pode visualizar todos os garçons ou um específico
       if (user.funcao === 'admin') {
         // 🔄 Carregar lista de garçons disponíveis
-        // A função busca TODOS os pedidos com criadoPor/criadoPorNome preenchidos
-        // Novos garçons aparecem AUTOMATICAMENTE quando criarem seu primeiro pedido
-        console.log('[ComandaVisualizacao] Buscando estatísticas de todos os garçons para período:', periodo);
         const todosGarcons = await getEstatisticasTodosGarcons(periodo);
-        console.log('[ComandaVisualizacao] Garçons encontrados:', todosGarcons?.length || 0, JSON.stringify(todosGarcons));
         setGarconsDisponiveis(todosGarcons || []);
 
         // Se nenhum garçom selecionado, mostrar TODOS (null)
@@ -98,9 +103,7 @@ export default function ComandaVisualizacaoAdminScreen({ onClose }) {
         }
 
         // Buscar estatísticas (null = todos os pedidos, ou ID específico)
-        console.log('[ComandaVisualizacao] Buscando estatísticas completas para garcomId:', garcomId || 'TODOS', 'período:', periodo);
-        const stats = await getEstatisticasCompletas(garcomId, mesSelecionado); // passa mês selecionado
-        console.log('[ComandaVisualizacao] Estatísticas recebidas:', JSON.stringify(stats, null, 2));
+        const stats = await getEstatisticasCompletas(garcomId, mesSelecionado);
 
         // Se não há garçons mas há pedidos, mostrar como "Geral"
         if (!garcomId && (!todosGarcons || todosGarcons.length === 0)) {
@@ -115,9 +118,9 @@ export default function ComandaVisualizacaoAdminScreen({ onClose }) {
       }
     } catch (error) {
       console.error('[ComandaVisualizacao] Erro ao carregar estatísticas:', error);
-      Alert.alert('Erro', 'Não foi possível carregar as estatísticas.');
+      if (!silent) Alert.alert('Erro', 'Não foi possível carregar as estatísticas.');
     } finally {
-      setLoadingEstatisticas(false);
+      if (!silent) setLoadingEstatisticas(false);
     }
   };
 
@@ -163,18 +166,7 @@ export default function ComandaVisualizacaoAdminScreen({ onClose }) {
 
         <View style={styles.headerRight}>
           <View style={styles.headerButtons}>
-            <TouchableOpacity
-              onPress={() => setModalMesVisible(true)}
-              style={styles.filterBtn}
-            >
-              <Text style={styles.filterText}>📅</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={carregarEstatisticas}
-              style={styles.refreshBtn}
-            >
-              <Text style={styles.refreshText}>🔄</Text>
-            </TouchableOpacity>
+
           </View>
         </View>
       </View>
