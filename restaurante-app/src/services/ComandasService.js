@@ -117,6 +117,13 @@ class ComandasService {
         throw new Error('Comanda não encontrada');
       }
       const data = snap.data();
+
+      // 🔒 PROTEÇÃO: Não fechar comanda cancelada
+      if (data.status === 'cancelada') {
+        console.error(`❌ Comanda ${comandaNumber} está CANCELADA e não pode ser fechada`);
+        throw new Error('Não é possível fechar uma comanda cancelada');
+      }
+
       const saldo = (data.totalConsumido || 0) - (data.totalPago || 0);
 
       console.log('[ComandasService] 💰 Total consumido:', data.totalConsumido || 0);
