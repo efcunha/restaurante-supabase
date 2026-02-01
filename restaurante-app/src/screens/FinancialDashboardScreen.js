@@ -31,7 +31,10 @@ export default function FinancialDashboardScreen({ onClose }) {
         faturamento: 0,
         pedidos: 0,
         ticketMedio: 0,
-        topProduto: '-'
+        topProduto: '-',
+        totalCancelado: 0,
+        qtdCanceladas: 0,
+        taxaCancelamento: 0
     });
 
     const [chartData, setChartData] = useState({
@@ -62,44 +65,103 @@ export default function FinancialDashboardScreen({ onClose }) {
             const dateStr = startDate.toISOString().split('T')[0];
             const endDateStr = hoje.toISOString().split('T')[0];
 
-            // 1. Buscar Comandas Fechadas no Período
-            // Obs: Para querys complexas (range filter + order), o Firestore exige index.
-            // Vamos buscar pelo dateKey e filtrar na memória se necessário, ou usar startAt.
-            // Assumindo que dateKey é string 'YYYY-MM-DD'
-
+            // 1. Buscar Comandas Fechadas no Período (VENDAS)
             const q = query(
                 getCompanyCollection(user.companyId, 'comandas'),
-                where('status', '==', 'fechada'),
-                where('dateKey', '>=', dateStr),
-                where('dateKey', '<=', endDateStr)
+                where('status', '==', 'fechada')
             );
 
             const snapshot = await getDocs(q);
 
             let totalFaturamento = 0;
-            let totalPedidos = snapshot.size;
-            const vendasPorDia = {}; // { '20-01': 100, '21-01': 200 }
+            let totalPedidos = 0;
+            let totalCancelado = 0;
+            let qtdCanceladas = 0;
+            const vendasPorDia = {}; // { 'YYYY-MM-DD': valor }
             const formasPagamento = { dinheiro: 0, pix: 0, debito: 0, credito: 0, outros: 0 };
             const produtosCount = {};
 
-            // Processar dados no cliente para evitar criar 50 índices compostos
-            for (const doc of snapshot.docs) {
-                const data = doc.data();
-                const valor = parseFloat(data.totalConsumido || 0);
-                totalFaturamento += valor;
-
-                // Agrupar por dia (dd/mm)
-                const diaMes = data.dateKey ? data.dateKey.split('-').slice(1).reverse().join('/') : 'N/A';
-                vendasPorDia[diaMes] = (vendasPorDia[diaMes] || 0) + valor;
-
-                // Formas de pagamento (se disponível no objeto 'pagamentos' ou 'formas')
-                // Assumindo estrutura simplificada ou que teríamos que buscar sub-coleção 'pagamentos'. 
-                // Se não tivermos detalhe fácil na comanda, buscamos da coleção 'caixas' ou 'pagamentos'.
-                // SIMPLIFICAÇÃO: Se a comanda guardou resumo de pagamento, usamos. Se não, ideal é buscar de 'pagamentos'.
+            // Inicializar TODOS os dias do período com 0
+            const startDate = new Date(dateStr);
+            const endDate = new Date(endDateStr);
+            const currentDate = new Date(startDate);
+            
+            while (currentDate <= endDate) {
+                const dKey = currentDate.toISOString().split('T')[0];
+                vendasPorDia[dKey] = 0;
+                currentDate.setDate(currentDate.getDate() + 1);
             }
 
-            // Buscar Pagamentos Separadamente para ter breakdown correto
-            // (a comanda tem o total, mas o split de pagamento fica na coleção pagamentos)
+            // Processar comandas fechadas (VENDAS)
+            for (const doc of snapshot.docs) {
+                const data = doc.data();
+                let comandaDateKey = data.dateKey;
+
+                // Se não tiver dateKey, tentar extrair da data de fechamento
+                if (!comandaDateKey && data.fechadaAt) {
+                    if (data.fechadaAt.toDate) {
+                        comandaDateKey = data.fechadaAt.toDate().toISOString().split('T')[0];
+                    } else if (data.fechadaAt.seconds) {
+                        const date = new Date(data.fechadaAt.seconds * 1000);
+                        comandaDateKey = date.toISOString().split('T')[0];
+                    }
+                }
+
+                // Filtrar pelo período
+                if (comandaDateKey && comandaDateKey >= dateStr && comandaDateKey <= endDateStr) {
+                    const valor = parseFloat(data.totalConsumido || 0);
+                    
+                    // ✅ VALIDAÇÃO: Ignorar valores absurdos (maior que R$ 10.000)
+                    if (valor > 0 && valor < 10000) {
+                        totalFaturamento += valor;
+                        totalPedidos++;
+                        vendasPorDia[comandaDateKey] = (vendasPorDia[comandaDateKey] || 0) + valor;
+                    } else if (valor >= 10000) {
+                        console.warn(`⚠️ Valor suspeito ignorado: R$ ${valor.toFixed(2)} na comanda ${data.comandaNumber}`);
+                    }
+
+                    // Contar produtos
+                    if (data.itens && Array.isArray(data.itens)) {
+                        data.itens.forEach(itemStr => {
+                            const nome = itemStr.replace(/^\d+x\s*/, '').trim();
+                            produtosCount[nome] = (produtosCount[nome] || 0) + 1;
+                        });
+                    }
+                }
+            }
+
+            // 2. Buscar Comandas CANCELADAS no Período
+            const qCanceladas = query(
+                getCompanyCollection(user.companyId, 'comandas'),
+                where('status', '==', 'cancelada')
+            );
+
+            const snapshotCanceladas = await getDocs(qCanceladas);
+
+            snapshotCanceladas.docs.forEach(doc => {
+                const comanda = doc.data();
+                let comandaDateKey = comanda.dateKey;
+
+                // Extrair dateKey se não existir
+                if (!comandaDateKey && comanda.canceladaEm) {
+                    if (typeof comanda.canceladaEm === 'string') {
+                        comandaDateKey = comanda.canceladaEm.split('T')[0];
+                    } else if (comanda.canceladaEm.seconds) {
+                        const date = new Date(comanda.canceladaEm.seconds * 1000);
+                        comandaDateKey = date.toISOString().split('T')[0];
+                    }
+                }
+
+                if (comandaDateKey && comandaDateKey >= dateStr && comandaDateKey <= endDateStr) {
+                    const valor = parseFloat(comanda.totalConsumido || 0);
+                    if (valor > 0 && valor < 10000) {
+                        totalCancelado += valor;
+                        qtdCanceladas++;
+                    }
+                }
+            });
+
+            // 3. Buscar Pagamentos Separadamente para ter breakdown correto
             const qPagamentos = query(
                 getCompanyCollection(user.companyId, 'pagamentos'),
                 where('dateKey', '>=', dateStr),
@@ -110,29 +172,24 @@ export default function FinancialDashboardScreen({ onClose }) {
             snapPagamentos.forEach(doc => {
                 const p = doc.data();
                 const valor = parseFloat(p.valor || 0);
-                // Fix: Field name is 'forma', fallback to 'metodo' just in case
-                let metodo = p.forma || p.metodo || 'outros';
-                metodo = metodo.toLowerCase();
+                
+                // ✅ VALIDAÇÃO: Ignorar valores absurdos
+                if (valor > 0 && valor < 10000) {
+                    let metodo = p.forma || p.metodo || 'outros';
+                    metodo = metodo.toLowerCase();
 
-                if (metodo.includes('dinheiro')) formasPagamento.dinheiro += valor;
-                else if (metodo.includes('pix')) formasPagamento.pix += valor;
-                else if (metodo.includes('débito') || metodo.includes('debito')) formasPagamento.debito += valor;
-                else if (metodo.includes('crédito') || metodo.includes('credito')) formasPagamento.credito += valor;
-                else formasPagamento.outros += valor;
-            });
-
-            // Buscar Top Produto (requer ler 'itens' das comandas ou 'pedidos')
-            // Se a comanda tem array 'itens', usamos.
-            snapshot.docs.forEach(doc => {
-                const data = doc.data();
-                if (data.itens && Array.isArray(data.itens)) {
-                    data.itens.forEach(itemStr => {
-                        // Ex: "2x Coca Cola" -> remover qtd
-                        const nome = itemStr.replace(/^\d+x\s*/, '').trim();
-                        produtosCount[nome] = (produtosCount[nome] || 0) + 1;
-                    });
+                    if (metodo.includes('dinheiro')) formasPagamento.dinheiro += valor;
+                    else if (metodo.includes('pix')) formasPagamento.pix += valor;
+                    else if (metodo.includes('débito') || metodo.includes('debito')) formasPagamento.debito += valor;
+                    else if (metodo.includes('crédito') || metodo.includes('credito')) formasPagamento.credito += valor;
+                    else formasPagamento.outros += valor;
+                } else if (valor >= 10000) {
+                    console.warn(`⚠️ Pagamento com valor suspeito ignorado: R$ ${valor.toFixed(2)}`);
                 }
             });
+
+            // 4. Buscar Top Produto (requer ler 'itens' das comandas)
+            // Já processado acima durante iteração das comandas fechadas
 
             // Encontrar Top Produto
             let topProdName = '-';
@@ -144,30 +201,41 @@ export default function FinancialDashboardScreen({ onClose }) {
                 }
             });
 
-            // Preparar dados para Gráfico de Barras (Dias)
-            const sortedKeys = Object.keys(vendasPorDia).sort(); // Ordenar datas seria ideal
-            const labels = sortedKeys;
-            const dataValues = sortedKeys.map(k => vendasPorDia[k]);
+            // 5. Preparar dados para Gráfico de Barras (Dias)
+            // Ordenar dias e formatar labels
+            const sortedKeys = Object.keys(vendasPorDia).sort();
+            const labels = sortedKeys.map(d => {
+                const parts = d.split('-');
+                return parts[2] + '/' + parts[1]; // DD/MM
+            });
+            const dataValues = sortedKeys.map(k => Math.round(vendasPorDia[k] * 100) / 100); // Arredondar para 2 casas decimais
 
             const chartDataDay = {
                 labels: labels.length > 0 ? labels : ['Sem dados'],
                 datasets: [{ data: dataValues.length > 0 ? dataValues : [0] }]
             };
 
-            // Preparar dados para Gráfico de Pizza (Pagamentos)
+            // 6. Preparar dados para Gráfico de Pizza (Pagamentos)
             const pieData = [
-                { name: 'Dinheiro', population: formasPagamento.dinheiro, color: '#4CAF50', legendFontColor: '#7F7F7F', legendFontSize: 12 },
-                { name: 'Pix', population: formasPagamento.pix, color: '#2196F3', legendFontColor: '#7F7F7F', legendFontSize: 12 },
-                { name: 'Débito', population: formasPagamento.debito, color: '#FF9800', legendFontColor: '#7F7F7F', legendFontSize: 12 },
-                { name: 'Crédito', population: formasPagamento.credito, color: '#9C27B0', legendFontColor: '#7F7F7F', legendFontSize: 12 },
-                { name: 'Outros', population: formasPagamento.outros, color: '#607D8B', legendFontColor: '#7F7F7F', legendFontSize: 12 },
+                { name: 'Dinheiro', population: Math.round(formasPagamento.dinheiro * 100) / 100, color: '#4CAF50', legendFontColor: '#7F7F7F', legendFontSize: 12 },
+                { name: 'Pix', population: Math.round(formasPagamento.pix * 100) / 100, color: '#2196F3', legendFontColor: '#7F7F7F', legendFontSize: 12 },
+                { name: 'Débito', population: Math.round(formasPagamento.debito * 100) / 100, color: '#FF9800', legendFontColor: '#7F7F7F', legendFontSize: 12 },
+                { name: 'Crédito', population: Math.round(formasPagamento.credito * 100) / 100, color: '#9C27B0', legendFontColor: '#7F7F7F', legendFontSize: 12 },
+                { name: 'Outros', population: Math.round(formasPagamento.outros * 100) / 100, color: '#607D8B', legendFontColor: '#7F7F7F', legendFontSize: 12 },
             ].filter(item => item.population > 0);
+
+            // 7. Calcular taxa de cancelamento
+            const totalOperacoes = totalPedidos + qtdCanceladas;
+            const taxaCancelamento = totalOperacoes > 0 ? (qtdCanceladas / totalOperacoes) * 100 : 0;
 
             setKpis({
                 faturamento: totalFaturamento,
                 pedidos: totalPedidos,
                 ticketMedio: totalPedidos > 0 ? totalFaturamento / totalPedidos : 0,
-                topProduto: topProdName !== '-' ? `${topProdName} (${maxCount})` : '-'
+                topProduto: topProdName !== '-' ? `${topProdName} (${maxCount})` : '-',
+                totalCancelado,
+                qtdCanceladas,
+                taxaCancelamento
             });
 
             setChartData({
@@ -251,6 +319,34 @@ export default function FinancialDashboardScreen({ onClose }) {
                         />
                     </View>
 
+                    {/* Section: Cancelamentos (só mostra se houver cancelamentos) */}
+                    {kpis.qtdCanceladas > 0 && (
+                        <View style={styles.cancelamentoSection}>
+                            <Text style={styles.cancelamentoTitle}>📊 Estatísticas de Cancelamento</Text>
+                            <View style={styles.kpiRow}>
+                                <View style={[styles.kpiCard, styles.cancelamentoCard]}>
+                                    <View style={[styles.kpiIconContainer, { backgroundColor: '#E65100' }]}>
+                                        <Ionicons name="close-circle-outline" size={24} color="#FFF" />
+                                    </View>
+                                    <View style={styles.kpiContent}>
+                                        <Text style={styles.kpiLabel}>Total Cancelado</Text>
+                                        <Text style={[styles.kpiValue, { color: '#E65100' }]}>{formatCurrency(kpis.totalCancelado)}</Text>
+                                    </View>
+                                </View>
+                                <View style={[styles.kpiCard, styles.cancelamentoCard]}>
+                                    <View style={[styles.kpiIconContainer, { backgroundColor: '#E65100' }]}>
+                                        <Ionicons name="alert-circle-outline" size={24} color="#FFF" />
+                                    </View>
+                                    <View style={styles.kpiContent}>
+                                        <Text style={styles.kpiLabel}>Comandas Canceladas</Text>
+                                        <Text style={[styles.kpiValue, { color: '#E65100' }]}>{kpis.qtdCanceladas}</Text>
+                                        <Text style={styles.kpiSubtext}>Taxa: {kpis.taxaCancelamento.toFixed(1)}%</Text>
+                                    </View>
+                                </View>
+                            </View>
+                        </View>
+                    )}
+
                     {/* Section: Charts */}
                     <Text style={styles.sectionTitle}>Evolução de Vendas</Text>
                     <SalesByDayChart data={chartData.salesByDay} />
@@ -309,5 +405,9 @@ const styles = StyleSheet.create({
     kpiSubtext: { fontSize: 10, color: '#999' },
 
     sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#8B2F2F', marginTop: 20, marginBottom: 10, marginLeft: 5 },
-    emptyChart: { padding: 30, alignItems: 'center', backgroundColor: '#FFF', borderRadius: 10 }
+    emptyChart: { padding: 30, alignItems: 'center', backgroundColor: '#FFF', borderRadius: 10 },
+
+    cancelamentoSection: { marginTop: 15, marginBottom: 10 },
+    cancelamentoTitle: { fontSize: 16, fontWeight: 'bold', color: '#E65100', marginBottom: 10, marginLeft: 5 },
+    cancelamentoCard: { backgroundColor: '#FFF3E0' }
 });
