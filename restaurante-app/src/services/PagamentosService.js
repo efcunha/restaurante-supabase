@@ -1,7 +1,7 @@
 /**
  * PagamentosService - OTIMIZADO - Registra pagamentos por comanda e integra com CaixaService.
  */
-import { addDoc, serverTimestamp, runTransaction, getDoc, query, where, getDocs } from 'firebase/firestore';
+import { addDoc, serverTimestamp, runTransaction, getDoc, query, where, getDocs, updateDoc } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
 import { getCompanyCollection, getCompanyDoc } from '../utils/firestoreUtils';
 import CaixaService from './CaixaService';
@@ -21,7 +21,8 @@ class PagamentosService {
       throw new Error('Lista de pedidos inválida');
     }
 
-    const { query, where, getDocs, updateDoc } = await import('firebase/firestore');
+    // Dynamic import removed
+
 
     const updatePromises = [];
 
