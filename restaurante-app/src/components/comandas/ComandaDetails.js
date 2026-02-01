@@ -21,22 +21,54 @@ export default function ComandaDetails({ comanda, onClose, onPay, onPrint, onCan
                 let items = p.items || p.itens || [];
                 if (!Array.isArray(items)) items = [];
 
-                items.forEach(itemText => {
-                    const itemCalc = calcularPrecoItem(itemText);
-                    const nomeCompleto = itemCalc.nomeCompleto;
+                // 🔒 USAR O PREÇO DO BANCO (totalPrice) ao invés de recalcular
+                const pedidoTotal = Number(p.totalPrice) || 0;
+                
+                // Se o pedido tem preço total, distribuir entre os itens
+                if (pedidoTotal > 0) {
+                    const numItens = items.length || 1;
+                    const precoMedioPorItem = pedidoTotal / numItens;
 
-                    if (!map[nomeCompleto]) {
-                        map[nomeCompleto] = {
-                            nome: nomeCompleto,
-                            quantidade: 0,
-                            subtotal: 0,
-                            precoUnit: itemCalc.precoUnitario
-                        };
-                    }
+                    items.forEach(itemText => {
+                        const itemCalc = calcularPrecoItem(itemText);
+                        const nomeCompleto = itemCalc.nomeCompleto;
+                        const quantidade = itemCalc.quantidade;
 
-                    map[nomeCompleto].quantidade += itemCalc.quantidade;
-                    map[nomeCompleto].subtotal = fixDecimal(map[nomeCompleto].subtotal + itemCalc.subtotal);
-                });
+                        // Usar preço médio do pedido para cada item
+                        const precoUnit = precoMedioPorItem / quantidade;
+                        const subtotal = precoMedioPorItem;
+
+                        if (!map[nomeCompleto]) {
+                            map[nomeCompleto] = {
+                                nome: nomeCompleto,
+                                quantidade: 0,
+                                subtotal: 0,
+                                precoUnit: precoUnit
+                            };
+                        }
+
+                        map[nomeCompleto].quantidade += quantidade;
+                        map[nomeCompleto].subtotal = fixDecimal(map[nomeCompleto].subtotal + subtotal);
+                    });
+                } else {
+                    // Fallback: tentar calcular usando o cardápio estático
+                    items.forEach(itemText => {
+                        const itemCalc = calcularPrecoItem(itemText);
+                        const nomeCompleto = itemCalc.nomeCompleto;
+
+                        if (!map[nomeCompleto]) {
+                            map[nomeCompleto] = {
+                                nome: nomeCompleto,
+                                quantidade: 0,
+                                subtotal: 0,
+                                precoUnit: itemCalc.precoUnitario
+                            };
+                        }
+
+                        map[nomeCompleto].quantidade += itemCalc.quantidade;
+                        map[nomeCompleto].subtotal = fixDecimal(map[nomeCompleto].subtotal + itemCalc.subtotal);
+                    });
+                }
             });
             return Object.values(map).sort((a, b) => a.nome.localeCompare(b.nome));
         } catch (e) {
@@ -106,15 +138,21 @@ export default function ComandaDetails({ comanda, onClose, onPay, onPrint, onCan
 
                     <View style={styles.divider} />
 
-                    {resumoItens.map((item, idx) => (
-                        <View key={idx} style={styles.itemRow}>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.itemName}>{item.nome}</Text>
-                                <Text style={styles.itemQty}>{item.quantidade}x R$ {item.precoUnit.toFixed(2)}</Text>
+                    {resumoItens.length > 0 ? (
+                        resumoItens.map((item, idx) => (
+                            <View key={idx} style={styles.itemRow}>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.itemName}>{item.nome}</Text>
+                                    <Text style={styles.itemQty}>{item.quantidade}x R$ {item.precoUnit.toFixed(2)}</Text>
+                                </View>
+                                <Text style={styles.itemTotal}>R$ {item.subtotal.toFixed(2)}</Text>
                             </View>
-                            <Text style={styles.itemTotal}>R$ {item.subtotal.toFixed(2)}</Text>
-                        </View>
-                    ))}
+                        ))
+                    ) : (
+                        <Text style={[styles.label, { textAlign: 'center', fontStyle: 'italic', color: colors.textLight }]}>
+                            ⚠️ Pedido sem itens ou preços não disponíveis
+                        </Text>
+                    )}
 
                     <View style={styles.divider} />
 

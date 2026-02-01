@@ -51,9 +51,6 @@ export default function CaixaAberturaScreen({ onSuccess }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Abertura de Caixa</Text>
-      </View>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
         <Text style={styles.label}>Valor inicial (R$)</Text>
         <TextInput
@@ -81,16 +78,6 @@ export default function CaixaAberturaScreen({ onSuccess }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F1E8' },
-  header: {
-    backgroundColor: '#8B2F2F',
-    paddingTop: 50,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-    elevation: 8,
-  },
-  headerTitle: { color: '#fff', fontSize: 24, fontWeight: '600' },
   label: { color: '#8B2F2F', fontWeight: '600', marginBottom: 8, fontSize: 16 },
   input: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#E0D8C8', borderRadius: 12, padding: 14, marginBottom: 16, fontSize: 18 },
   btn: { backgroundColor: '#E5B84A', padding: 16, borderRadius: 12, alignItems: 'center' },

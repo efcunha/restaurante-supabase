@@ -260,8 +260,13 @@ export function useComandaManagement() {
             let totalPagoReal = 0;
             if (comanda.pedidos) {
                 comanda.pedidos.forEach(pedido => {
+                    // TRUST DB PRICE FIRST
+                    // Se o pedido já tem totalPrice salvo no banco (>0), usamos ele.
+                    // Recalcular no frontend (que usa cardapio static) é perigoso e causa erros de display.
+                    const dbPrice = Number(pedido.totalPrice) || 0;
                     const totalPedidoRecalculado = calcularTotalPedido(pedido);
-                    const valor = totalPedidoRecalculado > 0 ? totalPedidoRecalculado : (Number(pedido.totalPrice) || 0);
+
+                    const valor = dbPrice > 0 ? dbPrice : totalPedidoRecalculado;
                     totalConsumidoReal += valor;
                     if (pedido.isPago === true || pedido.isPago === 'true' || pedido.isPago === 1) {
                         totalPagoReal += valor;

@@ -38,32 +38,54 @@ const calculateTotalFromFirestore = async (companyId, items, priceMap = null) =>
       const qtyMatch = item.match(/^(\d+)x?\s*/);
       const quantity = qtyMatch ? parseInt(qtyMatch[1], 10) : 1;
 
-      // Remover quantidade e tempero
-      let itemName = item.replace(/^\d+x?\s*/, '').replace(/\s*\(.*\)$/, '').trim();
+      // Remover quantidade para obter nome completo
+      let itemFull = item.replace(/^\d+x?\s*/, '').trim();
+      // Remover tempero para obter nome base (compatibilidade)
+      let itemName = itemFull.replace(/\s*\(.*\)$/, '').trim();
 
-      // Verificar tamanho (300ml ou 180ml)
+      // Verificar tamanho (300ml ou 180ml) - hardcoded legacy logic
       let price = 0;
-      if (itemName.includes('300ml')) {
+
+      const itemFullLower = itemFull.toLowerCase();
+      const itemBaseLower = itemName.toLowerCase();
+
+      if (itemFullLower.includes('300ml')) {
         price = 15.00;
-      } else if (itemName.includes('180ml')) {
+      } else if (itemFullLower.includes('180ml')) {
         price = 10.00;
       } else {
-        // Buscar preço no mapa
-        const itemLower = itemName.toLowerCase();
-        // Tentar match exato ou parcial se necessário (mas o mapa geralmente tem chaves exatas se vindo do Firestore)
-        price = cardapioMap[itemLower] || 0;
-
-        // Fallback para pesquisa caso não ache exato (para lidar com variações se o map for simples)
-        if (price === 0 && !priceMap) {
-          // Se veio do Firestore, já construímos lowercase.
-          // Se veio do priceMap externo, ele deve estar preparado.
+        // 1. Tentar match exato (com detalhes)
+        if (cardapioMap[itemFullLower] !== undefined) {
+          price = cardapioMap[itemFullLower];
+        }
+        // 2. Tentar match pelo nome base
+        else if (cardapioMap[itemBaseLower] !== undefined) {
+          price = cardapioMap[itemBaseLower];
+        }
+        // 3. Se não encontrou, logar para debug
+        else {
+          console.warn(`⚠️ [calculateTotal] Preço não encontrado para: "${item}"`);
+          console.warn(`   - itemFull: "${itemFull}"`);
+          console.warn(`   - itemName: "${itemName}"`);
+          console.warn(`   - Chaves disponíveis no priceMap:`, Object.keys(cardapioMap).slice(0, 10));
         }
       }
 
-      total += quantity * price;
+      // Validar que price e quantity são números válidos
+      const validPrice = typeof price === 'number' && !isNaN(price) ? price : 0;
+      const validQuantity = typeof quantity === 'number' && !isNaN(quantity) ? quantity : 1;
+      
+      const itemTotal = validQuantity * validPrice;
+      console.log(`   💰 ${quantity}x ${itemName} = R$ ${validPrice.toFixed(2)} x ${validQuantity} = R$ ${itemTotal.toFixed(2)}`);
+      
+      total += itemTotal;
     });
 
-    return total;
+    // Validar que o total final não é NaN
+    const finalTotal = typeof total === 'number' && !isNaN(total) ? total : 0;
+    console.log(`   📊 TOTAL FINAL: R$ ${finalTotal.toFixed(2)}`);
+    
+    return finalTotal;
   } catch (error) {
     console.error('❌ Erro ao calcular total do Firestore:', error);
     return 0;
@@ -263,10 +285,18 @@ export const OrderProvider = ({ children }) => {
 
         // Calcular total buscando preços do Firestore (ou cache)
         console.log('🔵 [OrderContext] Calculando total do pedido...');
-        const calculatedTotal = await calculateTotalFromFirestore(user.companyId, items, priceMap);
-        console.log('🔵 [OrderContext] Total calculado:', calculatedTotal);
+        let calculatedTotal = await calculateTotalFromFirestore(user.companyId, items, priceMap);
+        console.log('🔵 [OrderContext] Total calculado (secure):', calculatedTotal);
 
-        console.log('🔵 [OrderContext] Criando order object...');
+        // ⚠️ FALLBACK DE SEGURANÇA: Se o cálculo seguro retornou 0 mas o frontend mandou um valor (> 0),
+        // assumimos que o cálculo seguro falhou (ex: erro de string match em item complexo) e usamos o valor do frontend.
+        // Isso previne que o pedido seja salvo como R$ 0.00.
+        if (calculatedTotal === 0 && totalPrice > 0) {
+          console.warn(`⚠️ [OrderContext] Cálculo seguro retornou 0. Usando valor do frontend: ${totalPrice}`);
+          calculatedTotal = totalPrice;
+        }
+
+        console.log('🔵 [OrderContext] Criando order object com Total:', calculatedTotal);
         // ✅ Passar MESA e CATEGORYMAP para createOrder
         const order = OrderService.createOrder(orderId, clientName, items, observations, comandaNumber, createdBy, createdByName, calculatedTotal, false, mesa, categoryMap);
         const valorPedido = order.totalPrice || 0;

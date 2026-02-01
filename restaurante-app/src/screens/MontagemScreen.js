@@ -42,8 +42,19 @@ export default function MontagemScreen() {
     return () => unsubscribe();
   }, [user]);
 
-  // Busca pedidos com status 'montagem' para montagem
-  const ordersRaw = allOrders.filter(order => order.status === 'montagem');
+  // ✅ FILTRO SEGURO: Excluir pedidos de comandas canceladas usando comandaStatus do pedido
+  const ordersRaw = allOrders.filter(order => {
+    // Filtrar apenas pedidos em montagem
+    if (order.status !== 'montagem') return false;
+    
+    // ✅ PROTEÇÃO: Se o pedido tem comandaStatus='cancelada', não mostrar
+    if (order.comandaStatus === 'cancelada') {
+      console.log('[Montagem] 🚫 Pedido filtrado (comanda cancelada):', order.id);
+      return false;
+    }
+    
+    return true;
+  });
 
   // Agrupar por comandaNumber para unificar pedidos da mesma comanda
   const comandasMap = new Map();
