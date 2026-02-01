@@ -11,7 +11,9 @@
     "web": "expo start --web",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "test": "node --experimental-modules __tests__/OrderFirestoreService.test.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
     "postinstall": "patch-package",
     "deploy:indexes": "npx firebase deploy --only firestore:indexes --project restaurante-dabf3"
   },
@@ -60,9 +62,16 @@
     "@eslint/js": "^9.39.2",
     "@react-native-community/cli": "latest",
     "@react-native/metro-config": "latest",
+    "@testing-library/jest-native": "^5.4.3",
+    "@testing-library/react-native": "^13.3.3",
+    "@types/jest": "^30.0.0",
     "eslint": "^9.39.2",
     "eslint-plugin-react": "^7.37.5",
     "globals": "^17.0.0",
-    "patch-package": "^8.0.1"
+    "jest": "^30.2.0",
+    "jest-expo": "^54.0.17",
+    "patch-package": "^8.0.1",
+    "pixelmatch": "^7.1.0",
+    "react-test-renderer": "^19.1.0"
   }
 }
