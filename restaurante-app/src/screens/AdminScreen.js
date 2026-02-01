@@ -23,7 +23,6 @@ import EditarEmpresaScreen from './EditarEmpresaScreen';
 import FinancialConfigScreen from './FinancialConfigScreen';
 import FinancialDashboardScreen from './FinancialDashboardScreen';
 import { confirmLogout } from '../utils/appUtils';
-import AdminToolsModal from '../components/AdminToolsModal';
 
 export default function AdminScreen() {
   const { user, logout } = useAuth();
@@ -49,7 +48,6 @@ export default function AdminScreen() {
   const [showPrinterConfig, setShowPrinterConfig] = useState(false);
   const [showEditarEmpresa, setShowEditarEmpresa] = useState(false);
   const [showFinancialConfig, setShowFinancialConfig] = useState(false);
-  const [showAdminTools, setShowAdminTools] = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);
   const [loadingLimpar, setLoadingLimpar] = useState(false);
 
@@ -1226,7 +1224,6 @@ export default function AdminScreen() {
     { name: 'Gerenciar Cardápio', icon: '🍴', action: () => setShowGerenciarCardapio(true) },
     { name: 'Configurar Impressora', icon: '🖨️', action: () => setShowPrinterConfig(true) },
     { name: 'Dados da Empresa', icon: '🏢', action: () => setShowEditarEmpresa(true) },
-    { name: 'Ferramentas de Admin', icon: '🛠️', action: () => setShowAdminTools(true) },
   ];
 
   return (
@@ -1649,13 +1646,6 @@ export default function AdminScreen() {
       >
         <FinancialDashboardScreen onClose={() => setShowDashboard(false)} />
       </Modal>
-
-      {/* Admin Tools Modal */}
-      <AdminToolsModal
-        visible={showAdminTools}
-        onClose={() => setShowAdminTools(false)}
-        companyId={user?.companyId}
-      />
 
       <StatusBar style="light" />
     </View>
