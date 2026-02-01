@@ -23,6 +23,7 @@ import EditarEmpresaScreen from './EditarEmpresaScreen';
 import FinancialConfigScreen from './FinancialConfigScreen';
 import FinancialDashboardScreen from './FinancialDashboardScreen';
 import { confirmLogout } from '../utils/appUtils';
+import AdminToolsModal from '../components/AdminToolsModal';
 
 export default function AdminScreen() {
   const { user, logout } = useAuth();
@@ -48,6 +49,7 @@ export default function AdminScreen() {
   const [showPrinterConfig, setShowPrinterConfig] = useState(false);
   const [showEditarEmpresa, setShowEditarEmpresa] = useState(false);
   const [showFinancialConfig, setShowFinancialConfig] = useState(false);
+  const [showAdminTools, setShowAdminTools] = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);
   const [loadingLimpar, setLoadingLimpar] = useState(false);
 
@@ -64,7 +66,9 @@ export default function AdminScreen() {
   const [vendasStats, setVendasStats] = useState({
     totalVendido: 0,
     totalPedidos: 0,
-    ticketMedio: 0
+    ticketMedio: 0,
+    totalCancelado: 0,      // ✅ NOVO
+    qtdCanceladas: 0        // ✅ NOVO
   });
   const [chartData, setChartData] = useState({
     salesByDay: null,
@@ -486,6 +490,7 @@ export default function AdminScreen() {
             totalConsumido: info.totalConsumido,
             totalPago: info.totalPago,
             saldoAberto: Math.max(0, info.totalConsumido - info.totalPago),
+            // 🔒 PROTEÇÃO: Não sobrescrever status 'cancelada'
             status: info.totalPago >= info.totalConsumido ? 'fechada' : 'aberta',
             recebidoPor,
             criadoPorNome: info.criadoPorNome,
@@ -503,6 +508,12 @@ export default function AdminScreen() {
             // Atualizar comanda existente
             const docRef = doc(db, 'comandas', snap.docs[0].id);
             const existing = snap.docs[0].data();
+
+            // 🔒 PROTEÇÃO: Não sobrescrever status 'cancelada'
+            if (existing.status === 'cancelada') {
+              // Comanda cancelada - não atualizar status
+              delete comandaData.status;
+            }
 
             // Só atualizar se recebidoPor estiver vazio
             if (!existing.recebidoPor || existing.recebidoPor.length === 0) {
@@ -772,6 +783,8 @@ export default function AdminScreen() {
 
       let totalVendido = 0;
       let totalPedidos = 0;
+      let totalCancelado = 0; // ✅ NOVO: Total de comandas canceladas
+      let qtdCanceladas = 0;   // ✅ NOVO: Quantidade de comandas canceladas
 
       // Filtrar comandas do período e somar valores
       comandasSnapshot.docs.forEach(doc => {
@@ -791,6 +804,7 @@ export default function AdminScreen() {
         // console.log(`  💰 Comanda ${comanda.numeroComanda || comanda.comandaNumber}: R$ ${(comanda.totalConsumido || 0).toFixed(2)}, data: ${comandaDateKey || 'sem data'}`);
 
         if (comandaDateKey && comandaDateKey >= dateKeyInicio && comandaDateKey <= dateKeyFim) {
+          // ✅ CORREÇÃO: Não incluir comandas canceladas nas vendas
           totalVendido += comanda.totalConsumido || 0;
           totalPedidos++;
           // console.log(`    ✅ Incluída no período (${periodoSelecionado})`);
@@ -798,19 +812,57 @@ export default function AdminScreen() {
           // console.log(`    ❌ Fora do período ou sem data`);
         }
       });
+      
+      // ✅ NOVO: Buscar comandas CANCELADAS separadamente
+      const comandasCanceladasSnapshot = await getDocs(
+        query(
+          getCompanyCollection(user.companyId, 'comandas'),
+          where('status', '==', 'cancelada')
+        )
+      );
+      
+      comandasCanceladasSnapshot.docs.forEach(doc => {
+        const comanda = doc.data();
+        let comandaDateKey = comanda.dateKey;
+        
+        // Extrair dateKey se não existir
+        if (!comandaDateKey && comanda.canceladaEm) {
+          if (typeof comanda.canceladaEm === 'string') {
+            comandaDateKey = comanda.canceladaEm.split('T')[0];
+          } else if (comanda.canceladaEm.seconds) {
+            const date = new Date(comanda.canceladaEm.seconds * 1000);
+            comandaDateKey = date.toISOString().split('T')[0];
+          }
+        }
+        
+        if (comandaDateKey && comandaDateKey >= dateKeyInicio && comandaDateKey <= dateKeyFim) {
+          totalCancelado += comanda.totalConsumido || 0;
+          qtdCanceladas++;
+        }
+      });
 
       // console.log(`💰 === RESULTADO ===`);
       // console.log(`💰 Total vendido: R$ ${totalVendido.toFixed(2)}`);
       // console.log(`💰 Total de comandas: ${totalPedidos}`);
+      // console.log(`💰 Total cancelado: R$ ${totalCancelado.toFixed(2)}`);
+      // console.log(`💰 Comandas canceladas: ${qtdCanceladas}`);
 
       // --- AGREGAÇÃO PARA GRÁFICOS ---
 
       // 1. Vendas por Dia (Bar Chart)
-      // Inicializar mapa de dias do intervalo
+      // Inicializar mapa de dias do intervalo com TODOS os dias
       const dailyMap = {};
-
-      // Se for período curto (hoje/semana), mostrar dias individuais
-      // Se for mês, também
+      
+      // Gerar todos os dias do período
+      const startDate = new Date(dateKeyInicio);
+      const endDate = new Date(dateKeyFim);
+      const currentDate = new Date(startDate);
+      
+      while (currentDate <= endDate) {
+        const dKey = currentDate.toISOString().split('T')[0];
+        dailyMap[dKey] = 0; // Inicializar com 0
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
 
       // Iterar comandas para preencher dias
       comandasSnapshot.docs.forEach(doc => {
@@ -822,16 +874,25 @@ export default function AdminScreen() {
         }
 
         if (dKey && dKey >= dateKeyInicio && dKey <= dateKeyFim) {
-          dailyMap[dKey] = (dailyMap[dKey] || 0) + (comanda.totalConsumido || 0);
+          const valor = parseFloat(comanda.totalConsumido) || 0;
+          // ✅ VALIDAÇÃO: Ignorar valores absurdos (maior que R$ 10.000)
+          if (valor > 0 && valor < 10000) {
+            dailyMap[dKey] = (dailyMap[dKey] || 0) + valor;
+          } else if (valor >= 10000) {
+            console.warn(`⚠️ Valor suspeito ignorado: R$ ${valor.toFixed(2)} na comanda ${comanda.comandaNumber}`);
+          }
         }
       });
 
       // Ordenar e formatar para o gráfico
       const sortedDays = Object.keys(dailyMap).sort();
       const salesByDay = {
-        labels: sortedDays.map(d => d.split('-')[2] + '/' + d.split('-')[1]), // DD/MM
+        labels: sortedDays.map(d => {
+          const parts = d.split('-');
+          return parts[2] + '/' + parts[1]; // DD/MM
+        }),
         datasets: [{
-          data: sortedDays.map(d => dailyMap[d])
+          data: sortedDays.map(d => Math.round(dailyMap[d] * 100) / 100) // Arredondar para 2 casas decimais
         }]
       };
 
@@ -849,13 +910,20 @@ export default function AdminScreen() {
       pagamentosSnapshot.forEach(doc => {
         const p = doc.data();
         const forma = p.forma ? p.forma.toUpperCase() : 'OUTROS';
-        paymentMap[forma] = (paymentMap[forma] || 0) + (p.valor || 0);
+        const valor = parseFloat(p.valor) || 0;
+        
+        // ✅ VALIDAÇÃO: Ignorar valores absurdos (maior que R$ 10.000)
+        if (valor > 0 && valor < 10000) {
+          paymentMap[forma] = (paymentMap[forma] || 0) + valor;
+        } else if (valor >= 10000) {
+          console.warn(`⚠️ Pagamento com valor suspeito ignorado: R$ ${valor.toFixed(2)}`);
+        }
       });
 
       const paymentColors = [colors.primary, colors.secondary, colors.success, colors.warning, '#808080'];
       const salesByPayment = Object.keys(paymentMap).map((forma, index) => ({
         name: forma,
-        population: paymentMap[forma],
+        population: Math.round(paymentMap[forma] * 100) / 100, // Arredondar para 2 casas decimais
         color: paymentColors[index % paymentColors.length],
         legendFontColor: "#7F7F7F",
         legendFontSize: 12
@@ -869,7 +937,9 @@ export default function AdminScreen() {
       setVendasStats({
         totalVendido,
         totalPedidos,
-        ticketMedio
+        ticketMedio,
+        totalCancelado,    // ✅ NOVO
+        qtdCanceladas      // ✅ NOVO
       });
     } catch (error) {
       console.error('❌ Erro ao carregar estatísticas de vendas:', error);
@@ -1156,6 +1226,7 @@ export default function AdminScreen() {
     { name: 'Gerenciar Cardápio', icon: '🍴', action: () => setShowGerenciarCardapio(true) },
     { name: 'Configurar Impressora', icon: '🖨️', action: () => setShowPrinterConfig(true) },
     { name: 'Dados da Empresa', icon: '🏢', action: () => setShowEditarEmpresa(true) },
+    { name: 'Ferramentas de Admin', icon: '🛠️', action: () => setShowAdminTools(true) },
   ];
 
   return (
@@ -1277,6 +1348,30 @@ export default function AdminScreen() {
                 <Text style={styles.vendaStatLabel}>Ticket Médio</Text>
               </View>
             </View>
+            
+            {/* ✅ NOVO: Estatísticas de Cancelamento */}
+            {vendasStats.qtdCanceladas > 0 && (
+              <View style={[styles.vendasRowStats, { marginTop: 15, backgroundColor: '#FFF3E0', borderRadius: 8, padding: 10 }]}>
+                <View style={styles.vendaStatItem}>
+                  <Text style={[styles.vendaStatValue, { color: '#E65100' }]}>
+                    {loadingVendas ? '...' : formatarMoeda(vendasStats.totalCancelado)}
+                  </Text>
+                  <Text style={[styles.vendaStatLabel, { color: '#E65100' }]}>Total Cancelado</Text>
+                </View>
+                <View style={styles.vendaStatItem}>
+                  <Text style={[styles.vendaStatValue, { color: '#E65100' }]}>
+                    {loadingVendas ? '...' : vendasStats.qtdCanceladas}
+                  </Text>
+                  <Text style={[styles.vendaStatLabel, { color: '#E65100' }]}>Comandas Canceladas</Text>
+                </View>
+                <View style={styles.vendaStatItem}>
+                  <Text style={[styles.vendaStatValue, { color: '#E65100', fontSize: 16 }]}>
+                    {loadingVendas ? '...' : `${((vendasStats.qtdCanceladas / (vendasStats.totalPedidos + vendasStats.qtdCanceladas)) * 100).toFixed(1)}%`}
+                  </Text>
+                  <Text style={[styles.vendaStatLabel, { color: '#E65100' }]}>Taxa Cancelamento</Text>
+                </View>
+              </View>
+            )}
           </View>
         </View>
 
@@ -1425,6 +1520,7 @@ export default function AdminScreen() {
             <TouchableOpacity onPress={() => setShowCaixaAbertura(false)}>
               <Text style={styles.closeButton}>← Voltar</Text>
             </TouchableOpacity>
+            <Text style={styles.modalHeaderTitle}>Abertura de Caixa</Text>
           </View>
           {showCaixaAbertura && <CaixaAberturaScreen onSuccess={() => setShowCaixaAbertura(false)} />}
         </View>
@@ -1443,6 +1539,7 @@ export default function AdminScreen() {
             <TouchableOpacity onPress={() => setShowCaixaOperacoes(false)}>
               <Text style={styles.closeButton}>← Voltar</Text>
             </TouchableOpacity>
+            <Text style={styles.modalHeaderTitle}>Sangria / Reforço</Text>
           </View>
           {showCaixaOperacoes && <CaixaOperacoesScreen />}
         </View>
@@ -1461,6 +1558,7 @@ export default function AdminScreen() {
             <TouchableOpacity onPress={() => setShowCaixaFechamento(false)}>
               <Text style={styles.closeButton}>← Voltar</Text>
             </TouchableOpacity>
+            <Text style={styles.modalHeaderTitle}>Fechamento de Caixa</Text>
           </View>
           {showCaixaFechamento && <CaixaFechamentoScreen />}
         </View>
@@ -1551,6 +1649,13 @@ export default function AdminScreen() {
       >
         <FinancialDashboardScreen onClose={() => setShowDashboard(false)} />
       </Modal>
+
+      {/* Admin Tools Modal */}
+      <AdminToolsModal
+        visible={showAdminTools}
+        onClose={() => setShowAdminTools(false)}
+        companyId={user?.companyId}
+      />
 
       <StatusBar style="light" />
     </View>
@@ -1787,6 +1892,8 @@ const styles = StyleSheet.create({
     paddingTop: 50,
     paddingBottom: 15,
     paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
     elevation: 8,
@@ -1795,6 +1902,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4,
     zIndex: 10,
+  },
+  modalHeaderTitle: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: 'bold',
+    flex: 1,
+    textAlign: 'center',
+    marginRight: 60, // Balance the back button width
   },
   closeButton: {
     color: '#FFFFFF',

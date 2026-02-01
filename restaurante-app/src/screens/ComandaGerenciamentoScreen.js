@@ -110,6 +110,12 @@ export default function ComandaGerenciamentoScreen() {
 
   const handlePayment = async (comanda, forma, valor) => {
     try {
+      // 🔒 PROTEÇÃO: Não permitir pagamento em comanda cancelada
+      if (comanda.status === 'cancelada') {
+        Alert.alert('Operação Bloqueada', 'Esta comanda está CANCELADA e não pode receber pagamentos.');
+        return;
+      }
+
       const caixaAberto = await CaixaService.getCaixaAberto(user.companyId);
       if (!caixaAberto) {
         Alert.alert('Caixa Fechado', 'Abra o caixa antes de receber pagamentos.');
@@ -153,6 +159,28 @@ export default function ComandaGerenciamentoScreen() {
 
   const handleCancel = () => {
     if (!selectedComanda) return;
+
+    // 🔒 SEGURANÇA: Verificar se existe algum pedido ou item ENTREGUE
+    const temPedidoEntregue = selectedComanda.pedidos?.some(pedido => {
+      // 1. Verificar status principal do pedido
+      if (pedido.status === 'delivered' || pedido.status === 'entregue') return true;
+
+      // 2. Verificar itens individuais (se houver itemsWithStatus)
+      if (pedido.itemsWithStatus && Array.isArray(pedido.itemsWithStatus)) {
+        return pedido.itemsWithStatus.some(item => item.delivered === true || item.status === 'entregue');
+      }
+
+      return false;
+    });
+
+    if (temPedidoEntregue) {
+      Alert.alert(
+        'Operação Bloqueada',
+        'Esta comanda possui pedidos já ENTREGUES e não pode ser cancelada.\n\nPara cancelar, você precisa primeiro estornar os pedidos entregues.'
+      );
+      return;
+    }
+
     setShowCancelModal(true);
   };
 
@@ -163,7 +191,15 @@ export default function ComandaGerenciamentoScreen() {
     }
 
     try {
+      console.log('[ComandaGerenciamento] 🚫 Cancelando comanda:', {
+        docId: `comanda-${getTodayKey()}-${selectedComanda.comandaNumber}`,
+        comandaNumber: selectedComanda.comandaNumber,
+        reason
+      });
+
       const docId = `comanda-${getTodayKey()}-${selectedComanda.comandaNumber}`;
+      
+      // 1. Atualizar status da comanda para 'cancelada'
       await updateDoc(getCompanyDoc(user.companyId, 'comandas', docId), {
         status: 'cancelada',
         canceladaPor: user?.id || 'admin',
@@ -171,11 +207,36 @@ export default function ComandaGerenciamentoScreen() {
         canceladaEm: new Date().toISOString(),
         motivoCancelamento: reason.trim()
       });
+
+      // 2. ✅ NOVO: Marcar todos os pedidos desta comanda com comandaStatus='cancelada'
+      if (selectedComanda.pedidos && selectedComanda.pedidos.length > 0) {
+        console.log('[ComandaGerenciamento] 📝 Marcando pedidos como cancelados...');
+        
+        const updatePromises = selectedComanda.pedidos.map(async (pedido) => {
+          try {
+            const pedidoRef = getCompanyDoc(user.companyId, 'pedidos', pedido.id);
+            await updateDoc(pedidoRef, {
+              comandaStatus: 'cancelada',
+              canceladoEm: new Date().toISOString(),
+              canceladoPor: user?.nome || 'Admin'
+            });
+            console.log('[ComandaGerenciamento] ✅ Pedido marcado:', pedido.id);
+          } catch (err) {
+            console.error('[ComandaGerenciamento] ❌ Erro ao marcar pedido:', pedido.id, err);
+          }
+        });
+
+        await Promise.all(updatePromises);
+        console.log('[ComandaGerenciamento] ✅ Todos os pedidos marcados como cancelados');
+      }
+
+      console.log('[ComandaGerenciamento] ✅ Comanda cancelada com sucesso!');
       showToast('Comanda cancelada', 'info');
       setSelectedComanda(null);
       setShowCancelModal(false);
       carregarComandas(true);
     } catch (e) {
+      console.error('[ComandaGerenciamento] ❌ Erro ao cancelar:', e);
       showToast(e.message, 'error');
     }
   };

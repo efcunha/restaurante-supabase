@@ -482,7 +482,17 @@ export default function NovoPedidoScreen() {
   const renderItem = ({ item, section }) => {
     if (section.type === 'pizzas-v2') {
       // Render Pizza Item Row with Espetinho-like Styling
-      const minPrice = item.prices ? Math.min(...Object.values(item.prices).filter(p => !isNaN(p))) : 0;
+      // FIX: Tratar preços com vírgula (comum no Brasil) e converter para float
+      const validPrices = item.prices ? Object.values(item.prices).map(p => {
+        if (typeof p === 'string') return Number(p.replace(',', '.'));
+        return Number(p);
+      }).filter(p => !isNaN(p) && p > 0) : [];
+      const minPrice = validPrices.length > 0 ? Math.min(...validPrices) : 0;
+
+      // Debug para identificar porque Calabresa aparece errado
+      if (item.name.toLowerCase().includes('calabresa')) {
+        console.log('🍕 [DEBUG] Calabresa Prices:', item.prices, 'Min:', minPrice);
+      }
       const ingredientsText = item.ingredients ? item.ingredients.join(', ') : item.description || '';
 
       // Cycle colors to look like the example (Orange, Green, Gray, Blue...)

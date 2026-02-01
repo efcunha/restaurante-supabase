@@ -327,11 +327,29 @@ export function useNovoPedido() {
         const prices = flavors.map(f => {
             // f é o objeto produto do cardápio array
             // ele deve ter .prices[sizeName]
-            return f.prices ? (f.prices[sizeName] || 0) : 0;
+            const priceValue = f.prices ? (f.prices[sizeName] || 0) : 0;
+            
+            // 🔒 CORREÇÃO: Converter string com vírgula para número
+            if (typeof priceValue === 'string') {
+                // Substituir vírgula por ponto e converter para número
+                return parseFloat(priceValue.replace(',', '.')) || 0;
+            }
+            return typeof priceValue === 'number' ? priceValue : 0;
         });
+
+        console.log('🍕 [addPizzaToOrder] Preços dos sabores:', prices);
 
         // Modo padrão: Maior valor
         finalPrice = Math.max(...prices);
+        
+        console.log('🍕 [addPizzaToOrder] Preço final calculado:', finalPrice);
+
+        // Validar que não é NaN
+        if (isNaN(finalPrice) || finalPrice <= 0) {
+            console.error('❌ [addPizzaToOrder] Preço inválido!', { sizeName, flavors, prices, finalPrice });
+            showToast('Erro ao calcular preço da pizza', 'error');
+            return;
+        }
 
         // TODO: Suportar 'AVERAGE' se configurado no futuro
 
@@ -381,6 +399,20 @@ export function useNovoPedido() {
                 }
             });
 
+            // ✅ CRÍTICO: Incluir preços customizados (Pizzas montadas) no priceMap
+            // Isso garante que o OrderContext encontre o preço exato para "Pizza Grande (Sabor...)"
+            console.log('🍕 [NovoPedido] Adicionando customPrices ao priceMap:', customPrices);
+            Object.entries(customPrices).forEach(([name, price]) => {
+                const lowerName = name.toLowerCase();
+                priceMap[lowerName] = price;
+                categoryMap[lowerName] = 'pizza';
+                console.log(`   ✅ Adicionado: "${lowerName}" = R$ ${price}`);
+            });
+            
+            console.log('📦 [NovoPedido] Items a serem enviados:', items);
+            console.log('💰 [NovoPedido] Total calculado:', total);
+            console.log('🗺️ [NovoPedido] PriceMap final (primeiras 20 chaves):', Object.keys(priceMap).slice(0, 20));
+
             const createdOrderId = await addOrder(
                 clientName.trim() || 'Cliente',
                 items,
@@ -394,6 +426,21 @@ export function useNovoPedido() {
                 priceMap, // ✅ Passar mapa de preços cached
                 categoryMap // ✅ Passar mapa de categorias
             );
+
+            // 🔒 VALIDAÇÃO: Alertar se o pedido foi criado com total zerado
+            if (parseFloat(total) === 0) {
+                console.error('⚠️ [NovoPedido] PEDIDO CRIADO COM TOTAL ZERADO!', {
+                    items,
+                    produtos,
+                    customPrices,
+                    priceMap
+                });
+                Alert.alert(
+                    'Atenção',
+                    'O pedido foi criado mas o valor total está R$ 0,00. Verifique se os preços dos produtos estão configurados corretamente no cardápio.',
+                    [{ text: 'OK' }]
+                );
+            }
 
             showToast(`Pedido criado! Comanda ${novoNumeroComanda}`, 'success');
 

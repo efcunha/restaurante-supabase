@@ -44,7 +44,7 @@ export const calcularPrecoItem = (itemText) => {
             // Buscar no cardápio
             const produto = [...CARDAPIO_STATIC.caldos, ...CARDAPIO_STATIC.comidas, ...CARDAPIO_STATIC.bebidas]
                 .find(p => nome.toLowerCase().includes(p.name.toLowerCase()));
-            precoUnit = produto?.price || 15.00;
+            precoUnit = produto?.price || 0;
         }
 
         return {
@@ -58,8 +58,8 @@ export const calcularPrecoItem = (itemText) => {
         return {
             quantidade: 1,
             nomeCompleto: itemText,
-            precoUnitario: 15.00,
-            subtotal: 15.00
+            precoUnitario: 0,
+            subtotal: 0
         };
     }
 };

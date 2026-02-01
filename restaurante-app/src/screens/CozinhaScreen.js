@@ -37,7 +37,19 @@ export default function CozinhaScreen() {
     return () => unsubscribe();
   }, [user]);
 
-  const ordersRaw = allOrders.filter(order => order.status === 'montagem');
+  // ✅ FILTRO SEGURO: Excluir pedidos de comandas canceladas usando comandaStatus do pedido
+  const ordersRaw = allOrders.filter(order => {
+    // Filtrar apenas pedidos em montagem
+    if (order.status !== 'montagem') return false;
+    
+    // ✅ PROTEÇÃO: Se o pedido tem comandaStatus='cancelada', não mostrar
+    if (order.comandaStatus === 'cancelada') {
+      console.log('[Cozinha] 🚫 Pedido filtrado (comanda cancelada):', order.id);
+      return false;
+    }
+    
+    return true;
+  });
 
 
   const seenItemIds = new Set();
