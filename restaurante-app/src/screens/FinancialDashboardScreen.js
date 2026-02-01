@@ -82,9 +82,9 @@ export default function FinancialDashboardScreen({ onClose }) {
             const produtosCount = {};
 
             // Inicializar TODOS os dias do período com 0
-            const startDate = new Date(dateStr);
+            const periodStartDate = new Date(dateStr);
             const endDate = new Date(endDateStr);
-            const currentDate = new Date(startDate);
+            const currentDate = new Date(periodStartDate);
             
             while (currentDate <= endDate) {
                 const dKey = currentDate.toISOString().split('T')[0];
