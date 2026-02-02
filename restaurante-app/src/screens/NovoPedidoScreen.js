@@ -562,7 +562,10 @@ export default function NovoPedidoScreen() {
         sections={sections}
         renderItem={renderItem}
         renderSectionHeader={renderSectionHeader}
-        keyExtractor={(item, index) => item.id || item.name + index}
+        keyExtractor={(item, index) => {
+          if (typeof item === 'string') return `${item}-${index}`;
+          return item.id ? String(item.id) : (item.name ? `${item.name}-${index}` : `item-${index}`);
+        }}
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={<HeaderComponent clientName={clientName} setClientName={setClientName} mesa={mesa} setMesa={setMesa} />}
         ListFooterComponent={<FooterComponent selectedItems={selectedItems} onRemoveItem={handleRemoveItemAnimated} />}
@@ -586,7 +589,11 @@ export default function NovoPedidoScreen() {
           disabled={isSubmitting}
         >
           <Text style={styles.submitBtnText}>
-            {isSubmitting ? 'Criando...' : 'Criar Pedido'}
+            {isSubmitting ? (
+              <ActivityIndicator size="small" color={colors.white} />
+            ) : (
+              <Text style={styles.submitBtnText}>Criar Pedido</Text>
+            )}
           </Text>
         </TouchableOpacity>
       </View>
@@ -713,9 +720,16 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 4,
-    textShadowColor: 'rgba(0,0,0,0.3)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
+    ...Platform.select({
+      web: {
+        textShadow: '1px 1px 2px rgba(0,0,0,0.3)',
+      },
+      default: {
+        textShadowColor: 'rgba(0,0,0,0.3)',
+        textShadowOffset: { width: 1, height: 1 },
+        textShadowRadius: 2,
+      },
+    }),
   },
   stackedPriceText: {
     color: colors.white,
