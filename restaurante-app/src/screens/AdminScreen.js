@@ -8,7 +8,7 @@ import { db } from '../config/firebaseConfig';
 import { getTodayKey, getDateKeyRange } from '../services/FirebaseOptimizations';
 import { getCompanyCollection } from '../utils/firestoreUtils';
 import BackgroundPattern from '../components/BackgroundPattern';
-import { SalesByDayChart, SalesByPaymentChart } from '../components/FinancialCharts';
+
 import { colors } from '../theme/colors';
 import FuncionariosScreen from './FuncionariosScreen';
 import CaixaAberturaScreen from './CaixaAberturaScreen';
@@ -72,10 +72,7 @@ export default function AdminScreen() {
     totalCancelado: 0,      // ✅ NOVO
     qtdCanceladas: 0        // ✅ NOVO
   });
-  const [chartData, setChartData] = useState({
-    salesByDay: null,
-    salesByPayment: null
-  });
+
   const [loadingVendas, setLoadingVendas] = useState(true);
 
   // Estados para alertas de estoque
@@ -849,91 +846,7 @@ export default function AdminScreen() {
       // console.log(`💰 Total cancelado: R$ ${totalCancelado.toFixed(2)}`);
       // console.log(`💰 Comandas canceladas: ${qtdCanceladas}`);
 
-      // --- AGREGAÇÃO PARA GRÁFICOS ---
 
-      // 1. Vendas por Dia (Bar Chart)
-      // Inicializar mapa de dias do intervalo com TODOS os dias
-      const dailyMap = {};
-
-      // Gerar todos os dias do período
-      const startDate = new Date(dateKeyInicio);
-      const endDate = new Date(dateKeyFim);
-      const currentDate = new Date(startDate);
-
-      while (currentDate <= endDate) {
-        const dKey = currentDate.toISOString().split('T')[0];
-        dailyMap[dKey] = 0; // Inicializar com 0
-        currentDate.setDate(currentDate.getDate() + 1);
-      }
-
-      // Iterar comandas para preencher dias
-      comandasSnapshot.docs.forEach(doc => {
-        const comanda = doc.data();
-        let dKey = comanda.dateKey;
-        if (!dKey && comanda.fechadaAt) {
-          const dt = comanda.fechadaAt.toDate ? comanda.fechadaAt.toDate() : new Date(comanda.fechadaAt.seconds * 1000);
-          dKey = dt.toISOString().split('T')[0];
-        }
-
-        if (dKey && dKey >= dateKeyInicio && dKey <= dateKeyFim) {
-          const valor = parseFloat(comanda.totalConsumido) || 0;
-          // ✅ VALIDAÇÃO: Ignorar valores absurdos (maior que R$ 10.000)
-          if (valor > 0 && valor < 10000) {
-            dailyMap[dKey] = (dailyMap[dKey] || 0) + valor;
-          } else if (valor >= 10000) {
-            console.warn(`⚠️ Valor suspeito ignorado: R$ ${valor.toFixed(2)} na comanda ${comanda.comandaNumber}`);
-          }
-        }
-      });
-
-      // Ordenar e formatar para o gráfico
-      const sortedDays = Object.keys(dailyMap).sort();
-      const salesByDay = {
-        labels: sortedDays.map(d => {
-          const parts = d.split('-');
-          return parts[2] + '/' + parts[1]; // DD/MM
-        }),
-        datasets: [{
-          data: sortedDays.map(d => Math.round(dailyMap[d] * 100) / 100) // Arredondar para 2 casas decimais
-        }]
-      };
-
-      // 2. Vendas por Pagamento (Pie Chart) - Buscar na coleção 'pagamentos'
-      // Precisamos buscar pagamentos do período
-      const pagamentosSnapshot = await getDocs(
-        query(
-          getCompanyCollection(user.companyId, 'pagamentos'), // ✅ CORRIGIDO: Buscar na subcoleção da empresa
-          where('dateKey', '>=', dateKeyInicio),
-          where('dateKey', '<=', dateKeyFim)
-        )
-      );
-
-      const paymentMap = {};
-      pagamentosSnapshot.forEach(doc => {
-        const p = doc.data();
-        const forma = p.forma ? p.forma.toUpperCase() : 'OUTROS';
-        const valor = parseFloat(p.valor) || 0;
-
-        // ✅ VALIDAÇÃO: Ignorar valores absurdos (maior que R$ 10.000)
-        if (valor > 0 && valor < 10000) {
-          paymentMap[forma] = (paymentMap[forma] || 0) + valor;
-        } else if (valor >= 10000) {
-          console.warn(`⚠️ Pagamento com valor suspeito ignorado: R$ ${valor.toFixed(2)}`);
-        }
-      });
-
-      const paymentColors = [colors.primary, colors.secondary, colors.success, colors.warning, '#808080'];
-      const salesByPayment = Object.keys(paymentMap).map((forma, index) => ({
-        name: forma,
-        population: Math.round(paymentMap[forma] * 100) / 100, // Arredondar para 2 casas decimais
-        color: paymentColors[index % paymentColors.length],
-        legendFontColor: "#7F7F7F",
-        legendFontSize: 12
-      }));
-
-      setChartData({ salesByDay, salesByPayment });
-
-      // -------------------------------
 
       const ticketMedio = totalPedidos > 0 ? totalVendido / totalPedidos : 0;
       setVendasStats({
@@ -1378,13 +1291,7 @@ export default function AdminScreen() {
 
         {/* Relatórios Section Title was nearby */}
 
-        {/* Dashboards Gráficos */}
-        {!loadingVendas && chartData.salesByDay && (
-          <View style={{ marginTop: 20 }}>
-            <SalesByDayChart data={chartData.salesByDay} />
-            <SalesByPaymentChart data={chartData.salesByPayment} />
-          </View>
-        )}
+
 
 
 
@@ -1436,12 +1343,7 @@ export default function AdminScreen() {
           </TouchableOpacity>
         ))}
 
-        <View style={[styles.section, { marginBottom: 30 }]}>
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Ionicons name="log-out-outline" size={24} color="#FF6B6B" />
-            <Text style={styles.logoutButtonText}>Sair</Text>
-          </TouchableOpacity>
-        </View>
+
       </ScrollView>
 
       {/* Modal de Funcionários */}
@@ -1679,21 +1581,7 @@ const styles = StyleSheet.create({
     color: '#2C2C2C',
     marginLeft: 15,
   },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 15,
-    backgroundColor: '#FFE5E5',
-    borderRadius: 12,
-    marginTop: 20,
-  },
-  logoutButtonText: {
-    color: '#FF6B6B',
-    fontSize: 16,
-    fontWeight: '700',
-    marginLeft: 10,
-  },
+
   container: {
     flex: 1,
     backgroundColor: '#F5F1E8',

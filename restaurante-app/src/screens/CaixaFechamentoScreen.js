@@ -1,11 +1,12 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, TouchableOpacity, TextInput, ScrollView, Modal, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, TextInput, ScrollView, Modal, ActivityIndicator, Alert } from 'react-native';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import CaixaService from '../services/CaixaService';
 import * as Print from 'expo-print';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
+import { getFriendlyErrorMessage } from '../utils/errorHandler';
 
 export default function CaixaFechamentoScreen() {
   const { user } = useAuth();
@@ -54,14 +55,47 @@ export default function CaixaFechamentoScreen() {
         return;
       }
 
-      setLoading(true);
-      const r = await CaixaService.fecharCaixa(
-        user.companyId,
-        user?.id,
-        user?.nome,
-        saldoReal,
-        selectedCaixa.data // Passando a data do caixa selecionado
+      // Calcular diferença antes de fechar
+      const diff = parseFloat(saldoReal) - (
+        (selectedCaixa.valorInicial || 0) +
+        (selectedCaixa.vendasTotal || 0) +
+        (selectedCaixa.reforcosTotal || 0) -
+        (selectedCaixa.sangriasTotal || 0)
       );
+
+      const confirmFechamento = async () => {
+        setLoading(true);
+        try {
+          const r = await CaixaService.fecharCaixa(
+            user.companyId,
+            user?.id,
+            user?.nome,
+            saldoReal,
+            selectedCaixa.data
+          );
+          setFechamentoResult({ ...r, caixaData: selectedCaixa });
+          setLoading(false);
+          setSelectedCaixa(null);
+          loadCaixas();
+        } catch (e) {
+          setLoading(false);
+          alert('❌ Erro: ' + getFriendlyErrorMessage(e));
+        }
+      };
+
+      if (Math.abs(diff) > 0.01) {
+        Alert.alert(
+          'Diferença no Caixa',
+          `O saldo informado tem uma diferença de R$ ${diff.toFixed(2)} em relação ao esperado.\n\nDeseja fechar mesmo assim?`,
+          [
+            { text: 'Corrigir Valor', style: 'cancel' },
+            { text: 'Fechar Com Diferença', onPress: confirmFechamento, style: 'destructive' }
+          ]
+        );
+        return;
+      }
+
+      await confirmFechamento();
 
       setFechamentoResult({ ...r, caixaData: selectedCaixa });
       setLoading(false);
@@ -157,11 +191,11 @@ export default function CaixaFechamentoScreen() {
       setLoading(false);
     } catch (e) {
       setLoading(false);
-      alert('Erro ao imprimir: ' + e.message);
+      alert('Erro ao imprimir: ' + getFriendlyErrorMessage(e));
     }
   };
 
-  if (loading && !fechamentoResult) {
+  if (loading && !selectedCaixa && caixasAbertos.length === 0) {
     return (
       <View style={styles.container}>
         <View style={styles.header}><Text style={styles.headerTitle}>Carregando...</Text></View>
@@ -271,8 +305,16 @@ export default function CaixaFechamentoScreen() {
               placeholder="Ex: 150.00"
             />
 
-            <TouchableOpacity style={styles.btn} onPress={fechar}>
-              <Text style={styles.btnText}>CONCLUIR FECHAMENTO</Text>
+            <TouchableOpacity
+              style={[styles.btn, loading && styles.btnDisabled]}
+              onPress={fechar}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#2C2C2C" />
+              ) : (
+                <Text style={styles.btnText}>CONCLUIR FECHAMENTO</Text>
+              )}
             </TouchableOpacity>
           </View>
         )}
@@ -322,6 +364,7 @@ const styles = StyleSheet.create({
   label: { color: '#8B2F2F', fontWeight: '600', marginBottom: 8, marginTop: 16 },
   input: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#E0D8C8', borderRadius: 12, padding: 14, marginBottom: 20 },
   btn: { backgroundColor: '#E5B84A', padding: 16, borderRadius: 12, alignItems: 'center' },
+  btnDisabled: { opacity: 0.6 },
   btnText: { color: '#2C2C2C', fontWeight: '700' },
   card: { backgroundColor: '#fff', borderRadius: 12, padding: 16, borderColor: '#F0EBE0', borderWidth: 1, marginBottom: 10 },
   highlightTitle: { fontSize: 18, fontWeight: 'bold', color: '#8B2F2F', marginBottom: 10, textAlign: 'center' },

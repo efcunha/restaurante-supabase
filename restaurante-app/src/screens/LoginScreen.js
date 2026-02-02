@@ -6,6 +6,7 @@ import { useToast } from '../context/ToastContext';
 import { Ionicons } from '@expo/vector-icons';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../config/firebaseConfig';
+import { getFriendlyErrorMessage } from '../utils/errorHandler';
 
 export default function LoginScreen({ navigation }) {
   const { login } = useAuth();
@@ -28,11 +29,16 @@ export default function LoginScreen({ navigation }) {
     }
 
     setLoading(true);
-    const success = await login(email.toLowerCase().trim(), senha);
-    setLoading(false);
-
-    if (!success) {
-      // Erro já mostrado no AuthContext
+    try {
+      const success = await login(email.toLowerCase().trim(), senha);
+      if (!success) {
+        // Se o login retorna false mas não lançou erro, pode ser um caso específico ou o erro já foi tratado no context.
+        // Mas se o context lançar erro, ele vem pro catch.
+      }
+    } catch (e) {
+      Alert.alert('Erro no Login', getFriendlyErrorMessage(e));
+    } finally {
+      setLoading(false);
     }
   };
 

@@ -305,17 +305,29 @@ export function useNovoPedido() {
     }, [produtos, calculateItemPrice]);
 
     const handleRemoveItem = useCallback((itemText) => {
-        // Remover prefixo de quantidade "1x ", "2x " para obter a chave original
-        const keyToRemove = itemText.replace(/^\d+x\s*/, '');
+        Alert.alert(
+            'Remover Item',
+            `Deseja remover "${itemText}" do pedido?`,
+            [
+                { text: 'Cancelar', style: 'cancel' },
+                {
+                    text: 'Remover',
+                    style: 'destructive',
+                    onPress: () => {
+                        // Remover prefixo de quantidade "1x ", "2x " para obter a chave original
+                        const keyToRemove = itemText.replace(/^\d+x\s*/, '');
 
-        setProdutos(prev => {
-            const newProdutos = { ...prev };
-            // Verifica se a chave existe antes de deletar para evitar renderizações desnecessárias
-            if (newProdutos[keyToRemove]) {
-                delete newProdutos[keyToRemove];
-            }
-            return newProdutos;
-        });
+                        setProdutos(prev => {
+                            const newProdutos = { ...prev };
+                            if (newProdutos[keyToRemove]) {
+                                delete newProdutos[keyToRemove];
+                            }
+                            return newProdutos;
+                        });
+                    }
+                }
+            ]
+        );
     }, []);
 
     const addPizzaToOrder = useCallback((sizeName, flavors) => {
@@ -328,7 +340,7 @@ export function useNovoPedido() {
             // f é o objeto produto do cardápio array
             // ele deve ter .prices[sizeName]
             const priceValue = f.prices ? (f.prices[sizeName] || 0) : 0;
-            
+
             // 🔒 CORREÇÃO: Converter string com vírgula para número
             if (typeof priceValue === 'string') {
                 // Substituir vírgula por ponto e converter para número
@@ -341,7 +353,7 @@ export function useNovoPedido() {
 
         // Modo padrão: Maior valor
         finalPrice = Math.max(...prices);
-        
+
         console.log('🍕 [addPizzaToOrder] Preço final calculado:', finalPrice);
 
         // Validar que não é NaN
@@ -408,7 +420,7 @@ export function useNovoPedido() {
                 categoryMap[lowerName] = 'pizza';
                 console.log(`   ✅ Adicionado: "${lowerName}" = R$ ${price}`);
             });
-            
+
             console.log('📦 [NovoPedido] Items a serem enviados:', items);
             console.log('💰 [NovoPedido] Total calculado:', total);
             console.log('🗺️ [NovoPedido] PriceMap final (primeiras 20 chaves):', Object.keys(priceMap).slice(0, 20));
