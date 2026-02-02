@@ -88,7 +88,27 @@ export default function CashFlowScreen({ caixa, onClose }) {
                 });
             }
 
-            // 3. Adicionar Evento de Abertura (Fictício para visualização)
+            // 3. Buscar Comandas CANCELADAS (Novo Requisito)
+            const qCanceladas = query(
+                getCompanyCollection(user.companyId, 'comandas'),
+                where('dateKey', '==', targetDateKey),
+                where('status', '==', 'cancelada')
+            );
+            const snapCanceladas = await getDocs(qCanceladas);
+            snapCanceladas.forEach(doc => {
+                const d = doc.data();
+                lista.push({
+                    id: doc.id,
+                    tipo: 'cancelamento',
+                    descricao: `Comanda Cancelada #${d.comandaNumber || d.numeroComanda}`,
+                    valor: d.totalConsumido || 0,
+                    timestamp: d.canceladaEm ? (new Date(d.canceladaEm).getTime()) : (d.createdAt ? new Date(d.createdAt).getTime() : 0),
+                    usuario: d.canceladaPorNome || 'Desconhecido',
+                    detalhe: d.motivoCancelamento || 'Sem motivo'
+                });
+            });
+
+            // 4. Adicionar Evento de Abertura (Fictício para visualização)
             if (caixa.valorInicial) {
                 lista.push({
                     id: 'abertura-auto',
@@ -118,6 +138,7 @@ export default function CashFlowScreen({ caixa, onClose }) {
             case 'reforco': return <Ionicons name="add-circle" size={24} color="#2196F3" />;
             case 'abertura': return <Ionicons name="flag" size={24} color="#FFC107" />;
             case 'sangria': return <Ionicons name="arrow-down-circle" size={24} color="#F44336" />;
+            case 'cancelamento': return <Ionicons name="trash" size={24} color="#9E9E9E" />;
             default: return <Ionicons name="ellipse" size={24} color="#999" />;
         }
     };

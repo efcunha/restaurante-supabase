@@ -97,10 +97,8 @@ export default function CaixaFechamentoScreen() {
 
       await confirmFechamento();
 
-      setFechamentoResult({ ...r, caixaData: selectedCaixa });
-      setLoading(false);
-      setSelectedCaixa(null);
-      loadCaixas(); // Recarrega lista
+      // Removido lógica redundante que causava erro de referência 'r is not defined'
+      // O confirmFechamento já atualiza o estado corretamente.
     } catch (e) {
       setLoading(false);
       alert('❌ Erro: ' + e.message);
@@ -114,6 +112,9 @@ export default function CaixaFechamentoScreen() {
 
     // Buscar comandas detalhadas
     const comandas = await CaixaService.getComandasFechadas(user.companyId, caixa.data);
+
+    // Buscar total cancelado (Informativo)
+    const totalCancelado = await CaixaService.getTotalCancelados(user.companyId, caixa.data);
 
     let htmlComandas = comandas.map(c => `
       <tr>
@@ -136,6 +137,7 @@ export default function CaixaFechamentoScreen() {
             th { background-color: #f2f2f2; }
             .total-row { font-weight: bold; background-color: #e8e8e8; }
             .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #666; }
+            .cancelado-row { color: #C0392B; font-style: italic; }
           </style>
         </head>
         <body>
@@ -154,6 +156,7 @@ export default function CaixaFechamentoScreen() {
             <tr><td>Total Vendas</td><td>R$ ${(caixa.vendasTotal || 0).toFixed(2)}</td></tr>
             <tr><td>Reforços</td><td>R$ ${(caixa.reforcosTotal || 0).toFixed(2)}</td></tr>
             <tr><td>Sangrias</td><td>- R$ ${(caixa.sangriasTotal || 0).toFixed(2)}</td></tr>
+            <tr class="cancelado-row"><td>Total Cancelado (Informativo)</td><td>R$ ${totalCancelado.toFixed(2)}</td></tr>
             <tr class="total-row"><td>Saldo Esperado</td><td>R$ ${(r.saldoEsperado).toFixed(2)}</td></tr>
             <tr class="total-row"><td>Saldo Real (Contado)</td><td>R$ ${(r.saldoReal).toFixed(2)}</td></tr>
             <tr class="total-row"><td>Diferença</td><td>R$ ${(r.diferenca).toFixed(2)}</td></tr>
