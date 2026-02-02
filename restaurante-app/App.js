@@ -10,7 +10,13 @@ LogBox.ignoreLogs([
   'Setting a timer',
   'AsyncStorage has been extracted',
   'Non-serializable values were found',
+  'Non-serializable values were found',
 ]);
+
+import { initSentry } from './src/config/sentryConfig';
+import * as Sentry from '@sentry/react-native';
+
+initSentry();
 
 import NovoPedidoScreen from './src/screens/NovoPedidoScreen';
 import MontagemScreen from './src/screens/MontagemScreen';
@@ -162,7 +168,7 @@ const styles = StyleSheet.create({
   },
 });
 
-export default function App() {
+export default Sentry.wrap(function App() {
   return (
     <AuthProvider>
       <ToastProvider>
@@ -170,4 +176,4 @@ export default function App() {
       </ToastProvider>
     </AuthProvider>
   );
-}
+});
