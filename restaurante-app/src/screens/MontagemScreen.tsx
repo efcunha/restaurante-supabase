@@ -77,13 +77,9 @@ export default function MontagemScreen() {
     // Na tela de Montagem, mostrar itens que ainda não estão prontos (independente do status do item)
     const itemsParaMontar = order.itemsWithStatus
       .filter((item: any) => {
-        // Filtragem dinâmica via OrderService
-        const isKitchenItem = item.category
-          ? OrderService.isKitchenCategory(item.category)
-          : OrderService.extractBebidas([item.name]).length === 0;
-
-        // Mostrar itens que não estão prontos e não são bebidas
-        return item.status !== 'pronto' && !item.checked && !seenItemIds.has(item.id) && isKitchenItem;
+        // Mostrar itens que não estão prontos (independente se é cozinha ou bebida)
+        // User solicitou que bebidas apareçam na Montagem
+        return item.status !== 'pronto' && !item.checked && !seenItemIds.has(item.id);
       })
       // ✅ CORREÇÃO: Guardar o orderId original em cada item para atualização correta
       .map((item: any) => ({

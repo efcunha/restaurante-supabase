@@ -5,7 +5,7 @@ import { fixDecimal } from '../../utils/orderCalculator';
 import { Comanda } from '../../types';
 
 // Declare módulo para avoid error se o arquivo não tiver tipos
-// @ts-ignore
+// @ts-expect-error
 import { calcularPrecoItem } from '../../utils/orderCalculator';
 
 interface ComandaDetailsProps {
@@ -38,6 +38,7 @@ export default function ComandaDetails({ comanda, onClose, onPay, onPrint, onCan
         const map: Record<string, ItemResumo> = {};
 
         try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             comanda.pedidos.forEach((p: any) => {
                 let items: string[] = p.items || p.itens || [];
                 if (!Array.isArray(items)) items = [];
@@ -297,15 +298,29 @@ export default function ComandaDetails({ comanda, onClose, onPay, onPrint, onCan
 
                         <Text style={styles.sectionTitle}>Pagamento Rápido</Text>
                         <View style={styles.paymentGrid}>
-                            {['Dinheiro', 'Pix', 'Debito', 'Credito'].map((method) => (
-                                <TouchableOpacity
-                                    key={method}
-                                    style={styles.payBtn}
-                                    onPress={() => handlePayment(method.toLowerCase())}
-                                >
-                                    <Text style={styles.payBtnText}>{method}</Text>
-                                </TouchableOpacity>
-                            ))}
+                            {['Dinheiro', 'Pix', 'Debito', 'Credito'].map((method) => {
+                                const getButtonStyle = (m: string) => {
+                                    switch (m) {
+                                        case 'Dinheiro': return { backgroundColor: colors.success, borderColor: colors.success }; // Verde
+                                        case 'Pix': return { backgroundColor: '#32BCAD', borderColor: '#32BCAD' }; // Verde/Azul Pix
+                                        case 'Debito': return { backgroundColor: '#2196F3', borderColor: '#2196F3' }; // Azul
+                                        case 'Credito': return { backgroundColor: '#3F51B5', borderColor: '#3F51B5' }; // Roxo/Indigo
+                                        default: return {};
+                                    }
+                                };
+                                
+                                const btnStyle = getButtonStyle(method);
+                                
+                                return (
+                                    <TouchableOpacity
+                                        key={method}
+                                        style={[styles.payBtn, btnStyle]}
+                                        onPress={() => handlePayment(method.toLowerCase())}
+                                    >
+                                        <Text style={[styles.payBtnText, { color: '#FFF' }]}>{method}</Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
                         </View>
 
                         {/* Cancelar */}
@@ -491,14 +506,13 @@ const styles = StyleSheet.create({
     },
     cancelBtn: {
         marginTop: 20,
+        backgroundColor: colors.danger,
         padding: 15,
         borderRadius: 8,
-        borderWidth: 1,
-        borderColor: colors.danger,
         alignItems: 'center',
     },
     cancelBtnText: {
-        color: colors.danger,
+        color: '#FFF',
         fontWeight: 'bold',
     },
 });

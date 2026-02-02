@@ -76,6 +76,7 @@
     "jest-expo": "^54.0.17",
     "patch-package": "^8.0.1",
     "pixelmatch": "^7.1.0",
-    "react-test-renderer": "^19.1.0"
+    "react-test-renderer": "^19.1.0",
+    "typescript-eslint": "^8.54.0"
   }
 }

@@ -460,7 +460,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
              cardapioCombinado.forEach(item => {
                 if (item.name) {
                     const cleanName = item.name.toLowerCase();
-                    // if (item.price) priceMap[cleanName] = item.price; // NÃO! Isso confunde se usarmos unitário x quantidade
+                    if (item.price) priceMap[cleanName] = item.price;
                     if (item.category) categoryMap[cleanName] = item.category;
                 }
             });
@@ -473,7 +473,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                 // Custom prices geralmente são unitários no state, mas se for 1x ok. 
                 // Se tiver 2x Pizza, o selectedItems loop acima já deve ter pego o total.
                 // Mas vamos garantir que o nome base esteja lá.
-                // priceMap[lowerName] = price; 
+                priceMap[lowerName] = price; 
                 categoryMap[lowerName] = 'pizza';
             });
 
