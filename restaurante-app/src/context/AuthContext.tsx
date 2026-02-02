@@ -3,7 +3,7 @@ import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, User as FirebaseUser, UserCredential } from 'firebase/auth';
 import { auth, db } from '../config/firebaseConfig';
-import { buscarFuncionarioPorUid } from '../services/funcionarios';
+import { buscarFuncionarioPorUid } from '../services/FuncionariosService';
 import { normalizeRole, hasPermission, Permissions } from '../auth/roles';
 import { getDoc, doc, DocumentData } from 'firebase/firestore';
 
@@ -87,7 +87,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (!mounted) return;
 
-      const { isIgnorandoMudancaAuth } = require('../services/funcionarios');
+      const { isIgnorandoMudancaAuth } = require('../services/FuncionariosService');
 
       if (isIgnorandoMudancaAuth()) {
         return;
