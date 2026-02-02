@@ -28,6 +28,7 @@ export interface Order {
   isPago: boolean;
   createdBy: string;
   createdByName: string;
+  priceMap?: Record<string, number>;
   [key: string]: any;
 }
 

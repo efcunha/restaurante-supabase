@@ -297,8 +297,8 @@ export const OrderProvider = ({ children }) => {
         }
 
         console.log('🔵 [OrderContext] Criando order object com Total:', calculatedTotal);
-        // ✅ Passar MESA e CATEGORYMAP para createOrder
-        const order = OrderService.createOrder(orderId, clientName, items, observations, comandaNumber, createdBy, createdByName, calculatedTotal, false, mesa, categoryMap);
+        // ✅ Passar MESA, CATEGORYMAP e PRICE MAP para createOrder
+        const order = OrderService.createOrder(orderId, clientName, items, observations, comandaNumber, createdBy, createdByName, calculatedTotal, false, mesa, categoryMap, priceMap);
         const valorPedido = order.totalPrice || 0;
         console.log('🔵 [OrderContext] Order criado:', { orderId, comandaNumber, valorPedido, itemsCount: items.length });
 
