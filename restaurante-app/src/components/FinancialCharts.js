@@ -19,11 +19,14 @@ try {
 const chartConfig = {
   backgroundGradientFrom: "#ffffff",
   backgroundGradientTo: "#ffffff",
-  color: (opacity = 1) => `rgba(139, 47, 47, ${opacity})`, // colors.primary
+  color: (opacity = 1) => `rgba(139, 47, 47, ${opacity})`,
   strokeWidth: 2,
-  barPercentage: 0.7,
+  barPercentage: 0.6,
   useShadowColorFromDataset: false,
   decimalPlaces: 0,
+  propsForLabels: {
+    fontSize: 10,
+  },
 };
 
 export const SalesByDayChart = ({ data }) => {
@@ -52,14 +55,17 @@ export const SalesByDayChart = ({ data }) => {
       <Text style={styles.chartTitle}>Vendas por Dia (R$)</Text>
       <BarChart
         data={data}
-        width={screenWidth - 100}
+        width={screenWidth - 60}
         height={220}
         yAxisLabel="R$ "
         chartConfig={chartConfig}
-        verticalLabelRotation={0}
+        verticalLabelRotation={30}
         showValuesOnTopOfBars={true}
         fromZero={true}
-        style={styles.chart}
+        style={{
+          ...styles.chart,
+          paddingRight: 30, // Hack para evitar corte do último label
+        }}
       />
     </View>
   );
