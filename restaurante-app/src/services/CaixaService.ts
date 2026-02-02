@@ -369,6 +369,27 @@ class CaixaService {
     }
   }
 
+  async getTotalCancelados(companyId: string, dateStr: string): Promise<number> {
+    if (!companyId || !dateStr) return 0;
+    try {
+        const q = query(
+            getCompanyCollection(companyId, 'comandas'),
+            where('dateKey', '==', dateStr),
+            where('status', '==', 'cancelada')
+        );
+        const snap = await getDocs(q);
+        let total = 0;
+        snap.forEach(doc => {
+            const data = doc.data();
+            total += (data.totalConsumido || 0);
+        });
+        return total;
+    } catch (e) {
+        console.error("Erro ao calcular total cancelados:", e);
+        return 0;
+    }
+  }
+
   /**
    * Limpa dados do dia ao fechar o caixa
    * 1. Move comandas FECHADAS (pagas) para histórico
