@@ -1435,20 +1435,6 @@ export default function AdminScreen() {
             <Text style={[styles.reportArrow, report.danger && styles.reportArrowDanger]}>›</Text>
           </TouchableOpacity>
         ))}
-        {/* --- DIAGNÓSTICO --- */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Diagnóstico</Text>
-          <TouchableOpacity
-            style={[styles.menuButton, { borderBottomWidth: 0 }]}
-            onPress={() => {
-              throw new Error('Test Crash: Sentry Integration Verification');
-            }}
-          >
-            <Ionicons name="bug-outline" size={24} color="#FF0000" />
-            <Text style={[styles.menuButtonText, { color: '#FF0000' }]}>Testar Crash (Sentry)</Text>
-            <Ionicons name="chevron-forward" size={20} color="#999" />
-          </TouchableOpacity>
-        </View>
 
         <View style={[styles.section, { marginBottom: 30 }]}>
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
