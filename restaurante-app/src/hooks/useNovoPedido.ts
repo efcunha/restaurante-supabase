@@ -437,11 +437,29 @@ export function useNovoPedido(): UseNovoPedidoReturn {
 
             // OTIMIZAÇÃO: Criar mapa de preços e categorias para evitar busca redundante no Firestore
             const priceMap: Record<string, number> = {};
-            const categoryMap: Record<string, string> = {}; // ✅ Novo mapa de categorias para filtragem correta
-            cardapioCombinado.forEach(item => {
+            const categoryMap: Record<string, string> = {}; 
+
+            // Populando com base nos itens SELECIONADOS (que já têm o preço total calculado corretamente)
+            selectedItems.forEach(item => {
+                // item.text é "2x Chopp 400 ML"
+                // item.price é o preço TOTAL (ex: 24.00)
+                priceMap[item.text] = item.price;
+
+                // Tentar obter categoria do cardápio combinado
+                const nomeBase = item.text.replace(/^\d+x\s*/, '').replace(/\s*\(.*\)$/, ''); // "Chopp 400 ML"
+                const produtoOriginal = cardapioCombinado.find(p => p.name === nomeBase || item.text.includes(p.name));
+                if (produtoOriginal && produtoOriginal.category) {
+                    categoryMap[item.text.toLowerCase()] = produtoOriginal.category;
+                    // Também mapear o nome limpo para garantir
+                    categoryMap[nomeBase.toLowerCase()] = produtoOriginal.category;
+                }
+            });
+
+            // Fallback: adicionar itens do cardápio base também (Unitários) para segurança
+             cardapioCombinado.forEach(item => {
                 if (item.name) {
                     const cleanName = item.name.toLowerCase();
-                    if (item.price) priceMap[cleanName] = item.price;
+                    // if (item.price) priceMap[cleanName] = item.price; // NÃO! Isso confunde se usarmos unitário x quantidade
                     if (item.category) categoryMap[cleanName] = item.category;
                 }
             });
@@ -451,9 +469,11 @@ export function useNovoPedido(): UseNovoPedidoReturn {
             console.log('🍕 [NovoPedido] Adicionando customPrices ao priceMap:', customPrices);
             Object.entries(customPrices).forEach(([name, price]) => {
                 const lowerName = name.toLowerCase();
-                priceMap[lowerName] = price;
+                // Custom prices geralmente são unitários no state, mas se for 1x ok. 
+                // Se tiver 2x Pizza, o selectedItems loop acima já deve ter pego o total.
+                // Mas vamos garantir que o nome base esteja lá.
+                // priceMap[lowerName] = price; 
                 categoryMap[lowerName] = 'pizza';
-                console.log(`   ✅ Adicionado: "${lowerName}" = R$ ${price}`);
             });
 
             console.log('📦 [NovoPedido] Items a serem enviados:', items);
