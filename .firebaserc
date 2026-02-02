@@ -1,1 +1,7 @@
-{}
+{
+  "projects": {
+    "default": "restaurante-dabf3"
+  },
+  "targets": {},
+  "etags": {}
+}
