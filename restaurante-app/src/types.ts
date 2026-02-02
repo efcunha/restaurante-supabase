@@ -92,3 +92,14 @@ export interface Product {
   inventoryItems?: Ingredient[];
   [key: string]: any;
 }
+
+export interface Cardapio {
+  caldos: Product[];
+  comidas: Product[];
+  bebidas: Product[];
+  porcoes: Product[];
+  outros: Product[];
+  espetinhosSimples: Product[];
+  espetinhosEspeciais: Product[];
+  pizzas: Product[];
+}

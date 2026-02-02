@@ -1,11 +1,13 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, SectionList, TouchableOpacity, TextInput, ActivityIndicator, LayoutAnimation, Platform, UIManager } from 'react-native';
+import { StyleSheet, Text, View, SectionList, TouchableOpacity, TextInput, ActivityIndicator, LayoutAnimation, Platform, UIManager, SectionListRenderItem } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import React, { memo, useCallback, useState } from 'react';
+import React, { memo, useCallback, useState, useMemo } from 'react';
 import BackgroundPattern from '../components/BackgroundPattern';
 import { useNovoPedido } from '../hooks/useNovoPedido';
 import { colors } from '../theme/colors';
+// @ts-ignore
 import PizzaBuilderModal from '../components/PizzaBuilderModal';
+import { Product, PizzaSize, PizzaConfig } from '../types';
 
 if (Platform.OS === 'android') {
   if (UIManager.setLayoutAnimationEnabledExperimental) {
@@ -13,23 +15,25 @@ if (Platform.OS === 'android') {
   }
 }
 
-const QuantityButton = memo(({ onPress, text }) => (
+interface QuantityButtonProps {
+  onPress: () => void;
+  text: string;
+}
+
+const QuantityButton = memo(({ onPress, text }: QuantityButtonProps) => (
   <TouchableOpacity style={styles.quantityBtn} onPress={onPress}>
     <Text style={styles.quantityBtnText}>{text}</Text>
   </TouchableOpacity>
 ));
 QuantityButton.displayName = 'QuantityButton';
 
-const QuantityControl = memo(({ value, onIncrement, onDecrement }) => (
-  <View style={styles.quantityControl}>
-    <QuantityButton onPress={onDecrement} text="−" />
-    <Text style={styles.quantityValue}>{value}</Text>
-    <QuantityButton onPress={onIncrement} text="+" />
-  </View>
-));
-QuantityControl.displayName = 'QuantityControl';
+interface SelectedItemProps {
+  item: string;
+  price: number;
+  onRemove: () => void;
+}
 
-const SelectedItem = memo(({ item, price, onRemove }) => (
+const SelectedItem = memo(({ item, price, onRemove }: SelectedItemProps) => (
   <View style={styles.selectedItem}>
     <View style={styles.selectedItemInfo}>
       <Text style={styles.selectedItemName}>{item}</Text>
@@ -42,23 +46,22 @@ const SelectedItem = memo(({ item, price, onRemove }) => (
 ));
 SelectedItem.displayName = 'SelectedItem';
 
-const ProdutoItem = memo(({ item }) => {
-  return (
-    <View style={styles.produtoContainer}>
-      <Text>{item.name}</Text>
-    </View>
-  );
-});
-ProdutoItem.displayName = 'ProdutoItem';
+interface CaldoRowProps {
+  caldoBase: string; // Base name derived from string[] in section data
+  cardapioCaldos: Product[];
+  produtos: Record<string, number>;
+  updateProduto: (name: string, delta: number) => void;
+  temperos: string[];
+}
 
 // Helper to render complex Caldo rows which are not just 1:1 with cardapio items
-const CaldoRow = memo(({ caldoBase, cardapioCaldos, produtos, updateProduto, temperos }) => {
+const CaldoRow = memo(({ caldoBase, cardapioCaldos, produtos, updateProduto, temperos }: CaldoRowProps) => {
   const item300 = cardapioCaldos.find(c => c.name.includes(caldoBase) && c.name.match(/300\s*ml/i));
   const item180 = cardapioCaldos.find(c => c.name.includes(caldoBase) && c.name.match(/180\s*ml/i));
 
   if (!item300 && !item180) return null;
 
-  const renderTemperos = (sizeLabel) => (
+  const renderTemperos = (sizeLabel: string) => (
     temperos.map((tempero, idx) => {
       const nome = `${caldoBase} ${sizeLabel} (${tempero})`;
       const qty = produtos[nome] || 0;
@@ -91,7 +94,7 @@ const CaldoRow = memo(({ caldoBase, cardapioCaldos, produtos, updateProduto, tem
       {/* 300ml Section */}
       {item300 && (
         <>
-          <Text style={styles.sizeTitle}>📏 300ml - R$ {item300.price.toFixed(2)}</Text>
+          <Text style={styles.sizeTitle}>📏 300ml - R$ {item300.price?.toFixed(2)}</Text>
           {renderTemperos('300ml')}
         </>
       )}
@@ -99,7 +102,7 @@ const CaldoRow = memo(({ caldoBase, cardapioCaldos, produtos, updateProduto, tem
       {/* 180ml Section */}
       {item180 && (
         <>
-          <Text style={styles.sizeTitle}>📏 180ml - R$ {item180.price.toFixed(2)}</Text>
+          <Text style={styles.sizeTitle}>📏 180ml - R$ {item180.price?.toFixed(2)}</Text>
           {renderTemperos('180ml')}
         </>
       )}
@@ -108,8 +111,16 @@ const CaldoRow = memo(({ caldoBase, cardapioCaldos, produtos, updateProduto, tem
 });
 CaldoRow.displayName = 'CaldoRow';
 
+interface StandardRowProps {
+  item: Product;
+  produtos: Record<string, number>;
+  updateProduto: (name: string, delta: number) => void;
+  type: string;
+  temperos: string[];
+}
+
 // Helper for other items (Comidas/Bebidas/Porcoes)
-const StandardRow = memo(({ item, produtos, updateProduto, type, temperos }) => {
+const StandardRow = memo(({ item, produtos, updateProduto, type, temperos }: StandardRowProps) => {
   const isComida = type === 'comidas';
 
 
@@ -119,7 +130,7 @@ const StandardRow = memo(({ item, produtos, updateProduto, type, temperos }) => 
         <View style={styles.produtoRow}>
           <View style={styles.produtoInfo}>
             <Text style={styles.produtoName}>{item.name}</Text>
-            <Text style={styles.produtoPrice}>R$ {item.price.toFixed(2)}</Text>
+            <Text style={styles.produtoPrice}>R$ {item.price?.toFixed(2)}</Text>
           </View>
         </View>
         {/* Comida Variations */}
@@ -156,7 +167,7 @@ const StandardRow = memo(({ item, produtos, updateProduto, type, temperos }) => 
       <Text style={styles.verticalName}>{item.name}</Text>
 
       <View style={styles.verticalControlsRow}>
-        <Text style={styles.verticalPrice}>R$ {item.price.toFixed(2)}</Text>
+        <Text style={styles.verticalPrice}>R$ {item.price?.toFixed(2)}</Text>
 
         <View style={styles.quantityControl}>
           <TouchableOpacity style={[styles.roundBtn, { backgroundColor: colors.danger }]} onPress={() => updateProduto(item.name, -1)}>
@@ -173,8 +184,16 @@ const StandardRow = memo(({ item, produtos, updateProduto, type, temperos }) => 
 });
 StandardRow.displayName = 'StandardRow';
 
+interface EspetinhoRowProps {
+  baseName: string;
+  cardapioEspetinhos: Product[];
+  produtos: Record<string, number>;
+  updateProduto: (name: string, delta: number) => void;
+  variacoes?: string[];
+}
+
 // Helper for Espetinhos (Simples/Especiais) with dynamic variations
-const EspetinhoRow = memo(({ baseName, cardapioEspetinhos, produtos, updateProduto, variacoes = [] }) => {
+const EspetinhoRow = memo(({ baseName, cardapioEspetinhos, produtos, updateProduto, variacoes = [] }: EspetinhoRowProps) => {
   // 1. Map available variations to actual products
   const itensVariaveis = variacoes.map(variacao => {
     // Try to find exact match "Nome Variação"
@@ -183,7 +202,7 @@ const EspetinhoRow = memo(({ baseName, cardapioEspetinhos, produtos, updateProdu
       label: variacao,
       produto: produto
     };
-  }).filter(item => item.produto); // Filter only existing products
+  }).filter((item): item is { label: string; produto: Product } => !!item.produto); // Filter only existing products
 
   if (itensVariaveis.length === 0) return null;
 
@@ -203,7 +222,7 @@ const EspetinhoRow = memo(({ baseName, cardapioEspetinhos, produtos, updateProdu
           <StackedVariationRow
             key={item.label}
             name={item.label}
-            price={item.produto.price}
+            price={item.produto.price || 0}
             qty={qty}
             color={color}
             onInc={() => updateProduto(item.produto.name, 1)}
@@ -217,7 +236,17 @@ const EspetinhoRow = memo(({ baseName, cardapioEspetinhos, produtos, updateProdu
 });
 EspetinhoRow.displayName = 'EspetinhoRow';
 
-const StackedVariationRow = ({ name, price, qty, color, onInc, onDec, last }) => (
+interface StackedVariationRowProps {
+  name: string;
+  price: number;
+  qty: number;
+  color: string;
+  onInc: () => void;
+  onDec: () => void;
+  last: boolean;
+}
+
+const StackedVariationRow = ({ name, price, qty, color, onInc, onDec, last }: StackedVariationRowProps) => (
   <View style={[styles.stackedRowContainer, last && { marginBottom: 12 }]}>
     {/* Left Side: Info Card (Name + Price) */}
     <TouchableOpacity
@@ -242,7 +271,17 @@ const StackedVariationRow = ({ name, price, qty, color, onInc, onDec, last }) =>
   </View>
 );
 
-const VariationRow = ({ label, qty, color, onInc, onDec, last, forceOneLine = false }) => (
+interface VariationRowProps {
+  label: string;
+  qty: number;
+  color: string;
+  onInc: () => void;
+  onDec: () => void;
+  last: boolean;
+  forceOneLine?: boolean;
+}
+
+const VariationRow = ({ label, qty, color, onInc, onDec, last, forceOneLine = false }: VariationRowProps) => (
   <View style={[styles.variationRow, last && { marginBottom: 12 }]}>
     <TouchableOpacity style={[styles.variationLabelBtn, { backgroundColor: color }]} onPress={onInc}>
       <Text
@@ -266,7 +305,14 @@ const VariationRow = ({ label, qty, color, onInc, onDec, last, forceOneLine = fa
   </View>
 );
 
-const HeaderComponent = memo(({ clientName, setClientName, mesa, setMesa }) => (
+interface HeaderComponentProps {
+  clientName: string;
+  setClientName: (name: string) => void;
+  mesa: string;
+  setMesa: (mesa: string) => void;
+}
+
+const HeaderComponent = memo(({ clientName, setClientName, mesa, setMesa }: HeaderComponentProps) => (
   <View style={styles.headerForm}>
     <View style={{ flexDirection: 'row', gap: 10 }}>
       {/* Campo Nome do Cliente */}
@@ -298,7 +344,12 @@ const HeaderComponent = memo(({ clientName, setClientName, mesa, setMesa }) => (
 ));
 HeaderComponent.displayName = 'HeaderComponent';
 
-const FooterComponent = memo(({ selectedItems, onRemoveItem }) => (
+interface FooterComponentProps {
+  selectedItems: { text: string; price: number }[];
+  onRemoveItem: (item: string) => void;
+}
+
+const FooterComponent = memo(({ selectedItems, onRemoveItem }: FooterComponentProps) => (
   <View style={styles.listFooter}>
     {selectedItems.map((item, index) => (
       <SelectedItem
@@ -313,10 +364,19 @@ const FooterComponent = memo(({ selectedItems, onRemoveItem }) => (
 ));
 FooterComponent.displayName = 'FooterComponent';
 
+// Union type for sections
+type SectionItem = Product | string;
+
+interface Section {
+  title: string;
+  data: SectionItem[];
+  type: string;
+  original?: Product[];
+}
 
 export default function NovoPedidoScreen() {
   const [showPizzaModal, setShowPizzaModal] = useState(false);
-  const [selectedPizza, setSelectedPizza] = useState(null);
+  const [selectedPizza, setSelectedPizza] = useState<Product | null>(null);
 
   const {
     user,
@@ -342,17 +402,17 @@ export default function NovoPedidoScreen() {
   } = useNovoPedido();
 
   // Prepare sections for SectionList (Must be before conditional return)
-  const sections = React.useMemo(() => {
-    const sectionsData = [];
+  const sections = React.useMemo<Section[]>(() => {
+    const sectionsData: Section[] = [];
 
     // Helper to check if item is active
-    const isActive = (item) => item.active !== false;
+    const isActive = (item: Product) => item.active !== false;
 
     // Section for Pizza Builder
     if (cardapio.pizzas && cardapio.pizzas.length > 0) {
       // Deduplicate pizzas by name (Case Insensitive) AND Filter Active
-      const uniquePizzas = [];
-      const seenNames = new Set();
+      const uniquePizzas: Product[] = [];
+      const seenNames = new Set<string>();
       cardapio.pizzas.forEach(p => {
         if (!isActive(p)) return;
         const normalizedName = p.name ? p.name.trim().toLowerCase() : '';
@@ -370,7 +430,7 @@ export default function NovoPedidoScreen() {
     }
 
     // Helper strict filter to avoid pizzas appearing in other categories
-    const isPizza = (name) => {
+    const isPizza = (name: string) => {
       // Safe check even if uniquePizzas is empty
       const pizzas = cardapio.pizzas || [];
       return pizzas.some(p => p.name.trim().toLowerCase() === name.trim().toLowerCase());
@@ -448,17 +508,17 @@ export default function NovoPedidoScreen() {
     }
 
     return sectionsData;
-  }, [cardapio]);
+  }, [cardapio, variacoesEspetinho]);
 
   // Wrappers for animation
-  const updateProdutoAnimated = useCallback((...args) => {
+  const updateProdutoAnimated = useCallback((itemName: string, delta: number) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    updateProduto(...args);
+    updateProduto(itemName, delta);
   }, [updateProduto]);
 
-  const handleRemoveItemAnimated = useCallback((...args) => {
+  const handleRemoveItemAnimated = useCallback((item: string) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.spring); // Spring for deletion feeling
-    handleRemoveItem(...args);
+    handleRemoveItem(item);
   }, [handleRemoveItem]);
 
   if (loadingCardapio) {
@@ -473,32 +533,31 @@ export default function NovoPedidoScreen() {
     );
   }
 
-
-
-  const renderSectionHeader = ({ section: { title } }) => (
+  const renderSectionHeader = ({ section: { title } }: { section: Section }) => (
     <Text style={styles.sectionTitle}>{title}</Text>
   );
 
-  const renderItem = ({ item, section }) => {
+  const renderItem: SectionListRenderItem<SectionItem, Section> = ({ item, section }) => {
     if (section.type === 'pizzas-v2') {
+      const pizzaItem = item as Product;
       // Render Pizza Item Row with Espetinho-like Styling
       // FIX: Tratar preços com vírgula (comum no Brasil) e converter para float
-      const validPrices = item.prices ? Object.values(item.prices).map(p => {
-        if (typeof p === 'string') return Number(p.replace(',', '.'));
+      const validPrices = pizzaItem.prices ? Object.values(pizzaItem.prices).map(p => {
+        if (typeof p === 'string') return Number((p as string).replace(',', '.'));
         return Number(p);
       }).filter(p => !isNaN(p) && p > 0) : [];
       const minPrice = validPrices.length > 0 ? Math.min(...validPrices) : 0;
 
       // Debug para identificar porque Calabresa aparece errado
-      if (item.name.toLowerCase().includes('calabresa')) {
-        console.log('🍕 [DEBUG] Calabresa Prices:', item.prices, 'Min:', minPrice);
+      if (pizzaItem.name.toLowerCase().includes('calabresa')) {
+        console.log('🍕 [DEBUG] Calabresa Prices:', pizzaItem.prices, 'Min:', minPrice);
       }
-      const ingredientsText = item.ingredients ? item.ingredients.join(', ') : item.description || '';
+      const ingredientsText = pizzaItem.ingredients ? pizzaItem.ingredients.join(', ') : pizzaItem.description || '';
 
       // Cycle colors to look like the example (Orange, Green, Gray, Blue...)
       const rowColors = [colors.warning, colors.success, colors.disabled, '#4a90e2', '#9013fe'];
       // FIX: Ensure hash is safe for strings
-      const hash = item.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      const hash = pizzaItem.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
       const colorIndex = hash % rowColors.length;
       const cardColor = rowColors[colorIndex] || colors.primary; // Fallback
 
@@ -506,11 +565,11 @@ export default function NovoPedidoScreen() {
         // ... (inside renderItem for pizzas-v2)
         <TouchableOpacity
           style={[styles.stackedInfoCard, { backgroundColor: cardColor, marginBottom: 12, elevation: 2 }]}
-          onPress={() => { setSelectedPizza(item); setShowPizzaModal(true); }}
+          onPress={() => { setSelectedPizza(pizzaItem); setShowPizzaModal(true); }}
           activeOpacity={0.8}
         >
           <View style={{ alignItems: 'center' }}>
-            <Text style={styles.stackedNameText}>{item.name}</Text>
+            <Text style={styles.stackedNameText}>{pizzaItem.name}</Text>
             {ingredientsText ? <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 13, textAlign: 'center', marginBottom: 4, fontStyle: 'italic' }}>{ingredientsText}</Text> : null}
             <Text style={styles.stackedPriceText}>A partir de R$ {minPrice.toFixed(2)}</Text>
           </View>
@@ -518,20 +577,20 @@ export default function NovoPedidoScreen() {
       );
     }
     if (section.type === 'caldos') {
-      return <CaldoRow caldoBase={item} cardapioCaldos={section.original} produtos={produtos} updateProduto={updateProdutoAnimated} temperos={temperosCaldos} />;
+      return <CaldoRow caldoBase={item as string} cardapioCaldos={section.original || []} produtos={produtos} updateProduto={updateProdutoAnimated} temperos={temperosCaldos} />;
     }
     if (section.type === 'espetinhos-simples' || section.type === 'espetinhos-especiais') {
       return (
         <EspetinhoRow
-          baseName={item}
-          cardapioEspetinhos={section.original}
+          baseName={item as string}
+          cardapioEspetinhos={section.original || []}
           produtos={produtos}
           updateProduto={updateProdutoAnimated}
           variacoes={variacoesEspetinho}
         />
       );
     }
-    return <StandardRow item={item} produtos={produtos} updateProduto={updateProdutoAnimated} type={section.type} temperos={temperosComidas} />;
+    return <StandardRow item={item as Product} produtos={produtos} updateProduto={updateProdutoAnimated} type={section.type} temperos={temperosComidas} />;
   };
 
   return (
@@ -564,6 +623,7 @@ export default function NovoPedidoScreen() {
         renderSectionHeader={renderSectionHeader}
         keyExtractor={(item, index) => {
           if (typeof item === 'string') return `${item}-${index}`;
+          // @ts-ignore
           return item.id ? String(item.id) : (item.name ? `${item.name}-${index}` : `item-${index}`);
         }}
         contentContainerStyle={styles.listContent}
@@ -672,6 +732,19 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 18, fontWeight: 'bold', color: colors.primary, marginTop: 20, marginBottom: 12 },
 
   // Card Styles
+  quantityBtn: {
+    backgroundColor: colors.primary,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  quantityBtnText: {
+    color: colors.white,
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
   caldoCard: { backgroundColor: colors.white, borderRadius: 12, padding: 12, marginBottom: 12, elevation: 1 },
   standardCard: { backgroundColor: colors.white, borderRadius: 12, padding: 12, marginBottom: 12, elevation: 1 },
   simpleCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, backgroundColor: colors.white, padding: 12, borderRadius: 8, elevation: 1 },
@@ -753,7 +826,7 @@ const styles = StyleSheet.create({
   listFooter: { marginTop: 20 },
   selectedItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.white, borderRadius: 8, padding: 12, marginBottom: 8 },
   selectedItemInfo: { flex: 1 },
-  selectedItemName: { fontSize: 16, color: colors.state }, // Typo in colors? No, colors.text maybe?
+  selectedItemName: { fontSize: 16, color: colors.text },
   selectedItemPrice: { fontSize: 14, color: colors.primary, marginTop: 2 },
   removeBtn: { backgroundColor: colors.dangerLight, width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
   removeBtnText: { color: colors.white, fontSize: 20, fontWeight: 'bold' },
@@ -776,5 +849,6 @@ const styles = StyleSheet.create({
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { marginTop: 12, fontSize: 16, color: colors.primary },
 
-  priceLegend: { fontSize: 13, color: colors.textSecondary, textAlign: 'center', marginBottom: 12 }
+  priceLegend: { fontSize: 13, color: colors.textSecondary, textAlign: 'center', marginBottom: 12 },
+  totalSpace: { height: 100 },
 });
