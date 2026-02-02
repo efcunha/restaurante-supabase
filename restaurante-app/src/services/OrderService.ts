@@ -190,7 +190,8 @@ class OrderService {
     totalPrice: number = 0, 
     isPago: boolean = false, 
     mesa: string = '', 
-    categoryMap: any = null
+    categoryMap: any = null,
+    priceMap: Record<string, number> | null = null
   ): Order {
     const now = new Date();
     const nowISO = now.toISOString();
@@ -272,6 +273,7 @@ class OrderService {
       createdByName,
       criadoPor: createdBy, // Alias para estatísticas
       criadoPorNome: createdByName, // Alias para compatibilidade com telas
+      priceMap: priceMap || undefined,
     };
     return order;
   }

@@ -23,9 +23,51 @@ export default function ComandaDetails({ comanda, onClose, onPay, onPrint, onCan
 
                 // 🔒 USAR O PREÇO DO BANCO (totalPrice) ao invés de recalcular
                 const pedidoTotal = Number(p.totalPrice) || 0;
-                
-                // Se o pedido tem preço total, distribuir entre os itens
-                if (pedidoTotal > 0) {
+
+                // Tenta usar priceMap se disponível (Preço Individuais)
+                if (p.priceMap) {
+                    items.forEach(itemText => {
+                        const itemCalc = calcularPrecoItem(itemText);
+                        const nomeCompleto = itemCalc.nomeCompleto;
+                        const quantidade = itemCalc.quantidade;
+
+                        // Tentar limpar nome para buscar no map
+                        const cleanName = itemText.replace(/^\d+x?\s*/, '').replace(/\s*\(.*\)$/, '').trim().toLowerCase();
+
+                        // Busca preço no map (por item unitário geralmente)
+                        // O priceMap do createOrder armazena o preço TOTAL do item (ex: se for 2x, é 2 * unit) ou unitário?
+                        // Vamos assumir que o OrderService/Context gravou o preço unitário ou total da linha.
+                        // Olhando o log do usuário: "1x Carne Com Macaxeira = R$ 20.00".
+                        // O priceMap geralmente vem do frontend (useNovoPedido) e lá é preço TOTAL da linha (qtd * unit).
+
+                        let precoTotalItem = 0;
+
+                        // Tenta chaves diversas: nome original, lower, etc.
+                        if (p.priceMap[itemText] !== undefined) precoTotalItem = p.priceMap[itemText];
+                        else if (p.priceMap[cleanName] !== undefined) precoTotalItem = p.priceMap[cleanName];
+                        else if (p.priceMap[nomeCompleto] !== undefined) precoTotalItem = p.priceMap[nomeCompleto];
+                        else {
+                            // Fallback: se não achar no map, usa média
+                            precoTotalItem = (pedidoTotal / (items.length || 1));
+                        }
+
+                        const precoUnit = precoTotalItem / quantidade;
+
+                        if (!map[nomeCompleto]) {
+                            map[nomeCompleto] = {
+                                nome: nomeCompleto,
+                                quantidade: 0,
+                                subtotal: 0,
+                                precoUnit: precoUnit
+                            };
+                        }
+
+                        map[nomeCompleto].quantidade += quantidade;
+                        map[nomeCompleto].subtotal = fixDecimal(map[nomeCompleto].subtotal + precoTotalItem);
+                    });
+                }
+                // Se o pedido tem preço total mas SEM priceMap, distribuir entre os itens (Média)
+                else if (pedidoTotal > 0) {
                     const numItens = items.length || 1;
                     const precoMedioPorItem = pedidoTotal / numItens;
 
