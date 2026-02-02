@@ -132,10 +132,17 @@ class PagamentosService {
         const novoTotalPago = totalPagoAnt + valorNum;
         const novoSaldo = Math.max(0, (data.totalConsumido || 0) - novoTotalPago);
 
+        // Atualizar resumo de pagamentos por forma
+        const pagamentosResumo = data.pagamentosResumo || {};
+        const valorAnteriorForma = pagamentosResumo[formaKey] || 0;
+        pagamentosResumo[formaKey] = valorAnteriorForma + valorNum;
+
         tx.update(refToUpdate, {
             totalPago: novoTotalPago,
             saldoAberto: novoSaldo,
             atualizado: serverTimestamp(),
+            pagamentosResumo: pagamentosResumo,
+            ultimoPagamentoPor: safeUsuarioNome, // Salvar quem recebeu por último
             // @ts-ignore
             recebidoPor: [...(data.recebidoPor || []), safeUsuarioId] // Rastreamento de quem recebeu
         });
