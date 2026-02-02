@@ -202,6 +202,7 @@ const firestoreToOrder = (docId, data) => {
     entreguePorNome: data.entreguePorNome || null,
     // ✅ CORREÇÃO: Incluir timestamp de atualização para merge
     atualizado: data.atualizado?.toDate?.()?.toISOString() || data.timestampLocal || timestamp.toISOString(),
+    priceMap: data.priceMap || null, // ✅ Persistir priceMap
   };
   // DEBUG ESPECÍFICO PARA isPago
   return result;
@@ -243,6 +244,7 @@ const orderToFirestore = (order) => {
     totalPrice: order.totalPrice,
     isPago: Boolean(order.isPago), // CORREÇÃO: garantir que true/false seja preservado
     atualizado: serverTimestamp(),
+    priceMap: order.priceMap || null, // ✅ Persistir priceMap
   };
   return result;
 };
