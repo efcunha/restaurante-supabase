@@ -27,6 +27,10 @@ import { confirmLogout } from '../utils/appUtils';
 export default function AdminScreen() {
   const { user, logout } = useAuth();
 
+  const handleLogout = () => {
+    confirmLogout(logout);
+  };
+
   // Helper para formatar valores em Real brasileiro
   const formatarMoeda = (valor) => {
     if (valor === null || valor === undefined || isNaN(valor)) return 'R$ 0,00';
@@ -810,7 +814,7 @@ export default function AdminScreen() {
           // console.log(`    ❌ Fora do período ou sem data`);
         }
       });
-      
+
       // ✅ NOVO: Buscar comandas CANCELADAS separadamente
       const comandasCanceladasSnapshot = await getDocs(
         query(
@@ -818,11 +822,11 @@ export default function AdminScreen() {
           where('status', '==', 'cancelada')
         )
       );
-      
+
       comandasCanceladasSnapshot.docs.forEach(doc => {
         const comanda = doc.data();
         let comandaDateKey = comanda.dateKey;
-        
+
         // Extrair dateKey se não existir
         if (!comandaDateKey && comanda.canceladaEm) {
           if (typeof comanda.canceladaEm === 'string') {
@@ -832,7 +836,7 @@ export default function AdminScreen() {
             comandaDateKey = date.toISOString().split('T')[0];
           }
         }
-        
+
         if (comandaDateKey && comandaDateKey >= dateKeyInicio && comandaDateKey <= dateKeyFim) {
           totalCancelado += comanda.totalConsumido || 0;
           qtdCanceladas++;
@@ -850,12 +854,12 @@ export default function AdminScreen() {
       // 1. Vendas por Dia (Bar Chart)
       // Inicializar mapa de dias do intervalo com TODOS os dias
       const dailyMap = {};
-      
+
       // Gerar todos os dias do período
       const startDate = new Date(dateKeyInicio);
       const endDate = new Date(dateKeyFim);
       const currentDate = new Date(startDate);
-      
+
       while (currentDate <= endDate) {
         const dKey = currentDate.toISOString().split('T')[0];
         dailyMap[dKey] = 0; // Inicializar com 0
@@ -909,7 +913,7 @@ export default function AdminScreen() {
         const p = doc.data();
         const forma = p.forma ? p.forma.toUpperCase() : 'OUTROS';
         const valor = parseFloat(p.valor) || 0;
-        
+
         // ✅ VALIDAÇÃO: Ignorar valores absurdos (maior que R$ 10.000)
         if (valor > 0 && valor < 10000) {
           paymentMap[forma] = (paymentMap[forma] || 0) + valor;
@@ -1345,7 +1349,7 @@ export default function AdminScreen() {
                 <Text style={styles.vendaStatLabel}>Ticket Médio</Text>
               </View>
             </View>
-            
+
             {/* ✅ NOVO: Estatísticas de Cancelamento */}
             {vendasStats.qtdCanceladas > 0 && (
               <View style={[styles.vendasRowStats, { marginTop: 15, backgroundColor: '#FFF3E0', borderRadius: 8, padding: 10 }]}>
@@ -1431,6 +1435,27 @@ export default function AdminScreen() {
             <Text style={[styles.reportArrow, report.danger && styles.reportArrowDanger]}>›</Text>
           </TouchableOpacity>
         ))}
+        {/* --- DIAGNÓSTICO --- */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Diagnóstico</Text>
+          <TouchableOpacity
+            style={[styles.menuButton, { borderBottomWidth: 0 }]}
+            onPress={() => {
+              throw new Error('Test Crash: Sentry Integration Verification');
+            }}
+          >
+            <Ionicons name="bug-outline" size={24} color="#FF0000" />
+            <Text style={[styles.menuButtonText, { color: '#FF0000' }]}>Testar Crash (Sentry)</Text>
+            <Ionicons name="chevron-forward" size={20} color="#999" />
+          </TouchableOpacity>
+        </View>
+
+        <View style={[styles.section, { marginBottom: 30 }]}>
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <Ionicons name="log-out-outline" size={24} color="#FF6B6B" />
+            <Text style={styles.logoutButtonText}>Sair</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
 
       {/* Modal de Funcionários */}
@@ -1653,6 +1678,36 @@ export default function AdminScreen() {
 }
 
 const styles = StyleSheet.create({
+  menuButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 15,
+    paddingHorizontal: 15,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  menuButtonText: {
+    flex: 1,
+    fontSize: 16,
+    color: '#2C2C2C',
+    marginLeft: 15,
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 15,
+    backgroundColor: '#FFE5E5',
+    borderRadius: 12,
+    marginTop: 20,
+  },
+  logoutButtonText: {
+    color: '#FF6B6B',
+    fontSize: 16,
+    fontWeight: '700',
+    marginLeft: 10,
+  },
   container: {
     flex: 1,
     backgroundColor: '#F5F1E8',
