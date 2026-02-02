@@ -3,7 +3,7 @@ import { View, StyleSheet } from 'react-native';
 
 export default function BackgroundDecoration() {
   return (
-    <View style={styles.container} pointerEvents="none">
+    <View style={[styles.container, { pointerEvents: 'none' }]}>
       {/* Cacto esquerdo superior */}
       <View style={[styles.decoration, styles.cactoLeft]}>
         <View style={styles.cactoBody}>
@@ -49,7 +49,7 @@ const styles = StyleSheet.create({
   decoration: {
     position: 'absolute',
   },
-  
+
   // Cacto
   cactoLeft: {
     top: 100,
@@ -79,7 +79,7 @@ const styles = StyleSheet.create({
     top: 50,
     transform: [{ rotate: '20deg' }],
   },
-  
+
   // Alho
   alhoRight: {
     top: 80,
@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
     height: 35,
     marginLeft: 20,
   },
-  
+
   // Fogo
   fireLeft: {
     bottom: 150,
@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
     height: 45,
     width: 30,
   },
-  
+
   // Tempero (folhas)
   spiceRight: {
     bottom: 120,

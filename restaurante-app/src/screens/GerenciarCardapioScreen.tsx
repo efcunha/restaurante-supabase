@@ -18,9 +18,15 @@ import { useAuth } from '../context/AuthContext';
 import { getCompanyCollection, getCompanyDoc } from '../utils/firestoreUtils';
 import BackgroundPattern from '../components/BackgroundPattern';
 import { SUPPORTED_UNITS } from '../utils/unitConversion';
+import { Product, Ingredient, PizzaConfig, PizzaSize } from '../types';
 
 // Componente para cada item de variação
-function VariacaoItem({ variacao, onSalvar }) {
+interface VariacaoItemProps {
+  variacao: { id?: string; name: string; price?: number; [key: string]: any };
+  onSalvar: (produto: any, novoPreco: string, novoNome: string) => void;
+}
+
+function VariacaoItem({ variacao, onSalvar }: VariacaoItemProps) {
   const [precoTemp, setPrecoTemp] = useState(variacao.price !== undefined ? variacao.price.toString() : '0');
   const [nomeTemp, setNomeTemp] = useState(variacao.name);
 
@@ -57,7 +63,11 @@ function VariacaoItem({ variacao, onSalvar }) {
   );
 }
 
-export default function GerenciarCardapioScreen({ onClose }) {
+interface GerenciarCardapioScreenProps {
+  onClose?: () => void;
+}
+
+export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioScreenProps) {
   const { user } = useAuth();
   // Estados para cadastro
   const [nome, setNome] = useState('');
@@ -67,16 +77,16 @@ export default function GerenciarCardapioScreen({ onClose }) {
 
   // Estados para cadastro com variações (espetinhos)
   const [criarVariacoes, setCriarVariacoes] = useState(false);
-  const [precosVariacoes, setPrecosVariacoes] = useState({});
-  const [variacoesEspetinho, setVariacoesEspetinho] = useState(['Simples', 'com Arroz', 'com Macaxeira', 'Completo']);
+  const [precosVariacoes, setPrecosVariacoes] = useState<Record<string, string>>({});
+  const [variacoesEspetinho, setVariacoesEspetinho] = useState<string[]>(['Simples', 'com Arroz', 'com Macaxeira', 'Completo']);
 
   // Estados para listagem
-  const [produtos, setProdutos] = useState([]);
+  const [produtos, setProdutos] = useState<Product[]>([]);
   const [loadingProdutos, setLoadingProdutos] = useState(true);
   const [categoriaFiltro, setCategoriaFiltro] = useState('todos');
 
   // Estados para edição
-  const [editando, setEditando] = useState(null);
+  const [editando, setEditando] = useState<Product | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editNome, setEditNome] = useState('');
   const [editPreco, setEditPreco] = useState('');
@@ -84,31 +94,31 @@ export default function GerenciarCardapioScreen({ onClose }) {
 
   // Estados para edição de grupo de variações
   const [showVariacoesModal, setShowVariacoesModal] = useState(false);
-  const [variacoesSelecionadas, setVariacoesSelecionadas] = useState([]);
+  const [variacoesSelecionadas, setVariacoesSelecionadas] = useState<Product[]>([]);
 
   // Estados para Temperos/Opções
-  const [temperosCaldos, setTemperosCaldos] = useState([]);
-  const [temperosComidas, setTemperosComidas] = useState([]);
-  const [tipoTemperoAtivo, setTipoTemperoAtivo] = useState('caldos'); // 'caldos' | 'comidas' | 'variacoes'
+  const [temperosCaldos, setTemperosCaldos] = useState<string[]>([]);
+  const [temperosComidas, setTemperosComidas] = useState<string[]>([]);
+  const [tipoTemperoAtivo, setTipoTemperoAtivo] = useState<'caldos' | 'comidas' | 'variacoes' | 'pizza' | 'tamanhos'>('caldos');
   const [novoTempero, setNovoTempero] = useState('');
   const [editTemperoIndex, setEditTemperoIndex] = useState(-1);
   const [loadingTemperos, setLoadingTemperos] = useState(true);
 
   // Estados para Pizza
-  const [pizzaConfig, setPizzaConfig] = useState({ sizes: [] });
-  const [pizzaSizes, setPizzaSizes] = useState([]); // Local state for editing sizes
+  const [pizzaConfig, setPizzaConfig] = useState<PizzaConfig>({ sizes: [] });
+  const [pizzaSizes, setPizzaSizes] = useState<PizzaSize[]>([]); // Local state for editing sizes
   const [novoTamanho, setNovoTamanho] = useState('');
   const [novosSaboresMax, setNovosSaboresMax] = useState('');
   const [editTamanhoIndex, setEditTamanhoIndex] = useState(-1); // TRACK EDIT INDEX
-  const [precosPizza, setPrecosPizza] = useState({}); // { 'Fatia': '5.00', 'Grande': '40.00' }
-  const [ingredientesPizza, setIngredientesPizza] = useState([]); // from config
-  const [ingredientesSelecionados, setIngredientesSelecionados] = useState([]); // for current product
+  const [precosPizza, setPrecosPizza] = useState<Record<string, string | number>>({}); // { 'Fatia': '5.00', 'Grande': '40.00' }
+  const [ingredientesPizza, setIngredientesPizza] = useState<string[]>([]); // from config
+  const [ingredientesSelecionados, setIngredientesSelecionados] = useState<string[]>([]); // for current product
   const [ingredientesPersonalizados, setIngredientesPersonalizados] = useState(''); // text field
 
   // Estados para Ficha Técnica (Estoque)
   const [showStockModal, setShowStockModal] = useState(false);
-  const [currentProductForStock, setCurrentProductForStock] = useState(null);
-  const [stockItems, setStockItems] = useState([]);
+  const [currentProductForStock, setCurrentProductForStock] = useState<Product | null>(null);
+  const [stockItems, setStockItems] = useState<{ id: string; nome: string; unidadeOriginal: string; }[]>([]);
   const [loadingStock, setLoadingStock] = useState(false);
   // Form Ficha Técnica
   const [selectedStockId, setSelectedStockId] = useState('');
@@ -145,20 +155,13 @@ export default function GerenciarCardapioScreen({ onClose }) {
         const data = docSnap.data();
         if (data.temperosCaldos) setTemperosCaldos(data.temperosCaldos);
         if (data.temperosComidas) setTemperosComidas(data.temperosComidas);
-        if (data.temperosCaldos) setTemperosCaldos(data.temperosCaldos);
-        if (data.temperosComidas) setTemperosComidas(data.temperosComidas);
         if (data.variacoesEspetinho) setVariacoesEspetinho(data.variacoesEspetinho);
         if (data.ingredientesPizza) setIngredientesPizza(data.ingredientesPizza);
-
-        if (data.temperosCaldos) setTemperosCaldos(data.temperosCaldos);
-        if (data.temperosComidas) setTemperosComidas(data.temperosComidas);
-        if (data.variacoesEspetinho) setVariacoesEspetinho(data.variacoesEspetinho);
 
         // Carregar configuração de Pizza (ou usar padrão)
         if (data.pizzaConfig) {
           setPizzaConfig(data.pizzaConfig);
         } else {
-          // Default config if none exists
           setPizzaConfig({
             sizes: [
               { name: 'Fatia', maxFlavors: 1 },
@@ -174,7 +177,6 @@ export default function GerenciarCardapioScreen({ onClose }) {
         if (data.pizzaConfig?.sizes) {
           setPizzaSizes(data.pizzaConfig.sizes);
         } else {
-          // Default sync
           setPizzaSizes([
             { name: 'Fatia', maxFlavors: 1 },
             { name: 'Broto', maxFlavors: 1 },
@@ -203,7 +205,13 @@ export default function GerenciarCardapioScreen({ onClose }) {
     return variacoesEspetinho || [];
   };
 
-  const salvarListas = async (novaListaCaldos, novaListaComidas, novaListaVariacoes, novaListaPizzas) => {
+  const salvarListas = async (
+    novaListaCaldos?: string[], 
+    novaListaComidas?: string[], 
+    novaListaVariacoes?: string[], 
+    novaListaPizzas?: string[]
+  ) => {
+    if (!user?.companyId) return;
     const docRef = doc(db, 'companies', user.companyId, 'settings', 'cardapio_config');
     await setDoc(docRef, {
       temperosCaldos: novaListaCaldos !== undefined ? novaListaCaldos : temperosCaldos,
@@ -214,7 +222,8 @@ export default function GerenciarCardapioScreen({ onClose }) {
     }, { merge: true });
   };
 
-  const salvarPizzaSizes = async (novosTamanhos) => {
+  const salvarPizzaSizes = async (novosTamanhos: PizzaSize[]) => {
+    if (!user?.companyId) return;
     const docRef = doc(db, 'companies', user.companyId, 'settings', 'cardapio_config');
     const newConfig = { ...pizzaConfig, sizes: novosTamanhos };
     setPizzaConfig(newConfig);
@@ -287,7 +296,7 @@ export default function GerenciarCardapioScreen({ onClose }) {
     setEditTamanhoIndex(-1);
   };
 
-  const iniciarEdicaoTamanho = (index) => {
+  const iniciarEdicaoTamanho = (index: number) => {
     const item = pizzaSizes[index];
     setNovoTamanho(item.name);
     setNovosSaboresMax(item.maxFlavors.toString());
@@ -300,14 +309,14 @@ export default function GerenciarCardapioScreen({ onClose }) {
     setEditTamanhoIndex(-1);
   };
 
-  const removerTamanhoPizza = async (index) => {
+  const removerTamanhoPizza = async (index: number) => {
     const novos = [...pizzaSizes];
     novos.splice(index, 1);
     setPizzaSizes(novos);
     await salvarPizzaSizes(novos);
   };
 
-  const toggleTamanhoAtivo = async (index) => {
+  const toggleTamanhoAtivo = async (index: number) => {
     const novos = [...pizzaSizes];
     // Toggle logic: if active is undefined, assume it was true, so now false.
     const currentStatus = novos[index].active !== false;
@@ -316,7 +325,7 @@ export default function GerenciarCardapioScreen({ onClose }) {
     await salvarPizzaSizes(novos);
   };
 
-  const iniciarEdicaoTempero = (idx) => {
+  const iniciarEdicaoTempero = (idx: number) => {
     const lista = getListaAtiva();
     setNovoTempero(lista[idx]);
     setEditTemperoIndex(idx);
@@ -327,7 +336,7 @@ export default function GerenciarCardapioScreen({ onClose }) {
     setEditTemperoIndex(-1);
   };
 
-  const removerTempero = async (index) => {
+  const removerTempero = async (index: number) => {
     try {
       const novos = [...getListaAtiva()];
       novos.splice(index, 1);
@@ -363,10 +372,10 @@ export default function GerenciarCardapioScreen({ onClose }) {
       const produtosData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
-      }));
+      })) as Product[];
 
       // Ordenar por categoria (simples, especial, bebida, comida, outro) e depois por nome
-      const ordemCategorias = {
+      const ordemCategorias: Record<string, number> = {
         'espetinho-simples': 1,
         'espetinho-especial': 2,
         'caldo': 3,
@@ -397,15 +406,17 @@ export default function GerenciarCardapioScreen({ onClose }) {
 
   const cadastrarProduto = async () => {
     if (!nome.trim()) {
-      window.alert('Digite o nome do produto');
+      Alert.alert('Atenção', 'Digite o nome do produto');
       return;
     }
+
+    if (!user?.companyId) return;
 
     // Se for espetinho e criar variações estiver marcado
     if (criarVariacoes && (categoria === 'espetinho-simples' || categoria === 'espetinho-especial')) {
       const algumVazio = variacoesEspetinho.some(v => !precosVariacoes[v]);
       if (algumVazio) {
-        window.alert('Preencha todos os preços das variações');
+        Alert.alert('Atenção', 'Preencha todos os preços das variações');
         return;
       }
 
@@ -419,7 +430,7 @@ export default function GerenciarCardapioScreen({ onClose }) {
         const batch = writeBatch(db);
 
         variacoes.forEach(variacao => {
-          const novoDoc = getCompanyDoc(user.companyId, 'cardapio');
+          const novoDoc = getCompanyDoc(user.companyId!, 'cardapio');
           batch.set(novoDoc, {
             name: variacao.nome,
             price: variacao.preco,
@@ -430,20 +441,20 @@ export default function GerenciarCardapioScreen({ onClose }) {
         });
 
         await batch.commit();
-        window.alert(`✅ Sucesso! ${nome} cadastrado com ${variacoes.length} variações!`);
+        Alert.alert('Sucesso', `✅ ${nome} cadastrado com ${variacoes.length} variações!`);
         setNome('');
         setPrecosVariacoes({});
         carregarProdutos();
       } catch (error) {
         console.error('❌ Erro ao cadastrar variações:', error);
-        window.alert('Erro ao cadastrar as variações');
+        Alert.alert('Erro', 'Erro ao cadastrar as variações');
       } finally {
         setLoading(false);
       }
     } else if (categoria === 'pizza') {
       // Validação Pizza
       const sizes = pizzaConfig?.sizes || [];
-      const pricesToSave = {};
+      const pricesToSave: Record<string, number> = {};
       let hasPrice = false;
 
       sizes.forEach(size => {
@@ -456,13 +467,13 @@ export default function GerenciarCardapioScreen({ onClose }) {
       });
 
       if (!hasPrice) {
-        window.alert('Preencha pelo menos um preço para a pizza');
+        Alert.alert('Atenção', 'Preencha pelo menos um preço para a pizza');
         return;
       }
 
       try {
         setLoading(true);
-        const novoProduto = {
+        const novoProduto: Partial<Product> = {
           name: nome.trim(),
           category: 'pizza',
           active: true,
@@ -478,7 +489,7 @@ export default function GerenciarCardapioScreen({ onClose }) {
         const configRef = doc(db, 'companies', user.companyId, 'settings', 'cardapio_config');
         await setDoc(configRef, { pizzaConfig }, { merge: true });
 
-        window.alert('✅ Pizza cadastrada com sucesso!');
+        Alert.alert('Sucesso', '✅ Pizza cadastrada com sucesso!');
         setNome('');
         setPrecosPizza({});
         setIngredientesSelecionados([]);
@@ -486,14 +497,14 @@ export default function GerenciarCardapioScreen({ onClose }) {
         carregarProdutos();
       } catch (error) {
         console.error('❌ Erro ao cadastrar pizza:', error);
-        window.alert('Erro ao cadastrar a pizza');
+        Alert.alert('Erro', 'Erro ao cadastrar a pizza');
       } finally {
         setLoading(false);
       }
 
     } else {
       if (!preco || isNaN(parseFloat(preco.toString().replace(',', '.')))) {
-        window.alert('Digite um preço válido');
+        Alert.alert('Atenção', 'Digite um preço válido');
         return;
       }
 
@@ -508,20 +519,20 @@ export default function GerenciarCardapioScreen({ onClose }) {
         };
 
         await addDoc(getCompanyCollection(user.companyId, 'cardapio'), novoProduto);
-        window.alert('✅ Produto cadastrado com sucesso!');
+        Alert.alert('Sucesso', '✅ Produto cadastrado com sucesso!');
         setNome('');
         setPreco('');
         carregarProdutos();
       } catch (error) {
         console.error('❌ Erro ao cadastrar produto:', error);
-        window.alert('Erro ao cadastrar o produto');
+        Alert.alert('Erro', 'Erro ao cadastrar o produto');
       } finally {
         setLoading(false);
       }
     }
   };
 
-  const abrirEdicao = (produto) => {
+  const abrirEdicao = (produto: Product) => {
     setEditando(produto);
     setEditNome(produto.name);
     setEditPreco(produto.price ? produto.price.toString() : '0');
@@ -529,6 +540,7 @@ export default function GerenciarCardapioScreen({ onClose }) {
 
     // Load pizza prices if applicable
     if (produto.category === 'pizza') {
+      // @ts-ignore - casting complex
       setPrecosPizza(produto.prices || {});
     } else {
       setPrecosPizza({});
@@ -548,18 +560,19 @@ export default function GerenciarCardapioScreen({ onClose }) {
       Alert.alert('Atenção', 'Digite um preço válido');
       return;
     }
+    if (!editando || !user?.companyId) return;
 
     try {
       setLoading(true);
       const produtoRef = getCompanyDoc(user.companyId, 'cardapio', editando.id);
-      const updateData = {
+      const updateData: any = {
         name: editNome.trim(),
         category: editCategoria
       };
 
       if (editCategoria === 'pizza') {
         // Garantir que todos os valores no mapa de preços sejam números (parseFloat)
-        const pricesAsNumbers = {};
+        const pricesAsNumbers: Record<string, number> = {};
         Object.keys(precosPizza).forEach(key => {
           const val = precosPizza[key];
           if (val !== undefined && val !== '') {
@@ -588,10 +601,9 @@ export default function GerenciarCardapioScreen({ onClose }) {
     }
   };
 
-
-
-  const toggleGrupoAtivo = async (variacoes, todosAtivos) => {
+  const toggleGrupoAtivo = async (variacoes: Product[], todosAtivos: boolean) => {
     try {
+      if (!user?.companyId) return;
       // Use loadingProdutos to show feedback on the list
       setLoadingProdutos(true);
       const batch = writeBatch(db);
@@ -599,7 +611,7 @@ export default function GerenciarCardapioScreen({ onClose }) {
 
       variacoes.forEach(v => {
         // Only update if strictly necessary to save writes? Batch is fine.
-        const ref = getCompanyDoc(user.companyId, 'cardapio', v.id);
+        const ref = getCompanyDoc(user.companyId!, 'cardapio', v.id);
         batch.update(ref, { active: novoStatus });
       });
 
@@ -613,10 +625,11 @@ export default function GerenciarCardapioScreen({ onClose }) {
       setLoadingProdutos(false); // Restore state if error
     }
   };
-
+  
   // --- LÓGICA DE FICHA TÉCNICA (ESTOQUE) ---
   const fetchStockItems = async () => {
     try {
+      if (!user?.companyId) return;
       setLoadingStock(true);
       const snapshot = await getDocs(getCompanyCollection(user.companyId, 'estoque'));
       const items = snapshot.docs.map(doc => ({
@@ -632,7 +645,7 @@ export default function GerenciarCardapioScreen({ onClose }) {
     }
   };
 
-  const abrirEstoque = (produto) => {
+  const abrirEstoque = (produto: Product) => {
     setCurrentProductForStock(produto);
     setShowStockModal(true);
     if (stockItems.length === 0) {
@@ -641,19 +654,19 @@ export default function GerenciarCardapioScreen({ onClose }) {
   };
 
   const addIngredient = async () => {
-    if (!selectedStockId || !qtyIngredient || isNaN(qtyIngredient)) {
+    if (!selectedStockId || !qtyIngredient || isNaN(parseFloat(qtyIngredient))) {
       Alert.alert('Erro', 'Selecione um item e uma quantidade válida.');
       return;
     }
 
     // Buscar nome do item selecionado
     const selectedItem = stockItems.find(s => s.id === selectedStockId);
-    if (!selectedItem) return;
+    if (!selectedItem || !currentProductForStock || !user?.companyId) return;
 
     // Atualizar lista de inventoryItems do produto
     try {
       const currentIngredients = currentProductForStock.inventoryItems || [];
-      const newIngredient = {
+      const newIngredient: Ingredient = {
         id: selectedStockId,
         nome: selectedItem.nome,
         qt: parseFloat(qtyIngredient),
@@ -692,8 +705,9 @@ export default function GerenciarCardapioScreen({ onClose }) {
     }
   };
 
-  const removeIngredient = async (ingredientId) => {
+  const removeIngredient = async (ingredientId: string) => {
     try {
+      if (!currentProductForStock || !user?.companyId) return;
       const newIngredients = (currentProductForStock.inventoryItems || []).filter(i => i.id !== ingredientId);
 
       const produtoRef = getCompanyDoc(user.companyId, 'cardapio', currentProductForStock.id);
@@ -716,9 +730,7 @@ export default function GerenciarCardapioScreen({ onClose }) {
     }
   };
 
-  // --- FIM LÓGICA FICHA TÉCNICA ---
-
-  const getNomeBase = (nomeProduto) => {
+  const getNomeBase = (nomeProduto: string) => {
     let nome = nomeProduto;
     variacoesEspetinho.forEach(v => {
       nome = nome.replace(` ${v}`, '');
@@ -726,8 +738,8 @@ export default function GerenciarCardapioScreen({ onClose }) {
     return nome.trim();
   };
 
-  const agruparProdutos = (listaProdutos) => {
-    const grupos = {};
+  const agruparProdutos = (listaProdutos: Product[]) => {
+    const grupos: Record<string, Product[]> = {};
     listaProdutos.forEach(produto => {
       const nomeBase = getNomeBase(produto.name);
       if (!grupos[nomeBase]) {
@@ -738,7 +750,13 @@ export default function GerenciarCardapioScreen({ onClose }) {
     return grupos;
   };
 
-  const abrirVariacoes = (nomeBase) => {
+  const produtosFiltrados = categoriaFiltro === 'todos'
+    ? produtos
+    : produtos.filter(p => p.category === categoriaFiltro);
+
+  const produtosAgrupados = agruparProdutos(produtosFiltrados);
+
+  const abrirVariacoes = (nomeBase: string) => {
     const variacoes = produtosAgrupados[nomeBase] || [];
 
     // Se for apenas uma variação ou se for pizza, abre o editor principal (que é mais completo para pizzas)
@@ -750,16 +768,17 @@ export default function GerenciarCardapioScreen({ onClose }) {
     }
   };
 
-  const salvarVariacao = async (produto, novoPreco, novoNome) => {
+  const salvarVariacao = async (produto: any, novoPreco: string, novoNome: string) => {
     try {
+      if (!user?.companyId) return;
       const precoNum = parseFloat(novoPreco);
       if (isNaN(precoNum) || precoNum <= 0) {
-        window.alert('Digite um preço válido');
+        Alert.alert('Erro', 'Digite um preço válido');
         return;
       }
 
       if (!novoNome || !novoNome.trim()) {
-        window.alert('Nome inválido');
+        Alert.alert('Erro', 'Nome inválido');
         return;
       }
 
@@ -774,27 +793,21 @@ export default function GerenciarCardapioScreen({ onClose }) {
         v.id === produto.id ? { ...v, price: precoNum, name: novoNome.trim() } : v
       );
       setVariacoesSelecionadas(variacoesAtualizadas);
-      window.alert('Alterações salvas!');
+      Alert.alert('Sucesso', 'Alterações salvas!');
     } catch (error) {
       console.error('❌ Erro ao atualizar:', error);
-      window.alert('Erro ao atualizar o item');
+      Alert.alert('Erro', 'Erro ao atualizar o item');
     }
   };
 
-  const produtosFiltrados = categoriaFiltro === 'todos'
-    ? produtos
-    : produtos.filter(p => p.category === categoriaFiltro);
-
-  const produtosAgrupados = agruparProdutos(produtosFiltrados);
-
-  const excluirProduto = async (variacoes) => {
+  const excluirProduto = async (variacoes: Product[]) => {
     const nomeBase = getNomeBase(variacoes[0].name);
 
-    let confirmed = false;
     if (Platform.OS === 'web') {
-      confirmed = window.confirm(`Tem certeza que deseja excluir "${nomeBase}" e todas as suas variações?`);
+      const confirmed = window.confirm(`Tem certeza que deseja excluir "${nomeBase}" e todas as suas variações?`);
+      if (!confirmed) return;
     } else {
-      await new Promise((resolve) => {
+      const confirmed = await new Promise((resolve) => {
         Alert.alert(
           'Confirmar Exclusão',
           `Tem certeza que deseja excluir "${nomeBase}"?`,
@@ -803,17 +816,17 @@ export default function GerenciarCardapioScreen({ onClose }) {
             { text: 'Excluir', onPress: () => resolve(true), style: 'destructive' },
           ]
         );
-      }).then(res => confirmed = res);
+      });
+      if (!confirmed) return;
     }
 
-    if (!confirmed) return;
-
     try {
+      if (!user?.companyId) return;
       setLoading(true);
       const batch = writeBatch(db);
 
       variacoes.forEach(v => {
-        batch.delete(getCompanyDoc(user.companyId, 'cardapio', v.id));
+        batch.delete(getCompanyDoc(user.companyId!, 'cardapio', v.id));
       });
 
       await batch.commit();
@@ -830,7 +843,6 @@ export default function GerenciarCardapioScreen({ onClose }) {
       setLoading(false);
     }
   };
-
 
   return (
     <View style={styles.container}>
@@ -944,7 +956,7 @@ export default function GerenciarCardapioScreen({ onClose }) {
                         style={styles.inputVariacao}
                         placeholder="0.00"
                         placeholderTextColor="#999"
-                        value={precosPizza[size.name] || ''}
+                        value={precosPizza[size.name] !== undefined ? String(precosPizza[size.name]) : ''}
                         onChangeText={(text) => setPrecosPizza(prev => ({ ...prev, [size.name]: text }))}
                         keyboardType="numeric"
                       />
@@ -1247,7 +1259,7 @@ export default function GerenciarCardapioScreen({ onClose }) {
                           style={styles.inputVariacao}
                           placeholder="0.00"
                           placeholderTextColor="#999"
-                          value={precosPizza[size.name] || ''}
+                          value={precosPizza[size.name] !== undefined ? String(precosPizza[size.name]) : ''}
                           onChangeText={(text) => setPrecosPizza(prev => ({ ...prev, [size.name]: text }))}
                           keyboardType="numeric"
                         />
@@ -1291,12 +1303,14 @@ export default function GerenciarCardapioScreen({ onClose }) {
               </View>
 
               {/* Link para Ficha Técnica direto na edição */}
-              <TouchableOpacity
-                style={styles.stockLinkBtn}
-                onPress={() => { setShowEditModal(false); abrirEstoque(editando); }}
-              >
-                <Text style={styles.stockLinkText}>📦 Configurar Ficha Técnica / Estoque</Text>
-              </TouchableOpacity>
+              {editando && (
+                <TouchableOpacity
+                  style={styles.stockLinkBtn}
+                  onPress={() => { setShowEditModal(false); abrirEstoque(editando); }}
+                >
+                  <Text style={styles.stockLinkText}>📦 Configurar Ficha Técnica / Estoque</Text>
+                </TouchableOpacity>
+              )}
 
               <TouchableOpacity
                 style={[styles.salvarBtn, loading && styles.salvarBtnDisabled, { marginTop: 10 }]}
@@ -1457,11 +1471,9 @@ export default function GerenciarCardapioScreen({ onClose }) {
   );
 }
 
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F1E8',
-  },
+  container: { flex: 1, backgroundColor: '#F5F1E8' },
   header: {
     backgroundColor: '#8B2F2F',
     paddingTop: 50,
@@ -1475,129 +1487,70 @@ const styles = StyleSheet.create({
     zIndex: 10,
     elevation: 8,
   },
-  headerLeft: {
-    width: 40,
-    alignItems: 'flex-start',
-    justifyContent: 'center',
-  },
-  headerCenter: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerRight: {
-    width: 40,
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-  },
-  backButton: {
-    padding: 5,
-  },
+  headerLeft: { width: 40 },
+  headerCenter: { flex: 1, alignItems: 'center' },
+  headerRight: { width: 40 },
+  backButton: { padding: 5 },
   headerTitle: {
-    color: '#FFFFFF',
     fontSize: 20,
     fontWeight: 'bold',
-    textAlign: 'center',
+    color: '#FFF',
+    marginLeft: 8,
   },
   content: {
     flex: 1,
-    padding: 20,
+    padding: 15,
   },
   section: {
-    marginBottom: 30,
+    marginBottom: 25,
   },
   sectionTitle: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: '700',
     color: '#8B2F2F',
     marginBottom: 15,
+    borderLeftWidth: 4,
+    borderLeftColor: '#E5B84A',
+    paddingLeft: 10,
   },
   form: {
     backgroundColor: '#FFFFFF',
     borderRadius: 15,
     padding: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 10,
+    shadowRadius: 8,
     elevation: 3,
-  },
-  input: {
-    backgroundColor: '#F5F1E8',
-    borderRadius: 12,
-    padding: 14,
-    fontSize: 16,
-    color: '#2C2C2C',
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#E5B84A',
   },
   label: {
     fontSize: 14,
     fontWeight: '600',
     color: '#666',
     marginBottom: 8,
-    marginTop: 8,
+    marginLeft: 4,
+  },
+  input: {
+    backgroundColor: '#F5F1E8',
+    borderRadius: 12,
+    padding: 15,
+    fontSize: 16,
+    color: '#2C2C2C',
+    borderWidth: 1,
+    borderColor: 'transparent',
+    marginBottom: 15,
   },
   categoriaButtons: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 5,
-  },
-  addTemperoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    gap: 8,
     marginBottom: 15,
   },
-  addBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#8B2F2F',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 10,
-    elevation: 2,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 2
-  },
-  inputTempero: {
-    flex: 1,
-    backgroundColor: '#F5F1E8',
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#E5B84A',
-  },
-  listaTemperos: {
-    marginTop: 10,
-  },
-  temperoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#fff',
-    paddingVertical: 12,
-    paddingHorizontal: 15,
-    borderRadius: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#eee',
-    elevation: 1,
-  },
-  temperoText: {
-    fontSize: 16,
-    color: '#333',
-    fontWeight: '500',
-    flex: 1,
-    marginRight: 10,
-  },
   categoriaBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
     backgroundColor: '#F5F1E8',
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    borderRadius: 10,
     borderWidth: 2,
     borderColor: '#E5B84A',
   },
@@ -1820,25 +1773,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
   },
-  stockLinkBtn: {
-    backgroundColor: '#333',
-    padding: 10,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginVertical: 10,
-  },
-  stockLinkText: {
-    color: '#FFF',
-    fontWeight: 'bold',
-  },
-  miniStockBtn: {
-    backgroundColor: '#eee',
-    padding: 8,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 10
-  },
-  miniStockText: { color: '#333', fontSize: 12 },
   deleteBtn: {
     backgroundColor: '#DC3545',
     paddingVertical: 8,
@@ -1887,6 +1821,17 @@ const styles = StyleSheet.create({
     fontSize: 28,
     color: '#999',
   },
+  stockLinkBtn: {
+    backgroundColor: '#333',
+    padding: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginVertical: 10,
+  },
+  stockLinkText: {
+    color: '#FFF',
+    fontWeight: 'bold',
+  },
   salvarBtn: {
     backgroundColor: '#8B2F2F',
     padding: 15,
@@ -1898,6 +1843,18 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   salvarBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  fecharBtn: {
+    backgroundColor: '#999',
+    padding: 15,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 15,
+  },
+  fecharBtnText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
@@ -1958,19 +1915,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
   },
-  fecharBtn: {
-    backgroundColor: '#999',
-    padding: 15,
-    borderRadius: 12,
+  miniStockBtn: {
+    backgroundColor: '#eee',
+    padding: 8,
+    borderRadius: 8,
     alignItems: 'center',
-    marginTop: 15,
+    marginBottom: 10
   },
-  fecharBtnText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  // Unit Tabs Styles
+  miniStockText: { color: '#333', fontSize: 12 },
+  // Unit Tabs
   unitTabs: {
     flexDirection: 'row',
     backgroundColor: '#F5F1E8',
@@ -1995,4 +1948,47 @@ const styles = StyleSheet.create({
   unitTabTextActive: {
     color: '#8B2F2F'
   },
+  // Tempero List
+  addTemperoRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 10,
+    alignItems: 'center'
+  },
+  inputTempero: {
+    flex: 1,
+    backgroundColor: '#F5F1E8',
+    borderRadius: 8,
+    padding: 10,
+    fontSize: 14,
+    borderWidth: 1,
+    borderColor: '#ddd'
+  },
+  addBtn: {
+    width: 40,
+    height: 40,
+    backgroundColor: '#8B2F2F',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 2
+  },
+  listaTemperos: {
+    marginTop: 5
+  },
+  temperoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    marginBottom: 8,
+    elevation: 1
+  },
+  temperoText: {
+    fontSize: 14,
+    color: '#444',
+    fontWeight: '500'
+  }
 });

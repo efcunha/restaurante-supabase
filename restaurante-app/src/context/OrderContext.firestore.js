@@ -2,7 +2,7 @@ import React, { createContext, useState, useContext, useCallback, useEffect, use
 import { Platform } from 'react-native';
 import { getDocs } from 'firebase/firestore';
 import { getCompanyCollection } from '../utils/firestoreUtils';
-import OrderService from '../services/OrderService.js';
+import OrderService from '../services/OrderService';
 import OrderFirestoreService from '../services/OrderFirestoreService';
 import { useAuth } from './AuthContext';
 
@@ -74,17 +74,17 @@ const calculateTotalFromFirestore = async (companyId, items, priceMap = null) =>
       // Validar que price e quantity são números válidos
       const validPrice = typeof price === 'number' && !isNaN(price) ? price : 0;
       const validQuantity = typeof quantity === 'number' && !isNaN(quantity) ? quantity : 1;
-      
+
       const itemTotal = validQuantity * validPrice;
       console.log(`   💰 ${quantity}x ${itemName} = R$ ${validPrice.toFixed(2)} x ${validQuantity} = R$ ${itemTotal.toFixed(2)}`);
-      
+
       total += itemTotal;
     });
 
     // Validar que o total final não é NaN
     const finalTotal = typeof total === 'number' && !isNaN(total) ? total : 0;
     console.log(`   📊 TOTAL FINAL: R$ ${finalTotal.toFixed(2)}`);
-    
+
     return finalTotal;
   } catch (error) {
     console.error('❌ Erro ao calcular total do Firestore:', error);

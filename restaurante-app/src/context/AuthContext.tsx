@@ -1,14 +1,42 @@
-import React, { createContext, useState, useContext, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, User as FirebaseUser, UserCredential } from 'firebase/auth';
 import { auth, db } from '../config/firebaseConfig';
 import { buscarFuncionarioPorUid } from '../services/funcionarios';
 import { normalizeRole, hasPermission, Permissions } from '../auth/roles';
+import { getDoc, doc, DocumentData } from 'firebase/firestore';
 
-const AuthContext = createContext();
+// Tipos
+export interface AppUser {
+  uid: string;
+  email?: string | null;
+  name?: string;
+  nome?: string; // Legacy/Firestore field
+  funcao?: string;
+  companyId?: string;
+  company?: {
+    id: string;
+    [key: string]: any;
+  } | null;
+  [key: string]: any; // Allow other fields from firestore
+}
 
-export const useAuth = () => {
+interface AuthContextType {
+  user: AppUser | null;
+  role: string | null;
+  loading: boolean;
+  login: (email: string, senha: string) => Promise<boolean>;
+  logout: () => Promise<void>;
+  register: (email: string, password: string) => Promise<{ success: boolean; user?: FirebaseUser; error?: any }>;
+  sessionKey: number;
+  hasPermission: (perm: string) => boolean;
+  Permissions: typeof Permissions;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (!context) {
     throw new Error('useAuth must be used within AuthProvider');
@@ -16,12 +44,16 @@ export const useAuth = () => {
   return context;
 };
 
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [role, setRole] = useState(null);
-  const [sessionKey, setSessionKey] = useState(1);
-  const isManualLoginRef = useRef(false);
+interface AuthProviderProps {
+  children: ReactNode;
+}
+
+export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  const [user, setUser] = useState<AppUser | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [role, setRole] = useState<string | null>(null);
+  const [sessionKey, setSessionKey] = useState<number>(1);
+  const isManualLoginRef = useRef<boolean>(false);
 
   useEffect(() => {
     let mounted = true;
@@ -52,7 +84,7 @@ export const AuthProvider = ({ children }) => {
 
     initAuth();
 
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (!mounted) return;
 
       const { isIgnorandoMudancaAuth } = require('../services/funcionarios');
@@ -87,7 +119,7 @@ export const AuthProvider = ({ children }) => {
     };
   }, []);
 
-  const login = async (email, senha) => {
+  const login = async (email: string, senha: string): Promise<boolean> => {
     try {
       setLoading(true);
 
@@ -103,7 +135,7 @@ export const AuthProvider = ({ children }) => {
 
       // TERCEIRO: Fazer login
       console.log('[Auth] Tentando login Firebase Auth...');
-      const userCredential = await signInWithEmailAndPassword(auth, email, senha);
+      const userCredential: UserCredential = await signInWithEmailAndPassword(auth, email, senha);
       console.log('[Auth] ✅ Auth OK, UID:', userCredential.user.uid);
 
       // Aguardar token de auth propagar
@@ -115,14 +147,14 @@ export const AuthProvider = ({ children }) => {
 
       if (result.success) {
         // Obter dados da empresa
-        let companyData = null;
+        let companyData: AppUser['company'] = null;
         if (result.funcionario.companyId) {
           try {
-            const { getDoc, doc } = require('firebase/firestore');
+            // Alterado de require para import estático no topo, mas mantendo a lógica
             const companyDoc = await getDoc(doc(db, 'companies', result.funcionario.companyId));
             if (companyDoc.exists()) {
               companyData = { id: companyDoc.id, ...companyDoc.data() };
-              console.log('[Auth] 🏢 Empresa carregada:', companyData.name);
+              console.log('[Auth] 🏢 Empresa carregada:', companyData?.name);
             }
           } catch (companyError) {
             console.error('[Auth] ❌ Erro ao carregar empresa:', companyError);
@@ -130,11 +162,14 @@ export const AuthProvider = ({ children }) => {
         }
 
         // QUARTO: Definir estados manualmente
-        setUser({
+        const appUser: AppUser = {
           uid: userCredential.user.uid, // Garantir acesso universal ao UID
+          email: userCredential.user.email,
           ...result.funcionario,
           company: companyData
-        });
+        };
+        
+        setUser(appUser);
         setRole(normalizeRole(result.funcionario.funcao));
         setSessionKey(k => k + 1);
         setLoading(false);
@@ -142,25 +177,28 @@ export const AuthProvider = ({ children }) => {
       } else {
         await signOut(auth);
         isManualLoginRef.current = false;
+        
+        const errorMsg = result.error || 'Erro desconhecido';
+        
         Alert.alert(
           'Acesso negado',
           `Usuário não cadastrado como funcionário.\n\n` +
           `UID: ${userCredential.user.uid}\n` +
           `Email: ${userCredential.user.email}\n\n` +
-          `Erro: ${result.error || 'Erro desconhecido'}\n\n` +
+          `Erro: ${errorMsg}\n\n` +
           `Se o erro for "permission-denied", as regras do Firestore não foram aplicadas corretamente.`
         );
         setLoading(false);
         return false;
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('[Auth] ❌ Erro no login:', error);
       isManualLoginRef.current = false;
 
       let message = 'Ocorreu um erro ao fazer login.';
 
       // Mapeamento de erros comuns do Firebase para mensagens amigáveis
-      const errorMessages = {
+      const errorMessages: Record<string, string> = {
         'auth/invalid-credential': 'Email ou senha incorretos.',
         'auth/user-not-found': 'Email ou senha incorretos.',
         'auth/wrong-password': 'Email ou senha incorretos.',
@@ -170,7 +208,7 @@ export const AuthProvider = ({ children }) => {
         'auth/network-request-failed': 'Verifique sua conexão com a internet.'
       };
 
-      if (errorMessages[error.code]) {
+      if (error.code && errorMessages[error.code]) {
         message = errorMessages[error.code];
       } else if (error.code) {
         // Para outros erros, mostra uma mensagem genérica com o código
@@ -214,7 +252,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (email, password) => {
+  const register = async (email: string, password: string): Promise<{ success: boolean; user?: FirebaseUser; error?: any }> => {
     try {
       setLoading(true);
       // PRIMEIRO: Garantir logout
@@ -240,22 +278,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const switchUser = useCallback(() => {
-    Alert.alert(
-      'Trocar Usuário',
-      'Deseja trocar de usuário?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Trocar',
-          onPress: async () => {
-            await logout();
-          }
-        }
-      ]
-    );
-  }, []);
-
   return (
     <AuthContext.Provider value={{
       user,
@@ -265,7 +287,7 @@ export const AuthProvider = ({ children }) => {
       logout, // Usar logout real
       register, // Adicionado para evitar logout no cadastro
       sessionKey,
-      hasPermission: (perm) => hasPermission(role, perm),
+      hasPermission: (perm: string) => hasPermission(role, perm),
       Permissions
     }}>
       {children}

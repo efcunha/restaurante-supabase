@@ -1,4 +1,6 @@
 import { getLocalDateKey } from '../utils/dateUtils';
+import { Order, OrderItemStatus } from '../types';
+
 /**
  * OrderService - Business Logic for Order Management
  * 
@@ -7,8 +9,17 @@ import { getLocalDateKey } from '../utils/dateUtils';
  * - Standardized date keys using utils/dateUtils
  * - Improved kitchen category detection (Pizza support)
  */
+
+interface CardapioItem {
+  [key: string]: number;
+}
+
+interface CardapioSection {
+  [key: string]: number | CardapioItem | any;
+}
+
 // Cardápio
-const CARDAPIO = {
+const CARDAPIO: Record<string, CardapioSection> = {
   espetinhos: {
     'Carne': 12.00,
     'Frango': 12.00,
@@ -68,7 +79,7 @@ const CARDAPIO = {
 };
 
 class OrderService {
-  calculateOrderTotal(items) {
+  calculateOrderTotal(items: string[]): number {
     let total = 0;
     items.forEach((item) => {
       const price = this.calculateItemPrice(item);
@@ -78,12 +89,12 @@ class OrderService {
     return total;
   }
 
-  extractQuantity(item) {
+  extractQuantity(item: string): number {
     const match = item.match(/^(\d+)x?\s*/);
-    return parseInt(match?.[1], 10) || 1;
+    return parseInt(match?.[1] || '1', 10) || 1;
   }
 
-  calculateItemPrice(item) {
+  calculateItemPrice(item: string): number {
     // Remover quantidade e tempero
     let itemName = item.replace(/^\d+x?\s*/, "").replace(/\s*\(.*\)$/, "").trim();
     const itemLower = itemName.toLowerCase();
@@ -94,49 +105,52 @@ class OrderService {
     // Caldos
     if (itemLower.includes('caldinho') || itemLower.includes('caldo')) {
       for (const [nome, preco] of Object.entries(CARDAPIO.caldos)) {
-        if (itemLower.includes(nome.toLowerCase())) return preco;
+        if (itemLower.includes(nome.toLowerCase())) return preco as number;
       }
     }
 
     // Risotos
     if (itemLower.includes('risoto')) {
       for (const [nome, preco] of Object.entries(CARDAPIO.risotos)) {
-        if (itemLower.includes(nome.toLowerCase())) return preco;
+        if (itemLower.includes(nome.toLowerCase())) return preco as number;
       }
     }
 
     // Bebidas
-    if (itemLower.includes('refrigerante') && itemLower.includes('lata')) return CARDAPIO.bebidas['Refrigerante Lata'];
-    if (itemLower.includes('refrigerante') && (itemLower.includes('1l') || itemLower.includes('litro'))) return CARDAPIO.bebidas['Refrigerante 1L'];
-    if (itemLower.includes('água') && itemLower.includes('gás')) return CARDAPIO.bebidas['Água com Gás'];
-    if (itemLower.includes('água')) return CARDAPIO.bebidas['Água Mineral'];
-    if (itemLower.includes('suco')) return CARDAPIO.bebidas.Suco;
+    if (itemLower.includes('refrigerante') && itemLower.includes('lata')) return CARDAPIO.bebidas['Refrigerante Lata'] as number;
+    if (itemLower.includes('refrigerante') && (itemLower.includes('1l') || itemLower.includes('litro'))) return CARDAPIO.bebidas['Refrigerante 1L'] as number;
+    if (itemLower.includes('água') && itemLower.includes('gás')) return CARDAPIO.bebidas['Água com Gás'] as number;
+    if (itemLower.includes('água')) return CARDAPIO.bebidas['Água Mineral'] as number;
+    if (itemLower.includes('suco')) return CARDAPIO.bebidas.Suco as number;
 
     // Jantinha Completa
     if (itemLower.includes('jantinha completa')) {
-      if (itemLower.includes('carneiro')) return CARDAPIO.jantinhaCompleta.especiais.Carneiro;
-      if (itemLower.includes('cupim')) return CARDAPIO.jantinhaCompleta.especiais['Bife de Cupim'];
-      if (itemLower.includes('picanha')) return CARDAPIO.jantinhaCompleta.especiais.Picanha;
-      return CARDAPIO.jantinhaCompleta.base;
+      const especiais = CARDAPIO.jantinhaCompleta.especiais as Record<string, number>;
+      if (itemLower.includes('carneiro')) return especiais.Carneiro;
+      if (itemLower.includes('cupim')) return especiais['Bife de Cupim'];
+      if (itemLower.includes('picanha')) return especiais.Picanha;
+      return CARDAPIO.jantinhaCompleta.base as number;
     }
 
     // Jantinha 1 Acompanhamento
     if (itemLower.includes('jantinha') && (itemLower.includes('arroz') || itemLower.includes('macaxeira'))) {
-      if (itemLower.includes('carneiro')) return CARDAPIO.jantinha1Acomp.especiais.Carneiro;
-      if (itemLower.includes('cupim')) return CARDAPIO.jantinha1Acomp.especiais['Bife de Cupim'];
-      if (itemLower.includes('picanha')) return CARDAPIO.jantinha1Acomp.especiais.Picanha;
-      return CARDAPIO.jantinha1Acomp.base;
+      const especiais = CARDAPIO.jantinha1Acomp.especiais as Record<string, number>;
+      if (itemLower.includes('carneiro')) return especiais.Carneiro;
+      if (itemLower.includes('cupim')) return especiais['Bife de Cupim'];
+      if (itemLower.includes('picanha')) return especiais.Picanha;
+      return CARDAPIO.jantinha1Acomp.base as number;
     }
 
     // Espetinhos Especiais
-    if (itemLower.includes('carneiro')) return CARDAPIO.especiais.Carneiro;
-    if (itemLower.includes('cupim')) return CARDAPIO.especiais.Cupim;
-    if (itemLower.includes('picanha')) return CARDAPIO.especiais.Picanha;
+    const especiaisGerais = CARDAPIO.especiais as Record<string, number>;
+    if (itemLower.includes('carneiro')) return especiaisGerais.Carneiro;
+    if (itemLower.includes('cupim')) return especiaisGerais.Cupim;
+    if (itemLower.includes('picanha')) return especiaisGerais.Picanha;
 
     // Espetinhos Normais
     for (const [nome, preco] of Object.entries(CARDAPIO.espetinhos)) {
       if (itemLower.includes(nome.toLowerCase())) {
-        return preco;
+        return preco as number;
       }
     }
     return 0;
@@ -146,7 +160,7 @@ class OrderService {
    * Categorias que devem aparecer na cozinha/montagem
    * Permite filtrar bebidas fora da visualização de produção
    */
-  isKitchenCategory(category) {
+  isKitchenCategory(category?: string): boolean {
     const KITCHEN_CATEGORIES = [
       'caldo',
       'espetinho-simples',
@@ -165,12 +179,24 @@ class OrderService {
    * Cria um novo pedido
    * - Agora aceita categoryMap para enriquecer itens com categoria
    */
-  createOrder(orderId, clientName, items, observations, comandaNumber = '', createdBy = '', createdByName = '', totalPrice = 0, isPago = false, mesa = '', categoryMap = null) {
+  createOrder(
+    orderId: string, 
+    clientName: string, 
+    items: string[], 
+    observations: string, 
+    comandaNumber: string = '', 
+    createdBy: string = '', 
+    createdByName: string = '', 
+    totalPrice: number = 0, 
+    isPago: boolean = false, 
+    mesa: string = '', 
+    categoryMap: any = null
+  ): Order {
     const now = new Date();
     const nowISO = now.toISOString();
 
     // CORREÇÃO: Usar data LOCAL consistente com o restante do app
-    const dateKey = getLocalDateKey(now);
+    const dateKeyStr = getLocalDateKey();
 
     const comanda = comandaNumber?.trim() || '';
     const calculatedTotal = totalPrice > 0 ? totalPrice : this.calculateOrderTotal(items);
@@ -181,11 +207,12 @@ class OrderService {
     const horarioCriacao = now.toLocaleTimeString('pt-BR', {
       hour: '2-digit',
       minute: '2-digit',
+      // @ts-ignore
       timeZone: 'America/Sao_Paulo'
     });
 
     // Criar estrutura de itens com status individual
-    const itemsWithStatus = items.map((itemName, index) => {
+    const itemsWithStatus: OrderItemStatus[] = items.map((itemName, index) => {
       // Tentar encontrar a categoria
       let category = 'outro'; // Default
 
@@ -222,7 +249,7 @@ class OrderService {
       };
     });
 
-    const order = {
+    const order: Order = {
       id: orderId,
       client: clientName,
       mesa: mesa?.trim() || '', // Mesa opcional
@@ -234,7 +261,7 @@ class OrderService {
       timestamp: nowISO,
       createdAt: nowISO,
       horarioCriacao, // Horário formatado HH:MM
-      dateKey, // Campo para filtrar estatísticas por data
+      dateKey: dateKeyStr, // Campo para filtrar estatísticas por data
       timeInChurrasqueira: nowISO,
       timeInMontagem: null,
       timeInProntos: null,
@@ -253,9 +280,9 @@ class OrderService {
    * Atualiza status (somente montagem interage)
    * Registra quem moveu o pedido para rastreabilidade
    */
-  updateOrderStatus(order, newStatus, movidoPor = null, movidoPorNome = null) {
+  updateOrderStatus(order: Order, newStatus: string, movidoPor: string | null = null, movidoPorNome: string | null = null): Order {
     const now = new Date().toISOString();
-    const updates = { status: newStatus };
+    const updates: Partial<Order> = { status: newStatus };
 
     switch (newStatus) {
       case 'churrasqueira':
@@ -284,7 +311,7 @@ class OrderService {
   /**
    * Atualiza status de um item individual dentro do pedido
    */
-  updateItemStatus(order, itemId, newStatus) {
+  updateItemStatus(order: Order, itemId: string, newStatus: string): Order {
     if (!order.itemsWithStatus) {
       throw new Error('Pedido não possui itemsWithStatus');
     }
@@ -309,7 +336,7 @@ class OrderService {
   /**
    * Verifica se todos os itens do pedido estão prontos
    */
-  allItemsReady(order) {
+  allItemsReady(order: Order): boolean {
     if (!order.itemsWithStatus || order.itemsWithStatus.length === 0) {
       return true; // Fallback: se não tem itemsWithStatus, considera pronto
     }
@@ -320,7 +347,7 @@ class OrderService {
    * Atualiza dados do pedido (cliente, observações, itens)
    * Bloqueia edição se já estiver em montagem ou pronto (EXCETO para isPago)
    */
-  updateOrder(order, updatedData) {
+  updateOrder(order: Order, updatedData: Partial<Order>): Order {
     // Permitir atualizar isPago mesmo em pedidos prontos/montagem (para pagamento)
     const apenasIsPago = Object.keys(updatedData).length === 1 && 'isPago' in updatedData;
 
@@ -343,7 +370,7 @@ class OrderService {
   /**
    * Valida se pedido pode ser excluído
    */
-  validateDelete(order) {
+  validateDelete(order: Order): boolean {
     if ((order.status === 'montagem' && order.timeInMontagem) || order.status === 'pronto') {
       throw new Error('Não é possível excluir pedidos após início da montagem ou prontos');
     }
@@ -354,7 +381,7 @@ class OrderService {
    * Filtra pedidos por status
    * - Churrasqueira também visualiza os de montagem
    */
-  filterOrdersByStatus(orders, status) {
+  filterOrdersByStatus(orders: Order[], status: string): Order[] {
     if (status === 'churrasqueira') {
       // Churrasqueira enxerga pedidos em montagem (visualização, sem interação)
       return orders.filter(order => order.status === 'montagem');
@@ -369,8 +396,8 @@ class OrderService {
   /**
    * Resumo de espetos para churrasqueira (quantidades por tipo)
    */
-  summarizeEspetos(items) {
-    const counts = {};
+  summarizeEspetos(items: string[]): Record<string, number> {
+    const counts: Record<string, number> = {};
     items.forEach(item => {
       const base = item.split(/\s+/)[0]; // simplificação
       if (/Refri|Água|Agua|Suco|Cerveja|Refrigerante/i.test(item)) return; // ignorar bebidas
@@ -379,11 +406,11 @@ class OrderService {
     return counts;
   }
 
-  extractBebidas(items) {
+  extractBebidas(items: string[]): string[] {
     return items.filter(i => /Refri|Refrigerante|Água|Agua|Suco|Cerveja/i.test(i));
   }
 
-  classifyAcompanhamento(items) {
+  classifyAcompanhamento(items: string[]): string {
     // procura palavras-chave
     const text = items.join(' ').toLowerCase();
     if (text.includes('completo')) return 'Completo';
@@ -397,24 +424,24 @@ class OrderService {
   /**
    * Busca pedido por ID
    */
-  findOrderById(orders, orderId) {
+  findOrderById(orders: Order[], orderId: string): Order | undefined {
     return orders.find(order => order.id === orderId);
   }
 
   /**
    * Gera ID sequencial (#001, #002, etc.)
    */
-  generateOrderId(counter) {
+  generateOrderId(counter: number): string {
     return `#${String(counter).padStart(3, '0')}`;
   }
 
   /**
    * Verifica se pedido é urgente (mais de 15min)
    */
-  isOrderUrgent(timestamp) {
+  isOrderUrgent(timestamp: string): boolean {
     const orderTime = new Date(timestamp);
     const now = new Date();
-    const diffMinutes = (now - orderTime) / 1000 / 60;
+    const diffMinutes = (now.getTime() - orderTime.getTime()) / 1000 / 60;
     return diffMinutes > 15;
   }
 }
