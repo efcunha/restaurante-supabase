@@ -588,16 +588,29 @@ export default function GerenciarCardapioScreen({ onClose }) {
     }
   };
 
-  const toggleAtivo = async (produto) => {
+
+
+  const toggleGrupoAtivo = async (variacoes, todosAtivos) => {
     try {
-      const produtoRef = getCompanyDoc(user.companyId, 'cardapio', produto.id);
-      await updateDoc(produtoRef, {
-        active: !produto.active
+      // Use loadingProdutos to show feedback on the list
+      setLoadingProdutos(true);
+      const batch = writeBatch(db);
+      const novoStatus = !todosAtivos; // If all active, turn off. If mixed or off, turn on.
+
+      variacoes.forEach(v => {
+        // Only update if strictly necessary to save writes? Batch is fine.
+        const ref = getCompanyDoc(user.companyId, 'cardapio', v.id);
+        batch.update(ref, { active: novoStatus });
       });
+
+      await batch.commit();
+
+      // Update local state optimistically or reload
       carregarProdutos();
     } catch (error) {
-      console.error('❌ Erro ao atualizar status:', error);
-      Alert.alert('Erro', 'Não foi possível atualizar o status do produto');
+      console.error('❌ Erro ao atualizar grupo:', error);
+      Alert.alert('Erro', 'Falha ao atualizar status do grupo.');
+      setLoadingProdutos(false); // Restore state if error
     }
   };
 
@@ -1164,9 +1177,7 @@ export default function GerenciarCardapioScreen({ onClose }) {
                     <View style={styles.produtoActions}>
                       <TouchableOpacity
                         style={[styles.statusBtn, todosAtivos ? styles.statusBtnAtivo : styles.statusBtnInativo]}
-                        onPress={() => {
-                          variacoes.forEach(v => toggleAtivo(v));
-                        }}
+                        onPress={() => toggleGrupoAtivo(variacoes, todosAtivos)}
                       >
                         <Text style={styles.statusBtnText}>
                           {todosAtivos ? 'ATIVO' : 'DESATIVADO'}
