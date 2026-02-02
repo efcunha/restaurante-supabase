@@ -3,27 +3,38 @@ import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Modal } from 'rea
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import CaixaService from '../services/CaixaService';
+// @ts-ignore
 import CashFlowScreen from './CashFlowScreen';
 import { Ionicons } from '@expo/vector-icons';
+import { formatCurrency } from '../utils/formatCurrency';
+import { Caixa } from '../types';
 
-export default function CaixaHistoricoScreen({ onClose }) {
+interface CaixaHistoricoScreenProps {
+  onClose: () => void;
+}
+
+export default function CaixaHistoricoScreen({ onClose }: CaixaHistoricoScreenProps) {
   const { user } = useAuth();
-  const [registros, setRegistros] = useState([]);
-  const [selectedCaixa, setSelectedCaixa] = useState(null);
+  const [registros, setRegistros] = useState<Caixa[]>([]);
+  const [selectedCaixa, setSelectedCaixa] = useState<Caixa | null>(null);
 
-  useEffect(() => { (async () => setRegistros(await CaixaService.historico(user?.companyId)))(); }, [user]);
+  useEffect(() => {
+    const fetchHistory = async () => {
+      if (user?.companyId) {
+        const data = await CaixaService.historico(user.companyId);
+        setRegistros(data);
+      }
+    };
+    fetchHistory();
+  }, [user]);
 
-  const formatCurrency = (val) => {
-    return 'R$ ' + Number(val || 0).toFixed(2).replace('.', ',');
-  };
-
-  const formatDate = (dateStr) => {
+  const formatDate = (dateStr?: string): string => {
     if (!dateStr) return '';
     const [y, m, d] = dateStr.split('-');
     return `${d}/${m}/${y}`;
   };
 
-  const getStatusColor = (status) => {
+  const getStatusColor = (status: string): string => {
     switch (status) {
       case 'aberto': return '#4CAF50';
       case 'fechado': return '#666';
@@ -112,7 +123,7 @@ export default function CaixaHistoricoScreen({ onClose }) {
                   <Text style={[styles.footerLabel, { color: c.diferenca < 0 ? '#C0392B' : '#27AE60', fontWeight: 'bold' }]}>
                     DIFERENÇA:
                   </Text>
-                  <Text style={[styles.footerValue, { color: c.diferenca < 0 ? '#C0392B' : '#27AE60', fontWeight: '900' }]}>
+                  <Text style={[styles.footerValue, { fontWeight: '900', color: c.diferenca < 0 ? '#C0392B' : '#27AE60' }]}>
                     {formatCurrency(c.diferenca)}
                   </Text>
                 </View>

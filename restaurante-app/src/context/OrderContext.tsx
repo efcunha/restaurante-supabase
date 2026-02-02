@@ -1,9 +1,33 @@
-import React, { createContext, useState, useContext, useCallback } from 'react';
+import React, { createContext, useState, useContext, useCallback, ReactNode } from 'react';
 import OrderService from '../services/OrderService';
 
-const OrderContext = createContext();
+import { Order, OrderItemStatus } from '../types';
 
-export const useOrders = () => {
+interface OrderContextType {
+  orders: Order[];
+  addOrder: (
+    clientName: string, 
+    items: string[], 
+    observations: string, 
+    comandaNumber?: string, 
+    createdBy?: string, 
+    createdByName?: string, 
+    totalPrice?: number, 
+    isPago?: boolean
+  ) => string;
+  editOrder: (orderId: string, updatedData: Partial<Order>) => void;
+  deleteOrder: (orderId: string) => void;
+  moveToMontagem: (orderId: string) => void;
+  moveToProntos: (orderId: string) => void;
+  markAsDelivered: (orderId: string) => void;
+  getOrdersByStatus: (status: string) => Order[];
+  getOrderById: (orderId: string) => Order | undefined;
+}
+
+
+const OrderContext = createContext<OrderContextType | undefined>(undefined);
+
+export const useOrders = (): OrderContextType => {
   const context = useContext(OrderContext);
   if (!context) {
     throw new Error('useOrders must be used within OrderProvider');
@@ -11,14 +35,27 @@ export const useOrders = () => {
   return context;
 };
 
-export const OrderProvider = ({ children }) => {
-  const [orders, setOrders] = useState([]);
-  const [orderCounter, setOrderCounter] = useState(1);
+interface OrderProviderProps {
+  children: ReactNode;
+}
+
+export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [orderCounter, setOrderCounter] = useState<number>(1);
 
   // Adicionar novo pedido - usa OrderService
-  const addOrder = useCallback((clientName, items, observations, comandaNumber = '', createdBy = '', createdByName = '', totalPrice = 0, isPago = false) => {
+  const addOrder = useCallback((
+    clientName: string, 
+    items: string[], 
+    observations: string, 
+    comandaNumber: string = '', 
+    createdBy: string = '', 
+    createdByName: string = '', 
+    totalPrice: number = 0, 
+    isPago: boolean = false
+  ) => {
     const orderId = OrderService.generateOrderId(orderCounter);
-    const newOrder = OrderService.createOrder(orderId, clientName, items, observations, comandaNumber, createdBy, createdByName, totalPrice, isPago);
+    const newOrder = OrderService.createOrder(orderId, clientName, items, observations, comandaNumber, createdBy, createdByName, totalPrice, isPago) as Order;
     
     setOrders(prevOrders => [newOrder, ...prevOrders]);
     setOrderCounter(prev => prev + 1);
@@ -27,7 +64,7 @@ export const OrderProvider = ({ children }) => {
   }, [orderCounter]);
 
   // Editar pedido - usa OrderService com validação
-  const editOrder = useCallback((orderId, updatedData) => {
+  const editOrder = useCallback((orderId: string, updatedData: Partial<Order>) => {
     // Validar antes de atualizar o estado para propagar exceções sincronicamente nos testes
     const current = OrderService.findOrderById(orders, orderId);
     if (current) {
@@ -36,13 +73,13 @@ export const OrderProvider = ({ children }) => {
     }
     setOrders(prevOrders =>
       prevOrders.map(order =>
-        order.id === orderId ? OrderService.updateOrder(order, updatedData) : order
+        order.id === orderId ? (OrderService.updateOrder(order, updatedData) as Order) : order
       )
     );
   }, [orders]);
 
   // Cancelar/Excluir pedido - usa OrderService com validação
-  const deleteOrder = useCallback((orderId) => {
+  const deleteOrder = useCallback((orderId: string) => {
     // Validar fora do setState para lançar sincronicamente
     const current = OrderService.findOrderById(orders, orderId);
     if (current) {
@@ -52,43 +89,43 @@ export const OrderProvider = ({ children }) => {
   }, [orders]);
 
   // Mover pedido para montagem - usa OrderService
-  const moveToMontagem = useCallback((orderId) => {
+  const moveToMontagem = useCallback((orderId: string) => {
     setOrders(prevOrders =>
       prevOrders.map(order =>
         order.id === orderId
-          ? OrderService.updateOrderStatus(order, 'montagem')
+          ? (OrderService.updateOrderStatus(order, 'montagem') as Order)
           : order
       )
     );
   }, []);
 
   // Mover pedido para prontos - usa OrderService
-  const moveToProntos = useCallback((orderId) => {
+  const moveToProntos = useCallback((orderId: string) => {
     setOrders(prevOrders =>
       prevOrders.map(order =>
         order.id === orderId
-          ? OrderService.updateOrderStatus(order, 'pronto')
+          ? (OrderService.updateOrderStatus(order, 'pronto') as Order)
           : order
       )
     );
   }, []);
 
   // Marcar pedido como entregue - mantém no histórico em memória
-  const markAsDelivered = useCallback((orderId) => {
+  const markAsDelivered = useCallback((orderId: string) => {
     setOrders(prevOrders => prevOrders.map(order =>
       order.id === orderId
-        ? OrderService.updateOrderStatus(order, 'delivered')
+        ? (OrderService.updateOrderStatus(order, 'delivered') as Order)
         : order
     ));
   }, []);
 
   // Obter pedidos por status - usa OrderService
-  const getOrdersByStatus = useCallback((status) => {
+  const getOrdersByStatus = useCallback((status: string) => {
     return OrderService.filterOrdersByStatus(orders, status);
   }, [orders]);
 
   // Obter pedido por ID - usa OrderService
-  const getOrderById = useCallback((orderId) => {
+  const getOrderById = useCallback((orderId: string) => {
     return OrderService.findOrderById(orders, orderId);
   }, [orders]);
 

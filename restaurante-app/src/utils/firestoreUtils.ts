@@ -1,14 +1,14 @@
-import { collection, doc } from 'firebase/firestore';
+import { collection, doc, CollectionReference, DocumentReference, DocumentData } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
 
 /**
  * Returns a reference to a company-scoped collection.
  * 
- * @param {string} companyId - The ID of the company
- * @param {string} collectionName - The name of the sub-collection (e.g., 'cardapio', 'comandas')
- * @returns {CollectionReference} Firestore collection reference
+ * @param companyId - The ID of the company
+ * @param collectionName - The name of the sub-collection (e.g., 'cardapio', 'comandas')
+ * @returns Firestore collection reference
  */
-export const getCompanyCollection = (companyId, collectionName) => {
+export const getCompanyCollection = (companyId: string, collectionName: string): CollectionReference<DocumentData> => {
   if (!companyId) {
     throw new Error('Company ID is required for scoped data access');
   }
@@ -18,12 +18,12 @@ export const getCompanyCollection = (companyId, collectionName) => {
 /**
  * Returns a reference to a document within a company-scoped collection.
  * 
- * @param {string} companyId - The ID of the company
- * @param {string} collectionName - The name of the sub-collection
- * @param {string} docId - The ID of the document (optional, if creating new doc with auto-ID, don't pass this)
- * @returns {DocumentReference} Firestore document reference
+ * @param companyId - The ID of the company
+ * @param collectionName - The name of the sub-collection
+ * @param docId - The ID of the document (optional, if creating new doc with auto-ID, don't pass this)
+ * @returns Firestore document reference
  */
-export const getCompanyDoc = (companyId, collectionName, docId) => {
+export const getCompanyDoc = (companyId: string, collectionName: string, docId?: string): DocumentReference<DocumentData> => {
   if (!companyId) {
      throw new Error('Company ID is required for scoped data access');
   }
