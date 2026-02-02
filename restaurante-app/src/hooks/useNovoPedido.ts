@@ -5,7 +5,7 @@ import { useOrders } from '../context/OrderContext.firestore';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 // @ts-ignore
-import { getNextComandaNumber, formatComandaNumber } from '../services/ComandaService';
+import { getNextComandaNumber, formatComandaNumber } from '../services/ComandaNumberService';
 import { getDocs, doc, getDoc, query, where } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
 import { getCompanyCollection } from '../utils/firestoreUtils';
@@ -58,7 +58,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
     const [observations, setObservations] = useState('');
     const [produtos, setProdutos] = useState<Record<string, number>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [cardapio, setCardapio] = useState<Cardapio>({ caldos: [], comidas: [], bebidas: [], porcoes: [], outros: [], espetinhosSimples: [], espetinhosEspeciais: [], pizzas: [] });
+    const [cardapio, setCardapio] = useState<Cardapio>({ caldos: [], comidas: [], bebidas: [], porcoes: [], outros: [], espetinhos: [], espetinhosSimples: [], espetinhosEspeciais: [], pizzas: [] });
     const [temperosCaldos, setTemperosCaldos] = useState(['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada']);
     const [temperosComidas, setTemperosComidas] = useState(['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada']);
     const [variacoesEspetinho, setVariacoesEspetinho] = useState(['Simples', 'com Arroz', 'com Macaxeira', 'Completo']);
@@ -75,7 +75,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
 
             if (!user?.companyId) {
                 console.warn('⚠️ Usuário sem empresa vinculada');
-                setCardapio({ caldos: [], comidas: [], bebidas: [], porcoes: [], outros: [], espetinhosSimples: [], espetinhosEspeciais: [], pizzas: [] });
+                setCardapio({ caldos: [], comidas: [], bebidas: [], porcoes: [], outros: [], espetinhos: [], espetinhosSimples: [], espetinhosEspeciais: [], pizzas: [] });
                 setLoadingCardapio(false);
                 return;
             }
@@ -136,6 +136,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                 bebidas: (buckets.bebida || []).sort(sortFn),
                 porcoes: (buckets.porcao || []).sort(sortFn),
                 outros: (buckets.outro || []).sort(sortFn),
+                espetinhos: [], // Adicionado para cumprir interface
                 espetinhosSimples: (buckets['espetinho-simples'] || []).sort(sortFn),
                 espetinhosEspeciais: (buckets['espetinho-especial'] || []).sort(sortFn),
                 pizzas: (buckets['pizza'] || []).sort(sortFn)

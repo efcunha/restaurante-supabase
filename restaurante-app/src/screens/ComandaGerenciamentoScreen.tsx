@@ -1,0 +1,475 @@
+
+import { StatusBar } from 'expo-status-bar';
+import { StyleSheet, Text, View, TouchableOpacity, Alert, Modal, TextInput, KeyboardAvoidingView } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import React, { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { useOrders } from '../context/OrderContext.firestore';
+// @ts-ignore
+import { useComandaManagement } from '../hooks/useComandaManagement';
+import { useToast } from '../context/ToastContext';
+import ComandaList from '../components/comandas/ComandaList';
+// @ts-ignore
+import ComandaDetails from '../components/comandas/ComandaDetails';
+// @ts-ignore
+import AddItemsModal from '../components/comandas/AddItemsModal';
+import { colors } from '../theme/colors';
+import { getTodayKey } from '../services/FirebaseOptimizations';
+import { fixDecimal, calcularPrecoItem } from '../utils/orderCalculator';
+import CancelOrderModal from '../components/comandas/CancelOrderModal';
+import BackgroundPattern from '../components/BackgroundPattern';
+import { confirmLogout } from '../utils/appUtils';
+
+import PagamentosService from '../services/PagamentosService';
+import ComandasService from '../services/ComandasService';
+import PrinterService from '../services/PrinterService';
+// @ts-ignore
+import CaixaService from '../services/CaixaService';
+import { updateDoc } from 'firebase/firestore';
+
+// @ts-ignore
+import { getCompanyDoc } from '../utils/firestoreUtils';
+import { LayoutAnimation, Platform, UIManager } from 'react-native';
+import PDFService from '../services/PDFService';
+
+
+if (Platform.OS === 'android') {
+  if (UIManager.setLayoutAnimationEnabledExperimental) {
+    UIManager.setLayoutAnimationEnabledExperimental(true);
+  }
+}
+
+export default function ComandaGerenciamentoScreen() {
+  const { user, logout } = useAuth();
+  const { addOrder } = useOrders();
+  const {
+    activeTab, setActiveTab,
+    comandasAbertas, comandasPagas, comandasCanceladas,
+    selectedComanda, setSelectedComanda,
+    isRefreshing, carregarComandas,
+    isLoadingMore, onLoadMore
+  } = useComandaManagement();
+
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const { showToast } = useToast();
+
+  // --- Actions ---
+
+  const handleLogout = () => {
+    confirmLogout(logout);
+  };
+
+  const handlePrint = async (comandaData: any) => {
+    // Preparar dados para o formato esperado pelo PrinterService (itens)
+    let itensParaImprimir: any[] = [];
+
+    if (comandaData.pedidos && comandaData.pedidos.length > 0) {
+      // Agrupar itens igual fazemos no Details
+      const mapItens: any = {};
+
+      comandaData.pedidos.forEach((p: any) => {
+        let itemsArray = p.items || p.itens || [];
+        if (!Array.isArray(itemsArray)) itemsArray = [];
+
+        itemsArray.forEach((itemText: string) => {
+          const calc = calcularPrecoItem(itemText);
+          const nome = calc.nomeCompleto;
+
+          if (!mapItens[nome]) {
+            mapItens[nome] = {
+              nome: nome,
+              quantidade: 0,
+              valor: calc.precoUnitario,
+              observacao: ''
+            };
+          }
+          mapItens[nome].quantidade += calc.quantidade;
+        });
+      });
+
+      // Converter para array
+      itensParaImprimir = Object.values(mapItens).map((item: any) => ({
+        nome: item.nome,
+        quantidade: item.quantidade,
+        valor: item.valor * item.quantidade,
+        observacao: item.observacao
+      }));
+    }
+
+    const dadosImpressao = {
+      ...comandaData,
+      itens: itensParaImprimir
+    };
+
+    const sucesso = await PrinterService.printComanda(dadosImpressao);
+    if (!sucesso) {
+      Alert.alert('Erro', 'Falha ao conectar na impressora. Verifique se o Bluetooth está ligado e a impressora configurada.');
+    }
+  };
+
+  const handlePayment = async (comanda: any, forma: string, valor: number) => {
+    try {
+      if (comanda.status === 'cancelada') {
+        Alert.alert('Operação Bloqueada', 'Esta comanda está CANCELADA e não pode receber pagamentos.');
+        return;
+      }
+
+      const caixaAberto = await CaixaService.getCaixaAberto(user?.companyId);
+      if (!caixaAberto) {
+        Alert.alert('Caixa Fechado', 'Abra o caixa antes de receber pagamentos.');
+        return;
+      }
+
+      const pedidosParaPagar = comanda.pedidos
+        .filter((p: any) => !p.isPago)
+        .map((p: any) => p.id);
+
+      await PagamentosService.registrarPagamento({
+        companyId: user?.companyId || '',
+        dateKey: getTodayKey(),
+        comandaNumber: comanda.comandaNumber,
+        forma: forma,
+        valor: valor,
+        usuarioId: user?.id,
+        usuarioNome: user?.nome,
+      });
+
+      if (pedidosParaPagar.length > 0) {
+        await PagamentosService.marcarPedidosComoPagos(user?.companyId || '', pedidosParaPagar, forma);
+      }
+
+      // Check closure
+      const saldoRestante = comanda.totalConsumido - (comanda.totalPago + valor);
+      if (saldoRestante <= 0.01) {
+        // Close comanda
+        await new Promise(r => setTimeout(r, 1000)); // wait propagation
+        await ComandasService.fecharComanda(user?.companyId || '', comanda.comandaNumber, user?.id, user?.nome);
+      }
+
+      showToast('Pagamento registrado!', 'success');
+      setSelectedComanda(null);
+      carregarComandas(true);
+
+    } catch (e: any) {
+      showToast(e.message, 'error');
+    }
+  };
+
+  const handleCancel = () => {
+    if (!selectedComanda) return;
+
+    const temPedidoEntregue = selectedComanda.pedidos?.some((pedido: any) => {
+      if (pedido.status === 'delivered' || pedido.status === 'entregue') return true;
+      if (pedido.itemsWithStatus && Array.isArray(pedido.itemsWithStatus)) {
+        return pedido.itemsWithStatus.some((item: any) => item.delivered === true || item.status === 'entregue');
+      }
+      return false;
+    });
+
+    if (temPedidoEntregue) {
+      Alert.alert(
+        'Operação Bloqueada',
+        'Esta comanda possui pedidos já ENTREGUES e não pode ser cancelada.\n\nPara cancelar, você precisa primeiro estornar os pedidos entregues.'
+      );
+      return;
+    }
+
+    setShowCancelModal(true);
+  };
+
+  const confirmCancel = async (reason: string) => {
+    if (!reason?.trim()) {
+      Alert.alert('Erro', 'Por favor, informe o motivo do cancelamento.');
+      return;
+    }
+
+    try {
+      console.log('[ComandaGerenciamento] 🚫 Cancelando comanda:', {
+        docId: `comanda-${getTodayKey()}-${selectedComanda.comandaNumber}`,
+        comandaNumber: selectedComanda.comandaNumber,
+        reason
+      });
+
+      const docId = `comanda-${getTodayKey()}-${selectedComanda.comandaNumber}`;
+      
+      await updateDoc(getCompanyDoc(user?.companyId || '', 'comandas', docId), {
+        status: 'cancelada',
+        canceladaPor: user?.id || 'admin',
+        canceladaPorNome: user?.nome || 'Admin',
+        canceladaEm: new Date().toISOString(),
+        motivoCancelamento: reason.trim()
+      });
+
+      if (selectedComanda.pedidos && selectedComanda.pedidos.length > 0) {
+        const updatePromises = selectedComanda.pedidos.map(async (pedido: any) => {
+          try {
+            const pedidoRef = getCompanyDoc(user?.companyId || '', 'pedidos', pedido.id);
+            await updateDoc(pedidoRef, {
+              comandaStatus: 'cancelada',
+              canceladoEm: new Date().toISOString(),
+              canceladoPor: user?.nome || 'Admin'
+            });
+          } catch (err) {
+            console.error('[ComandaGerenciamento] ❌ Erro ao marcar pedido:', pedido.id, err);
+          }
+        });
+
+        await Promise.all(updatePromises);
+      }
+
+      showToast('Comanda cancelada', 'info');
+      setSelectedComanda(null);
+      setShowCancelModal(false);
+      carregarComandas(true);
+    } catch (e: any) {
+      console.error('[ComandaGerenciamento] ❌ Erro ao cancelar:', e);
+      showToast(e.message, 'error');
+    }
+  };
+
+  const handleAddItems = async (items: string[]) => {
+    try {
+      const novoPedido = {
+        comandaNumber: selectedComanda.comandaNumber,
+        client: selectedComanda.cliente || 'Não informado',
+        items: items,
+        status: 'prontos',
+        isPago: false,
+        createdAt: new Date(),
+        dateKey: getTodayKey(),
+        waiter: user?.nome,
+        waiterId: user?.id
+      };
+
+      await addOrder(
+        novoPedido.client,
+        novoPedido.items,
+        '',
+        novoPedido.comandaNumber,
+        novoPedido.waiterId,
+        novoPedido.waiter,
+        0,
+        false
+      );
+
+      showToast('Itens adicionados com sucesso!', 'success');
+      setShowAddModal(false);
+      carregarComandas(true);
+    } catch (e: any) {
+      showToast(e.message, 'error');
+    }
+  };
+
+  const prepareDataForExport = (comandaData: any) => {
+    let itensParaImprimir: any[] = [];
+    if (comandaData.pedidos && comandaData.pedidos.length > 0) {
+      const mapItens: any = {};
+      comandaData.pedidos.forEach((p: any) => {
+        let itemsArray = p.items || p.itens || [];
+        if (!Array.isArray(itemsArray)) itemsArray = [];
+        itemsArray.forEach((itemText: string) => {
+          const calc = calcularPrecoItem(itemText);
+          const nome = calc.nomeCompleto;
+          if (!mapItens[nome]) {
+            mapItens[nome] = { nome: nome, quantidade: 0, valor: calc.precoUnitario, observacao: '' };
+          }
+          mapItens[nome].quantidade += calc.quantidade;
+        });
+      });
+      itensParaImprimir = Object.values(mapItens).map((item: any) => ({
+        nome: item.nome,
+        quantidade: item.quantidade,
+        valor: item.valor * item.quantidade,
+        observacao: item.observacao
+      }));
+    }
+
+    const now = new Date();
+    const dia = String(now.getDate()).padStart(2, '0');
+    const mes = String(now.getMonth() + 1).padStart(2, '0');
+    const ano = now.getFullYear();
+    const hora = String(now.getHours()).padStart(2, '0');
+    const min = String(now.getMinutes()).padStart(2, '0');
+    const dataFormatada = `${dia}/${mes}/${ano} às ${hora}:${min}`;
+
+    return {
+      ...comandaData,
+      itens: itensParaImprimir,
+      dataEmissao: dataFormatada
+    };
+  };
+
+  const handleShare = async (comandaData: any) => {
+    try {
+      const data = prepareDataForExport(comandaData);
+      await PDFService.generateAndShareComanda(data, user?.company as any);
+    } catch (e) {
+      Alert.alert('Erro', 'Falha ao compartilhar PDF');
+    }
+  };
+
+  if (selectedComanda) {
+    return (
+      <>
+        <ComandaDetails
+          comanda={selectedComanda}
+          onClose={() => setSelectedComanda(null)}
+          onPay={(comanda: any, forma: string, valor: number) => handlePayment(comanda, forma, valor)}
+          onCancel={handleCancel}
+          onAddItems={() => setShowAddModal(true)}
+          onPrint={() => handlePrint(selectedComanda)}
+          onShare={() => handleShare(selectedComanda)}
+        />
+
+        <AddItemsModal
+          visible={showAddModal}
+          onClose={() => setShowAddModal(false)}
+          onConfirm={handleAddItems}
+          comandaNumber={selectedComanda.comandaNumber}
+        />
+
+        <CancelOrderModal
+          visible={showCancelModal}
+          onClose={() => setShowCancelModal(false)}
+          onConfirm={confirmCancel}
+        />
+      </>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <BackgroundPattern />
+
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          {user && (
+            <View>
+              <Text style={styles.userInfoLabel}>Olá,</Text>
+              <Text style={styles.userInfo}>{user.nome || user.email}</Text>
+            </View>
+          )}
+        </View>
+        <View style={styles.headerCenter}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Ionicons name="clipboard-outline" size={24} color={colors.white} />
+            <Text style={styles.headerTitle}>Gerenciamento</Text>
+          </View>
+        </View>
+        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+          <Ionicons name="log-out-outline" size={24} color={colors.white} />
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.tabs}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'abertas' && styles.activeTab]}
+          onPress={() => {
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+            setActiveTab('abertas');
+          }}
+        >
+          <Text style={[styles.tabText, activeTab === 'abertas' && styles.activeTabText]}>
+            Abertas ({comandasAbertas.length})
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'pagas' && styles.activeTab]}
+          onPress={() => {
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+            setActiveTab('pagas');
+          }}
+        >
+          <Text style={[styles.tabText, activeTab === 'pagas' && styles.activeTabText]}>
+            Pagas
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'canceladas' && styles.activeTab]}
+          onPress={() => {
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+            setActiveTab('canceladas');
+          }}
+        >
+          <Text style={[styles.tabText, activeTab === 'canceladas' && styles.activeTabText]}>
+            Canceladas
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <ComandaList
+        comandas={
+          activeTab === 'abertas' ? comandasAbertas :
+            activeTab === 'pagas' ? comandasPagas : comandasCanceladas
+        }
+        onSelectComanda={setSelectedComanda}
+        refreshing={isRefreshing}
+        onRefresh={() => carregarComandas(true)}
+        onLoadMore={onLoadMore}
+        loadingMore={isLoadingMore}
+      />
+
+      <StatusBar style="dark" />
+
+      <CancelOrderModal
+        visible={showCancelModal}
+        onClose={() => setShowCancelModal(false)}
+        onConfirm={confirmCancel}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 50,
+    paddingBottom: 15,
+    backgroundColor: colors.primary,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    elevation: 4,
+    zIndex: 10,
+  },
+  headerLeft: {
+    flex: 1,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  headerCenter: {
+    flex: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.white,
+    textAlign: 'center',
+  },
+  userInfoLabel: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 10,
+  },
+  userInfo: {
+    fontSize: 12,
+    color: colors.userInfo,
+    fontWeight: '600',
+  },
+  logoutBtn: {
+    flex: 1,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    padding: 5,
+  },
+  tabs: { flexDirection: 'row', padding: 10, gap: 10 },
+  tab: { flex: 1, padding: 10, alignItems: 'center', borderRadius: 8, backgroundColor: '#E0E0E0' },
+  activeTab: { backgroundColor: colors.primary },
+  tabText: { fontWeight: 'bold', color: colors.textSecondary },
+  activeTabText: { color: colors.white },
+});

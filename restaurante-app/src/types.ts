@@ -38,6 +38,7 @@ export interface Caixa {
   status: 'aberto' | 'fechado';
   abertoPor: string;
   abertoPorNome: string;
+  abertoAt?: any; // Timestamp
   valorInicial: number;
   vendasTotal: number;
   reforcosTotal: number;
@@ -99,7 +100,27 @@ export interface Cardapio {
   comidas: Product[];
   bebidas: Product[];
   espetinhos: Product[];
-  [key: string]: Product[];
+  espetinhosSimples?: Product[];
+  espetinhosEspeciais?: Product[];
+  outros?: Product[];
+  porcoes?: Product[];
+  pizzas?: Product[];
+  [key: string]: Product[] | undefined;
+}
+
+export interface Funcionario {
+  id: string;
+  uid?: string;
+  nome: string;
+  email: string;
+  cpf: string;
+  funcao: 'admin' | 'churrasqueiro' | 'montagem' | 'garcom' | string;
+  companyId?: string;
+  ativo: boolean;
+  criadoEm?: string;
+  desativadoEm?: string;
+  atualizadoEm?: string;
+  [key: string]: any;
 }
 
 export interface Comanda {
