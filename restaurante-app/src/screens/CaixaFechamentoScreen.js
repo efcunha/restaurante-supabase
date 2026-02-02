@@ -16,6 +16,7 @@ export default function CaixaFechamentoScreen() {
   const [loading, setLoading] = useState(false);
   const [fechamentoResult, setFechamentoResult] = useState(null); // Para mostrar modal de sucesso/impressão
   const [blindClosing, setBlindClosing] = useState(false); // Configuração de Fechamento Cego
+  const [totalCancelado, setTotalCancelado] = useState(0); // ✅ Novo estado para exibir na tela
 
   useEffect(() => {
     loadCaixas();
@@ -42,9 +43,20 @@ export default function CaixaFechamentoScreen() {
     setLoading(false);
   };
 
-  const handleSelectCaixa = (caixa) => {
+  const handleSelectCaixa = async (caixa) => {
     setSelectedCaixa(caixa);
     setSaldoReal('');
+
+    // ✅ Buscar total cancelado ao selecionar o caixa
+    setLoading(true);
+    try {
+      const total = await CaixaService.getTotalCancelados(user.companyId, caixa.data);
+      setTotalCancelado(total);
+    } catch (e) {
+      console.error('Erro ao buscar cancelados:', e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const fechar = async () => {
@@ -114,7 +126,7 @@ export default function CaixaFechamentoScreen() {
     const comandas = await CaixaService.getComandasFechadas(user.companyId, caixa.data);
 
     // Buscar total cancelado (Informativo)
-    const totalCancelado = await CaixaService.getTotalCancelados(user.companyId, caixa.data);
+    const canceladoHTML = await CaixaService.getTotalCancelados(user.companyId, caixa.data);
 
     let htmlComandas = comandas.map(c => `
       <tr>
@@ -156,7 +168,7 @@ export default function CaixaFechamentoScreen() {
             <tr><td>Total Vendas</td><td>R$ ${(caixa.vendasTotal || 0).toFixed(2)}</td></tr>
             <tr><td>Reforços</td><td>R$ ${(caixa.reforcosTotal || 0).toFixed(2)}</td></tr>
             <tr><td>Sangrias</td><td>- R$ ${(caixa.sangriasTotal || 0).toFixed(2)}</td></tr>
-            <tr class="cancelado-row"><td>Total Cancelado (Informativo)</td><td>R$ ${totalCancelado.toFixed(2)}</td></tr>
+            <tr class="cancelado-row"><td>Total Cancelado (Informativo)</td><td>R$ ${canceladoHTML.toFixed(2)}</td></tr>
             <tr class="total-row"><td>Saldo Esperado</td><td>R$ ${(r.saldoEsperado).toFixed(2)}</td></tr>
             <tr class="total-row"><td>Saldo Real (Contado)</td><td>R$ ${(r.saldoReal).toFixed(2)}</td></tr>
             <tr class="total-row"><td>Diferença</td><td>R$ ${(r.diferenca).toFixed(2)}</td></tr>
@@ -271,6 +283,12 @@ export default function CaixaFechamentoScreen() {
                 <Text style={styles.resumoValue}>- R$ {selectedCaixa.sangriasTotal?.toFixed(2)}</Text>
               </View>
 
+              {/* ✅ Exibir Total Cancelado (Informativo) */}
+              <View style={[styles.resumoRow, { marginTop: 4 }]}>
+                <Text style={[styles.resumoLabel, { color: '#7F8C8D', fontStyle: 'italic' }]}>Cancelado (Info):</Text>
+                <Text style={[styles.resumoValue, { color: '#7F8C8D', fontStyle: 'italic' }]}>R$ {totalCancelado?.toFixed(2)}</Text>
+              </View>
+
               <View style={styles.divider} />
 
               <View style={styles.resumoRow}>
@@ -357,6 +375,8 @@ export default function CaixaFechamentoScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F1E8' },
+  header: { alignItems: 'center', justifyContent: 'center' }, // Adicionado para fallback do header se loading
+  headerTitle: { fontSize: 20, color: '#2C2C2C' },
   sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#8B2F2F', marginBottom: 15 },
   cardItem: { backgroundColor: '#fff', padding: 15, borderRadius: 10, marginBottom: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderColor: '#E0D8C8', borderWidth: 1 },
   cardDate: { fontSize: 16, fontWeight: 'bold', color: '#333' },
@@ -369,10 +389,14 @@ const styles = StyleSheet.create({
   btn: { backgroundColor: '#E5B84A', padding: 16, borderRadius: 12, alignItems: 'center' },
   btnDisabled: { opacity: 0.6 },
   btnText: { color: '#2C2C2C', fontWeight: '700' },
-  card: { backgroundColor: '#fff', borderRadius: 12, padding: 16, borderColor: '#F0EBE0', borderWidth: 1, marginBottom: 10 },
-  highlightTitle: { fontSize: 18, fontWeight: 'bold', color: '#8B2F2F', marginBottom: 10, textAlign: 'center' },
-  line: { color: '#2C2C2C', marginBottom: 6, fontSize: 15 },
-  section: { color: '#8B2F2F', fontWeight: '700', marginBottom: 8, marginTop: 8 },
+  resumoCard: { backgroundColor: '#fff', borderRadius: 12, padding: 16, borderColor: '#F0EBE0', borderWidth: 1, marginBottom: 10 },
+  resumoRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+  resumoLabel: { fontSize: 14, color: '#555' },
+  resumoValue: { fontSize: 14, fontWeight: 'bold', color: '#333' },
+  resumoLabelBold: { fontSize: 16, fontWeight: 'bold', color: '#333' },
+  resumoValueBold: { fontSize: 16, fontWeight: 'bold', color: '#2C2C2C' },
+  totalLabel: { marginTop: 5 },
+  totalValue: { marginTop: 5, fontSize: 18, color: '#27AE60' }, // Highlight esperado
   divider: { height: 1, backgroundColor: '#E0D8C8', marginVertical: 8 },
   modalBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   modalCard: { backgroundColor: '#fff', width: '85%', padding: 25, borderRadius: 15, alignItems: 'center' },
