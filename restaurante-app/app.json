@@ -50,13 +50,21 @@
       "bundler": "metro"
     },
     "jsEngine": "hermes",
-    "plugins": [
-      "expo-font"
-    ],
     "extra": {
       "eas": {
         "projectId": "e81efdb8-d3ed-4e6f-82b4-dcf4b8e8f49e"
       }
-    }
+    },
+    "plugins": [
+        "expo-font",
+        [
+            "@sentry/react-native/expo",
+            {
+                "url": "https://sentry.io/",
+                "project": "your-project-name",
+                "organization": "your-org-slug"
+            }
+        ]
+    ]
   }
 }
