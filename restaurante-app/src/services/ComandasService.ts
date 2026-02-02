@@ -1,18 +1,26 @@
 /**
  * ComandasService - Gerencia contas abertas (comandas), totais e fechamento.
  */
-import { runTransaction, serverTimestamp, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { runTransaction, serverTimestamp, query, where, getDocs, orderBy, DocumentData } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
 import { getCompanyDoc, getCompanyCollection } from '../utils/firestoreUtils';
+import { getLocalDateKey } from '../utils/dateUtils';
+import { Comanda } from '../types';
 
 const COMANDAS_COLLECTION = 'comandas';
 
-import { getLocalDateKey } from '../utils/dateUtils';
-const todayKey = getLocalDateKey;
-const comandaId = (dateKey, numero) => `comanda-${dateKey}-${String(numero)}`;
+const todayKey = (): string => getLocalDateKey();
+const comandaId = (dateKey: string, numero: string | number): string => `comanda-${dateKey}-${String(numero)}`;
 
 class ComandasService {
-  async ensureComandaAberta(companyId, comandaNumber, usuarioId, usuarioNome, mesa = '', cliente = '') {
+  async ensureComandaAberta(
+    companyId: string, 
+    comandaNumber: string | number, 
+    usuarioId: string, 
+    usuarioNome: string, 
+    mesa: string = '', 
+    cliente: string = ''
+  ): Promise<{ id: string; dateKey: string }> {
     if (!companyId) throw new Error("Company ID required");
     const dateKey = todayKey();
     const id = comandaId(dateKey, comandaNumber);
@@ -27,10 +35,11 @@ class ComandasService {
         const horarioCriacao = criadaEm.toLocaleTimeString('pt-BR', {
           hour: '2-digit',
           minute: '2-digit',
+          // @ts-ignore
           timeZone: 'America/Sao_Paulo'
         });
 
-        tx.set(ref, {
+        const novaComanda: Omit<Comanda, 'id'> = {
           dateKey,
           comandaNumber: String(comandaNumber),
           status: 'aberta',
@@ -47,12 +56,15 @@ class ComandasService {
           abertaPorNome: usuarioNome || '',
           fechadaAt: null,
           fechadaPor: null,
+          // @ts-ignore
           atualizado: serverTimestamp(),
-        });
+        };
+
+        tx.set(ref, novaComanda);
         console.log('[ComandasService] Nova comanda criada.');
       } else {
-        const data = snap.data();
-        const updates = { atualizado: serverTimestamp() };
+        const data = snap.data() as Comanda;
+        const updates: any = { atualizado: serverTimestamp() };
 
         // Se estiver fechada, reabrir
         if (data.status === 'fechada') {
@@ -81,17 +93,19 @@ class ComandasService {
     return { id, dateKey };
   }
 
-  async adicionarConsumo(companyId, comandaNumber, valorAcrescentar) {
+  async adicionarConsumo(companyId: string, comandaNumber: string | number, valorAcrescentar: number | string) {
     if (!companyId) throw new Error("Company ID required");
     const dateKey = todayKey();
     const id = comandaId(dateKey, comandaNumber);
     const ref = getCompanyDoc(companyId, COMANDAS_COLLECTION, id);
-    const valor = parseFloat(valorAcrescentar) || 0;
+    const valor = typeof valorAcrescentar === 'string' ? parseFloat(valorAcrescentar) : valorAcrescentar;
+    
+    if (isNaN(valor)) return; // Ignorar valores inválidos
 
     await runTransaction(db, async (tx) => {
       const snap = await tx.get(ref);
       if (!snap.exists()) throw new Error('Comanda não encontrada');
-      const data = snap.data();
+      const data = snap.data() as Comanda;
       const totalAnterior = data.totalConsumido || 0;
       const novoTotal = totalAnterior + valor;
       const saldoAberto = Math.max(0, novoTotal - (data.totalPago || 0));
@@ -103,7 +117,7 @@ class ComandasService {
     });
   }
 
-  async fecharComanda(companyId, comandaNumber, usuarioId, usuarioNome) {
+  async fecharComanda(companyId: string, comandaNumber: string | number, usuarioId: string, usuarioNome: string) {
     if (!companyId) throw new Error("Company ID required");
     const dateKey = todayKey();
     const id = comandaId(dateKey, comandaNumber);
@@ -116,7 +130,7 @@ class ComandasService {
         console.error(`❌ Comanda não encontrada: ${id}`);
         throw new Error('Comanda não encontrada');
       }
-      const data = snap.data();
+      const data = snap.data() as Comanda;
 
       // 🔒 PROTEÇÃO: Não fechar comanda cancelada
       if (data.status === 'cancelada') {
@@ -145,7 +159,7 @@ class ComandasService {
     });
   }
 
-  async listarComandasAbertas(companyId) {
+  async listarComandasAbertas(companyId: string): Promise<Comanda[]> {
     if (!companyId) return [];
 
     const q = query(
@@ -155,13 +169,13 @@ class ComandasService {
       orderBy('comandaNumber')
     );
     const snap = await getDocs(q);
-    const list = [];
-    snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+    const list: Comanda[] = [];
+    snap.forEach(d => list.push({ id: d.id, ...d.data() } as Comanda));
     return list;
   }
 
   // Função para recalcular e sincronizar o total da comanda com base nos pedidos reais
-  async sincronizarTotalComanda(companyId, comandaNumber, totalReal) {
+  async sincronizarTotalComanda(companyId: string, comandaNumber: string | number, totalReal: number) {
     if (!companyId) return;
     const dateKey = todayKey();
     const id = comandaId(dateKey, comandaNumber);
@@ -173,7 +187,7 @@ class ComandasService {
         return;
       }
 
-      const data = snap.data();
+      const data = snap.data() as Comanda;
       const saldoAberto = Math.max(0, totalReal - (data.totalPago || 0));
       tx.update(ref, {
         totalConsumido: totalReal,
