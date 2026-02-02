@@ -1,15 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-import { query, where, getDocs } from 'firebase/firestore';
+import { query, where, getDocs, QueryDocumentSnapshot } from 'firebase/firestore';
 import { getCompanyCollection } from '../utils/firestoreUtils';
+import { formatCurrency } from '../utils/formatCurrency';
 import BackgroundPattern from '../components/BackgroundPattern';
+// @ts-ignore
 import { SalesByDayChart, SalesByPaymentChart } from '../components/FinancialCharts';
 import { Ionicons } from '@expo/vector-icons';
 
+// Tipos para as props dos componentes internos
+interface KPICardProps {
+    title: string;
+    value: string | number;
+    subtext?: string;
+    icon?: keyof typeof Ionicons.glyphMap;
+    color?: string;
+}
+
 // Métricas KPI
-// Métricas KPI
-const KPICard = ({ title, value, subtext, icon, color }) => (
+const KPICard: React.FC<KPICardProps> = ({ title, value, subtext, icon, color }) => (
     <View style={styles.kpiCard}>
         <View style={[styles.kpiIconContainer, { backgroundColor: color || '#E5B84A' }]}>
             <Ionicons name={icon || 'stats-chart'} size={24} color="#FFF" />
@@ -22,12 +32,32 @@ const KPICard = ({ title, value, subtext, icon, color }) => (
     </View>
 );
 
-export default function FinancialDashboardScreen({ onClose }) {
-    const { user } = useAuth();
-    const [loading, setLoading] = useState(true);
-    const [periodo, setPeriodo] = useState('7dias'); // 'hoje', '7dias', '30dias'
+// Tipos para o estado
+interface KpisState {
+    faturamento: number;
+    pedidos: number;
+    ticketMedio: number;
+    topProduto: string;
+    totalCancelado: number;
+    qtdCanceladas: number;
+    taxaCancelamento: number;
+}
 
-    const [kpis, setKpis] = useState({
+interface ChartDataState {
+    salesByDay: any; // Tipar melhor se migrar os charts
+    salesByPayment: any[];
+}
+
+interface FinancialDashboardScreenProps {
+    onClose: () => void;
+}
+
+export default function FinancialDashboardScreen({ onClose }: FinancialDashboardScreenProps) {
+    const { user } = useAuth();
+    const [loading, setLoading] = useState<boolean>(true);
+    const [periodo, setPeriodo] = useState<'hoje' | '7dias' | '30dias'>('7dias'); // 'hoje', '7dias', '30dias'
+
+    const [kpis, setKpis] = useState<KpisState>({
         faturamento: 0,
         pedidos: 0,
         ticketMedio: 0,
@@ -37,7 +67,7 @@ export default function FinancialDashboardScreen({ onClose }) {
         taxaCancelamento: 0
     });
 
-    const [chartData, setChartData] = useState({
+    const [chartData, setChartData] = useState<ChartDataState>({
         salesByDay: null,
         salesByPayment: []
     });
@@ -77,9 +107,9 @@ export default function FinancialDashboardScreen({ onClose }) {
             let totalPedidos = 0;
             let totalCancelado = 0;
             let qtdCanceladas = 0;
-            const vendasPorDia = {}; // { 'YYYY-MM-DD': valor }
+            const vendasPorDia: Record<string, number> = {}; // { 'YYYY-MM-DD': valor }
             const formasPagamento = { dinheiro: 0, pix: 0, debito: 0, credito: 0, outros: 0 };
-            const produtosCount = {};
+            const produtosCount: Record<string, number> = {};
 
             // Inicializar TODOS os dias do período com 0
             const periodStartDate = new Date(dateStr);
@@ -122,7 +152,7 @@ export default function FinancialDashboardScreen({ onClose }) {
 
                     // Contar produtos
                     if (data.itens && Array.isArray(data.itens)) {
-                        data.itens.forEach(itemStr => {
+                        data.itens.forEach((itemStr: string) => {
                             const nome = itemStr.replace(/^\d+x\s*/, '').trim();
                             produtosCount[nome] = (produtosCount[nome] || 0) + 1;
                         });
@@ -138,7 +168,7 @@ export default function FinancialDashboardScreen({ onClose }) {
 
             const snapshotCanceladas = await getDocs(qCanceladas);
 
-            snapshotCanceladas.docs.forEach(doc => {
+            snapshotCanceladas.docs.forEach((doc: QueryDocumentSnapshot) => {
                 const comanda = doc.data();
                 let comandaDateKey = comanda.dateKey;
 
@@ -169,7 +199,7 @@ export default function FinancialDashboardScreen({ onClose }) {
             );
             const snapPagamentos = await getDocs(qPagamentos);
 
-            snapPagamentos.forEach(doc => {
+            snapPagamentos.forEach((doc: QueryDocumentSnapshot) => {
                 const p = doc.data();
                 const valor = parseFloat(p.valor || 0);
                 
@@ -250,10 +280,6 @@ export default function FinancialDashboardScreen({ onClose }) {
         }
     };
 
-    const formatCurrency = (val) => {
-        return 'R$ ' + (val || 0).toFixed(2).replace('.', ',');
-    };
-
     return (
         <View style={styles.container}>
             <BackgroundPattern />
@@ -269,7 +295,7 @@ export default function FinancialDashboardScreen({ onClose }) {
 
             {/* Filtros de Período */}
             <View style={styles.filterContainer}>
-                {['hoje', '7dias', '30dias'].map((p) => (
+                {(['hoje', '7dias', '30dias'] as const).map((p) => (
                     <TouchableOpacity
                         key={p}
                         style={[styles.filterBtn, periodo === p && styles.filterBtnActive]}
@@ -389,6 +415,7 @@ const styles = StyleSheet.create({
     headerTitle: { color: '#FFF', fontSize: 20, fontWeight: 'bold' },
     content: { flex: 1, padding: 15 },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    closeBtn: { padding: 5 },
 
     filterContainer: { flexDirection: 'row', justifyContent: 'center', marginVertical: 15, gap: 10 },
     filterBtn: { paddingVertical: 8, paddingHorizontal: 20, borderRadius: 20, backgroundColor: '#E0D8C8' },

@@ -17,7 +17,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
 import { getCompanyCollection, getCompanyDoc } from '../utils/firestoreUtils';
-import OrderService from './OrderService.js';
+import OrderService from './OrderService';
 import {
   cachedQuery,
   getDateKeyRange,

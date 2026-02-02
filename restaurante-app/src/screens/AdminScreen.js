@@ -9,7 +9,6 @@ import { getTodayKey, getDateKeyRange } from '../services/FirebaseOptimizations'
 import { getCompanyCollection } from '../utils/firestoreUtils';
 import BackgroundPattern from '../components/BackgroundPattern';
 
-import { colors } from '../theme/colors';
 import FuncionariosScreen from './FuncionariosScreen';
 import CaixaAberturaScreen from './CaixaAberturaScreen';
 import CaixaOperacoesScreen from './CaixaOperacoesScreen';
@@ -147,25 +146,22 @@ export default function AdminScreen() {
     );
 
     // Listener para comandas (atualiza estatísticas de vendas E operacionais)
-    const comandasQuery = getCompanyCollection(user.companyId, 'comandas');
+    // ✅ OTIMIZAÇÃO: Escutar apenas comandas RECENTES (últimos 7 dias) ou ABERTAS
+    // Para simplificar, vamos escutar 'abertas' e 'hoje'
+    const today = getTodayKey();
+    const comandasQuery = query(
+      getCompanyCollection(user.companyId, 'comandas'),
+      where('dateKey', '>=', today) // Escuta comandas de hoje em diante (inclui abertura e fechamento)
+    );
 
     const unsubscribeComandas = onSnapshot(
       comandasQuery,
       (snapshot) => {
-        let abertas = 0;
-        let fechadas = 0;
-        snapshot.forEach(doc => {
-          const data = doc.data();
-          if (data.status === 'aberta') abertas++;
-          if (data.status === 'fechada') fechadas++;
-        });
-        // Usar debounce para evitar múltiplos reloads
+        // Apenas acionar reload
         debounceReload();
       },
       (error) => {
         console.error('[AdminScreen] ❌ Erro no listener de comandas:', error);
-        console.error('[AdminScreen] ❌ Código do erro:', error.code);
-        console.error('[AdminScreen] ❌ Mensagem:', error.message);
       }
     );
 
@@ -636,41 +632,7 @@ export default function AdminScreen() {
         where('dateKey', '==', today)
       );
       let pedidosSnapshot = await getDocs(qPedidosDia);
-      // 🔧 SE NÃO ENCONTROU PEDIDOS, VERIFICAR SE HÁ PEDIDOS SEM dateKey E CORRIGI-LOS
-      if (pedidosSnapshot.size === 0) {
-        const todosPedidos = await getDocs(getCompanyCollection(user.companyId, 'pedidos'));
-        let pedidosSemDateKey = 0;
-        const batch = writeBatch(db);
 
-        todosPedidos.docs.forEach(pedidoDoc => {
-          const pedido = pedidoDoc.data();
-
-          if (!pedido.dateKey) {
-            let dateKey;
-            if (pedido.createdAt) {
-              if (pedido.createdAt.seconds) {
-                const date = new Date(pedido.createdAt.seconds * 1000);
-                dateKey = date.toISOString().split('T')[0];
-              } else if (typeof pedido.createdAt === 'string') {
-                dateKey = pedido.createdAt.split('T')[0];
-              }
-            }
-
-            if (!dateKey) {
-              dateKey = today; // fallback para hoje
-            }
-
-            batch.update(doc(db, 'pedidos', pedidoDoc.id), { dateKey });
-            pedidosSemDateKey++;
-          }
-        });
-
-        if (pedidosSemDateKey > 0) {
-          await batch.commit();
-          // Buscar novamente após correção
-          pedidosSnapshot = await getDocs(qPedidosDia);
-        }
-      }
 
       let totalPedidos = pedidosSnapshot.size;
       let totalItens = 0;
@@ -771,14 +733,17 @@ export default function AdminScreen() {
       // Buscar todas as comandas fechadas no período
       if (!user?.companyId) return;
 
+      // ✅ OTIMIZAÇÃO: Filtrar por data direto no Firestore
       const comandasSnapshot = await getDocs(
         query(
           getCompanyCollection(user.companyId, 'comandas'),
-          where('status', '==', 'fechada')
+          where('status', '==', 'fechada'),
+          where('dateKey', '>=', dateKeyInicio),
+          where('dateKey', '<=', dateKeyFim)
         )
       );
 
-      // console.log(`💰 Total de comandas fechadas no banco: ${comandasSnapshot.size}`);
+      // console.log(`💰 Total de comandas fechadas no banco (filtradas): ${comandasSnapshot.size}`);
 
       let totalVendido = 0;
       let totalPedidos = 0;
@@ -788,63 +753,27 @@ export default function AdminScreen() {
       // Filtrar comandas do período e somar valores
       comandasSnapshot.docs.forEach(doc => {
         const comanda = doc.data();
-        let comandaDateKey = comanda.dateKey;
-
-        // Se não tiver dateKey, tentar extrair da data de fechamento
-        if (!comandaDateKey && comanda.fechadaAt) {
-          if (comanda.fechadaAt.toDate) {
-            comandaDateKey = comanda.fechadaAt.toDate().toISOString().split('T')[0];
-          } else if (comanda.fechadaAt.seconds) {
-            const date = new Date(comanda.fechadaAt.seconds * 1000);
-            comandaDateKey = date.toISOString().split('T')[0];
-          }
-        }
-
-        // console.log(`  💰 Comanda ${comanda.numeroComanda || comanda.comandaNumber}: R$ ${(comanda.totalConsumido || 0).toFixed(2)}, data: ${comandaDateKey || 'sem data'}`);
-
-        if (comandaDateKey && comandaDateKey >= dateKeyInicio && comandaDateKey <= dateKeyFim) {
-          // ✅ CORREÇÃO: Não incluir comandas canceladas nas vendas
-          totalVendido += comanda.totalConsumido || 0;
-          totalPedidos++;
-          // console.log(`    ✅ Incluída no período (${periodoSelecionado})`);
-        } else {
-          // console.log(`    ❌ Fora do período ou sem data`);
-        }
+        // Como o filtro já foi feito no banco, podemos confiar que está no range (exceto edge cases de fuso)
+        // Somar
+        totalVendido += comanda.totalConsumido || 0;
+        totalPedidos++;
       });
 
-      // ✅ NOVO: Buscar comandas CANCELADAS separadamente
+      // ✅ NOVO: Buscar comandas CANCELADAS separadamente (com filtro de data)
       const comandasCanceladasSnapshot = await getDocs(
         query(
           getCompanyCollection(user.companyId, 'comandas'),
-          where('status', '==', 'cancelada')
+          where('status', '==', 'cancelada'),
+          where('dateKey', '>=', dateKeyInicio),
+          where('dateKey', '<=', dateKeyFim)
         )
       );
 
       comandasCanceladasSnapshot.docs.forEach(doc => {
         const comanda = doc.data();
-        let comandaDateKey = comanda.dateKey;
-
-        // Extrair dateKey se não existir
-        if (!comandaDateKey && comanda.canceladaEm) {
-          if (typeof comanda.canceladaEm === 'string') {
-            comandaDateKey = comanda.canceladaEm.split('T')[0];
-          } else if (comanda.canceladaEm.seconds) {
-            const date = new Date(comanda.canceladaEm.seconds * 1000);
-            comandaDateKey = date.toISOString().split('T')[0];
-          }
-        }
-
-        if (comandaDateKey && comandaDateKey >= dateKeyInicio && comandaDateKey <= dateKeyFim) {
-          totalCancelado += comanda.totalConsumido || 0;
-          qtdCanceladas++;
-        }
+        totalCancelado += comanda.totalConsumido || 0;
+        qtdCanceladas++;
       });
-
-      // console.log(`💰 === RESULTADO ===`);
-      // console.log(`💰 Total vendido: R$ ${totalVendido.toFixed(2)}`);
-      // console.log(`💰 Total de comandas: ${totalPedidos}`);
-      // console.log(`💰 Total cancelado: R$ ${totalCancelado.toFixed(2)}`);
-      // console.log(`💰 Comandas canceladas: ${qtdCanceladas}`);
 
 
 
