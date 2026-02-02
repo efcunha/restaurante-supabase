@@ -98,9 +98,33 @@ export interface Cardapio {
   caldos: Product[];
   comidas: Product[];
   bebidas: Product[];
-  porcoes: Product[];
-  outros: Product[];
-  espetinhosSimples: Product[];
-  espetinhosEspeciais: Product[];
-  pizzas: Product[];
+  espetinhos: Product[];
+  [key: string]: Product[];
+}
+
+export interface Comanda {
+  id: string;
+  dateKey: string;
+  comandaNumber: string;
+  status: 'aberta' | 'fechada' | 'cancelada' | 'paga';
+  mesa?: string;
+  cliente?: string;
+  totalConsumido: number;
+  totalPago: number;
+  saldoAberto: number;
+  recebidoPor?: string[];
+  abertaAt: any; // Timestamp
+  criadaEm: string;
+  horarioCriacao: string;
+  abertaPor: string;
+  abertaPorNome: string;
+  fechadaAt?: any; // Timestamp
+  fechadaPor?: string;
+  fechadaPorNome?: string;
+  canceladaEm?: string; // ISO String
+  canceladaPor?: string;
+  canceladaPorNome?: string;
+  motivoCancelamento?: string;
+  atualizado?: any; // Timestamp
+  [key: string]: any;
 }
