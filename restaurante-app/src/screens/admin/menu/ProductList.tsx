@@ -34,12 +34,10 @@ export default function ProductList({
     // 2. Group
     const groups: { [key: string]: Product[] } = {};
     
-    // Sort logic handled here or implicitly? 
-    // Let's sort alphabetically first
+    // Sort
     const sorted = [...filtered].sort((a, b) => a.name.localeCompare(b.name));
 
     sorted.forEach(p => {
-       // logic from original file: getNomeBase
        const baseName = p.name.replace(/\s*\(.*\)\s*$/, '').trim();
        if (!groups[baseName]) groups[baseName] = [];
        groups[baseName].push(p);
@@ -80,18 +78,17 @@ export default function ProductList({
       {/* List */}
       {Object.keys(groupedProducts).length === 0 ? (
          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>Nenhum produto cadastrado nesta categoria.</Text>
+            <Text style={styles.emptyText}>Nenhum produto cadastrado.</Text>
          </View>
       ) : (
           Object.keys(groupedProducts).map(baseName => {
               const variations = groupedProducts[baseName];
               const first = variations[0];
-              // FIX: Use .some() instead of .every(). If ANY item is active, show as ACTIVE (Green).
-              // This forces the user to toggle it OFF if they want to hide it, cleaning up "zombie" duplicates.
               const isVisualActive = variations.some(v => v.active !== false);
 
               return (
                   <View key={baseName} style={styles.card}>
+                      {/* LEFT: Info */}
                       <View style={styles.cardInfo}>
                           <Text style={styles.cardTitle}>{baseName}</Text>
                           <Text style={styles.cardSubtitle}>
@@ -101,6 +98,7 @@ export default function ProductList({
                           </Text>
                       </View>
 
+                      {/* RIGHT: Actions */}
                       <View style={styles.cardActions}>
                            <TouchableOpacity
                                 style={[styles.actionBtn, isVisualActive ? styles.btnSuccess : styles.btnDanger]}
@@ -132,24 +130,71 @@ export default function ProductList({
 const styles = StyleSheet.create({
     container: { marginBottom: 20 },
     filters: { flexDirection: 'row', marginBottom: 15 },
-    filterBtn: { backgroundColor: '#FFF', paddingVertical: 8, paddingHorizontal: 15, borderRadius: 20, marginRight: 10, borderWidth: 1, borderColor: '#E5B84A' },
+    filterBtn: { backgroundColor: '#FFF', paddingVertical: 8, paddingHorizontal: 15, borderRadius: 20, marginRight: 10, borderWidth: 2, borderColor: '#E5B84A' },
     filterBtnActive: { backgroundColor: '#E5B84A', borderColor: '#8B2F2F' },
-    filterBtnText: { color: '#666', fontWeight: 'bold' },
+    filterBtnText: { color: '#666', fontWeight: '600', fontSize: 14 },
     filterBtnTextActive: { color: '#2C2C2C' },
-    loadingContainer: { padding: 40, alignItems: 'center' },
-    loadingText: { color: '#999', marginTop: 10 },
-    emptyContainer: { padding: 40, alignItems: 'center', backgroundColor: '#FFF', borderRadius: 10 },
-    emptyText: { color: '#999' },
-    card: { backgroundColor: '#FFF', borderRadius: 10, padding: 15, marginBottom: 12, elevation: 2, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } },
-    cardInfo: { marginBottom: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    cardTitle: { fontSize: 16, fontWeight: 'bold', color: '#2C2C2C' },
-    cardSubtitle: { color: '#888', fontSize: 12 },
-    cardActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' },
-    actionBtn: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, alignItems: 'center', justifyContent: 'center', minWidth: 80 },
+    
+    loadingContainer: { padding: 40, alignItems: 'center', backgroundColor: '#FFF', borderRadius: 15 },
+    loadingText: { color: '#999', marginTop: 15, fontSize: 14 },
+    
+    emptyContainer: { padding: 40, alignItems: 'center', backgroundColor: '#FFF', borderRadius: 15 },
+    emptyText: { color: '#999', fontSize: 16 },
+    
+    // Original Card Style Restoration
+    card: { 
+        backgroundColor: '#FFFFFF', 
+        borderRadius: 15, 
+        padding: 15, 
+        marginBottom: 12, 
+        flexDirection: 'row', // Side by Side
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        shadowColor: '#000', 
+        shadowOffset: { width: 0, height: 2 }, 
+        shadowOpacity: 0.08, 
+        shadowRadius: 10, 
+        elevation: 3 
+    },
+    cardInfo: { 
+        flex: 1, 
+        marginRight: 10 
+    },
+    cardTitle: { 
+        fontSize: 16, 
+        fontWeight: '700', 
+        color: '#2C2C2C', 
+        marginBottom: 4 
+    },
+    cardSubtitle: { 
+        color: '#999', 
+        fontSize: 12 
+    },
+    
+    cardActions: { 
+        flexDirection: 'row', 
+        gap: 8, 
+        justifyContent: 'flex-end', 
+        flexWrap: 'wrap', 
+        maxWidth: '50%' 
+    },
+    
+    actionBtn: { 
+        paddingVertical: 8, 
+        paddingHorizontal: 16, 
+        borderRadius: 8, 
+        width: '48%', // Approx half of 50%?? No, let's use fixed width or flex to match behavior
+        // Original used fixed width 130. If we use flexWrap with maxWidth 50%, fixed width might not fit two side-by-side unless container is wide.
+        // Let's use flexible width but similar styling
+        minWidth: 100,
+        alignItems: 'center', 
+        justifyContent: 'center',
+        marginBottom: 5
+    },
     btnSuccess: { backgroundColor: '#7ED321' },
     btnDanger: { backgroundColor: '#DC3545' },
     btnStock: { backgroundColor: '#D2691E' },
     btnEdit: { backgroundColor: '#E5B84A' },
     btnDelete: { backgroundColor: '#DC3545' },
-    btnText: { color: '#FFF', fontSize: 11, fontWeight: 'bold' }
+    btnText: { color: '#FFF', fontSize: 11, fontWeight: '700' }
 });
