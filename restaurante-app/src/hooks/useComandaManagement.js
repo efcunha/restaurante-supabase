@@ -150,7 +150,7 @@ export function useComandaManagement() {
                 },
                 {
                     fallbackFn: async () => {
-                        const qFallback = query(collection(db, 'pedidos'));
+                        const qFallback = query(getCompanyCollection(user.companyId, 'pedidos'));
                         const snapFallback = await getDocs(qFallback);
                         return snapFallback.docs.map(d => ({ id: d.id, ...d.data() })).filter(d => d.dateKey === diaHoje);
                     },
@@ -335,13 +335,13 @@ export function useComandaManagement() {
                 // OBS: Como é histórico, pode ser muitos pedidos.
                 // Filtrar apenas pela comanda.
                 const q = query(
-                    collection(db, 'pedidos'),
+                    getCompanyCollection(user.companyId, 'pedidos'),
                     where('comandaNumber', 'in', [comanda.comandaNumber, Number(comanda.comandaNumber), String(comanda.comandaNumber)])
                     // Nota: Firestore 'in' suporta até 10, aqui é só para garantir tipos string/number
                 );
                 // Simplificando para tipo string que é o padrão normalizado, mas garantindo robustez
                 const q2 = query(
-                    collection(db, 'pedidos'),
+                    getCompanyCollection(user.companyId, 'pedidos'),
                     where('numeroComanda', '==', String(comanda.comandaNumber))
                 );
 
@@ -354,7 +354,7 @@ export function useComandaManagement() {
                     constraints.push(where('dateKey', '==', comanda.dateKey));
                 }
 
-                const qFinal = query(collection(db, 'pedidos'), ...constraints);
+                const qFinal = query(getCompanyCollection(user.companyId, 'pedidos'), ...constraints);
                 const snap = await getDocs(qFinal);
 
                 const pedidos = [];

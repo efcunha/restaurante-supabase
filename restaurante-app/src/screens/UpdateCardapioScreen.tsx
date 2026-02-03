@@ -27,24 +27,38 @@ const novoCardapio = [
   { nome: 'Suco', preco: 6.00, categoria: 'bebida', ativo: true }
 ];
 
+import { useAuth } from '../context/AuthContext';
+import { getCompanyCollection, getCompanyDoc } from '../utils/firestoreUtils';
+
+// ... (imports remain)
+
 export default function UpdateCardapioScreen() {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
 
   const atualizarCardapio = async () => {
+    // @ts-ignore
+    if (!user?.companyId) {
+      Alert.alert('Erro', 'Empresa não identificada');
+      return;
+    }
+
     setLoading(true);
     try {
       // 1. Limpar produtos existentes
-      const produtosRef = collection(db, 'produtos');
+      // @ts-ignore
+      const produtosRef = getCompanyCollection(user.companyId, 'produtos');
       const snapshot = await getDocs(produtosRef);
 
       for (const docSnap of snapshot.docs) {
-        await deleteDoc(doc(db, 'produtos', docSnap.id));
+        // @ts-ignore
+        await deleteDoc(getCompanyDoc(user.companyId, 'produtos', docSnap.id));
       }
 
       // 2. Adicionar novos produtos
       for (const produto of novoCardapio) {
-        const docRef = doc(collection(db, 'produtos'));
-        await setDoc(docRef, produto);
+        // @ts-ignore
+        await addDoc(produtosRef, produto);
       }
 
       Alert.alert('Sucesso!', `Cardápio atualizado com ${novoCardapio.length} produtos`);

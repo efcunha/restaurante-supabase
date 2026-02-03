@@ -5,6 +5,7 @@ import { addDoc, serverTimestamp, runTransaction, getDoc, query, where, getDocs,
 import { db } from '../config/firebaseConfig';
 import { getCompanyCollection, getCompanyDoc } from '../utils/firestoreUtils';
 import CaixaService from './CaixaService';
+import SyncService from './SyncService';
 import { Comanda } from '../types';
 
 const comandaDocId = (dateKey: string, numero: string | number) => `comanda-${dateKey}-${String(numero)}`;
@@ -84,6 +85,14 @@ class PagamentosService {
     }
 
     // 🚀 OTIMIZAÇÃO: Buscar diretamente pelo ID calculado primeiro (mais rápido)
+    // Se offline, adicionar à fila e retornar sucesso
+    if (!SyncService.getIsConnected()) {
+        SyncService.addToQueue('ADD_PAYMENT_TRANSACTION', {
+            companyId, dateKey, comandaNumber, forma, valor, usuarioId, usuarioNome
+        });
+        return { success: true };
+    }
+
     const comandaId = comandaDocId(dateKey, comandaNumber);
     const comandaRef = getCompanyDoc(companyId, 'comandas', comandaId);
     let comandaSnap = await getDoc(comandaRef);

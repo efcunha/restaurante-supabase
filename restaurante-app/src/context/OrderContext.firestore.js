@@ -5,6 +5,7 @@ import { getCompanyCollection } from '../utils/firestoreUtils';
 import OrderService from '../services/OrderService';
 import OrderFirestoreService from '../services/OrderFirestoreService';
 import { useAuth } from './AuthContext';
+import SyncService from '../services/SyncService';
 
 // Função auxiliar para calcular total buscando preços do Firestore
 // Função auxiliar para calcular total buscando preços do Firestore ou usando cache
@@ -267,7 +268,7 @@ export const OrderProvider = ({ children }) => {
 
           const dateKey = new Date().toISOString().split('T')[0];
           const pagamentosQuery = query(
-            collection(db, 'pagamentos'),
+            getCompanyCollection(user.companyId, 'pagamentos'),
             where('comandaNumber', '==', String(comandaNumber)),
             where('dateKey', '==', dateKey)
           );
@@ -318,8 +319,16 @@ export const OrderProvider = ({ children }) => {
       } else {
         // Fallback: modo local se offline
         // 🔒 SEGURANÇA: Forçar isPago = false
-        const newOrder = OrderService.createOrder(orderId, clientName, items, observations, comandaNumber, createdBy, createdByName, totalPrice, false, mesa);
-        setOrders(prevOrders => [newOrder, ...prevOrders]);
+        const order = OrderService.createOrder(orderId, clientName, items, observations, comandaNumber, createdBy, createdByName, totalPrice, false, mesa, categoryMap, priceMap);
+
+        // Queue for sync
+        SyncService.addToQueue('ADD_ORDER', {
+          companyId: user.companyId,
+          id: orderId, // Ensure we use the same ID
+          orderData: order
+        });
+
+        setOrders(prevOrders => [order, ...prevOrders]);
         setOrderCounter(prev => prev + 1);
         return orderId;
       }
@@ -353,6 +362,12 @@ export const OrderProvider = ({ children }) => {
       await OrderFirestoreService.updateOrder(user.companyId, firestoreDocId, updatedData);
     } else {
       // Fallback local
+      SyncService.addToQueue('UPDATE_ORDER', {
+        companyId: user.companyId,
+        orderId: firestoreDocId || orderId, // Try to use firestore ID if available, else local
+        updates: updatedData
+      });
+
       setOrders(prevOrders =>
         prevOrders.map(order => {
           if (order.id === orderId) {
