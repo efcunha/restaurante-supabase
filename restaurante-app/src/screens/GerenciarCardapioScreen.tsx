@@ -876,41 +876,52 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
           <Text style={styles.sectionTitle}>🌿 Gerenciar Opções (Temperos)</Text>
           <View style={styles.form}>
             {/* Tabs Selector */}
-            <View style={{ flexDirection: 'row', marginBottom: 15, backgroundColor: '#eee', borderRadius: 8, padding: 4 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtros}>
               <TouchableOpacity
-                style={{ flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 6, backgroundColor: tipoTemperoAtivo === 'caldos' ? '#fff' : 'transparent', elevation: tipoTemperoAtivo === 'caldos' ? 2 : 0 }}
+                style={[styles.filtroBtn, tipoTemperoAtivo === 'caldos' && styles.filtroBtnActive]}
                 onPress={() => { setTipoTemperoAtivo('caldos'); setEditTemperoIndex(-1); setNovoTempero(''); }}
               >
-                <Text style={{ fontWeight: 'bold', color: tipoTemperoAtivo === 'caldos' ? '#8B0000' : '#666', fontSize: 10, textAlign: 'center' }}>Caldos</Text>
+                <Text style={[styles.filtroBtnText, tipoTemperoAtivo === 'caldos' && styles.filtroBtnTextActive]}>
+                  Caldos
+                </Text>
               </TouchableOpacity>
+
               <TouchableOpacity
-                style={{ flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 6, backgroundColor: tipoTemperoAtivo === 'comidas' ? '#fff' : 'transparent', elevation: tipoTemperoAtivo === 'comidas' ? 2 : 0 }}
+                style={[styles.filtroBtn, tipoTemperoAtivo === 'comidas' && styles.filtroBtnActive]}
                 onPress={() => { setTipoTemperoAtivo('comidas'); setEditTemperoIndex(-1); setNovoTempero(''); }}
               >
-                <Text style={{ fontWeight: 'bold', color: tipoTemperoAtivo === 'comidas' ? '#8B0000' : '#666', fontSize: 10, textAlign: 'center' }}>Comida</Text>
+                <Text style={[styles.filtroBtnText, tipoTemperoAtivo === 'comidas' && styles.filtroBtnTextActive]}>
+                  Comida
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={{ flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 6, backgroundColor: tipoTemperoAtivo === 'pizza' ? '#fff' : 'transparent', elevation: tipoTemperoAtivo === 'pizza' ? 2 : 0 }}
+                style={[styles.filtroBtn, tipoTemperoAtivo === 'pizza' && styles.filtroBtnActive]}
                 onPress={() => { setTipoTemperoAtivo('pizza'); setEditTemperoIndex(-1); setNovoTempero(''); }}
               >
-                <Text style={{ fontWeight: 'bold', color: tipoTemperoAtivo === 'pizza' ? '#8B0000' : '#666', fontSize: 10, textAlign: 'center' }}>Ingred.</Text>
+                <Text style={[styles.filtroBtnText, tipoTemperoAtivo === 'pizza' && styles.filtroBtnTextActive]}>
+                  Ingredientes Pizza
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={{ flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 6, backgroundColor: tipoTemperoAtivo === 'variacoes' ? '#fff' : 'transparent', elevation: tipoTemperoAtivo === 'variacoes' ? 2 : 0 }}
+                style={[styles.filtroBtn, tipoTemperoAtivo === 'variacoes' && styles.filtroBtnActive]}
                 onPress={() => { setTipoTemperoAtivo('variacoes'); setEditTemperoIndex(-1); setNovoTempero(''); }}
               >
-                <Text style={{ fontWeight: 'bold', color: tipoTemperoAtivo === 'variacoes' ? '#8B0000' : '#666', fontSize: 10, textAlign: 'center' }}>Var. Espet.</Text>
+                <Text style={[styles.filtroBtnText, tipoTemperoAtivo === 'variacoes' && styles.filtroBtnTextActive]}>
+                  Var. Espetinho
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={{ flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 6, backgroundColor: tipoTemperoAtivo === 'tamanhos' ? '#fff' : 'transparent', elevation: tipoTemperoAtivo === 'tamanhos' ? 2 : 0 }}
+                style={[styles.filtroBtn, tipoTemperoAtivo === 'tamanhos' && styles.filtroBtnActive]}
                 onPress={() => { setTipoTemperoAtivo('tamanhos'); }}
               >
-                <Text style={{ fontWeight: 'bold', color: tipoTemperoAtivo === 'tamanhos' ? '#8B0000' : '#666', fontSize: 10, textAlign: 'center' }}>Tam. Pizza</Text>
+                <Text style={[styles.filtroBtnText, tipoTemperoAtivo === 'tamanhos' && styles.filtroBtnTextActive]}>
+                  Tam. Pizza
+                </Text>
               </TouchableOpacity>
-            </View>
+            </ScrollView>
 
             {/* TAB: TAMANHOS DE PIZZA */}
             {tipoTemperoAtivo === 'tamanhos' ? (
