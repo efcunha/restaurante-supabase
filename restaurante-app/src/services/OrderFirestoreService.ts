@@ -30,6 +30,8 @@ import {
   saveToOfflineCache,
   getTodayKey,
 } from './FirebaseOptimizations';
+// @ts-ignore
+import { robustFirestoreQuery, withErrorHandling, createUserFriendlyErrorMessage } from '../utils/errorHandling';
 import { Order, OrderItemStatus } from '../types';
 
 const PEDIDOS_COLLECTION = 'pedidos';
@@ -46,8 +48,6 @@ const normalizeComandaNumber = (value: string | number | null | undefined): stri
  * Busca pedidos por comanda com fallback para compatibilidade e tratamento robusto de erros
  */
 const findOrdersByComanda = async (comandaNumber: string | number): Promise<any[]> => {
-  const { robustFirestoreQuery } = await import('../utils/errorHandling');
-
   const normalized = normalizeComandaNumber(comandaNumber);
 
   // Don't search for empty comandaNumbers
@@ -270,8 +270,6 @@ class OrderFirestoreService {
       return () => { };
     }
     const setupListener = async () => {
-      const { withErrorHandling, createUserFriendlyErrorMessage } = await import('../utils/errorHandling');
-
       // Usar dateKey para filtrar pedidos do dia (mais eficiente e confiável)
       const todayKey = getTodayKey(); // YYYY-MM-DD
 
