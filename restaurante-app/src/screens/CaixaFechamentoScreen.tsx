@@ -6,7 +6,7 @@ import CaixaService from '../services/CaixaService';
 import * as Print from 'expo-print';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
-import { getFriendlyErrorMessage } from '../utils/errorHandler';
+import { getUserFriendlyMessage } from '../utils/errors';
 import { Caixa, Comanda } from '../types';
 
 interface FechamentoResult {
@@ -102,7 +102,7 @@ export default function CaixaFechamentoScreen() {
           loadCaixas();
         } catch (e: any) {
           setLoading(false);
-          alert('❌ Erro: ' + getFriendlyErrorMessage(e));
+          alert('❌ Erro: ' + getUserFriendlyMessage(e));
         }
       };
 
@@ -216,7 +216,7 @@ export default function CaixaFechamentoScreen() {
       setLoading(false);
     } catch (e: any) {
       setLoading(false);
-      alert('Erro ao imprimir: ' + getFriendlyErrorMessage(e));
+      alert('Erro ao imprimir: ' + getUserFriendlyMessage(e));
     }
   };
 

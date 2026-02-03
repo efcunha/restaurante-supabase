@@ -4,10 +4,40 @@ service cloud.firestore {
 
     // --- HELPER FUNCTIONS ---
 
+    // Feature flag para controlar uso de custom claims
+    // Quando true, usa custom claims; quando false, usa método antigo
+    function useCustomClaims() {
+      // Pode ser configurado via environment ou sempre true após migração
+      return true;
+    }
+
     function doesUserBelongToCompany(companyId) {
-      // Current implementation: Reads User Doc (1 Extra Read)
-      // Optimization TODO: Use Custom Claims in future
+      // Novo método: Custom Claims (0 reads extras)
+      if (useCustomClaims() && request.auth.token.companyId != null) {
+        return request.auth.token.companyId == companyId;
+      }
+      
+      // Método antigo: Firestore Query (1 read extra) - fallback durante migração
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId;
+    }
+
+    // Verifica se usuário tem role específica
+    function hasRole(role) {
+      if (useCustomClaims() && request.auth.token.role != null) {
+        return request.auth.token.role == role;
+      }
+      // Fallback para método antigo
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.funcao == role;
+    }
+
+    // Verifica se usuário tem uma das roles especificadas
+    function hasAnyRole(roles) {
+      if (useCustomClaims() && request.auth.token.role != null) {
+        return request.auth.token.role in roles;
+      }
+      // Fallback para método antigo
+      let userRole = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.funcao;
+      return userRole in roles;
     }
 
     // Basic Type Checks
@@ -26,14 +56,10 @@ service cloud.firestore {
     // --- DATA VALIDATION SCHEMAS ---
 
     function isValidProduct(data) {
-       // Allow updates if fields are valid OR if fields are missing (partial update)
-       // But for critical fields present, check type.
-       
        let validName = !('name' in data) || isString(data.name);
        let validPrice = !('price' in data) || isNumber(data.price);
        let validActive = !('active' in data) || isBoolean(data.active);
        
-       // Ensure at least name or price is present on create, but we can iterate.
        return validName && validPrice && validActive;
     }
 
@@ -64,9 +90,27 @@ service cloud.firestore {
         allow read, write: if request.auth != null && doesUserBelongToCompany(companyId);
       }
 
-      // Pedidos (Orders)
+      // Pedidos (Orders) - PROTEÇÃO DO CAMPO isPago
       match /pedidos/{orderId} {
-        allow read, write: if request.auth != null && doesUserBelongToCompany(companyId);
+        allow read: if request.auth != null && doesUserBelongToCompany(companyId);
+        
+        // Create: qualquer usuário autenticado da empresa
+        allow create: if request.auth != null && doesUserBelongToCompany(companyId);
+        
+        // Update: restrições especiais para campo isPago
+        allow update: if request.auth != null 
+                      && doesUserBelongToCompany(companyId)
+                      && (
+                        // Se não está modificando isPago, permite
+                        !('isPago' in request.resource.data) ||
+                        request.resource.data.isPago == resource.data.isPago ||
+                        // Se está modificando isPago, requer role admin ou manager
+                        hasAnyRole(['admin', 'manager'])
+                      );
+        
+        allow delete: if request.auth != null 
+                      && doesUserBelongToCompany(companyId)
+                      && hasAnyRole(['admin', 'manager']);
       }
       
       // Comandas
@@ -75,7 +119,6 @@ service cloud.firestore {
       }
 
       // Caixa & Pagamentos & Funcionarios
-      // Grouping standard access for others
       match /{collection}/{docId} {
          allow read, write: if request.auth != null && doesUserBelongToCompany(companyId);
       }

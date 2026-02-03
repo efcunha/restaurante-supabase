@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 // @ts-ignore
 import CaixaService from '../services/CaixaService';
-import { getFriendlyErrorMessage } from '../utils/errorHandler';
+import { getUserFriendlyMessage } from '../utils/errors';
 
 export default function CaixaOperacoesScreen() {
   const { user } = useAuth();
@@ -27,7 +27,7 @@ export default function CaixaOperacoesScreen() {
       // ...
 
     } catch (e) {
-      Alert.alert('Erro', getFriendlyErrorMessage(e));
+      Alert.alert('Erro', getUserFriendlyMessage(e));
     } finally {
       setLoadingReforco(false);
     }
@@ -42,7 +42,7 @@ export default function CaixaOperacoesScreen() {
       Alert.alert('Sucesso', 'Sangria registrada.');
       setValorSangria(''); setMotivoSangria('');
     } catch (e) {
-      Alert.alert('Erro', getFriendlyErrorMessage(e));
+      Alert.alert('Erro', getUserFriendlyMessage(e));
     } finally {
       setLoadingSangria(false);
     }

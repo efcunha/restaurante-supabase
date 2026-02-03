@@ -6,8 +6,18 @@ import { auth, db } from '../config/firebaseConfig';
 import { buscarFuncionarioPorUid } from '../services/FuncionariosService';
 import { normalizeRole, hasPermission, Permissions } from '../auth/roles';
 import { getDoc, doc, DocumentData } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { isFeatureEnabled } from '../config/featureFlags';
 
 // Tipos
+export interface CustomClaims {
+  companyId?: string;
+  role?: string;
+  mfaEnabled?: boolean;
+  mfaVerified?: boolean;
+  updatedAt?: number;
+}
+
 export interface AppUser {
   uid: string;
   email?: string | null;
@@ -19,6 +29,7 @@ export interface AppUser {
     id: string;
     [key: string]: any;
   } | null;
+  customClaims?: CustomClaims;
   [key: string]: any; // Allow other fields from firestore
 }
 
@@ -32,6 +43,8 @@ interface AuthContextType {
   sessionKey: number;
   hasPermission: (perm: string) => boolean;
   Permissions: typeof Permissions;
+  refreshCustomClaims: () => Promise<void>;
+  getCustomClaims: () => CustomClaims | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -53,7 +66,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState<boolean>(true);
   const [role, setRole] = useState<string | null>(null);
   const [sessionKey, setSessionKey] = useState<number>(1);
+  const [customClaims, setCustomClaims] = useState<CustomClaims | null>(null);
   const isManualLoginRef = useRef<boolean>(false);
+  const claimsRefreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Feature flag para usar custom claims
+  const useCustomClaims = isFeatureEnabled('useCustomClaims');
 
   useEffect(() => {
     let mounted = true;
@@ -141,6 +159,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Aguardar token de auth propagar
       await new Promise(resolve => setTimeout(resolve, 1000));
 
+      // QUARTO: Obter custom claims se feature flag habilitado
+      let claims: CustomClaims | null = null;
+      if (useCustomClaims) {
+        try {
+          const idTokenResult = await userCredential.user.getIdTokenResult();
+          claims = {
+            companyId: idTokenResult.claims.companyId as string,
+            role: idTokenResult.claims.role as string,
+            mfaEnabled: idTokenResult.claims.mfaEnabled as boolean,
+            mfaVerified: idTokenResult.claims.mfaVerified as boolean,
+            updatedAt: idTokenResult.claims.updatedAt as number
+          };
+          setCustomClaims(claims);
+          console.log('[Auth] ✅ Custom claims carregados:', claims);
+        } catch (claimsError) {
+          console.warn('[Auth] ⚠️ Erro ao carregar custom claims, continuando sem eles:', claimsError);
+        }
+      }
+
       console.log('[Auth] Buscando funcionário no Firestore...');
       const result = await buscarFuncionarioPorUid(userCredential.user.uid);
       console.log('[Auth] Resultado busca:', result);
@@ -150,7 +187,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         let companyData: AppUser['company'] = null;
         if (result.funcionario.companyId) {
           try {
-            // Alterado de require para import estático no topo, mas mantendo a lógica
             const companyDoc = await getDoc(doc(db, 'companies', result.funcionario.companyId));
             if (companyDoc.exists()) {
               companyData = { id: companyDoc.id, ...companyDoc.data() };
@@ -161,18 +197,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
         }
 
-        // QUARTO: Definir estados manualmente
+        // QUINTO: Definir estados manualmente
         const appUser: AppUser = {
-          uid: userCredential.user.uid, // Garantir acesso universal ao UID
+          uid: userCredential.user.uid,
           email: userCredential.user.email,
           ...result.funcionario,
-          company: companyData
+          company: companyData,
+          customClaims: claims || undefined
         };
         
         setUser(appUser);
         setRole(normalizeRole(result.funcionario.funcao));
         setSessionKey(k => k + 1);
         setLoading(false);
+
+        // SEXTO: Iniciar refresh automático de custom claims (a cada 5 minutos)
+        if (useCustomClaims) {
+          startClaimsRefreshInterval();
+        }
+
         return true;
       } else {
         await signOut(auth);
@@ -211,7 +254,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (error.code && errorMessages[error.code]) {
         message = errorMessages[error.code];
       } else if (error.code) {
-        // Para outros erros, mostra uma mensagem genérica com o código
         message = `Erro não esperado (${error.code})`;
       } else {
         message = error.message || 'Erro desconhecido.';
@@ -229,28 +271,123 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = async () => {
     try {
-      // PRIMEIRO: Limpar flag de login manual
+      // PRIMEIRO: Parar refresh de custom claims
+      stopClaimsRefreshInterval();
+
+      // SEGUNDO: Limpar flag de login manual
       isManualLoginRef.current = false;
 
-      // SEGUNDO: Limpar estados IMEDIATAMENTE
+      // TERCEIRO: Limpar estados IMEDIATAMENTE
       setUser(null);
       setRole(null);
+      setCustomClaims(null);
       setLoading(false);
       setSessionKey(Date.now());
 
-      // TERCEIRO: Limpar Firebase e AsyncStorage
+      // QUARTO: Limpar Firebase e AsyncStorage
       await signOut(auth);
       await AsyncStorage.clear();
     } catch (error) {
       // Mesmo com erro, garantir limpeza local
+      stopClaimsRefreshInterval();
       isManualLoginRef.current = false;
       setUser(null);
       setRole(null);
+      setCustomClaims(null);
       setLoading(false);
       setSessionKey(Date.now());
       AsyncStorage.clear().catch(() => { });
     }
   };
+
+  /**
+   * Refresh custom claims do usuário atual
+   * Chama Cloud Function para atualizar claims e recarrega token
+   */
+  const refreshCustomClaims = async (): Promise<void> => {
+    if (!useCustomClaims || !auth.currentUser) {
+      return;
+    }
+
+    try {
+      const functions = getFunctions();
+      const refreshClaimsFunction = httpsCallable(functions, 'refreshUserClaims');
+      
+      // Chama Cloud Function para atualizar claims
+      await refreshClaimsFunction({
+        userId: auth.currentUser.uid,
+        companyId: user?.companyId,
+        role: user?.funcao
+      });
+
+      // Força reload do token para obter novos claims
+      await auth.currentUser.getIdToken(true);
+
+      // Obtém novos claims
+      const idTokenResult = await auth.currentUser.getIdTokenResult();
+      const newClaims: CustomClaims = {
+        companyId: idTokenResult.claims.companyId as string,
+        role: idTokenResult.claims.role as string,
+        mfaEnabled: idTokenResult.claims.mfaEnabled as boolean,
+        mfaVerified: idTokenResult.claims.mfaVerified as boolean,
+        updatedAt: idTokenResult.claims.updatedAt as number
+      };
+
+      setCustomClaims(newClaims);
+      
+      // Atualiza user com novos claims
+      if (user) {
+        setUser({
+          ...user,
+          customClaims: newClaims
+        });
+      }
+
+      console.log('[Auth] ✅ Custom claims atualizados:', newClaims);
+    } catch (error) {
+      console.error('[Auth] ❌ Erro ao atualizar custom claims:', error);
+    }
+  };
+
+  /**
+   * Retorna custom claims atuais
+   */
+  const getCustomClaims = (): CustomClaims | null => {
+    return customClaims;
+  };
+
+  /**
+   * Inicia intervalo de refresh automático de custom claims (a cada 5 minutos)
+   */
+  const startClaimsRefreshInterval = () => {
+    // Limpa intervalo anterior se existir
+    stopClaimsRefreshInterval();
+
+    // Cria novo intervalo
+    claimsRefreshIntervalRef.current = setInterval(() => {
+      refreshCustomClaims();
+    }, 5 * 60 * 1000); // 5 minutos
+
+    console.log('[Auth] ✅ Refresh automático de custom claims iniciado');
+  };
+
+  /**
+   * Para intervalo de refresh automático
+   */
+  const stopClaimsRefreshInterval = () => {
+    if (claimsRefreshIntervalRef.current) {
+      clearInterval(claimsRefreshIntervalRef.current);
+      claimsRefreshIntervalRef.current = null;
+      console.log('[Auth] ⏹️ Refresh automático de custom claims parado');
+    }
+  };
+
+  // Cleanup ao desmontar componente
+  useEffect(() => {
+    return () => {
+      stopClaimsRefreshInterval();
+    };
+  }, []);
 
   const register = async (email: string, password: string): Promise<{ success: boolean; user?: FirebaseUser; error?: any }> => {
     try {
@@ -284,11 +421,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       role,
       loading,
       login,
-      logout, // Usar logout real
-      register, // Adicionado para evitar logout no cadastro
+      logout,
+      register,
       sessionKey,
       hasPermission: (perm: string) => hasPermission(role, perm),
-      Permissions
+      Permissions,
+      refreshCustomClaims,
+      getCustomClaims
     }}>
       {children}
     </AuthContext.Provider>
