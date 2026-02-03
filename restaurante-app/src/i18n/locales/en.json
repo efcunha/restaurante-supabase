@@ -1,0 +1,127 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "update": "Update",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "finish": "Finish",
+    "search": "Search",
+    "filter": "Filter",
+    "clear": "Clear",
+    "close": "Close",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Forgot password",
+    "loginError": "Login error",
+    "invalidCredentials": "Invalid email or password",
+    "sessionExpired": "Session expired. Please login again."
+  },
+  "orders": {
+    "title": "Orders",
+    "create": "Create Order",
+    "edit": "Edit Order",
+    "delete": "Delete Order",
+    "details": "Order Details",
+    "list": "Order List",
+    "empty": "No orders found",
+    "status": {
+      "pending": "Pending",
+      "preparing": "Preparing",
+      "ready": "Ready",
+      "delivered": "Delivered",
+      "cancelled": "Cancelled"
+    },
+    "fields": {
+      "comandaNumber": "Comanda Number",
+      "mesa": "Table",
+      "customer": "Customer",
+      "items": "Items",
+      "total": "Total",
+      "notes": "Notes",
+      "createdAt": "Created at",
+      "updatedAt": "Updated at"
+    },
+    "actions": {
+      "markAsReady": "Mark as Ready",
+      "markAsDelivered": "Mark as Delivered",
+      "cancel": "Cancel Order"
+    },
+    "messages": {
+      "created": "Order created successfully",
+      "updated": "Order updated successfully",
+      "deleted": "Order deleted successfully",
+      "cancelled": "Order cancelled",
+      "createError": "Error creating order",
+      "updateError": "Error updating order",
+      "deleteError": "Error deleting order"
+    }
+  },
+  "comandas": {
+    "title": "Comandas",
+    "open": "Open Comanda",
+    "close": "Close Comanda",
+    "status": {
+      "aberta": "Open",
+      "fechada": "Closed",
+      "cancelada": "Cancelled"
+    },
+    "messages": {
+      "opened": "Comanda opened",
+      "closed": "Comanda closed",
+      "cancelled": "Comanda cancelled"
+    }
+  },
+  "payments": {
+    "title": "Payments",
+    "pay": "Pay",
+    "paid": "Paid",
+    "unpaid": "Unpaid",
+    "method": "Payment Method",
+    "methods": {
+      "dinheiro": "Cash",
+      "pix": "PIX",
+      "debito": "Debit Card",
+      "credito": "Credit Card",
+      "voucher": "Voucher"
+    },
+    "messages": {
+      "success": "Payment processed successfully",
+      "error": "Error processing payment",
+      "unauthorized": "You don't have permission to modify payments"
+    }
+  },
+  "validation": {
+    "required": "Required field",
+    "invalidEmail": "Invalid email",
+    "invalidPhone": "Invalid phone",
+    "minLength": "Minimum {{count}} characters",
+    "maxLength": "Maximum {{count}} characters",
+    "min": "Minimum value: {{value}}",
+    "max": "Maximum value: {{value}}",
+    "positive": "Value must be positive",
+    "integer": "Value must be an integer"
+  },
+  "errors": {
+    "generic": "An error occurred. Please try again.",
+    "network": "Connection error. Check your internet.",
+    "unauthorized": "You don't have permission for this action.",
+    "notFound": "Resource not found.",
+    "validation": "Validation error. Check the fields.",
+    "rateLimit": "Too many requests. Please wait a moment.",
+    "serverError": "Server error. Please try again later."
+  }
+}

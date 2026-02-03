@@ -6,7 +6,7 @@ import { useToast } from '../context/ToastContext';
 import { Ionicons } from '@expo/vector-icons';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../config/firebaseConfig';
-import { getFriendlyErrorMessage } from '../utils/errorHandler';
+import { getUserFriendlyMessage } from '../utils/errors';
 // @ts-ignore
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -38,7 +38,7 @@ export default function LoginScreen({ navigation }: Props) {
         // Mas se o context lançar erro, ele vem pro catch.
       }
     } catch (e) {
-      Alert.alert('Erro no Login', getFriendlyErrorMessage(e));
+      Alert.alert('Erro no Login', getUserFriendlyMessage(e));
     } finally {
       setLoading(false);
     }

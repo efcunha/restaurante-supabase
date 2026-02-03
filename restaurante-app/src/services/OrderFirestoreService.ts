@@ -1000,10 +1000,73 @@ class OrderFirestoreService {
 
 
   /**
-   * Busca estatísticas completas
+   * Busca estatísticas completas (hoje, semana, mês) para um garçom ou todos
    */
-  async getEstatisticasCompletas(garcomId: string | null = null, mesAno: string | null = null) {
-      return { orders: [], summary: {} };
+  async getEstatisticasCompletas(companyId: string, garcomId: string | null = null, mesAno: string | null = null) {
+    try {
+      console.log(`[OrderFirestoreService] getEstatisticasCompletas - companyId: ${companyId}, garcomId: ${garcomId}, mesAno: ${mesAno}`);
+
+      // Determinar o período base
+      const periodoBase = mesAno || 'mesVigente';
+
+      // Buscar estatísticas para hoje, semana e mês
+      const [statsHoje, statsSemana, statsMes] = await Promise.all([
+        this.getEstatisticasGarcom(companyId, garcomId, 'hoje'),
+        this.getEstatisticasGarcom(companyId, garcomId, 'semana'),
+        this.getEstatisticasGarcom(companyId, garcomId, periodoBase),
+      ]);
+
+      // Buscar pagamentos para hoje, semana e mês
+      const [pagamentosHoje, pagamentosSemana, pagamentosMes] = await Promise.all([
+        this.getEstatisticasPagamentos(companyId, garcomId, 'hoje'),
+        this.getEstatisticasPagamentos(companyId, garcomId, 'semana'),
+        this.getEstatisticasPagamentos(companyId, garcomId, periodoBase),
+      ]);
+
+      // Buscar comandas para hoje, semana e mês
+      const [comandasHoje, comandasSemana, comandasMes] = await Promise.all([
+        this.getEstatisticasComandas(companyId, garcomId, 'hoje'),
+        this.getEstatisticasComandas(companyId, garcomId, 'semana'),
+        this.getEstatisticasComandas(companyId, garcomId, periodoBase),
+      ]);
+
+      return {
+        vendas: {
+          hoje: statsHoje,
+          semana: statsSemana,
+          mes: statsMes,
+        },
+        pagamentos: {
+          hoje: pagamentosHoje,
+          semana: pagamentosSemana,
+          mes: pagamentosMes,
+        },
+        comandas: {
+          hoje: comandasHoje,
+          semana: comandasSemana,
+          mes: comandasMes,
+        },
+      };
+    } catch (error) {
+      console.error('[OrderFirestoreService] Erro em getEstatisticasCompletas:', error);
+      return {
+        vendas: {
+          hoje: this._getEmptyStats(),
+          semana: this._getEmptyStats(),
+          mes: this._getEmptyStats(),
+        },
+        pagamentos: {
+          hoje: { dinheiro: { total: 0, quantidade: 0 }, pix: { total: 0, quantidade: 0 }, debito: { total: 0, quantidade: 0 }, credito: { total: 0, quantidade: 0 } },
+          semana: { dinheiro: { total: 0, quantidade: 0 }, pix: { total: 0, quantidade: 0 }, debito: { total: 0, quantidade: 0 }, credito: { total: 0, quantidade: 0 } },
+          mes: { dinheiro: { total: 0, quantidade: 0 }, pix: { total: 0, quantidade: 0 }, debito: { total: 0, quantidade: 0 }, credito: { total: 0, quantidade: 0 } },
+        },
+        comandas: {
+          hoje: { total: 0, abertas: 0, fechadas: 0, totalConsumido: 0, totalPago: 0, saldoAberto: 0 },
+          semana: { total: 0, abertas: 0, fechadas: 0, totalConsumido: 0, totalPago: 0, saldoAberto: 0 },
+          mes: { total: 0, abertas: 0, fechadas: 0, totalConsumido: 0, totalPago: 0, saldoAberto: 0 },
+        },
+      };
+    }
   }
 
   /**
