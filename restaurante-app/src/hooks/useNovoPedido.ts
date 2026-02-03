@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 // @ts-ignore
 import { getNextComandaNumber, formatComandaNumber } from '../services/ComandaNumberService';
-import { getDocs, doc, getDoc, query, where } from 'firebase/firestore';
+import { getDocs, doc, getDoc, query } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
 import { getCompanyCollection } from '../utils/firestoreUtils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -80,10 +80,10 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                 return;
             }
 
-            // OTIMIZAÇÃO 1: Filtrar no Firestore (Server-Side)
+            // OTIMIZAÇÃO 1: Filtrar no Firestore (Server-Side) - REMOVIDO para evitar problemas de cache
+            // Buscamos tudo e filtramos localmente para garantir consistência
             const q = query(
-                getCompanyCollection(user.companyId, 'cardapio'),
-                where('active', '==', true)
+                getCompanyCollection(user.companyId, 'cardapio')
             );
 
             const snapshot = await getDocs(q);
@@ -100,8 +100,25 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                 'pizza': []
             };
 
+            let totalItems = 0;
+            let keptItems = 0;
+
             snapshot.docs.forEach(doc => {
+                totalItems++;
                 const data = doc.data();
+                
+                // CLIENT-SIDE FILTER - ROBUST
+                // Tratar 'false' string ou boolean
+                const isActive = data.active !== false && data.active !== 'false';
+                
+                if (!isActive) {
+                    console.log(`🚫 Item ignorado (inativo): ${data.name} [ID: ${doc.id}]`);
+                    return;
+                }
+
+                keptItems++;
+                console.log(`✅ Item mantido: ${data.name} [Category: ${data.category}] [Active: ${data.active}]`);
+
                 const item: Product = {
                   id: doc.id,
                   name: data.name,
@@ -125,6 +142,15 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                     if (!buckets.outro) buckets.outro = [];
                     buckets.outro.push(item);
                 }
+            });
+
+            console.log(`📊 [DEBUG CARDAPIO] Total Encontrado: ${totalItems} | Mantidos: ${keptItems}`);
+            console.log('📦 [DEBUG BUCKETS]', {
+                caldos: buckets.caldo.length,
+                espetinhosSimples: buckets['espetinho-simples'].length,
+                espetinhosEspeciais: buckets['espetinho-especial'].length,
+                comidas: buckets.comida.length,
+                pizzas: buckets.pizza.length
             });
 
             // Ordenação local (Client-Side) - Mais rápido que criar índices compostos por enquanto
@@ -213,13 +239,15 @@ export function useNovoPedido(): UseNovoPedidoReturn {
         try {
             // OTIMIZAÇÃO 3: Usar cache primeiro (Stale-While-Revalidate)
             setLoadingCardapio(true);
-
+            
+            // CACHE DISABLED FOR DEBUGGING/FIXING UPDATE ISSUE
+            /*
             const cached = await AsyncStorage.getItem(CARDAPIO_CACHE_KEY);
             if (cached) {
                 const { data, timestamp } = JSON.parse(cached);
 
-                // Se cache for recente (< 30 min), usar e não bloquear
-                if (data && (Date.now() - timestamp < 30 * 60 * 1000)) {
+                // Se cache for recente (usar constante), usar e não bloquear
+                if (data && (Date.now() - timestamp < CARDAPIO_CACHE_EXPIRY)) {
                     console.log('⚡ Usando cardápio do cache');
                     setCardapio(data);
                     cardapioLoadedRef.current = true;
@@ -230,6 +258,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                     return;
                 }
             }
+            */
 
             // Se não tem cache ou é muito velho, carrega normal
             await carregarCardapioFirestore(false);

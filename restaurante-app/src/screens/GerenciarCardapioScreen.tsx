@@ -320,6 +320,52 @@ export default function GerenciarCardapioScreen({ onClose }: { onClose?: () => v
                 <Ionicons name="arrow-back" size={28} color="#FFF" />
              </TouchableOpacity>
          )}
+         <TouchableOpacity 
+            style={{position: 'absolute', right: 60, backgroundColor: '#FFCC00', padding: 5, borderRadius: 5}}
+            onPress={() => {
+                const runReset = async () => {
+                        setLoading(true);
+                        try {
+                            const batch = writeBatch(db);
+                            products.forEach(p => {
+                                if (p.id && user?.companyId) {
+                                    const ref = getCompanyDoc(user.companyId, 'cardapio', p.id);
+                                    batch.update(ref, { active: false });
+                                }
+                            });
+                            await batch.commit();
+                            await loadData();
+                            if (Platform.OS === 'web') {
+                                window.alert('Sucesso: Todos os itens foram desativados.');
+                            } else {
+                                Alert.alert('Sucesso', 'Todos os itens foram desativados.');
+                            }
+                        } catch (e) {
+                            console.error(e);
+                            if (Platform.OS === 'web') {
+                                window.alert('Erro: Falha ao zerar.');
+                            } else {
+                                Alert.alert('Erro', 'Falha ao zerar.');
+                            }
+                        } finally {
+                            setLoading(false);
+                        }
+                };
+
+                if (Platform.OS === 'web') {
+                    if (window.confirm('Zerar Cardápio: Isso vai desativar TODOS os itens do banco de dados. Tem certeza?')) {
+                        runReset();
+                    }
+                } else {
+                    Alert.alert('Zerar Cardápio', 'Isso vai desativar TODOS os itens do banco de dados. Tem certeza?', [
+                        { text: 'Cancelar' },
+                        { text: 'SIM, ZERAR TUDO', onPress: runReset }
+                    ]);
+                }
+            }}
+         >
+            <Text style={{fontWeight: 'bold', fontSize: 10}}>ZERAR (WEB FIX)</Text>
+         </TouchableOpacity>
       </View>
 
       <View style={styles.content}>
