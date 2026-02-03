@@ -8,6 +8,10 @@ import OrderFirestoreService from '../services/OrderFirestoreService';
 import { useAuth } from './AuthContext';
 import SyncService from '../services/SyncService';
 import { Order } from '../types';
+import CaixaService from '../services/CaixaService';
+import ComandasService from '../services/ComandasService';
+import { db } from '../config/firebaseConfig';
+import { query, where, getDocs as getDocsFn, collection } from 'firebase/firestore';
 
 // Dynamic imports are great, but for types we might need to import them or use 'any' if services are JS.
 // Assuming services are JS or TS, we'll try to use standard imports for types if possible, 
@@ -216,14 +220,6 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     
     try {
         if (isOnline) {
-            // Dynamic imports for services
-            const [{ default: CaixaService }, { default: ComandasService }, { db }, { query, where, getDocs: getDocsFn, collection }] = await Promise.all([
-                import('../services/CaixaService'),
-                import('../services/ComandasService'),
-                import('../config/firebaseConfig'),
-                import('firebase/firestore')
-            ]);
-            
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const _db = db; // Keep import if needed for side effects or remove
 

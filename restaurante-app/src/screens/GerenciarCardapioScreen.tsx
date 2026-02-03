@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Alert, ActivityIndicator, Platform, StatusBar } from 'react-native';
-import { doc, getDoc, getDocs, setDoc, updateDoc, writeBatch, addDoc, deleteDoc, collection } from 'firebase/firestore';
+import { View, Text, StyleSheet, Alert, ActivityIndicator, Platform, TouchableOpacity } from 'react-native';
+import { doc, getDoc, getDocs, setDoc, updateDoc, writeBatch, addDoc, collection } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
 import { useAuth } from '../context/AuthContext';
 import { getCompanyCollection, getCompanyDoc } from '../utils/firestoreUtils';
-import { Product, Ingredient, PizzaConfig, PizzaSize } from '../types';
+import { Product, PizzaConfig, PizzaSize } from '../types';
+import { Ionicons } from '@expo/vector-icons';
 
 // Sub-components
 import ProductList from './admin/menu/ProductList';
@@ -312,7 +313,12 @@ export default function GerenciarCardapioScreen({ onClose }: { onClose?: () => v
          <ActivityIndicator animating={loading} color="#FFF" style={{position: 'absolute', right: 20}} />
          <Text style={styles.headerText}>📋 Gerenciar Cardápio</Text>
          {onClose && (
-             <ActivityIndicator style={{ opacity: 0 }} /> // Spacer
+             <TouchableOpacity 
+                style={{position: 'absolute', left: 20, padding: 10}}
+                onPress={onClose}
+             >
+                <Ionicons name="arrow-back" size={28} color="#FFF" />
+             </TouchableOpacity>
          )}
       </View>
 
