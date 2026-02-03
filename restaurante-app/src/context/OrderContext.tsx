@@ -409,26 +409,64 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   // Statistics Hooks
   const getEstatisticasGarcom = useCallback(async (garcomId = null, periodo = 'hoje') => {
-      try { return await OrderFirestoreService.getEstatisticasGarcom(garcomId, periodo); } catch (e) { return OrderFirestoreService._getEmptyStats(); }
-  }, []);
+      try { 
+        if (!user?.companyId) return OrderFirestoreService._getEmptyStats();
+        return await OrderFirestoreService.getEstatisticasGarcom(user.companyId, garcomId, periodo); 
+      } catch (e) { 
+        console.error('[OrderContext] Erro em getEstatisticasGarcom:', e);
+        return OrderFirestoreService._getEmptyStats(); 
+      }
+  }, [user]);
   
   const getEstatisticasTodosGarcons = useCallback(async (periodo = 'hoje') => {
-      try { return await OrderFirestoreService.getEstatisticasTodosGarcons(user?.companyId, periodo); } catch(e) { return []; }
+      try { 
+        if (!user?.companyId) return [];
+        return await OrderFirestoreService.getEstatisticasTodosGarcons(user.companyId, periodo); 
+      } catch(e) { 
+        console.error('[OrderContext] Erro em getEstatisticasTodosGarcons:', e);
+        return []; 
+      }
   }, [user]);
   
   const getEstatisticasPagamentos = useCallback(async (garcomId = null, periodo = 'hoje') => {
-      try { return await OrderFirestoreService.getEstatisticasPagamentos(user?.companyId, garcomId, periodo); } catch(e) { return {}; }
+      try { 
+        if (!user?.companyId) return {};
+        return await OrderFirestoreService.getEstatisticasPagamentos(user.companyId, garcomId, periodo); 
+      } catch(e) { 
+        console.error('[OrderContext] Erro em getEstatisticasPagamentos:', e);
+        return {}; 
+      }
   }, [user]);
 
   const getEstatisticasComandas = useCallback(async (garcomId = null, periodo = 'hoje') => {
-      try { return await OrderFirestoreService.getEstatisticasComandas(user?.companyId, garcomId, periodo); } catch(e) { return {}; }
+      try { 
+        if (!user?.companyId) return {};
+        return await OrderFirestoreService.getEstatisticasComandas(user.companyId, garcomId, periodo); 
+      } catch(e) { 
+        console.error('[OrderContext] Erro em getEstatisticasComandas:', e);
+        return {}; 
+      }
   }, [user]);
 
-  const getEstatisticasCompletas = useCallback((garcomId = null, mesAno = null) => {
-      // Stub implementation or full implementation if needed. 
-      // Given constraints, pointing to service.
-      return OrderFirestoreService.getEstatisticasCompletas ? OrderFirestoreService.getEstatisticasCompletas(garcomId, mesAno) : Promise.resolve({});
-  }, []);
+  const getEstatisticasCompletas = useCallback(async (garcomId = null, mesAno = null) => {
+      try {
+        if (!user?.companyId) {
+          return {
+            vendas: { hoje: {}, semana: {}, mes: {} },
+            pagamentos: { hoje: {}, semana: {}, mes: {} },
+            comandas: { hoje: {}, semana: {}, mes: {} },
+          };
+        }
+        return await OrderFirestoreService.getEstatisticasCompletas(user.companyId, garcomId, mesAno);
+      } catch (e) {
+        console.error('[OrderContext] Erro em getEstatisticasCompletas:', e);
+        return {
+          vendas: { hoje: {}, semana: {}, mes: {} },
+          pagamentos: { hoje: {}, semana: {}, mes: {} },
+          comandas: { hoje: {}, semana: {}, mes: {} },
+        };
+      }
+  }, [user]);
 
 
   const getOrdersByStatus = useCallback((status: string) => {
