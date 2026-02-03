@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useRef } from 'react';
 import { Alert } from 'react-native';
 // @ts-ignore
-import { useOrders } from '../context/OrderContext.firestore';
+import { useOrders } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 // @ts-ignore

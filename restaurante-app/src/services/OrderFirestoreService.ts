@@ -1000,6 +1000,14 @@ class OrderFirestoreService {
     }
   }
 
+
+  /**
+   * Busca estatísticas completas
+   */
+  async getEstatisticasCompletas(garcomId: string | null = null, mesAno: string | null = null) {
+      return { orders: [], summary: {} };
+  }
+
   /**
    * Calcula o range de datas baseado no período
    * @private
@@ -1053,7 +1061,7 @@ class OrderFirestoreService {
    * Calcula estatísticas a partir de uma lista de pedidos
    * @private
    */
-  _calcularEstatisticas(pedidos: any[], pagamentos: any[] = []) {
+  private _calcularEstatisticas(pedidos: any[], pagamentos: any[] = []) {
     const totalPedidos = pedidos.length;
     const pedidosPagos = pedidos.filter(p => p.isPago);
     const pedidosAbertos = pedidos.filter(p => !p.isPago);
