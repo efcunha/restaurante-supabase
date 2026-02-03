@@ -2,7 +2,7 @@ import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect } from 'react';
-import { useOrders } from '../context/OrderContext.firestore';
+import { useOrders } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
 // @ts-ignore
 import BackgroundPattern from '../components/BackgroundPattern';

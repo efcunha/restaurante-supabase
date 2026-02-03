@@ -1,10 +1,11 @@
 
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, TouchableOpacity, Alert, Modal, TextInput, KeyboardAvoidingView } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useOrders } from '../context/OrderContext.firestore';
+import { useOrders } from '../context/OrderContext';
+import OrderService from '../services/OrderService';
 // @ts-ignore
 import { useComandaManagement } from '../hooks/useComandaManagement';
 import { useToast } from '../context/ToastContext';

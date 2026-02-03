@@ -11,7 +11,7 @@ import {
   Alert,
   Platform,
 } from 'react-native';
-import { useOrders } from '../context/OrderContext.firestore';
+import { useOrders } from '../context/OrderContext';
 
 interface Props {
   visible: boolean;
