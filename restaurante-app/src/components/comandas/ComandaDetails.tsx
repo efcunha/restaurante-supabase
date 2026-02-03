@@ -5,7 +5,6 @@ import { fixDecimal } from '../../utils/orderCalculator';
 import { Comanda } from '../../types';
 
 // Declare módulo para avoid error se o arquivo não tiver tipos
-// @ts-expect-error
 import { calcularPrecoItem } from '../../utils/orderCalculator';
 
 interface ComandaDetailsProps {

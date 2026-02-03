@@ -28,7 +28,7 @@ import ComandaGerenciamentoScreen from './src/screens/ComandaGerenciamentoScreen
 
 import RegisterCompanyScreen from './src/screens/RegisterCompanyScreen';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { OrderProvider } from './src/context/OrderContext.firestore';
+import { OrderProvider } from './src/context/OrderContext';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { ToastProvider } from './src/context/ToastContext';
 import { canAccessScreen } from './src/auth/roles';

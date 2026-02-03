@@ -5,6 +5,8 @@ export interface OrderItemStatus {
   checked: boolean;
   timestamp: string;
   category: string;
+  delivered?: boolean;
+  deliveredAt?: string;
 }
 
 export interface Order {

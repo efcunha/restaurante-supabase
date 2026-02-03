@@ -44,8 +44,13 @@ if (!getApps().length) {
         }
 
         // Configuração do Firestore
+        // FIX: Usar memoryLocalCache na Web para evitar erros de BloomFilter/IndexedDB em alguns ambientes
+        const cacheConfig = Platform.OS === 'web'
+            ? undefined // Default (Memory) for Web
+            : persistentLocalCache({ tabManager: persistentMultipleTabManager() });
+
         db = initializeFirestore(app, {
-            localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+            localCache: cacheConfig,
             ignoreUndefinedProperties: true
         });
 
