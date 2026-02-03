@@ -100,24 +100,14 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                 'pizza': []
             };
 
-            let totalItems = 0;
-            let keptItems = 0;
-
             snapshot.docs.forEach(doc => {
-                totalItems++;
                 const data = doc.data();
                 
                 // CLIENT-SIDE FILTER - ROBUST
                 // Tratar 'false' string ou boolean
                 const isActive = data.active !== false && data.active !== 'false';
                 
-                if (!isActive) {
-                    console.log(`🚫 Item ignorado (inativo): ${data.name} [ID: ${doc.id}]`);
-                    return;
-                }
-
-                keptItems++;
-                console.log(`✅ Item mantido: ${data.name} [Category: ${data.category}] [Active: ${data.active}]`);
+                if (!isActive) return;
 
                 const item: Product = {
                   id: doc.id,
@@ -142,15 +132,6 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                     if (!buckets.outro) buckets.outro = [];
                     buckets.outro.push(item);
                 }
-            });
-
-            console.log(`📊 [DEBUG CARDAPIO] Total Encontrado: ${totalItems} | Mantidos: ${keptItems}`);
-            console.log('📦 [DEBUG BUCKETS]', {
-                caldos: buckets.caldo.length,
-                espetinhosSimples: buckets['espetinho-simples'].length,
-                espetinhosEspeciais: buckets['espetinho-especial'].length,
-                comidas: buckets.comida.length,
-                pizzas: buckets.pizza.length
             });
 
             // Ordenação local (Client-Side) - Mais rápido que criar índices compostos por enquanto
@@ -240,8 +221,6 @@ export function useNovoPedido(): UseNovoPedidoReturn {
             // OTIMIZAÇÃO 3: Usar cache primeiro (Stale-While-Revalidate)
             setLoadingCardapio(true);
             
-            // CACHE DISABLED FOR DEBUGGING/FIXING UPDATE ISSUE
-            /*
             const cached = await AsyncStorage.getItem(CARDAPIO_CACHE_KEY);
             if (cached) {
                 const { data, timestamp } = JSON.parse(cached);
@@ -258,7 +237,6 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                     return;
                 }
             }
-            */
 
             // Se não tem cache ou é muito velho, carrega normal
             await carregarCardapioFirestore(false);

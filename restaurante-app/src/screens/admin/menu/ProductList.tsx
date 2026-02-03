@@ -104,12 +104,9 @@ export default function ProductList({
                       <View style={styles.cardActions}>
                            <TouchableOpacity
                                 style={[styles.actionBtn, isVisualActive ? styles.btnSuccess : styles.btnDanger]}
-                                onPress={() => {
-                                    console.log('🔘 Toggle pressed. Current Variations:', variations.map(v => ({name: v.name, active: v.active})));
-                                    onToggleStatus(variations, isVisualActive)
-                                }}
+                                onPress={() => onToggleStatus(variations, isVisualActive)}
                            >
-                               <Text style={styles.btnText}>{isVisualActive ? 'ATIVO (ON)' : 'INATIVO (OFF)'}</Text>
+                               <Text style={styles.btnText}>{isVisualActive ? 'ATIVO' : 'INATIVO'}</Text>
                            </TouchableOpacity>
 
                            <TouchableOpacity style={[styles.actionBtn, styles.btnStock]} onPress={() => onManageStock(first)}>
