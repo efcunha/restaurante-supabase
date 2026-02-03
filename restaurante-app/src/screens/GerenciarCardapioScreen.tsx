@@ -1,400 +1,1863 @@
-
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Alert, ActivityIndicator, Platform, TouchableOpacity } from 'react-native';
-import { doc, getDoc, getDocs, setDoc, updateDoc, writeBatch, addDoc, collection } from 'firebase/firestore';
+import { View, Text, StyleSheet, Alert, ActivityIndicator, Platform, TouchableOpacity, ScrollView, TextInput, Modal } from 'react-native';
+import { doc, getDoc, getDocs, setDoc, updateDoc, writeBatch, addDoc } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
 import { useAuth } from '../context/AuthContext';
 import { getCompanyCollection, getCompanyDoc } from '../utils/firestoreUtils';
 import { Product, PizzaConfig, PizzaSize } from '../types';
 import { Ionicons } from '@expo/vector-icons';
+import BackgroundPattern from '../components/BackgroundDecoration';
+import { SUPPORTED_UNITS } from '../utils/unitConversion';
 
-// Sub-components
-import ProductList from './admin/menu/ProductList';
-import ProductForm from './admin/menu/ProductForm';
-import VariationManager from './admin/menu/VariationManager';
-import StockManager from './admin/menu/StockManager';
-import MenuSettings from './admin/menu/MenuSettings';
-import { ProductFormData, StockItem } from './admin/menu/types';
+// Componente para cada item de variação
+interface VariacaoItemProps {
+  variacao: Product;
+  onSalvar: (produto: Product, novoPreco: string, novoNome: string) => void;
+}
 
-export default function GerenciarCardapioScreen({ onClose }: { onClose?: () => void }) {
+function VariacaoItem({ variacao, onSalvar }: VariacaoItemProps) {
+  const [precoTemp, setPrecoTemp] = useState(variacao.price !== undefined ? variacao.price.toString() : '0');
+  const [nomeTemp, setNomeTemp] = useState(variacao.name);
+
+  return (
+    <View style={styles.variacaoItem}>
+      <View style={styles.variacaoInfo}>
+        <TextInput
+          style={styles.variacaoNomeInput}
+          value={nomeTemp}
+          onChangeText={setNomeTemp}
+          placeholder="Nome do item"
+        />
+        <View style={styles.variacaoPrecoContainer}>
+          <Text style={styles.variacaoLabelLarge}>R$</Text>
+          <TextInput
+            style={styles.variacaoPrecoInput}
+            value={precoTemp}
+            onChangeText={setPrecoTemp}
+            keyboardType="numeric"
+            placeholder="0.00"
+          />
+          <TouchableOpacity
+            style={styles.variacaoSalvarBtn}
+            onPress={() => onSalvar(variacao, precoTemp, nomeTemp)}
+          >
+            <Text style={styles.variacaoSalvarText}>Salvar</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+interface GerenciarCardapioScreenProps {
+  onClose?: () => void;
+}
+
+export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioScreenProps) {
   const { user } = useAuth();
   
-  // DATA
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [stockItems, setStockItems] = useState<StockItem[]>([]);
-  
-  // CONFIG
-  const [pizzaConfig, setPizzaConfig] = useState<PizzaConfig>({ sizes: [] });
-  const [caldosList, setCaldosList] = useState<string[]>([]);
-  const [espetinhoVariations, setEspetinhoVariations] = useState<string[]>(['Simples', 'com Arroz', 'com Macaxeira', 'Completo']);
-  
-  // MODALS
-  const [showProductForm, setShowProductForm] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [showVariations, setShowVariations] = useState(false);
-  const [selectedVariations, setSelectedVariations] = useState<Product[]>([]);
-  const [showStock, setShowStock] = useState(false);
-  const [stockProduct, setStockProduct] = useState<Product | null>(null);
-  const [showSettings, setShowSettings] = useState(false);
+  // Estados para cadastro
+  const [nome, setNome] = useState('');
+  const [preco, setPreco] = useState('');
+  const [categoria, setCategoria] = useState('caldo');
+  const [loading, setLoading] = useState(false);
 
-  // CATEGORIES
-  const categories = [
-    { label: 'Caldos', value: 'caldo' },
-    { label: 'Espetinhos (Simples)', value: 'espetinho-simples' },
-    { label: 'Espetinhos (Especial)', value: 'espetinho-especial' },
-    { label: 'Jantinhas', value: 'jantinha' },
-    { label: 'Pizzas', value: 'pizza' },
-    { label: 'Comidas', value: 'comida' },
-    { label: 'Bebidas', value: 'bebida' },
-    { label: 'Porções', value: 'porcao' }
+  // Estados para cadastro com variações (espetinhos)
+  const [criarVariacoes, setCriarVariacoes] = useState(false);
+  const [precosVariacoes, setPrecosVariacoes] = useState<Record<string, string>>({});
+  const [variacoesEspetinho, setVariacoesEspetinho] = useState<string[]>(['Simples', 'com Arroz', 'com Macaxeira', 'Completo']);
+
+  // Estados para listagem
+  const [produtos, setProdutos] = useState<Product[]>([]);
+  const [loadingProdutos, setLoadingProdutos] = useState(true);
+  const [categoriaFiltro, setCategoriaFiltro] = useState('todos');
+
+  // Estados para edição
+  const [editando, setEditando] = useState<Product | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editNome, setEditNome] = useState('');
+  const [editPreco, setEditPreco] = useState('');
+  const [editCategoria, setEditCategoria] = useState('');
+
+  // Estados para edição de grupo de variações
+  const [showVariacoesModal, setShowVariacoesModal] = useState(false);
+  const [variacoesSelecionadas, setVariacoesSelecionadas] = useState<Product[]>([]);
+
+  // Estados para Temperos/Opções
+  const [temperosCaldos, setTemperosCaldos] = useState<string[]>([]);
+  const [temperosComidas, setTemperosComidas] = useState<string[]>([]);
+  const [tipoTemperoAtivo, setTipoTemperoAtivo] = useState<'caldos' | 'comidas' | 'variacoes' | 'pizza' | 'tamanhos'>('caldos');
+  const [novoTempero, setNovoTempero] = useState('');
+  const [editTemperoIndex, setEditTemperoIndex] = useState(-1);
+  const [loadingTemperos, setLoadingTemperos] = useState(true);
+
+  // Estados para Pizza
+  const [pizzaConfig, setPizzaConfig] = useState<PizzaConfig>({ sizes: [] });
+  const [pizzaSizes, setPizzaSizes] = useState<PizzaSize[]>([]); // Local state for editing sizes
+  const [novoTamanho, setNovoTamanho] = useState('');
+  const [novosSaboresMax, setNovosSaboresMax] = useState('');
+  const [editTamanhoIndex, setEditTamanhoIndex] = useState(-1); // TRACK EDIT INDEX
+  const [precosPizza, setPrecosPizza] = useState<Record<string, string | number>>({}); // { 'Fatia': '5.00', 'Grande': '40.00' }
+  const [ingredientesPizza, setIngredientesPizza] = useState<string[]>([]); // from config
+  const [ingredientesSelecionados, setIngredientesSelecionados] = useState<string[]>([]); // for current product
+  const [ingredientesPersonalizados, setIngredientesPersonalizados] = useState(''); // text field
+
+  // Estados para Ficha Técnica (Estoque)
+  const [showStockModal, setShowStockModal] = useState(false);
+  const [currentProductForStock, setCurrentProductForStock] = useState<Product | null>(null);
+  const [stockItems, setStockItems] = useState<{ id: string; nome: string; unidadeOriginal: string; }[]>([]);
+  // Form Ficha Técnica
+  const [selectedStockId, setSelectedStockId] = useState('');
+  const [qtyIngredient, setQtyIngredient] = useState('');
+  const [unitIngredient, setUnitIngredient] = useState('ml');
+  const [tipoUnidade, setTipoUnidade] = useState('VOLUME'); // Default to VOLUME for recipes usually
+
+  const unidadesUI = (SUPPORTED_UNITS[tipoUnidade] || []);
+
+  const categorias = [
+    { value: 'caldo', label: '🍲 Caldos' },
+    { value: 'espetinho-simples', label: '🔥 Espetinho Simples' },
+    { value: 'espetinho-especial', label: '🌟 Espetinho Especial' },
+    { value: 'porcao', label: '🍟 Porção' },
+    { value: 'bebida', label: '🥤 Bebida' },
+    { value: 'comida', label: '🍽️ Comida' },
+    { value: 'pizza', label: '🍕 Pizza' },
+    { value: 'outro', label: '📦 Outro' }
   ];
 
   useEffect(() => {
-     loadData();
-  }, [user]);
+    carregarProdutos();
+    carregarConfig();
+  }, []);
 
-  const loadData = async () => {
-     if (!user?.companyId) return;
-     try {
-       setLoading(true);
-       
-       // 1. Config
-       const configRef = doc(db, 'companies', user.companyId, 'settings', 'cardapio_config');
-       const configSnap = await getDoc(configRef);
-       if (configSnap.exists()) {
-           const data = configSnap.data();
-           if(data.pizzaConfig) setPizzaConfig(data.pizzaConfig);
-           if(data.temperosCaldos) setCaldosList(data.temperosCaldos);
-           if(data.variacoesEspetinho) setEspetinhoVariations(data.variacoesEspetinho);
-       } else {
-           // Defaults
-           const defaultPizza = { sizes: [{ name: 'Média', maxFlavors: 2, active: true }, { name: 'Grande', maxFlavors: 3, active: true }] };
-           setPizzaConfig(defaultPizza);
-       }
-       
-       // 2. Products
-       const prodRef = getCompanyCollection(user.companyId, 'cardapio');
-       const prodSnap = await getDocs(prodRef);
-       const loadedProds: Product[] = [];
-       prodSnap.forEach(d => loadedProds.push({ id: d.id, ...d.data() } as Product));
-       setProducts(loadedProds);
-       
-       // 3. Stock Items (Lazy loading preferred, but loading here for simplicity)
-       // Keeping simple for now, maybe load on open stock modal
-     } catch (e) {
-         console.error(e);
-         Alert.alert('Erro', 'Falha ao carregar dados');
-     } finally {
-         setLoading(false);
-     }
+  const carregarConfig = async () => {
+    if (!user?.companyId) return;
+    try {
+      setLoadingTemperos(true);
+      const docRef = doc(db, 'companies', user.companyId, 'settings', 'cardapio_config');
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.temperosCaldos) setTemperosCaldos(data.temperosCaldos);
+        if (data.temperosComidas) setTemperosComidas(data.temperosComidas);
+        if (data.variacoesEspetinho) setVariacoesEspetinho(data.variacoesEspetinho);
+        if (data.ingredientesPizza) setIngredientesPizza(data.ingredientesPizza);
+
+        if (data.pizzaConfig) {
+          setPizzaConfig(data.pizzaConfig);
+        } else {
+          setPizzaConfig({
+            sizes: [
+              { name: 'Fatia', maxFlavors: 1 },
+              { name: 'Broto', maxFlavors: 1 },
+              { name: 'Média', maxFlavors: 2 },
+              { name: 'Grande', maxFlavors: 4 }
+            ],
+            pricingMode: 'HIGHER'
+          });
+        }
+
+        if (data.pizzaConfig?.sizes) {
+          setPizzaSizes(data.pizzaConfig.sizes);
+        } else {
+          setPizzaSizes([
+            { name: 'Fatia', maxFlavors: 1 },
+            { name: 'Broto', maxFlavors: 1 },
+            { name: 'Média', maxFlavors: 2 },
+            { name: 'Grande', maxFlavors: 4 }
+          ]);
+        }
+      }
+    } catch (e) { console.error(e);
+      console.error('Erro ao carregar configurações:', e);
+    } finally {
+      setLoadingTemperos(false);
+    }
   };
 
-  const loadStockItems = async () => {
-     if (stockItems.length > 0) return;
-     if (!user?.companyId) return;
-     try {
-         const ref = getCompanyCollection(user.companyId, 'inventory'); // Assuming inventory collection
-         const snap = await getDocs(ref);
-         const items: StockItem[] = [];
-         snap.forEach(d => items.push({ id: d.id, ...d.data() } as any));
-         setStockItems(items);
-     } catch(e) { console.error(e); }
+  const carregarProdutos = async () => {
+    try {
+      setLoadingProdutos(true);
+      if (!user?.companyId) {
+        setLoadingProdutos(false);
+        return;
+      }
+
+      const snapshot = await getDocs(getCompanyCollection(user.companyId, 'cardapio'));
+      const produtosData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Product[];
+
+      const ordemCategorias: Record<string, number> = {
+        'espetinho-simples': 1,
+        'espetinho-especial': 2,
+        'caldo': 3,
+        'porcao': 4,
+        'bebida': 5,
+        'comida': 6,
+        'outro': 7
+      };
+
+      produtosData.sort((a, b) => {
+        const ordemA = ordemCategorias[a.category] || 99;
+        const ordemB = ordemCategorias[b.category] || 99;
+
+        if (ordemA !== ordemB) {
+          return ordemA - ordemB;
+        }
+        return a.name.localeCompare(b.name);
+      });
+
+      setProdutos(produtosData);
+    } catch (error) { console.error(error);
+       Alert.alert('Erro', 'Não foi possível carregar os produtos');
+    } finally {
+      setLoadingProdutos(false);
+    }
   };
 
-  // --- ACTIONS ---
+  const cadastrarProduto = async () => {
+    if (!nome.trim()) {
+      Alert.alert('Atenção', 'Digite o nome do produto');
+      return;
+    }
 
-  const handleSaveProduct = async (data: ProductFormData) => {
-     if (!user?.companyId) return;
-     try {
-         setLoading(true);
-         
-         if (data.createVariations && data.espetinhoPrices) {
-             // BATCH CREATION (Espetinho)
-             const batch = writeBatch(db);
-             Object.entries(data.espetinhoPrices).forEach(([nameSuffix, price]) => {
-                 const docRef = doc(collection(db, 'companies', user.companyId!, 'cardapio'));
-                 batch.set(docRef, {
-                     name: `${data.name} ${nameSuffix}`,
-                     price: price,
-                     category: data.category,
-                     active: true,
-                     createdAt: Date.now()
-                 });
-             });
-             await batch.commit();
-         } else if (data.id) {
-             // UPDATE
-             const ref = getCompanyDoc(user.companyId, 'cardapio', data.id);
-             const update: any = { name: data.name, category: data.category };
-             if (data.category === 'pizza' && data.prices) {
-                 update.prices = data.prices;
-                 update.price = 0; // Pizza base price often 0 if sizes used
-             } else {
-                 update.price = data.price;
-             }
-             await updateDoc(ref, update);
-         } else {
-             // CREATE SINGLE
-             const ref = getCompanyCollection(user.companyId, 'cardapio');
-             const newProd: any = {
-                 name: data.name,
-                 category: data.category,
-                 active: true,
-                 createdAt: Date.now()
-             };
-             if (data.category === 'pizza' && data.prices) {
-                 newProd.prices = data.prices;
-                 newProd.price = 0;
-             } else {
-                 newProd.price = data.price;
-             }
-             await addDoc(ref, newProd);
-         }
-         
-         setShowProductForm(false);
-         await loadData(); // Reload
-         Alert.alert('Sucesso', 'Produto salvo!');
-     } catch (e) {
-         Alert.alert('Erro', 'Falha ao salvar produto');
-         console.error(e);
-     } finally {
-         setLoading(false);
-     }
-  };
+    if (!user?.companyId) return;
 
-  const handleEdit = (productNameBase: string) => {
-     // Find the "base" product to edit
-     // If it's a grouped product (like Espetinho variations), we technically can't edit the "group" easily if they are separate docs.
-     // The original code separated them.
-     // For "Pizza" it's one doc.
-     // For normal products it's one doc.
-     
-     // Logic: Find first product with this base name?
-     // Actually, if it's a variation group, we should probably invoke "Variation Manager".
-     // But the "Edit" button in UI was generic.
-     
-     // Let's implement logic: 
-     // If single product -> Edit Product Form.
-     // If group -> Check if logic allows group editing. Original file allowed "Editar" on a group which opened "abrirVariacoes".
-     
-     const group = products.filter(p => p.name.startsWith(productNameBase)); // Very naive matching
-     // Better matching logic needed or reuse logic from List.
-     
-     // REUSE LOGIC FROM LIST:
-     // ProductList passes "productName" which is the base name.
-     // We need to find the variations.
-     const variations = products.filter(p => {
-        const base = p.name.replace(/\s*\(.*\)\s*$/, '').trim(); // Remove suffix if pattern matches
-        // But really we rely on the list having grouped them correctly.
-        // Let's try to match exact name first.
-        return p.name === productNameBase; 
-     });
-     
-     if (variations.length === 1) {
-         setEditingProduct(variations[0]);
-         setShowProductForm(true);
-     } else {
-         // It's a group or we failed to find it.
-         // If we passed the base name, we probably want to edit the variations.
-         // Let's look for products starting with this name.
-         const group = products.filter(p => p.name.includes(productNameBase));
-         if (group.length > 0) {
-             setSelectedVariations(group);
-             setShowVariations(true);
-         }
-     }
-  };
+    if (criarVariacoes && (categoria === 'espetinho-simples' || categoria === 'espetinho-especial')) {
+      const algumVazio = variacoesEspetinho.some(v => !precosVariacoes[v]);
+      if (algumVazio) {
+        Alert.alert('Atenção', 'Preencha todos os preços das variações');
+        return;
+      }
 
-  const handleDelete = async (variations: Product[]) => {
-      Alert.alert('Confirmar', `Excluir ${variations.length} produtos?`, [
-          { text: 'Cancelar' },
-          { text: 'Excluir', style: 'destructive', onPress: async () => {
-              setLoading(true);
-              try {
-                  const batch = writeBatch(db);
-                  variations.forEach(v => {
-                      if (!v.id || !user?.companyId) return;
-                      const ref = getCompanyDoc(user.companyId, 'cardapio', v.id);
-                      batch.delete(ref);
-                  });
-                  await batch.commit();
-                  loadData();
-              } catch (e) { Alert.alert('Erro', 'Falha ao excluir'); }
-              finally { setLoading(false); }
-          }}
-      ]);
-  };
-
-  const handleToggleStatus = async (variations: Product[], currentStatus: boolean) => {
       try {
-          // Flatten actions but better to batch
+        setLoading(true);
+        const variacoes = variacoesEspetinho.map(v => ({
+          nome: `${nome.trim()} ${v}`,
+          preco: parseFloat(precosVariacoes[v].replace(',', '.'))
+        }));
+
+        const batch = writeBatch(db);
+
+        variacoes.forEach(variacao => {
+          const novoDoc = getCompanyDoc(user.companyId!, 'cardapio');
+          batch.set(novoDoc, {
+            name: variacao.nome,
+            price: variacao.preco,
+            category: categoria,
+            active: true,
+            createdAt: Date.now()
+          });
+        });
+
+        await batch.commit();
+        Alert.alert('Sucesso', 'Cadastrado com sucesso!');
+        setNome('');
+        setPrecosVariacoes({});
+        carregarProdutos();
+      } catch (error) { console.error(error);
+        Alert.alert('Erro', 'Erro ao cadastrar as variações');
+      } finally {
+        setLoading(false);
+      }
+    } else if (categoria === 'pizza') {
+      const sizes = pizzaConfig?.sizes || [];
+      const pricesToSave: Record<string, number> = {};
+      let hasPrice = false;
+
+      sizes.forEach(size => {
+        const p = precosPizza[size.name];
+        if (p) {
+          const sanitized = p.toString().replace(',', '.');
+          const val = parseFloat(sanitized);
+          if (!isNaN(val)) {
+             pricesToSave[size.name] = val;
+             hasPrice = true;
+          }
+        }
+      });
+
+      if (!hasPrice) {
+        Alert.alert('Atenção', 'Preencha pelo menos um preço para a pizza');
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const novoProduto: Partial<Product> = {
+          name: nome.trim(),
+          category: 'pizza',
+          active: true,
+          createdAt: Date.now(),
+          prices: pricesToSave,
+          ingredients: ingredientesSelecionados,
+          customIngredients: ingredientesPersonalizados
+        };
+
+        await addDoc(getCompanyCollection(user.companyId, 'cardapio'), novoProduto);
+
+        // Save default config if needed
+        const configRef = doc(db, 'companies', user.companyId, 'settings', 'cardapio_config');
+        await setDoc(configRef, { pizzaConfig }, { merge: true });
+
+        Alert.alert('Sucesso', 'Pizza cadastrada!');
+        setNome('');
+        setPrecosPizza({});
+        setIngredientesSelecionados([]);
+        setIngredientesPersonalizados('');
+        carregarProdutos();
+      } catch (error) { console.error(error);
+        Alert.alert('Erro', 'Erro ao cadastrar a pizza');
+      } finally {
+        setLoading(false);
+      }
+
+    } else {
+      if (!preco || isNaN(parseFloat(preco.toString().replace(',', '.')))) {
+        Alert.alert('Atenção', 'Digite um preço válido');
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const novoProduto = {
+          name: nome.trim(),
+          price: parseFloat(preco.toString().replace(',', '.')) || 0,
+          category: categoria,
+          active: true,
+          createdAt: Date.now()
+        };
+
+        await addDoc(getCompanyCollection(user.companyId, 'cardapio'), novoProduto);
+        Alert.alert('Sucesso', 'Produto cadastrado!');
+        setNome('');
+        setPreco('');
+        carregarProdutos();
+      } catch (error) { console.error(error);
+        Alert.alert('Erro', 'Erro ao cadastrar o produto');
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+  
+  // HELPERS FOR LISTS
+  const getListaAtiva = () => {
+    if (tipoTemperoAtivo === 'caldos') return temperosCaldos || [];
+    if (tipoTemperoAtivo === 'comidas') return temperosComidas || [];
+    if (tipoTemperoAtivo === 'pizza') return ingredientesPizza || [];
+    return variacoesEspetinho || [];
+  };
+
+  const salvarListas = async (
+    novaListaCaldos?: string[], 
+    novaListaComidas?: string[], 
+    novaListaVariacoes?: string[], 
+    novaListaPizzas?: string[]
+  ) => {
+    if (!user?.companyId) return;
+    const docRef = doc(db, 'companies', user.companyId, 'settings', 'cardapio_config');
+    await setDoc(docRef, {
+      temperosCaldos: novaListaCaldos !== undefined ? novaListaCaldos : temperosCaldos,
+      temperosComidas: novaListaComidas !== undefined ? novaListaComidas : temperosComidas,
+      variacoesEspetinho: novaListaVariacoes !== undefined ? novaListaVariacoes : variacoesEspetinho,
+      ingredientesPizza: novaListaPizzas !== undefined ? novaListaPizzas : ingredientesPizza,
+      pizzaConfig: { ...pizzaConfig, sizes: pizzaSizes }
+    }, { merge: true });
+  };
+  
+  const toggleGrupoAtivo = async (variacoes: Product[], todosAtivos: boolean) => {
+      try {
           const batch = writeBatch(db);
-          variations.forEach(v => {
-               if(!v.id || !user?.companyId) return;
-               const ref = getCompanyDoc(user.companyId, 'cardapio', v.id);
-               batch.update(ref, { active: !currentStatus });
+          variacoes.forEach(v => {
+              const ref = getCompanyDoc(user.companyId!, 'cardapio', v.id);
+              batch.update(ref, { active: !todosAtivos });
           });
           await batch.commit();
-          loadData();
-      } catch (e) { console.error(e); }
+          carregarProdutos();
+      } catch (e) { console.error(e);
+          Alert.alert('Erro', 'Falha ao atualizar status');
+      }
+  };
+  
+  const abrirEdicao = (produto: Product) => {
+    setEditando(produto);
+    setEditNome(produto.name);
+    setEditPreco(produto.price ? produto.price.toString() : '');
+    setEditCategoria(produto.category);
+    
+    if (produto.category === 'pizza' && produto.prices) {
+        const pricesStr: Record<string, string> = {};
+        Object.entries(produto.prices).forEach(([size, price]) => {
+           pricesStr[size] = String(price);
+        });
+        setPrecosPizza(pricesStr);
+    } else {
+        setPrecosPizza({});
+    }
+    
+    setShowEditModal(true);
   };
 
-  const handleManageStock = async (product: Product) => {
-      await loadStockItems();
-      setStockProduct(product);
-      setShowStock(true);
-  };
+  const salvarEdicao = async () => {
+    if (!editNome.trim()) {
+      Alert.alert('Atenção', 'Digite o nome do produto');
+      return;
+    }
 
-  const handleStockAdd = async (stockId: string, qty: number, unit: string) => {
-      if (!stockProduct || !user?.companyId) return;
-      // stockId lookup
-      const item = stockItems.find(i => i.id === stockId);
-      const newItem = {
-          id: stockId, // inventory ID
-          nome: item?.nome || 'Item',
-          qt: qty,
-          un: unit
+    const sanitizedPreco = editPreco?.toString().replace(',', '.');
+    const val = parseFloat(sanitizedPreco);
+    if (!editPreco || isNaN(val)) {
+      Alert.alert('Atenção', 'Digite um preço válido');
+      return;
+    }
+    if (!editando || !user?.companyId) return;
+
+    try {
+      setLoading(true);
+      const produtoRef = getCompanyDoc(user.companyId, 'cardapio', editando.id);
+      const updateData: Partial<Product> = {
+        name: editNome.trim(),
+        category: editCategoria
       };
-      
-      const currentItems = stockProduct.inventoryItems || [];
-      const updated = [...currentItems, newItem];
-      
-      const ref = getCompanyDoc(user.companyId, 'cardapio', stockProduct.id);
-      await updateDoc(ref, { inventoryItems: updated });
-      
-      // Update local state to reflect change immediately in modal
-      setStockProduct({ ...stockProduct, inventoryItems: updated });
-      // Update main list
-      setProducts(prev => prev.map(p => p.id === stockProduct.id ? { ...p, inventoryItems: updated } : p));
+
+      if (editCategoria === 'pizza') {
+        const pricesAsNumbers: Record<string, number> = {};
+        Object.keys(precosPizza).forEach(key => {
+          const v = precosPizza[key];
+          if (v !== undefined && v !== '') {
+            const sanitized = v.toString().replace(',', '.');
+            pricesAsNumbers[key] = parseFloat(sanitized) || 0;
+          }
+        });
+        updateData.prices = pricesAsNumbers;
+        updateData.price = 0;
+      } else {
+        updateData.price = val;
+      }
+
+      await updateDoc(produtoRef, updateData);
+
+      Alert.alert('Sucesso', 'Produto atualizado com sucesso!');
+      setShowEditModal(false);
+      setEditando(null);
+      carregarProdutos();
+    } catch (error) { console.error(error);
+      Alert.alert('Erro', 'Não foi possível editar o produto');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleStockRemove = async (ingId: string) => {
-      if (!stockProduct || !user?.companyId) return;
-      const currentItems = stockProduct.inventoryItems || [];
-      const updated = currentItems.filter(i => i.id !== ingId);
-      
-      const ref = getCompanyDoc(user.companyId, 'cardapio', stockProduct.id);
-      await updateDoc(ref, { inventoryItems: updated });
-      
-      setStockProduct({ ...stockProduct, inventoryItems: updated });
-      setProducts(prev => prev.map(p => p.id === stockProduct.id ? { ...p, inventoryItems: updated } : p));
-  };
-  
-  const handleSaveVariation = async (prod: Product, price: string, name: string) => {
-      if (!user?.companyId || !prod.id) return;
-      const newPrice = parseFloat(price.replace(',', '.'));
-      const ref = getCompanyDoc(user.companyId, 'cardapio', prod.id);
-      await updateDoc(ref, { name: name, price: newPrice });
-      loadData();
+  const excluirProduto = async (variacoes: Product[]) => {
+    if (variacoes.length === 0) return;
+    const nomeBase = variacoes[0].name.replace(/\s*\(.*\)\s*$/, '').trim();
+
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(`Tem certeza que deseja excluir "${nomeBase}" e todas as suas variações?`);
+      if (!confirmed) return;
+    } else {
+      const confirmed = await new Promise((resolve) => {
+        Alert.alert(
+          'Confirmar Exclusão',
+          `Tem certeza que deseja excluir "${nomeBase}"?`,
+          [
+            { text: 'Cancelar', onPress: () => resolve(false), style: 'cancel' },
+            { text: 'Excluir', onPress: () => resolve(true), style: 'destructive' },
+          ]
+        );
+      });
+      if (!confirmed) return;
+    }
+
+    try {
+      if (!user?.companyId) return;
+      setLoading(true);
+      const batch = writeBatch(db);
+
+      variacoes.forEach(v => {
+        batch.delete(getCompanyDoc(user.companyId!, 'cardapio', v.id));
+      });
+
+      await batch.commit();
+      Alert.alert('Sucesso', 'Produto excluído');
+      carregarProdutos();
+    } catch (error) { console.error(error);
+      Alert.alert('Erro', 'Não foi possível excluir o produto');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSaveSettings = async (listas: any) => {
-      if (!user?.companyId) return;
-      const ref = doc(db, 'companies', user.companyId, 'settings', 'cardapio_config');
-      await setDoc(ref, {
-          temperosCaldos: listas.caldos
-      }, { merge: true });
-      if(listas.caldos) setCaldosList(listas.caldos);
+  const adicionarTempero = async () => {
+    if (!novoTempero.trim()) return;
+    const listaAtual = getListaAtiva();
+
+    if (editTemperoIndex === -1 && listaAtual.includes(novoTempero.trim())) {
+      Alert.alert('Erro', 'Este item já existe nesta lista.');
+      return;
+    }
+
+    try {
+      const novos = [...listaAtual];
+      if (editTemperoIndex >= 0) {
+        novos[editTemperoIndex] = novoTempero.trim();
+      } else {
+        novos.push(novoTempero.trim());
+      }
+      
+      const args: [string[] | undefined, string[] | undefined, string[] | undefined, string[] | undefined] = [undefined, undefined, undefined, undefined];
+
+      if (tipoTemperoAtivo === 'caldos') {
+        setTemperosCaldos(novos);
+        args[0] = novos;
+      } else if (tipoTemperoAtivo === 'comidas') {
+        setTemperosComidas(novos);
+        args[1] = novos;
+      } else if (tipoTemperoAtivo === 'pizza') {
+        setIngredientesPizza(novos);
+        args[3] = novos;
+      } else {
+        setVariacoesEspetinho(novos);
+        args[2] = novos;
+      }
+      
+      await salvarListas(...args);
+
+      setNovoTempero('');
+      setEditTemperoIndex(-1);
+    } catch (e) { console.error(e);
+      Alert.alert('Erro', 'Falha ao salvar item.');
+    }
   };
   
-  const handleSavePizzaSizes = async (sizes: PizzaSize[]) => {
-      if (!user?.companyId) return;
-      const newConfig = { ...pizzaConfig, sizes };
-      const ref = doc(db, 'companies', user.companyId, 'settings', 'cardapio_config');
-      await setDoc(ref, { pizzaConfig: newConfig }, { merge: true });
-      setPizzaConfig(newConfig);
+  const removerTempero = async (index: number) => {
+    const listaAtual = getListaAtiva();
+    const novos = listaAtual.filter((_, i) => i !== index);
+    
+    try {
+       const args: [string[] | undefined, string[] | undefined, string[] | undefined, string[] | undefined] = [undefined, undefined, undefined, undefined];
+       if (tipoTemperoAtivo === 'caldos') {
+        setTemperosCaldos(novos);
+        args[0] = novos;
+      } else if (tipoTemperoAtivo === 'comidas') {
+        setTemperosComidas(novos);
+         args[1] = novos;
+      } else if (tipoTemperoAtivo === 'pizza') {
+        setIngredientesPizza(novos);
+         args[3] = novos;
+      } else {
+        setVariacoesEspetinho(novos);
+         args[2] = novos;
+      }
+      await salvarListas(...args);
+    } catch (e) { console.error(e);
+      Alert.alert('Erro', 'Falha ao remover item.');
+    }
   };
+  
+  const iniciarEdicaoTempero = (index: number) => {
+    setNovoTempero(getListaAtiva()[index]);
+    setEditTemperoIndex(index);
+  };
+
+  const cancelarEdicaoTempero = () => {
+    setNovoTempero('');
+    setEditTemperoIndex(-1);
+  };
+  
+  const adicionarTamanhoPizza = async () => {
+    if (!novoTamanho.trim() || !novosSaboresMax) {
+      Alert.alert('Erro', 'Preencha nome e quantidades de sabores.');
+      return;
+    }
+    const max = parseInt(novosSaboresMax);
+    if (isNaN(max) || max < 1) {
+      Alert.alert('Erro', 'Quantidade de sabores inválida.');
+      return;
+    }
+
+    const novos = [...pizzaSizes];
+    if (editTamanhoIndex >= 0) {
+      novos[editTamanhoIndex] = { ...novos[editTamanhoIndex], name: novoTamanho.trim(), maxFlavors: max };
+    } else {
+      novos.push({ name: novoTamanho.trim(), maxFlavors: max, active: true });
+    }
+
+    setPizzaSizes(novos);
+    if (user?.companyId) {
+       const docRef = doc(db, 'companies', user.companyId, 'settings', 'cardapio_config');
+       const newConfig = { ...pizzaConfig, sizes: novos };
+       setPizzaConfig(newConfig);
+       await setDoc(docRef, { pizzaConfig: newConfig }, { merge: true });
+    }
+    setNovoTamanho('');
+    setNovosSaboresMax('');
+    setEditTamanhoIndex(-1);
+  };
+
+  const iniciarEdicaoTamanho = (index: number) => {
+    const item = pizzaSizes[index];
+    setNovoTamanho(item.name);
+    setNovosSaboresMax(item.maxFlavors.toString());
+    setEditTamanhoIndex(index);
+  };
+  
+  const cancelarEdicaoTamanho = () => {
+    setNovoTamanho('');
+    setNovosSaboresMax('');
+    setEditTamanhoIndex(-1);
+  };
+
+  const removerTamanhoPizza = async (index: number) => {
+    const novos = pizzaSizes.filter((_, i) => i !== index);
+    setPizzaSizes(novos);
+    if (user?.companyId) {
+        const docRef = doc(db, 'companies', user.companyId, 'settings', 'cardapio_config');
+        const newConfig = { ...pizzaConfig, sizes: novos };
+        setPizzaConfig(newConfig);
+        await setDoc(docRef, { pizzaConfig: newConfig }, { merge: true });
+    }
+  };
+
+  const toggleTamanhoAtivo = async (index: number) => {
+    const novos = [...pizzaSizes];
+    novos[index] = { ...novos[index], active: !novos[index].active };
+    setPizzaSizes(novos);
+    if (user?.companyId) {
+        const docRef = doc(db, 'companies', user.companyId, 'settings', 'cardapio_config');
+        const newConfig = { ...pizzaConfig, sizes: novos };
+        setPizzaConfig(newConfig);
+        await setDoc(docRef, { pizzaConfig: newConfig }, { merge: true });
+    }
+  };
+  
+  const abrirVariacoes = (variacoes: Product[]) => {
+    setVariacoesSelecionadas(variacoes);
+    setShowVariacoesModal(true);
+  };
+  
+  const salvarVariacao = async (prod: any, novaStr: string, novoNome: string) => {
+    const novoP = parseFloat(novaStr.replace(',', '.'));
+    if (!prod.id || !user?.companyId) return;
+    
+    try {
+        const ref = getCompanyDoc(user.companyId, 'cardapio', prod.id);
+        await updateDoc(ref, { price: novoP, name: novoNome });
+        
+        // Update local state
+        const updated = variacoesSelecionadas.map(v => 
+            v.id === prod.id ? { ...v, price: novoP, name: novoNome } : v
+        );
+        setVariacoesSelecionadas(updated);
+        carregarProdutos();
+    } catch (e) { console.error(e);
+        Alert.alert('Erro', 'Falha ao salvar variação');
+    }
+  };
+  
+  const abrirEstoque = async (produto: Product) => {
+      if (!user?.companyId) return;
+      setCurrentProductForStock(produto);
+      setShowStockModal(true);
+      
+      // Load stock items if empty
+      if (stockItems.length === 0) {
+          try {
+              // Assuming inventory collection
+              const ref = getCompanyCollection(user.companyId, 'inventory');
+              const snap = await getDocs(ref);
+              const items: any[] = [];
+              snap.forEach(d => items.push({ id: d.id, ...d.data() }));
+              setStockItems(items);
+          } catch (e) { console.error(e); console.error(e); }
+      }
+  };
+  
+  const addIngredient = async () => {
+    if (!selectedStockId || !currentProductForStock || !user?.companyId) return;
+    
+    const itemEstoque = stockItems.find(i => i.id === selectedStockId);
+    if (!itemEstoque) return;
+    
+    const novoIngrediente = {
+        id: selectedStockId,
+        nome: itemEstoque.nome,
+        qt: parseFloat(qtyIngredient.replace(',', '.')) || 0,
+        un: unitIngredient
+    };
+    
+    const currentList = currentProductForStock.inventoryItems || [];
+    const updatedList = [...currentList, novoIngrediente];
+    
+    try {
+        const ref = getCompanyDoc(user.companyId, 'cardapio', currentProductForStock.id);
+        await updateDoc(ref, { inventoryItems: updatedList });
+        setCurrentProductForStock({ ...currentProductForStock, inventoryItems: updatedList });
+        carregarProdutos();
+        setQtyIngredient('');
+    } catch (e) { console.error(e);
+        Alert.alert('Erro', 'Falha ao adicionar ingrediente');
+    }
+  };
+  
+  const removeIngredient = async (ingId: string) => {
+      if (!currentProductForStock || !user?.companyId) return;
+      const currentList = currentProductForStock.inventoryItems || [];
+      const updatedList = currentList.filter(i => i.id !== ingId);
+      
+      try {
+        const ref = getCompanyDoc(user.companyId, 'cardapio', currentProductForStock.id);
+        await updateDoc(ref, { inventoryItems: updatedList });
+        setCurrentProductForStock({ ...currentProductForStock, inventoryItems: updatedList });
+        carregarProdutos();
+    } catch (e) { console.error(e);
+        Alert.alert('Erro', 'Falha ao remover ingrediente');
+    }
+  };
+
+
+
+  // Lógica de filtragem e agrupamento
+  const produtosFiltrados = produtos.filter(p => categoriaFiltro === 'todos' || p.category === categoriaFiltro);
+
+  const produtosAgrupados = produtosFiltrados.reduce((acc, produto) => {
+    // Normalização básica: remove conteúdo entre parênteses para agrupar variações
+    const nomeBase = produto.name.replace(/\s*\(.*\)\s*$/, '').trim();
+    if (!acc[nomeBase]) acc[nomeBase] = [];
+    acc[nomeBase].push(produto);
+    return acc;
+  }, {} as Record<string, Product[]>);
 
   return (
     <View style={styles.container}>
-      {/* HEADER */}
+      <BackgroundPattern />
+
       <View style={styles.header}>
-         <ActivityIndicator animating={loading} color="#FFF" style={{position: 'absolute', right: 20}} />
-         <Text style={styles.headerText}>📋 Gerenciar Cardápio</Text>
-         {onClose && (
-             <TouchableOpacity 
-                style={{position: 'absolute', left: 20, padding: 10}}
-                onPress={onClose}
-             >
-                <Ionicons name="arrow-back" size={28} color="#FFF" />
-             </TouchableOpacity>
-         )}
-      </View>
+        <View style={styles.headerLeft}>
+          {onClose && (
+            <TouchableOpacity onPress={onClose} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color="#FFF" />
+            </TouchableOpacity>
+          )}
+        </View>
 
-      <View style={styles.content}>
-          <View style={styles.topActions}>
-              <View style={{flexDirection: 'row', gap: 10}}>
-                <ActivityIndicator style={{display: loading ? 'flex' : 'none'}} />
-                <ActivityIndicator style={{display: 'none'}} />
-              </View>
-              <View style={{flexDirection: 'row', gap: 10}}>
-                   <Text style={styles.link} onPress={() => setShowSettings(true)}>⚙️ Configurações</Text>
-                   <Text style={[styles.link, {color: '#8B2F2F', fontWeight: 'bold'}]} onPress={() => { setEditingProduct(null); setShowProductForm(true); }}>+ Novo Produto</Text>
-              </View>
+        <View style={styles.headerCenter}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Ionicons name="restaurant-outline" size={24} color="#FFF" />
+            <Text style={styles.headerTitle}>Gerenciar Cardápio</Text>
           </View>
-          
-          <ProductList
-             products={products}
-             categories={categories}
-             isLoading={loading}
-             onEdit={handleEdit}
-             onDelete={handleDelete}
-             onManageStock={handleManageStock}
-             onToggleStatus={handleToggleStatus}
-          />
+        </View>
+
+        <View style={styles.headerRight} />
       </View>
 
-      {/* MODALS */}
-      <ProductForm 
-         visible={showProductForm} 
-         onClose={() => setShowProductForm(false)} 
-         onSave={handleSaveProduct}
-         initialData={editingProduct}
-         categories={categories}
-         pizzaConfig={pizzaConfig}
-         isLoading={loading}
-         onOpenStock={handleManageStock}
-         variationNames={espetinhoVariations}
-      />
-      
-      <VariationManager
-         visible={showVariations} 
-         onClose={() => setShowVariations(false)}
-         variations={selectedVariations}
-         onSaveVariation={handleSaveVariation}
-         onOpenStock={handleManageStock}
-      />
-      
-      <StockManager
-         visible={showStock}
-         onClose={() => setShowStock(false)}
-         product={stockProduct}
-         stockItems={stockItems}
-         onAddIngredient={handleStockAdd}
-         onRemoveIngredient={handleStockRemove}
-      />
-      
-      <MenuSettings
-         visible={showSettings}
-         onClose={() => setShowSettings(false)}
-         pizzaConfig={pizzaConfig}
-         caldosList={caldosList}
-         onSaveListas={handleSaveSettings}
-         onSavePizzaSizes={handleSavePizzaSizes}
-      />
+      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }}>
+        {/* SEÇÃO 1: CADASTRAR PRODUTO */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>➕ Cadastrar Produto</Text>
+
+          <View style={styles.form}>
+            <TextInput
+              style={styles.input}
+              placeholder="Nome do produto (ex: Camarão)"
+              placeholderTextColor="#999"
+              value={nome}
+              onChangeText={setNome}
+            />
+
+            <Text style={styles.label}>Categoria:</Text>
+            <View style={styles.categoriaButtons}>
+              {categorias.map(cat => (
+                <TouchableOpacity
+                  key={cat.value}
+                  style={[
+                    styles.categoriaBtn,
+                    categoria === cat.value && styles.categoriaBtnActive
+                  ]}
+                  onPress={() => {
+                    setCategoria(cat.value);
+                    if (cat.value === 'espetinho-simples' || cat.value === 'espetinho-especial') {
+                      setCriarVariacoes(true);
+                    } else {
+                      setCriarVariacoes(false);
+                    }
+                  }}
+                >
+                  <Text style={[
+                    styles.categoriaBtnText,
+                    categoria === cat.value && styles.categoriaBtnTextActive
+                  ]}>
+                    {cat.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {(categoria === 'espetinho-simples' || categoria === 'espetinho-especial') && (
+              <TouchableOpacity
+                style={styles.variacaoToggle}
+                onPress={() => setCriarVariacoes(!criarVariacoes)}
+              >
+                <View style={styles.checkbox}>
+                  {criarVariacoes && <Text style={styles.checkmark}>✓</Text>}
+                </View>
+                <Text style={styles.variacaoToggleText}>
+                  Criar variações automáticas ({variacoesEspetinho.join(', ')})
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {criarVariacoes && (categoria === 'espetinho-simples' || categoria === 'espetinho-especial') ? (
+              <>
+                <Text style={styles.label}>Preços das variações:</Text>
+                <View style={styles.variacoesGrid}>
+                  {variacoesEspetinho.map((variacao, idx) => (
+                    <View key={idx} style={styles.variacaoField}>
+                      <Text style={styles.variacaoLabel}>{variacao}</Text>
+                      <TextInput
+                        style={styles.inputVariacao}
+                        placeholder="0.00"
+                        placeholderTextColor="#999"
+                        value={precosVariacoes[variacao] || ''}
+                        onChangeText={(text) => setPrecosVariacoes(prev => ({ ...prev, [variacao]: text }))}
+                        keyboardType="numeric"
+                      />
+                    </View>
+                  ))}
+                </View>
+              </>
+            ) : categoria === 'pizza' ? (
+              <>
+                <Text style={styles.label}>Preços por tamanho:</Text>
+                <View style={styles.variacoesGrid}>
+                  {pizzaSizes.map((size, idx) => (
+                    <View key={idx} style={styles.variacaoField}>
+                      <Text style={styles.variacaoLabel}>{size.name} ({size.maxFlavors} sab)</Text>
+                      <TextInput
+                        style={styles.inputVariacao}
+                        placeholder="0.00"
+                        placeholderTextColor="#999"
+                        value={precosPizza[size.name] !== undefined ? String(precosPizza[size.name]) : ''}
+                        onChangeText={(text) => setPrecosPizza(prev => ({ ...prev, [size.name]: text }))}
+                        keyboardType="numeric"
+                      />
+                    </View>
+                  ))}
+                </View>
+              </>
+            ) : (
+              <TextInput
+                style={styles.input}
+                placeholder="Preço (ex: 12.00)"
+                placeholderTextColor="#999"
+                value={preco}
+                onChangeText={setPreco}
+                keyboardType="numeric"
+              />
+            )}
+
+            <TouchableOpacity
+              style={[styles.cadastrarBtn, loading && styles.cadastrarBtnDisabled]}
+              onPress={cadastrarProduto}
+              disabled={loading}
+            >
+              <Text style={styles.cadastrarBtnText}>
+                {loading ? 'Cadastrando...' : criarVariacoes ? 'CADASTRAR 4 VARIAÇÕES' : 'CADASTRAR PRODUTO'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* SEÇÃO EXTRA: GERENCIAR TEMPEROS */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>🌿 Gerenciar Opções (Temperos)</Text>
+          <View style={styles.form}>
+            {/* Tabs Selector */}
+            <View style={{ flexDirection: 'row', marginBottom: 15, backgroundColor: '#eee', borderRadius: 8, padding: 4 }}>
+              <TouchableOpacity
+                style={{ flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 6, backgroundColor: tipoTemperoAtivo === 'caldos' ? '#fff' : 'transparent', elevation: tipoTemperoAtivo === 'caldos' ? 2 : 0 }}
+                onPress={() => { setTipoTemperoAtivo('caldos'); setEditTemperoIndex(-1); setNovoTempero(''); }}
+              >
+                <Text style={{ fontWeight: 'bold', color: tipoTemperoAtivo === 'caldos' ? '#8B0000' : '#666', fontSize: 10, textAlign: 'center' }}>Caldos</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 6, backgroundColor: tipoTemperoAtivo === 'comidas' ? '#fff' : 'transparent', elevation: tipoTemperoAtivo === 'comidas' ? 2 : 0 }}
+                onPress={() => { setTipoTemperoAtivo('comidas'); setEditTemperoIndex(-1); setNovoTempero(''); }}
+              >
+                <Text style={{ fontWeight: 'bold', color: tipoTemperoAtivo === 'comidas' ? '#8B0000' : '#666', fontSize: 10, textAlign: 'center' }}>Comida</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{ flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 6, backgroundColor: tipoTemperoAtivo === 'pizza' ? '#fff' : 'transparent', elevation: tipoTemperoAtivo === 'pizza' ? 2 : 0 }}
+                onPress={() => { setTipoTemperoAtivo('pizza'); setEditTemperoIndex(-1); setNovoTempero(''); }}
+              >
+                <Text style={{ fontWeight: 'bold', color: tipoTemperoAtivo === 'pizza' ? '#8B0000' : '#666', fontSize: 10, textAlign: 'center' }}>Ingred.</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{ flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 6, backgroundColor: tipoTemperoAtivo === 'variacoes' ? '#fff' : 'transparent', elevation: tipoTemperoAtivo === 'variacoes' ? 2 : 0 }}
+                onPress={() => { setTipoTemperoAtivo('variacoes'); setEditTemperoIndex(-1); setNovoTempero(''); }}
+              >
+                <Text style={{ fontWeight: 'bold', color: tipoTemperoAtivo === 'variacoes' ? '#8B0000' : '#666', fontSize: 10, textAlign: 'center' }}>Var. Espet.</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{ flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 6, backgroundColor: tipoTemperoAtivo === 'tamanhos' ? '#fff' : 'transparent', elevation: tipoTemperoAtivo === 'tamanhos' ? 2 : 0 }}
+                onPress={() => { setTipoTemperoAtivo('tamanhos'); }}
+              >
+                <Text style={{ fontWeight: 'bold', color: tipoTemperoAtivo === 'tamanhos' ? '#8B0000' : '#666', fontSize: 10, textAlign: 'center' }}>Tam. Pizza</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* TAB: TAMANHOS DE PIZZA */}
+            {tipoTemperoAtivo === 'tamanhos' ? (
+              <View>
+                <View style={{ flexDirection: 'row', gap: 10, marginBottom: 15 }}>
+                  <TextInput
+                    style={[styles.input, { flex: 2, marginBottom: 0 }]}
+                    placeholder="Nome (ex: Gigante)"
+                    value={novoTamanho}
+                    onChangeText={setNovoTamanho}
+                  />
+                  <TextInput
+                    style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                    placeholder="Max Sabores"
+                    value={novosSaboresMax}
+                    onChangeText={setNovosSaboresMax}
+                    keyboardType="numeric"
+                  />
+                  <TouchableOpacity style={styles.addBtn} onPress={adicionarTamanhoPizza}>
+                    <Ionicons name={editTamanhoIndex >= 0 ? "checkmark" : "add"} size={24} color="#fff" />
+                  </TouchableOpacity>
+                  {editTamanhoIndex >= 0 && (
+                    <TouchableOpacity style={[styles.addBtn, { backgroundColor: '#999' }]} onPress={cancelarEdicaoTamanho}>
+                      <Ionicons name="close" size={24} color="#fff" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                {/* LISTING SIZES WITH SORTING */}
+                {pizzaSizes.map((size, index) => ({ ...size, originalIndex: index }))
+                  .sort((a, b) => {
+                    const order = ['Fatia', 'Broto', 'Média', 'Grande'];
+                    const idxA = order.indexOf(a.name);
+                    const idxB = order.indexOf(b.name);
+                    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                    if (idxA !== -1) return -1;
+                    if (idxB !== -1) return 1;
+                    return a.name.localeCompare(b.name);
+                  })
+                  .map((size, idx) => (
+                    <View key={idx} style={[styles.temperoRow, size.active === false && { opacity: 0.5, backgroundColor: '#f0f0f0' }]}>
+                      <Text style={styles.temperoText}>
+                        {size.name} ({size.maxFlavors} sabores) {size.active === false ? '(Desativado)' : ''}
+                      </Text>
+                      <View style={{ flexDirection: 'row', gap: 10 }}>
+                        <TouchableOpacity onPress={() => toggleTamanhoAtivo(size.originalIndex)}>
+                          <Ionicons name={size.active !== false ? "eye" : "eye-off"} size={20} color={size.active !== false ? "#2e7d32" : "#999"} />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => iniciarEdicaoTamanho(size.originalIndex)}>
+                          <Ionicons name="pencil" size={20} color="#444" />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => removerTamanhoPizza(size.originalIndex)}>
+                          <Ionicons name="trash-outline" size={20} color="#FF4444" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ))}
+              </View>
+            ) : (
+              // TAB: OUTROS TEMPEROS
+              <View>
+                <View style={styles.addTemperoRow}>
+                  <TextInput
+                    style={styles.inputTempero}
+                    placeholder={editTemperoIndex >= 0 ? "Editar item..." : "Novo item..."}
+                    value={novoTempero}
+                    onChangeText={setNovoTempero}
+                  />
+                  <TouchableOpacity style={styles.addBtn} onPress={adicionarTempero}>
+                    <Ionicons name={editTemperoIndex >= 0 ? "checkmark" : "add"} size={24} color="#fff" />
+                  </TouchableOpacity>
+                  {editTemperoIndex >= 0 && (
+                    <TouchableOpacity style={[styles.addBtn, { backgroundColor: '#999' }]} onPress={cancelarEdicaoTempero}>
+                      <Ionicons name="close" size={24} color="#fff" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                {loadingTemperos ? (
+                  <ActivityIndicator color="#8B2F2F" />
+                ) : (
+                  <View style={styles.listaTemperos}>
+                    {getListaAtiva().map((item, index) => (
+                      <View key={index} style={styles.temperoRow}>
+                        <Text style={styles.temperoText}>{item}</Text>
+                        <View style={{ flexDirection: 'row', gap: 10 }}>
+                          <TouchableOpacity onPress={() => iniciarEdicaoTempero(index)}>
+                            <Ionicons name="pencil" size={20} color="#444" />
+                          </TouchableOpacity>
+                          <TouchableOpacity onPress={() => removerTempero(index)}>
+                            <Ionicons name="trash-outline" size={20} color="#FF4444" />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* SEÇÃO 2: LISTAR PRODUTOS POR CATEGORIA */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>📋 Produtos Cadastrados</Text>
+
+          {/* Filtros de categoria */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtros}>
+            <TouchableOpacity
+              style={[styles.filtroBtn, categoriaFiltro === 'todos' && styles.filtroBtnActive]}
+              onPress={() => setCategoriaFiltro('todos')}
+            >
+              <Text style={[styles.filtroBtnText, categoriaFiltro === 'todos' && styles.filtroBtnTextActive]}>
+                Todos
+              </Text>
+            </TouchableOpacity>
+
+            {categorias.map(cat => (
+              <TouchableOpacity
+                key={cat.value}
+                style={[styles.filtroBtn, categoriaFiltro === cat.value && styles.filtroBtnActive]}
+                onPress={() => setCategoriaFiltro(cat.value)}
+              >
+                <Text style={[styles.filtroBtnText, categoriaFiltro === cat.value && styles.filtroBtnTextActive]}>
+                  {cat.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          {
+            loadingProdutos ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#8B2F2F" />
+                <Text style={styles.loadingText}>Carregando produtos...</Text>
+              </View>
+            ) : produtosFiltrados.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>Nenhum produto cadastrado</Text>
+              </View>
+            ) : (
+              Object.keys(produtosAgrupados).map(nomeBase => {
+                const variacoes = produtosAgrupados[nomeBase];
+                const primeiraVariacao = variacoes[0];
+                const todosAtivos = variacoes.every(v => v.active);
+
+                return (
+                  <View key={nomeBase} style={styles.produtoCard}>
+                    <View style={styles.produtoLeft}>
+                      <View style={styles.produtoInfo}>
+                        <Text style={styles.produtoNome}>{nomeBase}</Text>
+                        <Text style={styles.produtoVariacoes}>
+                          {variacoes.length === 1
+                            ? `R$ ${Number(primeiraVariacao.price).toFixed(2)}`
+                            : `${variacoes.length} variações`
+                          }
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.produtoActions}>
+                      <TouchableOpacity
+                        style={[styles.statusBtn, todosAtivos ? styles.statusBtnAtivo : styles.statusBtnInativo]}
+                        onPress={() => toggleGrupoAtivo(variacoes, todosAtivos)}
+                      >
+                        <Text style={styles.statusBtnText}>
+                          {todosAtivos ? 'ATIVO' : 'DESATIVADO'}
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={styles.stockBtn}
+                        onPress={() => abrirEstoque(primeiraVariacao)}
+                      >
+                        <Text style={styles.stockBtnText}>Ficha T.</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={styles.editBtn}
+                        onPress={() => {
+                          if (variacoes.length === 1) {
+                            abrirEdicao(primeiraVariacao);
+                          } else {
+                            abrirVariacoes(variacoes);
+                          }
+                        }}
+                      >
+                        <Text style={styles.editBtnText}>Editar</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={styles.deleteBtn}
+                        onPress={() => excluirProduto(variacoes)}
+                      >
+                        <Text style={styles.deleteBtnText}>Excluir</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                );
+              })
+            )
+          }
+        </View>
+      </ScrollView>
+
+      {/* MODAL DE EDIÇÃO (Produto Único) */}
+      <Modal visible={showEditModal} animationType="slide" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxHeight: '90%' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>✏️ Editar Produto</Text>
+              <TouchableOpacity onPress={() => setShowEditModal(false)}>
+                <Text style={styles.modalClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={styles.label}>Nome:</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Nome do produto"
+                placeholderTextColor="#999"
+                value={editNome}
+                onChangeText={setEditNome}
+              />
+
+              {editCategoria === 'pizza' ? (
+                <>
+                  <Text style={styles.label}>Preços por tamanho:</Text>
+                  <View style={styles.variacoesGrid}>
+                    {pizzaSizes.map((size, idx) => (
+                      <View key={idx} style={styles.variacaoField}>
+                        <Text style={styles.variacaoLabel}>{size.name} ({size.maxFlavors} sab)</Text>
+                        <TextInput
+                          style={styles.inputVariacao}
+                          placeholder="0.00"
+                          placeholderTextColor="#999"
+                          value={precosPizza[size.name] !== undefined ? String(precosPizza[size.name]) : ''}
+                          onChangeText={(text) => setPrecosPizza(prev => ({ ...prev, [size.name]: text }))}
+                          keyboardType="numeric"
+                        />
+                      </View>
+                    ))}
+                  </View>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.label}>Preço:</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Preço"
+                    placeholderTextColor="#999"
+                    value={editPreco}
+                    onChangeText={setEditPreco}
+                    keyboardType="numeric"
+                  />
+                </>
+              )}
+
+              <Text style={styles.label}>Categoria:</Text>
+              <View style={styles.categoriaButtons}>
+                {categorias.map(cat => (
+                  <TouchableOpacity
+                    key={cat.value}
+                    style={[
+                      styles.categoriaBtn,
+                      editCategoria === cat.value && styles.categoriaBtnActive
+                    ]}
+                    onPress={() => setEditCategoria(cat.value)}
+                  >
+                    <Text style={[
+                      styles.categoriaBtnText,
+                      editCategoria === cat.value && styles.categoriaBtnTextActive
+                    ]}>
+                      {cat.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <TouchableOpacity
+                style={[styles.salvarBtn, loading && styles.salvarBtnDisabled, { marginTop: 10 }]}
+                onPress={salvarEdicao}
+                disabled={loading}
+              >
+                <Text style={styles.salvarBtnText}>
+                  {loading ? 'Salvando...' : 'SALVAR ALTERAÇÕES'}
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL DE VARIAÇÕES */}
+      <Modal visible={showVariacoesModal} animationType="slide" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>✏️ Editar Variações</Text>
+              <TouchableOpacity onPress={() => setShowVariacoesModal(false)}>
+                <Text style={styles.modalClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.variacoesLista}>
+              {variacoesSelecionadas.map(variacao => (
+                <View key={variacao.id}>
+                  <VariacaoItem
+                    variacao={variacao}
+                    onSalvar={salvarVariacao}
+                  />
+                  <TouchableOpacity
+                    style={styles.miniStockBtn}
+                    onPress={() => { setShowVariacoesModal(false); abrirEstoque(variacao); }}
+                  >
+                    <Text style={styles.miniStockText}>📦 Ficha Técnica ({variacao.inventoryItems?.length || 0} itens)</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+
+            <TouchableOpacity
+              style={styles.fecharBtn}
+              onPress={() => setShowVariacoesModal(false)}
+            >
+              <Text style={styles.fecharBtnText}>FECHAR</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL FICHA TÉCNICA */}
+      <Modal visible={showStockModal} animationType="slide" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>📦 Ficha Técnica</Text>
+              <TouchableOpacity onPress={() => setShowStockModal(false)}>
+                <Text style={styles.modalClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={{ marginBottom: 15, fontSize: 16 }}>
+              Produto: <Text style={{ fontWeight: 'bold' }}>{currentProductForStock?.name}</Text>
+            </Text>
+
+            <Text style={styles.label}>Adicionar Ingrediente do Estoque:</Text>
+
+            <ScrollView style={{ maxHeight: 150, marginBottom: 10, borderWidth: 1, borderColor: '#eee', borderRadius: 8 }}>
+              {stockItems.map(item => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={{ padding: 10, backgroundColor: selectedStockId === item.id ? '#FFE4B5' : '#fff', borderBottomWidth: 1, borderColor: '#eee' }}
+                  onPress={() => setSelectedStockId(item.id)}
+                >
+                  <Text>{item.nome} ({item.unidadeOriginal})</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            {stockItems.length === 0 && <Text style={{ color: '#999', fontStyle: 'italic', marginBottom: 10 }}>Nenhum item no estoque.</Text>}
+
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TextInput
+                style={[styles.input, { flex: 0.4 }]}
+                placeholder="Qtd"
+                cursorColor='#8B2F2F'
+                value={qtyIngredient}
+                onChangeText={setQtyIngredient}
+                keyboardType="numeric"
+              />
+              <View style={{ flex: 0.6 }}>
+                <View style={[styles.unitTabs, { marginBottom: 5 }]}>
+                  <TouchableOpacity onPress={() => setTipoUnidade('QUANTITY')} style={[styles.unitTab, tipoUnidade === 'QUANTITY' && styles.unitTabActive]}>
+                    <Text style={[styles.unitTabText, tipoUnidade === 'QUANTITY' && styles.unitTabTextActive]}>Unid.</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setTipoUnidade('VOLUME')} style={[styles.unitTab, tipoUnidade === 'VOLUME' && styles.unitTabActive]}>
+                    <Text style={[styles.unitTabText, tipoUnidade === 'VOLUME' && styles.unitTabTextActive]}>Vol.</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setTipoUnidade('MASS')} style={[styles.unitTab, tipoUnidade === 'MASS' && styles.unitTabActive]}>
+                    <Text style={[styles.unitTabText, tipoUnidade === 'MASS' && styles.unitTabTextActive]}>Peso</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  {unidadesUI.map(u => (
+                    <TouchableOpacity
+                      key={u}
+                      style={{
+                        paddingVertical: 8,
+                        paddingHorizontal: 12,
+                        backgroundColor: unitIngredient === u ? '#8B2F2F' : '#eee',
+                        borderRadius: 8,
+                        marginRight: 5,
+                        justifyContent: 'center',
+                        minWidth: 40,
+                        alignItems: 'center'
+                      }}
+                      onPress={() => setUnitIngredient(u)}
+                    >
+                      <Text style={{ color: unitIngredient === u ? '#fff' : '#333', fontWeight: 'bold', fontSize: 13 }}>{u}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            </View>
+
+            <TouchableOpacity style={styles.salvarBtn} onPress={addIngredient}>
+              <Text style={styles.salvarBtnText}>+ Adicionar Ingrediente</Text>
+            </TouchableOpacity>
+
+            <Text style={[styles.label, { marginTop: 20 }]}>Ingredientes Vinculados:</Text>
+            <ScrollView style={{ maxHeight: 200 }}>
+              {(currentProductForStock?.inventoryItems || []).length === 0 ? (
+                <Text style={{ fontStyle: 'italic', color: '#999' }}>Nenhum ingrediente vinculado.</Text>
+              ) : (
+                (currentProductForStock?.inventoryItems || []).map((ing, idx) => (
+                  <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 10, borderBottomWidth: 1, borderColor: '#eee' }}>
+                    <Text style={{ flex: 1 }}>{ing.nome} - {ing.qt} {ing.un}</Text>
+                    <TouchableOpacity onPress={() => removeIngredient(ing.id)}>
+                      <Text style={{ color: 'red' }}>🗑️</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+
+          </View>
+        </View>
+      </Modal>
+
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F1E8' },
-  header: { 
-      backgroundColor: '#8B2F2F', paddingVertical: 15, paddingTop: Platform.OS === 'ios' ? 50 : 20, 
-      alignItems: 'center', justifyContent: 'center', borderBottomLeftRadius: 20, borderBottomRightRadius: 20 
+  header: {
+    backgroundColor: '#8B2F2F',
+    paddingTop: 50,
+    paddingBottom: 15,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    zIndex: 10,
+    elevation: 8,
   },
-  headerText: { color: '#FFF', fontSize: 20, fontWeight: 'bold' },
-  content: { flex: 1, padding: 20 },
-  topActions: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
-  link: { fontSize: 16, color: '#666' }
+  headerLeft: { width: 40 },
+  headerCenter: { flex: 1, alignItems: 'center' },
+  headerRight: { width: 40 },
+  backButton: { padding: 5 },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FFF',
+    marginLeft: 8,
+  },
+  content: { flex: 1 },
+  section: {
+    backgroundColor: '#FFFFFF',
+    margin: 20,
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#8B2F2F',
+    marginBottom: 20,
+    borderBottomWidth: 2,
+    borderBottomColor: '#F5F1E8',
+    paddingBottom: 10,
+  },
+  form: {
+    gap: 15,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 5,
+    marginLeft: 4,
+  },
+  input: {
+    backgroundColor: '#F5F1E8',
+    borderRadius: 12,
+    padding: 15,
+    fontSize: 16,
+    color: '#333',
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  categoriaButtons: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 10,
+  },
+  categoriaBtn: {
+    backgroundColor: '#F5F1E8',
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#E5B84A',
+  },
+  categoriaBtnActive: {
+    backgroundColor: '#E5B84A',
+    borderColor: '#8B2F2F',
+  },
+  categoriaBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+  },
+  categoriaBtnTextActive: {
+    color: '#2C2C2C',
+  },
+  variacaoToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    marginBottom: 15,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#8B2F2F',
+    marginRight: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  checkmark: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#8B2F2F',
+  },
+  variacaoToggleText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2C2C2C',
+  },
+  variacoesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 15,
+  },
+  variacaoField: {
+    flex: 1,
+    minWidth: '45%',
+  },
+  variacaoLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#8B2F2F',
+    marginBottom: 5,
+  },
+  inputVariacao: {
+    backgroundColor: '#F5F1E8',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    color: '#2C2C2C',
+    borderWidth: 1,
+    borderColor: '#E5B84A',
+    textAlign: 'center',
+  },
+  cadastrarBtn: {
+    backgroundColor: '#8B2F2F',
+    padding: 15,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 10,
+    shadowColor: '#8B2F2F',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 15,
+    elevation: 5,
+  },
+  cadastrarBtnDisabled: {
+    opacity: 0.5,
+  },
+  cadastrarBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
+  filtros: {
+    flexDirection: 'row',
+    marginBottom: 15,
+  },
+  filtroBtn: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    borderRadius: 20,
+    marginRight: 10,
+    borderWidth: 2,
+    borderColor: '#E5B84A',
+  },
+  filtroBtnActive: {
+    backgroundColor: '#E5B84A',
+    borderColor: '#8B2F2F',
+  },
+  filtroBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+  },
+  filtroBtnTextActive: {
+    color: '#2C2C2C',
+  },
+  loadingContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 15,
+    padding: 40,
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 15,
+    fontSize: 14,
+    color: '#999',
+  },
+  emptyContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 15,
+    padding: 40,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#999',
+  },
+  produtoCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  produtoLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  produtoInfo: {
+    flex: 1,
+  },
+  produtoNome: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#2C2C2C',
+    marginBottom: 4,
+  },
+  produtoVariacoes: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 2,
+  },
+  produtoActions: {
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'flex-end',
+    flexWrap: 'wrap',
+    maxWidth: '50%',
+  },
+  statusBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    width: 130,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statusBtnAtivo: {
+    backgroundColor: '#7ED321',
+  },
+  statusBtnInativo: {
+    backgroundColor: '#DC3545',
+  },
+  statusBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  editBtn: {
+    backgroundColor: '#E5B84A',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    width: 130,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#2C2C2C',
+  },
+  stockBtn: {
+    backgroundColor: '#D2691E',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    width: 130,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stockBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  deleteBtn: {
+    backgroundColor: '#DC3545',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    width: 130,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deleteBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#8B2F2F',
+  },
+  modalClose: {
+    fontSize: 28,
+    color: '#999',
+  },
+  stockLinkBtn: {
+    backgroundColor: '#333',
+    padding: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginVertical: 10,
+  },
+  stockLinkText: {
+    color: '#FFF',
+    fontWeight: 'bold',
+  },
+  salvarBtn: {
+    backgroundColor: '#8B2F2F',
+    padding: 15,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  salvarBtnDisabled: {
+    opacity: 0.5,
+  },
+  salvarBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  fecharBtn: {
+    backgroundColor: '#999',
+    padding: 15,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 15,
+  },
+  fecharBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  variacoesLista: {
+    maxHeight: 400,
+  },
+  variacaoItem: {
+    backgroundColor: '#F5F1E8',
+    borderRadius: 12,
+    padding: 8,
+    marginBottom: 12,
+  },
+  variacaoInfo: {
+    marginRight: 10,
+  },
+  variacaoNomeInput: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#2C2C2C',
+    marginBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ccc',
+    paddingVertical: 4,
+    minWidth: 150,
+  },
+  variacaoPrecoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  variacaoLabelLarge: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#8B2F2F',
+  },
+  variacaoPrecoInput: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    padding: 8,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#E5B84A',
+    minWidth: 80,
+    textAlign: 'center',
+  },
+  variacaoSalvarBtn: {
+    backgroundColor: '#7ED321',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 10,
+  },
+  variacaoSalvarText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  miniStockBtn: {
+    backgroundColor: '#eee',
+    padding: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 10
+  },
+  miniStockText: { color: '#333', fontSize: 12 },
+  unitTabs: {
+    flexDirection: 'row',
+    backgroundColor: '#F5F1E8',
+    borderRadius: 8,
+    padding: 2
+  },
+  unitTab: {
+    flex: 1,
+    paddingVertical: 4,
+    alignItems: 'center',
+    borderRadius: 6
+  },
+  unitTabActive: {
+    backgroundColor: '#fff',
+    elevation: 2
+  },
+  unitTabText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#999'
+  },
+  unitTabTextActive: {
+    color: '#8B2F2F'
+  },
+  addTemperoRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 10,
+    alignItems: 'center'
+  },
+  inputTempero: {
+    flex: 1,
+    backgroundColor: '#F5F1E8',
+    borderRadius: 8,
+    padding: 10,
+    fontSize: 14,
+    borderWidth: 1,
+    borderColor: '#ddd'
+  },
+  addBtn: {
+    width: 40,
+    height: 40,
+    backgroundColor: '#8B2F2F',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 2
+  },
+  listaTemperos: {
+    marginTop: 5
+  },
+  temperoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    marginBottom: 8,
+    elevation: 1
+  },
+  temperoText: {
+    fontSize: 14,
+    color: '#444',
+    fontWeight: '500'
+  }
 });

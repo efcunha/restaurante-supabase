@@ -222,7 +222,7 @@ export default function ProductForm({
 
 const styles = StyleSheet.create({
     overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-    content: { backgroundColor: '#FFF', width: '100%', maxWidth: 500, borderRadius: 20, padding: 20, maxHeight: '90%', shadowColor: '#000', elevation: 10 },
+    content: { backgroundColor: '#FFF', width: '100%', maxWidth: 400, borderRadius: 20, padding: 20, maxHeight: '90%', shadowColor: '#000', elevation: 10 },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
     title: { fontSize: 20, fontWeight: 'bold', color: '#8B2F2F' },
     close: { fontSize: 24, color: '#999', padding: 5 },
