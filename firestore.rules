@@ -2,40 +2,83 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check if user belongs to the company
+    // --- HELPER FUNCTIONS ---
+
     function doesUserBelongToCompany(companyId) {
-      // 1. Check if the user document exists and has the correct companyId
-      // Note: This requires the user document ID to be the same as Auth UID (which we enforce in registration)
+      // Current implementation: Reads User Doc (1 Extra Read)
+      // Optimization TODO: Use Custom Claims in future
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId;
     }
 
-    // Helper: is owner or admin (optional future expansion)
-    function isAdmin() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.funcao == 'admin';
+    // Basic Type Checks
+    function isNumber(value) {
+      return value is number || value is float || value is int;
+    }
+    
+    function isString(value) {
+      return value is string && value.size() > 0;
     }
 
-    // --- USERS COLLECTION ---
-    // Users can read/write their own profile
+    function isBoolean(value) {
+      return value is bool;
+    }
+
+    // --- DATA VALIDATION SCHEMAS ---
+
+    function isValidProduct(data) {
+       // Allow updates if fields are valid OR if fields are missing (partial update)
+       // But for critical fields present, check type.
+       
+       let validName = !('name' in data) || isString(data.name);
+       let validPrice = !('price' in data) || isNumber(data.price);
+       let validActive = !('active' in data) || isBoolean(data.active);
+       
+       // Ensure at least name or price is present on create, but we can iterate.
+       return validName && validPrice && validActive;
+    }
+
+    // --- COLLECTIONS ---
+
+    // 1. Users
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // --- COMPANIES COLLECTION ---
+    // 2. Companies (Root)
     match /companies/{companyId} {
-      // Allow read if user belongs to this company
-      allow read: if request.auth != null && doesUserBelongToCompany(companyId);
-      
-      // Allow write only if user belongs to company (and ideally is admin, but keeping simple for now)
-      allow write: if request.auth != null && doesUserBelongToCompany(companyId);
+      allow read, write: if request.auth != null && doesUserBelongToCompany(companyId);
 
-      // --- SUB-COLLECTIONS (Scoped Data) ---
-      // This covers: pedidos, cardapio, comandas, caixa, etc.
-      match /{document=**} {
+      // --- SUB-COLLECTIONS ---
+      
+      // Cardapio (Products) - STRICT VALIDATION
+      match /cardapio/{itemId} {
+        allow read: if request.auth != null && doesUserBelongToCompany(companyId);
+        allow create, update: if request.auth != null 
+                             && doesUserBelongToCompany(companyId)
+                             && isValidProduct(request.resource.data);
+        allow delete: if request.auth != null && doesUserBelongToCompany(companyId);
+      }
+
+      // Settings (Config)
+      match /settings/{docId} {
         allow read, write: if request.auth != null && doesUserBelongToCompany(companyId);
       }
+
+      // Pedidos (Orders)
+      match /pedidos/{orderId} {
+        allow read, write: if request.auth != null && doesUserBelongToCompany(companyId);
+      }
+      
+      // Comandas
+      match /comandas/{comandaId} {
+        allow read, write: if request.auth != null && doesUserBelongToCompany(companyId);
+      }
+
+      // Caixa & Pagamentos & Funcionarios
+      // Grouping standard access for others
+      match /{collection}/{docId} {
+         allow read, write: if request.auth != null && doesUserBelongToCompany(companyId);
+      }
     }
-    
-    // Fallback for older collections (REMOVED: Strict Mode Active)
-    // All data must be under /companies/{companyId}
   }
 }
