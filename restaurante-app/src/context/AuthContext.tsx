@@ -342,6 +342,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const loginWithBiometric = async (): Promise<boolean> => {
     try {
         setLoading(true);
+        isManualLoginRef.current = true; // Mark as manual to prevent onAuthStateChanged duplicate reload
         
         // 1. Get last enrolled user
         const lastUserId = await BiometricAuthService.getLastEnrolledUser();
@@ -377,6 +378,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     } catch (e: any) {
         console.error('[Auth] Biometric login error:', e);
+        isManualLoginRef.current = false;
         Alert.alert('Erro', 'Falha na autenticação biométrica: ' + (e.message || 'Erro desconhecido'));
         setLoading(false);
         return false;
