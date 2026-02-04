@@ -34,6 +34,8 @@ import FinancialConfigScreen from './FinancialConfigScreen';
 // @ts-ignore
 import FinancialDashboardScreen from './FinancialDashboardScreen';
 import { confirmLogout } from '../utils/appUtils';
+import BiometricSetupModal from '../components/BiometricSetupModal';
+import MFASetupModal from '../components/MFASetupModal';
 
 export default function AdminScreen() {
   const { user, logout } = useAuth();
@@ -64,6 +66,8 @@ export default function AdminScreen() {
   const [showEditarEmpresa, setShowEditarEmpresa] = useState(false);
   const [showFinancialConfig, setShowFinancialConfig] = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);
+  const [showBiometricSetup, setShowBiometricSetup] = useState(false);
+  const [showMFASetup, setShowMFASetup] = useState(false);
   const [loadingLimpar, setLoadingLimpar] = useState(false);
 
   // Estados para estatísticas
@@ -537,6 +541,8 @@ export default function AdminScreen() {
     { name: 'Gerenciar Cardápio', icon: '🍴', action: () => setShowGerenciarCardapio(true) },
     { name: 'Configurar Impressora', icon: '🖨️', action: () => setShowPrinterConfig(true) },
     { name: 'Dados da Empresa', icon: '🏢', action: () => setShowEditarEmpresa(true) },
+    { name: 'Configurar Biometria', icon: '👆', action: () => setShowBiometricSetup(true) },
+    { name: 'Configurar MFA (2FA)', icon: '🛡️', action: () => setShowMFASetup(true) },
   ];
 
   return (
@@ -954,6 +960,20 @@ export default function AdminScreen() {
       </Modal>
 
       <StatusBar style="light" />
+      <BiometricSetupModal 
+        visible={showBiometricSetup}
+        onClose={() => setShowBiometricSetup(false)}
+        onSuccess={() => {
+            // Optional: visual feedback
+        }}
+      />
+      <MFASetupModal
+        visible={showMFASetup}
+        onClose={() => setShowMFASetup(false)}
+        onSuccess={() => {
+            // Optional: visual feedback
+        }}
+      />
     </View>
   );
 }
