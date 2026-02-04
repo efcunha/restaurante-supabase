@@ -4,6 +4,8 @@
  */
 
 import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User } from 'firebase/auth';
 
 interface AuthState {
@@ -58,10 +60,14 @@ class AuthPersistenceService {
         refreshToken,
       };
 
-      await SecureStore.setItemAsync(
-        this.AUTH_STATE_KEY,
-        JSON.stringify(authState)
-      );
+      if (Platform.OS === 'web') {
+        await AsyncStorage.setItem(this.AUTH_STATE_KEY, JSON.stringify(authState));
+      } else {
+        await SecureStore.setItemAsync(
+          this.AUTH_STATE_KEY,
+          JSON.stringify(authState)
+        );
+      }
 
       console.log('[AuthPersistence] Auth state persisted successfully');
     } catch (error) {
@@ -75,7 +81,12 @@ class AuthPersistenceService {
    */
   async restoreAuthState(): Promise<AuthState | null> {
     try {
-      const authStateStr = await SecureStore.getItemAsync(this.AUTH_STATE_KEY);
+      let authStateStr: string | null;
+      if (Platform.OS === 'web') {
+        authStateStr = await AsyncStorage.getItem(this.AUTH_STATE_KEY);
+      } else {
+        authStateStr = await SecureStore.getItemAsync(this.AUTH_STATE_KEY);
+      }
 
       if (!authStateStr) {
         console.log('[AuthPersistence] No persisted auth state found');
@@ -109,7 +120,11 @@ class AuthPersistenceService {
    */
   async clearAuthState(): Promise<void> {
     try {
-      await SecureStore.deleteItemAsync(this.AUTH_STATE_KEY);
+      if (Platform.OS === 'web') {
+        await AsyncStorage.removeItem(this.AUTH_STATE_KEY);
+      } else {
+        await SecureStore.deleteItemAsync(this.AUTH_STATE_KEY);
+      }
       console.log('[AuthPersistence] Auth state cleared');
     } catch (error) {
       console.error('[AuthPersistence] Error clearing auth state:', error);
@@ -121,7 +136,12 @@ class AuthPersistenceService {
    */
   async hasPersistedAuthState(): Promise<boolean> {
     try {
-      const authStateStr = await SecureStore.getItemAsync(this.AUTH_STATE_KEY);
+      let authStateStr: string | null;
+      if (Platform.OS === 'web') {
+        authStateStr = await AsyncStorage.getItem(this.AUTH_STATE_KEY);
+      } else {
+        authStateStr = await SecureStore.getItemAsync(this.AUTH_STATE_KEY);
+      }
       return authStateStr !== null;
     } catch (error) {
       console.error('[AuthPersistence] Error checking persisted state:', error);
@@ -323,10 +343,14 @@ class AuthPersistenceService {
         authState.sessionToken = newSessionToken;
       }
 
-      await SecureStore.setItemAsync(
-        this.AUTH_STATE_KEY,
-        JSON.stringify(authState)
-      );
+      if (Platform.OS === 'web') {
+        await AsyncStorage.setItem(this.AUTH_STATE_KEY, JSON.stringify(authState));
+      } else {
+        await SecureStore.setItemAsync(
+          this.AUTH_STATE_KEY,
+          JSON.stringify(authState)
+        );
+      }
 
       console.log('[AuthPersistence] Session extended successfully');
     } catch (error) {
@@ -359,10 +383,14 @@ class AuthPersistenceService {
         throw new Error(validationResult.reason || 'Invalid updated state');
       }
 
-      await SecureStore.setItemAsync(
-        this.AUTH_STATE_KEY,
-        JSON.stringify(updatedState)
-      );
+      if (Platform.OS === 'web') {
+        await AsyncStorage.setItem(this.AUTH_STATE_KEY, JSON.stringify(updatedState));
+      } else {
+        await SecureStore.setItemAsync(
+          this.AUTH_STATE_KEY,
+          JSON.stringify(updatedState)
+        );
+      }
 
       console.log('[AuthPersistence] Auth state updated successfully');
     } catch (error) {
