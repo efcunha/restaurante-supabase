@@ -158,10 +158,10 @@ export default function LoginScreen({ navigation }: Props) {
                 <TouchableOpacity
                   style={[styles.biometricBtn, { marginTop: 15 }]}
                   onPress={async () => {
-                    const success = await loginWithBiometric();
-                    if (!success) {
-                      // Optional: Show specific error or toast if needed, 
-                      // but generic errors are usually handled by the auth context/service alerts
+                    const result = await loginWithBiometric();
+                    if (!result.success && result.error) {
+                       // Show error alert natively from the UI component
+                       Alert.alert('Biometria', result.error);
                     }
                   }}
                   disabled={loading}
