@@ -45,24 +45,56 @@ export interface AppUser {
   [key: string]: any; // Allow other fields from firestore
 }
 
+/**
+ * Context Interface for Authentication
+ * Defines the shape of the AuthContext, including user state, permissions, and auth methods.
+ */
 interface AuthContextType {
+  /** Current authenticated user object */
   user: AppUser | null;
+  /** Current user role (e.g., 'admin', 'manager', 'waiter') */
   role: string | null;
+  /** Loading state for auth operations */
   loading: boolean;
+  /**
+   * Method to log in using email and password.
+   * @param email User email
+   * @param senha User password
+   * @returns Promise resolving to true if login successful, false otherwise.
+   */
   login: (email: string, senha: string) => Promise<boolean>;
+  /**
+   * Method to log out the current user and clear session data.
+   */
   logout: () => Promise<void>;
+  /**
+   * Register a new user (usually for creating new companies).
+   */
   register: (email: string, password: string) => Promise<{ success: boolean; user?: FirebaseUser; error?: any }>;
+  /** Unique session key to force re-renders or cache invalidation */
   sessionKey: number;
+  /** Check if user has specific permission based on role */
   hasPermission: (perm: string) => boolean;
+  /** Permission constants */
   Permissions: typeof Permissions;
+  /** Force refresh of custom claims from Firebase */
   refreshCustomClaims: () => Promise<void>;
+  /** Get current custom claims */
   getCustomClaims: () => CustomClaims | null;
   
-  // New MFA & Biometric props
+  // --- MFA & Biometric ---
+  /** Resolver for Multi-Factor Authentication challenges */
   mfaResolver: MultiFactorResolver | null;
+  /** Set the MFA resolver state */
   setMfaResolver: (resolver: MultiFactorResolver | null) => void;
+  /**
+   * Attempt to login using stored biometric credentials.
+   * @returns Promise resolving to true if successful.
+   */
   loginWithBiometric: () => Promise<boolean>;
+  /** Flag indicating if biometric hardware is available */
   biometricAvailable: boolean;
+  /** Type of biometrics available (e.g., 'Face ID', 'Touch ID') */
   biometricType?: string;
 }
 
@@ -81,16 +113,15 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  // --- State Definitions ---
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [role, setRole] = useState<string | null>(null);
   const [sessionKey, setSessionKey] = useState<number>(1);
   const [customClaims, setCustomClaims] = useState<CustomClaims | null>(null);
   
-  // MFA State
+  // --- Security State ---
   const [mfaResolver, setMfaResolver] = useState<MultiFactorResolver | null>(null);
-  
-  // Biometric State
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricType, setBiometricType] = useState<string | undefined>(undefined);
 
