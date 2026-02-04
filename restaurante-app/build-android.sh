@@ -33,6 +33,13 @@ if [ ! -f "$KEYSTORE_PATH" ]; then
     exit 1
 fi
 
+# Verificar se .env existe (Crítico para a configuração do Firebase)
+if [ ! -f ".env" ]; then
+    echo -e "${RED}❌ Erro: Arquivo .env não encontrado!${NC}"
+    echo "O app precisa das variáveis de ambiente (EXPO_PUBLIC_...) para funcionar."
+    exit 1
+fi
+
 # Build do APK Release (sem clean para evitar problemas com codegen)
 cd $ANDROID_DIR
 echo ""

@@ -89,9 +89,9 @@ interface AuthContextType {
   setMfaResolver: (resolver: MultiFactorResolver | null) => void;
   /**
    * Attempt to login using stored biometric credentials.
-   * @returns Promise resolving to true if successful.
+   * @returns Promise resolving to result object.
    */
-  loginWithBiometric: () => Promise<boolean>;
+  loginWithBiometric: () => Promise<{ success: boolean; error?: string }>;
   /** Flag indicating if biometric hardware is available */
   biometricAvailable: boolean;
   /** Type of biometrics available (e.g., 'Face ID', 'Touch ID') */
@@ -339,34 +339,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const loginWithBiometric = async (): Promise<boolean> => {
+  const loginWithBiometric = async (): Promise<{ success: boolean; error?: string }> => {
     try {
-        setLoading(true);
         isManualLoginRef.current = true; // Mark as manual to prevent onAuthStateChanged duplicate reload
         
         // 1. Get last enrolled user
         const lastUserId = await BiometricAuthService.getLastEnrolledUser();
+        console.log('[AuthContext] Biometric Login Attempt. LastUser:', lastUserId);
+
         if (!lastUserId) {
-             Alert.alert('Biometria', 'Nenhum usuário com biometria habilitada neste dispositivo.');
-             setLoading(false);
-             return false;
+             console.log('[AuthContext] No biometric user found. Returning error.');
+             return { success: false, error: 'Nenhum usuário com biometria habilitada neste dispositivo.\n\nPor favor, faça login com senha e habilite a biometria nas configurações.' };
         }
+
+        setLoading(true);
 
         // 2. Authenticate with Biometrics
         const result = await BiometricAuthService.authenticate(lastUserId);
         
         if (!result.success) {
-             if (result.error && !result.fallbackToPassword) Alert.alert('Erro', result.error);
              setLoading(false);
-             return false;
+             // If user cancelled or failed, return the specific error
+             return { success: false, error: result.error || 'Falha na autenticação biométrica' };
         }
         
         // 3. Retrieve Credentials
         const credentials = await BiometricAuthService.getCredentials(lastUserId);
         if (!credentials) {
-             Alert.alert('Erro', 'Credenciais biométricas não encontradas or expiraram. Faça login com senha novamente.');
              setLoading(false);
-             return false;
+             return { success: false, error: 'Credenciais biométricas não encontradas ou expiraram. Faça login com senha novamente.' };
         }
 
         // 4. Sign In with Firebase
@@ -374,14 +375,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         await reloadUserData(userCredential.user);
         
         setLoading(false);
-        return true;
+        return { success: true };
 
     } catch (e: any) {
         console.error('[Auth] Biometric login error:', e);
-        isManualLoginRef.current = false;
-        Alert.alert('Erro', 'Falha na autenticação biométrica: ' + (e.message || 'Erro desconhecido'));
         setLoading(false);
-        return false;
+        return { success: false, error: 'Falha na autenticação biométrica: ' + (e.message || 'Erro desconhecido') };
     }
   };
 
