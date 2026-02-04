@@ -13,10 +13,9 @@ LogBox.ignoreLogs([
   'Non-serializable values were found',
 ]);
 
-import { initSentry } from './src/config/sentryConfig';
-import * as Sentry from '@sentry/react-native';
-
-initSentry();
+// import { initSentry } from './src/config/sentryConfig';
+// import * as Sentry from '@sentry/react-native';
+// initSentry();
 
 import NovoPedidoScreen from './src/screens/NovoPedidoScreen';
 import MontagemScreen from './src/screens/MontagemScreen';
@@ -168,12 +167,16 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Sentry.wrap(function App() {
+import { ErrorBoundary } from './src/components/ErrorBoundary';
+
+export default function App() {
   return (
-    <AuthProvider>
-      <ToastProvider>
-        <AppContent />
-      </ToastProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <ToastProvider>
+          <AppContent />
+        </ToastProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
-});
+}

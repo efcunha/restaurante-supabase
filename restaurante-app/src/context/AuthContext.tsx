@@ -144,6 +144,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Initialize Auth & Restore Session
   useEffect(() => {
     let mounted = true;
+    
+    // Safety timeout: Ensure loading never sticks for more than 5s
+    const loadingTimeout = setTimeout(() => {
+        if (mounted && loading) {
+            console.warn('[Auth] Initialization timed out. Forcing app load.');
+            setLoading(false);
+        }
+    }, 5000);
 
     const initAuth = async () => {
       try {
@@ -217,6 +225,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     return () => {
       mounted = false;
+      clearTimeout(loadingTimeout);
       unsubscribe();
     };
   }, []);
