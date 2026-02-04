@@ -36,6 +36,7 @@ import FinancialDashboardScreen from './FinancialDashboardScreen';
 import { confirmLogout } from '../utils/appUtils';
 import BiometricSetupModal from '../components/BiometricSetupModal';
 import MFASetupModal from '../components/MFASetupModal';
+import PerformanceService from '../services/PerformanceService';
 
 export default function AdminScreen() {
   const { user, logout } = useAuth();
@@ -270,177 +271,139 @@ export default function AdminScreen() {
 
   // Carregar estatísticas operacionais do dia
   const carregarEstatisticas = async () => {
-    try {
-      setLoadingStats(true);
-      if (!user?.companyId) return;
+    return PerformanceService.measure('Admin:CarregarEstatsOperacionais', async () => {
+        try {
+        setLoadingStats(true);
+        if (!user?.companyId) return;
 
-      const today = getTodayKey();
-      // Buscar DIRETAMENTE todos os pedidos do dia pelo dateKey
-      const qPedidosDia = query(
-        getCompanyCollection(user.companyId, 'pedidos'),
-        where('dateKey', '==', today)
-      );
-      let pedidosSnapshot = await getDocs(qPedidosDia);
+        const today = getTodayKey();
+        const qPedidosDia = query(
+            getCompanyCollection(user.companyId, 'pedidos'),
+            where('dateKey', '==', today)
+        );
+        let pedidosSnapshot = await getDocs(qPedidosDia);
+        
+        // Optimizing aggregation loop
+        const statsResult = pedidosSnapshot.docs.reduce((acc, pedidoDoc) => {
+            const pedido = pedidoDoc.data();
+            acc.totalPedidos++;
+            
+            // Itens aggregation
+            const items = pedido.itens || pedido.items;
+            if (Array.isArray(items)) {
+                for (const item of items) {
+                    if (typeof item === 'string') {
+                         const qtyMatch = item.match(/^(\d+)x/);
+                         acc.totalItens += qtyMatch ? parseInt(qtyMatch[1], 10) : 1;
+                    }
+                }
+            }
 
+            // Time calculation
+            const inicio = pedido.criadoEm || pedido.horaPedido || pedido.createdAt;
+            const fim = pedido.timeInProntos;
 
-      let totalPedidos = pedidosSnapshot.size;
-      let totalItens = 0;
-      let temposTotais: any[] = [];
+            if (inicio && fim) {
+                const getSeconds = (val: any) => {
+                     if (val?.seconds) return val.seconds;
+                     if (typeof val === 'string' || typeof val === 'number') return new Date(val).getTime() / 1000;
+                     return 0;
+                };
 
-      // console.log(`📊 [Estatísticas] Total de pedidos encontrados (TODOS os status): ${totalPedidos}`);
+                const inicioSec = getSeconds(inicio);
+                const fimSec = getSeconds(fim);
+                
+                if (inicioSec && fimSec) {
+                    const diffMin = Math.round((fimSec - inicioSec) / 60);
+                    if (diffMin > 0 && diffMin < 180) {
+                        acc.totalTempo += diffMin;
+                        acc.countTempo++;
+                    }
+                }
+            }
+            return acc;
+        }, { totalPedidos: 0, totalItens: 0, totalTempo: 0, countTempo: 0 });
 
-      pedidosSnapshot.docs.forEach(pedidoDoc => {
-        const pedido = pedidoDoc.data();
-        // console.log(`📊 [Pedido ${pedidoDoc.id.slice(-4)}] status: ${pedido.status}, itens:`, pedido.itens, 'deliveredAt:', pedido.deliveredAt);
-        // O campo correto no Firestore é 'itens' (com acento)
-        const items = pedido.itens || pedido.items;
+        setStats({
+            totalPedidos: statsResult.totalPedidos,
+            totalItens: statsResult.totalItens,
+            tempoMedio: statsResult.countTempo > 0 
+                ? Math.round(statsResult.totalTempo / statsResult.countTempo) 
+                : 0
+        });
 
-        if (items && Array.isArray(items)) {
-          items.forEach((item: any) => {
-            // Extrair quantidade do item (formato: "2x Carne Simples" ou "1x Item")
-            const qtyMatch = item.match(/^(\d+)x/);
-            const qty = qtyMatch ? parseInt(qtyMatch[1], 10) : 1;
-            totalItens += qty;
-          });
-        } else {
-          // do nothing
+        } catch (error) {
+            console.error('❌ Erro ao carregar estatísticas:', error);
+        } finally {
+            setLoadingStats(false);
         }
-
-        // Calcular tempo médio se tiver timestamps
-        // Usar criadoEm ou horaPedido (campos do Firestore) em vez de createdAt
-        const inicio = pedido.criadoEm || pedido.horaPedido || pedido.createdAt;
-        const fim = pedido.timeInProntos;
-
-        // console.log(`⏱️  [Pedido ${pedidoDoc.id.slice(-4)}] inicio:`, inicio, 'fim:', fim, 'status:', pedido.status);
-
-        if (inicio && fim) {
-          // console.log(`✅ [Pedido ${pedidoDoc.id.slice(-4)}] TEM AMBOS OS TIMESTAMPS! Calculando...`);
-          let inicioSeconds, fimSeconds;
-
-          // Converter início para seconds
-          if (inicio.seconds) {
-            inicioSeconds = inicio.seconds;
-          } else if (typeof inicio === 'string') {
-            inicioSeconds = new Date(inicio).getTime() / 1000;
-          } else {
-            // @ts-ignore
-            inicioSeconds = new Date(inicio).getTime() / 1000;
-          }
-
-          // Converter fim para seconds
-          if (fim.seconds) {
-            fimSeconds = fim.seconds;
-          } else if (typeof fim === 'string') {
-            fimSeconds = new Date(fim).getTime() / 1000;
-          } else {
-            // @ts-ignore
-            fimSeconds = new Date(fim).getTime() / 1000;
-          }
-
-          const tempoMinutos = Math.round((fimSeconds - inicioSeconds) / 60);
-          // console.log(`⏱️  [Pedido ${pedidoDoc.id.slice(-4)}] Tempo calculado: ${tempoMinutos} minutos`);
-          if (tempoMinutos > 0 && tempoMinutos < 180) {
-            temposTotais.push(tempoMinutos);
-          } else {
-            // console.log(`⚠️  [Pedido ${pedidoDoc.id.slice(-4)}] Tempo inválido (${tempoMinutos} min) - ignorado`);
-          }
-        } else {
-          // console.log(`⚠️  [Pedido ${pedidoDoc.id.slice(-4)}] Sem timestamps para calcular tempo`);
-        }
-      });
-
-      const tempoMedio = temposTotais.length > 0
-        ? Math.round(temposTotais.reduce((a, b) => a + b, 0) / temposTotais.length)
-        : 0;
-
-      // console.log(`📊 [Estatísticas FINAL] Pedidos: ${totalPedidos}, Itens: ${totalItens}, Tempo Médio: ${tempoMedio} min (de ${temposTotais.length} pedidos com tempo)`);
-
-      setStats({
-        totalPedidos,
-        totalItens,
-        tempoMedio
-      });
-    } catch (error) {
-      console.error('❌ Erro ao carregar estatísticas:', error);
-    } finally {
-      setLoadingStats(false);
-    }
+    });
   };
 
   // Carregar estatísticas de vendas por período
   const carregarEstatisticasVendas = async () => {
-    try {
-      setLoadingVendas(true);
-      // console.log('💰 === CARREGANDO ESTATÍSTICAS DE VENDAS ===');
+    return PerformanceService.measure('Admin:CarregarVendas', async () => {
+        try {
+            setLoadingVendas(true);
+            
+            const { startKey: dateKeyInicio, endKey: dateKeyFim } = getDateKeyRange(periodoSelecionado);
+            if (!user?.companyId) return;
 
-      setLoadingVendas(true);
-      // console.log('💰 === CARREGANDO ESTATÍSTICAS DE VENDAS ===');
+            // Fetch concurrently
+            const salesQuery = query(
+                getCompanyCollection(user.companyId, 'comandas'),
+                where('status', '==', 'fechada'),
+                where('dateKey', '>=', dateKeyInicio),
+                where('dateKey', '<=', dateKeyFim)
+            );
+            
+            const canceledQuery = query(
+                getCompanyCollection(user.companyId, 'comandas'),
+                where('status', '==', 'cancelada'),
+                where('dateKey', '>=', dateKeyInicio),
+                where('dateKey', '<=', dateKeyFim)
+            );
 
-      const { startKey: dateKeyInicio, endKey: dateKeyFim } = getDateKeyRange(periodoSelecionado);
+            // Parallel execution
+            const [salesSnap, canceledSnap] = await Promise.all([
+                getDocs(salesQuery),
+                getDocs(canceledQuery)
+            ]);
 
-      // console.log(`💰 Período: ${dateKeyInicio} até ${dateKeyFim}`);
-      // console.log(`💰 Buscando comandas fechadas...`);
+            // Sales Stats
+            const salesStats = salesSnap.docs.reduce((acc, doc) => {
+                const data = doc.data();
+                acc.totalVendido += (data.totalConsumido || 0);
+                acc.totalPedidos++;
+                return acc;
+            }, { totalVendido: 0, totalPedidos: 0 });
 
-      // Buscar todas as comandas fechadas no período
-      if (!user?.companyId) return;
+            // Canceled Stats
+            const canceledStats = canceledSnap.docs.reduce((acc, doc) => {
+                const data = doc.data();
+                acc.totalCancelado += (data.totalConsumido || 0);
+                acc.qtdCanceladas++;
+                return acc;
+            }, { totalCancelado: 0, qtdCanceladas: 0 });
 
-      // ✅ OTIMIZAÇÃO: Filtrar por data direto no Firestore
-      const comandasSnapshot = await getDocs(
-        query(
-          getCompanyCollection(user.companyId, 'comandas'),
-          where('status', '==', 'fechada'),
-          where('dateKey', '>=', dateKeyInicio),
-          where('dateKey', '<=', dateKeyFim)
-        )
-      );
+            const ticketMedio = salesStats.totalPedidos > 0 
+                ? salesStats.totalVendido / salesStats.totalPedidos 
+                : 0;
 
-      // console.log(`💰 Total de comandas fechadas no banco (filtradas): ${comandasSnapshot.size}`);
+            setVendasStats({
+                totalVendido: salesStats.totalVendido,
+                totalPedidos: salesStats.totalPedidos,
+                ticketMedio,
+                totalCancelado: canceledStats.totalCancelado,
+                qtdCanceladas: canceledStats.qtdCanceladas
+            });
 
-      let totalVendido = 0;
-      let totalPedidos = 0;
-      let totalCancelado = 0; // ✅ NOVO: Total de comandas canceladas
-      let qtdCanceladas = 0;   // ✅ NOVO: Quantidade de comandas canceladas
-
-      // Filtrar comandas do período e somar valores
-      comandasSnapshot.docs.forEach(doc => {
-        const comanda = doc.data();
-        // Como o filtro já foi feito no banco, podemos confiar que está no range (exceto edge cases de fuso)
-        // Somar
-        totalVendido += comanda.totalConsumido || 0;
-        totalPedidos++;
-      });
-
-      // ✅ NOVO: Buscar comandas CANCELADAS separadamente (com filtro de data)
-      const comandasCanceladasSnapshot = await getDocs(
-        query(
-          getCompanyCollection(user.companyId, 'comandas'),
-          where('status', '==', 'cancelada'),
-          where('dateKey', '>=', dateKeyInicio),
-          where('dateKey', '<=', dateKeyFim)
-        )
-      );
-
-      comandasCanceladasSnapshot.docs.forEach(doc => {
-        const comanda = doc.data();
-        totalCancelado += comanda.totalConsumido || 0;
-        qtdCanceladas++;
-      });
-
-
-
-      const ticketMedio = totalPedidos > 0 ? totalVendido / totalPedidos : 0;
-      setVendasStats({
-        totalVendido,
-        totalPedidos,
-        ticketMedio,
-        totalCancelado,    // ✅ NOVO
-        qtdCanceladas      // ✅ NOVO
-      });
-    } catch (error) {
-      console.error('❌ Erro ao carregar estatísticas de vendas:', error);
-    } finally {
-      setLoadingVendas(false);
-    }
+        } catch (error) {
+            console.error('❌ Erro ao carregar estatísticas de vendas:', error);
+        } finally {
+            setLoadingVendas(false);
+        }
+    });
   };
 
   // Carregar alertas de estoque
