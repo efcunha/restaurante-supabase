@@ -11,6 +11,7 @@ import {
     persistentLocalCache,
     persistentMultipleTabManager
 } from 'firebase/firestore';
+import { getPerformance, initializePerformance } from 'firebase/performance';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
@@ -100,7 +101,16 @@ if (!getApps().length) {
     db = getFirestore(app);
 }
 
-export { auth, db };
+// Initialize Performance Monitoring
+let perf;
+try {
+    // Only initialize if supported (Native or Web with support)
+    perf = initializePerformance(app);
+} catch (e) {
+    console.warn('Firebase Performance Initialization Error:', e);
+}
+
+export { auth, db, perf };
 export default app;
 
 // Helpers

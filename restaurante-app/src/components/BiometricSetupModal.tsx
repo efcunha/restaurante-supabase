@@ -63,21 +63,21 @@ export default function BiometricSetupModal({ visible, onClose, onSuccess }: Pro
 
     setLoading(true);
     try {
+        const deviceId = Device.modelId || Device.deviceName || 'unknown';
+        
         // 1. Verify Password
         // We use signInWithEmailAndPassword to verify, this might refresh token but is safe
         if (!user?.email) throw new Error('Email do usuário não encontrado');
         
         await signInWithEmailAndPassword(auth, user.email, password);
         
-        // 2. Authenticate Biometric
-        const deviceId = Device.modelId || Device.deviceName || 'unknown';
-        const authResult = await BiometricAuthService.authenticate(
-            user.uid,
-            `Autentique para habilitar ${biometricType}`
+        // 2. Authenticate Biometric (Verify ownership)
+        const isBiometricValid = await BiometricAuthService.verifyBiometricOwnership(
+            `Toque no sensor para habilitar ${biometricType}`
         );
 
-        if (!authResult.success) {
-            Alert.alert('Erro', authResult.error || 'Falha na autenticação biométrica');
+        if (!isBiometricValid) {
+            Alert.alert('Erro', 'Não foi possível confirmar sua biometria. Tente novamente.');
             setLoading(false);
             return;
         }
