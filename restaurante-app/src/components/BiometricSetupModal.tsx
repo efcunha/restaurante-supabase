@@ -13,7 +13,11 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  TextInput,
+  KeyboardAvoidingView,
 } from 'react-native';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../config/firebaseConfig';
 import { Ionicons } from '@expo/vector-icons';
 import BiometricAuthService from '../services/BiometricAuthService';
 import { useAuth } from '../context/AuthContext';
@@ -31,6 +35,8 @@ export default function BiometricSetupModal({ visible, onClose, onSuccess }: Pro
   const [biometricType, setBiometricType] = useState<string>('Biometria');
   const [isAvailable, setIsAvailable] = useState(false);
   const [unavailableReason, setUnavailableReason] = useState<string>('');
+  const [password, setPassword] = useState('');
+  const [showPasswordInput, setShowPasswordInput] = useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -49,54 +55,64 @@ export default function BiometricSetupModal({ visible, onClose, onSuccess }: Pro
     }
   };
 
-  const handleEnableBiometric = async () => {
-    if (!user) return;
+  const verifyAndEnroll = async () => {
+    if (!password) {
+      Alert.alert('Senha Necessária', 'Por favor, digite sua senha para confirmar.');
+      return;
+    }
 
     setLoading(true);
     try {
-      // Get device ID
-      const deviceId = Device.modelId || Device.deviceName || 'unknown';
+        // 1. Verify Password
+        // We use signInWithEmailAndPassword to verify, this might refresh token but is safe
+        if (!user?.email) throw new Error('Email do usuário não encontrado');
+        
+        await signInWithEmailAndPassword(auth, user.email, password);
+        
+        // 2. Authenticate Biometric
+        const deviceId = Device.modelId || Device.deviceName || 'unknown';
+        const authResult = await BiometricAuthService.authenticate(
+            user.uid,
+            `Autentique para habilitar ${biometricType}`
+        );
 
-      // Test biometric authentication first
-      const authResult = await BiometricAuthService.authenticate(
-        user.uid,
-        `Autentique para habilitar ${biometricType}`
-      );
-
-      if (!authResult.success) {
-        if (authResult.fallbackToPassword) {
-          Alert.alert(
-            'Autenticação Necessária',
-            'Use sua senha para habilitar a autenticação biométrica',
-            [{ text: 'OK' }]
-          );
-        } else {
-          Alert.alert('Erro', authResult.error || 'Falha na autenticação biométrica');
+        if (!authResult.success) {
+            Alert.alert('Erro', authResult.error || 'Falha na autenticação biométrica');
+            setLoading(false);
+            return;
         }
-        return;
-      }
 
-      // Enroll user
-      await BiometricAuthService.enrollUser(user.uid, deviceId);
+        // 3. Enroll and Store Credentials
+        await BiometricAuthService.enrollUser(user.uid, deviceId, user.email, password);
 
-      Alert.alert(
-        'Sucesso',
-        `${biometricType} habilitado com sucesso!`,
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              onSuccess();
-              onClose();
+        Alert.alert(
+            'Sucesso',
+            `${biometricType} habilitado com sucesso!`,
+            [
+            {
+                text: 'OK',
+                onPress: () => {
+                onSuccess();
+                onClose();
+                },
             },
-          },
-        ]
-      );
+            ]
+        );
+
     } catch (error: any) {
-      Alert.alert('Erro', error.message || 'Falha ao habilitar autenticação biométrica');
+        console.error('Enroll error:', error);
+        if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
+             Alert.alert('Erro', 'Senha incorreta.');
+        } else {
+             Alert.alert('Erro', 'Falha ao habilitar autenticação biométrica: ' + error.message);
+        }
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
+  };
+
+  const initEnrollment = () => {
+      setShowPasswordInput(true);
   };
 
   const getBiometricIcon = () => {
@@ -148,6 +164,32 @@ export default function BiometricSetupModal({ visible, onClose, onSuccess }: Pro
         Faça login mais rápido e seguro usando {biometricType.toLowerCase()} do seu dispositivo.
       </Text>
 
+      {showPasswordInput ? (
+          <View style={styles.passwordContainer}>
+              <Text style={styles.label}>Confirme sua senha:</Text>
+              <TextInput 
+                  style={styles.input}
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="Sua senha atual"
+                  secureTextEntry
+                  autoCapitalize="none"
+              />
+              <TouchableOpacity
+                style={styles.primaryButton}
+                onPress={verifyAndEnroll}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#FFF" />
+                ) : (
+                  <Text style={styles.primaryButtonText}>Confirmar e Ativar</Text>
+                )}
+              </TouchableOpacity>
+          </View>
+      ) : (
+          <>
+
       <View style={styles.benefitsList}>
         <View style={styles.benefitItem}>
           <Ionicons name="checkmark-circle" size={24} color="#2E7D32" />
@@ -176,7 +218,7 @@ export default function BiometricSetupModal({ visible, onClose, onSuccess }: Pro
 
       <TouchableOpacity
         style={styles.primaryButton}
-        onPress={handleEnableBiometric}
+        onPress={initEnrollment}
         disabled={loading}
       >
         {loading ? (
@@ -188,6 +230,8 @@ export default function BiometricSetupModal({ visible, onClose, onSuccess }: Pro
           </>
         )}
       </TouchableOpacity>
+      </>
+      )}
 
       <TouchableOpacity style={styles.secondaryButton} onPress={onClose}>
         <Text style={styles.secondaryButtonText}>Agora Não</Text>
@@ -330,4 +374,23 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#8B2F2F',
   },
+  passwordContainer: {
+    width: '100%',
+    marginBottom: 20,
+  },
+  label: {
+      fontSize: 16,
+      marginBottom: 8,
+      color: '#333',
+      fontWeight: '600',
+  },
+  input: {
+      backgroundColor: '#FFF',
+      borderWidth: 1,
+      borderColor: '#DDD',
+      borderRadius: 8,
+      padding: 12,
+      fontSize: 16,
+      marginBottom: 20,
+  }
 });

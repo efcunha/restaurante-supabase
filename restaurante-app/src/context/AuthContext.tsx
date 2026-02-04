@@ -1,13 +1,25 @@
-import React, { createContext, useState, useContext, useEffect, useCallback, useRef, ReactNode } from 'react';
+import React, { createContext, useState, useContext, useEffect, useRef, ReactNode } from 'react';
 import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, User as FirebaseUser, UserCredential } from 'firebase/auth';
+import { 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  signOut, 
+  onAuthStateChanged, 
+  User as FirebaseUser, 
+  MultiFactorResolver,
+  getMultiFactorResolver
+} from 'firebase/auth';
 import { auth, db } from '../config/firebaseConfig';
 import { buscarFuncionarioPorUid } from '../services/FuncionariosService';
 import { normalizeRole, hasPermission, Permissions } from '../auth/roles';
-import { getDoc, doc, DocumentData } from 'firebase/firestore';
+import { getDoc, doc } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { isFeatureEnabled } from '../config/featureFlags';
+
+// Import New Services
+import AuthPersistenceService from '../services/AuthPersistenceService';
+import BiometricAuthService from '../services/BiometricAuthService';
 
 // Tipos
 export interface CustomClaims {
@@ -45,6 +57,13 @@ interface AuthContextType {
   Permissions: typeof Permissions;
   refreshCustomClaims: () => Promise<void>;
   getCustomClaims: () => CustomClaims | null;
+  
+  // New MFA & Biometric props
+  mfaResolver: MultiFactorResolver | null;
+  setMfaResolver: (resolver: MultiFactorResolver | null) => void;
+  loginWithBiometric: () => Promise<boolean>;
+  biometricAvailable: boolean;
+  biometricType?: string;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -67,36 +86,59 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [role, setRole] = useState<string | null>(null);
   const [sessionKey, setSessionKey] = useState<number>(1);
   const [customClaims, setCustomClaims] = useState<CustomClaims | null>(null);
+  
+  // MFA State
+  const [mfaResolver, setMfaResolver] = useState<MultiFactorResolver | null>(null);
+  
+  // Biometric State
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricType, setBiometricType] = useState<string | undefined>(undefined);
+
   const isManualLoginRef = useRef<boolean>(false);
   const claimsRefreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Feature flag para usar custom claims
   const useCustomClaims = isFeatureEnabled('useCustomClaims');
 
+  // Check Biometric Availability on Mount
+  useEffect(() => {
+    const checkBiometric = async () => {
+      const availability = await BiometricAuthService.isAvailable();
+      setBiometricAvailable(availability.available);
+      setBiometricType(availability.biometricType);
+    };
+    checkBiometric();
+  }, []);
+
+  // Initialize Auth & Restore Session
   useEffect(() => {
     let mounted = true;
 
-    // DESABILITAR PERSISTÊNCIA FIREBASE COMPLETAMENTE
     const initAuth = async () => {
       try {
-        // Forçar logout inicial
-        await signOut(auth);
-        await AsyncStorage.clear();
-
-        // Limpar estados
-        if (mounted) {
-          setUser(null);
-          setRole(null);
-          isManualLoginRef.current = false;
-          setLoading(false);
+        setLoading(true);
+        
+        // 1. Try to restore persisted session
+        const authState = await AuthPersistenceService.restoreAuthState();
+        
+        if (authState && authState.sessionToken) {
+           console.log('[Auth] Restoring persisted session...');
+           
+           try {
+             // 2. Validate session with Firebase
+             if (auth.currentUser) {
+                // User is already recognized by Firebase SDK
+                await reloadUserData(auth.currentUser);
+             } 
+           } catch (e) {
+             console.error('[Auth] Failed to restore session:', e);
+             await AuthPersistenceService.clearAuthState();
+           }
         }
       } catch (error) {
-        if (mounted) {
-          setUser(null);
-          setRole(null);
-          isManualLoginRef.current = false;
-          setLoading(false);
-        }
+        console.error('[Auth] Error initializing:', error);
+      } finally {
+        // We let onAuthStateChanged handle the final "loading = false"
       }
     };
 
@@ -105,28 +147,39 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (!mounted) return;
 
-      const { isIgnorandoMudancaAuth } = require('../services/FuncionariosService');
-
-      if (isIgnorandoMudancaAuth()) {
-        return;
+      try {
+        const { isIgnorandoMudancaAuth } = await import('../services/FuncionariosService');
+        if (isIgnorandoMudancaAuth()) return;
+      } catch (err) {
+        console.warn('Error importing FuncionariosService', err);
       }
 
-      if (firebaseUser && isManualLoginRef.current) {
-        return;
-      }
-
-      if (firebaseUser && !isManualLoginRef.current) {
-        try {
-          await signOut(auth);
-          await AsyncStorage.clear();
-        } catch (error) { // ignore
+      if (!firebaseUser) {
+        // User logged out
+        if (mounted) {
+          setUser(null);
+          setRole(null);
+          setCustomClaims(null);
+          isManualLoginRef.current = false;
+          setLoading(false);
         }
+        return;
       }
 
+      // User logged in (or session restored by Firebase)
       if (mounted) {
-        setUser(null);
-        setRole(null);
-        isManualLoginRef.current = false;
+        // Validate with our Persistence Service rules (e.g. 30 days max)
+        const isExpired = await AuthPersistenceService.isSessionExpired();
+        if (isExpired && !isManualLoginRef.current) {
+          console.warn('[Auth] Session expired according to persistence rules.');
+          await logout();
+          return;
+        }
+
+        if (!isManualLoginRef.current) {
+             // Automatic reload
+             await reloadUserData(firebaseUser);
+        }
         setLoading(false);
       }
     });
@@ -137,194 +190,206 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
   }, []);
 
-  const login = async (email: string, senha: string): Promise<boolean> => {
+  // Helper to load user data from Firestore/Claims
+  const reloadUserData = async (firebaseUser: FirebaseUser) => {
     try {
-      setLoading(true);
-
-      // PRIMEIRO: Garantir logout completo
-      try {
-        await signOut(auth);
-        await AsyncStorage.clear();
-      } catch (e) { // ignore
-      }
-
-      // SEGUNDO: Marcar como login manual
-      isManualLoginRef.current = true;
-
-      // TERCEIRO: Fazer login
-      console.log('[Auth] Tentando login Firebase Auth...');
-      const userCredential: UserCredential = await signInWithEmailAndPassword(auth, email, senha);
-      console.log('[Auth] ✅ Auth OK, UID:', userCredential.user.uid);
-
-      // Aguardar token de auth propagar
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // QUARTO: Obter custom claims se feature flag habilitado
-      let claims: CustomClaims | null = null;
-      if (useCustomClaims) {
-        try {
-          const idTokenResult = await userCredential.user.getIdTokenResult();
-          claims = {
-            companyId: idTokenResult.claims.companyId as string,
-            role: idTokenResult.claims.role as string,
-            mfaEnabled: idTokenResult.claims.mfaEnabled as boolean,
-            mfaVerified: idTokenResult.claims.mfaVerified as boolean,
-            updatedAt: idTokenResult.claims.updatedAt as number
-          };
-          setCustomClaims(claims);
-          console.log('[Auth] ✅ Custom claims carregados:', claims);
-        } catch (claimsError) {
-          console.warn('[Auth] ⚠️ Erro ao carregar custom claims, continuando sem eles:', claimsError);
-        }
-      }
-
-      console.log('[Auth] Buscando funcionário no Firestore...');
-      const result = await buscarFuncionarioPorUid(userCredential.user.uid);
-      console.log('[Auth] Resultado busca:', result);
-
-      if (result.success) {
-        // Obter dados da empresa
-        let companyData: AppUser['company'] = null;
-        if (result.funcionario.companyId) {
+        // Obter custom claims
+        let claims: CustomClaims | null = null;
+        if (useCustomClaims) {
           try {
-            const companyDoc = await getDoc(doc(db, 'companies', result.funcionario.companyId));
-            if (companyDoc.exists()) {
-              companyData = { id: companyDoc.id, ...companyDoc.data() };
-              console.log('[Auth] 🏢 Empresa carregada:', companyData?.name);
-            }
-          } catch (companyError) {
-            console.error('[Auth] ❌ Erro ao carregar empresa:', companyError);
+            const idTokenResult = await firebaseUser.getIdTokenResult();
+            claims = {
+              companyId: idTokenResult.claims.companyId as string,
+              role: idTokenResult.claims.role as string,
+              mfaEnabled: idTokenResult.claims.mfaEnabled as boolean,
+              mfaVerified: idTokenResult.claims.mfaVerified as boolean,
+              updatedAt: idTokenResult.claims.updatedAt as number
+            };
+            setCustomClaims(claims);
+          } catch (e) {
+            console.warn('[Auth] Error loading claims', e);
           }
         }
 
-        // QUINTO: Definir estados manualmente
-        const appUser: AppUser = {
-          uid: userCredential.user.uid,
-          email: userCredential.user.email,
-          ...result.funcionario,
-          company: companyData,
-          customClaims: claims || undefined
-        };
-        
-        setUser(appUser);
-        setRole(normalizeRole(result.funcionario.funcao));
-        setSessionKey(k => k + 1);
-        setLoading(false);
+        const result = await buscarFuncionarioPorUid(firebaseUser.uid);
+        if (result.success) {
+           let companyData: AppUser['company'] = null;
+           if (result.funcionario.companyId) {
+              const companyDoc = await getDoc(doc(db, 'companies', result.funcionario.companyId));
+              if (companyDoc.exists()) {
+                companyData = { id: companyDoc.id, ...companyDoc.data() };
+              }
+           }
 
-        // SEXTO: Iniciar refresh automático de custom claims (a cada 5 minutos)
-        if (useCustomClaims) {
-          startClaimsRefreshInterval();
+           const appUser: AppUser = {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              ...result.funcionario,
+              company: companyData,
+              customClaims: claims || undefined
+           };
+           
+           setUser(appUser);
+           setRole(normalizeRole(result.funcionario.funcao));
+           setSessionKey(Date.now());
+           
+           if (useCustomClaims) startClaimsRefreshInterval();
+
+           // Persist/Update Auth Validation State
+           const token = await firebaseUser.getIdToken();
+           await AuthPersistenceService.persistAuthState(firebaseUser, token, firebaseUser.refreshToken);
+
+        } else {
+           // Invalid functional user
+           console.warn('[Auth] User not found in funcionarios collection');
+           await logout();
+           Alert.alert('Acesso negado', 'Usuário não cadastrado como funcionário.');
         }
+    } catch (error) {
+       console.error('[Auth] Error reloading user data:', error);
+    }
+  };
 
-        return true;
-      } else {
-        await signOut(auth);
-        isManualLoginRef.current = false;
-        
-        const errorMsg = result.error || 'Erro desconhecido';
-        
-        Alert.alert(
-          'Acesso negado',
-          `Usuário não cadastrado como funcionário.\n\n` +
-          `UID: ${userCredential.user.uid}\n` +
-          `Email: ${userCredential.user.email}\n\n` +
-          `Erro: ${errorMsg}\n\n` +
-          `Se o erro for "permission-denied", as regras do Firestore não foram aplicadas corretamente.`
-        );
-        setLoading(false);
-        return false;
-      }
+
+  const login = async (email: string, senha: string): Promise<boolean> => {
+    try {
+      setLoading(true);
+      isManualLoginRef.current = true; // Mark as manual to avoid "Session restored" races if needed
+
+      // Sign In
+      const userCredential = await signInWithEmailAndPassword(auth, email, senha);
+      
+      // Proceed to load data
+      await reloadUserData(userCredential.user);
+      
+      setLoading(false);
+      return true;
+
     } catch (error: any) {
-      console.error('[Auth] ❌ Erro no login:', error);
+      console.error('[Auth] Login error:', error);
       isManualLoginRef.current = false;
+      setLoading(false);
 
-      let message = 'Ocorreu um erro ao fazer login.';
+      // Handle MFA required
+      if (error.code === 'auth/multi-factor-auth-required') {
+         const resolver = getMultiFactorResolver(auth, error);
+         setMfaResolver(resolver);
+         // The modal watching `mfaResolver` should open now
+         return false; 
+      }
 
-      // Mapeamento de erros comuns do Firebase para mensagens amigáveis
+      let message = 'Erro desconhecido.';
       const errorMessages: Record<string, string> = {
         'auth/invalid-credential': 'Email ou senha incorretos.',
         'auth/user-not-found': 'Email ou senha incorretos.',
         'auth/wrong-password': 'Email ou senha incorretos.',
         'auth/invalid-email': 'O endereço de email é inválido.',
-        'auth/too-many-requests': 'Muitas tentativas incorretas. Tente novamente mais tarde.',
-        'auth/user-disabled': 'Esta conta foi desativada.',
-        'auth/network-request-failed': 'Verifique sua conexão com a internet.'
+        'auth/too-many-requests': 'Muitas tentativas. Tente novamente mais tarde.',
+        'auth/user-disabled': 'Conta desativada.',
       };
-
+      
       if (error.code && errorMessages[error.code]) {
         message = errorMessages[error.code];
-      } else if (error.code) {
-        message = `Erro não esperado (${error.code})`;
-      } else {
-        message = error.message || 'Erro desconhecido.';
+      } else if (error.message) {
+        message = error.message;
       }
 
-      Alert.alert(
-        'Falha no Login',
-        message
-      );
-
-      setLoading(false);
+      Alert.alert('Falha no Login', message);
       return false;
+    }
+  };
+
+  const loginWithBiometric = async (): Promise<boolean> => {
+    try {
+        setLoading(true);
+        
+        // 1. Get last enrolled user
+        const lastUserId = await BiometricAuthService.getLastEnrolledUser();
+        if (!lastUserId) {
+             Alert.alert('Biometria', 'Nenhum usuário com biometria habilitada neste dispositivo.');
+             setLoading(false);
+             return false;
+        }
+
+        // 2. Authenticate with Biometrics
+        const result = await BiometricAuthService.authenticate(lastUserId);
+        
+        if (!result.success) {
+             if (result.error && !result.fallbackToPassword) Alert.alert('Erro', result.error);
+             setLoading(false);
+             return false;
+        }
+        
+        // 3. Retrieve Credentials
+        const credentials = await BiometricAuthService.getCredentials(lastUserId);
+        if (!credentials) {
+             Alert.alert('Erro', 'Credenciais biométricas não encontradas or expiraram. Faça login com senha novamente.');
+             setLoading(false);
+             return false;
+        }
+
+        // 4. Sign In with Firebase
+        const userCredential = await signInWithEmailAndPassword(auth, credentials.email, credentials.password);
+        await reloadUserData(userCredential.user);
+        
+        setLoading(false);
+        return true;
+
+    } catch (e: any) {
+        console.error('[Auth] Biometric login error:', e);
+        Alert.alert('Erro', 'Falha na autenticação biométrica: ' + (e.message || 'Erro desconhecido'));
+        setLoading(false);
+        return false;
     }
   };
 
   const logout = async () => {
     try {
-      // PRIMEIRO: Parar refresh de custom claims
       stopClaimsRefreshInterval();
-
-      // SEGUNDO: Limpar flag de login manual
       isManualLoginRef.current = false;
+      
+      const uid = user?.uid;
 
-      // TERCEIRO: Limpar estados IMEDIATAMENTE
       setUser(null);
       setRole(null);
       setCustomClaims(null);
+      setMfaResolver(null);
       setLoading(false);
       setSessionKey(Date.now());
 
-      // QUARTO: Limpar Firebase e AsyncStorage
-      await signOut(auth);
+      // Clear Services
+      if (uid) {
+         await BiometricAuthService.clearSessionToken(uid);
+      }
+      await AuthPersistenceService.clearAuthState();
       await AsyncStorage.clear();
+      await signOut(auth);
+
     } catch (error) {
-      // Mesmo com erro, garantir limpeza local
-      stopClaimsRefreshInterval();
-      isManualLoginRef.current = false;
-      setUser(null);
-      setRole(null);
-      setCustomClaims(null);
-      setLoading(false);
-      setSessionKey(Date.now());
-      AsyncStorage.clear().catch(() => { });
+       console.error('[Auth] Logout error', error);
+       // Handle gracefully
+       setUser(null);
+       setLoading(false);
     }
   };
 
-  /**
-   * Refresh custom claims do usuário atual
-   * Chama Cloud Function para atualizar claims e recarrega token
-   */
+  // Custom Claims Logic
   const refreshCustomClaims = async (): Promise<void> => {
-    if (!useCustomClaims || !auth.currentUser) {
-      return;
-    }
+    if (!useCustomClaims || !auth.currentUser) return;
 
     try {
       const functions = getFunctions();
       const refreshClaimsFunction = httpsCallable(functions, 'refreshUserClaims');
       
-      // Chama Cloud Function para atualizar claims
       await refreshClaimsFunction({
         userId: auth.currentUser.uid,
         companyId: user?.companyId,
         role: user?.funcao
       });
 
-      // Força reload do token para obter novos claims
       await auth.currentUser.getIdToken(true);
-
-      // Obtém novos claims
       const idTokenResult = await auth.currentUser.getIdTokenResult();
+      
       const newClaims: CustomClaims = {
         companyId: idTokenResult.claims.companyId as string,
         role: idTokenResult.claims.role as string,
@@ -334,85 +399,46 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       };
 
       setCustomClaims(newClaims);
-      
-      // Atualiza user com novos claims
       if (user) {
-        setUser({
-          ...user,
-          customClaims: newClaims
-        });
+        setUser({ ...user, customClaims: newClaims });
       }
-
-      console.log('[Auth] ✅ Custom claims atualizados:', newClaims);
     } catch (error) {
       console.error('[Auth] ❌ Erro ao atualizar custom claims:', error);
     }
   };
 
-  /**
-   * Retorna custom claims atuais
-   */
-  const getCustomClaims = (): CustomClaims | null => {
-    return customClaims;
-  };
-
-  /**
-   * Inicia intervalo de refresh automático de custom claims (a cada 5 minutos)
-   */
   const startClaimsRefreshInterval = () => {
-    // Limpa intervalo anterior se existir
     stopClaimsRefreshInterval();
-
-    // Cria novo intervalo
     claimsRefreshIntervalRef.current = setInterval(() => {
       refreshCustomClaims();
-    }, 5 * 60 * 1000); // 5 minutos
-
-    console.log('[Auth] ✅ Refresh automático de custom claims iniciado');
+    }, 5 * 60 * 1000);
   };
 
-  /**
-   * Para intervalo de refresh automático
-   */
   const stopClaimsRefreshInterval = () => {
     if (claimsRefreshIntervalRef.current) {
       clearInterval(claimsRefreshIntervalRef.current);
       claimsRefreshIntervalRef.current = null;
-      console.log('[Auth] ⏹️ Refresh automático de custom claims parado');
     }
   };
 
-  // Cleanup ao desmontar componente
   useEffect(() => {
-    return () => {
-      stopClaimsRefreshInterval();
-    };
+    return () => stopClaimsRefreshInterval();
   }, []);
 
-  const register = async (email: string, password: string): Promise<{ success: boolean; user?: FirebaseUser; error?: any }> => {
-    try {
-      setLoading(true);
-      // PRIMEIRO: Garantir logout
+  const getCustomClaims = (): CustomClaims | null => customClaims;
+
+  // Delegate register
+  const register = async (email: string, password: string) => {
       try {
-        await signOut(auth);
-        await AsyncStorage.clear();
-      } catch (e) { // ignore
+          setLoading(true);
+          // Standard firebase create
+          const cred = await createUserWithEmailAndPassword(auth, email, password);
+          return { success: true, user: cred.user };
+      } catch (e) {
+          return { success: false, error: e };
+      } finally {
+          setLoading(false);
       }
-
-      // SEGUNDO: Marcar como login manual para evitar auto-logout
-      isManualLoginRef.current = true;
-
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      // Opcional: recarregar ou definir user/role se necessário, mas para registro inicial 
-      // talvez a gente só queira o objeto user e deixar o componente lidar com DB
-      setLoading(false);
-      return { success: true, user: userCredential.user };
-    } catch (error) {
-      console.error('[Auth] ❌ Erro no registro:', error);
-      isManualLoginRef.current = false;
-      setLoading(false);
-      return { success: false, error };
-    }
   };
 
   return (
@@ -427,9 +453,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       hasPermission: (perm: string) => hasPermission(role, perm),
       Permissions,
       refreshCustomClaims,
-      getCustomClaims
+      getCustomClaims,
+      // New Exports
+      mfaResolver,
+      setMfaResolver,
+      loginWithBiometric,
+      biometricAvailable,
+      biometricType
     }}>
       {children}
     </AuthContext.Provider>
   );
 };
+

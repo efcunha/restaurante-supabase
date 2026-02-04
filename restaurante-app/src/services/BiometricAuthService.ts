@@ -6,6 +6,7 @@
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface BiometricEnrollmentData {
   userId: string;
@@ -25,6 +26,8 @@ interface BiometricAuthResult {
 class BiometricAuthService {
   private readonly ENROLLMENT_KEY = 'biometric_enrollment';
   private readonly SESSION_TOKEN_KEY = 'biometric_session_token';
+  private readonly CREDENTIALS_KEY = 'biometric_credentials';
+  private readonly LAST_USER_KEY = 'biometric_last_uid';
   private readonly SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
   /**
@@ -112,7 +115,10 @@ class BiometricAuthService {
   /**
    * Enroll user for biometric authentication
    */
-  async enrollUser(userId: string, deviceId: string): Promise<void> {
+  /**
+   * Enroll user for biometric authentication
+   */
+  async enrollUser(userId: string, deviceId: string, email?: string, password?: string): Promise<void> {
     try {
       // Verify device supports biometrics
       const isSupported = await this.isSupported();
@@ -143,6 +149,14 @@ class BiometricAuthService {
         `${this.ENROLLMENT_KEY}_${userId}`,
         JSON.stringify(enrollmentData)
       );
+      
+      // Store credentials if provided
+      if (email && password) {
+        await this.storeCredentials(userId, email, password);
+      }
+      
+      // Mark as last user
+      await AsyncStorage.setItem(this.LAST_USER_KEY, userId);
 
       console.log('[BiometricAuth] User enrolled successfully');
     } catch (error) {
@@ -154,10 +168,19 @@ class BiometricAuthService {
   /**
    * Unenroll user from biometric authentication
    */
+  /**
+   * Unenroll user from biometric authentication
+   */
   async unenrollUser(userId: string): Promise<void> {
     try {
       await SecureStore.deleteItemAsync(`${this.ENROLLMENT_KEY}_${userId}`);
       await SecureStore.deleteItemAsync(`${this.SESSION_TOKEN_KEY}_${userId}`);
+      await SecureStore.deleteItemAsync(`${this.CREDENTIALS_KEY}_${userId}`);
+      
+      const lastUser = await AsyncStorage.getItem(this.LAST_USER_KEY);
+      if (lastUser === userId) {
+         await AsyncStorage.removeItem(this.LAST_USER_KEY);
+      }
       
       console.log('[BiometricAuth] User unenrolled successfully');
     } catch (error) {
@@ -455,6 +478,43 @@ class BiometricAuthService {
         reason: 'Erro ao verificar disponibilidade',
       };
     }
+  }
+  /**
+   * Store user credentials securely
+   */
+  async storeCredentials(userId: string, email: string, password: string): Promise<void> {
+    try {
+       const creds = { email, password };
+       await SecureStore.setItemAsync(`${this.CREDENTIALS_KEY}_${userId}`, JSON.stringify(creds));
+    } catch (error) {
+       console.error('[BiometricAuth] Error storing credentials:', error);
+       throw error;
+    }
+  }
+
+  /**
+   * Get stored credentials
+   */
+  async getCredentials(userId: string): Promise<{email: string, password: string} | null> {
+    try {
+      const credsStr = await SecureStore.getItemAsync(`${this.CREDENTIALS_KEY}_${userId}`);
+      if (!credsStr) return null;
+      return JSON.parse(credsStr);
+    } catch (error) {
+      console.error('[BiometricAuth] Error getting credentials:', error);
+      return null;
+    }
+  }
+  
+  /**
+   * Get Last Enrolled User ID
+   */
+  async getLastEnrolledUser(): Promise<string | null> {
+      try {
+          return await AsyncStorage.getItem(this.LAST_USER_KEY);
+      } catch (e) {
+          return null;
+      }
   }
 }
 

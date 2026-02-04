@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../config/firebaseConfig';
 import { getUserFriendlyMessage } from '../utils/errors';
+import MFAVerificationModal from '../components/MFAVerificationModal';
 // @ts-ignore
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -15,7 +16,7 @@ interface Props {
 }
 
 export default function LoginScreen({ navigation }: Props) {
-  const { login } = useAuth();
+  const { login, loginWithBiometric, biometricAvailable, biometricType, mfaResolver, setMfaResolver } = useAuth();
   const { showToast } = useToast();
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
@@ -153,6 +154,30 @@ export default function LoginScreen({ navigation }: Props) {
                 </Text>
               </TouchableOpacity>
 
+              {biometricAvailable && (
+                <TouchableOpacity
+                  style={[styles.biometricBtn, { marginTop: 15 }]}
+                  onPress={async () => {
+                    const success = await loginWithBiometric();
+                    if (!success) {
+                      // Optional: Show specific error or toast if needed, 
+                      // but generic errors are usually handled by the auth context/service alerts
+                    }
+                  }}
+                  disabled={loading}
+                >
+                  <Ionicons 
+                    name={biometricType === 'Reconhecimento Facial' ? 'scan-outline' : 'finger-print-outline'} 
+                    size={24} 
+                    color="#7f2821" 
+                    style={{ marginRight: 10 }}
+                  />
+                  <Text style={styles.biometricBtnText}>
+                    Entrar com {biometricType}
+                  </Text>
+                </TouchableOpacity>
+              )}
+
               <TouchableOpacity
                 style={styles.forgotPasswordBtn}
                 onPress={async () => {
@@ -202,6 +227,19 @@ export default function LoginScreen({ navigation }: Props) {
       </Pressable>
 
       <StatusBar style="light" />
+
+      {/* MFA Verification Modal */}
+      <MFAVerificationModal
+        visible={!!mfaResolver}
+        resolver={mfaResolver}
+        onSuccess={() => {
+            setMfaResolver(null);
+            // Auth state listener in AuthContext will handle the successful login/redirect
+        }}
+        onCancel={() => {
+            setMfaResolver(null);
+        }}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -322,6 +360,21 @@ const styles = StyleSheet.create({
     color: '#7f2821', // Updated link color
     fontSize: 14,
     textDecorationLine: 'underline',
+    fontWeight: '600',
+  },
+  biometricBtn: {
+    backgroundColor: '#F5F1E8',
+    borderColor: '#7f2821',
+    borderWidth: 1,
+    padding: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  biometricBtnText: {
+    color: '#7f2821',
+    fontSize: 16,
     fontWeight: '600',
   },
 });
