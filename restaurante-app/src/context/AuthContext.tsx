@@ -218,8 +218,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (!isManualLoginRef.current) {
              // Automatic reload
              await reloadUserData(firebaseUser);
+             setLoading(false);
         }
-        setLoading(false);
       }
     });
 
@@ -402,7 +402,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
          await BiometricAuthService.clearSessionToken(uid);
       }
       await AuthPersistenceService.clearAuthState();
-      await AsyncStorage.clear();
+      // Do NOT clear all AsyncStorage, as it holds biometric config
+      // await AsyncStorage.clear(); 
       await signOut(auth);
 
     } catch (error) {

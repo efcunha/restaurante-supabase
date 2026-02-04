@@ -3,8 +3,12 @@
  * Allows measuring execution times of critical operations.
  */
 
+import { perf } from '../config/firebaseConfig';
+import { trace, Trace } from 'firebase/performance';
+
 class PerformanceService {
   private activeMetrics: Map<string, number> = new Map();
+  private activeTraces: Map<string, Trace> = new Map();
   private enabled: boolean = true;
 
   constructor() {
@@ -17,8 +21,22 @@ class PerformanceService {
    * @param name Unique name for the metric
    */
   start(name: string): void {
-    if (!this.enabled) return;
-    this.activeMetrics.set(name, performance.now());
+    // Console measurement
+    if (this.enabled) {
+        this.activeMetrics.set(name, performance.now());
+    }
+
+    // Firebase Performance Trace
+    if (perf) {
+        try {
+            const t = trace(perf, name);
+            t.start();
+            this.activeTraces.set(name, t);
+        } catch (e) {
+            // Silece error to not break app flow
+            if (__DEV__) console.warn('[Performance] Failed to start trace:', e);
+        }
+    }
   }
 
   /**
@@ -27,18 +45,27 @@ class PerformanceService {
    * @param metadata Optional metadata to log with the metric
    */
   end(name: string, metadata?: object): void {
-    if (!this.enabled) return;
-    
-    const startTime = this.activeMetrics.get(name);
-    if (startTime === undefined) {
-      console.warn(`[Performance] Metric '${name}' was not started.`);
-      return;
+    // 1. Console Logging
+    if (this.enabled) {
+        const startTime = this.activeMetrics.get(name);
+        if (startTime !== undefined) {
+            const duration = performance.now() - startTime;
+            this.activeMetrics.delete(name);
+            this.log(name, duration, metadata);
+        }
     }
 
-    const duration = performance.now() - startTime;
-    this.activeMetrics.delete(name);
-
-    this.log(name, duration, metadata);
+    // 2. Firebase Performance Trace
+    const t = this.activeTraces.get(name);
+    if (t) {
+        if (metadata) {
+            Object.entries(metadata).forEach(([k, v]) => {
+                t.putAttribute(k, String(v));
+            });
+        }
+        t.stop();
+        this.activeTraces.delete(name);
+    }
   }
 
   /**

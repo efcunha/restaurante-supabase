@@ -286,6 +286,31 @@ class BiometricAuthService {
   }
 
   /**
+   * Verify biometric ownership (for enrollment)
+   * Does NOT check if user is already enrolled in our system.
+   */
+  async verifyBiometricOwnership(promptMessage?: string): Promise<boolean> {
+      try {
+          const compatible = await LocalAuthentication.hasHardwareAsync();
+          if (!compatible) throw new Error('Hardware não suportado');
+
+          const enrolled = await LocalAuthentication.isEnrolledAsync();
+          if (!enrolled) throw new Error('Nenhuma biometria cadastrada no dispositivo');
+
+          const result = await LocalAuthentication.authenticateAsync({
+              promptMessage: promptMessage || 'Confirme sua biometria',
+              cancelLabel: 'Cancelar',
+              disableDeviceFallback: true, // Force biometrics only for enrollment
+          });
+
+          return result.success;
+      } catch (error) {
+          console.error('[BiometricAuth] Ownership verification failed:', error);
+          return false;
+      }
+  }
+
+  /**
    * Store session token after successful authentication
    */
   async storeSessionToken(userId: string, token: string): Promise<void> {
