@@ -17,133 +17,12 @@ import { Platform } from 'react-native';
 /**
  * Configuração do Firebase
  * 
- * IMPORTANTE: Credenciais são carregadas de variáveis de ambiente
- * para evitar exposição no código fonte.
- * 
- * Variáveis obrigatórias (prefixo EXPO_PUBLIC_):
- * - EXPO_PUBLIC_FIREBASE_API_KEY
- * - EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN
- * - EXPO_PUBLIC_FIREBASE_PROJECT_ID
- * - EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET
- * - EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
- * - EXPO_PUBLIC_FIREBASE_APP_ID
+ * IMPORTANTE: Credenciais são carregadas de variáveis de ambiente.
+ * O Expo (Metro) substitui `process.env.EXPO_PUBLIC_...` pelo valor literal durante o build.
+ * Não devemos iterar sobre `process.env` dinamicamente em produção nativa.
  */
 
-// Lista de variáveis obrigatórias
-const REQUIRED_ENV_VARS = [
-    'EXPO_PUBLIC_FIREBASE_API_KEY',
-    'EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN',
-    'EXPO_PUBLIC_FIREBASE_PROJECT_ID',
-    'EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET',
-    'EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID',
-    'EXPO_PUBLIC_FIREBASE_APP_ID'
-];
-
-/**
- * Valida que todas as variáveis de ambiente obrigatórias estão presentes
- * @throws {Error} Se alguma variável obrigatória estiver ausente
- */
-function validateRequiredEnvVars() {
-    const missingVars = [];
-
-    for (const varName of REQUIRED_ENV_VARS) {
-        if (!process.env[varName]) {
-            missingVars.push(varName);
-        }
-    }
-
-    if (missingVars.length > 0) {
-        const errorMessage = [
-            '❌ ERRO DE CONFIGURAÇÃO DO FIREBASE',
-            '',
-            'As seguintes variáveis de ambiente obrigatórias estão ausentes:',
-            ...missingVars.map(v => `  - ${v}`),
-            '',
-            'Para corrigir:',
-            '1. Copie o arquivo .env.example para .env',
-            '2. Preencha as credenciais do Firebase Console',
-            '3. Reinicie o aplicativo',
-            '',
-            'Documentação: https://firebase.google.com/docs/web/setup'
-        ].join('\n');
-
-        throw new Error(errorMessage);
-    }
-}
-
-/**
- * Valida formato das credenciais
- * @throws {Error} Se alguma credencial tiver formato inválido
- */
-function validateCredentialFormats() {
-    const errors = [];
-
-    // Valida API Key (deve começar com AIza)
-    const apiKey = process.env.EXPO_PUBLIC_FIREBASE_API_KEY;
-    if (apiKey && !apiKey.startsWith('AIza')) {
-        errors.push('FIREBASE_API_KEY deve começar com "AIza"');
-    }
-
-    // Valida Auth Domain (deve terminar com .firebaseapp.com)
-    const authDomain = process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN;
-    if (authDomain && !authDomain.endsWith('.firebaseapp.com')) {
-        errors.push('FIREBASE_AUTH_DOMAIN deve terminar com ".firebaseapp.com"');
-    }
-
-    // Valida Project ID (deve ser lowercase com hífens)
-    const projectId = process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID;
-    if (projectId && !/^[a-z0-9-]+$/.test(projectId)) {
-        errors.push('FIREBASE_PROJECT_ID deve conter apenas letras minúsculas, números e hífens');
-    }
-
-    // Valida Storage Bucket (deve terminar com .appspot.com ou .firebasestorage.app)
-    const storageBucket = process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET;
-    if (storageBucket && !storageBucket.endsWith('.appspot.com') && !storageBucket.endsWith('.firebasestorage.app')) {
-        errors.push('FIREBASE_STORAGE_BUCKET deve terminar com ".appspot.com" ou ".firebasestorage.app"');
-    }
-
-    // Valida Messaging Sender ID (deve ser numérico)
-    const messagingSenderId = process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID;
-    if (messagingSenderId && !/^\d+$/.test(messagingSenderId)) {
-        errors.push('FIREBASE_MESSAGING_SENDER_ID deve conter apenas números');
-    }
-
-    // Valida App ID (deve começar com 1:)
-    const appId = process.env.EXPO_PUBLIC_FIREBASE_APP_ID;
-    if (appId && !appId.startsWith('1:')) {
-        errors.push('FIREBASE_APP_ID deve começar com "1:"');
-    }
-
-    if (errors.length > 0) {
-        const errorMessage = [
-            '❌ ERRO DE FORMATO DAS CREDENCIAIS DO FIREBASE',
-            '',
-            'As seguintes credenciais têm formato inválido:',
-            ...errors.map(e => `  - ${e}`),
-            '',
-            'Verifique se copiou as credenciais corretamente do Firebase Console.',
-            'Documentação: https://firebase.google.com/docs/web/setup'
-        ].join('\n');
-
-        throw new Error(errorMessage);
-    }
-}
-
-// Valida variáveis de ambiente antes de inicializar
-try {
-    validateRequiredEnvVars();
-    validateCredentialFormats();
-} catch (error) {
-    console.error(error.message);
-    // Em desenvolvimento, mostra erro detalhado
-    if (__DEV__) {
-        throw error;
-    }
-    // Em produção, falha gracefully
-    throw new Error('Erro de configuração do Firebase. Contate o suporte.');
-}
-
-// Configuração do Firebase (carregada de variáveis de ambiente)
+// 1. Definir o objeto de configuração lendo DIRETAMENTE as variáveis
 const firebaseConfig = {
     apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
     authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -154,6 +33,36 @@ const firebaseConfig = {
     measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID
 };
 
+/**
+ * Valida a configuração
+ */
+function validateConfig() {
+    const missingVars = [];
+    if (!firebaseConfig.apiKey) missingVars.push('EXPO_PUBLIC_FIREBASE_API_KEY');
+    if (!firebaseConfig.authDomain) missingVars.push('EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN');
+    if (!firebaseConfig.projectId) missingVars.push('EXPO_PUBLIC_FIREBASE_PROJECT_ID');
+    if (!firebaseConfig.storageBucket) missingVars.push('EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET');
+    if (!firebaseConfig.messagingSenderId) missingVars.push('EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID');
+    if (!firebaseConfig.appId) missingVars.push('EXPO_PUBLIC_FIREBASE_APP_ID');
+
+    if (missingVars.length > 0) {
+        const errorMsg = `Configuração incompleta. Faltando: ${missingVars.join(', ')}`;
+        console.error(errorMsg);
+        // Lançar erro para impedir inicialização quebrada
+        throw new Error(`Erro de configuração do Firebase: ${missingVars.join(', ')}`);
+    }
+}
+
+// 2. Validar antes de inicializar
+try {
+    validateConfig();
+} catch (error) {
+    console.error('CRITICAL FIREBASE CONFIG ERROR:', error);
+    // Em Native, isso pode causar crash se não tratado, mas o ErrorBoundary deve pegar
+    if (__DEV__) throw error;
+}
+
+// 3. Inicializar App
 let app, auth, db;
 
 if (!getApps().length) {
@@ -181,10 +90,9 @@ if (!getApps().length) {
 
         console.log('✅ Firebase inicializado com sucesso');
         console.log(`📦 Projeto: ${firebaseConfig.projectId}`);
-        console.log(`🌍 Ambiente: ${__DEV__ ? 'Desenvolvimento' : 'Produção'}`);
     } catch (error) {
         console.error('❌ Erro ao inicializar Firebase:', error);
-        throw new Error('Falha ao inicializar Firebase. Verifique as credenciais.');
+        throw new Error('Falha ao inicializar Firebase.');
     }
 } else {
     app = getApp();
@@ -195,9 +103,7 @@ if (!getApps().length) {
 export { auth, db };
 export default app;
 
-/**
- * Retorna informações sobre a configuração atual (sem expor credenciais)
- */
+// Helpers
 export function getFirebaseInfo() {
     return {
         projectId: firebaseConfig.projectId,
@@ -207,11 +113,9 @@ export function getFirebaseInfo() {
     };
 }
 
-/**
- * Valida se o Firebase está configurado corretamente
- */
 export function isFirebaseConfigured() {
     try {
+        validateConfig();
         return !!app && !!auth && !!db;
     } catch {
         return false;
