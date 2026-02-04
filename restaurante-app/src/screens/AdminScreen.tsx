@@ -38,6 +38,15 @@ import BiometricSetupModal from '../components/BiometricSetupModal';
 import MFASetupModal from '../components/MFASetupModal';
 import PerformanceService from '../services/PerformanceService';
 
+/**
+ * AdminScreen - Main Administrative Dashboard
+ * 
+ * Takes care of:
+ * 1. Displaying operational statistics (Orders, Items, Avg Time).
+ * 2. Displaying sales statistics (Total Sales, Ticket Average).
+ * 3. Providing navigation to sub-modules (Stock, Menu, Finance).
+ * 4. System maintenance (Biometrics, MFA, Data Clearing).
+ */
 export default function AdminScreen() {
   const { user, logout } = useAuth();
 
@@ -269,7 +278,14 @@ export default function AdminScreen() {
     return { ok: finalSnap.empty, attempts: maxAttempts, remaining: finalSnap.size };
   };
 
-  // Carregar estatísticas operacionais do dia
+  /**
+   * Loads operational statistics for the CURRENT day.
+   * - Fetches all orders for today.
+   * - Calculates total orders, total items sold.
+   * - Calculates average preparation/delivery time based on timestamps.
+   * 
+   * @performance Measured by PerformanceService ('Admin:CarregarEstatsOperacionais')
+   */
   const carregarEstatisticas = async () => {
     return PerformanceService.measure('Admin:CarregarEstatsOperacionais', async () => {
         try {
@@ -340,7 +356,13 @@ export default function AdminScreen() {
     });
   };
 
-  // Carregar estatísticas de vendas por período
+  /**
+   * Loads financial/sales statistics for a selected period.
+   * - Fetches 'fechada' (closed) and 'cancelada' (canceled) commands in parallel.
+   * - Aggregates totals and calculates metrics like Ticket Average.
+   * 
+   * @performance Measured by PerformanceService ('Admin:CarregarVendas')
+   */
   const carregarEstatisticasVendas = async () => {
     return PerformanceService.measure('Admin:CarregarVendas', async () => {
         try {
