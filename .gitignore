@@ -95,3 +95,15 @@ __tests__*
 .gemini/
 .expo/
 *.bak
+# Temporary files (added by cleanup script)
+*output*.txt
+*results*.txt
+
+# Sensitive files (added by cleanup script)
+*-adminsdk-*.json
+
+# Debug scripts (added by cleanup script)
+scripts/debug/
+
+# Archived documentation (added by cleanup script)
+docs/archive/
