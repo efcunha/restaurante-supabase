@@ -1,9 +1,11 @@
 /**
  * PerformanceDashboard - Real-time performance metrics display
- * Shows latency, success rates, and Firestore operations
+ * Shows query performance, cache hit rates, pool utilization, and real-time subscription metrics
+ * 
+ * Requirements: 11.7
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -13,44 +15,42 @@ import {
   RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import PerformanceMonitoringService from '../services/PerformanceMonitoringService';
+import { performanceMonitorService } from '../services/optimization/PerformanceMonitorService';
+import { usePerformanceDashboard, useResourceMetrics } from '../hooks/usePerformanceDashboard';
 
 export default function PerformanceDashboard() {
-  const [dashboardData, setDashboardData] = useState<any>(null);
+  const { dashboardData, loading, refresh } = usePerformanceDashboard(10000);
   const [refreshing, setRefreshing] = useState(false);
-
-  const loadDashboardData = () => {
-    const data = PerformanceMonitoringService.getDashboardData();
-    setDashboardData(data);
-  };
-
-  useEffect(() => {
-    loadDashboardData();
-
-    // Auto-refresh every 10 seconds
-    const intervalId = setInterval(loadDashboardData, 10000);
-
-    return () => clearInterval(intervalId);
-  }, []);
+  
+  // Collect database resource metrics every 30 seconds
+  useResourceMetrics(30000);
 
   const handleRefresh = () => {
     setRefreshing(true);
-    loadDashboardData();
+    refresh();
     setTimeout(() => setRefreshing(false), 500);
   };
 
   const handleExport = () => {
-    const exportData = PerformanceMonitoringService.exportMetrics();
-    console.log('Exported Metrics:', exportData);
-    // In production, could save to file or send to server
+    try {
+      const summary = performanceMonitorService.getMetricsSummary();
+      console.log('[PerformanceDashboard] Metrics exported:', JSON.stringify(summary, null, 2));
+      // In production, could save to file or send to server
+    } catch (error) {
+      console.error('[PerformanceDashboard] Error exporting metrics:', error);
+    }
   };
 
   const handleClear = () => {
-    PerformanceMonitoringService.clearMetrics();
-    loadDashboardData();
+    try {
+      performanceMonitorService.clear();
+      refresh();
+    } catch (error) {
+      console.error('[PerformanceDashboard] Error clearing metrics:', error);
+    }
   };
 
-  if (!dashboardData) {
+  if (loading || !dashboardData) {
     return (
       <View style={styles.container}>
         <Text style={styles.loadingText}>Carregando métricas...</Text>
@@ -58,18 +58,25 @@ export default function PerformanceDashboard() {
     );
   }
 
-  const { summary, criticalOperations, recentFailures } = dashboardData;
+  const { summary, queryMetrics, cacheMetrics, connectionMetrics, realtimeMetrics } = dashboardData;
 
   const getLatencyColor = (latency: number) => {
-    if (latency < 200) return '#2E7D32'; // Green
-    if (latency < 500) return '#F57C00'; // Orange
-    return '#D32F2F'; // Red
+    if (latency < 100) return '#2E7D32'; // Green - excellent
+    if (latency < 200) return '#4CAF50'; // Light green - good
+    if (latency < 500) return '#F57C00'; // Orange - warning
+    return '#D32F2F'; // Red - critical
   };
 
   const getSuccessRateColor = (rate: number) => {
     if (rate >= 95) return '#2E7D32'; // Green
     if (rate >= 80) return '#F57C00'; // Orange
     return '#D32F2F'; // Red
+  };
+
+  const getUtilizationColor = (utilization: number) => {
+    if (utilization < 60) return '#2E7D32'; // Green - healthy
+    if (utilization < 80) return '#F57C00'; // Orange - warning
+    return '#D32F2F'; // Red - critical
   };
 
   return (
@@ -100,14 +107,14 @@ export default function PerformanceDashboard() {
             <Text style={styles.summaryValue}>{summary.totalOperations}</Text>
           </View>
           <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>Taxa de Sucesso</Text>
+            <Text style={styles.summaryLabel}>Queries Lentas</Text>
             <Text
               style={[
                 styles.summaryValue,
-                { color: getSuccessRateColor(summary.successRate) },
+                { color: summary.slowQueries > 10 ? '#D32F2F' : '#2E7D32' },
               ]}
             >
-              {summary.successRate.toFixed(1)}%
+              {summary.slowQueries}
             </Text>
           </View>
           <View style={styles.summaryItem}>
@@ -132,76 +139,105 @@ export default function PerformanceDashboard() {
               {Math.round(summary.p95Latency)}ms
             </Text>
           </View>
+          <View style={styles.summaryItem}>
+            <Text style={styles.summaryLabel}>P99 Latência</Text>
+            <Text
+              style={[
+                styles.summaryValue,
+                { color: getLatencyColor(summary.p99Latency) },
+              ]}
+            >
+              {Math.round(summary.p99Latency)}ms
+            </Text>
+          </View>
+          <View style={styles.summaryItem}>
+            <Text style={styles.summaryLabel}>Cache Hit Rate</Text>
+            <Text
+              style={[
+                styles.summaryValue,
+                { color: getSuccessRateColor(summary.cacheHitRate) },
+              ]}
+            >
+              {summary.cacheHitRate.toFixed(1)}%
+            </Text>
+          </View>
+          <View style={styles.summaryItem}>
+            <Text style={styles.summaryLabel}>Pool Utilization</Text>
+            <Text
+              style={[
+                styles.summaryValue,
+                { color: getUtilizationColor(summary.connectionPoolUtilization) },
+              ]}
+            >
+              {summary.connectionPoolUtilization.toFixed(1)}%
+            </Text>
+          </View>
         </View>
       </View>
 
-      {/* Firestore Metrics Card */}
+      {/* Query Performance Card */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Operações Firestore</Text>
-        <View style={styles.firestoreGrid}>
-          <View style={styles.firestoreItem}>
-            <Ionicons name="eye-outline" size={24} color="#2196F3" />
-            <Text style={styles.firestoreLabel}>Reads</Text>
-            <Text style={styles.firestoreValue}>{summary.firestoreReads}</Text>
-          </View>
-          <View style={styles.firestoreItem}>
-            <Ionicons name="create-outline" size={24} color="#4CAF50" />
-            <Text style={styles.firestoreLabel}>Writes</Text>
-            <Text style={styles.firestoreValue}>{summary.firestoreWrites}</Text>
-          </View>
-          <View style={styles.firestoreItem}>
-            <Ionicons name="trash-outline" size={24} color="#F44336" />
-            <Text style={styles.firestoreLabel}>Deletes</Text>
-            <Text style={styles.firestoreValue}>{summary.firestoreDeletes}</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Critical Operations Card */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Operações Críticas</Text>
-        {criticalOperations.length === 0 ? (
-          <Text style={styles.emptyText}>Nenhuma operação registrada</Text>
+        <Text style={styles.cardTitle}>Query Performance (Últimas 10)</Text>
+        {queryMetrics.length === 0 ? (
+          <Text style={styles.emptyText}>Nenhuma query registrada</Text>
         ) : (
-          criticalOperations.map((op: any, index: number) => (
-            <View key={index} style={styles.operationItem}>
-              <View style={styles.operationHeader}>
-                <Text style={styles.operationName}>{op.name}</Text>
-                <Text style={styles.operationCount}>{op.count}x</Text>
+          queryMetrics.slice(-10).reverse().map((metric, index) => (
+            <View key={index} style={styles.queryItem}>
+              <View style={styles.queryHeader}>
+                <Text style={styles.queryName} numberOfLines={1}>
+                  {metric.query}
+                </Text>
+                <Text
+                  style={[
+                    styles.queryTime,
+                    { color: getLatencyColor(metric.executionTime) },
+                  ]}
+                >
+                  {Math.round(metric.executionTime)}ms
+                </Text>
               </View>
-              <View style={styles.operationMetrics}>
-                <View style={styles.operationMetric}>
-                  <Text style={styles.metricLabel}>Média</Text>
-                  <Text
-                    style={[
-                      styles.metricValue,
-                      { color: getLatencyColor(op.avgLatency) },
-                    ]}
-                  >
-                    {Math.round(op.avgLatency)}ms
-                  </Text>
+              <View style={styles.queryDetails}>
+                <Text style={styles.queryDetail}>
+                  Scanned: {metric.rowsScanned} | Returned: {metric.rowsReturned}
+                </Text>
+                <Text style={styles.queryTimestamp}>
+                  {new Date(metric.timestamp).toLocaleTimeString()}
+                </Text>
+              </View>
+            </View>
+          ))
+        )}
+      </View>
+
+      {/* Cache Metrics Card */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Cache Performance</Text>
+        {cacheMetrics.length === 0 ? (
+          <Text style={styles.emptyText}>Nenhuma operação de cache registrada</Text>
+        ) : (
+          cacheMetrics.map((metric, index) => (
+            <View key={index} style={styles.cacheItem}>
+              <View style={styles.cacheHeader}>
+                <Text style={styles.cacheName} numberOfLines={1}>
+                  {metric.key}
+                </Text>
+                <Text
+                  style={[
+                    styles.cacheHitRate,
+                    { color: getSuccessRateColor(metric.hitRate) },
+                  ]}
+                >
+                  {metric.hitRate.toFixed(1)}%
+                </Text>
+              </View>
+              <View style={styles.cacheStats}>
+                <View style={styles.cacheStat}>
+                  <Ionicons name="checkmark-circle" size={16} color="#2E7D32" />
+                  <Text style={styles.cacheStatText}>Hits: {metric.hits}</Text>
                 </View>
-                <View style={styles.operationMetric}>
-                  <Text style={styles.metricLabel}>P95</Text>
-                  <Text
-                    style={[
-                      styles.metricValue,
-                      { color: getLatencyColor(op.p95Latency) },
-                    ]}
-                  >
-                    {Math.round(op.p95Latency)}ms
-                  </Text>
-                </View>
-                <View style={styles.operationMetric}>
-                  <Text style={styles.metricLabel}>Sucesso</Text>
-                  <Text
-                    style={[
-                      styles.metricValue,
-                      { color: getSuccessRateColor(op.successRate) },
-                    ]}
-                  >
-                    {op.successRate.toFixed(0)}%
-                  </Text>
+                <View style={styles.cacheStat}>
+                  <Ionicons name="close-circle" size={16} color="#D32F2F" />
+                  <Text style={styles.cacheStatText}>Misses: {metric.misses}</Text>
                 </View>
               </View>
             </View>
@@ -209,24 +245,79 @@ export default function PerformanceDashboard() {
         )}
       </View>
 
-      {/* Recent Failures Card */}
-      {recentFailures.length > 0 && (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Falhas Recentes</Text>
-          {recentFailures.map((failure: any, index: number) => (
-            <View key={index} style={styles.failureItem}>
-              <View style={styles.failureHeader}>
-                <Ionicons name="alert-circle" size={20} color="#D32F2F" />
-                <Text style={styles.failureOperation}>{failure.operation}</Text>
+      {/* Connection Pool Metrics Card */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Connection Pool (Últimas 10)</Text>
+        {connectionMetrics.length === 0 ? (
+          <Text style={styles.emptyText}>Nenhuma métrica de conexão registrada</Text>
+        ) : (
+          connectionMetrics.slice(-10).reverse().map((metric, index) => (
+            <View key={index} style={styles.connectionItem}>
+              <View style={styles.connectionHeader}>
+                <Text style={styles.connectionTime}>
+                  {new Date(metric.timestamp).toLocaleTimeString()}
+                </Text>
+                <Text
+                  style={[
+                    styles.connectionUtilization,
+                    { color: getUtilizationColor(metric.utilization) },
+                  ]}
+                >
+                  {metric.utilization.toFixed(1)}%
+                </Text>
               </View>
-              <Text style={styles.failureError}>{failure.error}</Text>
-              <Text style={styles.failureTime}>
-                {new Date(failure.timestamp).toLocaleTimeString()}
-              </Text>
+              <View style={styles.connectionStats}>
+                <View style={styles.connectionStat}>
+                  <View style={[styles.connectionDot, { backgroundColor: '#2E7D32' }]} />
+                  <Text style={styles.connectionStatText}>Active: {metric.active}</Text>
+                </View>
+                <View style={styles.connectionStat}>
+                  <View style={[styles.connectionDot, { backgroundColor: '#FFC107' }]} />
+                  <Text style={styles.connectionStatText}>Idle: {metric.idle}</Text>
+                </View>
+                <View style={styles.connectionStat}>
+                  <View style={[styles.connectionDot, { backgroundColor: '#D32F2F' }]} />
+                  <Text style={styles.connectionStatText}>Waiting: {metric.waiting}</Text>
+                </View>
+              </View>
             </View>
-          ))}
-        </View>
-      )}
+          ))
+        )}
+      </View>
+
+      {/* Real-Time Subscription Metrics Card */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Real-Time Subscriptions (Últimas 10)</Text>
+        {realtimeMetrics.length === 0 ? (
+          <Text style={styles.emptyText}>Nenhuma métrica de real-time registrada</Text>
+        ) : (
+          realtimeMetrics.slice(-10).reverse().map((metric, index) => (
+            <View key={index} style={styles.realtimeItem}>
+              <View style={styles.realtimeHeader}>
+                <Text style={styles.realtimeName} numberOfLines={1}>
+                  {metric.channel}
+                </Text>
+                <Text
+                  style={[
+                    styles.realtimeLatency,
+                    { color: getLatencyColor(metric.latency) },
+                  ]}
+                >
+                  {Math.round(metric.latency)}ms
+                </Text>
+              </View>
+              <View style={styles.realtimeDetails}>
+                <Text style={styles.realtimeDetail}>
+                  Messages: {metric.messagesReceived}
+                </Text>
+                <Text style={styles.realtimeTimestamp}>
+                  {new Date(metric.timestamp).toLocaleTimeString()}
+                </Text>
+              </View>
+            </View>
+          ))
+        )}
+      </View>
 
       {/* Legend */}
       <View style={styles.legend}>
@@ -234,7 +325,11 @@ export default function PerformanceDashboard() {
         <View style={styles.legendItems}>
           <View style={styles.legendItem}>
             <View style={[styles.legendColor, { backgroundColor: '#2E7D32' }]} />
-            <Text style={styles.legendText}>Bom (&lt;200ms / &gt;95%)</Text>
+            <Text style={styles.legendText}>Excelente (&lt;100ms / &gt;95%)</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendColor, { backgroundColor: '#4CAF50' }]} />
+            <Text style={styles.legendText}>Bom (100-200ms)</Text>
           </View>
           <View style={styles.legendItem}>
             <View style={[styles.legendColor, { backgroundColor: '#F57C00' }]} />
@@ -318,87 +413,151 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#333',
   },
-  firestoreGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  firestoreItem: {
-    alignItems: 'center',
-  },
-  firestoreLabel: {
-    fontSize: 12,
-    color: '#999',
-    marginTop: 5,
-  },
-  firestoreValue: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#333',
-    marginTop: 5,
-  },
-  operationItem: {
+  queryItem: {
     marginBottom: 15,
     paddingBottom: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#E0D8C8',
   },
-  operationHeader: {
+  queryHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 5,
   },
-  operationName: {
+  queryName: {
     fontSize: 14,
     fontWeight: '600',
     color: '#333',
     flex: 1,
+    marginRight: 10,
   },
-  operationCount: {
-    fontSize: 12,
-    color: '#999',
-  },
-  operationMetrics: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  operationMetric: {
-    alignItems: 'center',
-  },
-  metricLabel: {
-    fontSize: 11,
-    color: '#999',
-    marginBottom: 3,
-  },
-  metricValue: {
+  queryTime: {
     fontSize: 16,
     fontWeight: '700',
   },
-  failureItem: {
-    marginBottom: 15,
-    padding: 10,
-    backgroundColor: '#FFEBEE',
-    borderRadius: 5,
-    borderLeftWidth: 3,
-    borderLeftColor: '#D32F2F',
-  },
-  failureHeader: {
+  queryDetails: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 5,
   },
-  failureOperation: {
+  queryDetail: {
+    fontSize: 11,
+    color: '#999',
+  },
+  queryTimestamp: {
+    fontSize: 11,
+    color: '#999',
+  },
+  cacheItem: {
+    marginBottom: 15,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0D8C8',
+  },
+  cacheHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  cacheName: {
     fontSize: 14,
     fontWeight: '600',
     color: '#333',
-    marginLeft: 8,
+    flex: 1,
+    marginRight: 10,
   },
-  failureError: {
+  cacheHitRate: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  cacheStats: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    gap: 20,
+  },
+  cacheStat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  cacheStatText: {
     fontSize: 12,
     color: '#666',
+  },
+  connectionItem: {
+    marginBottom: 15,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0D8C8',
+  },
+  connectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  connectionTime: {
+    fontSize: 12,
+    color: '#999',
+  },
+  connectionUtilization: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  connectionStats: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    gap: 15,
+  },
+  connectionStat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  connectionDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  connectionStatText: {
+    fontSize: 12,
+    color: '#666',
+  },
+  realtimeItem: {
+    marginBottom: 15,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0D8C8',
+  },
+  realtimeHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 5,
   },
-  failureTime: {
+  realtimeName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    flex: 1,
+    marginRight: 10,
+  },
+  realtimeLatency: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  realtimeDetails: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  realtimeDetail: {
+    fontSize: 11,
+    color: '#999',
+  },
+  realtimeTimestamp: {
     fontSize: 11,
     color: '#999',
   },
@@ -413,6 +572,7 @@ const styles = StyleSheet.create({
     padding: 15,
     backgroundColor: '#FFF',
     borderRadius: 10,
+    marginBottom: 30,
   },
   legendTitle: {
     fontSize: 14,

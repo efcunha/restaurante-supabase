@@ -17,12 +17,13 @@ import {
   Firestore,
 } from 'firebase/firestore';
 // @ts-ignore - firebaseConfig.js is not typed
-import { db as dbImport } from '../config/firebaseConfig';
-import PerformanceMonitoringService from './PerformanceMonitoringService';
+// import { db as dbImport } from '../config/firebaseConfig'; // Removed - Firebase specific
+// import PerformanceMonitoringService from './PerformanceMonitoringService'; // Removed - Firebase specific
 
 // Type the db import
 // @ts-ignore
-const db = dbImport as Firestore;
+// const db = dbImport as Firestore; // Removed - Firebase specific
+const db: any = null; // Temporarily disabled
 
 export interface BaselineMetrics {
   timestamp: number;

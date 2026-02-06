@@ -1,11 +1,10 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Image, BackHandler, ScrollView, Pressable, Keyboard, useWindowDimensions, NativeModules } from 'react-native';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { Ionicons } from '@expo/vector-icons';
-import { sendPasswordResetEmail } from 'firebase/auth';
-import { auth } from '../config/firebaseConfig';
+import { supabase } from '../config/SupabaseConfig'; // Replaced firebase config
 import { getUserFriendlyMessage } from '../utils/errors';
 import MFAVerificationModal from '../components/MFAVerificationModal';
 // @ts-ignore
@@ -195,7 +194,8 @@ export default function LoginScreen({ navigation }: Props) {
                         text: 'Enviar Email',
                         onPress: async () => {
                           try {
-                            await sendPasswordResetEmail(auth, email.trim());
+                            const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+                            if (error) throw error;
                             Alert.alert('Sucesso', '✅ Email enviado!\nVerifique sua caixa de entrada (e spam) para redefinir a senha.');
                           } catch (error: any) {
                             Alert.alert('Erro', '❌ Não foi possível enviar: ' + error.message);

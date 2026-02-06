@@ -5,9 +5,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 // @ts-ignore
 import { criarFuncionario, listarFuncionarios, deletarFuncionario, atualizarFuncionario } from '../services/FuncionariosService';
-
-import { sendPasswordResetEmail } from 'firebase/auth';
-import { auth } from '../config/firebaseConfig';
+import { supabase } from '../config/SupabaseConfig';
 
 interface Props {
   onClose?: () => void;
@@ -27,23 +25,26 @@ export default function FuncionariosScreen({ onClose }: Props) {
   const [nome, setNome] = useState('');
   const [cpf, setCpf] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [senha, setSenha] = useState('');
   const [funcao, setFuncao] = useState('garcom');
+  const [senhaErrors, setSenhaErrors] = useState<string[]>([]);
 
   useEffect(() => {
     carregarFuncionarios();
   }, []);
 
   const carregarFuncionarios = async () => {
-    // console.log('[FuncionariosScreen] 🔄 Carregando funcionários...');
+    console.log('[FuncionariosScreen] 🔄 Carregando funcionários...');
     setLoading(true);
     const result = await listarFuncionarios();
-    // console.log('[FuncionariosScreen] 📊 Resultado da listagem:', result);
+    console.log('[FuncionariosScreen] 📊 Resultado da listagem:', result);
     if (result.success) {
+      console.log('[FuncionariosScreen] 📋 Funcionários recebidos:', result.funcionarios.map(f => ({ id: f.id, nome: f.nome })));
       setFuncionarios(result.funcionarios);
-      // console.log('[FuncionariosScreen] ✅ Funcionários carregados:', result.funcionarios.length);
+      console.log('[FuncionariosScreen] ✅ Funcionários carregados:', result.funcionarios.length);
     } else {
-      // console.log('[FuncionariosScreen] ❌ Erro ao carregar:', result.error);
+      console.log('[FuncionariosScreen] ❌ Erro ao carregar:', result.error);
     }
     setLoading(false);
   };
@@ -57,15 +58,19 @@ export default function FuncionariosScreen({ onClose }: Props) {
       return;
     }
 
-    // Validar senha
-    if (!editandoFuncionario && !senha.trim()) {
-      alert('⚠️ Atenção: Digite uma senha');
-      return;
+    // Validar senha se foi preenchida
+    if (senha.trim()) {
+      const validation = validatePassword(senha);
+      if (!validation.valid) {
+        alert('⚠️ Senha não atende aos requisitos:\n\n' + validation.errors.join('\n'));
+        setSenhaErrors(validation.errors);
+        return;
+      }
     }
 
-    // Se está editando e preencheu nova senha, validar tamanho
-    if (senha.trim() && senha.length < 6) {
-      alert('⚠️ Atenção: Senha deve ter no mínimo 6 caracteres');
+    // Validar senha obrigatória para novo funcionário
+    if (!editandoFuncionario && !senha.trim()) {
+      alert('⚠️ Atenção: Digite uma senha');
       return;
     }
 
@@ -80,6 +85,7 @@ export default function FuncionariosScreen({ onClose }: Props) {
         nome,
         cpf,
         email,
+        phone,
         funcao,
       };
 
@@ -96,7 +102,7 @@ export default function FuncionariosScreen({ onClose }: Props) {
         nome,
         cpf,
         email,
-
+        phone,
         senha,
         funcao,
         // @ts-ignore
@@ -104,14 +110,13 @@ export default function FuncionariosScreen({ onClose }: Props) {
       });
     }
 
-    // console.log('[FuncionariosScreen] 📊 Resultado:', result);
-
     if (result.success) {
-      // console.log('[FuncionariosScreen] 🔄 Recarregando lista...');
-      await carregarFuncionarios();
-      setLoading(false);
+      console.log('[FuncionariosScreen] 🔄 Recarregando lista...');
       setModalVisible(false);
       limparForm();
+      setLoading(true);
+      await carregarFuncionarios();
+      setLoading(false);
 
       // Mensagem personalizada se foi recriado para trocar senha
       if (result.warning) {
@@ -130,8 +135,9 @@ export default function FuncionariosScreen({ onClose }: Props) {
   const handleEditar = (funcionario: any) => {
     setEditandoFuncionario(funcionario);
     setNome(funcionario.nome);
-    setCpf(funcionario.cpf);
+    setCpf(formatCPF(funcionario.cpf));
     setEmail(funcionario.email);
+    setPhone(formatPhone(funcionario.phone || ''));
     setFuncao(funcionario.funcao);
     setSenha(''); // Não preenche senha ao editar
     setModalVisible(true);
@@ -174,9 +180,66 @@ export default function FuncionariosScreen({ onClose }: Props) {
     setNome('');
     setCpf('');
     setEmail('');
+    setPhone('');
     setSenha('');
     setFuncao('garcom');
+    setSenhaErrors([]);
     setEditandoFuncionario(null);
+  };
+
+  // Validação de senha forte
+  const validatePassword = (password: string): { valid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+    
+    if (password.length < 6) {
+      errors.push('Mínimo 6 caracteres');
+    }
+    if (password.length > 10) {
+      errors.push('Máximo 10 caracteres');
+    }
+    if (!/[A-Z]/.test(password)) {
+      errors.push('Pelo menos 1 letra maiúscula');
+    }
+    if (!/[a-z]/.test(password)) {
+      errors.push('Pelo menos 1 letra minúscula');
+    }
+    if (!/[0-9]/.test(password)) {
+      errors.push('Pelo menos 1 número');
+    }
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+      errors.push('Pelo menos 1 caractere especial (!@#$%^&*...)');
+    }
+    
+    return {
+      valid: errors.length === 0,
+      errors
+    };
+  };
+
+  // @ts-ignore
+  const formatCPF = (cpf) => {
+    if (!cpf) return '';
+    // Remove tudo que não é dígito
+    const numbers = cpf.replace(/\D/g, '');
+    // Aplica a máscara: 000.000.000-00
+    if (numbers.length <= 11) {
+      return numbers.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+    }
+    return cpf;
+  };
+
+  // @ts-ignore
+  const formatPhone = (phone) => {
+    if (!phone) return '';
+    // Remove tudo que não é dígito
+    const numbers = phone.replace(/\D/g, '');
+    // Aplica a máscara: (00) 00000-0000 ou (00) 0000-0000
+    if (numbers.length === 11) {
+      return numbers.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+    } else if (numbers.length === 10) {
+      return numbers.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+    }
+    return phone;
   };
 
   // @ts-ignore
@@ -187,6 +250,9 @@ export default function FuncionariosScreen({ onClose }: Props) {
       cozinheiro: 'Cozinheiro(a)',
       montagem: 'Montagem',
       admin: 'Administrador',
+      manager: 'Administrador',
+      waiter: 'Garçom',
+      kitchen: 'Cozinha',
     };
     return labels[func] || func;
   };
@@ -199,6 +265,9 @@ export default function FuncionariosScreen({ onClose }: Props) {
       cozinheiro: '#E5B84A',
       montagem: '#7ED321',
       admin: '#8B2F2F',
+      manager: '#8B2F2F',
+      waiter: '#4A90E2',
+      kitchen: '#E5B84A',
     };
     return colors[func] || '#999';
   };
@@ -214,8 +283,8 @@ export default function FuncionariosScreen({ onClose }: Props) {
         ) : <View style={styles.headerLeftButton} />}
 
         <View style={styles.headerCenter}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Ionicons name="people" size={28} color="#FFF" />
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Ionicons name="people" size={28} color="#FFF" style={{ marginRight: 8 }} />
             <Text style={styles.headerTitle}>Funcionários</Text>
           </View>
           <Text style={styles.headerSubtitle}>Logado: {user?.nome}</Text>
@@ -250,8 +319,9 @@ export default function FuncionariosScreen({ onClose }: Props) {
                 </View>
               </View>
 
-              <Text style={styles.funcionarioInfo}>CPF: {func.cpf}</Text>
+              <Text style={styles.funcionarioInfo}>CPF: {formatCPF(func.cpf)}</Text>
               <Text style={styles.funcionarioInfo}>Email: {func.email}</Text>
+              {func.phone && <Text style={styles.funcionarioInfo}>Telefone: {formatPhone(func.phone)}</Text>}
 
               <View style={styles.actionButtons}>
                 <TouchableOpacity
@@ -314,8 +384,26 @@ export default function FuncionariosScreen({ onClose }: Props) {
                 style={styles.input}
                 placeholder="000.000.000-00"
                 value={cpf}
-                onChangeText={setCpf}
+                onChangeText={(text) => {
+                  // Remove tudo que não é dígito
+                  const numbers = text.replace(/\D/g, '');
+                  // Limita a 11 dígitos
+                  const limited = numbers.substring(0, 11);
+                  // Aplica formatação enquanto digita
+                  let formatted = limited;
+                  if (limited.length > 3) {
+                    formatted = limited.substring(0, 3) + '.' + limited.substring(3);
+                  }
+                  if (limited.length > 6) {
+                    formatted = limited.substring(0, 3) + '.' + limited.substring(3, 6) + '.' + limited.substring(6);
+                  }
+                  if (limited.length > 9) {
+                    formatted = limited.substring(0, 3) + '.' + limited.substring(3, 6) + '.' + limited.substring(6, 9) + '-' + limited.substring(9);
+                  }
+                  setCpf(formatted);
+                }}
                 keyboardType="numeric"
+                maxLength={14}
               />
 
               <Text style={styles.label}>Email</Text>
@@ -328,31 +416,100 @@ export default function FuncionariosScreen({ onClose }: Props) {
                 autoCapitalize="none"
               />
 
-              <Text style={styles.label}>
-                {editandoFuncionario ? 'Nova Senha (deixe vazio para manter a atual)' : 'Senha (mínimo 6 caracteres)'}
-              </Text>
-              <View style={styles.passwordContainer}>
-                <TextInput
-                  style={styles.passwordInput}
-                  placeholder={editandoFuncionario ? 'Digite nova senha ou deixe vazio' : '••••••'}
-                  value={senha}
-                  onChangeText={setSenha}
-                  secureTextEntry={!mostrarSenha}
-                />
-                <TouchableOpacity
-                  style={styles.passwordToggle}
-                  onPress={() => setMostrarSenha(!mostrarSenha)}
-                >
-                  <Text style={styles.passwordToggleText}>
-                    {mostrarSenha ? '🙈' : '👁️'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+              <Text style={styles.label}>Telefone (opcional)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="(00) 00000-0000"
+                value={phone}
+                onChangeText={(text) => {
+                  // Remove tudo que não é dígito
+                  const numbers = text.replace(/\D/g, '');
+                  // Limita a 11 dígitos
+                  const limited = numbers.substring(0, 11);
+                  // Aplica formatação enquanto digita
+                  let formatted = limited;
+                  if (limited.length > 2) {
+                    formatted = '(' + limited.substring(0, 2) + ') ' + limited.substring(2);
+                  }
+                  if (limited.length > 7) {
+                    formatted = '(' + limited.substring(0, 2) + ') ' + limited.substring(2, 7) + '-' + limited.substring(7);
+                  }
+                  setPhone(formatted);
+                }}
+                keyboardType="phone-pad"
+                maxLength={15}
+              />
 
-              {editandoFuncionario && senha.length > 0 && senha.length < 6 && (
-                <Text style={styles.helperText}>
-                  ⚠️ Nova senha deve ter no mínimo 6 caracteres
-                </Text>
+              {/* Senha apenas para novo funcionário */}
+              {!editandoFuncionario && (
+                <>
+                  <Text style={styles.label}>Senha</Text>
+                  <View style={styles.passwordContainer}>
+                    <TextInput
+                      style={styles.passwordInput}
+                      placeholder="••••••"
+                      value={senha}
+                      onChangeText={(text) => {
+                        setSenha(text);
+                        // Validar em tempo real
+                        if (text.trim()) {
+                          const validation = validatePassword(text);
+                          setSenhaErrors(validation.errors);
+                        } else {
+                          setSenhaErrors([]);
+                        }
+                      }}
+                      secureTextEntry={!mostrarSenha}
+                      maxLength={10}
+                    />
+                    <TouchableOpacity
+                      style={styles.passwordToggle}
+                      onPress={() => setMostrarSenha(!mostrarSenha)}
+                    >
+                      <Text style={styles.passwordToggleText}>
+                        {mostrarSenha ? '🙈' : '👁️'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Requisitos de senha */}
+                  <View style={styles.passwordRequirements}>
+                    <Text style={styles.requirementsTitle}>Requisitos da senha:</Text>
+                    <Text style={[styles.requirementItem, senha.length >= 6 && senha.length <= 10 && styles.requirementMet]}>
+                      {senha.length >= 6 && senha.length <= 10 ? '✓' : '○'} 6 a 10 caracteres
+                    </Text>
+                    <Text style={[styles.requirementItem, /[A-Z]/.test(senha) && styles.requirementMet]}>
+                      {/[A-Z]/.test(senha) ? '✓' : '○'} Letra maiúscula
+                    </Text>
+                    <Text style={[styles.requirementItem, /[a-z]/.test(senha) && styles.requirementMet]}>
+                      {/[a-z]/.test(senha) ? '✓' : '○'} Letra minúscula
+                    </Text>
+                    <Text style={[styles.requirementItem, /[0-9]/.test(senha) && styles.requirementMet]}>
+                      {/[0-9]/.test(senha) ? '✓' : '○'} Número
+                    </Text>
+                    <Text style={[styles.requirementItem, /[!@#$%^&*(),.?":{}|<>]/.test(senha) && styles.requirementMet]}>
+                      {/[!@#$%^&*(),.?":{}|<>]/.test(senha) ? '✓' : '○'} Caractere especial (!@#$%...)
+                    </Text>
+                  </View>
+
+                  {senhaErrors.length > 0 && senha.trim() && (
+                    <View style={styles.errorBox}>
+                      <Text style={styles.errorTitle}>⚠️ Problemas com a senha:</Text>
+                      {senhaErrors.map((error, index) => (
+                        <Text key={index} style={styles.errorText}>• {error}</Text>
+                      ))}
+                    </View>
+                  )}
+                </>
+              )}
+
+              {/* Aviso para edição */}
+              {editandoFuncionario && (
+                <View style={styles.infoBox}>
+                  <Text style={styles.infoText}>
+                    ℹ️ Para alterar a senha, o funcionário deve usar "Esqueci minha senha" na tela de login.
+                  </Text>
+                </View>
               )}
 
               <Text style={styles.label}>Função</Text>
@@ -390,7 +547,10 @@ export default function FuncionariosScreen({ onClose }: Props) {
                           text: 'Enviar Email',
                           onPress: async () => {
                             try {
-                              await sendPasswordResetEmail(auth, email.trim());
+                              const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+                                redirectTo: 'your-app://reset-password'
+                              });
+                              if (error) throw error;
                               alert('✅ Email de redefinição enviado com sucesso!');
                             } catch (error: any) {
                               alert('Erro ao enviar: ' + error.message);
@@ -830,5 +990,59 @@ const styles = StyleSheet.create({
     color: '#3498DB',
     fontWeight: '600',
     fontSize: 14,
+  },
+  passwordRequirements: {
+    backgroundColor: '#F5F1E8',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  requirementsTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#8B2F2F',
+    marginBottom: 6,
+  },
+  requirementItem: {
+    fontSize: 12,
+    color: '#999',
+    marginBottom: 3,
+  },
+  requirementMet: {
+    color: '#27AE60',
+    fontWeight: '600',
+  },
+  errorBox: {
+    backgroundColor: '#FFF5F5',
+    borderWidth: 1,
+    borderColor: '#E74C3C',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 8,
+  },
+  errorTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#E74C3C',
+    marginBottom: 6,
+  },
+  errorText: {
+    fontSize: 12,
+    color: '#E74C3C',
+    marginBottom: 2,
+  },
+  infoBox: {
+    backgroundColor: '#E8F4FD',
+    borderWidth: 1,
+    borderColor: '#3498DB',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 8,
+  },
+  infoText: {
+    fontSize: 13,
+    color: '#2C3E50',
+    lineHeight: 18,
   },
 });

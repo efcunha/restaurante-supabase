@@ -1,10 +1,14 @@
 /**
  * PerformanceMonitoringService - Firebase Performance Monitoring Integration
  * Tracks latency, Firestore operations, and custom metrics
+ * 
+ * NOTE: This service is Firebase-specific and has been disabled during Supabase migration.
+ * Performance monitoring needs to be reimplemented using alternative solutions.
  */
 
-import { getPerformance, trace } from 'firebase/performance';
-import app from '../config/firebaseConfig';
+// Firebase imports disabled during Supabase migration
+// import { getPerformance, trace } from 'firebase/performance';
+// import app from '../config/firebaseConfig';
 
 interface PerformanceMetrics {
   operationName: string;
@@ -39,12 +43,16 @@ class PerformanceMonitoringService {
   private lastAlertTime: number = 0;
 
   constructor() {
+    // Firebase Performance disabled during Supabase migration
+    console.log('[PerformanceMonitoring] Service disabled during migration');
+    /*
     try {
       this.performance = getPerformance(app);
       console.log('[PerformanceMonitoring] Initialized successfully');
     } catch (error) {
       console.error('[PerformanceMonitoring] Initialization failed:', error);
     }
+    */
   }
 
   /**

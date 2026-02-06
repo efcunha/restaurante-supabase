@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-import { query, where, getDocs, QueryDocumentSnapshot } from 'firebase/firestore';
-import { getCompanyCollection } from '../utils/firestoreUtils';
 import { formatCurrency } from '../utils/formatCurrency';
 import BackgroundPattern from '../components/BackgroundPattern';
 // @ts-ignore
 import { SalesByDayChart, SalesByPaymentChart } from '../components/FinancialCharts';
 import { Ionicons } from '@expo/vector-icons';
+import { supabase } from '../config/SupabaseConfig';
 
 // Tipos para as props dos componentes internos
 interface KPICardProps {
@@ -96,12 +95,15 @@ export default function FinancialDashboardScreen({ onClose }: FinancialDashboard
             const endDateStr = hoje.toISOString().split('T')[0];
 
             // 1. Buscar Comandas Fechadas no Período (VENDAS)
-            const q = query(
-                getCompanyCollection(user.companyId, 'comandas'),
-                where('status', '==', 'fechada')
-            );
+            const { data: comandasData, error: comandasError } = await supabase
+                .from('comandas')
+                .select('*')
+                .eq('company_id', user.companyId)
+                .eq('status', 'fechada')
+                .gte('date_key', dateStr)
+                .lte('date_key', endDateStr);
 
-            const snapshot = await getDocs(q);
+            if (comandasError) throw comandasError;
 
             let totalFaturamento = 0;
             let totalPedidos = 0;
@@ -123,23 +125,17 @@ export default function FinancialDashboardScreen({ onClose }: FinancialDashboard
             }
 
             // Processar comandas fechadas (VENDAS)
-            for (const doc of snapshot.docs) {
-                const data = doc.data();
-                let comandaDateKey = data.dateKey;
+            for (const comanda of (comandasData || [])) {
+                let comandaDateKey = comanda.date_key;
 
                 // Se não tiver dateKey, tentar extrair da data de fechamento
-                if (!comandaDateKey && data.fechadaAt) {
-                    if (data.fechadaAt.toDate) {
-                        comandaDateKey = data.fechadaAt.toDate().toISOString().split('T')[0];
-                    } else if (data.fechadaAt.seconds) {
-                        const date = new Date(data.fechadaAt.seconds * 1000);
-                        comandaDateKey = date.toISOString().split('T')[0];
-                    }
+                if (!comandaDateKey && comanda.closed_at) {
+                    comandaDateKey = new Date(comanda.closed_at).toISOString().split('T')[0];
                 }
 
                 // Filtrar pelo período
                 if (comandaDateKey && comandaDateKey >= dateStr && comandaDateKey <= endDateStr) {
-                    const valor = parseFloat(data.totalConsumido || 0);
+                    const valor = parseFloat(comanda.total_consumed || 0);
                     
                     // ✅ VALIDAÇÃO: Ignorar valores absurdos (maior que R$ 10.000)
                     if (valor > 0 && valor < 10000) {
@@ -147,12 +143,12 @@ export default function FinancialDashboardScreen({ onClose }: FinancialDashboard
                         totalPedidos++;
                         vendasPorDia[comandaDateKey] = (vendasPorDia[comandaDateKey] || 0) + valor;
                     } else if (valor >= 10000) {
-                        console.warn(`⚠️ Valor suspeito ignorado: R$ ${valor.toFixed(2)} na comanda ${data.comandaNumber}`);
+                        console.warn(`⚠️ Valor suspeito ignorado: R$ ${valor.toFixed(2)} na comanda ${comanda.comanda_number}`);
                     }
 
                     // Contar produtos
-                    if (data.itens && Array.isArray(data.itens)) {
-                        data.itens.forEach((itemStr: string) => {
+                    if (comanda.items && Array.isArray(comanda.items)) {
+                        comanda.items.forEach((itemStr: string) => {
                             const nome = itemStr.replace(/^\d+x\s*/, '').trim();
                             produtosCount[nome] = (produtosCount[nome] || 0) + 1;
                         });
@@ -161,29 +157,26 @@ export default function FinancialDashboardScreen({ onClose }: FinancialDashboard
             }
 
             // 2. Buscar Comandas CANCELADAS no Período
-            const qCanceladas = query(
-                getCompanyCollection(user.companyId, 'comandas'),
-                where('status', '==', 'cancelada')
-            );
+            const { data: canceladasData, error: canceladasError } = await supabase
+                .from('comandas')
+                .select('*')
+                .eq('company_id', user.companyId)
+                .eq('status', 'cancelada')
+                .gte('date_key', dateStr)
+                .lte('date_key', endDateStr);
 
-            const snapshotCanceladas = await getDocs(qCanceladas);
+            if (canceladasError) throw canceladasError;
 
-            snapshotCanceladas.docs.forEach((doc: QueryDocumentSnapshot) => {
-                const comanda = doc.data();
-                let comandaDateKey = comanda.dateKey;
+            (canceladasData || []).forEach((comanda: any) => {
+                let comandaDateKey = comanda.date_key;
 
                 // Extrair dateKey se não existir
-                if (!comandaDateKey && comanda.canceladaEm) {
-                    if (typeof comanda.canceladaEm === 'string') {
-                        comandaDateKey = comanda.canceladaEm.split('T')[0];
-                    } else if (comanda.canceladaEm.seconds) {
-                        const date = new Date(comanda.canceladaEm.seconds * 1000);
-                        comandaDateKey = date.toISOString().split('T')[0];
-                    }
+                if (!comandaDateKey && comanda.canceled_at) {
+                    comandaDateKey = new Date(comanda.canceled_at).toISOString().split('T')[0];
                 }
 
                 if (comandaDateKey && comandaDateKey >= dateStr && comandaDateKey <= endDateStr) {
-                    const valor = parseFloat(comanda.totalConsumido || 0);
+                    const valor = parseFloat(comanda.total_consumed || 0);
                     if (valor > 0 && valor < 10000) {
                         totalCancelado += valor;
                         qtdCanceladas++;
@@ -192,20 +185,21 @@ export default function FinancialDashboardScreen({ onClose }: FinancialDashboard
             });
 
             // 3. Buscar Pagamentos Separadamente para ter breakdown correto
-            const qPagamentos = query(
-                getCompanyCollection(user.companyId, 'pagamentos'),
-                where('dateKey', '>=', dateStr),
-                where('dateKey', '<=', endDateStr)
-            );
-            const snapPagamentos = await getDocs(qPagamentos);
+            const { data: pagamentosData, error: pagamentosError } = await supabase
+                .from('pagamentos')
+                .select('*')
+                .eq('company_id', user.companyId)
+                .gte('date_key', dateStr)
+                .lte('date_key', endDateStr);
 
-            snapPagamentos.forEach((doc: QueryDocumentSnapshot) => {
-                const p = doc.data();
-                const valor = parseFloat(p.valor || 0);
+            if (pagamentosError) throw pagamentosError;
+
+            (pagamentosData || []).forEach((p: any) => {
+                const valor = parseFloat(p.amount || 0);
                 
                 // ✅ VALIDAÇÃO: Ignorar valores absurdos
                 if (valor > 0 && valor < 10000) {
-                    let metodo = p.forma || p.metodo || 'outros';
+                    let metodo = p.payment_method || 'outros';
                     metodo = metodo.toLowerCase();
 
                     if (metodo.includes('dinheiro')) formasPagamento.dinheiro += valor;

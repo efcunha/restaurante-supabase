@@ -1,18 +1,17 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 // @ts-ignore
 import BackgroundPattern from '../components/BackgroundPattern';
 // @ts-ignore
 import OrderService from '../services/OrderService';
-import { query, where, onSnapshot } from 'firebase/firestore';
-// @ts-ignore
-import { getCompanyCollection } from '../utils/firestoreUtils';
+import { supabase } from '../config/SupabaseConfig';
 // @ts-ignore
 import { getLocalDateKey } from '../utils/dateUtils';
 import { confirmLogout } from '../utils/appUtils';
+import OptimizedFlatList from '../components/OptimizedFlatList';
 
 export default function CozinhaScreen() {
   const { user, logout } = useAuth();
@@ -22,29 +21,57 @@ export default function CozinhaScreen() {
     // @ts-ignore
     if (!user?.companyId) return;
     const today = getLocalDateKey();
-    const qPedidos = query(
-      // @ts-ignore
-      getCompanyCollection(user.companyId, 'pedidos'),
-      where('dateKey', '==', today)
-    );
 
-    const unsubscribe = onSnapshot(qPedidos, (snapshot) => {
-      const pedidos: any[] = [];
-      snapshot.forEach(doc => {
-        pedidos.push({ id: doc.id, ...doc.data() });
-      });
-      setAllOrders(pedidos);
-    }, (error) => {
-      console.error('Erro ao ouvir pedidos:', error);
-    });
+    // Initial fetch
+    const fetchOrders = async () => {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('company_id', user.companyId)
+        .eq('date_key', today);
 
-    return () => unsubscribe();
+      if (!error && data) {
+        // Map snake_case to camelCase
+        const mappedOrders = data.map(order => ({
+          ...order,
+          itemsWithStatus: order.items_with_status || [],
+          comandaNumber: order.comanda_number,
+          mesa: order.table_number?.toString() || '',
+          comandaStatus: order.comanda_status // ✅ Mapear comanda_status
+        }));
+        setAllOrders(mappedOrders);
+      }
+    };
+
+    fetchOrders();
+
+    // Subscribe to real-time changes
+    const channel = supabase
+      .channel(`orders-cozinha-${user.companyId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders',
+          filter: `company_id=eq.${user.companyId}`
+        },
+        (payload) => {
+          console.log('[Cozinha] 🔄 Recebeu atualização:', payload);
+          fetchOrders();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
   }, [user]);
 
   // ✅ FILTRO SEGURO: Excluir pedidos de comandas canceladas usando comandaStatus do pedido
   const ordersRaw = allOrders.filter(order => {
-    // Filtrar apenas pedidos em montagem
-    if (order.status !== 'montagem') return false;
+    // Filtrar apenas pedidos em preparing
+    if (order.status !== 'preparing') return false;
     
     // ✅ PROTEÇÃO: Se o pedido tem comandaStatus='cancelada', não mostrar
     if (order.comandaStatus === 'cancelada') {
@@ -71,7 +98,10 @@ export default function CozinhaScreen() {
         ? OrderService.isKitchenCategory(item.category)
         : OrderService.extractBebidas([item.name]).length === 0;
 
-      if (item.status !== 'pronto' && !item.checked && !seenItemIds.has(item.id) && isKitchenItem) {
+      // ✅ CORREÇÃO: Verificar AMBOS status e checked
+      const shouldShow = item.status !== 'pronto' && item.checked !== true && !seenItemIds.has(item.id) && isKitchenItem;
+
+      if (shouldShow) {
         seenItemIds.add(item.id);
         allValidItems.push({
           ...item,
@@ -121,7 +151,41 @@ export default function CozinhaScreen() {
   };
 
   // @ts-ignore
-  const grupos: any[] = agruparPorTipo();
+  const grupos: any[] = useMemo(() => agruparPorTipo(), [caldosPendentes]);
+
+  const renderGrupoItem = useCallback(({ item: grupo }: { item: any }) => (
+    <View style={styles.grupoCard}>
+      <View style={styles.grupoHeader}>
+        <Text style={styles.grupoNome}>{grupo.nome}</Text>
+        <View style={styles.totalBadge}>
+          <Text style={styles.totalText}>{grupo.total}x</Text>
+        </View>
+      </View>
+      <View style={styles.comandasList}>
+        {grupo.comandas.map((cmd: any, i: number) => (
+          <View key={i} style={styles.comandaItem}>
+            <Text style={styles.comandaNumero}>#{cmd.numero}</Text>
+            {cmd.mesa ? <Text style={styles.comandaNumero}> (Mesa {cmd.mesa})</Text> : null}
+            <Text style={styles.comandaQtd}>{cmd.quantidade}x</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  ), []);
+
+  const keyExtractor = useCallback((item: any, index: number) => `${item.nome}-${index}`, []);
+
+  const ListEmptyComponent = useCallback(() => (
+    <View style={styles.emptyState}>
+      <Text style={styles.emptyIcon}>🍲</Text>
+      <Text style={styles.emptyText}>Nenhum pedido na cozinha</Text>
+      <Text style={styles.emptySubtext}>Os pedidos aparecerão aqui automaticamente</Text>
+    </View>
+  ), []);
+
+  const ListHeaderComponent = useCallback(() => (
+    grupos.length > 0 ? <Text style={styles.resumoTitle}>📋 Resumo de Pedidos</Text> : null
+  ), [grupos.length]);
 
   return (
     <View style={styles.container}>
@@ -137,8 +201,8 @@ export default function CozinhaScreen() {
           )}
         </View>
         <View style={styles.headerCenter}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Ionicons name="restaurant-outline" size={24} color="#FFF" />
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Ionicons name="restaurant-outline" size={24} color="#FFF" style={{ marginRight: 8 }} />
             <Text style={styles.headerTitle}>Cozinha</Text>
           </View>
         </View>
@@ -147,38 +211,18 @@ export default function CozinhaScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content}>
-        {grupos.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>🍲</Text>
-            <Text style={styles.emptyText}>Nenhum pedido na cozinha</Text>
-            <Text style={styles.emptySubtext}>Os pedidos aparecerão aqui automaticamente</Text>
-          </View>
-        ) : (
-          <View style={styles.listContainer}>
-            <Text style={styles.resumoTitle}>📋 Resumo de Pedidos</Text>
-            {grupos.map((grupo, idx) => (
-              <View key={idx} style={styles.grupoCard}>
-                <View style={styles.grupoHeader}>
-                  <Text style={styles.grupoNome}>{grupo.nome}</Text>
-                  <View style={styles.totalBadge}>
-                    <Text style={styles.totalText}>{grupo.total}x</Text>
-                  </View>
-                </View>
-                <View style={styles.comandasList}>
-                  {grupo.comandas.map((cmd: any, i: number) => (
-                    <View key={i} style={styles.comandaItem}>
-                      <Text style={styles.comandaNumero}>#{cmd.numero}</Text>
-                      {cmd.mesa ? <Text style={styles.comandaNumero}> (Mesa {cmd.mesa})</Text> : null}
-                      <Text style={styles.comandaQtd}>{cmd.quantidade}x</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            ))}
-          </View>
-        )}
-      </ScrollView>
+      <OptimizedFlatList
+        data={grupos}
+        renderItem={renderGrupoItem}
+        keyExtractor={keyExtractor}
+        ListEmptyComponent={ListEmptyComponent}
+        ListHeaderComponent={ListHeaderComponent}
+        contentContainerStyle={styles.listContainer}
+        itemHeight={120}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+      />
 
       <StatusBar style="dark" />
     </View>
@@ -234,9 +278,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 5,
   },
-  content: {
-    flex: 1,
+  listContainer: {
     padding: 20,
+    paddingBottom: 20,
   },
   emptyState: {
     alignItems: 'center',
@@ -256,9 +300,6 @@ const styles = StyleSheet.create({
   emptySubtext: {
     fontSize: 14,
     color: '#999',
-  },
-  listContainer: {
-    paddingBottom: 20,
   },
   resumoTitle: {
     fontSize: 18,

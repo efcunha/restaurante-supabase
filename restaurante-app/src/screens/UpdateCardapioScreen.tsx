@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Alert, StyleSheet } from 'react-native';
-import { collection, doc, getDoc, setDoc, deleteDoc, getDocs, updateDoc, addDoc } from 'firebase/firestore';
-import { db } from '../config/firebaseConfig';
+import { supabase } from '../config/SupabaseConfig';
 
 const novoCardapio = [
   // Espetinhos - R$ 12,00 cada
@@ -28,9 +27,6 @@ const novoCardapio = [
 ];
 
 import { useAuth } from '../context/AuthContext';
-import { getCompanyCollection, getCompanyDoc } from '../utils/firestoreUtils';
-
-// ... (imports remain)
 
 export default function UpdateCardapioScreen() {
   const { user } = useAuth();
@@ -46,20 +42,29 @@ export default function UpdateCardapioScreen() {
     setLoading(true);
     try {
       // 1. Limpar produtos existentes
-      // @ts-ignore
-      const produtosRef = getCompanyCollection(user.companyId, 'produtos');
-      const snapshot = await getDocs(produtosRef);
+      const { error: deleteError } = await supabase
+        .from('products')
+        .delete()
+        .eq('company_id', user.companyId);
 
-      for (const docSnap of snapshot.docs) {
-        // @ts-ignore
-        await deleteDoc(getCompanyDoc(user.companyId, 'produtos', docSnap.id));
-      }
+      if (deleteError) throw deleteError;
 
       // 2. Adicionar novos produtos
-      for (const produto of novoCardapio) {
-        // @ts-ignore
-        await addDoc(produtosRef, produto);
-      }
+      const produtosComCompany = novoCardapio.map(produto => ({
+        name: produto.nome,
+        price: produto.preco,
+        category: produto.categoria,
+        active: produto.ativo,
+        company_id: user.companyId,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }));
+
+      const { error: insertError } = await supabase
+        .from('products')
+        .insert(produtosComCompany);
+
+      if (insertError) throw insertError;
 
       Alert.alert('Sucesso!', `Cardápio atualizado com ${novoCardapio.length} produtos`);
     } catch (error: any) {

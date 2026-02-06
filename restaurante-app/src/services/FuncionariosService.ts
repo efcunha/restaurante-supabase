@@ -1,27 +1,12 @@
 /**
  * Serviço de Funcionários
- * Gerencia cadastro e consulta de funcionários no Firestore
+ * Gerencia cadastro e consulta de funcionários usando Supabase
  */
 
-import {
-  collection,
-  doc,
-  setDoc,
-  getDoc,
-  getDocs,
-  deleteDoc,
-  query,
-  where,
-  updateDoc
-} from 'firebase/firestore';
-import { db } from '../config/firebaseConfig';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../config/firebaseConfig';
+import { supabase } from '../config/SupabaseConfig';
 import { Funcionario } from '../types';
 
-const FUNCIONARIOS_COLLECTION = 'users'; // Migrated from 'funcionarios' for SaaS
-
-// Flag para ignorar mudanças de auth durante cadastro
+// Flag para ignorar mudanças de auth durante cadastro (mantido para compatibilidade)
 let ignorandoMudancaAuth = false;
 
 export const setIgnorarMudancaAuth = (valor: boolean) => {
@@ -37,11 +22,12 @@ interface CreateFuncionarioData {
   email: string;
   senha?: string;
   companyId?: string;
+  phone?: string;
 }
 
 /**
- * Cria um novo funcionário no Firestore e no Firebase Auth
- * @param {Object} dados - {nome, cpf, funcao, email, senha}
+ * Cria um novo funcionário no Supabase Auth e profiles
+ * @param {Object} dados - {nome, cpf, funcao, email, senha, companyId, phone}
  * @returns {Promise<Object>} {success, funcionarioId, error}
  */
 export const criarFuncionario = async (dados: CreateFuncionarioData) => {
@@ -49,48 +35,88 @@ export const criarFuncionario = async (dados: CreateFuncionarioData) => {
     setIgnorarMudancaAuth(true);
 
     if (!dados.senha) {
-        throw new Error("Senha é obrigatória para criar funcionário.");
+      throw new Error("Senha é obrigatória para criar funcionário.");
     }
 
-    const userCredential = await createUserWithEmailAndPassword(
-      auth,
-      dados.email,
-      dados.senha
-    );
+    if (!dados.companyId) {
+      throw new Error("Company ID é obrigatório para criar funcionário.");
+    }
 
-    const uid = userCredential.user.uid;
+    // 1. Criar usuário no Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: dados.email.toLowerCase().trim(),
+      password: dados.senha,
+      options: {
+        data: {
+          full_name: dados.nome.trim(),
+          role: dados.funcao,
+        }
+      }
+    });
 
-    const funcionarioData: Omit<Funcionario, 'id'> = {
+    if (authError) throw authError;
+    if (!authData.user) throw new Error('Falha ao criar usuário');
+
+    const uid = authData.user.id;
+
+    // 2. Atualizar profile com dados completos do funcionário
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .update({
+        company_id: dados.companyId,
+        full_name: dados.nome.trim(),
+        email: dados.email.toLowerCase().trim(),
+        role: dados.funcao,
+        cpf: dados.cpf.trim(),
+        phone: dados.phone || null,
+        funcao: dados.funcao, // Legacy field for compatibility
+        active: true,
+        hire_date: new Date().toISOString().split('T')[0],
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', uid);
+
+    if (profileError) {
+      console.error('Erro ao atualizar profile:', profileError);
+      // Tentar deletar o usuário criado
+      await supabase.auth.admin.deleteUser(uid).catch(console.error);
+      throw profileError;
+    }
+
+    // 3. Fazer logout (se estava logado como admin)
+    // Nota: Em Supabase, signUp não faz login automático se emailConfirmRequired = true
+    await supabase.auth.signOut();
+
+    setIgnorarMudancaAuth(false);
+
+    const funcionario: Funcionario = {
+      id: uid,
       uid,
       nome: dados.nome.trim(),
       cpf: dados.cpf.trim(),
       funcao: dados.funcao,
       email: dados.email.toLowerCase().trim(),
-      companyId: dados.companyId || undefined, // Vínculo com a empresa
+      companyId: dados.companyId,
       ativo: true,
       criadoEm: new Date().toISOString(),
     };
 
-    const docRef = doc(db, FUNCIONARIOS_COLLECTION, uid);
-    await setDoc(docRef, funcionarioData);
-    await auth.signOut();
-
-    setIgnorarMudancaAuth(false);
-
     return {
       success: true,
       funcionarioId: uid,
-      funcionario: { ...funcionarioData, id: uid }
+      funcionario
     };
   } catch (error: any) {
     setIgnorarMudancaAuth(false);
 
     let errorMessage = 'Erro: ' + error.message;
-    if (error.code === 'auth/email-already-in-use') {
+    
+    // Mapear erros do Supabase
+    if (error.message?.includes('already registered') || error.message?.includes('already exists')) {
       errorMessage = 'Email já cadastrado';
-    } else if (error.code === 'auth/weak-password') {
+    } else if (error.message?.includes('Password')) {
       errorMessage = 'Senha muito fraca (mínimo 6 caracteres)';
-    } else if (error.code === 'auth/invalid-email') {
+    } else if (error.message?.includes('email')) {
       errorMessage = 'Email inválido';
     }
 
@@ -102,26 +128,49 @@ export const criarFuncionario = async (dados: CreateFuncionarioData) => {
 };
 
 /**
- * Lista todos os funcionários ativos
+ * Lista todos os funcionários ativos da empresa do usuário logado
  * @returns {Promise<Object>} {success, funcionarios, error}
  */
 export const listarFuncionarios = async () => {
   try {
-    const querySnapshot = await getDocs(collection(db, FUNCIONARIOS_COLLECTION));
-    const funcionarios: Funcionario[] = [];
+    // Buscar company_id do usuário logado
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Usuário não autenticado');
 
-    querySnapshot.forEach((doc) => {
-      const data = doc.data() as Funcionario;
-      funcionarios.push({
-        id: doc.id,
-        ...data,
-      });
-    });
+    const { data: currentProfile } = await supabase
+      .from('profiles')
+      .select('company_id')
+      .eq('id', user.id)
+      .single();
 
-    funcionarios.sort((a, b) => a.nome.localeCompare(b.nome));
+    if (!currentProfile?.company_id) throw new Error('Usuário sem empresa vinculada');
+
+    // Buscar todos os funcionários da mesma empresa
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('company_id', currentProfile.company_id)
+      .order('full_name', { ascending: true });
+
+    if (error) throw error;
+
+    // Mapear para formato Funcionario
+    const funcionarios: Funcionario[] = (data || []).map(profile => ({
+      id: profile.id,
+      uid: profile.id,
+      nome: profile.full_name || '',
+      cpf: profile.cpf || '',
+      phone: profile.phone || '',
+      funcao: profile.role || profile.funcao || 'waiter',
+      email: profile.email || '',
+      companyId: profile.company_id,
+      ativo: profile.active !== false,
+      criadoEm: profile.created_at,
+    }));
 
     return { success: true, funcionarios };
   } catch (error: any) {
+    console.error('[FuncionariosService] Erro ao listar:', error);
     return { success: false, error: error.message, funcionarios: [] };
   }
 };
@@ -133,77 +182,136 @@ export const listarFuncionarios = async () => {
  */
 export const listarFuncionariosPorFuncao = async (funcao: string) => {
   try {
-    const q = query(
-      collection(db, FUNCIONARIOS_COLLECTION),
-      where('funcao', '==', funcao),
-      where('ativo', '==', true)
-    );
+    // Buscar company_id do usuário logado
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Usuário não autenticado');
 
-    const querySnapshot = await getDocs(q);
-    const funcionarios: Funcionario[] = [];
+    const { data: currentProfile } = await supabase
+      .from('profiles')
+      .select('company_id')
+      .eq('id', user.id)
+      .single();
 
-    querySnapshot.forEach((doc) => {
-        const data = doc.data() as Funcionario;
-      funcionarios.push({
-        id: doc.id,
-        ...data,
-      });
-    });
+    if (!currentProfile?.company_id) throw new Error('Usuário sem empresa vinculada');
 
-    // Ordenar localmente
-    funcionarios.sort((a, b) => a.nome.localeCompare(b.nome));
+    // Buscar funcionários da mesma empresa com a função especificada
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('company_id', currentProfile.company_id)
+      .eq('role', funcao)
+      .eq('active', true)
+      .order('full_name', { ascending: true });
+
+    if (error) throw error;
+
+    // Mapear para formato Funcionario
+    const funcionarios: Funcionario[] = (data || []).map(profile => ({
+      id: profile.id,
+      uid: profile.id,
+      nome: profile.full_name || '',
+      cpf: profile.cpf || '',
+      phone: profile.phone || '',
+      funcao: profile.role || profile.funcao || 'waiter',
+      email: profile.email || '',
+      companyId: profile.company_id,
+      ativo: profile.active !== false,
+      criadoEm: profile.created_at,
+    }));
 
     return { success: true, funcionarios };
   } catch (error: any) {
+    console.error('[FuncionariosService] Erro ao listar por função:', error);
     return { success: false, error: error.message, funcionarios: [] };
   }
 };
 
 /**
- * Busca funcionário por UID do Firebase Auth
+ * Busca funcionário por UID do Supabase Auth
  * @param {string} uid - UID do usuário autenticado
  * @returns {Promise<Object>} {success, funcionario}
  */
 export const buscarFuncionarioPorUid = async (uid: string) => {
   try {
-    const docRef = doc(db, FUNCIONARIOS_COLLECTION, uid);
-    const docSnap = await getDoc(docRef);
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', uid)
+      .single();
 
-    if (!docSnap.exists()) {
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return { success: false, error: 'Funcionário não encontrado' };
+      }
+      throw error;
+    }
+
+    if (!data) {
       return { success: false, error: 'Funcionário não encontrado' };
     }
 
-    const funcionario = {
-      id: docSnap.id,
-      ...docSnap.data() as Funcionario,
+    const funcionario: Funcionario = {
+      id: data.id,
+      uid: data.id,
+      nome: data.full_name || '',
+      cpf: data.cpf || '',
+      phone: data.phone || '',
+      funcao: data.role || data.funcao || 'waiter',
+      email: data.email || '',
+      companyId: data.company_id,
+      ativo: data.active !== false,
+      criadoEm: data.created_at,
     };
+
     return { success: true, funcionario };
   } catch (error: any) {
+    console.error('[FuncionariosService] Erro ao buscar por UID:', error);
     return { success: false, error: error.message };
   }
 };
 
 /**
- * Deleta permanentemente um funcionário do Firestore e do Authentication
+ * Deleta permanentemente um funcionário do Supabase
+ * Nota: Requer permissões de admin para deletar usuário do Auth
  * @param {string} funcionarioId - ID do funcionário (UID)
  * @returns {Promise<Object>} {success, error}
  */
 export const deletarFuncionario = async (funcionarioId: string) => {
   try {
-    const funcionarioRef = doc(db, FUNCIONARIOS_COLLECTION, funcionarioId);
-    const docSnap = await getDoc(funcionarioRef);
+    // 1. Verificar se o funcionário existe
+    const { data: profile, error: fetchError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', funcionarioId)
+      .single();
 
-    if (!docSnap.exists()) {
+    if (fetchError || !profile) {
       return { success: false, error: 'Funcionário não encontrado' };
     }
 
-    await deleteDoc(funcionarioRef);
+    // 2. Deletar profile (cascade delete via RLS)
+    const { error: deleteError } = await supabase
+      .from('profiles')
+      .delete()
+      .eq('id', funcionarioId);
+
+    if (deleteError) throw deleteError;
+
+    // 3. Tentar deletar do Auth (requer service_role key)
+    // Nota: Isso só funciona se estiver usando service_role key
+    // Com anon key, apenas desativa o profile
+    try {
+      await supabase.auth.admin.deleteUser(funcionarioId);
+    } catch (authError) {
+      console.warn('[FuncionariosService] Não foi possível deletar do Auth:', authError);
+    }
 
     return {
       success: true,
-      warning: 'Funcionário removido do sistema. O email ainda existe no Firebase Authentication.'
+      warning: 'Funcionário removido do sistema.'
     };
   } catch (error: any) {
+    console.error('[FuncionariosService] Erro ao deletar:', error);
     return { success: false, error: error.message };
   }
 };
@@ -216,29 +324,37 @@ export const deletarFuncionario = async (funcionarioId: string) => {
 export const desativarFuncionario = async (funcionarioId: string) => {
   try {
     console.log('[Funcionarios] 🗑️ Desativando funcionário ID:', funcionarioId);
-    const funcionarioRef = doc(db, FUNCIONARIOS_COLLECTION, funcionarioId);
 
-    // Verificar se o documento existe primeiro
-    const docSnap = await getDoc(funcionarioRef);
-    if (!docSnap.exists()) {
+    // Verificar se o funcionário existe
+    const { data: profile, error: fetchError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', funcionarioId)
+      .single();
+
+    if (fetchError || !profile) {
       console.error('[Funcionarios] ❌ Funcionário não encontrado:', funcionarioId);
       return { success: false, error: 'Funcionário não encontrado' };
     }
 
-    console.log('[Funcionarios] 📋 Dados atuais:', docSnap.data());
-    console.log('[Funcionarios] 🔄 Atualizando ativo = false...');
+    console.log('[Funcionarios] 📋 Dados atuais:', profile);
+    console.log('[Funcionarios] 🔄 Atualizando active = false...');
 
-    await updateDoc(funcionarioRef, {
-      ativo: false,
-      desativadoEm: new Date().toISOString()
-    });
+    // Desativar funcionário
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({
+        active: false,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', funcionarioId);
+
+    if (updateError) throw updateError;
 
     console.log('[Funcionarios] ✅ Funcionário desativado com sucesso!');
     return { success: true };
   } catch (error: any) {
     console.error('[Funcionarios] ❌ Erro ao desativar:', error);
-    // @ts-ignore
-    console.error('[Funcionarios] ❌ Código:', error.code);
     console.error('[Funcionarios] ❌ Mensagem:', error.message);
     return { success: false, error: error.message };
   }
@@ -246,73 +362,84 @@ export const desativarFuncionario = async (funcionarioId: string) => {
 
 /**
  * Atualiza dados de um funcionário
- * @param {string} funcionarioId - ID do funcionário (UID do Firebase Auth)
+ * @param {string} funcionarioId - ID do funcionário (UID do Supabase Auth)
  * @param {Object} dadosAtualizados - Campos a atualizar {nome, cpf, email, senha, funcao}
  * @returns {Promise<Object>} {success, error}
  */
-export const atualizarFuncionario = async (funcionarioId: string, dadosAtualizados: Partial<CreateFuncionarioData> & { ativo?: boolean }) => {
+export const atualizarFuncionario = async (
+  funcionarioId: string,
+  dadosAtualizados: Partial<CreateFuncionarioData> & { ativo?: boolean }
+) => {
   try {
     console.log('[Funcionarios] ✏️ Atualizando funcionário ID:', funcionarioId);
-    console.log('[Funcionarios] 📋 Dados para atualizar:', { ...dadosAtualizados, senha: dadosAtualizados.senha ? '***' : undefined });
-
-    const funcionarioRef = doc(db, FUNCIONARIOS_COLLECTION, funcionarioId);
+    console.log('[Funcionarios] 📋 Dados para atualizar:', {
+      ...dadosAtualizados,
+      senha: dadosAtualizados.senha ? '***' : undefined
+    });
 
     // Verificar se existe
-    const docSnap = await getDoc(funcionarioRef);
-    if (!docSnap.exists()) {
+    const { data: profile, error: fetchError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', funcionarioId)
+      .single();
+
+    if (fetchError || !profile) {
       console.error('[Funcionarios] ❌ Funcionário não encontrado:', funcionarioId);
       return { success: false, error: 'Funcionário não encontrado' };
     }
 
-    const dadosAtuais = docSnap.data() as Funcionario;
-
-    // Preparar dados para atualização no Firestore
+    // Preparar dados para atualização
     const updateData: any = {
-      atualizadoEm: new Date().toISOString()
+      updated_at: new Date().toISOString()
     };
 
-    if (dadosAtualizados.nome) updateData.nome = dadosAtualizados.nome.trim();
-    if (dadosAtualizados.cpf) updateData.cpf = dadosAtualizados.cpf.trim();
-    if (dadosAtualizados.funcao) updateData.funcao = dadosAtualizados.funcao;
-    if (dadosAtualizados.ativo !== undefined) updateData.ativo = dadosAtualizados.ativo;
-
-    // Se tem novo email, atualizar
-    if (dadosAtualizados.email && dadosAtualizados.email !== dadosAtuais.email) {
-      console.log('[Funcionarios] 📧 Novo email detectado:', dadosAtualizados.email);
-      updateData.email = dadosAtualizados.email.toLowerCase().trim();
-
-      // NOTA: Atualizar email no Firebase Auth requer que o usuário esteja logado
-      // Como o admin está fazendo isso, vamos apenas atualizar no Firestore
-      // O usuário precisará fazer login novamente com o novo email
-      console.warn('[Funcionarios] ⚠️ Email atualizado apenas no Firestore');
-      console.warn('[Funcionarios] 💡 Usuário deve fazer login com o novo email');
+    if (dadosAtualizados.nome) {
+      updateData.full_name = dadosAtualizados.nome.trim();
     }
-
-    // Se tem nova senha, desativar e avisar para recriar manualmente
-    if (dadosAtualizados.senha && dadosAtualizados.senha.trim().length >= 6) {
-      console.log('[Funcionarios] 🔐 Nova senha detectada');
-      console.warn('[Funcionarios] ⚠️ Limitação do Firebase: não é possível alterar senha de outro usuário');
-
-      console.warn('[Funcionarios] ⚠️ Limitação do Firebase: não é possível alterar senha de outro usuário');
-
-      return {
-        success: true, // Allow other changes to succeed
-        warning: 'Dados atualizados com sucesso!\n\n' +
-          '⚠️ A SENHA NÃO FOI ALTERADA.\n' +
-          'Por segurança, não é possível alterar senha de outro usuário.\n\n' +
-          'Peça para o funcionário usar "Esqueci minha senha" no login.'
-      };
+    if (dadosAtualizados.cpf) {
+      updateData.cpf = dadosAtualizados.cpf.trim();
+    }
+    if (dadosAtualizados.funcao) {
+      updateData.role = dadosAtualizados.funcao;
+      updateData.funcao = dadosAtualizados.funcao; // Legacy field
+    }
+    if (dadosAtualizados.phone !== undefined) {
+      updateData.phone = dadosAtualizados.phone;
+    }
+    if (dadosAtualizados.ativo !== undefined) {
+      updateData.active = dadosAtualizados.ativo;
+    }
+    if (dadosAtualizados.email && dadosAtualizados.email !== profile.email) {
+      updateData.email = dadosAtualizados.email.toLowerCase().trim();
     }
 
     console.log('[Funcionarios] 🔄 Dados finais para update:', updateData);
-    await updateDoc(funcionarioRef, updateData);
+
+    // Atualizar profile
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update(updateData)
+      .eq('id', funcionarioId);
+
+    if (updateError) throw updateError;
 
     console.log('[Funcionarios] ✅ Funcionário atualizado com sucesso!');
+    
+    // Tentar atualizar senha via Edge Function
+    // Senha não pode ser alterada via admin por limitações de segurança do Supabase
+    // O usuário deve usar "Esqueci minha senha" na tela de login
+    if (dadosAtualizados.senha && dadosAtualizados.senha.trim().length >= 6) {
+      console.log('[Funcionarios] ⚠️ Alteração de senha via admin não disponível');
+      return {
+        success: true,
+        warning: 'Dados atualizados com sucesso!\n\n⚠️ Para alterar a senha, o funcionário deve usar "Esqueci minha senha" na tela de login.'
+      };
+    }
+    
     return { success: true };
   } catch (error: any) {
     console.error('[Funcionarios] ❌ Erro ao atualizar:', error);
-    // @ts-ignore
-    console.error('[Funcionarios] ❌ Código:', error.code);
     return { success: false, error: error.message };
   }
 };

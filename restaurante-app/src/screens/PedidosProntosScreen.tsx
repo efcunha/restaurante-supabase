@@ -1,15 +1,15 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 // @ts-ignore
 import BackgroundPattern from '../components/BackgroundPattern';
 import PedidoDetalhesModal from './PedidoDetalhesModal';
-import { getCompanyCollection, getCompanyDoc } from '../utils/firestoreUtils';
-import { query, where, onSnapshot, updateDoc } from 'firebase/firestore';
+import { supabase } from '../config/SupabaseConfig';
 import { getLocalDateKey } from '../utils/dateUtils';
 import { exitApp } from '../utils/appUtils';
+import OptimizedFlatList from '../components/OptimizedFlatList';
 
 export default function PedidosProntosScreen() {
   const { user } = useAuth();
@@ -23,27 +23,54 @@ export default function PedidosProntosScreen() {
     // @ts-ignore
     if (!user?.companyId) return;
     const today = getLocalDateKey();
-    const qPedidos = query(
-      // @ts-ignore
-      getCompanyCollection(user.companyId, 'pedidos'),
-      where('dateKey', '==', today)
-    );
 
-    const unsubscribe = onSnapshot(qPedidos, (snapshot) => {
-      const pedidos: any[] = [];
-      snapshot.forEach(doc => {
-        pedidos.push({ id: doc.id, ...doc.data() });
-      });
-      setAllOrders(pedidos);
-    }, (error) => {
-      console.error('Erro ao ouvir pedidos:', error);
-    });
+    // Initial fetch
+    const fetchOrders = async () => {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('company_id', user.companyId)
+        .eq('date_key', today);
 
-    return () => unsubscribe();
+      if (!error && data) {
+        // Map snake_case to camelCase
+        const mappedOrders = data.map(order => ({
+          ...order,
+          itemsWithStatus: order.items_with_status || [],
+          comandaNumber: order.comanda_number,
+          mesa: order.table_number?.toString() || '',
+          comandaStatus: order.comanda_status
+        }));
+        setAllOrders(mappedOrders);
+      }
+    };
+
+    fetchOrders();
+
+    // Subscribe to real-time changes
+    const channel = supabase
+      .channel(`orders-prontos-${user.companyId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders',
+          filter: `company_id=eq.${user.companyId}`
+        },
+        () => {
+          fetchOrders();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
   }, [user]);
 
-  // Buscar pedidos com status montagem ou churrasqueira que têm itens marcados como prontos
-  const churrasqueiraOrders = allOrders.filter(o => o.status === 'churrasqueira' || o.status === 'montagem');
+  // Buscar pedidos com status preparing que têm itens marcados como prontos
+  const churrasqueiraOrders = allOrders.filter(o => o.status === 'preparing');
 
   // Extrair itens prontos individuais (que ainda NÃO foram entregues)
   const readyItems: any[] = [];
@@ -89,7 +116,7 @@ export default function PedidosProntosScreen() {
     return timeA - timeB;
   });
 
-  const handleDeliver = async (orderId: string, itemId: string) => {
+  const handleDeliver = useCallback(async (orderId: string, itemId: string) => {
     console.log('[Prontos] Delivering item:', orderId, itemId);
 
     // Validar se caixa está aberto
@@ -131,25 +158,25 @@ export default function PedidosProntosScreen() {
       const allDelivered = updatedItems.every((item: any) => item.delivered === true);
 
       const updatePayload: any = {
-        itemsWithStatus: updatedItems,
-        atualizadoEm: now
+        items_with_status: updatedItems,
+        updated_at: now
       };
 
+      // Se todos os itens foram entregues, atualizar status do pedido
       if (allDelivered) {
         updatePayload.status = 'delivered';
-        updatePayload.deliveredAt = now;
-        // @ts-ignore
-        updatePayload.entreguePor = user?.id || null;
-        // @ts-ignore
-        updatePayload.entreguePorNome = user?.nome || null;
       }
 
       // @ts-ignore
       console.log('[Prontos] Updating doc:', user.companyId, orderId);
-      // Atualizar diretamente no Firebase
-      // @ts-ignore
-      const pedidoRef = getCompanyDoc(user.companyId, 'pedidos', orderId);
-      await updateDoc(pedidoRef, updatePayload);
+      // Atualizar no Supabase
+      const { error: updateError } = await supabase
+        .from('orders')
+        .update(updatePayload)
+        .eq('company_id', user.companyId)
+        .eq('id', orderId);
+
+      if (updateError) throw updateError;
       console.log('[Prontos] Update success!');
 
       setProcessingItems(prev => {
@@ -172,7 +199,53 @@ export default function PedidosProntosScreen() {
         return newSet;
       });
     }
-  };
+  }, [allOrders, user]);
+
+  const renderItem = useCallback(({ item }: { item: any }) => (
+    <View
+      style={styles.itemCard}
+    >
+      <View style={styles.itemHeader}>
+        <Text style={styles.comandaNumber}>
+          Comanda {item.comandaNumber || '?'}
+          {item.mesa ? ` - Mesa ${item.mesa}` : ''}
+        </Text>
+        <Text style={styles.clientName}>{item.client}</Text>
+      </View>
+
+      <View style={styles.itemBody}>
+        <View style={styles.checkIcon}>
+          <Text style={styles.checkIconText}>✓</Text>
+        </View>
+        <Text style={styles.itemName}>{item.name}</Text>
+      </View>
+
+      {item.criadoPorNome && (
+        <Text style={styles.garcomText}>👤 Garçom: {item.criadoPorNome}</Text>
+      )}
+
+      <TouchableOpacity
+        style={styles.deliverBtn}
+        onPress={() => handleDeliver(item.orderId, item.id)}
+      >
+        <Text style={styles.deliverBtnText}>
+          {
+            // @ts-ignore
+            processingItems.has(`${item.orderId}-${item.id}`) ? 'AGUARDE...' : 'ENTREGUE'
+          }
+        </Text>
+      </TouchableOpacity>
+    </View>
+  ), [handleDeliver, processingItems]);
+
+  const keyExtractor = useCallback((item: any) => `${item.orderId}-${item.id}`, []);
+
+  const ListEmptyComponent = useCallback(() => (
+    <View style={styles.emptyState}>
+      <Text style={styles.emptyText}>Nenhum item pronto</Text>
+      <Text style={styles.emptySubtext}>Marque itens na montagem e eles aparecerão aqui</Text>
+    </View>
+  ), []);
 
   const handleCloseModal = () => {
     setModalVisible(false);
@@ -194,8 +267,8 @@ export default function PedidosProntosScreen() {
           )}
         </View>
         <View style={styles.headerCenter}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Ionicons name="checkmark-done-circle-outline" size={24} color="#FFF" />
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Ionicons name="checkmark-done-circle-outline" size={24} color="#FFF" style={{ marginRight: 8 }} />
             <Text style={styles.headerTitle}>Prontos para entrega</Text>
           </View>
         </View>
@@ -204,52 +277,17 @@ export default function PedidosProntosScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content}>
-        {readyItems.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>Nenhum item pronto</Text>
-            <Text style={styles.emptySubtext}>Marque itens na montagem e eles aparecerão aqui</Text>
-          </View>
-        ) : (
-          readyItems.map((item) => (
-            <View
-              key={`${item.orderId}-${item.id}`}
-              style={styles.itemCard}
-            >
-              <View style={styles.itemHeader}>
-                <Text style={styles.comandaNumber}>
-                  Comanda {item.comandaNumber || '?'}
-                  {item.mesa ? ` - Mesa ${item.mesa}` : ''}
-                </Text>
-                <Text style={styles.clientName}>{item.client}</Text>
-              </View>
-
-              <View style={styles.itemBody}>
-                <View style={styles.checkIcon}>
-                  <Text style={styles.checkIconText}>✓</Text>
-                </View>
-                <Text style={styles.itemName}>{item.name}</Text>
-              </View>
-
-              {item.criadoPorNome && (
-                <Text style={styles.garcomText}>👤 Garçom: {item.criadoPorNome}</Text>
-              )}
-
-              <TouchableOpacity
-                style={styles.deliverBtn}
-                onPress={() => handleDeliver(item.orderId, item.id)}
-              >
-                <Text style={styles.deliverBtnText}>
-                  {
-                    // @ts-ignore
-                    processingItems.has(`${item.orderId}-${item.id}`) ? 'AGUARDE...' : 'ENTREGUE'
-                  }
-                </Text>
-              </TouchableOpacity>
-            </View>
-          ))
-        )}
-      </ScrollView>
+      <OptimizedFlatList
+        data={readyItems}
+        renderItem={renderItem}
+        keyExtractor={keyExtractor}
+        ListEmptyComponent={ListEmptyComponent}
+        contentContainerStyle={styles.content}
+        itemHeight={180}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+      />
 
       {selectedOrderId && (
         <PedidoDetalhesModal
@@ -319,7 +357,6 @@ const styles = StyleSheet.create({
     padding: 5,
   },
   content: {
-    flex: 1,
     padding: 20,
   },
   orderCard: {

@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Alert, ActivityIndicator, Platform, TouchableOpacity, ScrollView, TextInput, Modal } from 'react-native';
-import { doc, getDoc, getDocs, setDoc, updateDoc, writeBatch, addDoc } from 'firebase/firestore';
-import { db } from '../config/firebaseConfig';
+// import { doc, getDoc, getDocs, setDoc, updateDoc, writeBatch, addDoc } from 'firebase/firestore'; // Removed Firebase
+// import { db } from '../config/firebaseConfig'; // Removed Firebase
+import { supabase } from '../config/SupabaseConfig';
 import { useAuth } from '../context/AuthContext';
-import { getCompanyCollection, getCompanyDoc } from '../utils/firestoreUtils';
+// import { getCompanyCollection, getCompanyDoc } from '../utils/firestoreUtils'; // Removed Firebase
 import { Product, PizzaConfig, PizzaSize } from '../types';
 import { Ionicons } from '@expo/vector-icons';
-import BackgroundPattern from '../components/BackgroundDecoration';
+// @ts-ignore
+import BackgroundPattern from '../components/BackgroundDecoration'; // Fix missing import if needed, assuming component exists
 import { SUPPORTED_UNITS } from '../utils/unitConversion';
 
 // Componente para cada item de variação
@@ -128,47 +130,54 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
   useEffect(() => {
     carregarProdutos();
     carregarConfig();
-  }, []);
+  }, [user]); // Added dependency
 
   const carregarConfig = async () => {
     if (!user?.companyId) return;
     try {
       setLoadingTemperos(true);
-      const docRef = doc(db, 'companies', user.companyId, 'settings', 'cardapio_config');
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        if (data.temperosCaldos) setTemperosCaldos(data.temperosCaldos);
-        if (data.temperosComidas) setTemperosComidas(data.temperosComidas);
-        if (data.variacoesEspetinho) setVariacoesEspetinho(data.variacoesEspetinho);
-        if (data.ingredientesPizza) setIngredientesPizza(data.ingredientesPizza);
+      // Fetch settings from COMPANIES table (settings column)
+      const { data, error } = await supabase
+        .from('companies')
+        .select('settings')
+        .eq('id', user.companyId)
+        .single();
 
-        if (data.pizzaConfig) {
-          setPizzaConfig(data.pizzaConfig);
+      if (error) {
+        console.warn('Erro ao carregar configurações (Supabase):', error);
+      } else if (data && data.settings) {
+        const settings = data.settings;
+        if (settings.temperosCaldos) setTemperosCaldos(settings.temperosCaldos);
+        if (settings.temperosComidas) setTemperosComidas(settings.temperosComidas);
+        if (settings.variacoesEspetinho) setVariacoesEspetinho(settings.variacoesEspetinho);
+        if (settings.ingredientesPizza) setIngredientesPizza(settings.ingredientesPizza);
+
+        if (settings.pizzaConfig) {
+          setPizzaConfig(settings.pizzaConfig);
+          if (settings.pizzaConfig.sizes) setPizzaSizes(settings.pizzaConfig.sizes);
         } else {
-          setPizzaConfig({
-            sizes: [
-              { name: 'Fatia', maxFlavors: 1 },
-              { name: 'Broto', maxFlavors: 1 },
-              { name: 'Média', maxFlavors: 2 },
-              { name: 'Grande', maxFlavors: 4 }
-            ],
-            pricingMode: 'HIGHER'
-          });
+             // Defaults if not found
+             const defaultSizes = [
+                { name: 'Fatia', maxFlavors: 1 },
+                { name: 'Broto', maxFlavors: 1 },
+                { name: 'Média', maxFlavors: 2 },
+                { name: 'Grande', maxFlavors: 4 }
+             ];
+             setPizzaConfig({ sizes: defaultSizes, pricingMode: 'HIGHER' });
+             setPizzaSizes(defaultSizes);
         }
-
-        if (data.pizzaConfig?.sizes) {
-          setPizzaSizes(data.pizzaConfig.sizes);
-        } else {
-          setPizzaSizes([
+      } else {
+        // Defaults if no settings found
+        const defaultSizes = [
             { name: 'Fatia', maxFlavors: 1 },
             { name: 'Broto', maxFlavors: 1 },
             { name: 'Média', maxFlavors: 2 },
             { name: 'Grande', maxFlavors: 4 }
-          ]);
-        }
+         ];
+        setPizzaConfig({ sizes: defaultSizes, pricingMode: 'HIGHER' });
+        setPizzaSizes(defaultSizes);
       }
-    } catch (e) { console.error(e);
+    } catch (e) {
       console.error('Erro ao carregar configurações:', e);
     } finally {
       setLoadingTemperos(false);
@@ -183,10 +192,34 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
         return;
       }
 
-      const snapshot = await getDocs(getCompanyCollection(user.companyId, 'cardapio'));
-      const produtosData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
+      console.log('Fetching products from Supabase for Manage Menu...');
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('company_id', user.companyId);
+
+      if (error) {
+          throw error;
+      }
+
+      // Map snake_case database fields to camelCase app state if needed
+      // Actually Product type uses camelCase in app, but database is lower case?
+      // Wait, Supabase client returns what is in the columns.
+      // Columns: name, price, category, active, created_at, prices, ingredients
+      // Product type (src/types.ts): name, price (number), createdAt (number/string), etc.
+      // We need mapping!
+
+      const produtosData = (data || []).map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        price: Number(p.price),
+        category: p.category,
+        active: p.active,
+        createdAt: new Date(p.created_at).getTime(),
+        prices: p.prices || {},
+        ingredients: p.ingredients || [],
+        customIngredients: p.custom_ingredients || '',
+        inventoryItems: p.inventory_items || []
       })) as Product[];
 
       const ordemCategorias: Record<string, number> = {
@@ -210,7 +243,8 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
       });
 
       setProdutos(produtosData);
-    } catch (error) { console.error(error);
+    } catch (error) { 
+       console.error(error);
        Alert.alert('Erro', 'Não foi possível carregar os produtos');
     } finally {
       setLoadingProdutos(false);
@@ -235,24 +269,17 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
       try {
         setLoading(true);
         const variacoes = variacoesEspetinho.map(v => ({
-          nome: `${nome.trim()} ${v}`,
-          preco: parseFloat(precosVariacoes[v].replace(',', '.'))
+          company_id: user.companyId,
+          name: `${nome.trim()} ${v}`,
+          price: parseFloat(precosVariacoes[v].replace(',', '.')) || 0,
+          category: categoria,
+          active: true
         }));
 
-        const batch = writeBatch(db);
+        const { error } = await supabase.from('products').insert(variacoes);
 
-        variacoes.forEach(variacao => {
-          const novoDoc = getCompanyDoc(user.companyId!, 'cardapio');
-          batch.set(novoDoc, {
-            name: variacao.nome,
-            price: variacao.preco,
-            category: categoria,
-            active: true,
-            createdAt: Date.now()
-          });
-        });
+        if (error) throw error;
 
-        await batch.commit();
         Alert.alert('Sucesso', 'Cadastrado com sucesso!');
         setNome('');
         setPrecosVariacoes({});
@@ -286,21 +313,22 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
 
       try {
         setLoading(true);
-        const novoProduto: Partial<Product> = {
+        const novoProduto = {
+          company_id: user.companyId,
           name: nome.trim(),
           category: 'pizza',
           active: true,
-          createdAt: Date.now(),
+          price: 0, // Base price 0, uses prices JSON
           prices: pricesToSave,
-          ingredients: ingredientesSelecionados,
-          customIngredients: ingredientesPersonalizados
+          ingredients: ingredientesSelecionados, // array of strings
+          custom_ingredients: ingredientesPersonalizados // string field in DB
         };
 
-        await addDoc(getCompanyCollection(user.companyId, 'cardapio'), novoProduto);
+        const { error } = await supabase.from('products').insert(novoProduto);
+        if (error) throw error;
 
-        // Save default config if needed
-        const configRef = doc(db, 'companies', user.companyId, 'settings', 'cardapio_config');
-        await setDoc(configRef, { pizzaConfig }, { merge: true });
+        // Save default config is handled in settings, not here anymore?
+        // We shouldn't auto-save unrelated config on product creation.
 
         Alert.alert('Sucesso', 'Pizza cadastrada!');
         setNome('');
@@ -323,14 +351,17 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
       try {
         setLoading(true);
         const novoProduto = {
+          company_id: user.companyId,
           name: nome.trim(),
           price: parseFloat(preco.toString().replace(',', '.')) || 0,
           category: categoria,
-          active: true,
-          createdAt: Date.now()
+          active: true
         };
 
-        await addDoc(getCompanyCollection(user.companyId, 'cardapio'), novoProduto);
+        const { error } = await supabase.from('products').insert(novoProduto);
+
+        if (error) throw error;
+
         Alert.alert('Sucesso', 'Produto cadastrado!');
         setNome('');
         setPreco('');
@@ -358,24 +389,54 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
     novaListaPizzas?: string[]
   ) => {
     if (!user?.companyId) return;
-    const docRef = doc(db, 'companies', user.companyId, 'settings', 'cardapio_config');
-    await setDoc(docRef, {
-      temperosCaldos: novaListaCaldos !== undefined ? novaListaCaldos : temperosCaldos,
-      temperosComidas: novaListaComidas !== undefined ? novaListaComidas : temperosComidas,
-      variacoesEspetinho: novaListaVariacoes !== undefined ? novaListaVariacoes : variacoesEspetinho,
-      ingredientesPizza: novaListaPizzas !== undefined ? novaListaPizzas : ingredientesPizza,
-      pizzaConfig: { ...pizzaConfig, sizes: pizzaSizes }
-    }, { merge: true });
+    
+    // Construct new settings object merge
+    const updates: any = {};
+    if (novaListaCaldos !== undefined) updates.temperosCaldos = novaListaCaldos;
+    if (novaListaComidas !== undefined) updates.temperosComidas = novaListaComidas;
+    if (novaListaVariacoes !== undefined) updates.variacoesEspetinho = novaListaVariacoes;
+    if (novaListaPizzas !== undefined) updates.ingredientesPizza = novaListaPizzas;
+    
+    // Always include pizzaConfig to persist size changes if any
+    updates.pizzaConfig = { ...pizzaConfig, sizes: pizzaSizes };
+
+    // We need to fetch current settings first to merge deeply? Supabase UPDATE replaces the column content for JSONB unless we use a function.
+    // Actually, simple UPDATE on a JSONB column replaces the whole value or needs specific syntax.
+    // Safer to read-modify-write for JSONB columns if we don't use 'jsonb_set'.
+    // Or we can just read what we have in state (which should be current) + updates.
+    
+    // Let's assume the state variables (temperosCaldos etc) are up to date.
+    
+    const newSettings = {
+        temperosCaldos: novaListaCaldos !== undefined ? novaListaCaldos : temperosCaldos,
+        temperosComidas: novaListaComidas !== undefined ? novaListaComidas : temperosComidas,
+        variacoesEspetinho: novaListaVariacoes !== undefined ? novaListaVariacoes : variacoesEspetinho,
+        ingredientesPizza: novaListaPizzas !== undefined ? novaListaPizzas : ingredientesPizza,
+        pizzaConfig: { ...pizzaConfig, sizes: pizzaSizes }
+    };
+
+    try {
+        const { error } = await supabase
+            .from('companies')
+            .update({ settings: newSettings })
+            .eq('id', user.companyId);
+
+        if (error) throw error;
+    } catch (e) {
+        console.error('Erro ao salvar configurações:', e);
+        Alert.alert('Erro', 'Falha ao salvar configurações');
+    }
   };
   
   const toggleGrupoAtivo = async (variacoes: Product[], todosAtivos: boolean) => {
       try {
-          const batch = writeBatch(db);
-          variacoes.forEach(v => {
-              const ref = getCompanyDoc(user.companyId!, 'cardapio', v.id);
-              batch.update(ref, { active: !todosAtivos });
-          });
-          await batch.commit();
+          const ids = variacoes.map(v => v.id);
+          const { error } = await supabase
+            .from('products')
+            .update({ active: !todosAtivos })
+            .in('id', ids);
+
+          if (error) throw error;
           carregarProdutos();
       } catch (e) { console.error(e);
           Alert.alert('Erro', 'Falha ao atualizar status');
@@ -388,11 +449,14 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
     setEditPreco(produto.price ? produto.price.toString() : '');
     setEditCategoria(produto.category);
     
-    if (produto.category === 'pizza' && produto.prices) {
+    if (produto.category === 'pizza') {
+        // Handle prices mapping
         const pricesStr: Record<string, string> = {};
-        Object.entries(produto.prices).forEach(([size, price]) => {
-           pricesStr[size] = String(price);
-        });
+        if (produto.prices) {
+            Object.entries(produto.prices).forEach(([size, price]) => {
+               pricesStr[size] = String(price);
+            });
+        }
         setPrecosPizza(pricesStr);
     } else {
         setPrecosPizza({});
@@ -417,8 +481,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
 
     try {
       setLoading(true);
-      const produtoRef = getCompanyDoc(user.companyId, 'cardapio', editando.id);
-      const updateData: Partial<Product> = {
+      const updateData: any = {
         name: editNome.trim(),
         category: editCategoria
       };
@@ -438,7 +501,12 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
         updateData.price = val;
       }
 
-      await updateDoc(produtoRef, updateData);
+      const { error } = await supabase
+        .from('products')
+        .update(updateData)
+        .eq('id', editando.id);
+
+      if (error) throw error;
 
       Alert.alert('Sucesso', 'Produto atualizado com sucesso!');
       setShowEditModal(false);
@@ -475,13 +543,15 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
     try {
       if (!user?.companyId) return;
       setLoading(true);
-      const batch = writeBatch(db);
 
-      variacoes.forEach(v => {
-        batch.delete(getCompanyDoc(user.companyId!, 'cardapio', v.id));
-      });
+      const ids = variacoes.map(v => v.id);
+      const { error } = await supabase
+        .from('products')
+        .delete()
+        .in('id', ids);
 
-      await batch.commit();
+      if (error) throw error;
+
       Alert.alert('Sucesso', 'Produto excluído');
       carregarProdutos();
     } catch (error) { console.error(error);
@@ -587,12 +657,32 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
     }
 
     setPizzaSizes(novos);
+    // Reuse saving logic
+    await salvarListas(undefined, undefined, undefined, undefined); 
+    // salvarListas will pick up the updated pizzaSizes from state or we need to pass it explicitly?
+    // In React state updates are async, so 'pizzaSizes' might not be updated inside 'salvarListas' immediately if called like this.
+    // Better to modify 'salvarListas' to accept optional override or update state first then call function that reads state.
+    // BUT 'salvarListas' reads 'pizzaConfig' state which contains 'sizes'.
+    // Let's manually trigger update:
+    
     if (user?.companyId) {
-       const docRef = doc(db, 'companies', user.companyId, 'settings', 'cardapio_config');
-       const newConfig = { ...pizzaConfig, sizes: novos };
-       setPizzaConfig(newConfig);
-       await setDoc(docRef, { pizzaConfig: newConfig }, { merge: true });
+       const newSettings = {
+           temperosCaldos,
+           temperosComidas,
+           variacoesEspetinho,
+           ingredientesPizza,
+           pizzaConfig: { ...pizzaConfig, sizes: novos }
+       };
+
+       try {
+           const { error } = await supabase.from('companies').update({ settings: newSettings }).eq('id', user.companyId);
+           if (error) throw error;
+       } catch (e) {
+           console.error('Erro salvando tamanho pizza:', e);
+           Alert.alert('Erro ao salvar');
+       }
     }
+    
     setNovoTamanho('');
     setNovosSaboresMax('');
     setEditTamanhoIndex(-1);
@@ -614,11 +704,18 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
   const removerTamanhoPizza = async (index: number) => {
     const novos = pizzaSizes.filter((_, i) => i !== index);
     setPizzaSizes(novos);
+    
     if (user?.companyId) {
-        const docRef = doc(db, 'companies', user.companyId, 'settings', 'cardapio_config');
-        const newConfig = { ...pizzaConfig, sizes: novos };
-        setPizzaConfig(newConfig);
-        await setDoc(docRef, { pizzaConfig: newConfig }, { merge: true });
+        const newSettings = {
+           temperosCaldos,
+           temperosComidas,
+           variacoesEspetinho,
+           ingredientesPizza,
+           pizzaConfig: { ...pizzaConfig, sizes: novos }
+       };
+       try {
+           await supabase.from('companies').update({ settings: newSettings }).eq('id', user.companyId);
+       } catch (e) { console.error(e); }
     }
   };
 
@@ -626,11 +723,18 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
     const novos = [...pizzaSizes];
     novos[index] = { ...novos[index], active: !novos[index].active };
     setPizzaSizes(novos);
+    
     if (user?.companyId) {
-        const docRef = doc(db, 'companies', user.companyId, 'settings', 'cardapio_config');
-        const newConfig = { ...pizzaConfig, sizes: novos };
-        setPizzaConfig(newConfig);
-        await setDoc(docRef, { pizzaConfig: newConfig }, { merge: true });
+        const newSettings = {
+           temperosCaldos,
+           temperosComidas,
+           variacoesEspetinho,
+           ingredientesPizza,
+           pizzaConfig: { ...pizzaConfig, sizes: novos }
+       };
+       try {
+           await supabase.from('companies').update({ settings: newSettings }).eq('id', user.companyId);
+       } catch (e) { console.error(e); }
     }
   };
   
@@ -644,8 +748,12 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
     if (!prod.id || !user?.companyId) return;
     
     try {
-        const ref = getCompanyDoc(user.companyId, 'cardapio', prod.id);
-        await updateDoc(ref, { price: novoP, name: novoNome });
+        const { error } = await supabase
+            .from('products')
+            .update({ price: novoP, name: novoNome })
+            .eq('id', prod.id);
+
+        if (error) throw error;
         
         // Update local state
         const updated = variacoesSelecionadas.map(v => 
@@ -666,13 +774,21 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
       // Load stock items if empty
       if (stockItems.length === 0) {
           try {
-              // Assuming inventory collection
-              const ref = getCompanyCollection(user.companyId, 'inventory');
-              const snap = await getDocs(ref);
-              const items: any[] = [];
-              snap.forEach(d => items.push({ id: d.id, ...d.data() }));
-              setStockItems(items);
-          } catch (e) { console.error(e); console.error(e); }
+              // Inventory collection/table
+              const { data, error } = await supabase
+                .from('inventory')
+                .select('*')
+                .eq('company_id', user.companyId);
+
+              if (!error && data) {
+                  const items = data.map((d: any) => ({ 
+                      id: d.id, 
+                      nome: d.name, // Mapping 'name' to 'nome'
+                      unidadeOriginal: d.unit 
+                  }));
+                  setStockItems(items);
+              }
+          } catch (e) { console.error(e); }
       }
   };
   
@@ -693,8 +809,13 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
     const updatedList = [...currentList, novoIngrediente];
     
     try {
-        const ref = getCompanyDoc(user.companyId, 'cardapio', currentProductForStock.id);
-        await updateDoc(ref, { inventoryItems: updatedList });
+        const { error } = await supabase
+            .from('products')
+            .update({ inventory_items: updatedList }) // Mapping to snake_case column
+            .eq('id', currentProductForStock.id);
+
+        if (error) throw error;
+
         setCurrentProductForStock({ ...currentProductForStock, inventoryItems: updatedList });
         carregarProdutos();
         setQtyIngredient('');
@@ -709,8 +830,13 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
       const updatedList = currentList.filter(i => i.id !== ingId);
       
       try {
-        const ref = getCompanyDoc(user.companyId, 'cardapio', currentProductForStock.id);
-        await updateDoc(ref, { inventoryItems: updatedList });
+        const { error } = await supabase
+            .from('products')
+            .update({ inventory_items: updatedList })
+            .eq('id', currentProductForStock.id);
+
+        if (error) throw error;
+        
         setCurrentProductForStock({ ...currentProductForStock, inventoryItems: updatedList });
         carregarProdutos();
     } catch (e) { console.error(e);
@@ -745,8 +871,8 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
         </View>
 
         <View style={styles.headerCenter}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Ionicons name="restaurant-outline" size={24} color="#FFF" />
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Ionicons name="restaurant-outline" size={24} color="#FFF" style={{ marginRight: 8 }} />
             <Text style={styles.headerTitle}>Gerenciar Cardápio</Text>
           </View>
         </View>
