@@ -1,13 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../config/firebaseConfig';
 import { useAuth } from '../context/AuthContext';
-// @ts-ignore
-import { getCompanyDoc } from '../utils/firestoreUtils';
 // @ts-ignore
 import BackgroundPattern from '../components/BackgroundPattern';
 import { Ionicons } from '@expo/vector-icons';
+import { supabase } from '../config/SupabaseConfig';
 
 interface Props {
   onClose: () => void;
@@ -38,11 +35,18 @@ export default function ConfiguracaoEstoqueScreen({ onClose }: Props) {
         if (!user?.companyId) return;
         try {
             setLoading(true);
-            // @ts-ignore
-            const docRef = getCompanyDoc(user.companyId, 'settings', 'estoque_config');
-            const docSnap = await getDoc(docRef);
-            if (docSnap.exists() && docSnap.data().stockCategories) {
-                setCategorias(docSnap.data().stockCategories);
+            
+            const { data, error } = await supabase
+                .from('settings')
+                .select('*')
+                .eq('company_id', user.companyId)
+                .eq('key', 'estoque_config')
+                .single();
+
+            if (error && error.code !== 'PGRST116') throw error;
+
+            if (data && data.value && data.value.stock_categories) {
+                setCategorias(data.value.stock_categories);
             }
         } catch (error) {
             console.error('Erro ao carregar config:', error);
@@ -54,12 +58,20 @@ export default function ConfiguracaoEstoqueScreen({ onClose }: Props) {
     const salvarConfig = async (novasCategorias: any[]) => {
         try {
             setLoading(true);
-            // @ts-ignore
-            const docRef = getCompanyDoc(user.companyId, 'settings', 'estoque_config');
-            await setDoc(docRef, {
-                stockCategories: novasCategorias,
-                updatedAt: serverTimestamp()
-            }, { merge: true });
+            
+            const { error } = await supabase
+                .from('settings')
+                .upsert({
+                    company_id: user.companyId,
+                    key: 'estoque_config',
+                    value: {
+                        stock_categories: novasCategorias
+                    },
+                    updated_at: new Date().toISOString()
+                });
+
+            if (error) throw error;
+
             setCategorias(novasCategorias);
             Alert.alert('Sucesso', 'Configurações salvas!');
         } catch (error) {

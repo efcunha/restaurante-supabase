@@ -1,21 +1,20 @@
 /**
- * Firestore Data Converter - Optimized
+ * Supabase Data Converter - Optimized
  * 
- * Implementa conversão otimizada de dados Firestore com:
- * - Memoization para evitar re-processamento
- * - Shallow comparison para detectar mudanças
- * - Transformação seletiva apenas de campos alterados
- * - TypeScript interfaces para type safety
- * - Suporte para migração de campos deprecated
+ * Implements optimized data conversion with:
+ * - Memoization to avoid re-processing
+ * - Shallow comparison to detect changes
+ * - Selective transformation of changed fields only
+ * - TypeScript interfaces for type safety
+ * - Support for legacy field migration
  * 
  * Requirements: 11.1, 11.2, 11.3, 11.4, 11.5, 15.3
  */
 
-import { DocumentData, Timestamp } from 'firebase/firestore';
 import { getComandaNumber, getCreatedBy } from './fieldMigrationHelpers';
 
 /**
- * Cache de conversões memoizadas
+ * Memoized conversion cache
  */
 interface ConversionCache {
   hash: string;
@@ -24,32 +23,32 @@ interface ConversionCache {
 }
 
 /**
- * Firestore Converter com memoization
+ * Supabase Converter with memoization
  */
-class FirestoreConverter {
+class SupabaseConverter {
   private cache: Map<string, ConversionCache> = new Map();
-  private readonly CACHE_TTL = 60 * 1000; // 1 minuto
+  private readonly CACHE_TTL = 60 * 1000; // 1 minute
 
   /**
-   * Converte documento Firestore para Order com memoization
+   * Converts Supabase row to Order with memoization
    */
-  firestoreToOrder(doc: DocumentData, docId: string): any {
-    const cacheKey = `order:${docId}`;
+  supabaseToOrder(row: any, rowId: string): any {
+    const cacheKey = `order:${rowId}`;
     
-    // Calcula hash dos dados
-    const dataHash = this.calculateHash(doc);
+    // Calculate data hash
+    const dataHash = this.calculateHash(row);
     
-    // Verifica cache
+    // Check cache
     const cached = this.cache.get(cacheKey);
     if (cached && cached.hash === dataHash) {
-      // Cache hit - retorna resultado memoizado
+      // Cache hit - return memoized result
       return cached.result;
     }
 
-    // Cache miss - converte dados
-    const result = this.convertOrderData(doc, docId);
+    // Cache miss - convert data
+    const result = this.convertOrderData(row, rowId);
 
-    // Armazena no cache
+    // Store in cache
     this.cache.set(cacheKey, {
       hash: dataHash,
       result,
@@ -60,37 +59,39 @@ class FirestoreConverter {
   }
 
   /**
-   * Converte dados do pedido
-   * Usa helpers para suportar campos deprecated durante migração
+   * Converts order data
+   * Uses helpers to support deprecated fields during migration
    */
-  private convertOrderData(doc: DocumentData, docId: string): any {
+  private convertOrderData(row: any, rowId: string): any {
     return {
-      id: docId,
-      companyId: doc.companyId || '',
-      comandaNumber: getComandaNumber(doc), // Suporta ambos os campos
-      dateKey: doc.dateKey || '',
-      status: doc.status || 'pending',
-      items: this.convertItems(doc.items || doc.itens || []),
-      totalAmount: doc.totalAmount || doc.total || 0,
-      isPago: doc.isPago || false,
-      createdBy: getCreatedBy(doc), // Suporta ambos os campos
-      createdAt: this.convertTimestamp(doc.createdAt),
-      updatedAt: this.convertTimestamp(doc.updatedAt),
-      notes: doc.notes || doc.observacoes || '',
-      customerName: doc.customerName || doc.nomeCliente || ''
+      id: rowId,
+      companyId: row.company_id || row.companyId || '',
+      comandaNumber: getComandaNumber(row), // Supports both fields
+      dateKey: row.date_key || row.dateKey || '',
+      status: row.status || 'pending',
+      items: this.convertItems(row.items || row.itens || []),
+      totalAmount: row.total_amount || row.totalAmount || row.total || 0,
+      isPago: row.is_pago || row.isPago || false,
+      createdBy: getCreatedBy(row), // Supports both fields
+      createdAt: this.convertTimestamp(row.created_at || row.createdAt),
+      updatedAt: this.convertTimestamp(row.updated_at || row.updatedAt),
+      notes: row.notes || row.observacoes || '',
+      customerName: row.customer_name || row.customerName || row.nomeCliente || ''
     };
   }
 
   /**
-   * Converte array de itens
+   * Converts items array
    */
   private convertItems(items: any[]): any[] {
+    if (!Array.isArray(items)) return [];
+    
     return items.map(item => ({
       id: item.id || '',
-      productId: item.productId || item.produtoId || '',
+      productId: item.product_id || item.productId || item.produtoId || '',
       name: item.name || item.nome || '',
       quantity: item.quantity || item.quantidade || 0,
-      unitPrice: item.unitPrice || item.precoUnitario || 0,
+      unitPrice: item.unit_price || item.unitPrice || item.precoUnitario || 0,
       subtotal: item.subtotal || 0,
       notes: item.notes || item.observacoes || '',
       modifiers: item.modifiers || item.modificadores || []
@@ -98,95 +99,101 @@ class FirestoreConverter {
   }
 
   /**
-   * Converte Timestamp do Firestore
+   * Converts timestamp (PostgreSQL or ISO string)
    */
   private convertTimestamp(timestamp: any): Date | null {
     if (!timestamp) return null;
     
-    if (timestamp instanceof Timestamp) {
-      return timestamp.toDate();
-    }
-    
-    if (timestamp.seconds) {
-      return new Date(timestamp.seconds * 1000);
-    }
-    
     if (timestamp instanceof Date) {
       return timestamp;
+    }
+    
+    if (typeof timestamp === 'string') {
+      return new Date(timestamp);
+    }
+    
+    if (typeof timestamp === 'number') {
+      return new Date(timestamp);
     }
     
     return null;
   }
 
   /**
-   * Calcula hash simples para shallow comparison
+   * Calculates simple hash for shallow comparison
    */
-  private calculateHash(doc: DocumentData): string {
-    // Usa campos chave para detectar mudanças
+  private calculateHash(row: any): string {
+    // Uses key fields to detect changes
     const keyFields = [
-      doc.id,
-      doc.status,
-      doc.isPago,
-      doc.updatedAt?.seconds || doc.updatedAt?.getTime?.() || 0,
-      doc.items?.length || doc.itens?.length || 0,
-      doc.totalAmount || doc.total || 0
+      row.id,
+      row.status,
+      row.is_pago || row.isPago,
+      row.updated_at || row.updatedAt || 0,
+      row.items?.length || row.itens?.length || 0,
+      row.total_amount || row.totalAmount || row.total || 0
     ];
     
     return keyFields.join(':');
   }
 
   /**
-   * Detecta mudanças entre dois documentos (shallow comparison)
+   * Detects changes between two rows (shallow comparison)
    */
-  hasChanges(oldDoc: DocumentData, newDoc: DocumentData): boolean {
-    const oldHash = this.calculateHash(oldDoc);
-    const newHash = this.calculateHash(newDoc);
+  hasChanges(oldRow: any, newRow: any): boolean {
+    const oldHash = this.calculateHash(oldRow);
+    const newHash = this.calculateHash(newRow);
     
     return oldHash !== newHash;
   }
 
   /**
-   * Converte apenas campos que mudaram
+   * Converts only changed fields
    */
   convertChangedFields(
-    oldDoc: DocumentData,
-    newDoc: DocumentData,
-    docId: string
+    oldRow: any,
+    newRow: any,
+    rowId: string
   ): Partial<any> {
-    if (!this.hasChanges(oldDoc, newDoc)) {
+    if (!this.hasChanges(oldRow, newRow)) {
       return {};
     }
 
     const changes: Partial<any> = {};
 
-    // Verifica cada campo individualmente
-    if (oldDoc.status !== newDoc.status) {
-      changes.status = newDoc.status;
+    // Check each field individually
+    if (oldRow.status !== newRow.status) {
+      changes.status = newRow.status;
     }
 
-    if (oldDoc.isPago !== newDoc.isPago) {
-      changes.isPago = newDoc.isPago;
+    const oldIsPago = oldRow.is_pago || oldRow.isPago;
+    const newIsPago = newRow.is_pago || newRow.isPago;
+    if (oldIsPago !== newIsPago) {
+      changes.isPago = newIsPago;
     }
 
-    if (oldDoc.totalAmount !== newDoc.totalAmount && 
-        oldDoc.total !== newDoc.total) {
-      changes.totalAmount = newDoc.totalAmount || newDoc.total;
+    const oldTotal = oldRow.total_amount || oldRow.totalAmount || oldRow.total;
+    const newTotal = newRow.total_amount || newRow.totalAmount || newRow.total;
+    if (oldTotal !== newTotal) {
+      changes.totalAmount = newTotal;
     }
 
-    if (JSON.stringify(oldDoc.items || oldDoc.itens) !== 
-        JSON.stringify(newDoc.items || newDoc.itens)) {
-      changes.items = this.convertItems(newDoc.items || newDoc.itens || []);
+    const oldItems = JSON.stringify(oldRow.items || oldRow.itens);
+    const newItems = JSON.stringify(newRow.items || newRow.itens);
+    if (oldItems !== newItems) {
+      changes.items = this.convertItems(newRow.items || newRow.itens || []);
     }
 
-    if (oldDoc.updatedAt?.seconds !== newDoc.updatedAt?.seconds) {
-      changes.updatedAt = this.convertTimestamp(newDoc.updatedAt);
+    const oldUpdated = oldRow.updated_at || oldRow.updatedAt;
+    const newUpdated = newRow.updated_at || newRow.updatedAt;
+    if (oldUpdated !== newUpdated) {
+      changes.updatedAt = this.convertTimestamp(newUpdated);
     }
 
     return changes;
   }
 
   /**
-   * Limpa cache expirado
+   * Cleans expired cache
    */
   cleanExpiredCache(): void {
     const now = Date.now();
@@ -199,21 +206,21 @@ class FirestoreConverter {
   }
 
   /**
-   * Invalida cache de um documento específico
+   * Invalidates cache for a specific document
    */
-  invalidateCache(docId: string): void {
-    this.cache.delete(`order:${docId}`);
+  invalidateCache(rowId: string): void {
+    this.cache.delete(`order:${rowId}`);
   }
 
   /**
-   * Limpa todo o cache
+   * Clears all cache
    */
   clearCache(): void {
     this.cache.clear();
   }
 
   /**
-   * Obtém estatísticas do cache
+   * Gets cache statistics
    */
   getCacheStats() {
     return {
@@ -224,7 +231,11 @@ class FirestoreConverter {
 }
 
 // Singleton instance
-export const firestoreConverter = new FirestoreConverter();
+export const supabaseConverter = new SupabaseConverter();
 
-// Export para testes
-export { FirestoreConverter };
+// Legacy export for compatibility
+export const firestoreConverter = supabaseConverter;
+
+// Export for tests
+export { SupabaseConverter };
+

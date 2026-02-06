@@ -11,13 +11,12 @@ import {
     Platform,
     ScrollView
 } from 'react-native';
-import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../config/firebaseConfig';
 import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme/colors';
 import { Ionicons } from '@expo/vector-icons';
 // @ts-ignore
 import { validateCPF, validateCNPJ } from '../utils/validation';
+import { supabase } from '../config/SupabaseConfig';
 
 interface Props {
   onBack: () => void;
@@ -31,6 +30,12 @@ export default function EditarEmpresaScreen({ onBack }: Props) {
     const [restaurantName, setRestaurantName] = useState('');
     const [documentType, setDocumentType] = useState('cpf'); // 'cpf' | 'cnpj'
     const [documentValue, setDocumentValue] = useState('');
+    const [contactName, setContactName] = useState('');
+    const [contactPhone, setContactPhone] = useState('');
+    const [address, setAddress] = useState('');
+    const [city, setCity] = useState('');
+    const [state, setState] = useState('');
+    const [zipCode, setZipCode] = useState('');
 
     // Load initial data
     useEffect(() => {
@@ -39,18 +44,35 @@ export default function EditarEmpresaScreen({ onBack }: Props) {
                 // @ts-ignore
                 if (!user?.companyId) return;
 
-                // @ts-ignore
-                const docRef = doc(db, 'companies', user.companyId);
-                const docSnap = await getDoc(docRef);
+                const { data, error } = await supabase
+                    .from('companies')
+                    .select('*')
+                    .eq('id', user.companyId)
+                    .single();
 
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
+                if (error) throw error;
+
+                if (data) {
                     setRestaurantName(data.name || '');
-                    setDocumentType(data.documentType || 'cpf');
+                    setDocumentType(data.document_type || 'cpf');
+                    setContactName(data.contact_name || '');
+                    setAddress(data.address || '');
+                    setCity(data.city || '');
+                    setState(data.state || '');
 
                     // Format initial document value if exists
                     if (data.document) {
-                        setDocumentValue(formatDocument(data.document, data.documentType || 'cpf'));
+                        setDocumentValue(formatDocument(data.document, data.document_type || 'cpf'));
+                    }
+
+                    // Format initial phone if exists
+                    if (data.contact_phone) {
+                        setContactPhone(formatPhone(data.contact_phone));
+                    }
+
+                    // Format initial CEP if exists
+                    if (data.zip_code) {
+                        setZipCode(formatZipCode(data.zip_code));
                     }
                 }
             } catch (error) {
@@ -86,6 +108,68 @@ export default function EditarEmpresaScreen({ onBack }: Props) {
 
     const handleDocumentChange = (text: string) => {
         setDocumentValue(formatDocument(text, documentType));
+    };
+
+    const formatPhone = (text: string) => {
+        const numbers = text.replace(/\D/g, '');
+        if (numbers.length <= 10) {
+            // Formato: (83) 9917-2452
+            return numbers
+                .replace(/^(\d{2})(\d)/, '($1) $2')
+                .replace(/(\d{4})(\d)/, '$1-$2')
+                .replace(/(-\d{4})\d+?$/, '$1');
+        } else {
+            // Formato: (83) 99917-2452
+            return numbers
+                .replace(/^(\d{2})(\d)/, '($1) $2')
+                .replace(/(\d{5})(\d)/, '$1-$2')
+                .replace(/(-\d{4})\d+?$/, '$1');
+        }
+    };
+
+    const handlePhoneChange = (text: string) => {
+        setContactPhone(formatPhone(text));
+    };
+
+    const formatZipCode = (text: string) => {
+        const numbers = text.replace(/\D/g, '');
+        return numbers
+            .replace(/^(\d{5})(\d)/, '$1-$2')
+            .replace(/(-\d{3})\d+?$/, '$1')
+            .substring(0, 9); // Limita a 8 dígitos + hífen
+    };
+
+    const handleZipCodeChange = (text: string) => {
+        setZipCode(formatZipCode(text));
+    };
+
+    const searchAddressByCEP = async (cep: string) => {
+        const cleanCEP = cep.replace(/\D/g, '');
+        
+        if (cleanCEP.length !== 8) return;
+
+        try {
+            const response = await fetch(`https://viacep.com.br/ws/${cleanCEP}/json/`);
+            const data = await response.json();
+
+            if (data.erro) {
+                Alert.alert('Aviso', 'CEP não encontrado');
+                return;
+            }
+
+            // Preencher campos automaticamente
+            setAddress(data.logradouro || '');
+            setCity(data.localidade || '');
+            setState(data.uf || '');
+            
+            // Mostrar feedback
+            if (Platform.OS === 'web') {
+                console.log('✅ Endereço encontrado:', data);
+            }
+        } catch (error) {
+            console.error('Erro ao buscar CEP:', error);
+            Alert.alert('Erro', 'Não foi possível buscar o endereço. Verifique sua conexão.');
+        }
     };
 
     const handleDocumentTypeChange = (type: string) => {
@@ -124,21 +208,30 @@ export default function EditarEmpresaScreen({ onBack }: Props) {
             // @ts-ignore
             console.log('[EditarEmpresa] 🏢 Atualizando documento:', user.companyId);
 
-            // @ts-ignore
-            const docRef = doc(db, 'companies', user.companyId);
-
             const updateData = {
                 name: restaurantName.trim(),
-                documentType: documentType,
+                document_type: documentType,
                 document: docValidation.value,
-                updatedAt: serverTimestamp(),
+                contact_name: contactName.trim() || null,
+                contact_phone: contactPhone.replace(/\D/g, '') || null,
+                address: address.trim() || null,
+                city: city.trim() || null,
+                state: state.trim() || null,
+                zip_code: zipCode.replace(/\D/g, '') || null,
+                updated_at: new Date().toISOString(),
                 // @ts-ignore
-                updatedBy: user.uid || user.id || 'admin' // Fallback se uid falhar
+                updated_by: user.uid || user.id || 'admin'
             };
 
             console.log('[EditarEmpresa] 📋 Dados:', updateData);
 
-            await updateDoc(docRef, updateData);
+            const { error } = await supabase
+                .from('companies')
+                .update(updateData)
+                // @ts-ignore
+                .eq('id', user.companyId);
+
+            if (error) throw error;
 
             console.log('[EditarEmpresa] ✅ Sucesso!');
 
@@ -177,8 +270,8 @@ export default function EditarEmpresaScreen({ onBack }: Props) {
                     </TouchableOpacity>
                 </View>
                 <View style={styles.headerCenter}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <Ionicons name="business-outline" size={24} color="#FFF" />
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Ionicons name="business-outline" size={24} color="#FFF" style={{ marginRight: 8 }} />
                         <Text style={styles.headerTitle}>Dados da Empresa</Text>
                     </View>
                 </View>
@@ -225,6 +318,75 @@ export default function EditarEmpresaScreen({ onBack }: Props) {
                             placeholder={documentType === 'cpf' ? '000.000.000-00' : '00.000.000/0000-00'}
                             keyboardType="numeric"
                         />
+
+                        <Text style={styles.sectionTitle}>Dados de Contato</Text>
+
+                        <Text style={styles.label}>Nome do Responsável</Text>
+                        <TextInput
+                            style={styles.input}
+                            value={contactName}
+                            onChangeText={setContactName}
+                            placeholder="Nome completo do responsável"
+                        />
+
+                        <Text style={styles.label}>Telefone de Contato</Text>
+                        <TextInput
+                            style={styles.input}
+                            value={contactPhone}
+                            onChangeText={handlePhoneChange}
+                            placeholder="(00) 00000-0000"
+                            keyboardType="phone-pad"
+                        />
+
+                        <Text style={styles.sectionTitle}>Endereço</Text>
+
+                        <Text style={styles.label}>CEP</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <TextInput
+                                style={[styles.input, { flex: 1, marginRight: 10 }]}
+                                value={zipCode}
+                                onChangeText={handleZipCodeChange}
+                                placeholder="00000-000"
+                                keyboardType="numeric"
+                            />
+                            <TouchableOpacity
+                                style={styles.searchButton}
+                                onPress={() => searchAddressByCEP(zipCode)}
+                            >
+                                <Ionicons name="search" size={20} color="#FFF" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <Text style={styles.label}>Endereço Completo</Text>
+                        <TextInput
+                            style={styles.input}
+                            value={address}
+                            onChangeText={setAddress}
+                            placeholder="Rua, número, complemento"
+                        />
+
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                            <View style={{ flex: 2, marginRight: 10 }}>
+                                <Text style={styles.label}>Cidade</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    value={city}
+                                    onChangeText={setCity}
+                                    placeholder="Cidade"
+                                />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.label}>Estado</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    value={state}
+                                    onChangeText={(text) => setState(text.toUpperCase())}
+                                    placeholder="UF"
+                                    maxLength={2}
+                                    autoCapitalize="characters"
+                                />
+                            </View>
+                        </View>
 
                         <TouchableOpacity
                             style={[styles.saveButton, saving && styles.disabledButton]}
@@ -378,5 +540,13 @@ const styles = StyleSheet.create({
         color: '#FFF',
         fontWeight: 'bold',
         fontSize: 16,
+    },
+    searchButton: {
+        backgroundColor: colors.primary,
+        borderRadius: 8,
+        padding: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+        minWidth: 48,
     }
 });

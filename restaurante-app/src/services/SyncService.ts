@@ -1,8 +1,7 @@
 
 import NetInfo from '@react-native-community/netinfo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { db } from '../config/firebaseConfig';
-import { collection, addDoc, updateDoc, doc, setDoc } from 'firebase/firestore';
+import { supabase } from '../config/SupabaseConfig';
 
 const QUEUE_KEY = 'OFFLINE_QUEUE';
 
@@ -13,11 +12,6 @@ interface QueueItem {
   timestamp: number;
   retryCount: number;
 }
-
-import { runTransaction, getDocs, query, where, getDoc } from 'firebase/firestore';
-import { getCompanyCollection, getCompanyDoc } from '../utils/firestoreUtils';
-import CaixaService from './CaixaService';
-import { Comanda } from '../types';
 
 class SyncService {
   private isConnected: boolean = true;
@@ -149,27 +143,101 @@ class SyncService {
     switch (type) {
       case 'ADD_ORDER':
         // payload: { companyId, orderData }
-        // We use setDoc if ID is provided, or addDoc
         if (payload.id) {
-            const docRef = doc(db, 'companies', payload.companyId, 'pedidos', payload.id);
-            await setDoc(docRef, payload.orderData);
+          // Upsert with specific ID
+          const { error } = await supabase
+            .from('orders')
+            .upsert({
+              id: payload.id,
+              company_id: payload.companyId,
+              ...payload.orderData
+            });
+          if (error) throw error;
         } else {
-            const colRef = collection(db, 'companies', payload.companyId, 'pedidos');
-            await addDoc(colRef, payload.orderData);
+          // Insert new order
+          const { error } = await supabase
+            .from('orders')
+            .insert({
+              company_id: payload.companyId,
+              ...payload.orderData
+            });
+          if (error) throw error;
         }
         break;
 
       case 'UPDATE_ORDER':
         // payload: { companyId, orderId, updates }
-        const updateRef = doc(db, 'companies', payload.companyId, 'pedidos', payload.orderId);
-        await updateDoc(updateRef, payload.updates);
+        const { error: updateError } = await supabase
+          .from('orders')
+          .update(payload.updates)
+          .eq('company_id', payload.companyId)
+          .eq('id', payload.orderId);
+        if (updateError) throw updateError;
         break;
         
-     case 'ADD_PAYMENT':
-         // payload: { companyId, paymentData }
-         const payRef = collection(db, 'companies', payload.companyId, 'pagamentos');
-         await addDoc(payRef, payload.paymentData);
-         break;
+      case 'ADD_PAYMENT':
+        // payload: { companyId, paymentData }
+        const { error: paymentError } = await supabase
+          .from('payments')
+          .insert({
+            company_id: payload.companyId,
+            ...payload.paymentData
+          });
+        if (paymentError) throw paymentError;
+        break;
+
+      case 'ADD_PAYMENT_TRANSACTION':
+        // payload: { companyId, dateKey, comandaNumber, forma, valor, usuarioId, usuarioNome }
+        // This should call PagamentosService.registrarPagamento
+        // But to avoid circular dependency, we'll implement it here
+        const { data: comanda, error: findError } = await supabase
+          .from('comandas')
+          .select('*')
+          .eq('company_id', payload.companyId)
+          .eq('date_key', payload.dateKey)
+          .eq('comanda_number', String(payload.comandaNumber))
+          .limit(1)
+          .single();
+
+        if (findError || !comanda) {
+          throw new Error('Comanda não encontrada');
+        }
+
+        const valorNum = typeof payload.valor === 'string' ? parseFloat(payload.valor) : payload.valor;
+        const totalPagoAnt = comanda.total_paid || 0;
+        const novoTotalPago = totalPagoAnt + valorNum;
+        const novoSaldo = Math.max(0, (comanda.total_consumed || 0) - novoTotalPago);
+
+        // Update comanda
+        const { error: updateComandaError } = await supabase
+          .from('comandas')
+          .update({
+            total_paid: novoTotalPago,
+            open_balance: novoSaldo,
+            updated_at: new Date().toISOString()
+          })
+          .eq('company_id', payload.companyId)
+          .eq('id', comanda.id);
+
+        if (updateComandaError) throw updateComandaError;
+
+        // Insert payment record
+        const { error: insertPaymentError } = await supabase
+          .from('payments')
+          .insert({
+            company_id: payload.companyId,
+            comanda_id: comanda.id,
+            comanda_number: String(payload.comandaNumber),
+            date_key: payload.dateKey,
+            valor: valorNum,
+            forma: payload.forma.toLowerCase(),
+            created_at: new Date().toISOString(),
+            received_by: payload.usuarioId,
+            received_by_name: payload.usuarioNome
+          });
+
+        if (insertPaymentError) throw insertPaymentError;
+        break;
 
       default:
         throw new Error(`Operação desconhecida: ${type}`);

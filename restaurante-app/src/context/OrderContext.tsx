@@ -1,8 +1,7 @@
 
 import React, { createContext, useState, useContext, useCallback, useEffect, ReactNode } from 'react';
 import { Platform, Alert } from 'react-native';
-import { getDocs } from 'firebase/firestore';
-import { getCompanyCollection } from '../utils/firestoreUtils';
+import { supabase } from '../config/SupabaseConfig';
 import OrderService from '../services/OrderService';
 import OrderFirestoreService from '../services/OrderFirestoreService';
 import { useAuth } from './AuthContext';
@@ -10,8 +9,6 @@ import SyncService from '../services/SyncService';
 import { Order } from '../types';
 import CaixaService from '../services/CaixaService';
 import ComandasService from '../services/ComandasService';
-import { db } from '../config/firebaseConfig';
-import { query, where, getDocs as getDocsFn, collection } from 'firebase/firestore';
 
 // Dynamic imports are great, but for types we might need to import them or use 'any' if services are JS.
 // Assuming services are JS or TS, we'll try to use standard imports for types if possible, 
@@ -64,23 +61,27 @@ export const useOrders = (): OrderContextType => {
 };
 
 // Helper for calculating total
-const calculateTotalFromFirestore = async (companyId: string, items: string[], priceMap: any = null): Promise<number> => {
+const calculateTotalFromSupabase = async (companyId: string, items: string[], priceMap: any = null): Promise<number> => {
   try {
-    if (!companyId) return 0;
-
     let cardapioMap: Record<string, number> = {};
 
     if (priceMap && Object.keys(priceMap).length > 0) {
-      console.log('⚡ [OrderContext] Usando priceMap fornecido (Cache)');
+      // console.log('⚡ [OrderContext] Usando priceMap fornecido (Cache)');
       cardapioMap = priceMap;
     } else {
-      console.log('⚠️ [OrderContext] priceMap não fornecido, buscando cardápio no Firestore...');
-      const cardapioSnap = await getDocs(getCompanyCollection(companyId, 'cardapio'));
-      cardapioSnap.forEach(doc => {
-        const data = doc.data();
-        if (data.name && data.price) {
-          cardapioMap[data.name.toLowerCase()] = data.price;
-        }
+      // Fetch from Supabase
+      // Assuming RLS handles company_id, or we might need to pass it if we aren't using global auth in this helper context easily.
+      // But this function is called inside the component/hook where auth exists.
+      // Ideally we should inject the prices or fetch them using the service.
+      
+      // Let's use the ProductService or direct supabase call. Direct call is faster here if we just want prices.
+      // We don't have 'supabase' imported here yet, so we will use ProductService.listarProdutos() which is cleaner anyway.
+      
+      const { produtos } = await import('../services/ProductService').then(m => m.listarProdutos());
+      (produtos || []).forEach((p: any) => {
+          if (p.name && p.price) {
+              cardapioMap[p.name.toLowerCase()] = p.price;
+          }
       });
     }
 
@@ -101,7 +102,7 @@ const calculateTotalFromFirestore = async (companyId: string, items: string[], p
       else {
         if (cardapioMap[itemFullLower] !== undefined) price = cardapioMap[itemFullLower];
         else if (cardapioMap[itemBaseLower] !== undefined) price = cardapioMap[itemBaseLower];
-        else console.warn(`⚠️ [calculateTotal] Preço não encontrado para: "${item}"`);
+        // else console.warn(`⚠️ [calculateTotal] Preço não encontrado para: "${item}"`);
       }
 
       const validPrice = typeof price === 'number' && !isNaN(price) ? price : 0;
@@ -111,7 +112,7 @@ const calculateTotalFromFirestore = async (companyId: string, items: string[], p
 
     return typeof total === 'number' && !isNaN(total) ? total : 0;
   } catch (error) {
-    console.error('❌ Erro ao calcular total do Firestore:', error);
+    console.error('❌ Erro ao calcular total (Supabase):', error);
     return 0;
   }
 };
@@ -220,30 +221,35 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     
     try {
         if (isOnline) {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const _db = db; // Keep import if needed for side effects or remove
-
-
             if (!user?.companyId) throw new Error('Empresa não identificada');
 
             const caixa = await CaixaService.getCaixaAberto(user.companyId);
             if (!caixa) throw new Error('Caixa não está aberto. Abra o caixa antes de criar pedidos.');
 
+            // Verificar se comanda já possui pagamentos (usando Supabase)
             if (comandaNumber && comandaNumber.trim() !== '') {
                 const dateKey = new Date().toISOString().split('T')[0];
-                const pagamentosQuery = query(
-                    getCompanyCollection(user.companyId, 'pagamentos'),
-                    where('comandaNumber', '==', String(comandaNumber)),
-                    where('dateKey', '==', dateKey)
-                );
-                if (!(await getDocsFn(pagamentosQuery)).empty) {
+                
+                const { data: pagamentos, error } = await supabase
+                    .from('pagamentos')
+                    .select('id')
+                    .eq('company_id', user.companyId)
+                    .eq('comanda_number', String(comandaNumber))
+                    .eq('date_key', dateKey)
+                    .limit(1);
+
+                if (error) {
+                    console.error('Erro ao verificar pagamentos:', error);
+                }
+
+                if (pagamentos && pagamentos.length > 0) {
                     throw new Error(`Comanda ${comandaNumber} já possui pagamentos.`);
                 }
             }
 
             await ComandasService.ensureComandaAberta(user.companyId, comandaNumber, createdBy, createdByName, mesa, clientName);
 
-            let calculatedTotal = await calculateTotalFromFirestore(user.companyId, items, priceMap);
+            let calculatedTotal = await calculateTotalFromSupabase(user.companyId, items, priceMap);
             if (calculatedTotal === 0 && totalPrice > 0) calculatedTotal = totalPrice;
 
             // If _isPago is passed, we generally ignore it for new orders as they start unpaid, but let's keep it if needed for logic
@@ -313,9 +319,9 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const updatePayload: any = { movidoParaMontagemPor: user?.id || null, movidoParaMontagemPorNome: user?.nome || null };
       if (!order.timeInMontagem) updatePayload.timeInMontagem = now;
 
-      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'montagem', ...updatePayload } : o));
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'preparing', ...updatePayload } : o));
       if (isOnline && firestoreDocId && user?.companyId) {
-          await OrderFirestoreService.updateOrderStatus(user.companyId, firestoreDocId, 'montagem', updatePayload);
+          await OrderFirestoreService.updateOrderStatus(user.companyId, firestoreDocId, 'preparing', updatePayload);
       }
   }, [orders, firestoreDocMap, isOnline, user]);
 
@@ -470,7 +476,7 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
 
   const getOrdersByStatus = useCallback((status: string) => {
-     if (status === 'cozinha') return orders.filter(o => o.status === 'montagem');
+     if (status === 'cozinha') return orders.filter(o => o.status === 'preparing');
      return orders.filter(o => o.status === status);
   }, [orders]);
 

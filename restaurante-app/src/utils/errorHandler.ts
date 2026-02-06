@@ -20,7 +20,8 @@ import {
   ErrorContext
 } from './errors';
 import { auditService } from '../services/AuditService';
-import { auth } from '../config/firebaseConfig';
+// Firebase auth import disabled during Supabase migration
+// import { auth } from '../config/firebaseConfig';
 
 /**
  * Configuração do error handler
@@ -116,8 +117,14 @@ class ErrorHandler {
    */
   private async logError(error: AppError, context: ErrorContext): Promise<void> {
     try {
-      const currentUser = auth.currentUser;
+      // Firebase auth disabled during Supabase migration
+      // const currentUser = auth.currentUser;
       
+      // Temporarily disabled - no user authentication during migration
+      console.error('[ErrorHandler] Error logged (auth disabled):', error.toJSON());
+      return;
+      
+      /*
       if (!currentUser) {
         // Se não há usuário autenticado, apenas log no console
         console.error('[ErrorHandler] Error without authenticated user:', error.toJSON());
@@ -140,6 +147,7 @@ class ErrorHandler {
           }
         });
       }
+      */
     } catch (loggingError) {
       // Não propaga erro de logging
       console.error('[ErrorHandler] Failed to log error:', loggingError);
@@ -215,6 +223,10 @@ class ErrorHandler {
    * Obtém informações do usuário atual
    */
   private async getUserInfo(): Promise<UserInfo> {
+    // Firebase auth disabled during Supabase migration
+    return {};
+    
+    /*
     try {
       const currentUser = auth.currentUser;
       
@@ -235,6 +247,7 @@ class ErrorHandler {
       console.error('[ErrorHandler] Failed to get user info:', error);
       return {};
     }
+    */
   }
 
   /**

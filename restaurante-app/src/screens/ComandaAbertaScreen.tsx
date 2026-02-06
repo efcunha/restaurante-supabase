@@ -3,17 +3,14 @@ import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, RefreshCon
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { query, where, getDocs } from 'firebase/firestore';
-// @ts-ignore
-import { getCompanyCollection } from '../utils/firestoreUtils';
 // @ts-ignore
 import ComandasService from '../services/ComandasService';
 // @ts-ignore
 import PagamentosService from '../services/PagamentosService';
 // @ts-ignore
 import BackgroundPattern from '../components/BackgroundPattern';
-import { getTodayKey } from '../services/FirebaseOptimizations';
 import { exitApp } from '../utils/appUtils';
+import { supabase } from '../config/SupabaseConfig';
 
 export default function ComandaAbertaScreen() {
   const { user } = useAuth();
@@ -53,23 +50,26 @@ export default function ComandaAbertaScreen() {
   const loadPedidosComanda = async (comandaNumber: string | number) => {
     // @ts-ignore
     if (!user?.companyId) return;
-    const q = query(
-      // @ts-ignore
-      getCompanyCollection(user.companyId, 'pedidos'),
-      where('numeroComanda', '==', String(comandaNumber)),
-      where('status', 'in', ['churrasqueira', 'montagem', 'pronto', 'entregue'])
-    );
-    const snap = await getDocs(q);
-    const list: any[] = [];
-    snap.forEach(d => {
-      const data = d.data();
-      list.push({
-        id: data.idFormatado || d.id,
-        items: data.itens || [],
-        status: data.status,
-        totalPrice: data.totalPrice || 0,
-      });
-    });
+    
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('company_id', user.companyId)
+      .eq('comanda_number', String(comandaNumber))
+      .in('status', ['preparing', 'ready', 'delivered']);
+
+    if (error) {
+      console.error('Error loading pedidos:', error);
+      return;
+    }
+
+    const list = (data || []).map(d => ({
+      id: d.id_formatado || d.id,
+      items: d.items || [],
+      status: d.status,
+      totalPrice: d.total_amount || 0, // ✅ FIXED: total_amount not total_price
+    }));
+    
     setPedidos(list);
   };
 
@@ -84,23 +84,28 @@ export default function ComandaAbertaScreen() {
     if (!user?.companyId) return;
     const hoje = new Date().toISOString().split('T')[0];
     console.log('🔍 Buscando pagamentos - Comanda:', comandaNumber, 'Data:', hoje);
-    const q = query(
-      // @ts-ignore
-      getCompanyCollection(user.companyId, 'pagamentos'),
-      where('comandaNumber', '==', String(comandaNumber)),
-      where('dateKey', '==', hoje)
-    );
-    const snap = await getDocs(q);
-    const list: any[] = [];
-    snap.forEach(d => {
-      const data = d.data();
-      console.log('💳 Pagamento encontrado:', data);
-      list.push({
-        forma: data.forma,
-        valor: data.valor || 0,
-        usuarioNome: data.usuarioNome,
-      });
+    
+    const { data, error } = await supabase
+      .from('payments')
+      .select('*')
+      .eq('company_id', user.companyId)
+      .eq('comanda_number', String(comandaNumber))
+      .eq('date_key', hoje);
+
+    if (error) {
+      console.error('Error loading pagamentos:', error);
+      return;
+    }
+
+    const list = (data || []).map(d => {
+      console.log('💳 Pagamento encontrado:', d);
+      return {
+        forma: d.payment_method,
+        valor: d.amount || 0,
+        usuarioNome: d.user_name,
+      };
     });
+    
     console.log('📋 Total de pagamentos:', list.length, list);
     setPagamentos(list);
   };
@@ -141,7 +146,7 @@ export default function ComandaAbertaScreen() {
                   <View style={styles.cardHeader}>
                     <Text style={styles.cardTitle}>#{item.comandaNumber}</Text>
                     <Text style={styles.cardTime}>
-                      {item.abertura ? new Date(item.abertura.seconds * 1000).toLocaleTimeString().slice(0, 5) : '--:--'}
+                      {item.abertura ? new Date(item.abertura).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
                     </Text>
                   </View>
                   <Text style={styles.cardClient}>{item.cliente || 'Consumidor'}</Text>

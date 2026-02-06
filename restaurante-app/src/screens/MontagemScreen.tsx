@@ -8,10 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import BackgroundPattern from '../components/BackgroundPattern';
 // @ts-ignore
 import PedidoDetalhesModal from './PedidoDetalhesModal';
-import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore';
-import { db } from '../config/firebaseConfig';
-// @ts-ignore
-import { getCompanyCollection, getCompanyDoc } from '../utils/firestoreUtils';
+import { supabase } from '../config/SupabaseConfig';
 import { exitApp } from '../utils/appUtils';
 
 // @ts-ignore
@@ -30,29 +27,56 @@ export default function MontagemScreen() {
     // @ts-ignore
     if (!user?.companyId) return;
     const today = getLocalDateKey();
-    const qPedidos = query(
-      // @ts-ignore
-      getCompanyCollection(user.companyId, 'pedidos'),
-      where('dateKey', '==', today)
-    );
 
-    const unsubscribe = onSnapshot(qPedidos, (snapshot) => {
-      const pedidos: any[] = [];
-      snapshot.forEach(doc => {
-        pedidos.push({ id: doc.id, ...doc.data() });
-      });
-      setAllOrders(pedidos);
-    }, (error) => {
-      console.error('Erro ao ouvir pedidos:', error);
-    });
+    // Initial fetch
+    const fetchOrders = async () => {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('company_id', user.companyId)
+        .eq('date_key', today);
 
-    return () => unsubscribe();
+      if (!error && data) {
+        // Map snake_case to camelCase
+        const mappedOrders = data.map(order => ({
+          ...order,
+          itemsWithStatus: order.items_with_status || [],
+          comandaNumber: order.comanda_number,
+          mesa: order.table_number?.toString() || '',
+          comandaStatus: order.comanda_status // ✅ Mapear comanda_status
+        }));
+        setAllOrders(mappedOrders);
+      }
+    };
+
+    fetchOrders();
+
+    // Subscribe to real-time changes
+    const channel = supabase
+      .channel(`orders-montagem-${user.companyId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders',
+          filter: `company_id=eq.${user.companyId}`
+        },
+        () => {
+          fetchOrders();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
   }, [user]);
 
   // ✅ FILTRO SEGURO: Excluir pedidos de comandas canceladas usando comandaStatus do pedido
   const ordersRaw = allOrders.filter(order => {
-    // Filtrar apenas pedidos em montagem
-    if (order.status !== 'montagem') return false;
+    // Filtrar apenas pedidos em preparing
+    if (order.status !== 'preparing') return false;
     
     // ✅ PROTEÇÃO: Se o pedido tem comandaStatus='cancelada', não mostrar
     if (order.comandaStatus === 'cancelada') {
@@ -171,13 +195,26 @@ export default function MontagemScreen() {
           : item
       );
 
-      // Atualizar no Firebase
+      // Atualizar no Supabase
       // @ts-ignore
       console.log('[Montagem] Updating doc:', user.companyId, orderId);
-      // @ts-ignore
-      const pedidoRef = getCompanyDoc(user.companyId, 'pedidos', orderId);
-      await updateDoc(pedidoRef, { itemsWithStatus: updatedItems });
+      const { error: updateError } = await supabase
+        .from('orders')
+        .update({ items_with_status: updatedItems })
+        .eq('company_id', user.companyId)
+        .eq('id', orderId);
+
+      if (updateError) throw updateError;
       console.log('[Montagem] Update success!');
+
+      // Atualizar estado local imediatamente
+      setAllOrders(prevOrders => 
+        prevOrders.map(o => 
+          o.id === orderId 
+            ? { ...o, itemsWithStatus: updatedItems }
+            : o
+        )
+      );
 
       setProcessingItems(prev => {
         // @ts-ignore
@@ -213,16 +250,20 @@ export default function MontagemScreen() {
       const orderIds = order.allOrderIds || [order.id];
 
       for (const orderId of orderIds) {
-        // @ts-ignore
-        const pedidoRef = getCompanyDoc(user.companyId, 'pedidos', orderId);
-        await updateDoc(pedidoRef, {
-          status: 'pronto',
-          timeInProntos: now,
-          // @ts-ignore
-          movidoParaProntosPor: user?.id || null,
-          // @ts-ignore
-          movidoParaProntosPorNome: user?.nome || null,
-        });
+        const { error: updateError } = await supabase
+          .from('orders')
+          .update({
+            status: 'pronto',
+            time_in_prontos: now,
+            // @ts-ignore
+            movido_para_prontos_por: user?.id || null,
+            // @ts-ignore
+            movido_para_prontos_por_nome: user?.nome || null,
+          })
+          .eq('company_id', user.companyId)
+          .eq('id', orderId);
+
+        if (updateError) throw updateError;
       }
     } catch (error) {
       console.error('Erro ao mover para prontos:', error);
@@ -263,8 +304,8 @@ export default function MontagemScreen() {
           )}
         </View>
         <View style={styles.headerCenter}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Ionicons name="layers-outline" size={24} color="#FFF" />
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Ionicons name="layers-outline" size={24} color="#FFF" style={{ marginRight: 8 }} />
             <Text style={styles.headerTitle}>Montagem</Text>
           </View>
         </View>

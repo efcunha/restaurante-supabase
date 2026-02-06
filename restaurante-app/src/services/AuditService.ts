@@ -1,5 +1,5 @@
 /**
- * Audit Service
+ * Audit Service - Migrado para Supabase
  * 
  * Sistema de auditoria para rastreamento de operações críticas:
  * - Todas as operações de escrita (create, update, delete)
@@ -10,8 +10,7 @@
  * Requirements: 20.1, 20.2, 20.3, 20.4, 20.5
  */
 
-import { db, auth } from '../config/firebaseConfig';
-import { collection, addDoc, query, where, orderBy, limit, getDocs, Timestamp } from 'firebase/firestore';
+import { supabase } from '../config/SupabaseConfig';
 
 /**
  * Tipos de eventos auditáveis
@@ -111,7 +110,7 @@ export interface AuditLog {
   userAgent?: string;
   
   // Timestamp
-  timestamp: Timestamp;
+  timestamp: string;
 }
 
 /**
@@ -133,7 +132,7 @@ export interface AuditLogFilters {
  * Serviço de Auditoria
  */
 export class AuditService {
-  private readonly collectionPath = 'audit';
+  private readonly tableName = 'audit_logs';
 
   /**
    * Registra um evento de auditoria
@@ -147,9 +146,9 @@ export class AuditService {
     after?: Record<string, any>;
     metadata?: Record<string, any>;
   }): Promise<string> {
-    const currentUser = auth.currentUser;
+    const { data: { user } } = await supabase.auth.getUser();
     
-    if (!currentUser) {
+    if (!user) {
       throw new Error('Usuário não autenticado. Não é possível criar log de auditoria.');
     }
 
@@ -159,37 +158,48 @@ export class AuditService {
     // Determina severidade baseada no tipo de evento
     const severity = this.determineSeverity(params.eventType);
 
+    // Busca role do usuário
+    const userRole = await this.getUserRole(user.id);
+
     // Cria registro de auditoria
-    const auditLog: Omit<AuditLog, 'id'> = {
-      eventType: params.eventType,
+    const auditLog = {
+      event_type: params.eventType,
       severity,
-      resourceType: params.resourceType,
-      resourceId: params.resourceId,
-      companyId: params.companyId,
-      userId: currentUser.uid,
-      userEmail: currentUser.email || '',
-      userRole: await this.getUserRole(currentUser.uid),
-      before: params.before,
-      after: params.after,
-      changes,
-      metadata: params.metadata,
-      timestamp: Timestamp.now()
+      resource_type: params.resourceType,
+      resource_id: params.resourceId,
+      company_id: params.companyId,
+      user_id: user.id,
+      user_email: user.email || '',
+      user_role: userRole,
+      old_data: params.before || null,
+      new_data: params.after || null,
+      changes: changes || null,
+      metadata: params.metadata || null,
     };
 
-    // Salva no Firestore
-    const docRef = await addDoc(collection(db, this.collectionPath), auditLog);
+    // Salva no Supabase
+    const { data, error } = await supabase
+      .from(this.tableName)
+      .insert(auditLog)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[Audit] Erro ao salvar log:', error);
+      throw error;
+    }
 
     // Log para console em desenvolvimento
     if (process.env.NODE_ENV === 'development') {
       console.log('[Audit]', params.eventType, {
         resourceType: params.resourceType,
         resourceId: params.resourceId,
-        userId: currentUser.uid,
+        userId: user.id,
         changes: changes?.length || 0
       });
     }
 
-    return docRef.id;
+    return data.id;
   }
 
   /**
@@ -200,21 +210,30 @@ export class AuditService {
     userId: string,
     metadata?: Record<string, any>
   ): Promise<string> {
-    const auditLog: Omit<AuditLog, 'id'> = {
-      eventType,
+    const auditLog = {
+      event_type: eventType,
       severity: eventType === 'auth.failed_login' ? 'high' : 'low',
-      resourceType: 'user',
-      resourceId: userId,
-      companyId: metadata?.companyId || '',
-      userId,
-      userEmail: metadata?.email || '',
-      userRole: metadata?.role || '',
-      metadata,
-      timestamp: Timestamp.now()
+      resource_type: 'user',
+      resource_id: userId,
+      company_id: metadata?.companyId || '',
+      user_id: userId,
+      user_email: metadata?.email || '',
+      user_role: metadata?.role || '',
+      metadata: metadata || null,
     };
 
-    const docRef = await addDoc(collection(db, this.collectionPath), auditLog);
-    return docRef.id;
+    const { data, error } = await supabase
+      .from(this.tableName)
+      .insert(auditLog)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[Audit] Erro ao salvar log de auth:', error);
+      throw error;
+    }
+
+    return data.id;
   }
 
   /**
@@ -227,94 +246,123 @@ export class AuditService {
     attemptedAction: string;
     reason: string;
   }): Promise<string> {
-    const currentUser = auth.currentUser;
+    const { data: { user } } = await supabase.auth.getUser();
     
-    if (!currentUser) {
+    if (!user) {
       throw new Error('Usuário não autenticado');
     }
 
-    const auditLog: Omit<AuditLog, 'id'> = {
-      eventType: 'permission.denied',
-      severity: 'high',
-      resourceType: params.resourceType,
-      resourceId: params.resourceId,
-      companyId: params.companyId,
-      userId: currentUser.uid,
-      userEmail: currentUser.email || '',
-      userRole: await this.getUserRole(currentUser.uid),
+    const userRole = await this.getUserRole(user.id);
+
+    const auditLog = {
+      event_type: 'permission.denied' as AuditEventType,
+      severity: 'high' as AuditSeverity,
+      resource_type: params.resourceType,
+      resource_id: params.resourceId,
+      company_id: params.companyId,
+      user_id: user.id,
+      user_email: user.email || '',
+      user_role: userRole,
       metadata: {
         attemptedAction: params.attemptedAction,
         reason: params.reason
       },
-      timestamp: Timestamp.now()
     };
 
-    const docRef = await addDoc(collection(db, this.collectionPath), auditLog);
+    const { data, error } = await supabase
+      .from(this.tableName)
+      .insert(auditLog)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[Audit] Erro ao salvar log de permissão negada:', error);
+      throw error;
+    }
 
     // Log warning para console
     console.warn('[Audit] Permission Denied', {
-      userId: currentUser.uid,
+      userId: user.id,
       resource: `${params.resourceType}/${params.resourceId}`,
       action: params.attemptedAction,
       reason: params.reason
     });
 
-    return docRef.id;
+    return data.id;
   }
 
   /**
    * Busca logs de auditoria com filtros
    */
   async queryLogs(filters: AuditLogFilters): Promise<AuditLog[]> {
-    let q = query(collection(db, this.collectionPath));
+    let query = supabase
+      .from(this.tableName)
+      .select('*');
 
     // Aplica filtros
     if (filters.companyId) {
-      q = query(q, where('companyId', '==', filters.companyId));
+      query = query.eq('company_id', filters.companyId);
     }
 
     if (filters.userId) {
-      q = query(q, where('userId', '==', filters.userId));
+      query = query.eq('user_id', filters.userId);
     }
 
     if (filters.eventType) {
-      q = query(q, where('eventType', '==', filters.eventType));
+      query = query.eq('event_type', filters.eventType);
     }
 
     if (filters.resourceType) {
-      q = query(q, where('resourceType', '==', filters.resourceType));
+      query = query.eq('resource_type', filters.resourceType);
     }
 
     if (filters.resourceId) {
-      q = query(q, where('resourceId', '==', filters.resourceId));
+      query = query.eq('resource_id', filters.resourceId);
     }
 
     if (filters.severity) {
-      q = query(q, where('severity', '==', filters.severity));
+      query = query.eq('severity', filters.severity);
     }
 
     if (filters.startDate) {
-      q = query(q, where('timestamp', '>=', Timestamp.fromDate(filters.startDate)));
+      query = query.gte('created_at', filters.startDate.toISOString());
     }
 
     if (filters.endDate) {
-      q = query(q, where('timestamp', '<=', Timestamp.fromDate(filters.endDate)));
+      query = query.lte('created_at', filters.endDate.toISOString());
     }
 
     // Ordena por timestamp decrescente
-    q = query(q, orderBy('timestamp', 'desc'));
+    query = query.order('created_at', { ascending: false });
 
     // Limita resultados
     const maxLimit = filters.limit || 100;
-    q = query(q, limit(maxLimit));
+    query = query.limit(maxLimit);
 
     // Executa query
-    const snapshot = await getDocs(q);
+    const { data, error } = await query;
 
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    } as AuditLog));
+    if (error) {
+      console.error('[Audit] Erro ao buscar logs:', error);
+      return [];
+    }
+
+    return (data || []).map(row => ({
+      id: row.id,
+      eventType: row.event_type,
+      severity: row.severity,
+      resourceType: row.resource_type,
+      resourceId: row.resource_id,
+      companyId: row.company_id,
+      userId: row.user_id,
+      userEmail: row.user_email,
+      userRole: row.user_role,
+      before: row.old_data,
+      after: row.new_data,
+      changes: row.changes,
+      metadata: row.metadata,
+      timestamp: row.created_at,
+    }));
   }
 
   /**
@@ -442,22 +490,21 @@ export class AuditService {
   }
 
   /**
-   * Obtém role do usuário (via custom claims ou Firestore)
+   * Obtém role do usuário do Supabase profiles
    */
   private async getUserRole(userId: string): Promise<string> {
     try {
-      const currentUser = auth.currentUser;
-      if (currentUser && currentUser.uid === userId) {
-        // Tenta obter de custom claims
-        const idTokenResult = await currentUser.getIdTokenResult();
-        if (idTokenResult.claims.role) {
-          return idTokenResult.claims.role as string;
-        }
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', userId)
+        .single();
+
+      if (error || !data) {
+        return 'unknown';
       }
 
-      // Fallback: busca no Firestore
-      // TODO: Implementar busca no Firestore se necessário
-      return 'unknown';
+      return data.role || 'unknown';
     } catch (error) {
       console.error('Erro ao obter role do usuário:', error);
       return 'unknown';

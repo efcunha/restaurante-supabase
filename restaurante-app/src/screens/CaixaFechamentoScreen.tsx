@@ -4,10 +4,9 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import CaixaService from '../services/CaixaService';
 import * as Print from 'expo-print';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../config/firebaseConfig';
 import { getUserFriendlyMessage } from '../utils/errors';
 import { Caixa, Comanda } from '../types';
+import { supabase } from '../config/SupabaseConfig';
 
 interface FechamentoResult {
   saldoEsperado: number;
@@ -34,10 +33,17 @@ export default function CaixaFechamentoScreen() {
   const loadConfig = async () => {
     if (!user?.companyId) return;
     try {
-      const docRef = doc(db, 'companies', user.companyId, 'settings', 'financeiro');
-      const snap = await getDoc(docRef);
-      if (snap.exists()) {
-        setBlindClosing(snap.data().blindClosing || false);
+      const { data, error } = await supabase
+        .from('settings')
+        .select('*')
+        .eq('company_id', user.companyId)
+        .eq('key', 'financeiro')
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error;
+
+      if (data && data.value) {
+        setBlindClosing(data.value.blind_closing || false);
       }
     } catch (e) {
       console.error("Erro ao carregar config financeira:", e);

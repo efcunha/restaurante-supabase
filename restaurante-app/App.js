@@ -40,6 +40,7 @@ const Tab = createBottomTabNavigator();
 
 function TabNavigator() {
   const { user } = useAuth();
+  console.log('[TabNavigator] Rendering for user:', user?.email, 'Role:', user?.funcao);
 
   return (
     <Tab.Navigator

@@ -107,8 +107,8 @@ export default function PrinterConfigScreen({ navigation }: Props) {
             </TouchableOpacity>
           </View>
           <View style={styles.headerCenter}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Ionicons name="print-outline" size={24} color="#FFF" />
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name="print-outline" size={24} color="#FFF" style={{ marginRight: 8 }} />
               <Text style={styles.headerTitle}>Configurar Impressora</Text>
             </View>
           </View>
@@ -141,8 +141,8 @@ export default function PrinterConfigScreen({ navigation }: Props) {
           </TouchableOpacity>
         </View>
         <View style={styles.headerCenter}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Ionicons name="print-outline" size={24} color="#FFF" />
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Ionicons name="print-outline" size={24} color="#FFF" style={{ marginRight: 8 }} />
             <Text style={styles.headerTitle}>Configurar Impressora</Text>
           </View>
         </View>

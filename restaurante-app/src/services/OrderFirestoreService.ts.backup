@@ -1,0 +1,413 @@
+/**
+ * OrderService - Adaptador para Supabase
+ * Substitui o antigo OrderFirestoreService
+ */
+
+import { supabase } from '../config/SupabaseConfig';
+import { Order, OrderItemStatus } from '../types';
+import OrderService from './OrderService'; // Lógica de domínio
+import { getLocalDateKey, getTodayKey as utilsGetTodayKey } from '../utils/dateUtils';
+
+const TABLE_ORDERS = 'orders';
+
+// Helper date
+const getTodayKey = () => utilsGetTodayKey();
+
+class OrderFirestoreService {
+
+  // Cache para evitar re-renders desnecessários se os dados forem iguais
+  private _lastSnapshotHash: string | null = null;
+
+  private _mapToOrder(row: any): Order {
+    return {
+      id: row.id, // UUID
+      client: row.client_name || '',
+      mesa: row.table_number || '',
+      comandaNumber: String(row.comanda_number || ''),
+      items: row.items || [], // JSONB
+      // Supabase 'items' stores the list. 
+      // Compatibility: Try to find status in items if stored there, or use default status.
+      // If we need strict ItemStatus preservation, we assume 'items' contains objects with status.
+      itemsWithStatus: (row.items || []).map((it: any) =>
+        typeof it === 'string' ? { id: it, name: it, status: 'montagem', checked: false, timestamp: new Date().toISOString(), category: 'outros' } : it
+      ),
+      observations: row.observations || '',
+      status: row.status || 'montagem',
+      dateKey: row.date_key,
+      timestamp: row.created_at,
+      createdAt: row.created_at,
+      horarioCriacao: new Date(row.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+
+      // Timestamps
+      timeInChurrasqueira: null, // Add columns if strictly needed, or store in metadata/json
+      timeInMontagem: null,
+      timeInProntos: null,
+      deliveredAt: null,
+
+      totalPrice: row.total_amount || 0,
+      isPago: row.is_paid || false,
+
+      createdBy: row.created_by || '',
+      createdByName: '', // Join not fetched by default, ignore or fetch separately if critical
+
+      // Mapeamento extra (compatibilidade)
+      priceMap: null,
+
+      // Metadata extra se necessário
+      atualizado: row.updated_at
+    };
+  }
+
+  // --- Realtime / Polling ---
+
+  listenToActiveOrders(companyId: string, callback: (data: { orders: Order[], docMap: Record<string, string> }) => void): any {
+    if (!companyId) return () => { };
+
+    // Polling strategy (Simpler/More robust than Realtime for MVP migration)
+    const fetchOrders = async () => {
+      const today = getTodayKey();
+      const { data, error } = await supabase
+        .from(TABLE_ORDERS)
+        .select('*')
+        .eq('company_id', companyId)
+        .eq('date_key', today);
+
+      if (error) {
+        console.error('Error fetching orders:', error);
+        return;
+      }
+
+      const orders = (data || []).map(row => this._mapToOrder(row));
+
+      // Sorting
+      orders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+      // DocMap for compatibility (id -> id)
+      const docMap: Record<string, string> = {};
+      orders.forEach(o => docMap[o.id] = o.id);
+
+      callback({ orders, docMap });
+    };
+
+    fetchOrders(); // Initial
+    const intervalId = setInterval(fetchOrders, 5000); // 5s Poll
+
+    return () => clearInterval(intervalId);
+  }
+
+  // --- Write Operations ---
+
+  async createOrder(orderId: string, client: string, items: string[], observations: string, comandaNumber: string = '', createdBy: string = '', createdByName: string = '', mesa: string = ''): Promise<string> {
+    // Nota: orderId (legacy ID) é ignorado em favor do UUID gerado pelo Supabase, 
+    // OU podemos salvá-lo num campo de metadados se for importante.
+
+    // Buscar company_id do usuário logado
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("Usuário não logado");
+
+    // Precisamos do companyId. Podemos pegar do profile.
+    const { data: profile } = await supabase.from('profiles').select('company_id').eq('id', user.id).single();
+    if (!profile?.company_id) throw new Error("Usuário sem empresa");
+
+    const today = getTodayKey();
+
+    // Converte items (strings) para objetos se necessário, ou salva array de strings.
+    // Database 'items' is jsonb.
+
+    const { data, error } = await supabase
+      .from(TABLE_ORDERS)
+      .insert({
+        company_id: profile.company_id,
+        date_key: today,
+        comanda_number: comandaNumber ? parseInt(comandaNumber) : null,
+        table_number: mesa ? parseInt(mesa) : null, // Schema has int? check schema. Schema says: table_number int.
+        client_name: client,
+        observations: observations,
+        status: 'montagem', // Default
+        items: items, // Save original array
+        total_amount: OrderService.calculateOrderTotal(items), // Recalc basics
+        created_by: user.id
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return data.id;
+  }
+
+  async saveOrder(companyId: string, order: Order): Promise<string> {
+    // Direct save
+    const today = getTodayKey();
+    const { data, error } = await supabase
+      .from(TABLE_ORDERS)
+      .insert({
+        company_id: companyId,
+        date_key: today,
+        comanda_number: order.comandaNumber ? parseInt(order.comandaNumber) : null,
+        table_number: order.mesa ? parseInt(order.mesa) : null,
+        client_name: order.client,
+        observations: order.observations,
+        status: order.status,
+        items: order.items,
+        total_amount: order.totalPrice,
+        created_by: order.createdBy || (await supabase.auth.getUser()).data.user?.id
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data.id;
+  }
+
+  async updateOrderStatus(companyId: string, docId: string, newStatus: string) {
+    const { error } = await supabase
+      .from(TABLE_ORDERS)
+      .update({ status: newStatus, updated_at: new Date().toISOString() })
+      .eq('id', docId)
+      .eq('company_id', companyId);
+
+    if (error) throw error;
+  }
+
+  async updateOrder(companyId: string, docId: string, updatedData: Partial<Order>) {
+    // Map Order partial to DB columns
+    const payload: any = { updated_at: new Date().toISOString() };
+
+    if (updatedData.status) payload.status = updatedData.status;
+    if (updatedData.client) payload.client_name = updatedData.client;
+    if (updatedData.mesa) payload.table_number = parseInt(updatedData.mesa);
+    if (updatedData.observations) payload.observations = updatedData.observations;
+    if (updatedData.items) payload.items = updatedData.items;
+    if (updatedData.totalPrice) payload.total_amount = updatedData.totalPrice;
+
+    const { error } = await supabase
+      .from(TABLE_ORDERS)
+      .update(payload)
+      .eq('id', docId)
+      .eq('company_id', companyId);
+
+    if (error) throw error;
+  }
+
+  async deleteOrder(companyId: string, docId: string) {
+    const { error } = await supabase.from(TABLE_ORDERS).delete().eq('id', docId).eq('company_id', companyId);
+    if (error) throw error;
+  }
+
+  // Compatibilidade
+  findOrdersByComanda(comanda: string) { return []; }
+  findDocIdByOrderId() { return null; }
+
+  // STATS
+
+  async getEstatisticasGarcom(companyId: string, garcomId: string | null = null, periodo: string = 'hoje') {
+    try {
+      const { startDate, endDate } = this._getDateRange(periodo);
+
+      let query = supabase
+        .from(TABLE_ORDERS)
+        .select('*')
+        .eq('company_id', companyId)
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endDate.toISOString());
+
+      if (garcomId) {
+        query = query.eq('created_by', garcomId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      const orders = (data || []).map(this._mapToOrder);
+      // Busca pagamentos relacionados se necessario, ou assume dados do pedido
+      // Simplificação: Estatisticas baseadas apenas nos pedidos por enquanto
+      return this._calcularEstatisticas(orders, []);
+
+    } catch (error) {
+      console.error('[OrderFirestoreService] Erro em getEstatisticasGarcom:', error);
+      return this._getEmptyStats();
+    }
+  }
+
+  /**
+   * Busca estatísticas de todos os garçons
+   */
+  async getEstatisticasTodosGarcons(companyId: string, periodo: string = 'hoje') {
+    try {
+      const { startDate, endDate } = this._getDateRange(periodo);
+
+      const { data, error } = await supabase
+        .from(TABLE_ORDERS)
+        .select('*')
+        .eq('company_id', companyId)
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endDate.toISOString());
+
+      if (error) throw error;
+
+      const orders = (data || []).map(this._mapToOrder);
+      const byUser: Record<string, Order[]> = {};
+
+      orders.forEach(o => {
+        const uid = o.createdBy || 'unknown';
+        if (!byUser[uid]) byUser[uid] = [];
+        byUser[uid].push(o);
+      });
+
+      return Object.entries(byUser).map(([uid, userOrders]) => ({
+        garcomId: uid,
+        garcomNome: userOrders[0]?.createdByName || 'Desconhecido', // Idealmente buscar do profile
+        ...this._calcularEstatisticas(userOrders, [])
+      }));
+
+    } catch (error) {
+      console.error('[OrderFirestoreService] Erro em getEstatisticasTodosGarcons:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Busca estatísticas de pagamentos
+   */
+  async getEstatisticasPagamentos(companyId: string, garcomId: string | null = null, periodo: string = 'hoje') {
+    // TODO: Implementar usando tabela de pagamentos quando migrada
+    // Por enquanto retorna vazio ou dados ficticios baseados em orders
+    return {
+      dinheiro: { total: 0, quantidade: 0 },
+      pix: { total: 0, quantidade: 0 },
+      debito: { total: 0, quantidade: 0 },
+      credito: { total: 0, quantidade: 0 },
+    };
+  }
+
+  /**
+   * Busca estatísticas de comandas
+   */
+  async getEstatisticasComandas(companyId: string, garcomId: string | null = null, periodo: string = 'hoje') {
+    try {
+      const { startDate, endDate } = this._getDateRange(periodo);
+      let query = supabase
+        .from('comandas') // Assuming TABLE_COMANDAS is exposed or string
+        .select('*')
+        .eq('company_id', companyId)
+        .gte('opened_at', startDate.toISOString())
+        .lte('opened_at', endDate.toISOString());
+
+      if (garcomId) {
+        query = query.eq('opened_by', garcomId);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      const comandas = data || [];
+      const abertas = comandas.filter(c => c.status === 'aberta');
+      const fechadas = comandas.filter(c => c.status === 'fechada');
+
+      return {
+        total: comandas.length,
+        abertas: abertas.length,
+        fechadas: fechadas.length,
+        totalConsumido: comandas.reduce((acc, c) => acc + (c.total_consumed || 0), 0),
+        totalPago: comandas.reduce((acc, c) => acc + (c.total_paid || 0), 0),
+        saldoAberto: comandas.reduce((acc, c) => acc + (c.open_balance || 0), 0)
+      };
+    } catch (e) {
+      return { total: 0, abertas: 0, fechadas: 0, totalConsumido: 0, totalPago: 0, saldoAberto: 0 };
+    }
+  }
+
+  /**
+   * Busca estatísticas completas
+   */
+  async getEstatisticasCompletas(companyId: string, garcomId: string | null = null, mesAno: string | null = null) {
+    const periodoBase = mesAno || 'mesVigente';
+    const [vendasHoje, vendasSemana, vendasMes] = await Promise.all([
+      this.getEstatisticasGarcom(companyId, garcomId, 'hoje'),
+      this.getEstatisticasGarcom(companyId, garcomId, 'semana'),
+      this.getEstatisticasGarcom(companyId, garcomId, periodoBase)
+    ]);
+
+    return {
+      vendas: { hoje: vendasHoje, semana: vendasSemana, mes: vendasMes },
+      pagamentos: { hoje: {}, semana: {}, mes: {} },
+      comandas: { hoje: {}, semana: {}, mes: {} }
+    };
+  }
+
+  // Helpers
+
+  _getDateRange(periodo: string): { startDate: Date, endDate: Date } {
+    const now = new Date();
+    let startDate: Date, endDate: Date;
+
+    if (periodo && /^\d{4}-\d{2}$/.test(periodo)) {
+      const [ano, mes] = periodo.split('-').map(Number);
+      startDate = new Date(ano, mes - 1, 1, 0, 0, 0);
+      endDate = new Date(ano, mes, 0, 23, 59, 59);
+      return { startDate, endDate };
+    }
+
+    switch (periodo) {
+      case 'hoje':
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+        endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+        break;
+      case 'semana':
+        startDate = new Date(now.getTime());
+        startDate.setDate(now.getDate() - 7);
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+        break;
+      case 'mes':
+      case 'mesVigente':
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
+        endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+        break;
+      default:
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+        endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+    }
+    return { startDate, endDate };
+  }
+
+  _getEmptyStats() {
+    return {
+      totalPedidos: 0,
+      totalVendido: 0,
+      totalRecebido: 0,
+      totalAberto: 0,
+      quantidadeComandas: 0,
+      comandasAbertas: 0,
+      comandasFechadas: 0,
+      ticketMedio: 0,
+      produtoMaisVendido: null,
+    };
+  }
+
+  _calcularEstatisticas(pedidos: Order[], pagamentos: any[]) {
+    const totalPedidos = pedidos.length;
+    const pedidosPagos = pedidos.filter(p => p.isPago);
+    const pedidosAbertos = pedidos.filter(p => !p.isPago);
+    const totalVendido = pedidos.reduce((sum, p) => sum + (p.totalPrice || 0), 0);
+    const totalRecebido = pedidosPagos.reduce((sum, p) => sum + (p.totalPrice || 0), 0);
+    const totalAberto = pedidosAbertos.reduce((sum, p) => sum + (p.totalPrice || 0), 0);
+
+    return {
+      totalPedidos,
+      totalVendido,
+      totalRecebido,
+      totalAberto,
+      quantidadeComandas: new Set(pedidos.map(p => p.comandaNumber)).size,
+      comandasAbertas: pedidosAbertos.length,
+      comandasFechadas: pedidosPagos.length,
+      ticketMedio: totalPedidos > 0 ? totalVendido / totalPedidos : 0,
+      produtoMaisVendido: null // TODO
+    };
+  }
+}
+
+export default new OrderFirestoreService();
+

@@ -4,8 +4,7 @@ import { View, Text, ScrollView, TouchableOpacity, Modal, StyleSheet, Alert } fr
 import { colors } from '../../theme/colors';
 import { CARDAPIO_STATIC } from '../../utils/orderCalculator';
 import { useAuth } from '../../context/AuthContext';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../../config/firebaseConfig';
+import { supabase } from '../../config/SupabaseConfig';
 
 export default function AddItemsModal({ visible, onClose, onConfirm, comandaNumber }) {
     const { user } = useAuth();
@@ -19,17 +18,23 @@ export default function AddItemsModal({ visible, onClose, onConfirm, comandaNumb
         if (visible && user?.companyId) {
             const fetchTemperos = async () => {
                 try {
-                    const docRef = doc(db, 'companies', user.companyId, 'settings', 'cardapio_config');
-                    const docSnap = await getDoc(docRef);
-                    if (docSnap.exists()) {
-                        const data = docSnap.data();
-                        if (data.temperosCaldos) setTemperosCaldos(data.temperosCaldos);
-                        if (data.temperosComidas) setTemperosComidas(data.temperosComidas);
+                    const { data, error } = await supabase
+                        .from('settings')
+                        .select('*')
+                        .eq('company_id', user.companyId)
+                        .eq('key', 'cardapio_config')
+                        .single();
+
+                    if (error && error.code !== 'PGRST116') throw error;
+
+                    if (data && data.value) {
+                        if (data.value.temperos_caldos) setTemperosCaldos(data.value.temperos_caldos);
+                        if (data.value.temperos_comidas) setTemperosComidas(data.value.temperos_comidas);
 
                         // Fallback
-                        if (!data.temperosCaldos && !data.temperosComidas && data.temperos) {
-                            setTemperosCaldos(data.temperos);
-                            setTemperosComidas(data.temperos);
+                        if (!data.value.temperos_caldos && !data.value.temperos_comidas && data.value.temperos) {
+                            setTemperosCaldos(data.value.temperos);
+                            setTemperosComidas(data.value.temperos);
                         }
                     }
                 } catch (e) { console.error('Erro ao carregar temperos', e); }
