@@ -201,8 +201,10 @@ class OrderService {
 
     const comanda = comandaNumber?.trim() || '';
     const calculatedTotal = totalPrice > 0 ? totalPrice : this.calculateOrderTotal(items);
-    // Nasce em 'montagem' para aparecer em ambos painéis (churrasqueira e montagem)
-    const status = 'montagem';
+    // Mapear status do Firebase para Supabase
+    // Firebase: 'montagem', 'churrasqueira', 'pronto'
+    // Supabase: 'pending', 'preparing', 'ready', 'delivered', 'cancelled'
+    const status = 'preparing'; // Era 'montagem', agora 'preparing'
 
     // Formatar horário de criação (HH:MM)
     const horarioCriacao = now.toLocaleTimeString('pt-BR', {
@@ -243,7 +245,7 @@ class OrderService {
       return {
         id: `${orderId}-comanda-${comanda || 'temp'}-item-${index}`,
         name: itemName,
-        status: 'churrasqueira', // churrasqueira | pronto
+        status: 'preparing', // preparing | ready
         checked: false,
         timestamp: nowISO,
         category: category // ✅ Nova propriedade para filtragem
@@ -287,15 +289,15 @@ class OrderService {
     const updates: Partial<Order> = { status: newStatus };
 
     switch (newStatus) {
-      case 'churrasqueira':
+      case 'preparing':
         updates.timeInChurrasqueira = order.timeInChurrasqueira || now;
         break;
-      case 'montagem':
+      case 'preparing':
         updates.timeInMontagem = now;
         updates.movidoParaMontagemPor = movidoPor;
         updates.movidoParaMontagemPorNome = movidoPorNome;
         break;
-      case 'pronto':
+      case 'ready':
         updates.timeInProntos = now;
         updates.movidoParaProntoPor = movidoPor;
         updates.movidoParaProntoPorNome = movidoPorNome;
@@ -355,7 +357,7 @@ class OrderService {
 
     // Pode editar enquanto preparação não iniciou (timeInMontagem null) e não está pronto
     // OU se estiver apenas atualizando isPago
-    if (!apenasIsPago && ((order.status === 'montagem' && order.timeInMontagem) || order.status === 'pronto')) {
+    if (!apenasIsPago && ((order.status === 'preparing' && order.timeInMontagem) || order.status === 'ready')) {
       throw new Error('Não é possível editar pedidos após início da montagem ou prontos');
     }
 
@@ -373,7 +375,7 @@ class OrderService {
    * Valida se pedido pode ser excluído
    */
   validateDelete(order: Order): boolean {
-    if ((order.status === 'montagem' && order.timeInMontagem) || order.status === 'pronto') {
+    if ((order.status === 'preparing' && order.timeInMontagem) || order.status === 'ready') {
       throw new Error('Não é possível excluir pedidos após início da montagem ou prontos');
     }
     return true;
@@ -386,11 +388,11 @@ class OrderService {
   filterOrdersByStatus(orders: Order[], status: string): Order[] {
     if (status === 'churrasqueira') {
       // Churrasqueira enxerga pedidos em montagem (visualização, sem interação)
-      return orders.filter(order => order.status === 'montagem');
+      return orders.filter(order => order.status === 'preparing');
     }
     if (status === 'montagem') {
-      // Montagem também mostra status 'montagem'
-      return orders.filter(order => order.status === 'montagem');
+      // Montagem também mostra status 'preparing'
+      return orders.filter(order => order.status === 'preparing');
     }
     return orders.filter(order => order.status === status);
   }

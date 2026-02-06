@@ -6,15 +6,14 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 // @ts-ignore
 import { getNextComandaNumber, formatComandaNumber } from '../services/ComandaNumberService';
-import { getDocs, doc, getDoc, query } from 'firebase/firestore';
-import { db } from '../config/firebaseConfig';
-import { getCompanyCollection } from '../utils/firestoreUtils';
+import { supabase } from '../config/SupabaseConfig'; // Switched to Supabase
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 // @ts-ignore
 import { confirmLogout } from '../utils/appUtils';
 // @ts-ignore
 import InventoryService from '../services/InventoryService';
+import CaixaService from '../services/CaixaService';
 import { Product, Cardapio, PizzaConfig, PizzaSize, Ingredient } from '../types';
 
 const CARDAPIO_CACHE_KEY = '@cardapio_cache';
@@ -69,7 +68,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
     const cardapioLoadedRef = useRef(false);
     const lastLoadTimeRef = useRef(0);
 
-    const carregarCardapioFirestore = async (isBackground = false) => {
+    const carregarCardapioSupabase = async (isBackground = false) => {
         try {
             if (!isBackground) setLoadingCardapio(true);
 
@@ -80,15 +79,19 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                 return;
             }
 
-            // OTIMIZAÇÃO 1: Filtrar no Firestore (Server-Side) - REMOVIDO para evitar problemas de cache
-            // Buscamos tudo e filtramos localmente para garantir consistência
-            const q = query(
-                getCompanyCollection(user.companyId, 'cardapio')
-            );
+            console.log('Fetching products from Supabase for company:', user.companyId);
 
-            const snapshot = await getDocs(q);
+            // Fetch Products
+            const { data: productsData, error } = await supabase
+                .from('products')
+                .select('*')
+                .eq('company_id', user.companyId);
 
-            // OTIMIZAÇÃO 2: Processamento em único loop (Single Pass)
+            if (error) throw error;
+
+            console.log('Products fetched:', productsData?.length);
+
+            // OTIMIZAÇÃO: Processamento em único loop (Single Pass)
             const buckets: Record<string, Product[]> = {
                 caldo: [],
                 comida: [],
@@ -100,25 +103,22 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                 'pizza': []
             };
 
-            snapshot.docs.forEach(doc => {
-                const data = doc.data();
-                
-                // CLIENT-SIDE FILTER - ROBUST
-                // Tratar 'false' string ou boolean
-                const isActive = data.active !== false && data.active !== 'false';
-                
-                if (!isActive) return;
+            productsData?.forEach((data: any) => {
+                // Client-side Active Filter
+                if (data.active === false) return;
 
                 const item: Product = {
-                  id: doc.id,
-                  name: data.name,
-                  category: data.category || 'outro',
-                  price: data.price,
-                  prices: data.prices, // Map de preços para Pizza
-                  inventoryItems: data.inventoryItems,
-                  active: data.active,
-                  createdAt: data.createdAt,
-                  ...data // Spread other fields
+                    id: data.id,
+                    name: data.name,
+                    category: data.category || 'outro',
+                    price: data.price ? Number(data.price) : 0, // Ensure number
+                    prices: data.prices || {}, // Map de preços para Pizza
+                    // inventoryItems: data.inventoryItems, // Not yet in SQL schema?
+                    active: data.active,
+                    createdAt: new Date(data.created_at).getTime(),
+                    description: data.description,
+                    image: data.image_url,
+                    ...data
                 };
 
                 // Normalizar categoria para o bucket correto
@@ -134,7 +134,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                 }
             });
 
-            // Ordenação local (Client-Side) - Mais rápido que criar índices compostos por enquanto
+            // Ordenação local (Client-Side)
             const sortFn = (a: Product, b: Product) => a.name.localeCompare(b.name);
 
             const novoCardapio: Cardapio = {
@@ -143,62 +143,23 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                 bebidas: (buckets.bebida || []).sort(sortFn),
                 porcoes: (buckets.porcao || []).sort(sortFn),
                 outros: (buckets.outro || []).sort(sortFn),
-                espetinhos: [], // Adicionado para cumprir interface
+                espetinhos: [],
                 espetinhosSimples: (buckets['espetinho-simples'] || []).sort(sortFn),
                 espetinhosEspeciais: (buckets['espetinho-especial'] || []).sort(sortFn),
                 pizzas: (buckets['pizza'] || []).sort(sortFn)
             };
 
-            // Fetch configuration (temperos)
-            try {
-                const configRef = doc(db, 'companies', user.companyId, 'settings', 'cardapio_config');
-                const configSnap = await getDoc(configRef);
-                if (configSnap.exists()) {
-                    const data = configSnap.data();
-                    if (data.temperosCaldos) setTemperosCaldos(data.temperosCaldos);
-                    if (data.temperosComidas) setTemperosComidas(data.temperosComidas);
-                    if (data.variacoesEspetinho) setVariacoesEspetinho(data.variacoesEspetinho);
-
-                    if (data.pizzaConfig) {
-                        // FILTER and SORT sizes
-                        let processedSizes: PizzaSize[] = data.pizzaConfig.sizes || [];
-
-                        // 1. Filter active
-                        processedSizes = processedSizes.filter(s => s.active !== false);
-
-                        // 2. Sort
-                        processedSizes.sort((a, b) => {
-                            const order = ['Fatia', 'Broto', 'Média', 'Grande'];
-                            const idxA = order.indexOf(a.name);
-                            const idxB = order.indexOf(b.name);
-                            if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-                            if (idxA !== -1) return -1;
-                            if (idxB !== -1) return 1;
-                            return a.name.localeCompare(b.name);
-                        });
-
-                        setPizzaConfig({ ...data.pizzaConfig, sizes: processedSizes });
-                    } else {
-                        setPizzaConfig({
-                            sizes: [
-                                { name: 'Fatia', maxFlavors: 1 },
-                                { name: 'Broto', maxFlavors: 1 },
-                                { name: 'Média', maxFlavors: 2 },
-                                { name: 'Grande', maxFlavors: 4 }
-                            ],
-                            pricingMode: 'HIGHER'
-                        });
-                    }
-
-                    // Legacy/Fallback: if only 'temperos' exists
-                    if (!data.temperosCaldos && !data.temperosComidas && data.temperos) {
-                        setTemperosCaldos(data.temperos);
-                        setTemperosComidas(data.temperos);
-                    }
-                }
-            } catch (e) {
-                console.warn('Erro ao carregar temperos, usando padrão:', e);
-            }
+            // Config Defaults (Since 'settings' table isn't migrated/populated yet)
+            // Use defaults if variables are not customized remotely
+            setPizzaConfig({
+                sizes: [
+                    { name: 'Fatia', maxFlavors: 1 },
+                    { name: 'Broto', maxFlavors: 1 },
+                    { name: 'Média', maxFlavors: 2 },
+                    { name: 'Grande', maxFlavors: 4 }
+                ],
+                pricingMode: 'HIGHER'
+            });
 
             setCardapio(novoCardapio);
             cardapioLoadedRef.current = true;
@@ -209,7 +170,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                 timestamp: Date.now()
             }));
         } catch (error) {
-            console.error('❌ Erro ao carregar cardápio do Firestore:', error);
+            console.error('❌ Erro ao carregar cardápio do Supabase:', error);
             if (!isBackground) Alert.alert('Erro', 'Não foi possível carregar o cardápio');
         } finally {
             if (!isBackground) setLoadingCardapio(false);
@@ -220,7 +181,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
         try {
             // OTIMIZAÇÃO 3: Usar cache primeiro (Stale-While-Revalidate)
             setLoadingCardapio(true);
-            
+
             const cached = await AsyncStorage.getItem(CARDAPIO_CACHE_KEY);
             if (cached) {
                 const { data, timestamp } = JSON.parse(cached);
@@ -233,17 +194,17 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                     setLoadingCardapio(false); // Libera UI imediatamente
 
                     // Atualiza em background
-                    carregarCardapioFirestore(true);
+                    carregarCardapioSupabase(true);
                     return;
                 }
             }
 
             // Se não tem cache ou é muito velho, carrega normal
-            await carregarCardapioFirestore(false);
+            await carregarCardapioSupabase(false);
         } catch (error) {
             console.error('❌ Erro ao carregar cardápio:', error);
             // Fallback
-            await carregarCardapioFirestore(false);
+            await carregarCardapioSupabase(false);
         }
     }, [user]);
 
@@ -445,7 +406,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
 
             // OTIMIZAÇÃO: Criar mapa de preços e categorias para evitar busca redundante no Firestore
             const priceMap: Record<string, number> = {};
-            const categoryMap: Record<string, string> = {}; 
+            const categoryMap: Record<string, string> = {};
 
             // Populando com base nos itens SELECIONADOS (que já têm o preço total calculado corretamente)
             selectedItems.forEach(item => {
@@ -464,7 +425,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
             });
 
             // Fallback: adicionar itens do cardápio base também (Unitários) para segurança
-             cardapioCombinado.forEach(item => {
+            cardapioCombinado.forEach(item => {
                 if (item.name) {
                     const cleanName = item.name.toLowerCase();
                     if (item.price) priceMap[cleanName] = item.price;
@@ -480,7 +441,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                 // Custom prices geralmente são unitários no state, mas se for 1x ok. 
                 // Se tiver 2x Pizza, o selectedItems loop acima já deve ter pego o total.
                 // Mas vamos garantir que o nome base esteja lá.
-                priceMap[lowerName] = price; 
+                priceMap[lowerName] = price;
                 categoryMap[lowerName] = 'pizza';
             });
 

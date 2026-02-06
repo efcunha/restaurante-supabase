@@ -385,7 +385,11 @@ export function classifyError(error: unknown): AppError {
     if (
       message.includes('firestore') ||
       message.includes('database') ||
-      message.includes('query')
+      message.includes('query') ||
+      message.includes('supabase') ||
+      message.includes('postgres') ||
+      message.includes('violates foreign key constraint') ||
+      message.includes('violates unique constraint')
     ) {
       return new DatabaseError(error.message, true, { originalError: error });
     }

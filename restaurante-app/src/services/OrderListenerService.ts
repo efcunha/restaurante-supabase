@@ -1,5 +1,5 @@
 /**
- * Order Listener Service - Optimized Real-time Listeners
+ * Order Listener Service - Migrado para Supabase Realtime
  * 
  * Implementa listeners real-time otimizados com:
  * - Debouncing de 500ms para batch updates
@@ -11,18 +11,8 @@
  * Requirements: 6.1, 6.2, 6.3, 6.4, 6.5
  */
 
-import {
-  collection,
-  query,
-  where,
-  onSnapshot,
-  Unsubscribe,
-  QuerySnapshot,
-  DocumentData,
-  orderBy,
-  limit as firestoreLimit
-} from 'firebase/firestore';
-import { db } from '../config/firebaseConfig';
+import { supabase } from '../config/SupabaseConfig';
+import { RealtimeChannel } from '@supabase/supabase-js';
 
 /**
  * Configuração do listener
@@ -38,7 +28,7 @@ interface ListenerConfig {
  */
 interface SubscriptionInfo {
   id: string;
-  unsubscribe: Unsubscribe;
+  channel: RealtimeChannel;
   lastActivity: number;
   isPaused: boolean;
   callback: (data: any[]) => void;
@@ -91,24 +81,46 @@ class OrderListenerService {
 
     const subscriptionId = `active-orders-${companyId}-${Date.now()}`;
 
-    // Cria query otimizada
-    const ordersRef = collection(db, `companies/${companyId}/orders`);
-    const q = query(
-      ordersRef,
-      where('status', 'in', ['pending', 'preparing']),
-      orderBy('createdAt', 'desc'),
-      firestoreLimit(options?.limit || 100)
-    );
+    // Função para buscar dados iniciais
+    const fetchInitialData = async () => {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('company_id', companyId)
+        .in('status', ['pending', 'preparing'])
+        .order('created_at', { ascending: false })
+        .limit(options?.limit || 100);
 
-    // Cria listener com debouncing
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      this.handleSnapshot(subscriptionId, snapshot, callback);
-    });
+      if (!error && data) {
+        this.handleData(subscriptionId, data, callback);
+      }
+    };
+
+    // Busca dados iniciais
+    fetchInitialData();
+
+    // Cria canal Realtime
+    const channel = supabase
+      .channel(`orders-${subscriptionId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders',
+          filter: `company_id=eq.${companyId}`
+        },
+        async (payload) => {
+          // Re-fetch dados quando houver mudança
+          await fetchInitialData();
+        }
+      )
+      .subscribe();
 
     // Registra subscription
     this.subscriptions.set(subscriptionId, {
       id: subscriptionId,
-      unsubscribe,
+      channel,
       lastActivity: Date.now(),
       isPaused: false,
       callback
@@ -134,22 +146,48 @@ class OrderListenerService {
 
     const subscriptionId = `order-${orderId}-${Date.now()}`;
 
-    // Cria query para pedido específico
-    const ordersRef = collection(db, `companies/${companyId}/orders`);
-    const q = query(ordersRef, where('id', '==', orderId));
+    // Função para buscar dados iniciais
+    const fetchInitialData = async () => {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('company_id', companyId)
+        .eq('id', orderId)
+        .maybeSingle();
 
-    // Cria listener com debouncing
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const wrappedCallback = (orders: any[]) => {
-        callback(orders.length > 0 ? orders[0] : null);
-      };
-      this.handleSnapshot(subscriptionId, snapshot, wrappedCallback);
-    });
+      if (!error) {
+        const wrappedCallback = (orders: any[]) => {
+          callback(orders.length > 0 ? orders[0] : null);
+        };
+        this.handleData(subscriptionId, data ? [data] : [], wrappedCallback);
+      }
+    };
+
+    // Busca dados iniciais
+    fetchInitialData();
+
+    // Cria canal Realtime
+    const channel = supabase
+      .channel(`order-${subscriptionId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders',
+          filter: `id=eq.${orderId}`
+        },
+        async (payload) => {
+          // Re-fetch dados quando houver mudança
+          await fetchInitialData();
+        }
+      )
+      .subscribe();
 
     // Registra subscription
     this.subscriptions.set(subscriptionId, {
       id: subscriptionId,
-      unsubscribe,
+      channel,
       lastActivity: Date.now(),
       isPaused: false,
       callback: (orders: any[]) => callback(orders[0] || null)
@@ -159,11 +197,11 @@ class OrderListenerService {
   }
 
   /**
-   * Processa snapshot com debouncing e memoization
+   * Processa dados com debouncing e memoization
    */
-  private handleSnapshot(
+  private handleData(
     subscriptionId: string,
-    snapshot: QuerySnapshot<DocumentData>,
+    data: any[],
     callback: (data: any[]) => void
   ): void {
     const subscription = this.subscriptions.get(subscriptionId);
@@ -182,7 +220,7 @@ class OrderListenerService {
 
     // Cria novo timer de debounce
     const timer = setTimeout(() => {
-      this.processSnapshot(subscriptionId, snapshot, callback);
+      this.processData(subscriptionId, data, callback);
       this.debounceTimers.delete(subscriptionId);
     }, this.config.debounceMs);
 
@@ -190,19 +228,13 @@ class OrderListenerService {
   }
 
   /**
-   * Processa snapshot com memoization
+   * Processa dados com memoization
    */
-  private processSnapshot(
+  private processData(
     subscriptionId: string,
-    snapshot: QuerySnapshot<DocumentData>,
+    data: any[],
     callback: (data: any[]) => void
   ): void {
-    // Converte documentos para array
-    const data = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
-
     // Calcula hash dos dados para memoization
     const dataHash = this.calculateHash(data);
 
@@ -231,7 +263,7 @@ class OrderListenerService {
     // Usa shallow comparison dos IDs e timestamps
     const ids = data.map(item => item.id).sort().join(',');
     const timestamps = data
-      .map(item => item.updatedAt?.seconds || item.createdAt?.seconds || 0)
+      .map(item => item.updated_at || item.created_at || '')
       .sort()
       .join(',');
     
@@ -247,8 +279,8 @@ class OrderListenerService {
       return;
     }
 
-    // Cancela listener do Firestore
-    subscription.unsubscribe();
+    // Cancela canal do Supabase
+    subscription.channel.unsubscribe();
 
     // Remove timer de debounce se existir
     const timer = this.debounceTimers.get(subscriptionId);

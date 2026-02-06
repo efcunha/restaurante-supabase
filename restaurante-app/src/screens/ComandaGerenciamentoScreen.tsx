@@ -15,7 +15,7 @@ import ComandaDetails from '../components/comandas/ComandaDetails';
 // @ts-ignore
 import AddItemsModal from '../components/comandas/AddItemsModal';
 import { colors } from '../theme/colors';
-import { getTodayKey } from '../services/FirebaseOptimizations';
+import { getTodayKey } from '../utils/dateUtils'; // Migrated from FirebaseOptimizations
 import { fixDecimal, calcularPrecoItem } from '../utils/orderCalculator';
 import CancelOrderModal from '../components/comandas/CancelOrderModal';
 import BackgroundPattern from '../components/BackgroundPattern';
@@ -26,10 +26,8 @@ import ComandasService from '../services/ComandasService';
 import PrinterService from '../services/PrinterService';
 // @ts-ignore
 import CaixaService from '../services/CaixaService';
-import { updateDoc } from 'firebase/firestore';
+import { supabase } from '../config/SupabaseConfig';
 
-// @ts-ignore
-import { getCompanyDoc } from '../utils/firestoreUtils';
 import { LayoutAnimation, Platform, UIManager } from 'react-native';
 import PDFService from '../services/PDFService';
 
@@ -161,9 +159,9 @@ export default function ComandaGerenciamentoScreen() {
     if (!selectedComanda) return;
 
     const temPedidoEntregue = selectedComanda.pedidos?.some((pedido: any) => {
-      if (pedido.status === 'delivered' || pedido.status === 'entregue') return true;
+      if (pedido.status === 'delivered') return true;
       if (pedido.itemsWithStatus && Array.isArray(pedido.itemsWithStatus)) {
-        return pedido.itemsWithStatus.some((item: any) => item.delivered === true || item.status === 'entregue');
+        return pedido.itemsWithStatus.some((item: any) => item.delivered === true);
       }
       return false;
     });
@@ -192,25 +190,35 @@ export default function ComandaGerenciamentoScreen() {
         reason
       });
 
-      const docId = `comanda-${getTodayKey()}-${selectedComanda.comandaNumber}`;
-      
-      await updateDoc(getCompanyDoc(user?.companyId || '', 'comandas', docId), {
-        status: 'cancelada',
-        canceladaPor: user?.id || 'admin',
-        canceladaPorNome: user?.nome || 'Admin',
-        canceladaEm: new Date().toISOString(),
-        motivoCancelamento: reason.trim()
-      });
+      const { error: updateError } = await supabase
+        .from('comandas')
+        .update({
+          status: 'cancelada',
+          canceled_by: user?.id || null,
+          canceled_by_name: user?.nome || 'Admin',
+          canceled_at: new Date().toISOString(),
+          motivo_cancelamento: reason.trim()
+        })
+        .eq('company_id', user?.companyId || '')
+        .eq('date_key', getTodayKey())
+        .eq('comanda_number', selectedComanda.comandaNumber);
+
+      if (updateError) throw updateError;
 
       if (selectedComanda.pedidos && selectedComanda.pedidos.length > 0) {
         const updatePromises = selectedComanda.pedidos.map(async (pedido: any) => {
           try {
-            const pedidoRef = getCompanyDoc(user?.companyId || '', 'pedidos', pedido.id);
-            await updateDoc(pedidoRef, {
-              comandaStatus: 'cancelada',
-              canceladoEm: new Date().toISOString(),
-              canceladoPor: user?.nome || 'Admin'
-            });
+            const { error } = await supabase
+              .from('orders')
+              .update({
+                comanda_status: 'cancelada',
+                cancelado_em: new Date().toISOString(),
+                cancelado_por: user?.nome || 'Admin'
+              })
+              .eq('company_id', user?.companyId || '')
+              .eq('id', pedido.id);
+
+            if (error) throw error;
           } catch (err) {
             console.error('[ComandaGerenciamento] ❌ Erro ao marcar pedido:', pedido.id, err);
           }
@@ -353,8 +361,8 @@ export default function ComandaGerenciamentoScreen() {
           )}
         </View>
         <View style={styles.headerCenter}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Ionicons name="clipboard-outline" size={24} color={colors.white} />
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Ionicons name="clipboard-outline" size={24} color={colors.white} style={{ marginRight: 8 }} />
             <Text style={styles.headerTitle}>Gerenciamento</Text>
           </View>
         </View>
@@ -468,8 +476,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 5,
   },
-  tabs: { flexDirection: 'row', padding: 10, gap: 10 },
-  tab: { flex: 1, padding: 10, alignItems: 'center', borderRadius: 8, backgroundColor: '#E0E0E0' },
+  tabs: { flexDirection: 'row', padding: 10 },
+  tab: { flex: 1, padding: 10, alignItems: 'center', borderRadius: 8, backgroundColor: '#E0E0E0', marginHorizontal: 5 },
   activeTab: { backgroundColor: colors.primary },
   tabText: { fontWeight: 'bold', color: colors.textSecondary },
   activeTabText: { color: colors.white },

@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-import { query, where, getDocs } from 'firebase/firestore';
-import { getCompanyCollection } from '../utils/firestoreUtils';
+import { supabase } from '../config/SupabaseConfig';
 import { Ionicons } from '@expo/vector-icons';
 import { Caixa } from '../types';
 
@@ -49,72 +48,72 @@ export default function CashFlowScreen({ caixa, onClose }: CashFlowScreenProps) 
             }
 
             // Query corrigida com targetDateKey
-            const qPagamentosCorrigida = query(
-                getCompanyCollection(user.companyId, 'pagamentos'),
-                where('dateKey', '==', targetDateKey)
-            );
+            const { data: pagamentos, error: pagamentosError } = await supabase
+                .from('pagamentos')
+                .select('*')
+                .eq('company_id', user.companyId)
+                .eq('date_key', targetDateKey);
 
-            const snapPagamentos = await getDocs(qPagamentosCorrigida);
-            snapPagamentos.forEach(doc => {
-                const d = doc.data() as any;
+            if (pagamentosError) throw pagamentosError;
+
+            (pagamentos || []).forEach(d => {
                 lista.push({
-                    id: doc.id,
+                    id: d.id,
                     tipo: 'venda',
-                    descricao: `Venda - Comanda #${d.comandaNumber}`,
-                    valor: d.valor,
-                    forma: d.forma,
-                    timestamp: d.createdAt ? (d.createdAt.seconds * 1000) : 0,
-                    usuario: d.usuarioNome || d.garcomNome,
-                    detalhe: d.forma?.toUpperCase()
+                    descricao: `Venda - Comanda #${d.comanda_number}`,
+                    valor: d.amount,
+                    forma: d.payment_method,
+                    timestamp: new Date(d.created_at).getTime(),
+                    usuario: d.received_by_name || d.garcom_nome,
+                    detalhe: d.payment_method?.toUpperCase()
                 });
             });
 
             // 2. Buscar Movimentos de Caixa (Reforço/Sangria)
-            // Estes têm 'caixaId' ou 'createdAt'.
-            let qMovimentos;
             if (caixa.id) {
-                qMovimentos = query(
-                    getCompanyCollection(user.companyId, 'movimentosCaixa'),
-                    where('caixaId', '==', caixa.id)
-                );
+                const { data: movimentos, error: movimentosError } = await supabase
+                    .from('cash_movements')
+                    .select('*')
+                    .eq('company_id', user.companyId)
+                    .eq('cash_register_id', caixa.id);
+
+                if (!movimentosError && movimentos) {
+                    movimentos.forEach(d => {
+                        lista.push({
+                            id: d.id,
+                            tipo: d.tipo,
+                            descricao: d.tipo === 'reforco' ? 'Reforço de Caixa' : 'Sangria de Caixa',
+                            valor: d.valor,
+                            motivo: d.motivo,
+                            timestamp: new Date(d.created_at).getTime(),
+                            usuario: d.usuario_nome,
+                            detalhe: d.motivo
+                        });
+                    });
+                }
             }
 
-            if (qMovimentos) {
-                const snapMov = await getDocs(qMovimentos);
-                snapMov.forEach(doc => {
-                    const d = doc.data() as any;
+            // 3. Buscar Comandas CANCELADAS
+            const { data: canceladas, error: canceladasError } = await supabase
+                .from('comandas')
+                .select('*')
+                .eq('company_id', user.companyId)
+                .eq('date_key', targetDateKey)
+                .eq('status', 'cancelada');
+
+            if (!canceladasError && canceladas) {
+                canceladas.forEach(d => {
                     lista.push({
-                        id: doc.id,
-                        tipo: d.tipo, // 'reforco' ou 'sangria'
-                        descricao: d.tipo === 'reforco' ? 'Reforço de Caixa' : 'Sangria de Caixa',
-                        valor: d.valor,
-                        motivo: d.motivo,
-                        timestamp: d.createdAt ? (d.createdAt.seconds * 1000) : 0,
-                        usuario: d.usuarioNome,
-                        detalhe: d.motivo
+                        id: d.id,
+                        tipo: 'cancelamento',
+                        descricao: `Comanda Cancelada #${d.comanda_number}`,
+                        valor: d.total_consumed || 0,
+                        timestamp: d.canceled_at ? new Date(d.canceled_at).getTime() : (d.created_at ? new Date(d.created_at).getTime() : 0),
+                        usuario: d.canceled_by_name || 'Desconhecido',
+                        detalhe: d.cancel_reason || 'Sem motivo'
                     });
                 });
             }
-
-            // 3. Buscar Comandas CANCELADAS (Novo Requisito)
-            const qCanceladas = query(
-                getCompanyCollection(user.companyId, 'comandas'),
-                where('dateKey', '==', targetDateKey),
-                where('status', '==', 'cancelada')
-            );
-            const snapCanceladas = await getDocs(qCanceladas);
-            snapCanceladas.forEach(doc => {
-                const d = doc.data() as any;
-                lista.push({
-                    id: doc.id,
-                    tipo: 'cancelamento',
-                    descricao: `Comanda Cancelada #${d.comandaNumber || d.numeroComanda}`,
-                    valor: d.totalConsumido || 0,
-                    timestamp: d.canceladaEm ? (new Date(d.canceladaEm).getTime()) : (d.createdAt ? new Date(d.createdAt).getTime() : 0),
-                    usuario: d.canceladaPorNome || 'Desconhecido',
-                    detalhe: d.motivoCancelamento || 'Sem motivo'
-                });
-            });
 
             // 4. Adicionar Evento de Abertura (Fictício para visualização)
             if (caixa.valorInicial) {

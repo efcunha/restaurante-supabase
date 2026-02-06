@@ -16,12 +16,11 @@ import {
   TextInput,
   KeyboardAvoidingView,
 } from 'react-native';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../config/firebaseConfig';
 import { Ionicons } from '@expo/vector-icons';
 import BiometricAuthService from '../services/BiometricAuthService';
 import { useAuth } from '../context/AuthContext';
 import * as Device from 'expo-device';
+import { supabase } from '../config/SupabaseConfig';
 
 interface Props {
   visible: boolean;
@@ -65,11 +64,15 @@ export default function BiometricSetupModal({ visible, onClose, onSuccess }: Pro
     try {
         const deviceId = Device.modelId || Device.deviceName || 'unknown';
         
-        // 1. Verify Password
-        // We use signInWithEmailAndPassword to verify, this might refresh token but is safe
+        // 1. Verify Password using Supabase Auth
         if (!user?.email) throw new Error('Email do usuário não encontrado');
         
-        await signInWithEmailAndPassword(auth, user.email, password);
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+            email: user.email,
+            password: password
+        });
+
+        if (signInError) throw signInError;
         
         // 2. Authenticate Biometric (Verify ownership)
         const isBiometricValid = await BiometricAuthService.verifyBiometricOwnership(
@@ -83,7 +86,7 @@ export default function BiometricSetupModal({ visible, onClose, onSuccess }: Pro
         }
 
         // 3. Enroll and Store Credentials
-        await BiometricAuthService.enrollUser(user.uid, deviceId, user.email, password);
+        await BiometricAuthService.enrollUser(user.uid || user.id, deviceId, user.email, password);
 
         Alert.alert(
             'Sucesso',
@@ -101,7 +104,7 @@ export default function BiometricSetupModal({ visible, onClose, onSuccess }: Pro
 
     } catch (error: any) {
         console.error('Enroll error:', error);
-        if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
+        if (error.message?.includes('Invalid login credentials') || error.message?.includes('password')) {
              Alert.alert('Erro', 'Senha incorreta.');
         } else {
              Alert.alert('Erro', 'Falha ao habilitar autenticação biométrica: ' + error.message);

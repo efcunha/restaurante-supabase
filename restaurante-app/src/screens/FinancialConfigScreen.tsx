@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Switch, TouchableOpacity, ActivityIndicator, Alert, ScrollView } from 'react-native';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from '../config/firebaseConfig';
 import { useAuth } from '../context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 // @ts-ignore
 import BackgroundPattern from '../components/BackgroundPattern';
+import { supabase } from '../config/SupabaseConfig';
 
 interface Props {
   onClose?: () => void;
@@ -28,13 +27,18 @@ export default function FinancialConfigScreen({ onClose }: Props) {
         if (!user?.companyId) return;
         try {
             setLoading(true);
-            // @ts-ignore
-            const docRef = doc(db, 'companies', user.companyId, 'settings', 'financeiro');
-            const docSnap = await getDoc(docRef);
+            
+            const { data, error } = await supabase
+                .from('settings')
+                .select('*')
+                .eq('company_id', user.companyId)
+                .eq('key', 'financeiro')
+                .single();
 
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                setBlindClosing(data.blindClosing || false);
+            if (error && error.code !== 'PGRST116') throw error;
+
+            if (data && data.value) {
+                setBlindClosing(data.value.blind_closing || false);
             }
         } catch (error) {
             console.error('Erro ao carregar configurações financeiras:', error);
@@ -49,15 +53,21 @@ export default function FinancialConfigScreen({ onClose }: Props) {
         if (!user?.companyId) return;
         try {
             setSaving(true);
-            // @ts-ignore
-            const docRef = doc(db, 'companies', user.companyId, 'settings', 'financeiro');
 
-            await setDoc(docRef, {
-                blindClosing,
-                updatedAt: new Date().toISOString(),
-                // @ts-ignore
-                updatedBy: user.id
-            }, { merge: true });
+            const { error } = await supabase
+                .from('settings')
+                .upsert({
+                    company_id: user.companyId,
+                    key: 'financeiro',
+                    value: {
+                        blind_closing: blindClosing
+                    },
+                    updated_at: new Date().toISOString(),
+                    // @ts-ignore
+                    updated_by: user.id
+                });
+
+            if (error) throw error;
 
             Alert.alert('Sucesso', 'Configurações salvas com sucesso!');
             if (onClose) onClose();

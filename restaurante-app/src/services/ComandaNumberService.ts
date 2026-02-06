@@ -1,12 +1,9 @@
 /**
- * ComandaNumberService - Gera números de comanda sequenciais por dia.
- * Usa um documento de contador em Firestore (counters/comandas-YYYY-MM-DD)
- * para garantir incremento atômico evitando colisões em múltiplos dispositivos.
+ * ComandaNumberService - Migrado para Supabase
+ * Gera números de comanda sequenciais por dia usando PostgreSQL sequence.
+ * Usa a função RPC get_next_comanda_number() criada na migration.
  */
-import { doc, runTransaction, serverTimestamp, getDoc } from 'firebase/firestore';
-import { db } from '../config/firebaseConfig';
-
-const COUNTERS_COLLECTION = 'counters';
+import { supabase } from '../config/SupabaseConfig';
 
 /**
  * Retorna string da data (YYYY-MM-DD) para chave diária.
@@ -23,60 +20,97 @@ const getDateKey = (date: Date = new Date()): string => {
  * @returns {Promise<number | null>} próximo número disponível
  */
 export const peekNextComandaNumber = async (): Promise<number | null> => {
-  const dateKey = getDateKey();
-  const docRef = doc(db, COUNTERS_COLLECTION, `comandas-${dateKey}`);
   try {
-    const snap = await getDoc(docRef);
-    if (!snap.exists()) {
-      return 1; // Primeiro do dia
+    // Buscar company_id do usuário logado
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('company_id')
+      .eq('id', user.id)
+      .single();
+
+    if (!profile?.company_id) return null;
+
+    const dateKey = getDateKey();
+
+    // Buscar o maior número de comanda para hoje
+    const { data, error } = await supabase
+      .from('comandas')
+      .select('comanda_number')
+      .eq('company_id', profile.company_id)
+      .eq('date_key', dateKey)
+      .order('comanda_number', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      console.error('[ComandaNumber] Erro ao buscar próximo número:', error);
+      return null;
     }
-    const data = snap.data();
-    const current = typeof data.current === 'number' ? data.current : 0;
-    return current + 1;
-  } catch {
+
+    // Se não há comandas hoje, próximo é 1
+    if (!data) return 1;
+
+    // Próximo número é o maior + 1
+    return (data.comanda_number || 0) + 1;
+  } catch (error) {
+    console.error('[ComandaNumber] Erro em peekNextComandaNumber:', error);
     return null;
   }
 };
 
 /**
  * Gera próximo número de comanda (incremental) para o dia atual.
- * Cria documento se não existir. Campo: { current: number, createdAt, updatedAt }
+ * Usa a função RPC get_next_comanda_number() do Supabase.
  * @returns {Promise<number>} novo número de comanda
  */
 export const getNextComandaNumber = async (): Promise<number> => {
-  const dateKey = getDateKey();
-  const docRef = doc(db, COUNTERS_COLLECTION, `comandas-${dateKey}`);
-  const nextNumber = await runTransaction(db, async (transaction) => {
-    const snap = await transaction.get(docRef);
-    if (!snap.exists()) {
-      // inicia contador em 1
-      transaction.set(docRef, {
-        current: 1,
-        date: dateKey,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-      return 1;
-    } else {
-      const data = snap.data();
-      const current = typeof data.current === 'number' ? data.current : 0;
-      const updated = current + 1;
-      transaction.update(docRef, {
-        current: updated,
-        updatedAt: serverTimestamp(),
-      });
-      return updated;
+  try {
+    // Buscar company_id do usuário logado
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Usuário não autenticado');
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('company_id')
+      .eq('id', user.id)
+      .single();
+
+    if (!profile?.company_id) throw new Error('Usuário sem empresa vinculada');
+
+    const dateKey = getDateKey();
+
+    // Chama função RPC para obter próximo número
+    const { data, error } = await supabase.rpc('get_next_comanda_number', {
+      p_company_id: profile.company_id,
+      p_date_key: dateKey
+    });
+
+    if (error) {
+      console.error('[ComandaNumber] Erro ao gerar número:', error);
+      throw error;
     }
-  });
-  return nextNumber;
+
+    return data as number;
+  } catch (error) {
+    console.error('[ComandaNumber] Erro em getNextComandaNumber:', error);
+    throw error;
+  }
 };
 
 /**
- * Formata número da comanda para exibição (ex: 12 -> 012 se desejar padding). Mantém simples por enquanto.
+ * Formata número da comanda para exibição (ex: 12 -> 012 se desejar padding).
  * @param {number} num
  * @returns {string}
  */
-export const formatComandaNumber = (num: number | string): string => String(num); // Ajuste futuro: padStart(3,'0') se quiser
+export const formatComandaNumber = (num: number | string): string => {
+  const numStr = String(num);
+  // Opcional: adicionar padding com zeros à esquerda
+  // return numStr.padStart(3, '0'); // Ex: 1 -> 001
+  return numStr;
+};
 
 export default {
   peekNextComandaNumber,

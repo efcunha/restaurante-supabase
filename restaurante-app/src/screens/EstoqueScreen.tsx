@@ -1,11 +1,8 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, Modal } from 'react-native';
 import { useState, useEffect } from 'react';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, getDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../config/firebaseConfig';
+import { supabase } from '../config/SupabaseConfig';
 import { useAuth } from '../context/AuthContext';
-// @ts-ignore
-import { getCompanyCollection, getCompanyDoc } from '../utils/firestoreUtils';
 // @ts-ignore
 import BackgroundPattern from '../components/BackgroundPattern';
 import { Ionicons } from '@expo/vector-icons';
@@ -68,12 +65,16 @@ export default function EstoqueScreen({ onClose }: Props) {
   const carregarConfigECategorias = async () => {
     try {
       // @ts-ignore
-      const docRef = getCompanyDoc(user.companyId, 'settings', 'estoque_config');
-      const docSnap = await getDoc(docRef);
+      const { data, error } = await supabase
+        .from('settings')
+        .select('*')
+        .eq('company_id', user.companyId)
+        .eq('key', 'estoque_config')
+        .single();
 
       let cats = [];
-      if (docSnap.exists() && docSnap.data().stockCategories) {
-        cats = docSnap.data().stockCategories;
+      if (data && data.value && data.value.stockCategories) {
+        cats = data.value.stockCategories;
       } else {
         cats = [
           { id: 'descartaveis', nome: 'Descartáveis', icon: '🥤' },
@@ -94,10 +95,17 @@ export default function EstoqueScreen({ onClose }: Props) {
   const carregarFornecedores = async () => {
     try {
       // @ts-ignore
-      const snapshot = await getDocs(getCompanyCollection(user.companyId, 'suppliers'));
-      const lista = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      const { data, error } = await supabase
+        .from('suppliers')
+        .select('*')
+        .eq('company_id', user.companyId)
+        .order('nome', { ascending: true });
+
+      if (error) throw error;
+
+      const lista = (data || []).map(d => ({ id: d.id, ...d }));
       // @ts-ignore
-      setFornecedores(lista.sort((a, b) => a.nome.localeCompare(b.nome)));
+      setFornecedores(lista);
     } catch (error) {
       console.error('Erro ao carregar fornecedores:', error);
     }
@@ -109,13 +117,16 @@ export default function EstoqueScreen({ onClose }: Props) {
     try {
       setLoading(true);
       // @ts-ignore
-      const snapshot = await getDocs(getCompanyCollection(user.companyId, 'estoque'));
-      const items = snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
-        // @ts-ignore
-        .filter(item => item.categoria === categoriaAtiva)
-        // @ts-ignore
-        .sort((a, b) => a.nome.localeCompare(b.nome));
+      const { data, error } = await supabase
+        .from('estoque')
+        .select('*')
+        .eq('company_id', user.companyId)
+        .eq('categoria', categoriaAtiva)
+        .order('nome', { ascending: true });
+
+      if (error) throw error;
+
+      const items = (data || []).map(item => ({ id: item.id, ...item }));
       setItensEstoque(items);
     } catch (error) {
       console.error('Erro ao carregar estoque:', error);
@@ -153,25 +164,33 @@ export default function EstoqueScreen({ onClose }: Props) {
         nome: nomeItem.trim(),
         quantidade: parseFloat(quantidade),
         unidade,
-        precoCusto: precoCusto ? parseFloat(precoCusto.replace(',', '.')) : 0, // Save cost price
-        quantidadeMinima: quantidadeMinima ? parseFloat(quantidadeMinima) : 0,
-        fornecedorId: fornecedorSelecionado,
-        fornecedorNome: fornecedores.find(f => f.id === fornecedorSelecionado)?.nome || '',
+        preco_custo: precoCusto ? parseFloat(precoCusto.replace(',', '.')) : 0,
+        quantidade_minima: quantidadeMinima ? parseFloat(quantidadeMinima) : 0,
+        fornecedor_id: fornecedorSelecionado,
+        fornecedor_nome: fornecedores.find(f => f.id === fornecedorSelecionado)?.nome || '',
         observacoes: observacoes.trim(),
         categoria: categoriaAtiva,
-        atualizadoEm: serverTimestamp(),
+        company_id: user?.companyId,
+        atualizado_em: new Date().toISOString(),
       };
 
       if (editandoId) {
-        // @ts-ignore
-        await updateDoc(getCompanyDoc(user.companyId, 'estoque', editandoId), itemData);
+        const { error } = await supabase
+          .from('estoque')
+          .update(itemData)
+          .eq('id', editandoId);
+
+        if (error) throw error;
         Alert.alert('Sucesso', 'Item atualizado com sucesso!');
       } else {
-        // @ts-ignore
-        await addDoc(getCompanyCollection(user.companyId, 'estoque'), {
-          ...itemData,
-          criadoEm: serverTimestamp(),
-        });
+        const { error } = await supabase
+          .from('estoque')
+          .insert({
+            ...itemData,
+            criado_em: new Date().toISOString(),
+          });
+
+        if (error) throw error;
         Alert.alert('Sucesso', 'Item adicionado ao estoque!');
       }
 
@@ -218,8 +237,12 @@ export default function EstoqueScreen({ onClose }: Props) {
           style: 'destructive',
           onPress: async () => {
             try {
-              // @ts-ignore
-              await deleteDoc(getCompanyDoc(user.companyId, 'estoque', itemId));
+              const { error } = await supabase
+                .from('estoque')
+                .delete()
+                .eq('id', itemId);
+
+              if (error) throw error;
               Alert.alert('Sucesso', 'Item excluído do estoque');
               carregarItens();
             } catch (error) {
@@ -239,11 +262,15 @@ export default function EstoqueScreen({ onClose }: Props) {
       return;
     }
     try {
-      // @ts-ignore
-      await updateDoc(getCompanyDoc(user.companyId, 'estoque', itemId), {
-        quantidade: novaQuantidade,
-        atualizadoEm: serverTimestamp(),
-      });
+      const { error } = await supabase
+        .from('estoque')
+        .update({
+          quantidade: novaQuantidade,
+          atualizado_em: new Date().toISOString(),
+        })
+        .eq('id', itemId);
+
+      if (error) throw error;
       carregarItens();
     } catch (error) {
       console.error('Erro ao ajustar quantidade:', error);

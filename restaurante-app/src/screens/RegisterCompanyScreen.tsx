@@ -11,9 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform
 } from 'react-native';
-import { doc, setDoc, serverTimestamp, collection, getDoc } from 'firebase/firestore';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth, db } from '../config/firebaseConfig';
+import { supabase } from '../config/SupabaseConfig'; // Replaced firebase config
 import { colors } from '../theme/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
@@ -27,7 +25,10 @@ interface Props {
 }
 
 export default function RegisterCompanyScreen({ navigation }: Props) {
-  const { register } = useAuth();
+  const { register } = useAuth(); // Use context register which acts as wrapper or we can use direct supabase too
+  // Actually, context 'register' wraps firebase. We should use direct supabase here or update context register?
+  // Context register in our new Supabase Auth Context DOES use supabase.auth.signUp.
+  
   const [restaurantName, setRestaurantName] = useState('');
   const [adminName, setAdminName] = useState('');
   const [email, setEmail] = useState('');
@@ -35,6 +36,11 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [documentType, setDocumentType] = useState<'cpf' | 'cnpj'>('cpf');
   const [documentValue, setDocumentValue] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
+  const [zipCode, setZipCode] = useState('');
+  const [address, setAddress] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
   const [loading, setLoading] = useState(false);
   const [secureText, setSecureText] = useState(true);
 
@@ -59,6 +65,66 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
 
   const handleDocumentChange = (text: string) => {
     setDocumentValue(formatDocument(text, documentType));
+  };
+
+  const formatPhone = (text: string) => {
+    const numbers = text.replace(/\D/g, '');
+    if (numbers.length <= 10) {
+        // Formato: (83) 9917-2452
+        return numbers
+            .replace(/^(\d{2})(\d)/, '($1) $2')
+            .replace(/(\d{4})(\d)/, '$1-$2')
+            .replace(/(-\d{4})\d+?$/, '$1');
+    } else {
+        // Formato: (83) 99917-2452
+        return numbers
+            .replace(/^(\d{2})(\d)/, '($1) $2')
+            .replace(/(\d{5})(\d)/, '$1-$2')
+            .replace(/(-\d{4})\d+?$/, '$1');
+    }
+  };
+
+  const handlePhoneChange = (text: string) => {
+    setContactPhone(formatPhone(text));
+  };
+
+  const formatZipCode = (text: string) => {
+    const numbers = text.replace(/\D/g, '');
+    return numbers
+        .replace(/^(\d{5})(\d)/, '$1-$2')
+        .replace(/(-\d{3})\d+?$/, '$1')
+        .substring(0, 9);
+  };
+
+  const handleZipCodeChange = (text: string) => {
+    setZipCode(formatZipCode(text));
+  };
+
+  const searchAddressByCEP = async (cep: string) => {
+    const cleanCEP = cep.replace(/\D/g, '');
+    
+    if (cleanCEP.length !== 8) return;
+
+    try {
+      const response = await fetch(`https://viacep.com.br/ws/${cleanCEP}/json/`);
+      const data = await response.json();
+
+      if (data.erro) {
+        Alert.alert('Aviso', 'CEP não encontrado');
+        return;
+      }
+
+      setAddress(data.logradouro || '');
+      setCity(data.localidade || '');
+      setState(data.uf || '');
+      
+      if (Platform.OS === 'web') {
+        console.log('✅ Endereço encontrado:', data);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar CEP:', error);
+      Alert.alert('Erro', 'Não foi possível buscar o endereço. Verifique sua conexão.');
+    }
   };
 
   const handleRegister = async () => {
@@ -96,120 +162,92 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
     try {
       setLoading(true);
 
+      // 1. Sign Up User
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: emailSanitized,
+          password: passwordSanitized,
+          options: {
+              data: {
+                  full_name: adminName // Store in metadata initially
+              }
+          }
+      });
 
-      // 1. Create Auth User via Context (prevents auto-logout)
-      const result = await register(emailSanitized, passwordSanitized);
+      if (authError) throw authError;
+      if (!authData.user) throw new Error('Falha ao criar usuário (sem dados retornados)');
+      
+      const userId = authData.user.id;
 
-      if (!result.success) {
-        throw result.error;
+      // 2. Create Company
+      const { data: companyData, error: companyError } = await supabase
+          .from('companies')
+          .insert({
+              name: restaurantName,
+              plan: 'free',
+              active: true,
+              document_type: documentType,
+              document: docValidation.value,
+              contact_name: adminName,
+              contact_phone: contactPhone.replace(/\D/g, '') || null,
+              address: address.trim() || null,
+              city: city.trim() || null,
+              state: state.trim() || null,
+              zip_code: zipCode.replace(/\D/g, '') || null
+          })
+          .select()
+          .single();
+
+      if (companyError) throw companyError;
+      
+      const companyId = companyData.id;
+
+      // 3. Create User Profile
+      // Note: profiles table is often created via Trigger on auth.users. 
+      // If so, we should UPDATE it. If not, INSERT it.
+      // Assuming manual management for migration:
+      
+      const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+              id: userId,
+              company_id: companyId,
+              email: emailSanitized,
+              full_name: adminName,
+              role: 'admin'
+          })
+          // If trigger exists and created row, access conflict might occur?
+          // Use upsert to be safe
+          .select()
+          .single();
+          
+      // If profile insert fails (e.g. key violation due to trigger), try update
+      if (profileError) {
+          // Fallback update
+           const { error: updateError } = await supabase
+              .from('profiles')
+              .update({
+                  company_id: companyId,
+                  full_name: adminName,
+                  role: 'admin'
+              })
+              .eq('id', userId);
+              
+           if (updateError) {
+               console.error('Profile update failed', updateError);
+               throw profileError; // Throw original error
+           }
       }
-
-      const user = result.user;
-
-      // 2. Create Company Document
-      // Generate a new ID for the company
-      const companyRef = doc(collection(db, 'companies'));
-      const companyId = companyRef.id;
-
-      await setDoc(companyRef, {
-        name: restaurantName,
-        createdAt: serverTimestamp(),
-        plan: 'free',
-        active: true,
-        createdBy: user.uid,
-        documentType: documentType,
-        document: docValidation.value // Clean value (numbers only)
-      });
-
-      // 3. Create User Document linked to Company
-      await setDoc(doc(db, 'users', user.uid), {
-        name: adminName,
-        email: emailSanitized,
-        role: 'admin', // SaaS Admin
-        funcao: 'admin', // Legacy compatibility
-        companyId: companyId,
-        createdAt: serverTimestamp(),
-        active: true
-      });
-
-      // 4. Force reload or let AuthContext pick up the user data naturally?
-      // AuthContext.login does a fetch, but we just set the data. 
-      // User is already logged in (firebase-wise).
-      // We might want to call something to refresh the User Profile in context.
-      // But for now, let's just alert success. The AuthContext listener *might* kick in
-      // but without isManualLogin=true (wait, we set it true in register!), it would survive.
-      // However logic in onAuthStateChanged is complicated.
 
       Alert.alert(
         'Sucesso',
-        'Conta criada com sucesso! Faça login novamente para carregar suas permissões.',
-        [{ text: 'OK', onPress: () => navigation.navigate('Login') }] // Force re-login to fetch Firestore data cleanly
+        'Conta criada com sucesso! Faça login para começar.',
+        [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
       );
 
     } catch (error: any) {
-      // TENTATIVA DE AUTO-RECUPERAÇÃO (SELF-HEALING)
-      if (error.code === 'auth/email-already-in-use') {
-        console.log('⚠️ Email já existe. Tentando verificar se é um cadastro incompleto...');
-        try {
-          // Tenta logar com a senha fornecida
-          const userCredential = await signInWithEmailAndPassword(auth, emailSanitized, passwordSanitized);
-          const user = userCredential.user;
-
-          // Verifica se já tem dados no Firestore
-          const userDocRef = doc(db, 'users', user.uid);
-          const userDocSnap = await getDoc(userDocRef);
-
-          if (!userDocSnap.exists()) {
-            console.log('🛠️ Cadastro incompleto detectado. Recuperando...');
-
-            // REPETE A CRIAÇÃO DE DADOS (Cópia da lógica acima)
-            const companyRef = doc(collection(db, 'companies'));
-            const companyId = companyRef.id;
-
-            await setDoc(companyRef, {
-              name: restaurantName,
-              createdAt: serverTimestamp(),
-              plan: 'free',
-              active: true,
-              createdBy: user.uid
-            });
-
-            await setDoc(userDocRef, {
-              name: adminName,
-              email: emailSanitized,
-              role: 'admin',
-              funcao: 'admin',
-              companyId: companyId,
-              createdAt: serverTimestamp(),
-              active: true
-            });
-
-            Alert.alert(
-              'Cadastro Recuperado',
-              'Identificamos que seu cadastro anterior foi interrompido. Finalizamos ele agora!\n\nFaça login para entrar.',
-              [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
-            );
-            return; // Sair com sucesso
-          } else {
-            Alert.alert('Aviso', 'Este email já está cadastrado e ativo. Por favor, faça login.');
-            return;
-          }
-        } catch (loginError: any) {
-          // Se a senha estiver errada ou outro erro de login, cai aqui
-          console.error('Erro na recuperação:', loginError);
-          if (loginError.code === 'auth/wrong-password') {
-            Alert.alert('Erro', 'Este email já está cadastrado, mas a senha informada está incorreta.');
-          } else {
-            Alert.alert('Erro', 'Email já cadastrado. Tente fazer login ou usar outro email.');
-          }
-          return;
-        }
-      }
-
       console.error('Registration Error:', error);
-      let msg = 'Erro ao criar conta';
-      if (error.code === 'auth/invalid-email') msg = 'Email inválido';
-      if (error.code === 'auth/weak-password') msg = 'Senha muito fraca';
+      let msg = error.message || 'Erro ao criar conta';
+      if (msg.includes('already registered')) msg = 'Este email já está em uso.';
       Alert.alert('Erro', msg);
     } finally {
       setLoading(false);
@@ -272,6 +310,63 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
             value={adminName}
             onChangeText={setAdminName}
           />
+
+          <Text style={styles.label}>Telefone de Contato</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="(00) 00000-0000"
+            value={contactPhone}
+            onChangeText={handlePhoneChange}
+            keyboardType="phone-pad"
+          />
+
+          <Text style={styles.label}>CEP</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <TextInput
+              style={[styles.input, { flex: 1, marginRight: 10 }]}
+              placeholder="00000-000"
+              value={zipCode}
+              onChangeText={handleZipCodeChange}
+              keyboardType="numeric"
+            />
+            <TouchableOpacity
+              style={styles.searchButton}
+              onPress={() => searchAddressByCEP(zipCode)}
+            >
+              <Ionicons name="search" size={20} color="#FFF" />
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.label}>Endereço Completo</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Rua, número, complemento"
+            value={address}
+            onChangeText={setAddress}
+          />
+
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            <View style={{ flex: 2, marginRight: 10 }}>
+              <Text style={styles.label}>Cidade</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Cidade"
+                value={city}
+                onChangeText={setCity}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.label}>Estado</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="UF"
+                value={state}
+                onChangeText={(text) => setState(text.toUpperCase())}
+                maxLength={2}
+                autoCapitalize="characters"
+              />
+            </View>
+          </View>
 
           <Text style={styles.label}>Email</Text>
           <TextInput
@@ -431,4 +526,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
   },
+  searchButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+    padding: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minWidth: 48,
+  }
 });
