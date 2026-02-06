@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, Alert } from 'react-native';
-import { auth } from '../config/firebaseConfig';
-import { signOut } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from '../config/SupabaseConfig';
 
 export default function DebugAuth() {
   const [debugInfo, setDebugInfo] = useState('');
@@ -10,13 +9,13 @@ export default function DebugAuth() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const currentUser = auth.currentUser;
+        const { data: { user } } = await supabase.auth.getUser();
         const asyncData = await AsyncStorage.getAllKeys();
         
         const info = `
-Firebase User: ${currentUser ? 'EXISTE' : 'NULL'}
-UID: ${currentUser?.uid || 'N/A'}
-Email: ${currentUser?.email || 'N/A'}
+Supabase User: ${user ? 'EXISTE' : 'NULL'}
+UID: ${user?.id || 'N/A'}
+Email: ${user?.email || 'N/A'}
 AsyncStorage Keys: ${asyncData.length}
 Keys: ${asyncData.join(', ')}
         `;
@@ -32,7 +31,7 @@ Keys: ${asyncData.join(', ')}
 
   const forceLogout = async () => {
     try {
-      await signOut(auth);
+      await supabase.auth.signOut();
       await AsyncStorage.clear();
       Alert.alert('Sucesso', 'Logout forçado realizado');
     } catch (error) {

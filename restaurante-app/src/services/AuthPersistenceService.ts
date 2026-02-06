@@ -6,7 +6,15 @@
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { User } from 'firebase/auth';
+
+
+// Generic User interface to support both Firebase and Supabase
+export interface PersistenceUser {
+  uid: string; // Supabase user.id maps to this
+  email?: string | null;
+  displayName?: string | null;
+  [key: string]: any;
+}
 
 interface AuthState {
   userId: string;
@@ -34,7 +42,7 @@ class AuthPersistenceService {
   /**
    * Persist authentication state securely
    */
-  async persistAuthState(user: User, sessionToken: string, refreshToken?: string): Promise<void> {
+  async persistAuthState(user: PersistenceUser, sessionToken: string, refreshToken?: string): Promise<void> {
     try {
       // Validate auth state before persisting
       const validationResult = this.validateAuthStateBeforePersist(user, sessionToken);
@@ -50,10 +58,8 @@ class AuthPersistenceService {
         userId: user.uid,
         email: user.email,
         displayName: user.displayName,
-        // @ts-ignore - Custom claims
-        role: user.role || null,
-        // @ts-ignore - Custom claims
-        companyId: user.companyId || null,
+        role: (user.role as string) || null,
+        companyId: (user.companyId as string) || null,
         persistedAt: now.toISOString(),
         expiresAt: expiresAt.toISOString(),
         sessionToken,
@@ -153,7 +159,7 @@ class AuthPersistenceService {
    * Validate auth state before persisting
    */
   private validateAuthStateBeforePersist(
-    user: User,
+    user: PersistenceUser,
     sessionToken: string
   ): ValidationResult {
     // Validate user object

@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, Modal } from 'react-native';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../config/firebaseConfig';
+import { supabase } from '../config/SupabaseConfig';
 import { useAuth } from '../context/AuthContext';
-// @ts-ignore
-import { getCompanyCollection, getCompanyDoc } from '../utils/firestoreUtils';
 // @ts-ignore
 import BackgroundPattern from '../components/BackgroundPattern';
 import { Ionicons } from '@expo/vector-icons';
@@ -105,13 +102,15 @@ export default function GerenciarFornecedoresScreen({ onClose }: Props) {
 
         try {
             setLoading(true);
-            // @ts-ignore
-            const snapshot = await getDocs(getCompanyCollection(user.companyId, 'suppliers'));
-            const lista = snapshot.docs
-                .map(doc => ({ id: doc.id, ...doc.data() }))
-                // @ts-ignore
-                .sort((a, b) => a.nome.localeCompare(b.nome));
+            const { data, error } = await supabase
+                .from('suppliers')
+                .select('*')
+                .eq('company_id', user.companyId)
+                .order('nome', { ascending: true });
 
+            if (error) throw error;
+
+            const lista = (data || []).map(item => ({ id: item.id, ...item }));
             setFornecedores(lista);
         } catch (error) {
             console.error('Erro ao carregar fornecedores:', error);
@@ -175,21 +174,29 @@ export default function GerenciarFornecedoresScreen({ onClose }: Props) {
             const dados = {
                 nome: nome.trim(),
                 cnpj: cnpj.trim(),
-                contato: contato.trim(), // Telefone formatado
-                email: email.trim(),     // Novo campo
-                updatedAt: serverTimestamp()
+                contato: contato.trim(),
+                email: email.trim(),
+                company_id: user?.companyId,
+                updated_at: new Date().toISOString()
             };
 
             if (editingId) {
-                // @ts-ignore
-                await updateDoc(getCompanyDoc(user.companyId, 'suppliers', editingId), dados);
+                const { error } = await supabase
+                    .from('suppliers')
+                    .update(dados)
+                    .eq('id', editingId);
+
+                if (error) throw error;
                 Alert.alert('Sucesso', 'Fornecedor atualizado!');
             } else {
-                // @ts-ignore
-                await addDoc(getCompanyCollection(user.companyId, 'suppliers'), {
-                    ...dados,
-                    createdAt: serverTimestamp()
-                });
+                const { error } = await supabase
+                    .from('suppliers')
+                    .insert({
+                        ...dados,
+                        created_at: new Date().toISOString()
+                    });
+
+                if (error) throw error;
                 Alert.alert('Sucesso', 'Fornecedor cadastrado!');
             }
 
@@ -215,8 +222,12 @@ export default function GerenciarFornecedoresScreen({ onClose }: Props) {
                     onPress: async () => {
                         try {
                             setLoading(true);
-                            // @ts-ignore
-                            await deleteDoc(getCompanyDoc(user.companyId, 'suppliers', item.id));
+                            const { error } = await supabase
+                                .from('suppliers')
+                                .delete()
+                                .eq('id', item.id);
+
+                            if (error) throw error;
                             carregarFornecedores();
                         } catch (error) {
                             Alert.alert('Erro', 'Não foi possível excluir');

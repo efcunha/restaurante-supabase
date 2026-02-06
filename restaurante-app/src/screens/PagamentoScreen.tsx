@@ -4,10 +4,8 @@ import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 // @ts-ignore
 import PagamentosService from '../services/PagamentosService';
-import { getTodayKey } from '../services/FirebaseOptimizations';
-// @ts-ignore
-import { getCompanyDoc } from '../utils/firestoreUtils';
-import { getDoc } from 'firebase/firestore';
+import { getTodayKey } from '../utils/dateUtils'; // Migrated from FirebaseOptimizations
+import { supabase } from '../config/SupabaseConfig';
 
 // Usar função centralizada para consistência de data local
 const todayKey = getTodayKey;
@@ -32,17 +30,21 @@ export default function PagamentoScreen() {
   const carregarSaldo = async () => {
     try {
       if (!user?.companyId || !comanda) return;
-      // simples: estimar saldo a partir de comanda doc
       const dateKey = todayKey();
       const id = `comanda-${dateKey}-${comanda}`;
       
-      const snap = await getDoc(getCompanyDoc(user.companyId, 'comandas', id));
-      if (!snap.exists()) throw new Error('Comanda não encontrada');
-      const data = snap.data();
+      const { data, error } = await supabase
+        .from('comandas')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error || !data) throw new Error('Comanda não encontrada');
+
       setSaldo({
-        total: data.totalConsumido || 0,
-        pago: data.totalPago || 0,
-        aberto: data.saldoAberto || 0,
+        total: data.total_consumed || 0,
+        pago: data.total_paid || 0,
+        aberto: data.open_balance || 0,
       });
     } catch (e: any) { Alert.alert('Erro', e.message); }
   };
@@ -67,34 +69,30 @@ export default function PagamentoScreen() {
         usuarioNome: user?.nome,
       });
       
-      // console.log('[Pagamento] ✅ Pagamento registrado, verificando saldo...');
-      
       // 🚀 OTIMIZAÇÃO: Reduzir delay de 500ms para 200ms
       await new Promise(resolve => setTimeout(resolve, 200));
       
       // Recarregar saldo atualizado
       const dateKey = todayKey();
       const id = `comanda-${dateKey}-${comanda}`;
-      const snap = await getDoc(getCompanyDoc(user?.companyId || '', 'comandas', id));
       
-      if (!snap.exists()) {
+      const { data, error } = await supabase
+        .from('comandas')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (error || !data) {
         Alert.alert('Erro', 'Comanda não encontrada');
         return;
       }
 
-      const data = snap.data();
-      const saldoAtual = data.saldoAberto || 0;
-      
-      // console.log('[Pagamento] 💰 Saldo após pagamento:', {
-      //   totalConsumido: data.totalConsumido,
-      //   totalPago: data.totalPago,
-      //   saldoAberto: saldoAtual
-      // });
+      const saldoAtual = data.open_balance || 0;
       
       // Atualizar UI
       setSaldo({
-        total: data.totalConsumido || 0,
-        pago: data.totalPago || 0,
+        total: data.total_consumed || 0,
+        pago: data.total_paid || 0,
         aberto: saldoAtual,
       });
 

@@ -314,9 +314,9 @@ interface HeaderComponentProps {
 
 const HeaderComponent = memo(({ clientName, setClientName, mesa, setMesa }: HeaderComponentProps) => (
   <View style={styles.headerForm}>
-    <View style={{ flexDirection: 'row', gap: 10 }}>
+    <View style={{ flexDirection: 'row' }}>
       {/* Campo Nome do Cliente */}
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, marginRight: 10 }}>
         <Text style={styles.label}>Nome do Cliente:</Text>
         <TextInput
           style={styles.input}
@@ -607,8 +607,8 @@ export default function NovoPedidoScreen() {
           )}
         </View>
         <View style={styles.headerCenter}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Ionicons name="add-circle-outline" size={26} color={colors.white} />
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Ionicons name="add-circle-outline" size={26} color={colors.white} style={{ marginRight: 8 }} />
             <Text style={styles.headerTitle}>Novo Pedido</Text>
           </View>
         </View>
@@ -762,15 +762,14 @@ const styles = StyleSheet.create({
   verticalPrice: { fontSize: 17, fontWeight: '700', color: colors.primary },
 
   // Variation Rows
-  variationRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
-  variationLabelBtn: { flex: 1, padding: 10, borderRadius: 8 },
+  variationRow: { flexDirection: 'row', alignItems: 'center', marginTop: 6 },
+  variationLabelBtn: { flex: 1, padding: 10, borderRadius: 8, marginHorizontal: 4 },
   variationLabelText: { color: colors.shadow, fontSize: 16, fontWeight: '700', textAlign: 'center' },
 
   // NEW STYLES FOR STACKED VARIATION
   stackedRowContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
     marginTop: 8,
   },
   stackedInfoCard: {
@@ -779,12 +778,12 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 12,
     // Background color applied inline to this card
   },
   variationControlsOutside: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
   },
 
   stackedNameText: {
@@ -811,8 +810,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  variationControls: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  roundBtn: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+  variationControls: { flexDirection: 'row', alignItems: 'center' },
+  roundBtn: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginHorizontal: 4 },
   roundBtnText: { color: colors.white, fontSize: 18, fontWeight: 'bold' },
   qtyText: { fontSize: 16, fontWeight: 'bold', minWidth: 24, textAlign: 'center' },
 
@@ -820,7 +819,7 @@ const styles = StyleSheet.create({
   produtoInfo: { flex: 1 },
   produtoPrice: { fontSize: 17, fontWeight: '700', color: colors.primary, textAlign: 'center' },
 
-  quantityControl: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  quantityControl: { flexDirection: 'row', alignItems: 'center' },
 
   // List Footer
   listFooter: { marginTop: 20 },

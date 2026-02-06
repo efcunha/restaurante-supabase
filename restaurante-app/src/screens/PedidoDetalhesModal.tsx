@@ -41,7 +41,7 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
     return null;
   }
 
-  const canEdit = order.status === 'churrasqueira';
+  const canEdit = order.status === 'preparing';
 
   const formatDate = (isoString: any) => {
     if (!isoString) return '--';
@@ -106,18 +106,21 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'churrasqueira': return '#E5B84A';
-      case 'montagem': return '#4A90E2';
-      case 'pronto': return '#7ED321';
+      case 'preparing': return '#E5B84A';
+      case 'ready': return '#7ED321';
+      case 'delivered': return '#4CAF50';
+      case 'cancelled': return '#F44336';
       default: return '#999';
     }
   };
 
   const getStatusLabel = (status: string) => {
     switch (status) {
-      case 'churrasqueira': return 'Na Churrasqueira';
-      case 'montagem': return 'Em Montagem';
-      case 'pronto': return 'Pronto';
+      case 'preparing': return 'Em Preparo';
+      case 'ready': return 'Pronto';
+      case 'delivered': return 'Entregue';
+      case 'cancelled': return 'Cancelado';
+      case 'pending': return 'Pendente';
       default: return status;
     }
   };

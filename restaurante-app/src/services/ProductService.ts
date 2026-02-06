@@ -1,51 +1,56 @@
-import { 
-  collection, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc,
-  doc, 
-  getDocs,
-  query,
-  where
-} from 'firebase/firestore';
-import { db } from '../config/firebaseConfig';
+import { supabase } from '../config/SupabaseConfig';
 import { Product } from '../types';
 
-const PRODUTOS_COLLECTION = 'produtos';
+const TABLE_PRODUCTS = 'products';
 
 /**
- * Cria um novo produto no Firestore
- * @param {Object} produto - Dados do produto {nome, preco, categoria, icone, ativo}
- * @returns {Promise<Object>} ID do produto criado
+ * Cria um novo produto no Supabase
+ * @param {Object} produto - Dados do produto
+ * @returns {Promise<Object>} Resultado da criação
  */
 export const criarProduto = async (produto: Omit<Product, 'id' | 'createdAt'>) => {
   try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Usuário não autenticado');
+
+    // Buscar company_id do profile
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('company_id')
+      .eq('id', user.id)
+      .single();
+
+    if (!profile?.company_id) throw new Error('Usuário sem empresa vinculada');
+
     const produtoData = {
-      nome: produto.name.trim(),
-      preco: typeof produto.price === 'string' ? parseFloat(produto.price) : produto.price,
-      categoria: produto.category || 'outros', // espetinho, bebida, especial
-      icone: produto.image || '🍖',
-      ativo: produto.active !== undefined ? produto.active : true,
-      criadoEm: new Date().toISOString(),
-      // Mapeamento extra para compatibilidade com o tipo Product
+      company_id: profile.company_id,
       name: produto.name.trim(),
       price: typeof produto.price === 'string' ? parseFloat(produto.price) : produto.price,
       category: produto.category || 'outros',
-      image: produto.image || '🍖',
-      active: produto.active !== undefined ? produto.active : true,
-      createdAt: Date.now(),
+      image_url: produto.image || '🍖',
+      available: produto.active !== undefined ? produto.active : true,
+      description: produto.description || '',
+      unit: produto.unit || 'un'
     };
 
-    const docRef = await addDoc(collection(db, PRODUTOS_COLLECTION), produtoData);
-    return { 
-      success: true, 
-      produtoId: docRef.id,
-      produto: { ...produtoData, id: docRef.id }
+    const { data, error } = await supabase
+      .from(TABLE_PRODUCTS)
+      .insert(produtoData)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return {
+      success: true,
+      produtoId: data.id,
+      produto: _mapToProduct(data)
     };
   } catch (error: any) {
-    return { 
-      success: false, 
-      error: 'Erro ao criar produto: ' + error.message 
+    console.error('Erro ao criar produto:', error);
+    return {
+      success: false,
+      error: 'Erro ao criar produto: ' + (error.message || error)
     };
   }
 };
@@ -56,28 +61,25 @@ export const criarProduto = async (produto: Omit<Product, 'id' | 'createdAt'>) =
  */
 export const listarProdutos = async () => {
   try {
-    const q = query(
-      collection(db, PRODUTOS_COLLECTION),
-      where('ativo', '==', true)
-    );
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Usuário não autenticado');
 
-    const querySnapshot = await getDocs(q);
-    const produtos: any[] = [];
-    
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      // Adapter para o tipo Product (inglês) e legado (português)
-      produtos.push({
-        id: doc.id,
-        ...data,
-        name: data.nome || data.name,
-        price: data.preco || data.price,
-        category: data.categoria || data.category,
-        active: data.ativo ?? data.active,
-      });
-    });
-    
-    // Ordenar no cliente
+    // RLS já filtra por company_id, mas precisamos garantir que estamos logados
+    // Se o RLS estiver configurado corretamente, basta fazer o select.
+    // Mas para garantir a company correta no context atual, podemos filtrar explícito se tivermos o ID,
+    // mas confiar no RLS é o ideal. Assumindo RLS configurado 'using (company_id = ...)' e profile linkado.
+
+    const { data, error } = await supabase
+      .from(TABLE_PRODUCTS)
+      .select('*')
+      .eq('available', true)
+      .order('name');
+
+    if (error) throw error;
+
+    const produtos = (data || []).map(_mapToProduct);
+
+    // Ordenar por categoria depois nome (client-side sort preference)
     produtos.sort((a, b) => {
       if (a.category !== b.category) {
         return a.category.localeCompare(b.category);
@@ -87,6 +89,7 @@ export const listarProdutos = async () => {
 
     return { success: true, produtos };
   } catch (error: any) {
+    console.error('Erro ao listar produtos:', error);
     return { success: false, error: error.message, produtos: [] };
   }
 };
@@ -98,30 +101,16 @@ export const listarProdutos = async () => {
  */
 export const listarProdutosPorCategoria = async (categoria: string) => {
   try {
-    const q = query(
-      collection(db, PRODUTOS_COLLECTION),
-      where('categoria', '==', categoria),
-      where('ativo', '==', true)
-    );
+    const { data, error } = await supabase
+      .from(TABLE_PRODUCTS)
+      .select('*')
+      .eq('category', categoria)
+      .eq('available', true)
+      .order('name');
 
-    const querySnapshot = await getDocs(q);
-    const produtos: any[] = [];
-    
-    querySnapshot.forEach((doc) => {
-        const data = doc.data();
-      produtos.push({
-        id: doc.id,
-        ...data,
-        name: data.nome || data.name,
-        price: data.preco || data.price,
-        category: data.categoria || data.category,
-        active: data.ativo ?? data.active,
-      });
-    });
-    
-    // Ordenar no cliente
-    produtos.sort((a, b) => a.name.localeCompare(b.name));
+    if (error) throw error;
 
+    const produtos = (data || []).map(_mapToProduct);
     return { success: true, produtos };
   } catch (error: any) {
     return { success: false, error: error.message, produtos: [] };
@@ -136,45 +125,38 @@ export const listarProdutosPorCategoria = async (categoria: string) => {
  */
 export const atualizarProduto = async (produtoId: string, dadosAtualizados: any) => {
   try {
-    const produtoRef = doc(db, PRODUTOS_COLLECTION, produtoId);
-    
     const updateData: any = {};
-    if (dadosAtualizados.nome) updateData.nome = dadosAtualizados.nome.trim();
-    if (dadosAtualizados.name) {
-        updateData.nome = dadosAtualizados.name.trim(); // Manter compatibilidade
-        updateData.name = dadosAtualizados.name.trim();
-    }
 
-    if (dadosAtualizados.preco !== undefined) updateData.preco = parseFloat(dadosAtualizados.preco);
-    if (dadosAtualizados.price !== undefined) {
-        updateData.preco = parseFloat(dadosAtualizados.price);
-        updateData.price = parseFloat(dadosAtualizados.price);
-    }
+    if (dadosAtualizados.nome) updateData.name = dadosAtualizados.nome.trim();
+    if (dadosAtualizados.name) updateData.name = dadosAtualizados.name.trim();
 
-    if (dadosAtualizados.categoria) updateData.categoria = dadosAtualizados.categoria;
-    if (dadosAtualizados.category) {
-        updateData.categoria = dadosAtualizados.category;
-        updateData.category = dadosAtualizados.category;
-    }
+    if (dadosAtualizados.preco !== undefined) updateData.price = parseFloat(dadosAtualizados.preco);
+    if (dadosAtualizados.price !== undefined) updateData.price = parseFloat(dadosAtualizados.price);
 
-    if (dadosAtualizados.icone) updateData.icone = dadosAtualizados.icone;
-    if (dadosAtualizados.image) {
-        updateData.icone = dadosAtualizados.image;
-        updateData.image = dadosAtualizados.image;
-    }
+    if (dadosAtualizados.categoria) updateData.category = dadosAtualizados.categoria;
+    if (dadosAtualizados.category) updateData.category = dadosAtualizados.category;
 
-    if (dadosAtualizados.ativo !== undefined) updateData.ativo = dadosAtualizados.ativo;
-    if (dadosAtualizados.active !== undefined) {
-        updateData.ativo = dadosAtualizados.active;
-        updateData.active = dadosAtualizados.active;
-    }
-    
-    await updateDoc(produtoRef, updateData);
+    if (dadosAtualizados.icone) updateData.image_url = dadosAtualizados.icone;
+    if (dadosAtualizados.image) updateData.image_url = dadosAtualizados.image;
+    if (dadosAtualizados.image_url) updateData.image_url = dadosAtualizados.image_url;
+
+    if (dadosAtualizados.ativo !== undefined) updateData.available = dadosAtualizados.ativo;
+    if (dadosAtualizados.active !== undefined) updateData.available = dadosAtualizados.active;
+    if (dadosAtualizados.available !== undefined) updateData.available = dadosAtualizados.available;
+
+    updateData.updated_at = new Date();
+
+    const { error } = await supabase
+      .from(TABLE_PRODUCTS)
+      .update(updateData)
+      .eq('id', produtoId);
+
+    if (error) throw error;
     return { success: true };
   } catch (error: any) {
-    return { 
-      success: false, 
-      error: 'Erro ao atualizar produto: ' + error.message 
+    return {
+      success: false,
+      error: 'Erro ao atualizar produto: ' + error.message
     };
   }
 };
@@ -185,7 +167,7 @@ export const atualizarProduto = async (produtoId: string, dadosAtualizados: any)
  * @returns {Promise<Object>} Resultado da operação
  */
 export const desativarProduto = async (produtoId: string) => {
-  return await atualizarProduto(produtoId, { ativo: false, active: false });
+  return await atualizarProduto(produtoId, { available: false });
 };
 
 /**
@@ -194,21 +176,15 @@ export const desativarProduto = async (produtoId: string) => {
  */
 export const listarTodosProdutos = async () => {
   try {
-    const querySnapshot = await getDocs(collection(db, PRODUTOS_COLLECTION));
-    const produtos: any[] = [];
-    
-    querySnapshot.forEach((doc) => {
-        const data = doc.data();
-      produtos.push({
-        id: doc.id,
-        ...data,
-        name: data.nome || data.name,
-        price: data.preco || data.price,
-        category: data.categoria || data.category,
-        active: data.ativo ?? data.active,
-      });
-    });
-    // Ordenar no cliente
+    const { data, error } = await supabase
+      .from(TABLE_PRODUCTS)
+      .select('*')
+      .order('name');
+
+    if (error) throw error;
+
+    const produtos = (data || []).map(_mapToProduct);
+
     produtos.sort((a, b) => {
       if (a.category !== b.category) {
         return a.category.localeCompare(b.category);
@@ -228,7 +204,7 @@ export const listarTodosProdutos = async () => {
  * @returns {Promise<Object>} Resultado da operação
  */
 export const ativarProduto = async (produtoId: string) => {
-  return await atualizarProduto(produtoId, { ativo: true, active: true });
+  return await atualizarProduto(produtoId, { available: true });
 };
 
 /**
@@ -238,12 +214,41 @@ export const ativarProduto = async (produtoId: string) => {
  */
 export const deletarProduto = async (produtoId: string) => {
   try {
-    await deleteDoc(doc(db, PRODUTOS_COLLECTION, produtoId));
+    const { error } = await supabase
+      .from(TABLE_PRODUCTS)
+      .delete()
+      .eq('id', produtoId);
+
+    if (error) throw error;
     return { success: true };
   } catch (error: any) {
-    return { 
-      success: false, 
-      error: 'Erro ao deletar produto: ' + error.message 
+    return {
+      success: false,
+      error: 'Erro ao deletar produto: ' + error.message
     };
   }
 };
+
+// Helper: Mapeia colunas do Supabase para o objeto Product da aplicação
+function _mapToProduct(row: any): any {
+  return {
+    id: row.id,
+    name: row.name,
+    price: row.price,
+    category: row.category,
+    image: row.image_url,
+    active: row.available,
+    unit: row.unit,
+    description: row.description,
+
+    // Compatibilidade com código legado (português)
+    nome: row.name,
+    preco: row.price,
+    categoria: row.category,
+    icone: row.image_url,
+    ativo: row.available,
+
+    updatedAt: row.updated_at,
+    createdAt: row.created_at
+  };
+}

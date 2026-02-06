@@ -1,934 +1,423 @@
 /**
- * OrderFirestoreService - Adaptador entre OrderService e Firestore
- * Converte formato do Firestore para o formato local do app
+ * OrderFirestoreService - Migrado para Supabase
+ * Este arquivo agora usa Supabase em vez de Firestore
  */
 
-import {
-  collection,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  query,
-  where,
-  onSnapshot,
-  serverTimestamp,
-  getDocs,
-  limit,
-  DocumentData,
-  QuerySnapshot,
-  Query,
-  Unsubscribe
-} from 'firebase/firestore';
-import { db } from '../config/firebaseConfig';
-import { getCompanyCollection, getCompanyDoc } from '../utils/firestoreUtils';
-import OrderService from './OrderService';
-import {
-  cachedQuery,
-  getDateKeyRange,
-  invalidateCache,
-  debouncedCallback,
-  saveToOfflineCache,
-  getTodayKey,
-} from './FirebaseOptimizations';
-// @ts-ignore
-import { robustFirestoreQuery, withErrorHandling, createUserFriendlyErrorMessage } from '../utils/errorHandling';
-import { Order, OrderItemStatus } from '../types';
+import { supabase } from '../config/SupabaseConfig';
+import { Order } from '../types';
+import { RealtimeChannel } from '@supabase/supabase-js';
+import offlineQueueService from './OfflineQueueService';
+import { isRetryableError } from '../utils/errors';
 
-const PEDIDOS_COLLECTION = 'pedidos';
-
-/**
- * Normaliza comandaNumber para garantir consistência entre String e Number
- */
-const normalizeComandaNumber = (value: string | number | null | undefined): string => {
-  if (value === null || value === undefined) return '';
-  return String(value).trim();
-};
-
-/**
- * Busca pedidos por comanda com fallback para compatibilidade e tratamento robusto de erros
- */
-const findOrdersByComanda = async (comandaNumber: string | number): Promise<any[]> => {
-  const normalized = normalizeComandaNumber(comandaNumber);
-
-  // Don't search for empty comandaNumbers
-  if (!normalized || normalized === '') {
-    return [];
-  }
-
-  const todayKey = getTodayKey();
-
-  // Define query strategies with fallbacks
-  const queryStrategies = [
-    {
-      name: 'Primary query with numeroComanda',
-      execute: async () => {
-        const q = query(
-          collection(db, PEDIDOS_COLLECTION),
-          where('numeroComanda', '==', normalized),
-          where('dateKey', '==', todayKey)
-        );
-        const snapshot = await getDocs(q);
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      }
-    },
-    {
-      name: 'Fallback with original comandaNumber value',
-      execute: async () => {
-        if (normalized === String(comandaNumber)) {
-          return []; // Skip if same as primary
-        }
-        const q = query(
-          collection(db, PEDIDOS_COLLECTION),
-          where('numeroComanda', '==', String(comandaNumber)),
-          where('dateKey', '==', todayKey)
-        );
-        const snapshot = await getDocs(q);
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      }
-    },
-    {
-      name: 'Legacy comandaNumber field query',
-      execute: async () => {
-        const q = query(
-          collection(db, PEDIDOS_COLLECTION),
-          where('comandaNumber', '==', normalized),
-          where('dateKey', '==', todayKey)
-        );
-        const snapshot = await getDocs(q);
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      }
-    },
-    {
-      name: 'Client-side filtering fallback',
-      execute: async () => {
-        const q = query(
-          collection(db, PEDIDOS_COLLECTION),
-          where('dateKey', '==', todayKey)
-        );
-        const snapshot = await getDocs(q);
-
-        // Filter on client side
-        return snapshot.docs
-          .map(doc => ({ id: doc.id, ...doc.data() }))
-          .filter((pedido: any) => {
-            const pedidoComandaNumber = normalizeComandaNumber(pedido.numeroComanda || pedido.comandaNumber);
-
-            // Don't match pedidos with empty comandaNumbers
-            if (!pedidoComandaNumber || pedidoComandaNumber === '') {
-              return false;
-            }
-
-            return pedidoComandaNumber === normalized;
-          });
-      }
-    }
-  ];
-
-  return await robustFirestoreQuery(
-    async () => {
-      // Try each strategy until one returns results
-      for (const strategy of queryStrategies) {
-        try {
-          console.log(`[FindOrdersByComanda] Trying: ${strategy.name}`);
-          const results = await strategy.execute();
-          if (results.length > 0) {
-            console.log(`[FindOrdersByComanda] Success with: ${strategy.name}, found ${results.length} pedidos`);
-            return results;
-          }
-        } catch (error: any) {
-          console.warn(`[FindOrdersByComanda] ${strategy.name} failed:`, error.message);
-          // Continue to next strategy
-        }
-      }
-
-      // All strategies returned empty results
-      console.log(`[FindOrdersByComanda] No pedidos found for comanda ${normalized}`);
-      return [];
-    },
-    {
-      userFriendlyMessage: `Não foi possível carregar os pedidos da comanda ${normalized}. Verifique sua conexão e tente novamente.`,
-      maxRetries: 2
-    }
-  );
-};
-
-/**
- * Converte documento Firestore para formato Order local
- */
-const firestoreToOrder = (docId: string, data: DocumentData): Order => {
-  let ts = data.horaPedido?.toDate?.() || null;
-  if (!ts) {
-    try {
-      ts = data.criadoEm ? new Date(data.criadoEm) : null;
-    } catch {
-      // ignore date parse error
-    }
-  }
-  // Se não houver timestamp válido nos dados, usar uma data "antiga" para não cair como hoje
-  const timestamp = ts && !isNaN(ts.getTime()) ? ts : new Date('1970-01-01T00:00:00.000Z');
-
-  // Usar data local para dateKey (consistente com getTodayKey)
-  const getLocalDateKey = (date: Date): string => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
-  const result: Order = {
-    id: data.idFormatado || `#${docId.slice(-3)}`,
-    client: data.cliente || '',
-    mesa: data.mesa || '', // ✅ Mesa opcional
-    comandaNumber: normalizeComandaNumber(data.numeroComanda || data.comandaNumber || ''),
-    items: data.itens || [],
-    itemsWithStatus: data.itemsWithStatus || [], // ✅ INCLUIR itemsWithStatus
-    observations: data.observacoes || '',
-    status: data.status || 'montagem',
-    dateKey: data.dateKey || getLocalDateKey(timestamp), // ✅ CRÍTICO: Usar data local
-    timestamp: timestamp.toISOString(),
-    createdAt: data.criadoEm || data.horaPedido?.toDate?.()?.toISOString() || timestamp.toISOString(),
-    horarioCriacao: data.horarioCriacao, // ✅ Horário formatado HH:MM
-    timeInChurrasqueira: data.timeInChurrasqueira || timestamp.toISOString(),
-    timeInMontagem: data.timeInMontagem || null,
-    timeInProntos: data.timeInProntos || null,
-    deliveredAt: data.deliveredAt || null,
-    totalPrice: data.totalPrice || OrderService.calculateOrderTotal(data.itens || []),
-    isPago: data.isPago === true || data.isPago === 'true', // CORREÇÃO: conversão mais rigorosa
-    createdBy: data.criadoPor || '',
-    createdByName: data.criadoPorNome || '',
-    // ✅ CORREÇÃO: Incluir campos de rastreamento
-    // @ts-ignore - Propriedades dinâmicas
-    movidoParaMontagemPor: data.movidoParaMontagemPor || null,
-    // @ts-ignore
-    movidoParaMontagemPorNome: data.movidoParaMontagemPorNome || null,
-    // @ts-ignore
-    entreguePor: data.entreguePor || null,
-    // @ts-ignore
-    entreguePorNome: data.entreguePorNome || null,
-    // ✅ CORREÇÃO: Incluir timestamp de atualização para merge
-    // @ts-ignore
-    atualizado: data.atualizado?.toDate?.()?.toISOString() || data.timestampLocal || timestamp.toISOString(),
-    priceMap: data.priceMap || null, // ✅ Persistir priceMap
-  };
-  return result;
-};
-
-/**
- * Converte Order local para formato Firestore
- */
-const orderToFirestore = (order: Order): DocumentData => {
-  // Usar data local para dateKey fallback (consistente com getTodayKey)
-  const getLocalDateKey = (): string => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
-  const result: DocumentData = {
-    idFormatado: order.id,
-    cliente: order.client,
-    mesa: order.mesa || '', // ✅ Persistir mesa
-    numeroComanda: normalizeComandaNumber(order.comandaNumber || ''),
-    comandaNumber: normalizeComandaNumber(order.comandaNumber || ''), // Campo de compatibilidade
-    itens: order.items,
-    itemsWithStatus: order.itemsWithStatus || [], // ADICIONAR CAMPO PARA CONTROLE INDIVIDUAL
-    observacoes: order.observations,
-    status: order.status, // MANTER O STATUS ORIGINAL
-    dateKey: order.dateKey || getLocalDateKey(), // ✅ CRÍTICO: Usar data local
-    horaPedido: order.timestamp ? new Date(order.timestamp) : serverTimestamp(),
-    horarioCriacao: order.horarioCriacao, // ✅ Horário formatado HH:MM
-    criadoPor: order.createdBy || '',
-    criadoPorNome: order.createdByName || '',
-    criadoEm: order.createdAt || order.timestamp || new Date().toISOString(),
-    timeInChurrasqueira: order.timeInChurrasqueira,
-    timeInMontagem: order.timeInMontagem,
-    timeInProntos: order.timeInProntos,
-    deliveredAt: order.deliveredAt,
-    totalPrice: order.totalPrice,
-    isPago: Boolean(order.isPago), // CORREÇÃO: garantir que true/false seja preservado
-    atualizado: serverTimestamp(),
-    priceMap: order.priceMap || null, // ✅ Persistir priceMap
-  };
-  return result;
+// Helper to get today's date key YYYY-MM-DD
+const getTodayKey = (): string => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
 
 class OrderFirestoreService {
-  // Cache interno para evitar processamento duplicado
-  private _lastSnapshotHash: string | null = null;
-  // eslint-disable-next-line
-  private _debouncedCallbacks = new Map();
+  private _subscription: RealtimeChannel | null = null;
 
   /**
-   * Escuta mudanças em pedidos ativos em tempo real
-   * OTIMIZADO: Com debounce para evitar re-renders excessivos
+   * Converte linha do banco para objeto Order local
    */
-  listenToActiveOrders(companyId: string, callback: (data: { orders: Order[], docMap: Record<string, string> }) => void): any {
-    if (!companyId) {
-      console.warn('⚠️ listenToActiveOrders chamado sem companyId');
-      return () => { };
-    }
-    const setupListener = async () => {
-      // Usar dateKey para filtrar pedidos do dia (mais eficiente e confiável)
-      const todayKey = getTodayKey(); // YYYY-MM-DD
-
-      // Query com filtro server-side por dateKey
-      const q = query(
-        getCompanyCollection(companyId, 'pedidos'),
-        where('dateKey', '==', todayKey)
-      );
-
-      // Criar callback com debounce (100ms) para evitar múltiplos re-renders
-      const debouncedCb = debouncedCallback('activeOrders', callback, 100);
-
-      // Enhanced snapshot handler with error recovery
-      const handleSnapshot = withErrorHandling(
-        (snapshot: QuerySnapshot<DocumentData>) => {
-          try {
-            // @ts-ignore
-            if (typeof window !== 'undefined' && window.localStorage && window.localStorage.getItem('limpezaEmAndamento') === '1') {
-              return;
-            }
-          } catch {
-            // Ignore localStorage errors
-          }
-
-          // OTIMIZAÇÃO: Verificar se snapshot realmente mudou
-          const snapshotHash = snapshot.docs.map(d => `${d.id}:${d.data().atualizado?.seconds || 0}`).join(',');
-          if (this._lastSnapshotHash === snapshotHash) {
-            return; // Dados não mudaram, não processar
-          }
-          this._lastSnapshotHash = snapshotHash;
-          let orders: Order[] = [];
-          const docMap: Record<string, string> = {}; // Mapeia orderId -> firestoreDocId
-
-          snapshot.forEach((doc) => {
-            try {
-              const data = doc.data();
-              const order = firestoreToOrder(doc.id, data);
-              orders.push(order);
-              docMap[order.id] = doc.id; // Guardar mapeamento
-            } catch (docError) {
-              console.warn(`[ListenToActiveOrders] Error processing document ${doc.id}:`, docError);
-              // Continue processing other documents
-            }
-          });
-
-          // Filtrar somente pedidos do dia atual (evita repovoar histórico após limpeza) - redundante mas seguro
-          // CORREÇÃO: Usar data LOCAL consistente com getTodayKey
-          const todayKeyLocal = getTodayKey();
-          orders = orders.filter(o => {
-            // Usar dateKey do pedido (já está em formato local)
-            return o.dateKey === todayKeyLocal;
-          });
-
-          // Ordenar no cliente por horaPedido (mais recente primeiro)
-          orders.sort((a, b) => {
-            const dateA = new Date(a.timestamp || a.createdAt).getTime();
-            const dateB = new Date(b.timestamp || b.createdAt).getTime();
-            return dateB - dateA; // DESC
-          });
-
-          // OTIMIZAÇÃO: Salvar no cache offline para acesso rápido
-          try {
-            saveToOfflineCache('pedidos_hoje', { orders, docMap });
-          } catch (cacheError) {
-            console.warn('[ListenToActiveOrders] Cache save failed:', cacheError);
-            // Continue without caching
-          }
-
-          // Usar callback com debounce
-          debouncedCb({ orders, docMap });
-        },
-        {
-          context: 'ListenToActiveOrders',
-          showAlert: false, // Don't show alerts for listener errors
-          fallbackValue: null,
-          onError: (error: any) => {
-            console.error('[ListenToActiveOrders] Snapshot processing error:', error);
-            // Provide empty data to prevent UI crashes
-            debouncedCb({ orders: [], docMap: {} });
-          }
-        }
-      );
-
-      // Enhanced error handler with automatic fallbacks
-      const handleError = async (error: any) => {
-        console.error('[ListenToActiveOrders] Listener error:', error);
-
-        // Try fallback strategies based on error type
-        if (error.code === 'failed-precondition' || error.message?.includes('index')) {
-          console.log('[ListenToActiveOrders] Index error detected, using fallback query...');
-
-          try {
-            const fallbackQ = query(getCompanyCollection(companyId, 'pedidos'));
-            // @ts-ignore
-            // @ts-ignore
-            return onSnapshot(fallbackQ,
-              withErrorHandling(
-                (snapshot: QuerySnapshot<DocumentData>) => {
-                  try {
-                    // @ts-ignore
-                    if (typeof window !== 'undefined' && window.localStorage && window.localStorage.getItem('limpezaEmAndamento') === '1') {
-                      return;
-                    }
-                    let orders: Order[] = [];
-                    const docMap: Record<string, string> = {};
-                    snapshot.forEach((doc) => {
-                      try {
-                        const order = firestoreToOrder(doc.id, doc.data());
-                        orders.push(order);
-                        docMap[order.id] = doc.id;
-                      } catch (docError) {
-                        console.warn(`[ListenToActiveOrders] Fallback doc error ${doc.id}:`, docError);
-                      }
-                    });
-
-                    // CORREÇÃO: Usar data LOCAL consistente com getTodayKey
-                    const todayKeyLocal = getTodayKey();
-                    orders = orders.filter(o => {
-                      // Usar dateKey do pedido (já está em formato local)
-                      return o.dateKey === todayKeyLocal;
-                    });
-                    orders.sort((a, b) => {
-                      const dateA = new Date(a.timestamp || a.createdAt).getTime();
-                      const dateB = new Date(b.timestamp || b.createdAt).getTime();
-                      return dateB - dateA;
-                    });
-                    callback({ orders, docMap });
-                  } catch (e) {
-                    console.error('[ListenToActiveOrders] Fallback processing error:', e);
-                    callback({ orders: [], docMap: {} });
-                  }
-                },
-                {
-                  context: 'ListenToActiveOrders-Fallback',
-                  showAlert: false,
-                  onError: () => callback({ orders: [], docMap: {} })
-                }
-              ) as any,
-              (fallbackError) => {
-                console.error('[ListenToActiveOrders] Fallback listener also failed:', fallbackError);
-                callback({ orders: [], docMap: {} });
-              }
-            );
-          } catch (fallbackSetupError) {
-            console.error('[ListenToActiveOrders] Failed to setup fallback listener:', fallbackSetupError);
-            callback({ orders: [], docMap: {} });
-          }
-        }
-
-        // For other errors, provide empty data and log
-        const userMessage = createUserFriendlyErrorMessage(error, 'carregamento de pedidos');
-        console.error(`[ListenToActiveOrders] ${userMessage}`, error);
-        callback({ orders: [], docMap: {} });
-      };
-
-      try {
-        // @ts-ignore
-        const unsubscribe = onSnapshot(q, handleSnapshot, handleError);
-        return unsubscribe;
-      } catch (setupError) {
-        console.error('[ListenToActiveOrders] Failed to setup listener:', setupError);
-        callback({ orders: [], docMap: {} });
-        return () => { };
-      }
-    };
-
-    // Return a promise that resolves to the unsubscribe function
-    return setupListener().catch((error) => {
-      console.error('[ListenToActiveOrders] Setup failed:', error);
-      callback({ orders: [], docMap: {} });
-      return () => { };
-    });
+  private mapRowToOrder(row: any): Order {
+    return {
+      id: row.id,
+      client: row.client_name,
+      mesa: row.table_number?.toString() || '',
+      comandaNumber: row.comanda_number?.toString() || '',
+      items: row.items || [],
+      itemsWithStatus: row.items_with_status || [],
+      observations: row.observations || '',
+      status: row.status,
+      dateKey: row.date_key,
+      timestamp: row.created_at,
+      createdAt: row.created_at,
+      horarioCriacao: new Date(row.created_at).toLocaleTimeString().slice(0, 5),
+      totalPrice: row.total_amount,
+      isPago: row.is_paid,
+      createdBy: row.created_by,
+      createdByName: '',
+      deliveredAt: null, // Delivery time tracked at item level in items_with_status
+      timeInChurrasqueira: null,
+      timeInMontagem: null,
+      timeInProntos: null,
+    } as Order;
   }
 
   /**
-   * Salva um order já criado no Firestore (NOVO - evita duplicação)
+   * Escuta pedidos ativos via Supabase Realtime
+   */
+  listenToActiveOrders(companyId: string, callback: (data: { orders: Order[], docMap?: Record<string, string> }) => void) {
+    if (this._subscription) {
+      this._subscription.unsubscribe();
+    }
+
+    const todayKey = getTodayKey();
+
+    // Initial fetch
+    this.fetchActiveOrders(companyId, todayKey).then(orders => {
+      const docMap: Record<string, string> = {};
+      orders.forEach(o => docMap[o.id] = o.id);
+      callback({ orders, docMap });
+    });
+
+    // Subscribe to changes
+    this._subscription = supabase
+      .channel('orders-channel')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders',
+          filter: `company_id=eq.${companyId}`,
+        },
+        async (payload) => {
+          console.log('[OrderService] Change received:', payload);
+          const orders = await this.fetchActiveOrders(companyId, todayKey);
+          const docMap: Record<string, string> = {};
+          orders.forEach(o => docMap[o.id] = o.id);
+          callback({ orders, docMap });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      if (this._subscription) this._subscription.unsubscribe();
+    };
+  }
+
+  async fetchActiveOrders(companyId: string, dateKey: string): Promise<Order[]> {
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('company_id', companyId)
+      .eq('date_key', dateKey)
+      .not('status', 'eq', 'cancelled')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('[OrderService] Fetch error:', error);
+      return [];
+    }
+
+    return (data || []).map(row => this.mapRowToOrder(row));
+  }
+
+  /**
+   * Internal method for creating order directly
+   */
+  private async _createOrderInternal(companyId: string, order: Partial<Order>): Promise<string> {
+    const { data, error } = await supabase
+      .from('orders')
+      .insert({
+        company_id: companyId,
+        client_name: order.client,
+        table_number: parseInt(order.mesa || '0'),
+        comanda_number: parseInt(order.comandaNumber || '0'),
+        items: order.items,
+        observations: order.observations,
+        status: 'pending',
+        total_amount: order.totalPrice,
+        is_paid: false,
+        created_by: order.createdBy,
+        date_key: getTodayKey()
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[OrderService] Create error:', error);
+      throw error;
+    }
+
+    return data.id;
+  }
+
+  /**
+   * Cria um novo pedido (com suporte offline)
+   */
+  async createOrder(companyId: string, order: Partial<Order>): Promise<string | null> {
+    const isOnline = offlineQueueService.getIsOnline();
+    const tempId = 'temp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+
+    if (!isOnline) {
+      console.log('[OrderService] Offline, queuing creation of order');
+      await offlineQueueService.enqueue('CREATE_ORDER', async () => {
+        return this._createOrderInternal(companyId, order);
+      }, { companyId, order });
+      return tempId;
+    }
+
+    try {
+      return await this._createOrderInternal(companyId, order);
+    } catch (error: any) {
+      if (isRetryableError(error) || error.message.includes('Network request failed') || error.message.includes('fetch')) {
+        console.log('[OrderService] Network fail, queuing creation');
+        await offlineQueueService.enqueue('CREATE_ORDER', async () => {
+          return this._createOrderInternal(companyId, order);
+        }, { companyId, order });
+        return tempId;
+      }
+      throw error;
+    }
+  }
+
+  async updateOrderStatus(companyId: string, orderId: string, status: string) {
+    const isOnline = offlineQueueService.getIsOnline();
+
+    const operation = async () => {
+      const { error } = await supabase
+        .from('orders')
+        .update({ status })
+        .eq('id', orderId)
+        .eq('company_id', companyId);
+      if (error) throw error;
+    };
+
+    if (!isOnline) {
+      await offlineQueueService.enqueue('UPDATE_STATUS', operation, { orderId, status });
+      return;
+    }
+
+    try {
+      await operation();
+    } catch (error: any) {
+      if (isRetryableError(error)) {
+        await offlineQueueService.enqueue('UPDATE_STATUS', operation, { orderId, status });
+        return;
+      }
+      throw error;
+    }
+  }
+
+  async updateOrder(companyId: string, orderId: string, updates: Partial<Order>) {
+    const payload: any = {};
+    if (updates.client) payload.client_name = updates.client;
+    if (updates.items) payload.items = updates.items;
+    if (updates.totalPrice) payload.total_amount = updates.totalPrice;
+    if (updates.status) payload.status = updates.status;
+    if (updates.observations) payload.observations = updates.observations;
+
+    const operation = async () => {
+      const { error } = await supabase
+        .from('orders')
+        .update(payload)
+        .eq('id', orderId)
+        .eq('company_id', companyId);
+      if (error) throw error;
+    };
+
+    const isOnline = offlineQueueService.getIsOnline();
+    if (!isOnline) {
+      await offlineQueueService.enqueue('UPDATE_ORDER', operation, { orderId, updates });
+      return;
+    }
+
+    try {
+      await operation();
+    } catch (error: any) {
+      if (isRetryableError(error)) {
+        await offlineQueueService.enqueue('UPDATE_ORDER', operation, { orderId, updates });
+        return;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Deleta um pedido
+   */
+  async deleteOrder(companyId: string, orderId: string) {
+    const { error } = await supabase
+      .from('orders')
+      .delete()
+      .eq('id', orderId)
+      .eq('company_id', companyId);
+
+    if (error) throw error;
+  }
+
+  /**
+   * Salva um pedido completo
    */
   async saveOrder(companyId: string, order: Order): Promise<string> {
-    const firestoreData = orderToFirestore(order);
-    const docRef = await addDoc(getCompanyCollection(companyId, 'pedidos'), firestoreData);
+    const { data, error } = await supabase
+      .from('orders')
+      .insert({
+        company_id: companyId,
+        client_name: order.client,
+        table_number: parseInt(order.mesa || '0'),
+        comanda_number: parseInt(order.comandaNumber || '0'),
+        items: order.items,
+        items_with_status: order.itemsWithStatus || [],
+        observations: order.observations,
+        status: order.status || 'pending',
+        total_amount: order.totalPrice,
+        is_paid: order.isPago || false,
+        created_by: order.createdBy,
+        date_key: getTodayKey()
+      })
+      .select()
+      .single();
 
-    // OTIMIZAÇÃO: Invalidar cache de estatísticas após criar pedido
-    invalidateCache('stats_');
-
-    return docRef.id;
+    if (error) throw error;
+    return data.id;
   }
 
+  // ============================================================================
+  // STATISTICS METHODS
+  // ============================================================================
+
   /**
-   * Busca o ID do documento Firestore pelo orderId formatado (#XXX)
+   * Busca estatísticas de um garçom
    */
-  async findDocIdByOrderId(companyId: string, orderId: string): Promise<string | null> {
+  async getEstatisticasGarcom(companyId: string, garcomId: string | null = null, periodo: string = 'hoje') {
     try {
-      const todayKey = getTodayKey();
-      const q = query(
-        getCompanyCollection(companyId, 'pedidos'),
-        where('dateKey', '==', todayKey),
-        where('idFormatado', '==', orderId)
-      );
+      const { startDate, endDate } = this._getDateRange(periodo);
 
-      const snapshot = await getDocs(q);
-      if (!snapshot.empty) {
-        return snapshot.docs[0].id;
+      let query = supabase
+        .from('orders')
+        .select('*')
+        .eq('company_id', companyId)
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endDate.toISOString());
+
+      if (garcomId) {
+        query = query.eq('created_by', garcomId);
       }
 
-      // Fallback: buscar sem filtro de data (mais lento)
-      const qFallback = query(
-        getCompanyCollection(companyId, 'pedidos'),
-        where('idFormatado', '==', orderId)
-      );
+      const { data, error } = await query;
 
-      const snapshotFallback = await getDocs(qFallback);
-      if (!snapshotFallback.empty) {
-        return snapshotFallback.docs[0].id;
-      }
+      if (error) throw error;
 
-      return null;
-    } catch {
-      return null;
-    }
-  }
+      const orders = (data || []).map(row => this.mapRowToOrder(row));
+      return this._calcularEstatisticas(orders, []);
 
-  /**
-   * Busca documento Firestore que contém um item específico pelo itemId
-   */
-  async findDocByItemId(companyId: string, itemId: string): Promise<{ docId: string, orderId: string } | null> {
-    try {
-      // Extrair orderId do itemId (formato: #XXX-comanda-YYY-item-N ou #XXX-item-N para compatibilidade)
-      const match = itemId.match(/^(#\d+)(?:-comanda-[^-]+-item-\d+|-item-\d+)$/);
-      if (!match) {
-        return null;
-      }
-      const orderId = match[1];
-
-      const todayKey = getTodayKey();
-
-      // Buscar por idFormatado (mais eficiente se houver índice)
-      const q = query(
-        getCompanyCollection(companyId, 'pedidos'),
-        where('dateKey', '==', todayKey),
-        where('idFormatado', '==', orderId)
-      );
-
-      const snapshot = await getDocs(q);
-      if (!snapshot.empty) {
-        return { docId: snapshot.docs[0].id, orderId };
-      }
-
-      // Fallback: buscar sem filtro de data
-      const qFallback = query(
-        collection(db, PEDIDOS_COLLECTION),
-        where('idFormatado', '==', orderId)
-      );
-
-      const snapshotFallback = await getDocs(qFallback);
-      if (!snapshotFallback.empty) {
-        return { docId: snapshotFallback.docs[0].id, orderId };
-      }
-
-      // Fallback final: buscar TODOS os pedidos do dia e verificar itemsWithStatus
-      const qAll = query(
-        collection(db, PEDIDOS_COLLECTION),
-        where('dateKey', '==', todayKey)
-      );
-
-      const snapshotAll = await getDocs(qAll);
-      for (const doc of snapshotAll.docs) {
-        const data = doc.data();
-        if (data.itemsWithStatus && Array.isArray(data.itemsWithStatus)) {
-          const found = data.itemsWithStatus.some((item: any) => item.id === itemId);
-          if (found) {
-            return { docId: doc.id, orderId: data.idFormatado };
-          }
-        }
-      }
-
-      return null;
-    } catch {
-      return null;
-    }
-  }
-
-  /**
-   * Cria novo pedido no Firestore (LEGADO - mantido para compatibilidade)
-   */
-  async createOrder(orderId: string, client: string, items: string[], observations: string, comandaNumber: string = '', createdBy: string = '', createdByName: string = '', mesa: string = ''): Promise<string> {
-    const order = OrderService.createOrder(orderId, client, items, observations, comandaNumber, createdBy, createdByName, 0, false, mesa);
-    const firestoreData = orderToFirestore(order);
-    const docRef = await addDoc(collection(db, PEDIDOS_COLLECTION), firestoreData);
-
-    // OTIMIZAÇÃO: Invalidar cache de estatísticas após criar pedido
-    invalidateCache('stats_');
-
-    return docRef.id;
-  }
-
-  /**
-   * Atualiza status do pedido
-   */
-  async updateOrderStatus(companyId: string, firestoreDocId: string, newStatus: string, timestamps: Record<string, any> = {}) {
-    const pedidoRef = getCompanyDoc(companyId, 'pedidos', firestoreDocId);
-
-    // 🔒 SEGURANÇA: Remover isPago dos timestamps
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { isPago, ...safeTimestamps } = timestamps;
-
-    await updateDoc(pedidoRef, {
-      status: newStatus,
-      ...safeTimestamps,
-      atualizado: serverTimestamp(),
-    });
-  }
-
-  /**
-   * Edita pedido existente
-   */
-  async updateOrder(companyId: string, firestoreDocId: string, updatedData: Partial<Order>) {
-    const pedidoRef = getCompanyDoc(companyId, 'pedidos', firestoreDocId);
-
-    // 🔒 SEGURANÇA: Remover isPago se vier nos dados
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { isPago, ...safeData } = updatedData;
-
-    const updatePayload: any = {
-      atualizado: serverTimestamp(),
-      // ✅ CORREÇÃO: Adicionar timestamp local para comparação
-      timestampLocal: new Date().toISOString(),
-    };
-
-    // ✅ CORREÇÃO: Mapear todos os campos corretamente
-    if (safeData.client) updatePayload.cliente = safeData.client;
-    if (safeData.mesa !== undefined) updatePayload.mesa = safeData.mesa; // ✅ Atualizar mesa
-    if (safeData.items) updatePayload.itens = safeData.items;
-    if (safeData.observations !== undefined) updatePayload.observacoes = safeData.observations;
-    if (safeData.totalPrice) updatePayload.totalPrice = safeData.totalPrice;
-    if (safeData.itemsWithStatus) updatePayload.itemsWithStatus = safeData.itemsWithStatus;
-    if (safeData.status) updatePayload.status = safeData.status;
-    if (safeData.timeInMontagem) updatePayload.timeInMontagem = safeData.timeInMontagem;
-    if (safeData.timeInProntos) updatePayload.timeInProntos = safeData.timeInProntos;
-    if (safeData.deliveredAt) updatePayload.deliveredAt = safeData.deliveredAt;
-    // @ts-ignore
-    if (safeData.movidoParaMontagemPor) updatePayload.movidoParaMontagemPor = safeData.movidoParaMontagemPor;
-     // @ts-ignore
-    if (safeData.movidoParaMontagemPorNome) updatePayload.movidoParaMontagemPorNome = safeData.movidoParaMontagemPorNome;
-     // @ts-ignore
-    if (safeData.entreguePor) updatePayload.entreguePor = safeData.entreguePor;
-     // @ts-ignore
-    if (safeData.entreguePorNome) updatePayload.entreguePorNome = safeData.entreguePorNome;
-
-    await updateDoc(pedidoRef, updatePayload);
-  }
-
-  /**
-   * Deleta pedido do Firestore
-   */
-  async deleteOrder(companyId: string, firestoreDocId: string) {
-    await deleteDoc(getCompanyDoc(companyId, 'pedidos', firestoreDocId));
-  }
-
-  findFirestoreDocId(): string | null {
-    // Implementação temporária: você precisará manter um mapa id -> docId
-    // Ou armazenar o docId no objeto Order
-    // Por enquanto, retorna null e você precisa adaptar
-    return null;
-  }
-
-  /**
-   * Corrige automaticamente pedidos com status churrasqueira para montagem
-   */
-  async fixChurrasqueiraStatus() {
-    try {
-      // CORREÇÃO: Usar data LOCAL consistente com getTodayKey
-      const todayKey = getTodayKey();
-
-      // OTIMIZADO: Filtrar por dateKey + status (evita ler histórico todo)
-      const q = query(
-        collection(db, PEDIDOS_COLLECTION),
-        where('dateKey', '==', todayKey),
-        where('status', '==', 'churrasqueira')
-      );
-
-      const snapshot = await getDocs(q);
-      const batch: Promise<void>[] = [];
-      snapshot.forEach((docSnapshot) => {
-        // Assume companyId is unknown or use default logic?
-        // This method seems legacy or admin-only. Assuming companyId not needed for collection(db) or needs context.
-        // But updateOrderStatus needs companyId... wait, querying collection(db) implies root level?
-        // Ah, the updateOrderStatus uses getCompanyDoc, which needs companyId.
-        // We can't easily call updateOrderStatus without CompanyID if we queried root.
-        // THIS LOGIC SEEMS FLAWED (legacy). Keeping as is but commenting out robust fix or using doc ref directly.
-         const docRef = docSnapshot.ref; 
-         batch.push(updateDoc(docRef, { status: 'montagem', atualizado: serverTimestamp() }));
-      });
-
-      if (batch.length > 0) {
-        await Promise.all(batch);
-      }
-
-    } catch (error: any) {
-      console.error('❌ Erro ao corrigir status churrasqueira:', error.message);
-    }
-  }
-
-  /**
-   * Busca estatísticas por garçom com filtros de período (OTIMIZADO COM CACHE)
-   */
-  async getEstatisticasGarcom(companyId: string, garcomId: string | null = null, periodo: string = 'hoje'): Promise<any> {
-    const cacheKey = `stats_${companyId}_${garcomId || 'all'}_${periodo}`;
-
-    try {
-      // OTIMIZAÇÃO: Usar cache com TTL de 30 segundos para estatísticas
-      return await cachedQuery(cacheKey, async () => {
-        const { startKey, endKey } = getDateKeyRange(periodo);
-
-        console.log(`[OrderFirestoreService] getEstatisticasGarcom - garcomId: ${garcomId}, periodo: ${periodo}`);
-
-        // BUSCAR PEDIDOS
-        let q;
-        if (periodo === 'hoje') {
-          q = query(
-            getCompanyCollection(companyId, 'pedidos'),
-            where('dateKey', '==', startKey)
-          );
-        } else {
-          q = query(getCompanyCollection(companyId, 'pedidos'));
-        }
-
-        const snapshot = await getDocs(q);
-        console.log(`[OrderFirestoreService] Total de pedidos: ${snapshot.size}`);
-
-        const pedidos: any[] = [];
-
-        snapshot.forEach((doc) => {
-          const data = doc.data() as any;
-          const dateKey = data.dateKey || '';
-          const pedidoGarcomId = data.criadoPor || data.createdBy || '';
-
-          // Filtrar por dateKey no cliente (para períodos > hoje)
-          if (dateKey >= startKey && dateKey <= endKey) {
-            // Filtrar por garcomId no cliente (se especificado)
-            if (!garcomId || pedidoGarcomId === garcomId) {
-              pedidos.push({
-                id: doc.id,
-                ...data,
-                totalPrice: data.totalPrice || 0,
-                isPago: Boolean(data.isPago),
-                formaPagamento: data.formaPagamento || null,
-                criadoPor: data.criadoPor || '',
-                criadoPorNome: data.criadoPorNome || '',
-                numeroComanda: data.numeroComanda || '',
-              });
-            }
-          }
-        });
-
-        // BUSCAR PAGAMENTOS
-        const pagamentosQuery = query(getCompanyCollection(companyId, 'pagamentos'));
-        const pagamentosSnapshot = await getDocs(pagamentosQuery);
-
-        const pagamentos: any[] = [];
-        pagamentosSnapshot.forEach((doc) => {
-          const data = doc.data() as any;
-          const dateKey = data.dateKey || '';
-          const pagamentoGarcomId = data.garcom || '';
-
-          // Filtrar por dateKey e garcomId
-          if (dateKey >= startKey && dateKey <= endKey) {
-            if (!garcomId || pagamentoGarcomId === garcomId) {
-              pagamentos.push({
-                id: doc.id,
-                ...data,
-                valor: data.valor || 0,
-                forma: data.forma || '',
-                garcom: data.garcom || '',
-                garcomNome: data.garcomNome || '',
-              });
-            }
-          }
-        });
-
-        console.log(`[OrderFirestoreService] Pedidos filtrados: ${pedidos.length}, Pagamentos filtrados: ${pagamentos.length}`);
-
-        const stats = this._calcularEstatisticas(pedidos, pagamentos);
-        console.log(`[OrderFirestoreService] Estatísticas calculadas:`, JSON.stringify(stats));
-        return stats;
-      }, 30000); // Cache de 30 segundos
-    } catch (error: any) {
-      console.error('❌ Erro ao buscar estatísticas garçom:', error.message, error);
+    } catch (error) {
+      console.error('[OrderService] Erro em getEstatisticasGarcom:', error);
       return this._getEmptyStats();
     }
   }
 
   /**
-   * Busca estatísticas de todos os garçons agrupadas (OTIMIZADO COM CACHE)
+   * Busca estatísticas de todos os garçons
    */
-  async getEstatisticasTodosGarcons(companyId: string, periodo: string = 'hoje'): Promise<any[]> {
-    const cacheKey = `stats_${companyId}_all_garcons_${periodo}`;
-
+  async getEstatisticasTodosGarcons(companyId: string, periodo: string = 'hoje') {
     try {
-      return await cachedQuery(cacheKey, async () => {
-        const { startKey, endKey } = getDateKeyRange(periodo);
+      const { startDate, endDate } = this._getDateRange(periodo);
 
-        // OTIMIZAÇÃO: Para 'hoje', usar query com filtro server-side
-        let q;
-        if (periodo === 'hoje') {
-          q = query(
-            getCompanyCollection(companyId, 'pedidos'),
-            where('dateKey', '==', startKey)
-          );
-        } else {
-          q = query(getCompanyCollection(companyId, 'pedidos'));
-        }
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          profiles:created_by (
+            full_name
+          )
+        `)
+        .eq('company_id', companyId)
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endDate.toISOString());
 
-        const snapshot = await getDocs(q);
-        console.log(`[OrderFirestoreService] Total de pedidos: ${snapshot.size}`);
+      if (error) throw error;
 
-        // Filtrar por dateKey no cliente (para períodos > hoje)
-        const pedidosFiltrados: any[] = [];
-        snapshot.forEach((doc) => {
-          const data = doc.data() as any;
-          const dateKey = data.dateKey || '';
-          if (dateKey >= startKey && dateKey <= endKey) {
-            pedidosFiltrados.push({ id: doc.id, ...data });
-          }
-        });
+      const orders = (data || []).map(row => {
+        const order = this.mapRowToOrder(row);
+        // Add creator name from joined profile
+        order.createdByName = row.profiles?.full_name || 'Desconhecido';
+        return order;
+      });
+      
+      const byUser: Record<string, Order[]> = {};
 
-        console.log(`[OrderFirestoreService] Pedidos após filtro de data: ${pedidosFiltrados.length}`);
+      orders.forEach(o => {
+        const uid = o.createdBy || 'unknown';
+        if (!byUser[uid]) byUser[uid] = [];
+        byUser[uid].push(o);
+      });
 
-        // BUSCAR PAGAMENTOS
-        const qPagamentos = query(getCompanyCollection(companyId, 'pagamentos'));
-        const snapshotPagamentos = await getDocs(qPagamentos);
-        const pagamentosFiltrados: any[] = [];
+      return Object.entries(byUser).map(([uid, userOrders]) => ({
+        garcomId: uid,
+        garcomNome: userOrders[0]?.createdByName || 'Desconhecido',
+        ...this._calcularEstatisticas(userOrders, [])
+      }));
 
-        snapshotPagamentos.forEach((doc) => {
-          const data = doc.data() as any;
-          const dateKey = data.dateKey || '';
-          if (dateKey >= startKey && dateKey <= endKey) {
-            pagamentosFiltrados.push({
-              id: doc.id,
-              ...data,
-              valor: data.valor || 0,
-              forma: data.forma || '',
-              garcom: data.garcom || '',
-              garcomNome: data.garcomNome || '',
-            });
-          }
-        });
-
-        console.log(`[OrderFirestoreService] Pagamentos após filtro de data: ${pagamentosFiltrados.length}`);
-
-        const pedidosPorGarcom: Record<string, any> = {};
-
-        // Usar pedidosFiltrados (já filtrados por data)
-        pedidosFiltrados.forEach((pedido) => {
-          const garcomIdOriginal = pedido.criadoPor || pedido.createdBy || 'sem-garcom';
-          const garcomNome = pedido.criadoPorNome || pedido.createdByName || 'Sem Garçom';
-
-          // CORREÇÃO: Normalizar o nome para agrupar corretamente (evitar duplicatas)
-          const normalizeString = (str: string) => {
-            return str
-              .toLowerCase()
-              .normalize('NFD')
-              .replace(/[\u0300-\u036f]/g, '') // Remove acentos
-              .replace(/\s+/g, ' ')            // Normaliza espaços
-              .trim();
-          };
-
-          const garcomKey = normalizeString(garcomNome);
-
-          if (!pedidosPorGarcom[garcomKey]) {
-            pedidosPorGarcom[garcomKey] = {
-              garcomId: garcomIdOriginal,
-              garcomNome: garcomNome,
-              pedidos: [],
-            };
-          }
-
-          pedidosPorGarcom[garcomKey].pedidos.push({
-            id: pedido.id,
-            ...pedido,
-            totalPrice: pedido.totalPrice || 0,
-            isPago: Boolean(pedido.isPago),
-            formaPagamento: pedido.formaPagamento || null,
-            numeroComanda: pedido.numeroComanda || '',
-          });
-        });
-
-        // Calcular estatísticas para cada garçom
-        const resultado = Object.values(pedidosPorGarcom).map(({ garcomId, garcomNome, pedidos }) => {
-          // Filtrar pagamentos para este garçom
-          const pagamentosDoGarcom = pagamentosFiltrados.filter(p => p.garcom === garcomId);
-
-          return {
-            garcomId,
-            garcomNome,
-            ...this._calcularEstatisticas(pedidos, pagamentosDoGarcom),
-          };
-        });
-
-        // Ordenar por total vendido (maior primeiro)
-        resultado.sort((a, b) => b.totalVendido - a.totalVendido);
-
-        console.log('[OrderFirestoreService] Resultado final de garçons:', resultado);
-        return resultado;
-      }, 30000); // Cache de 30 segundos
     } catch (error) {
-      console.error('[OrderFirestoreService] Erro em getEstatisticasTodosGarcons:', error);
+      console.error('[OrderService] Erro em getEstatisticasTodosGarcons:', error);
       return [];
     }
   }
 
   /**
-   * Busca estatísticas de pagamentos por método de pagamento (OTIMIZADO)
+   * Busca estatísticas de pagamentos
    */
-  async getEstatisticasPagamentos(companyId: string, garcomId: string | null = null, periodo: string = 'hoje'): Promise<any> {
+  async getEstatisticasPagamentos(companyId: string, garcomId: string | null = null, periodo: string = 'hoje') {
     try {
       const { startDate, endDate } = this._getDateRange(periodo);
-      // CORREÇÃO: Usar formato de data LOCAL
-      const formatLocalDate = (date: Date) => {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-      };
-      const startDateKey = formatLocalDate(startDate);
-      const endDateKey = formatLocalDate(endDate);
+      
+      console.log('[OrderService] 💳 getEstatisticasPagamentos:', { companyId, garcomId, periodo, startDate, endDate });
+      
+      if (garcomId) {
+        // Para garçom específico: buscar pagamentos das comandas abertas por ele
+        // Primeiro, buscar comandas do garçom
+        const { data: comandas, error: comandasError } = await supabase
+          .from('comandas')
+          .select('comanda_number, date_key')
+          .eq('company_id', companyId)
+          .eq('opened_by', garcomId)
+          .gte('opened_at', startDate.toISOString())
+          .lte('opened_at', endDate.toISOString());
 
-      // CORREÇÃO: Buscar collection PAGAMENTOS em vez de pedidos
-      const q = query(getCompanyCollection(companyId, 'pagamentos'));
-      const snapshot = await getDocs(q);
+        if (comandasError) throw comandasError;
 
-      const pagamentosPorMetodo: Record<string, { total: number, quantidade: number }> = {
-        dinheiro: { total: 0, quantidade: 0 },
-        pix: { total: 0, quantidade: 0 },
-        debito: { total: 0, quantidade: 0 },
-        credito: { total: 0, quantidade: 0 },
-      };
-
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        const dateKey = data.dateKey || '';
-
-        // Filtrar por dateKey
-        if (dateKey >= startDateKey && dateKey <= endDateKey) {
-          // Filtrar por garcomId (se fornecido)
-          if (!garcomId || data.garcom === garcomId) {
-            const metodo = this._normalizarFormaPagamento(data.forma);
-            const valor = data.valor || 0;
-
-            if (pagamentosPorMetodo[metodo]) {
-              pagamentosPorMetodo[metodo].total += valor;
-              pagamentosPorMetodo[metodo].quantidade += 1;
-            }
-          }
+        if (!comandas || comandas.length === 0) {
+          console.log('[OrderService] 💳 Nenhuma comanda encontrada para o garçom');
+          return {
+            dinheiro: { total: 0, quantidade: 0 },
+            pix: { total: 0, quantidade: 0 },
+            debito: { total: 0, quantidade: 0 },
+            credito: { total: 0, quantidade: 0 },
+          };
         }
-      });
 
-      return pagamentosPorMetodo;
-    } catch (error: any) {
-      console.error('❌ Erro ao buscar estatísticas pagamentos:', error.message);
+        // Buscar pagamentos dessas comandas
+        const comandaNumbers = comandas.map(c => String(c.comanda_number));
+        const dateKeys = [...new Set(comandas.map(c => c.date_key))];
+
+        const { data: pagamentos, error } = await supabase
+          .from('pagamentos')
+          .select('*')
+          .eq('company_id', companyId)
+          .in('comanda_number', comandaNumbers)
+          .in('date_key', dateKeys);
+
+        if (error) throw error;
+
+        console.log('[OrderService] 💳 Pagamentos encontrados:', pagamentos?.length || 0);
+        
+        return this._agruparPagamentosPorForma(pagamentos || []);
+      } else {
+        // Para todos: buscar todos os pagamentos do período
+        const { data: pagamentos, error } = await supabase
+          .from('pagamentos')
+          .select('*')
+          .eq('company_id', companyId)
+          .gte('created_at', startDate.toISOString())
+          .lte('created_at', endDate.toISOString());
+
+        if (error) throw error;
+
+        console.log('[OrderService] 💳 Pagamentos encontrados (todos):', pagamentos?.length || 0);
+        
+        return this._agruparPagamentosPorForma(pagamentos || []);
+      }
+    } catch (error) {
+      console.error('[OrderService] Erro em getEstatisticasPagamentos:', error);
       return {
         dinheiro: { total: 0, quantidade: 0 },
         pix: { total: 0, quantidade: 0 },
@@ -938,43 +427,58 @@ class OrderFirestoreService {
     }
   }
 
+  private _agruparPagamentosPorForma(pagamentos: any[]) {
+    const stats = {
+      dinheiro: { total: 0, quantidade: 0 },
+      pix: { total: 0, quantidade: 0 },
+      debito: { total: 0, quantidade: 0 },
+      credito: { total: 0, quantidade: 0 },
+    };
+
+    pagamentos.forEach(p => {
+      const metodo = p.payment_method?.toLowerCase() || '';
+      const valor = p.amount || 0;
+
+      if (metodo === 'dinheiro') {
+        stats.dinheiro.total += valor;
+        stats.dinheiro.quantidade += 1;
+      } else if (metodo === 'pix') {
+        stats.pix.total += valor;
+        stats.pix.quantidade += 1;
+      } else if (metodo === 'debito' || metodo === 'débito') {
+        stats.debito.total += valor;
+        stats.debito.quantidade += 1;
+      } else if (metodo === 'credito' || metodo === 'crédito') {
+        stats.credito.total += valor;
+        stats.credito.quantidade += 1;
+      }
+    });
+
+    console.log('[OrderService] 💳 Stats calculadas:', stats);
+    return stats;
+  }
+
   /**
-   * Busca comandas associadas a um garçom (OTIMIZADO)
+   * Busca estatísticas de comandas
    */
   async getEstatisticasComandas(companyId: string, garcomId: string | null = null, periodo: string = 'hoje') {
     try {
       const { startDate, endDate } = this._getDateRange(periodo);
+      let query = supabase
+        .from('comandas')
+        .select('*')
+        .eq('company_id', companyId)
+        .gte('opened_at', startDate.toISOString())
+        .lte('opened_at', endDate.toISOString());
 
-      // OTIMIZADO: Comandas geralmente são poucas, filtrar no cliente é OK
-      const q = query(
-        getCompanyCollection(companyId, 'comandas'),
-        limit(200) // Proteger contra crescimento infinito
-      );
+      if (garcomId) {
+        query = query.eq('opened_by', garcomId);
+      }
 
-      const snapshot = await getDocs(q);
-      const comandas: any[] = [];
+      const { data, error } = await query;
+      if (error) throw error;
 
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-
-        // Converter abertaAt para Date se for string
-        const abertaAt = data.abertaAt?.toDate?.() || new Date(data.abertaAt);
-
-        // Filtrar por período e garcomId (se fornecido)
-        if (abertaAt >= startDate && abertaAt <= endDate) {
-          if (!garcomId || data.abertaPor === garcomId || data.createdBy === garcomId) {
-            comandas.push({
-              id: doc.id,
-              numero: data.comandaNumber || data.numero,
-              status: data.status,
-              totalConsumido: data.totalConsumido || 0,
-              totalPago: data.totalPago || 0,
-              saldoAberto: data.saldoAberto || 0,
-            });
-          }
-        }
-      });
-
+      const comandas = data || [];
       const abertas = comandas.filter(c => c.status === 'aberta');
       const fechadas = comandas.filter(c => c.status === 'fechada');
 
@@ -982,109 +486,52 @@ class OrderFirestoreService {
         total: comandas.length,
         abertas: abertas.length,
         fechadas: fechadas.length,
-        totalConsumido: comandas.reduce((sum, c) => sum + c.totalConsumido, 0),
-        totalPago: comandas.reduce((sum, c) => sum + c.totalPago, 0),
-        saldoAberto: comandas.reduce((sum, c) => sum + c.saldoAberto, 0),
+        totalConsumido: comandas.reduce((acc, c) => acc + (c.total_consumed || 0), 0),
+        totalPago: comandas.reduce((acc, c) => acc + (c.total_paid || 0), 0),
+        saldoAberto: comandas.reduce((acc, c) => acc + (c.open_balance || 0), 0)
       };
-    } catch {
-      return {
-        total: 0,
-        abertas: 0,
-        fechadas: 0,
-        totalConsumido: 0,
-        totalPago: 0,
-        saldoAberto: 0,
-      };
+    } catch (e) {
+      return { total: 0, abertas: 0, fechadas: 0, totalConsumido: 0, totalPago: 0, saldoAberto: 0 };
     }
   }
 
-
   /**
-   * Busca estatísticas completas (hoje, semana, mês) para um garçom ou todos
+   * Busca estatísticas completas
    */
   async getEstatisticasCompletas(companyId: string, garcomId: string | null = null, mesAno: string | null = null) {
-    try {
-      console.log(`[OrderFirestoreService] getEstatisticasCompletas - companyId: ${companyId}, garcomId: ${garcomId}, mesAno: ${mesAno}`);
+    const periodoBase = mesAno || 'mesVigente';
+    
+    const [vendasHoje, vendasSemana, vendasMes, pagamentosHoje, pagamentosSemana, pagamentosMes, comandasHoje, comandasSemana, comandasMes] = await Promise.all([
+      this.getEstatisticasGarcom(companyId, garcomId, 'hoje'),
+      this.getEstatisticasGarcom(companyId, garcomId, 'semana'),
+      this.getEstatisticasGarcom(companyId, garcomId, periodoBase),
+      this.getEstatisticasPagamentos(companyId, garcomId, 'hoje'),
+      this.getEstatisticasPagamentos(companyId, garcomId, 'semana'),
+      this.getEstatisticasPagamentos(companyId, garcomId, periodoBase),
+      this.getEstatisticasComandas(companyId, garcomId, 'hoje'),
+      this.getEstatisticasComandas(companyId, garcomId, 'semana'),
+      this.getEstatisticasComandas(companyId, garcomId, periodoBase)
+    ]);
 
-      // Determinar o período base
-      const periodoBase = mesAno || 'mesVigente';
-
-      // Buscar estatísticas para hoje, semana e mês
-      const [statsHoje, statsSemana, statsMes] = await Promise.all([
-        this.getEstatisticasGarcom(companyId, garcomId, 'hoje'),
-        this.getEstatisticasGarcom(companyId, garcomId, 'semana'),
-        this.getEstatisticasGarcom(companyId, garcomId, periodoBase),
-      ]);
-
-      // Buscar pagamentos para hoje, semana e mês
-      const [pagamentosHoje, pagamentosSemana, pagamentosMes] = await Promise.all([
-        this.getEstatisticasPagamentos(companyId, garcomId, 'hoje'),
-        this.getEstatisticasPagamentos(companyId, garcomId, 'semana'),
-        this.getEstatisticasPagamentos(companyId, garcomId, periodoBase),
-      ]);
-
-      // Buscar comandas para hoje, semana e mês
-      const [comandasHoje, comandasSemana, comandasMes] = await Promise.all([
-        this.getEstatisticasComandas(companyId, garcomId, 'hoje'),
-        this.getEstatisticasComandas(companyId, garcomId, 'semana'),
-        this.getEstatisticasComandas(companyId, garcomId, periodoBase),
-      ]);
-
-      return {
-        vendas: {
-          hoje: statsHoje,
-          semana: statsSemana,
-          mes: statsMes,
-        },
-        pagamentos: {
-          hoje: pagamentosHoje,
-          semana: pagamentosSemana,
-          mes: pagamentosMes,
-        },
-        comandas: {
-          hoje: comandasHoje,
-          semana: comandasSemana,
-          mes: comandasMes,
-        },
-      };
-    } catch (error) {
-      console.error('[OrderFirestoreService] Erro em getEstatisticasCompletas:', error);
-      return {
-        vendas: {
-          hoje: this._getEmptyStats(),
-          semana: this._getEmptyStats(),
-          mes: this._getEmptyStats(),
-        },
-        pagamentos: {
-          hoje: { dinheiro: { total: 0, quantidade: 0 }, pix: { total: 0, quantidade: 0 }, debito: { total: 0, quantidade: 0 }, credito: { total: 0, quantidade: 0 } },
-          semana: { dinheiro: { total: 0, quantidade: 0 }, pix: { total: 0, quantidade: 0 }, debito: { total: 0, quantidade: 0 }, credito: { total: 0, quantidade: 0 } },
-          mes: { dinheiro: { total: 0, quantidade: 0 }, pix: { total: 0, quantidade: 0 }, debito: { total: 0, quantidade: 0 }, credito: { total: 0, quantidade: 0 } },
-        },
-        comandas: {
-          hoje: { total: 0, abertas: 0, fechadas: 0, totalConsumido: 0, totalPago: 0, saldoAberto: 0 },
-          semana: { total: 0, abertas: 0, fechadas: 0, totalConsumido: 0, totalPago: 0, saldoAberto: 0 },
-          mes: { total: 0, abertas: 0, fechadas: 0, totalConsumido: 0, totalPago: 0, saldoAberto: 0 },
-        },
-      };
-    }
+    return {
+      vendas: { hoje: vendasHoje, semana: vendasSemana, mes: vendasMes },
+      pagamentos: { hoje: pagamentosHoje, semana: pagamentosSemana, mes: pagamentosMes },
+      comandas: { hoje: comandasHoje, semana: comandasSemana, mes: comandasMes }
+    };
   }
 
-  /**
-   * Calcula o range de datas baseado no período
-   * @private
-   */
-  _getDateRange(periodo: string): { startDate: Date, endDate: Date } {
+  // ============================================================================
+  // HELPER METHODS
+  // ============================================================================
+
+  private _getDateRange(periodo: string): { startDate: Date, endDate: Date } {
     const now = new Date();
     let startDate: Date, endDate: Date;
 
-    // Verificar se é um mês específico no formato YYYY-MM
     if (periodo && /^\d{4}-\d{2}$/.test(periodo)) {
       const [ano, mes] = periodo.split('-').map(Number);
-      // Primeiro dia do mês
       startDate = new Date(ano, mes - 1, 1, 0, 0, 0);
-      // Último dia do mês
       endDate = new Date(ano, mes, 0, 23, 59, 59);
-      console.log(`[OrderFirestoreService] _getDateRange('${periodo}') - Mês específico: ${startDate.toISOString()} a ${endDate.toISOString()}`);
       return { startDate, endDate };
     }
 
@@ -1093,115 +540,25 @@ class OrderFirestoreService {
         startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
         endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
         break;
-
       case 'semana':
-        // Últimos 7 dias (mais útil que semana calendário)
         startDate = new Date(now.getTime());
         startDate.setDate(now.getDate() - 7);
         startDate.setHours(0, 0, 0, 0);
         endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
         break;
-
       case 'mes':
       case 'mesVigente':
-        // Mês vigente (calendário) - do dia 1 até hoje
         startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
         endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
         break;
-
       default:
         startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
         endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
     }
-
-    console.log(`[OrderFirestoreService] _getDateRange('${periodo}'): ${startDate.toISOString()} a ${endDate.toISOString()}`);
     return { startDate, endDate };
   }
 
-  /**
-   * Calcula estatísticas a partir de uma lista de pedidos
-   * @private
-   */
-  private _calcularEstatisticas(pedidos: any[], pagamentos: any[] = []) {
-    const totalPedidos = pedidos.length;
-    const pedidosPagos = pedidos.filter(p => p.isPago);
-    const pedidosAbertos = pedidos.filter(p => !p.isPago);
-
-    const totalVendido = pedidos.reduce((sum, p) => sum + (p.totalPrice || 0), 0);
-    const totalRecebido = pedidosPagos.reduce((sum, p) => sum + (p.totalPrice || 0), 0);
-    const totalAberto = pedidosAbertos.reduce((sum, p) => sum + (p.totalPrice || 0), 0);
-
-    // CORREÇÃO: Usar dados reais de pagamentos para formas de pagamento
-    const porFormaPagamento: Record<string, number> = {
-      dinheiro: 0,
-      pix: 0,
-      debito: 0,
-      credito: 0
-    };
-
-    // Calcular por forma usando collection pagamentos (dados reais)
-    pagamentos.forEach(p => {
-      const forma = this._normalizarFormaPagamento(p.forma);
-      porFormaPagamento[forma] += (p.valor || 0);
-    });
-
-    // Comandas únicas
-    const comandasUnicas = new Set(pedidos.map(p => p.numeroComanda).filter(Boolean));
-    const quantidadeComandas = comandasUnicas.size;
-
-    // Ticket médio
-    const ticketMedio = quantidadeComandas > 0 ? totalVendido / quantidadeComandas : 0;
-
-    // Produto mais vendido
-    const produtoCount: Record<string, number> = {};
-    pedidos.forEach(p => {
-      const itens = p.itens || [];
-      itens.forEach((item: string) => {
-        produtoCount[item] = (produtoCount[item] || 0) + 1;
-      });
-    });
-
-    const produtoMaisVendido = Object.entries(produtoCount)
-      .sort((a, b) => b[1] - a[1])[0];
-
-    return {
-      totalPedidos,
-      totalVendido,
-      totalRecebido,
-      totalAberto,
-      quantidadeComandas,
-      porFormaPagamento,
-      comandasAbertas: pedidosAbertos.length,
-      comandasFechadas: pedidosPagos.length,
-      ticketMedio,
-      produtoMaisVendido: produtoMaisVendido ? {
-        nome: produtoMaisVendido[0],
-        quantidade: produtoMaisVendido[1],
-      } : null,
-    };
-  }
-
-  /**
-   * Normaliza forma de pagamento para formato padrão
-   * @private
-   */
-  _normalizarFormaPagamento(forma: string | null | undefined): string {
-    if (!forma) return 'dinheiro';
-
-    const normalized = forma.toLowerCase().trim();
-
-    if (normalized.includes('pix')) return 'pix';
-    if (normalized.includes('débito') || normalized.includes('debito')) return 'debito';
-    if (normalized.includes('crédito') || normalized.includes('credito')) return 'credito';
-
-    return 'dinheiro';
-  }
-
-  /**
-   * Retorna estatísticas vazias
-   * @private
-   */
-  _getEmptyStats() {
+  private _getEmptyStats() {
     return {
       totalPedidos: 0,
       totalVendido: 0,
@@ -1214,9 +571,45 @@ class OrderFirestoreService {
       produtoMaisVendido: null,
     };
   }
+
+  private _calcularEstatisticas(pedidos: Order[], pagamentos: any[]) {
+    const totalPedidos = pedidos.length;
+    const pedidosPagos = pedidos.filter(p => p.isPago);
+    const pedidosAbertos = pedidos.filter(p => !p.isPago);
+    const totalVendido = pedidos.reduce((sum, p) => sum + (p.totalPrice || 0), 0);
+    const totalRecebido = pedidosPagos.reduce((sum, p) => sum + (p.totalPrice || 0), 0);
+    const totalAberto = pedidosAbertos.reduce((sum, p) => sum + (p.totalPrice || 0), 0);
+
+    return {
+      totalPedidos,
+      totalVendido,
+      totalRecebido,
+      totalAberto,
+      quantidadeComandas: new Set(pedidos.map(p => p.comandaNumber)).size,
+      comandasAbertas: pedidosAbertos.length,
+      comandasFechadas: pedidosPagos.length,
+      ticketMedio: totalPedidos > 0 ? totalVendido / totalPedidos : 0,
+      produtoMaisVendido: null // TODO
+    };
+  }
+
+  // Compatibility methods
+  findOrdersByComanda(comanda: string) { return []; }
+  findDocIdByOrderId() { return null; }
 }
 
-// Export helper functions for testing and external use
-export { normalizeComandaNumber, findOrdersByComanda };
+/**
+ * Normaliza número de comanda para formato consistente
+ * Exported as standalone function for compatibility
+ */
+export function normalizeComandaNumber(comandaNumber: string | number): string {
+  // Remove espaços e converte para string
+  const str = String(comandaNumber).trim();
+  
+  // Remove zeros à esquerda, mas mantém pelo menos um dígito
+  const normalized = str.replace(/^0+/, '') || '0';
+  
+  return normalized;
+}
 
 export default new OrderFirestoreService();

@@ -3,10 +3,8 @@ import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Modal, Alert, Act
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { collection, getDocs, doc, writeBatch, setDoc, deleteDoc, serverTimestamp, query, where, onSnapshot } from 'firebase/firestore';
-import { db } from '../config/firebaseConfig';
-import { getTodayKey, getDateKeyRange } from '../services/FirebaseOptimizations';
-import { getCompanyCollection } from '../utils/firestoreUtils';
+import { supabase } from '../config/SupabaseConfig';
+import { getTodayKey, getDateKeyRange } from '../utils/dateUtils'; // Migrated from FirebaseOptimizations
 import BackgroundPattern from '../components/BackgroundPattern';
 
 // @ts-ignore
@@ -36,7 +34,7 @@ import FinancialDashboardScreen from './FinancialDashboardScreen';
 import { confirmLogout } from '../utils/appUtils';
 import BiometricSetupModal from '../components/BiometricSetupModal';
 import MFASetupModal from '../components/MFASetupModal';
-import PerformanceService from '../services/PerformanceService';
+// import PerformanceService from '../services/PerformanceService'; // Removed - Firebase specific
 
 /**
  * AdminScreen - Main Administrative Dashboard
@@ -158,124 +156,139 @@ export default function AdminScreen() {
     if (!user?.companyId) return;
 
     const dateKey = getTodayKey();
-    const pedidosQuery = query(
-      getCompanyCollection(user.companyId, 'pedidos'),
-      where('dateKey', '==', dateKey)
-    );
+    
+    // Supabase Realtime para pedidos
+    const pedidosChannel = supabase
+      .channel('admin-pedidos-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders',
+          filter: `company_id=eq.${user.companyId},date_key=eq.${dateKey}`
+        },
+        () => {
+          debounceReload();
+        }
+      )
+      .subscribe();
 
-    const unsubscribePedidos = onSnapshot(
-      pedidosQuery,
-      (snapshot) => {
-        debounceReload();
-      },
-      (error) => {
-        console.error('[AdminScreen] ❌ Erro no listener de pedidos:', error);
-      }
-    );
-
-    // Listener para comandas (atualiza estatísticas de vendas E operacionais)
-    // ✅ OTIMIZAÇÃO: Escutar apenas comandas RECENTES (últimos 7 dias) ou ABERTAS
-    // Para simplificar, vamos escutar 'abertas' e 'hoje'
+    // Supabase Realtime para comandas
     const today = getTodayKey();
-    const comandasQuery = query(
-      getCompanyCollection(user.companyId, 'comandas'),
-      where('dateKey', '>=', today) // Escuta comandas de hoje em diante (inclui abertura e fechamento)
-    );
-
-    const unsubscribeComandas = onSnapshot(
-      comandasQuery,
-      (snapshot) => {
-        // Apenas acionar reload
-        debounceReload();
-      },
-      (error) => {
-        console.error('[AdminScreen] ❌ Erro no listener de comandas:', error);
-      }
-    );
+    const comandasChannel = supabase
+      .channel('admin-comandas-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'comandas',
+          filter: `company_id=eq.${user.companyId},date_key=gte.${today}`
+        },
+        () => {
+          debounceReload();
+        }
+      )
+      .subscribe();
 
     // Cleanup: remover listeners ao desmontar
     return () => {
-      unsubscribePedidos();
-      unsubscribeComandas();
+      supabase.removeChannel(pedidosChannel);
+      supabase.removeChannel(comandasChannel);
     };
   }, [periodoSelecionado]);
 
   // Limpa uma coleção inteira em lotes (safe para >500 docs)
-  const limparColecao = async (nomeColecao: string) => {
+  const limparColecao = async (nomeTabela: string) => {
     let totalApagado = 0;
-    const PAGE_SIZE = 450; // margem < 500 limite do batch
+    const PAGE_SIZE = 450;
     try {
       while (true) {
-        const snapshot = await getDocs(collection(db, nomeColecao));
-        if (snapshot.empty) {
-          if (totalApagado === 0) console.log(`⚠️ Coleção ${nomeColecao} já está vazia`);
+        const { data, error } = await supabase
+          .from(nomeTabela)
+          .select('id')
+          .eq('company_id', user?.companyId)
+          .limit(PAGE_SIZE);
+
+        if (error) throw error;
+        if (!data || data.length === 0) {
+          if (totalApagado === 0) console.log(`⚠️ Tabela ${nomeTabela} já está vazia`);
           break;
         }
 
-        // Mostrar amostra dos IDs (primeiros 5)
-        if (snapshot.size > 0) {
-          const amostra = snapshot.docs.slice(0, 5).map(d => d.id).join(', ');
-        }
+        const ids = data.map(d => d.id);
+        const { error: deleteError } = await supabase
+          .from(nomeTabela)
+          .delete()
+          .in('id', ids);
 
-        // Seleciona apenas até PAGE_SIZE para não ultrapassar
-        const docs = snapshot.docs.slice(0, PAGE_SIZE);
-        const batch = writeBatch(db);
-        docs.forEach(dRef => {
-          batch.delete(doc(db, nomeColecao, dRef.id));
-        });
-        await batch.commit();
-        totalApagado += docs.length;
-        if (docs.length < PAGE_SIZE) break; // último lote
+        if (deleteError) throw deleteError;
+
+        totalApagado += ids.length;
+        if (ids.length < PAGE_SIZE) break;
       }
       return totalApagado;
     } catch (error: any) {
-      console.error(`❌ === ERRO ao limpar ${nomeColecao} ===`, error);
+      console.error(`❌ === ERRO ao limpar ${nomeTabela} ===`, error);
       console.error(`❌ Tipo de erro:`, error.name);
       console.error(`❌ Mensagem:`, error.message);
-      console.error(`❌ Stack:`, error.stack);
       throw error;
     }
   };
 
   // Garante que a coleção fique vazia: roda limparColecao e valida com getDocs até um número máximo de tentativas
-  const ensureColecaoVazia = async (nomeColecao: string, maxAttempts = 10, delayMs = 1000) => {
+  const ensureColecaoVazia = async (nomeTabela: string, maxAttempts = 10, delayMs = 1000) => {
     let attempt = 0;
     while (attempt < maxAttempts) {
       attempt++;
-      // Buscar snapshot para ver quantos docs existem
-      const snapBefore = await getDocs(collection(db, nomeColecao));
-      if (snapBefore.empty) {
+      
+      // Buscar para ver quantos docs existem
+      const { data: dataBefore, error: errorBefore } = await supabase
+        .from(nomeTabela)
+        .select('id', { count: 'exact', head: true })
+        .eq('company_id', user?.companyId);
+
+      if (errorBefore) throw errorBefore;
+      if (!dataBefore || dataBefore.length === 0) {
         return { ok: true, attempts: attempt };
       }
 
       // Apagar
-      await limparColecao(nomeColecao);
+      await limparColecao(nomeTabela);
 
       // Aguardar commit no servidor
       await new Promise(res => setTimeout(res, delayMs));
 
       // Verifica
-      const snapAfter = await getDocs(collection(db, nomeColecao));
-      if (snapAfter.empty) {
+      const { data: dataAfter, error: errorAfter } = await supabase
+        .from(nomeTabela)
+        .select('id', { count: 'exact', head: true })
+        .eq('company_id', user?.companyId);
+
+      if (errorAfter) throw errorAfter;
+      if (!dataAfter || dataAfter.length === 0) {
         return { ok: true, attempts: attempt };
       }
-      // Se o número não mudou, aumentar delay (pode ser problema de replicação)
-      if (snapAfter.size === snapBefore.size) {
+
+      // Se o número não mudou, aumentar delay
+      if (dataAfter.length === dataBefore.length) {
         await new Promise(res => setTimeout(res, delayMs * 2));
       }
     }
 
-    const finalSnap = await getDocs(collection(db, nomeColecao));
-    console.error(`❌ [ensureColecaoVazia] FALHA em ${nomeColecao} após ${maxAttempts} tentativas. Restantes: ${finalSnap.size}`);
+    const { data: finalData, error: finalError } = await supabase
+      .from(nomeTabela)
+      .select('id')
+      .eq('company_id', user?.companyId);
 
-    // Mostrar IDs dos docs que não foram apagados
-    if (!finalSnap.empty && finalSnap.size <= 20) {
-      console.error(`📋 IDs não apagados:`);
-      finalSnap.forEach(doc => console.error(`  - ${doc.id}`));
-    }
+    if (finalError) throw finalError;
+
+    const remaining = finalData?.length || 0;
+    console.error(`❌ [ensureColecaoVazia] FALHA em ${nomeTabela} após ${maxAttempts} tentativas. Restantes: ${remaining}`);
 
     // @ts-ignore
-    return { ok: finalSnap.empty, attempts: maxAttempts, remaining: finalSnap.size };
+    return { ok: remaining === 0, attempts: maxAttempts, remaining };
   };
 
   /**
@@ -287,21 +300,22 @@ export default function AdminScreen() {
    * @performance Measured by PerformanceService ('Admin:CarregarEstatsOperacionais')
    */
   const carregarEstatisticas = async () => {
-    return PerformanceService.measure('Admin:CarregarEstatsOperacionais', async () => {
-        try {
-        setLoadingStats(true);
+    // Previously measured by PerformanceService (removed - Firebase specific)
+    try {
+      setLoadingStats(true);
         if (!user?.companyId) return;
 
         const today = getTodayKey();
-        const qPedidosDia = query(
-            getCompanyCollection(user.companyId, 'pedidos'),
-            where('dateKey', '==', today)
-        );
-        let pedidosSnapshot = await getDocs(qPedidosDia);
+        const { data: pedidos, error } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('company_id', user.companyId)
+          .eq('date_key', today);
+
+        if (error) throw error;
         
         // Optimizing aggregation loop
-        const statsResult = pedidosSnapshot.docs.reduce((acc, pedidoDoc) => {
-            const pedido = pedidoDoc.data();
+        const statsResult = (pedidos || []).reduce((acc, pedido) => {
             acc.totalPedidos++;
             
             // Itens aggregation
@@ -316,13 +330,13 @@ export default function AdminScreen() {
             }
 
             // Time calculation
-            const inicio = pedido.criadoEm || pedido.horaPedido || pedido.createdAt;
-            const fim = pedido.timeInProntos;
+            const inicio = pedido.criado_em || pedido.hora_pedido || pedido.created_at;
+            const fim = pedido.time_in_prontos;
 
             if (inicio && fim) {
                 const getSeconds = (val: any) => {
-                     if (val?.seconds) return val.seconds;
-                     if (typeof val === 'string' || typeof val === 'number') return new Date(val).getTime() / 1000;
+                     if (typeof val === 'string') return new Date(val).getTime() / 1000;
+                     if (typeof val === 'number') return val;
                      return 0;
                 };
 
@@ -349,11 +363,10 @@ export default function AdminScreen() {
         });
 
         } catch (error) {
-            console.error('❌ Erro ao carregar estatísticas:', error);
-        } finally {
-            setLoadingStats(false);
-        }
-    });
+        console.error('❌ Erro ao carregar estatísticas:', error);
+    } finally {
+        setLoadingStats(false);
+    }
   };
 
   /**
@@ -364,46 +377,44 @@ export default function AdminScreen() {
    * @performance Measured by PerformanceService ('Admin:CarregarVendas')
    */
   const carregarEstatisticasVendas = async () => {
-    return PerformanceService.measure('Admin:CarregarVendas', async () => {
-        try {
-            setLoadingVendas(true);
+    // Previously measured by PerformanceService (removed - Firebase specific)
+    try {
+        setLoadingVendas(true);
             
             const { startKey: dateKeyInicio, endKey: dateKeyFim } = getDateKeyRange(periodoSelecionado);
             if (!user?.companyId) return;
 
             // Fetch concurrently
-            const salesQuery = query(
-                getCompanyCollection(user.companyId, 'comandas'),
-                where('status', '==', 'fechada'),
-                where('dateKey', '>=', dateKeyInicio),
-                where('dateKey', '<=', dateKeyFim)
-            );
-            
-            const canceledQuery = query(
-                getCompanyCollection(user.companyId, 'comandas'),
-                where('status', '==', 'cancelada'),
-                where('dateKey', '>=', dateKeyInicio),
-                where('dateKey', '<=', dateKeyFim)
-            );
-
-            // Parallel execution
-            const [salesSnap, canceledSnap] = await Promise.all([
-                getDocs(salesQuery),
-                getDocs(canceledQuery)
+            const [salesResult, canceledResult] = await Promise.all([
+              supabase
+                .from('comandas')
+                .select('*')
+                .eq('company_id', user.companyId)
+                .eq('status', 'fechada')
+                .gte('date_key', dateKeyInicio)
+                .lte('date_key', dateKeyFim),
+              supabase
+                .from('comandas')
+                .select('*')
+                .eq('company_id', user.companyId)
+                .eq('status', 'cancelada')
+                .gte('date_key', dateKeyInicio)
+                .lte('date_key', dateKeyFim)
             ]);
 
+            if (salesResult.error) throw salesResult.error;
+            if (canceledResult.error) throw canceledResult.error;
+
             // Sales Stats
-            const salesStats = salesSnap.docs.reduce((acc, doc) => {
-                const data = doc.data();
-                acc.totalVendido += (data.totalConsumido || 0);
+            const salesStats = (salesResult.data || []).reduce((acc, data) => {
+                acc.totalVendido += (data.total_consumed || 0);
                 acc.totalPedidos++;
                 return acc;
             }, { totalVendido: 0, totalPedidos: 0 });
 
             // Canceled Stats
-            const canceledStats = canceledSnap.docs.reduce((acc, doc) => {
-                const data = doc.data();
-                acc.totalCancelado += (data.totalConsumido || 0);
+            const canceledStats = (canceledResult.data || []).reduce((acc, data) => {
+                acc.totalCancelado += (data.total_consumed || 0);
                 acc.qtdCanceladas++;
                 return acc;
             }, { totalCancelado: 0, qtdCanceladas: 0 });
@@ -421,11 +432,10 @@ export default function AdminScreen() {
             });
 
         } catch (error) {
-            console.error('❌ Erro ao carregar estatísticas de vendas:', error);
-        } finally {
-            setLoadingVendas(false);
-        }
-    });
+        console.error('❌ Erro ao carregar estatísticas de vendas:', error);
+    } finally {
+        setLoadingVendas(false);
+    }
   };
 
   // Carregar alertas de estoque
@@ -481,10 +491,15 @@ export default function AdminScreen() {
               try { if (typeof window !== 'undefined' && window.localStorage) window.localStorage.setItem('limpezaEmAndamento', '1'); } catch { // ignore
               }
 
-              // Sinalizar para outros clientes via Firestore (maintenance flag)
+              // Sinalizar para outros clientes via Supabase (maintenance flag)
               try {
-                const maintenanceRef = doc(db, 'maintenance', 'limpeza');
-                await setDoc(maintenanceRef, { startedAt: serverTimestamp(), by: (user && user.uid) ? user.uid : 'admin' });
+                await supabase
+                  .from('maintenance')
+                  .upsert({
+                    id: 'limpeza',
+                    started_at: new Date().toISOString(),
+                    by: (user && user.uid) ? user.uid : 'admin'
+                  });
               } catch (e) {
                 // ignore
               }
@@ -505,8 +520,10 @@ export default function AdminScreen() {
               }
               // remover flag de manutenção
               try {
-                const maintenanceRef = doc(db, 'maintenance', 'limpeza');
-                await deleteDoc(maintenanceRef);
+                await supabase
+                  .from('maintenance')
+                  .delete()
+                  .eq('id', 'limpeza');
               } catch (e) {
                 // ignore
               }
@@ -545,8 +562,8 @@ export default function AdminScreen() {
           )}
         </View>
         <View style={styles.headerCenter}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Ionicons name="shield-checkmark-outline" size={24} color="#FFF" />
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Ionicons name="shield-checkmark-outline" size={24} color="#FFF" style={{ marginRight: 8 }} />
             <Text style={styles.headerTitle}>Admin</Text>
           </View>
         </View>

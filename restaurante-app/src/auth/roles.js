@@ -72,6 +72,7 @@ export function normalizeRole(roleValue) {
 
   // Legacy aliases
   if (v === 'churrasqueiro') return Roles.COZINHEIRO;
+  if (v === 'manager') return Roles.GERENTE;
 
   if (Object.values(Roles).includes(v)) return v;
   return Roles.GARCOM; // padrão seguro

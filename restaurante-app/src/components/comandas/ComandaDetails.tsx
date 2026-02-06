@@ -25,9 +25,11 @@ interface ItemResumo {
 }
 
 export default function ComandaDetails({ comanda, onClose, onPay, onPrint, onCancel, onAddItems, onShare }: ComandaDetailsProps) {
-    // Calcular Saldo devedor
+    // Calcular Saldo devedor (with safe defaults)
     const saldoDevedor = useMemo(() => {
-        return fixDecimal(Math.max(0, comanda.totalConsumido - comanda.totalPago));
+        const totalConsumido = Number(comanda.totalConsumido) || 0;
+        const totalPago = Number(comanda.totalPago) || 0;
+        return fixDecimal(Math.max(0, totalConsumido - totalPago));
     }, [comanda.totalConsumido, comanda.totalPago]);
 
     // Aggregate items logic
@@ -204,9 +206,9 @@ export default function ComandaDetails({ comanda, onClose, onPay, onPrint, onCan
                             <View key={idx} style={styles.itemRow}>
                                 <View style={{ flex: 1 }}>
                                     <Text style={styles.itemName}>{item.nome}</Text>
-                                    <Text style={styles.itemQty}>{item.quantidade}x R$ {item.precoUnit.toFixed(2)}</Text>
+                                    <Text style={styles.itemQty}>{item.quantidade}x R$ {(Number(item.precoUnit) || 0).toFixed(2)}</Text>
                                 </View>
-                                <Text style={styles.itemTotal}>R$ {item.subtotal.toFixed(2)}</Text>
+                                <Text style={styles.itemTotal}>R$ {(Number(item.subtotal) || 0).toFixed(2)}</Text>
                             </View>
                         ))
                     ) : (
@@ -220,11 +222,11 @@ export default function ComandaDetails({ comanda, onClose, onPay, onPrint, onCan
                     {/* Totais */}
                     <View style={styles.infoRow}>
                         <Text style={styles.label}>Total Consumido:</Text>
-                        <Text style={styles.value}>R$ {comanda.totalConsumido.toFixed(2)}</Text>
+                        <Text style={styles.value}>R$ {(Number(comanda.totalConsumido) || 0).toFixed(2)}</Text>
                     </View>
                     <View style={styles.infoRow}>
                         <Text style={styles.label}>Total Pago:</Text>
-                        <Text style={[styles.value, { color: colors.success }]}>R$ {comanda.totalPago.toFixed(2)}</Text>
+                        <Text style={[styles.value, { color: colors.success }]}>R$ {(Number(comanda.totalPago) || 0).toFixed(2)}</Text>
                     </View>
 
                     {/* DETALHES DO CANCELAMENTO */}
@@ -273,7 +275,7 @@ export default function ComandaDetails({ comanda, onClose, onPay, onPrint, onCan
                                 (typeof valor === 'number' && valor > 0) && (
                                     <View key={forma} style={styles.infoRow}>
                                         <Text style={styles.label}>{forma.toUpperCase()}:</Text>
-                                        <Text style={styles.value}>R$ {valor.toFixed(2)}</Text>
+                                        <Text style={styles.value}>R$ {(Number(valor) || 0).toFixed(2)}</Text>
                                     </View>
                                 )
                             ))}
@@ -282,7 +284,7 @@ export default function ComandaDetails({ comanda, onClose, onPay, onPrint, onCan
 
                     <View style={[styles.totalRow, { marginTop: 15, borderTopWidth: 1, borderTopColor: '#ddd', paddingTop: 10 }]}>
                         <Text style={styles.totalLabel}>SALDO A PAGAR</Text>
-                        <Text style={styles.totalValueLarge}>R$ {saldoDevedor.toFixed(2)}</Text>
+                        <Text style={styles.totalValueLarge}>R$ {(Number(saldoDevedor) || 0).toFixed(2)}</Text>
                     </View>
                 </View>
 

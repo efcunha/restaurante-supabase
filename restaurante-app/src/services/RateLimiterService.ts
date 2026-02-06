@@ -1,5 +1,5 @@
 /**
- * Rate Limiter Service
+ * Rate Limiter Service - Migrado para Supabase
  * 
  * Implementa proteção contra ataques de negação de serviço através de:
  * - Limites de operações por minuto (100 writes, 500 reads)
@@ -9,8 +9,7 @@
  * Requirements: 4.1, 4.2, 4.3, 4.4, 4.5
  */
 
-import { db } from '../config/firebaseConfig';
-import { doc, getDoc, setDoc, updateDoc, increment, Timestamp } from 'firebase/firestore';
+import { supabase } from '../config/SupabaseConfig';
 
 // Tipos de operação
 export type OperationType = 'read' | 'write';
@@ -51,17 +50,17 @@ interface RateLimitInfo {
   userId: string;
   reads: number;
   writes: number;
-  windowStart: Timestamp;
+  windowStart: string;
   violations: number;
-  blockedUntil?: Timestamp;
-  lastViolation?: Timestamp;
+  blockedUntil?: string;
+  lastViolation?: string;
 }
 
 /**
  * Serviço de Rate Limiting
  */
 export class RateLimiterService {
-  private readonly collectionPath = 'rateLimits';
+  private readonly tableName = 'rate_limits';
 
   /**
    * Verifica se operação está dentro do rate limit
@@ -72,9 +71,11 @@ export class RateLimiterService {
     
     // Verifica se usuário está bloqueado
     if (limitInfo.blockedUntil) {
-      const now = Timestamp.now();
-      if (limitInfo.blockedUntil.toMillis() > now.toMillis()) {
-        const retryAfter = Math.ceil((limitInfo.blockedUntil.toMillis() - now.toMillis()) / 1000);
+      const now = new Date();
+      const blockedUntil = new Date(limitInfo.blockedUntil);
+      
+      if (blockedUntil.getTime() > now.getTime()) {
+        const retryAfter = Math.ceil((blockedUntil.getTime() - now.getTime()) / 1000);
         throw new RateLimitError(
           `Usuário temporariamente bloqueado devido a violações repetidas. Tente novamente em ${retryAfter} segundos.`,
           retryAfter,
@@ -89,9 +90,10 @@ export class RateLimiterService {
     }
 
     // Verifica se janela de tempo expirou (1 minuto)
-    const now = Timestamp.now();
+    const now = new Date();
+    const windowStart = new Date(limitInfo.windowStart);
     const windowDurationMs = 60 * 1000; // 1 minuto
-    const windowExpired = (now.toMillis() - limitInfo.windowStart.toMillis()) > windowDurationMs;
+    const windowExpired = (now.getTime() - windowStart.getTime()) > windowDurationMs;
 
     if (windowExpired) {
       // Reset contadores para nova janela
@@ -127,81 +129,131 @@ export class RateLimiterService {
    * Obtém informações de rate limit para um usuário
    */
   private async getLimitInfo(userId: string): Promise<RateLimitInfo> {
-    const docRef = doc(db, this.collectionPath, userId);
-    const docSnap = await getDoc(docRef);
+    const { data, error } = await supabase
+      .from(this.tableName)
+      .select('*')
+      .eq('user_id', userId)
+      .single();
 
-    if (!docSnap.exists()) {
+    if (error || !data) {
       // Primeira vez - cria documento
-      const initialInfo: RateLimitInfo = {
-        userId,
-        reads: 0,
-        writes: 0,
-        windowStart: Timestamp.now(),
+      const initialInfo = {
+        user_id: userId,
+        reads_count: 0,
+        writes_count: 0,
+        window_start: new Date().toISOString(),
         violations: 0
       };
       
-      await setDoc(docRef, initialInfo);
-      return initialInfo;
+      const { data: newData, error: insertError } = await supabase
+        .from(this.tableName)
+        .insert(initialInfo)
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('[RateLimiter] Erro ao criar registro:', insertError);
+        throw insertError;
+      }
+
+      return {
+        userId,
+        reads: 0,
+        writes: 0,
+        windowStart: initialInfo.window_start,
+        violations: 0
+      };
     }
 
-    return docSnap.data() as RateLimitInfo;
+    return {
+      userId: data.user_id,
+      reads: data.reads_count || 0,
+      writes: data.writes_count || 0,
+      windowStart: data.window_start,
+      violations: data.violations || 0,
+      blockedUntil: data.blocked_until,
+      lastViolation: data.last_violation
+    };
   }
 
   /**
    * Incrementa contador de operações
    */
   private async incrementCounter(userId: string, operationType: OperationType): Promise<void> {
-    const docRef = doc(db, this.collectionPath, userId);
-    const field = operationType === 'read' ? 'reads' : 'writes';
+    const field = operationType === 'read' ? 'reads_count' : 'writes_count';
     
-    await updateDoc(docRef, {
-      [field]: increment(1)
+    // Usa RPC para incremento atômico
+    const { error } = await supabase.rpc('increment_rate_limit', {
+      p_user_id: userId,
+      p_field: field
     });
+
+    if (error) {
+      // Fallback: update manual
+      const limitInfo = await this.getLimitInfo(userId);
+      const newCount = (operationType === 'read' ? limitInfo.reads : limitInfo.writes) + 1;
+      
+      await supabase
+        .from(this.tableName)
+        .update({ [field]: newCount })
+        .eq('user_id', userId);
+    }
   }
 
   /**
    * Reseta janela de tempo
    */
   private async resetWindow(userId: string): Promise<void> {
-    const docRef = doc(db, this.collectionPath, userId);
-    
-    await updateDoc(docRef, {
-      reads: 0,
-      writes: 0,
-      windowStart: Timestamp.now()
-    });
+    const { error } = await supabase
+      .from(this.tableName)
+      .update({
+        reads_count: 0,
+        writes_count: 0,
+        window_start: new Date().toISOString()
+      })
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('[RateLimiter] Erro ao resetar janela:', error);
+    }
   }
 
   /**
    * Registra violação de rate limit
    */
   private async recordViolation(userId: string, operationType: OperationType): Promise<void> {
-    const docRef = doc(db, this.collectionPath, userId);
     const limitInfo = await this.getLimitInfo(userId);
     
     const newViolations = limitInfo.violations + 1;
-    const updates: Partial<RateLimitInfo> = {
+    const updates: any = {
       violations: newViolations,
-      lastViolation: Timestamp.now()
+      last_violation: new Date().toISOString()
     };
 
     // Se atingiu threshold, bloqueia usuário
     if (newViolations >= BACKOFF_CONFIG.violationThreshold) {
       const blockDurationMs = this.calculateBlockDuration(newViolations);
-      const blockedUntil = Timestamp.fromMillis(Date.now() + blockDurationMs);
+      const blockedUntil = new Date(Date.now() + blockDurationMs);
       
-      updates.blockedUntil = blockedUntil;
+      updates.blocked_until = blockedUntil.toISOString();
       
       // Log para monitoramento
       console.warn(`[RateLimiter] Usuário ${userId} bloqueado por ${blockDurationMs}ms após ${newViolations} violações`);
       
-      // TODO: Alertar administradores sobre padrão suspeito
+      // Alertar administradores sobre padrão suspeito
       if (newViolations >= 5) {
         this.alertAdministrators(userId, newViolations, operationType);
       }
     }
 
-    await updateDoc(docRef, updates);
+    const { error } = await supabase
+      .from(this.tableName)
+      .update(updates)
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('[RateLimiter] Erro ao registrar violação:', error);
+    }
   }
 
   /**
@@ -230,12 +282,17 @@ export class RateLimiterService {
    * Limpa bloqueio expirado
    */
   private async clearBlock(userId: string): Promise<void> {
-    const docRef = doc(db, this.collectionPath, userId);
-    
-    await updateDoc(docRef, {
-      blockedUntil: null,
-      violations: 0
-    });
+    const { error } = await supabase
+      .from(this.tableName)
+      .update({
+        blocked_until: null,
+        violations: 0
+      })
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('[RateLimiter] Erro ao limpar bloqueio:', error);
+    }
   }
 
   /**
@@ -247,7 +304,7 @@ export class RateLimiterService {
     operationType: OperationType
   ): Promise<void> {
     // TODO: Implementar notificação para administradores
-    // Pode ser via Cloud Function, email, Slack, etc.
+    // Pode ser via Edge Function, email, Slack, etc.
     console.error(`[RateLimiter] ALERTA: Usuário ${userId} com ${violations} violações de ${operationType}`);
     
     // Por enquanto, apenas log
@@ -258,27 +315,43 @@ export class RateLimiterService {
    * Obtém estatísticas de rate limiting (para debugging/monitoring)
    */
   async getStats(userId: string): Promise<RateLimitInfo | null> {
-    const docRef = doc(db, this.collectionPath, userId);
-    const docSnap = await getDoc(docRef);
+    const { data, error } = await supabase
+      .from(this.tableName)
+      .select('*')
+      .eq('user_id', userId)
+      .single();
     
-    if (!docSnap.exists()) {
+    if (error || !data) {
       return null;
     }
     
-    return docSnap.data() as RateLimitInfo;
+    return {
+      userId: data.user_id,
+      reads: data.reads_count || 0,
+      writes: data.writes_count || 0,
+      windowStart: data.window_start,
+      violations: data.violations || 0,
+      blockedUntil: data.blocked_until,
+      lastViolation: data.last_violation
+    };
   }
 
   /**
    * Reseta violações de um usuário (admin only)
    */
   async resetViolations(userId: string): Promise<void> {
-    const docRef = doc(db, this.collectionPath, userId);
-    
-    await updateDoc(docRef, {
-      violations: 0,
-      blockedUntil: null,
-      lastViolation: null
-    });
+    const { error } = await supabase
+      .from(this.tableName)
+      .update({
+        violations: 0,
+        blocked_until: null,
+        last_violation: null
+      })
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('[RateLimiter] Erro ao resetar violações:', error);
+    }
   }
 }
 
