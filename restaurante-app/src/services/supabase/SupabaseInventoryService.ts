@@ -29,7 +29,7 @@ class SupabaseInventoryService {
         // Currently, the schema focuses on availability, so this method primarily acts as a cost calculator/hook
         // for future inventory logic.
         
-        let totalCost = 0;
+        const totalCost = 0;
         
         // Logical placeholder for stock deduction
         for (const item of orderItems) {

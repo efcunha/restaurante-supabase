@@ -45,7 +45,7 @@ const validateCNPJ = (cnpj: string) => {
     // Valida DVs
     let tamanho = c.length - 2
     let numeros = c.substring(0, tamanho);
-    let digitos = c.substring(tamanho);
+    const digitos = c.substring(tamanho);
     let soma = 0;
     let pos = tamanho - 7;
     for (let i = tamanho; i >= 1; i--) {

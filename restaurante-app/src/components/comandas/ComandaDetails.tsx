@@ -39,7 +39,7 @@ export default function ComandaDetails({ comanda, onClose, onPay, onPrint, onCan
         const map: Record<string, ItemResumo> = {};
 
         try {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+             
             comanda.pedidos.forEach((p: any) => {
                 let items: string[] = p.items || p.itens || [];
                 if (!Array.isArray(items)) items = [];
