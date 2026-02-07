@@ -99,8 +99,6 @@ export default function LoginScreen({ navigation }: Props) {
                   height: height * 0.32,
                   marginBottom: 10,
                   maxHeight: 300,
-                  // @ts-ignore
-                  resizeMode: "contain"
                 }}
                 resizeMode="contain"
               />
