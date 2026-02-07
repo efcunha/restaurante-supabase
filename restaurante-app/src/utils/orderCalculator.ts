@@ -79,7 +79,7 @@ export const calcularPrecoItem = (itemText: string): ItemCalculation => {
   try {
     const qtdMatch = itemText.match(/^(\d+)x?\s*/);
     const qtd = qtdMatch ? parseInt(qtdMatch[1], 10) : 1;
-    let nome = itemText.replace(/^\d+x?\s*/, '').replace(/\s*\(.*\)$/, '').trim();
+    const nome = itemText.replace(/^\d+x?\s*/, '').replace(/\s*\(.*\)$/, '').trim();
 
     // Detectar tamanho para caldos
     let precoUnit = 0;

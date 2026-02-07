@@ -43,7 +43,7 @@ export function getDateKeyRange(periodo: Period): DateKeyRange {
     return `${year}-${month}-${day}`;
   };
   
-  let startDate = new Date(now);
+  const startDate = new Date(now);
   
   switch (periodo) {
     case 'semana':

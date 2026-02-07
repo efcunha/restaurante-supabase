@@ -165,7 +165,7 @@ class SyncService {
         }
         break;
 
-      case 'UPDATE_ORDER':
+      case 'UPDATE_ORDER': {
         // payload: { companyId, orderId, updates }
         const { error: updateError } = await supabase
           .from('orders')
@@ -174,8 +174,9 @@ class SyncService {
           .eq('id', payload.orderId);
         if (updateError) throw updateError;
         break;
+      }
         
-      case 'ADD_PAYMENT':
+      case 'ADD_PAYMENT': {
         // payload: { companyId, paymentData }
         const { error: paymentError } = await supabase
           .from('payments')
@@ -185,8 +186,9 @@ class SyncService {
           });
         if (paymentError) throw paymentError;
         break;
+      }
 
-      case 'ADD_PAYMENT_TRANSACTION':
+      case 'ADD_PAYMENT_TRANSACTION': {
         // payload: { companyId, dateKey, comandaNumber, forma, valor, usuarioId, usuarioNome }
         // This should call PagamentosService.registrarPagamento
         // But to avoid circular dependency, we'll implement it here
@@ -238,6 +240,7 @@ class SyncService {
 
         if (insertPaymentError) throw insertPaymentError;
         break;
+      }
 
       default:
         throw new Error(`Operação desconhecida: ${type}`);
