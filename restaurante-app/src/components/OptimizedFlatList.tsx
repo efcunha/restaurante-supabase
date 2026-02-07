@@ -67,7 +67,7 @@ function OptimizedFlatList<T>({
       getItemLayout={getItemLayout}
       // Additional optimizations
       updateCellsBatchingPeriod={50}
-      maxToRenderPerBatch={maxToRenderPerBatch}
+
     />
   );
 }
