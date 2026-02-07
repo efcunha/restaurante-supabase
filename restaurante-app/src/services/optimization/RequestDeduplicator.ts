@@ -104,9 +104,7 @@ export class RequestDeduplicator {
       });
 
       return result;
-    } catch (error) {
-      // Don't cache errors
-      throw error;
+
     } finally {
       // Remove from pending requests
       this.pendingRequests.delete(key);

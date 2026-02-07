@@ -144,7 +144,7 @@ export default function CaixaFechamentoScreen() {
     // Buscar total cancelado (Informativo)
     const canceladoHTML = await CaixaService.getTotalCancelados(user.companyId, caixa.data);
 
-    let htmlComandas = comandas.map(c => `
+    const htmlComandas = comandas.map(c => `
       <tr>
         <td>#${c.numeroComanda || c.comandaNumber || '-'}</td>
         <td>${(c.itens || []).length} itens</td>

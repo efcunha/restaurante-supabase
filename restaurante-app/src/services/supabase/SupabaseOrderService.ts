@@ -247,9 +247,7 @@ class SupabaseOrderService {
          throw error;
      }
   }
-}
 
-export default new SupabaseOrderService();
 
   /**
    * Deleta um pedido

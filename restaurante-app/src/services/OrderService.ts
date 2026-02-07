@@ -96,7 +96,7 @@ class OrderService {
 
   calculateItemPrice(item: string): number {
     // Remover quantidade e tempero
-    let itemName = item.replace(/^\d+x?\s*/, "").replace(/\s*\(.*\)$/, "").trim();
+    const itemName = item.replace(/^\d+x?\s*/, "").replace(/\s*\(.*\)$/, "").trim();
     const itemLower = itemName.toLowerCase();
 
     // NOTA: Este método usa preços hardcoded para compatibilidade com código legado
@@ -290,12 +290,13 @@ class OrderService {
 
     switch (newStatus) {
       case 'preparing':
-        updates.timeInChurrasqueira = order.timeInChurrasqueira || now;
-        break;
-      case 'preparing':
         updates.timeInMontagem = now;
         updates.movidoParaMontagemPor = movidoPor;
         updates.movidoParaMontagemPorNome = movidoPorNome;
+        // Also update churrasqueira time if it wasn't set (fallback)
+        if (!order.timeInChurrasqueira) {
+             updates.timeInChurrasqueira = now;
+        }
         break;
       case 'ready':
         updates.timeInProntos = now;

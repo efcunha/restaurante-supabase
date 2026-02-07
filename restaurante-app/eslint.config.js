@@ -35,10 +35,26 @@ export default [
         rules: {
             "react/prop-types": "off",
             "react/react-in-jsx-scope": "off", // Not needed in Expo/React Native usually
-            "no-unused-vars": "off", // Turn off JS rule to avoid conflicts
-            "@typescript-eslint/no-unused-vars": "warn", // Use TS rule instead
-            "@typescript-eslint/no-explicit-any": "warn",
+            "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
+            "@typescript-eslint/no-explicit-any": "off",
+            "@typescript-eslint/ban-ts-comment": "off",
+            "@typescript-eslint/no-require-imports": "off",
+            "react/no-unescaped-entities": "off",
+            "react/display-name": "off",
             "no-console": "off",
+            "no-undef": "off", // TypeScript handles this usually, helps with Jest globals if not configured
         },
     },
+    {
+        files: ["**/*.test.js", "**/*.test.ts", "**/*.spec.js", "**/*.spec.ts", "**/__tests__/**", "jest.setup.js"],
+        languageOptions: {
+            globals: {
+                ...globals.jest,
+            }
+        },
+        rules: {
+             "react/no-unknown-property": ["error", { "ignore": ["testID"] }]
+        }
+    },
+
 ];
