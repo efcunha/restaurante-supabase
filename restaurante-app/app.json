@@ -20,7 +20,6 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.comandapraia.donacida",
-      "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "UISupportedInterfaceOrientations": [
@@ -42,7 +41,6 @@
         "backgroundColor": "#8B2F2F"
       },
       "package": "com.comandapraia.donacida",
-      "googleServicesFile": "./google-services.json",
       "ndkVersion": "26.1.10909125",
       "screenOrientation": "default"
     },

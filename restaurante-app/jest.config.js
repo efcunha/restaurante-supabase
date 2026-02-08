@@ -1,5 +1,6 @@
 module.exports = {
     preset: 'react-native',
+    verbose: true,
     setupFiles: ['./jest.setup.js'],
     setupFilesAfterEnv: ['@testing-library/jest-native/extend-expect'],
     transformIgnorePatterns: [
