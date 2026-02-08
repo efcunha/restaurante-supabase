@@ -373,7 +373,7 @@ export default function MontagemScreen() {
                   ))
                 ) : (
                   // Fallback: renderizar itens simples
-                  order.items.map((item: string, idx: number) => (
+                  order.items?.map((item: string, idx: number) => (
                     <View key={idx} style={styles.orderItem}>
                       <View style={[styles.itemDot, idx % 2 === 1 && styles.itemDotSecondary]} />
                       <Text style={styles.itemText}>{item}</Text>

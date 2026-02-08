@@ -6,8 +6,6 @@
  */
 
 import { Platform } from 'react-native';
-import type { FirebaseApp } from 'firebase/app';
-import type { Analytics } from 'firebase/analytics';
 
 // ============================================================================
 // TYPES
@@ -64,21 +62,9 @@ interface PerformanceMetadata {
 // ANALYTICS INITIALIZATION
 // ============================================================================
 
-let analyticsInstance: Analytics | null = null;
-let logEventFn: ((analytics: Analytics, eventName: string, params?: Record<string, any>) => void) | null = null;
+// Analytics placeholder for future implementation (e.g. Supabase Analytics or custom)
+// Currently logging only to console
 
-// Firebase Analytics não é suportado em apps nativos via firebase/analytics.
-// Limitamos o uso ao ambiente web e evitamos crashes no Android/iOS.
-if (Platform.OS === 'web') {
-  try {
-    const { getAnalytics, logEvent } = require('firebase/analytics');
-    const app: FirebaseApp = require('../config/firebaseConfig').default;
-    analyticsInstance = getAnalytics(app);
-    logEventFn = logEvent;
-  } catch (error) {
-    // Ignora falha de inicialização; logs continuam no console.
-  }
-}
 
 // ============================================================================
 // LOGGER CLASS
