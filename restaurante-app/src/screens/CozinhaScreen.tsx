@@ -165,7 +165,7 @@ export default function CozinhaScreen() {
         {grupo.comandas.map((cmd: any, i: number) => (
           <View key={i} style={styles.comandaItem}>
             <Text style={styles.comandaNumero}>#{cmd.numero}</Text>
-            {cmd.mesa ? <Text style={styles.comandaNumero}> (Mesa {cmd.mesa})</Text> : null}
+            {!!cmd.mesa && <Text style={styles.comandaNumero}> (Mesa {cmd.mesa})</Text>}
             <Text style={styles.comandaQtd}>{cmd.quantidade}x</Text>
           </View>
         ))}
@@ -184,7 +184,7 @@ export default function CozinhaScreen() {
   ), []);
 
   const ListHeaderComponent = useCallback(() => (
-    grupos.length > 0 ? <Text style={styles.resumoTitle}>📋 Resumo de Pedidos</Text> : null
+    grupos.length > 0 ? <Text style={styles.resumoTitle}>📋 Resumo de Pedidos</Text> : <View />
   ), [grupos.length]);
 
   return (

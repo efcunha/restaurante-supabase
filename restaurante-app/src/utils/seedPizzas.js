@@ -117,14 +117,14 @@ export const seedPizzas = async (companyId) => {
             ingredientesPizza: Array.from(todosIngredientes).sort()
         }, { merge: true });
 
-        // Config de Tamanhos (Garantir que exista Média/Broto/Grande)
+        // Config de Tamanhos - Load from database or use defaults
         batch.set(configRef, {
             pizzaConfig: {
                 sizes: [
                     { name: 'Fatia', maxFlavors: 1 },
-                    { name: 'Broto', maxFlavors: 2 },
-                    { name: 'Média', maxFlavors: 3 }, // Accent match
-                    { name: 'Grande', maxFlavors: 4 }
+                    { name: 'Broto', maxFlavors: 1 },
+                    { name: 'Média', maxFlavors: 2 },
+                    { name: 'Grande/Família', maxFlavors: 4 }
                 ],
                 pricingMode: 'HIGHER'
             }

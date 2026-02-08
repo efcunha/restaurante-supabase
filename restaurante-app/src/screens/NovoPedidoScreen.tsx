@@ -398,7 +398,8 @@ export default function NovoPedidoScreen() {
     temperosComidas = ['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada'],
     variacoesEspetinho = ['Simples', 'com Arroz', 'com Macaxeira', 'Completo'],
     pizzaConfig,
-    addPizzaToOrder
+    addPizzaToOrder,
+    extras = []
   } = useNovoPedido();
 
   // Prepare sections for SectionList (Must be before conditional return)
@@ -408,8 +409,10 @@ export default function NovoPedidoScreen() {
     // Helper to check if item is active
     const isActive = (item: Product) => item.active !== false;
 
-    // Section for Pizza Builder
+    // Section for Pizza Builder - Grouped by Subcategory
     if (cardapio.pizzas && cardapio.pizzas.length > 0) {
+      console.log('🍕 [DEBUG] Total pizzas loaded:', cardapio.pizzas.length);
+      
       // Deduplicate pizzas by name (Case Insensitive) AND Filter Active
       const uniquePizzas: Product[] = [];
       const seenNames = new Set<string>();
@@ -419,13 +422,48 @@ export default function NovoPedidoScreen() {
         if (normalizedName && !seenNames.has(normalizedName)) {
           seenNames.add(normalizedName);
           uniquePizzas.push(p);
+          console.log('🍕 [DEBUG] Added pizza:', p.name, 'Subcategory:', p.subcategory);
         }
       });
 
-      sectionsData.push({
-        title: '🍕 SABORES',
-        data: uniquePizzas,
-        type: 'pizzas-v2'
+      console.log('🍕 [DEBUG] Unique pizzas after dedup:', uniquePizzas.length);
+
+      // Group pizzas by subcategory
+      const pizzasByCategory: Record<string, Product[]> = {
+        'Tradicional': [],
+        'Especiais': [],
+        'Doces': [],
+        'Outras': []
+      };
+
+      uniquePizzas.forEach(pizza => {
+        const subcategory = pizza.subcategory || 'Outras';
+        console.log('🍕 [DEBUG] Grouping pizza:', pizza.name, 'into', subcategory);
+        if (pizzasByCategory[subcategory]) {
+          pizzasByCategory[subcategory].push(pizza);
+        } else {
+          pizzasByCategory['Outras'].push(pizza);
+        }
+      });
+
+      console.log('🍕 [DEBUG] Pizzas by category:', {
+        Tradicional: pizzasByCategory['Tradicional'].length,
+        Especiais: pizzasByCategory['Especiais'].length,
+        Doces: pizzasByCategory['Doces'].length,
+        Outras: pizzasByCategory['Outras'].length
+      });
+
+      // Add sections for each category that has pizzas
+      const categoryOrder = ['Tradicional', 'Especiais', 'Doces', 'Outras'];
+      categoryOrder.forEach(category => {
+        if (pizzasByCategory[category].length > 0) {
+          console.log('🍕 [DEBUG] Adding section:', category, 'with', pizzasByCategory[category].length, 'pizzas');
+          sectionsData.push({
+            title: `🍕 PIZZAS ${category.toUpperCase()}`,
+            data: pizzasByCategory[category],
+            type: 'pizzas-v2'
+          });
+        }
       });
     }
 
@@ -547,12 +585,23 @@ export default function NovoPedidoScreen() {
         return Number(p);
       }).filter(p => !isNaN(p) && p > 0) : [];
       const minPrice = validPrices.length > 0 ? Math.min(...validPrices) : 0;
+      const maxPrice = validPrices.length > 0 ? Math.max(...validPrices) : 0;
+      
+      // Format price range
+      const formatPriceRange = (min: number, max: number): string => {
+        if (min === max || validPrices.length === 1) {
+          return `R$ ${min.toFixed(2).replace('.', ',')}`;
+        }
+        return `R$ ${min.toFixed(2).replace('.', ',')} - R$ ${max.toFixed(2).replace('.', ',')}`;
+      };
+      const priceDisplay = formatPriceRange(minPrice, maxPrice);
 
       // Debug para identificar porque Calabresa aparece errado
       if (pizzaItem.name.toLowerCase().includes('calabresa')) {
         console.log('🍕 [DEBUG] Calabresa Prices:', pizzaItem.prices, 'Min:', minPrice);
       }
       const ingredientsText = pizzaItem.ingredients ? pizzaItem.ingredients.join(', ') : pizzaItem.description || '';
+      const customIngredientsText = pizzaItem.customIngredients || '';
 
       // Cycle colors to look like the example (Orange, Green, Gray, Blue...)
       const rowColors = [colors.warning, colors.success, colors.disabled, '#4a90e2', '#9013fe'];
@@ -570,8 +619,9 @@ export default function NovoPedidoScreen() {
         >
           <View style={{ alignItems: 'center' }}>
             <Text style={styles.stackedNameText}>{pizzaItem.name}</Text>
-            {ingredientsText ? <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 13, textAlign: 'center', marginBottom: 4, fontStyle: 'italic' }}>{ingredientsText}</Text> : null}
-            <Text style={styles.stackedPriceText}>A partir de R$ {minPrice.toFixed(2)}</Text>
+            {!!ingredientsText && <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 13, textAlign: 'center', marginBottom: 4, fontStyle: 'italic' }}>{ingredientsText}</Text>}
+            {!!customIngredientsText && <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12, textAlign: 'center', marginBottom: 4, fontStyle: 'italic' }}>({customIngredientsText})</Text>}
+            <Text style={styles.stackedPriceText}>{priceDisplay}</Text>
           </View>
         </TouchableOpacity>
       );
@@ -665,6 +715,7 @@ export default function NovoPedidoScreen() {
         sizes={pizzaConfig?.sizes}
         pizzas={cardapio.pizzas}
         initialFlavor={selectedPizza}
+        extras={extras}
       />
 
       <StatusBar style="dark" />

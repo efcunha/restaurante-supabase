@@ -373,6 +373,30 @@ export interface Product {
 }
 
 // ============================================================================
+// PIZZA EXTRAS MODELS
+// ============================================================================
+
+export interface Extra {
+  id: string;
+  companyId: string;
+  type: 'borda' | 'adicional';
+  name: string;
+  price: number;
+  active: boolean;
+  createdAt: Date | Timestamp;
+  updatedAt?: Date | Timestamp;
+}
+
+export type ExtraType = 'borda' | 'adicional';
+
+export interface SelectedExtra {
+  extraId: string;
+  name: string;
+  type: ExtraType;
+  price: number;
+}
+
+// ============================================================================
 // ARCHIVE MODELS
 // ============================================================================
 
