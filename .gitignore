@@ -99,6 +99,17 @@ __tests__*
 *output*.txt
 *results*.txt
 
+# Snyk
+.snyk
+snyk-mcp.log
+.config/snyk/
+
+# Trae / AI IDEs
+.trae/
+.cursor/
+.windsurf/
+
+
 # Sensitive files (added by cleanup script)
 *-adminsdk-*.json
 

@@ -76,9 +76,18 @@ dataconnect/
 # Build Output
 build/
 
-# Firebase Config (Optional - uncomment to track)
+# Firebase Config
 google-services.json
 GoogleService-Info.plist
+
+# Snyk
+.snyk
+snyk-mcp.log
+
+# IDEs
+.trae/
+.cursor/
+.windsurf/
 
 # OS
 .DS_Store
