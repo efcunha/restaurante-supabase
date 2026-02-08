@@ -332,7 +332,7 @@ export default function PizzaBuilderModal({
 
                     {bordas.length === 0 && adicionais.length === 0 && (
                         <View style={{ alignItems: 'center', paddingVertical: 40 }}>
-                            <Text style={{ fontSize: 16, color: '#999' }}>Nenhum extra disponível</Text>
+                            <Text style={{ fontSize: 16, color: '#999' }}>Nenhum extra disponível.</Text>
                         </View>
                     )}
                 </ScrollView>
