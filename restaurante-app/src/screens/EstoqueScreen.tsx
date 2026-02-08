@@ -472,10 +472,9 @@ export default function EstoqueScreen({ onClose }: Props) {
         ) : itensEstoque.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>📭 Nenhum item nesta categoria</Text>
-            <Text style={styles.emptySubtext}>Nenhum item cadastrado para a empresa atual.</Text>
           </View>
         ) : (
-          itensEstoque.map(item => (
+          <ScrollView contentContainerStyle={styles.list}>
             <View
               key={item.id}
               style={[styles.itemCard, isEstoqueBaixo(item) && styles.itemCardAlerta]}
