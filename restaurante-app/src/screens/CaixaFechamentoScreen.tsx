@@ -97,10 +97,10 @@ export default function CaixaFechamentoScreen() {
           // @ts-ignore - CaixaService definition might need update for full types
           const r = await CaixaService.fecharCaixa(
             user.companyId,
-            user?.id,
-            user?.nome,
+            user?.id || null,
+            user?.nome || '',
             saldoReal,
-            selectedCaixa.data
+            selectedCaixa.id
           );
           setFechamentoResult({ ...r, caixaData: selectedCaixa });
           setLoading(false);
@@ -108,7 +108,7 @@ export default function CaixaFechamentoScreen() {
           loadCaixas();
         } catch (e: any) {
           setLoading(false);
-          alert('❌ Erro: ' + getUserFriendlyMessage(e));
+          alert('❌ Erro Detalhado: ' + (e.message || String(e)));
         }
       };
 

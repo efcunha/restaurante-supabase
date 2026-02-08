@@ -24,6 +24,8 @@ import GerenciarCardapioScreen from './GerenciarCardapioScreen';
 // @ts-ignore
 import EstoqueScreen from './EstoqueScreen';
 // @ts-ignore
+import ExtrasConfigScreen from './ExtrasConfigScreen';
+// @ts-ignore
 import PrinterConfigScreen from './PrinterConfigScreen';
 // @ts-ignore
 import EditarEmpresaScreen from './EditarEmpresaScreen';
@@ -70,6 +72,7 @@ export default function AdminScreen() {
   const [showComandasVisualizacao, setShowComandasVisualizacao] = useState(false);
   const [showGerenciarCardapio, setShowGerenciarCardapio] = useState(false);
   const [showEstoque, setShowEstoque] = useState(false);
+  const [showExtrasConfig, setShowExtrasConfig] = useState(false);
   const [showPrinterConfig, setShowPrinterConfig] = useState(false);
   const [showEditarEmpresa, setShowEditarEmpresa] = useState(false);
   const [showFinancialConfig, setShowFinancialConfig] = useState(false);
@@ -541,6 +544,7 @@ export default function AdminScreen() {
     { name: 'Estatísticas dos Garçons', icon: '📊', action: () => setShowComandasVisualizacao(true) },
     { name: 'Gerenciar Estoque', icon: '📦', action: () => setShowEstoque(true) },
     { name: 'Gerenciar Cardápio', icon: '🍴', action: () => setShowGerenciarCardapio(true) },
+    { name: 'Configurar Extras de Pizza', icon: '🍕', action: () => setShowExtrasConfig(true) },
     { name: 'Configurar Impressora', icon: '🖨️', action: () => setShowPrinterConfig(true) },
     { name: 'Dados da Empresa', icon: '🏢', action: () => setShowEditarEmpresa(true) },
     { name: 'Configurar Biometria', icon: '👆', action: () => setShowBiometricSetup(true) },
@@ -920,6 +924,17 @@ export default function AdminScreen() {
       >
         <View style={{ flex: 1, backgroundColor: '#F5F1E8' }}>
           <EstoqueScreen onClose={() => setShowEstoque(false)} />
+        </View>
+      </Modal>
+
+      {/* Modal Configurar Extras de Pizza */}
+      <Modal
+        visible={showExtrasConfig}
+        animationType="slide"
+        onRequestClose={() => setShowExtrasConfig(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: '#F5F1E8' }}>
+          <ExtrasConfigScreen onClose={() => setShowExtrasConfig(false)} />
         </View>
       </Modal>
 
