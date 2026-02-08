@@ -15,9 +15,10 @@ import { SUPPORTED_UNITS } from '../utils/unitConversion';
 interface VariacaoItemProps {
   variacao: Product;
   onSalvar: (produto: Product, novoPreco: string, novoNome: string) => void;
+  onEditarCompleto: (produto: Product) => void;
 }
 
-function VariacaoItem({ variacao, onSalvar }: VariacaoItemProps) {
+function VariacaoItem({ variacao, onSalvar, onEditarCompleto }: VariacaoItemProps) {
   const [precoTemp, setPrecoTemp] = useState(variacao.price !== undefined ? variacao.price.toString() : '0');
   const [nomeTemp, setNomeTemp] = useState(variacao.name);
 
@@ -45,6 +46,13 @@ function VariacaoItem({ variacao, onSalvar }: VariacaoItemProps) {
           >
             <Text style={styles.variacaoSalvarText}>Salvar</Text>
           </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.variacaoSalvarBtn, { backgroundColor: '#E5B84A', marginLeft: 8 }]}
+            onPress={() => onEditarCompleto(variacao)}
+          >
+            <Text style={[styles.variacaoSalvarText, { color: '#000' }]}>✏️</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </View>
@@ -62,6 +70,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
   const [nome, setNome] = useState('');
   const [preco, setPreco] = useState('');
   const [categoria, setCategoria] = useState('caldo');
+  const [subcategoria, setSubcategoria] = useState<string>(''); // For pizza categories
   const [loading, setLoading] = useState(false);
 
   // Estados para cadastro com variações (espetinhos)
@@ -103,6 +112,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
   const [ingredientesPizza, setIngredientesPizza] = useState<string[]>([]); // from config
   const [ingredientesSelecionados, setIngredientesSelecionados] = useState<string[]>([]); // for current product
   const [ingredientesPersonalizados, setIngredientesPersonalizados] = useState(''); // text field
+  const [novoIngrediente, setNovoIngrediente] = useState(''); // for adding new ingredient
 
   // Estados para Ficha Técnica (Estoque)
   const [showStockModal, setShowStockModal] = useState(false);
@@ -115,6 +125,43 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
   const [tipoUnidade, setTipoUnidade] = useState('VOLUME'); // Default to VOLUME for recipes usually
 
   const unidadesUI = (SUPPORTED_UNITS[tipoUnidade] || []);
+
+  // Helper function to detect pizza products
+  const isPizzaProduct = (product: Product): boolean => {
+    return product.category?.toLowerCase().includes('pizza') || false;
+  };
+
+  // Helper function to transform pizza prices Record into pseudo-Product variations
+  const transformPizzaPricesToVariations = (product: Product): Product[] => {
+    if (!product.prices || Object.keys(product.prices).length === 0) {
+      return [];
+    }
+    
+    // Use pizza sizes from database configuration (pizzaSizes state)
+    const sizeOrder = pizzaSizes.map(s => s.name);
+    
+    // Sort sizes: standard order first, then alphabetically
+    const sortedSizes = Object.keys(product.prices).sort((a, b) => {
+      const indexA = sizeOrder.findIndex(s => a.toLowerCase().includes(s.toLowerCase()));
+      const indexB = sizeOrder.findIndex(s => b.toLowerCase().includes(s.toLowerCase()));
+      
+      if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+      if (indexA !== -1) return -1;
+      if (indexB !== -1) return 1;
+      return a.localeCompare(b);
+    });
+    
+    // Create pseudo-Product objects for each size
+    return sortedSizes.map(sizeName => ({
+      ...product,
+      id: `${product.id}_${sizeName}`, // Unique ID for React key
+      name: sizeName, // Display the size name instead of product name
+      price: product.prices![sizeName],
+      _isPizzaVariation: true, // Flag to identify this as a pizza variation
+      _originalProductId: product.id, // Reference to original product
+      _sizeName: sizeName // Store the size name for save operations
+    } as any));
+  };
 
   const categorias = [
     { value: 'caldo', label: '🍲 Caldos' },
@@ -161,7 +208,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                 { name: 'Fatia', maxFlavors: 1 },
                 { name: 'Broto', maxFlavors: 1 },
                 { name: 'Média', maxFlavors: 2 },
-                { name: 'Grande', maxFlavors: 4 }
+                { name: 'Grande/Família', maxFlavors: 4 }
              ];
              setPizzaConfig({ sizes: defaultSizes, pricingMode: 'HIGHER' });
              setPizzaSizes(defaultSizes);
@@ -172,7 +219,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
             { name: 'Fatia', maxFlavors: 1 },
             { name: 'Broto', maxFlavors: 1 },
             { name: 'Média', maxFlavors: 2 },
-            { name: 'Grande', maxFlavors: 4 }
+            { name: 'Grande/Família', maxFlavors: 4 }
          ];
         setPizzaConfig({ sizes: defaultSizes, pricingMode: 'HIGHER' });
         setPizzaSizes(defaultSizes);
@@ -214,6 +261,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
         name: p.name,
         price: Number(p.price),
         category: p.category,
+        subcategory: p.subcategory || null,
         active: p.active,
         createdAt: new Date(p.created_at).getTime(),
         prices: p.prices || {},
@@ -251,6 +299,19 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
     }
   };
 
+  // Helper function to handle database errors, especially duplicate key violations
+  const handleDatabaseError = (error: any, productName: string): string => {
+    console.error('Database error:', error);
+    
+    // Check for unique constraint violation (PostgreSQL error code 23505)
+    if (error.code === '23505' || error.message?.includes('unique_product_per_company')) {
+      return `Já existe um produto "${productName}" nesta categoria. Escolha outro nome ou edite o produto existente.`;
+    }
+    
+    // Generic error message
+    return 'Erro ao salvar o produto. Tente novamente.';
+  };
+
   const cadastrarProduto = async () => {
     if (!nome.trim()) {
       Alert.alert('Atenção', 'Digite o nome do produto');
@@ -278,14 +339,19 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
 
         const { error } = await supabase.from('products').insert(variacoes);
 
-        if (error) throw error;
+        if (error) {
+          const errorMsg = handleDatabaseError(error, nome.trim());
+          Alert.alert('Erro', errorMsg);
+          return;
+        }
 
         Alert.alert('Sucesso', 'Cadastrado com sucesso!');
         setNome('');
         setPrecosVariacoes({});
         carregarProdutos();
-      } catch (error) { console.error(error);
-        Alert.alert('Erro', 'Erro ao cadastrar as variações');
+      } catch (error) {
+        const errorMsg = handleDatabaseError(error, nome.trim());
+        Alert.alert('Erro', errorMsg);
       } finally {
         setLoading(false);
       }
@@ -311,12 +377,19 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
         return;
       }
 
+      // Validate at least one ingredient
+      if (ingredientesSelecionados.length === 0 && !ingredientesPersonalizados.trim()) {
+        Alert.alert('Atenção', 'Adicione pelo menos um ingrediente para a pizza');
+        return;
+      }
+
       try {
         setLoading(true);
         const novoProduto = {
           company_id: user.companyId,
           name: nome.trim(),
           category: 'pizza',
+          subcategory: subcategoria || null, // Add subcategory for pizza
           active: true,
           price: 0, // Base price 0, uses prices JSON
           prices: pricesToSave,
@@ -325,19 +398,22 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
         };
 
         const { error } = await supabase.from('products').insert(novoProduto);
-        if (error) throw error;
-
-        // Save default config is handled in settings, not here anymore?
-        // We shouldn't auto-save unrelated config on product creation.
+        if (error) {
+          const errorMsg = handleDatabaseError(error, nome.trim());
+          Alert.alert('Erro', errorMsg);
+          return;
+        }
 
         Alert.alert('Sucesso', 'Pizza cadastrada!');
         setNome('');
+        setSubcategoria(''); // Reset subcategory
         setPrecosPizza({});
         setIngredientesSelecionados([]);
         setIngredientesPersonalizados('');
         carregarProdutos();
-      } catch (error) { console.error(error);
-        Alert.alert('Erro', 'Erro ao cadastrar a pizza');
+      } catch (error) {
+        const errorMsg = handleDatabaseError(error, nome.trim());
+        Alert.alert('Erro', errorMsg);
       } finally {
         setLoading(false);
       }
@@ -360,14 +436,19 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
 
         const { error } = await supabase.from('products').insert(novoProduto);
 
-        if (error) throw error;
+        if (error) {
+          const errorMsg = handleDatabaseError(error, nome.trim());
+          Alert.alert('Erro', errorMsg);
+          return;
+        }
 
         Alert.alert('Sucesso', 'Produto cadastrado!');
         setNome('');
         setPreco('');
         carregarProdutos();
-      } catch (error) { console.error(error);
-        Alert.alert('Erro', 'Erro ao cadastrar o produto');
+      } catch (error) {
+        const errorMsg = handleDatabaseError(error, nome.trim());
+        Alert.alert('Erro', errorMsg);
       } finally {
         setLoading(false);
       }
@@ -446,10 +527,15 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
   const abrirEdicao = (produto: Product) => {
     setEditando(produto);
     setEditNome(produto.name);
-    setEditPreco(produto.price ? produto.price.toString() : '');
     setEditCategoria(produto.category);
     
-    if (produto.category === 'pizza') {
+    console.log('✏️ [abrirEdicao] Produto:', produto.name, 'Categoria:', produto.category);
+    console.log('🍕 [abrirEdicao] Subcategoria:', produto.subcategory);
+    console.log('🍕 [abrirEdicao] Ingredientes:', produto.ingredients);
+    
+    // Check loosely for 'pizza'
+    const categoryLower = produto.category?.toLowerCase() || '';
+    if (categoryLower.includes('pizza')) {
         // Handle prices mapping
         const pricesStr: Record<string, string> = {};
         if (produto.prices) {
@@ -458,8 +544,19 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
             });
         }
         setPrecosPizza(pricesStr);
+        
+        // Load subcategory
+        setSubcategoria(produto.subcategory || '');
+        
+        // Load ingredients
+        setIngredientesSelecionados(produto.ingredients || []);
+        setIngredientesPersonalizados(produto.customIngredients || '');
     } else {
         setPrecosPizza({});
+        setSubcategoria('');
+        setIngredientesSelecionados([]);
+        setIngredientesPersonalizados('');
+        setEditPreco(produto.price?.toString() || '0');
     }
     
     setShowEditModal(true);
@@ -471,13 +568,35 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
       return;
     }
 
-    const sanitizedPreco = editPreco?.toString().replace(',', '.');
-    const val = parseFloat(sanitizedPreco);
-    if (!editPreco || isNaN(val)) {
-      Alert.alert('Atenção', 'Digite um preço válido');
-      return;
-    }
     if (!editando || !user?.companyId) return;
+
+    const isPizza = editCategoria?.toLowerCase().includes('pizza');
+
+    // Validation for non-pizza products
+    if (!isPizza) {
+      const sanitizedPreco = editPreco?.toString().replace(',', '.');
+      const val = parseFloat(sanitizedPreco);
+      if (!editPreco || isNaN(val)) {
+        Alert.alert('Atenção', 'Digite um preço válido');
+        return;
+      }
+    }
+
+    // Validation for pizza products
+    if (isPizza) {
+      // Validate at least one price
+      const hasPrice = Object.values(precosPizza).some(p => p && p !== '0' && p !== '');
+      if (!hasPrice) {
+        Alert.alert('Atenção', 'Preencha pelo menos um preço para a pizza');
+        return;
+      }
+      
+      // Validate at least one ingredient
+      if (ingredientesSelecionados.length === 0 && !ingredientesPersonalizados.trim()) {
+        Alert.alert('Atenção', 'Adicione pelo menos um ingrediente para a pizza');
+        return;
+      }
+    }
 
     try {
       setLoading(true);
@@ -486,7 +605,8 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
         category: editCategoria
       };
 
-      if (editCategoria === 'pizza') {
+      if (isPizza) {
+        // Update pizza-specific fields
         const pricesAsNumbers: Record<string, number> = {};
         Object.keys(precosPizza).forEach(key => {
           const v = precosPizza[key];
@@ -496,8 +616,14 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
           }
         });
         updateData.prices = pricesAsNumbers;
-        updateData.price = 0;
+        updateData.price = 0; // Base price 0 for pizzas
+        updateData.subcategory = subcategoria || null;
+        updateData.ingredients = ingredientesSelecionados;
+        updateData.custom_ingredients = ingredientesPersonalizados;
       } else {
+        // Update non-pizza fields
+        const sanitizedPreco = editPreco?.toString().replace(',', '.');
+        const val = parseFloat(sanitizedPreco);
         updateData.price = val;
       }
 
@@ -738,8 +864,51 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
     }
   };
   
+  // Helper function to save pizza variation price
+  const savePizzaVariation = async (productId: string, sizeName: string, newPrice: number): Promise<boolean> => {
+    if (!user?.companyId) return false;
+    
+    try {
+      // Fetch current product to get existing prices
+      const { data: currentProduct, error: fetchError } = await supabase
+        .from('products')
+        .select('prices')
+        .eq('id', productId)
+        .single();
+      
+      if (fetchError) throw fetchError;
+      
+      // Update the specific size price
+      const updatedPrices = {
+        ...(currentProduct.prices || {}),
+        [sizeName]: newPrice
+      };
+      
+      // Save back to database
+      const { error: updateError } = await supabase
+        .from('products')
+        .update({ prices: updatedPrices })
+        .eq('id', productId);
+      
+      if (updateError) throw updateError;
+      
+      return true;
+    } catch (e) {
+      console.error('Error saving pizza variation:', e);
+      throw e;
+    }
+  };
+  
   const abrirVariacoes = (variacoes: Product[]) => {
-    setVariacoesSelecionadas(variacoes);
+    // Check if this is a pizza product
+    if (variacoes.length > 0 && isPizzaProduct(variacoes[0])) {
+      // For pizza products, transform the prices Record into variations
+      const pizzaVariations = transformPizzaPricesToVariations(variacoes[0]);
+      setVariacoesSelecionadas(pizzaVariations);
+    } else {
+      // For non-pizza products, use existing behavior
+      setVariacoesSelecionadas(variacoes);
+    }
     setShowVariacoesModal(true);
   };
   
@@ -747,22 +916,54 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
     const novoP = parseFloat(novaStr.replace(',', '.'));
     if (!prod.id || !user?.companyId) return;
     
-    try {
+    // Check if this is a pizza variation
+    if (prod._isPizzaVariation) {
+      // Handle pizza variation save
+      try {
+        const originalProductId = prod._originalProductId;
+        const sizeName = prod._sizeName;
+        
+        // Validate price
+        if (isNaN(novoP)) {
+          Alert.alert('Erro', 'Digite um preço válido');
+          return;
+        }
+        
+        // Save pizza variation
+        await savePizzaVariation(originalProductId, sizeName, novoP);
+        
+        // Update local state
+        const updated = variacoesSelecionadas.map(v => 
+          v.id === prod.id ? { ...v, price: novoP } : v
+        );
+        setVariacoesSelecionadas(updated);
+        
+        // Refresh product list
+        carregarProdutos();
+      } catch (e) {
+        console.error(e);
+        Alert.alert('Erro', 'Falha ao salvar variação');
+      }
+    } else {
+      // Handle non-pizza variation save (existing behavior)
+      try {
         const { error } = await supabase
-            .from('products')
-            .update({ price: novoP, name: novoNome })
-            .eq('id', prod.id);
+          .from('products')
+          .update({ price: novoP, name: novoNome })
+          .eq('id', prod.id);
 
         if (error) throw error;
         
         // Update local state
         const updated = variacoesSelecionadas.map(v => 
-            v.id === prod.id ? { ...v, price: novoP, name: novoNome } : v
+          v.id === prod.id ? { ...v, price: novoP, name: novoNome } : v
         );
         setVariacoesSelecionadas(updated);
         carregarProdutos();
-    } catch (e) { console.error(e);
+      } catch (e) {
+        console.error(e);
         Alert.alert('Erro', 'Falha ao salvar variação');
+      }
     }
   };
   
@@ -957,6 +1158,73 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
               </>
             ) : categoria === 'pizza' ? (
               <>
+                <Text style={styles.label}>Categoria da Pizza:</Text>
+                <View style={styles.categoriaButtons}>
+                  {['Tradicional', 'Especiais', 'Doces'].map(cat => (
+                    <TouchableOpacity
+                      key={cat}
+                      style={[
+                        styles.categoriaBtn,
+                        subcategoria === cat && styles.categoriaBtnActive
+                      ]}
+                      onPress={() => setSubcategoria(cat)}
+                    >
+                      <Text style={[
+                        styles.categoriaBtnText,
+                        subcategoria === cat && styles.categoriaBtnTextActive
+                      ]}>
+                        {cat}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <Text style={styles.label}>Ingredientes:</Text>
+                <View style={styles.addTemperoRow}>
+                  <TextInput
+                    style={styles.inputTempero}
+                    placeholder="Adicionar ingrediente..."
+                    value={novoIngrediente}
+                    onChangeText={setNovoIngrediente}
+                  />
+                  <TouchableOpacity 
+                    style={styles.addBtn} 
+                    onPress={() => {
+                      if (novoIngrediente.trim()) {
+                        setIngredientesSelecionados([...ingredientesSelecionados, novoIngrediente.trim()]);
+                        setNovoIngrediente('');
+                      }
+                    }}
+                  >
+                    <Ionicons name="add" size={24} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+
+                {ingredientesSelecionados.length > 0 && (
+                  <View style={styles.listaTemperos}>
+                    {ingredientesSelecionados.map((ing, index) => (
+                      <View key={index} style={styles.temperoRow}>
+                        <Text style={styles.temperoText}>{ing}</Text>
+                        <TouchableOpacity onPress={() => {
+                          setIngredientesSelecionados(ingredientesSelecionados.filter((_, i) => i !== index));
+                        }}>
+                          <Ionicons name="trash-outline" size={20} color="#FF4444" />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                <Text style={styles.label}>Ingredientes Personalizados (opcional):</Text>
+                <TextInput
+                  style={[styles.input, { height: 60 }]}
+                  placeholder="Ex: Molho especial da casa..."
+                  placeholderTextColor="#999"
+                  value={ingredientesPersonalizados}
+                  onChangeText={setIngredientesPersonalizados}
+                  multiline
+                />
+
                 <Text style={styles.label}>Preços por tamanho:</Text>
                 <View style={styles.variacoesGrid}>
                   {pizzaSizes.map((size, idx) => (
@@ -1052,9 +1320,9 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
             {/* TAB: TAMANHOS DE PIZZA */}
             {tipoTemperoAtivo === 'tamanhos' ? (
               <View>
-                <View style={{ flexDirection: 'row', gap: 10, marginBottom: 15 }}>
+                <View style={{ flexDirection: 'row', marginBottom: 15 }}>
                   <TextInput
-                    style={[styles.input, { flex: 2, marginBottom: 0 }]}
+                    style={[styles.input, { flex: 2, marginBottom: 0, marginRight: 10 }]}
                     placeholder="Nome (ex: Gigante)"
                     value={novoTamanho}
                     onChangeText={setNovoTamanho}
@@ -1078,22 +1346,13 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
 
                 {/* LISTING SIZES WITH SORTING */}
                 {pizzaSizes.map((size, index) => ({ ...size, originalIndex: index }))
-                  .sort((a, b) => {
-                    const order = ['Fatia', 'Broto', 'Média', 'Grande'];
-                    const idxA = order.indexOf(a.name);
-                    const idxB = order.indexOf(b.name);
-                    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-                    if (idxA !== -1) return -1;
-                    if (idxB !== -1) return 1;
-                    return a.name.localeCompare(b.name);
-                  })
                   .map((size, idx) => (
                     <View key={idx} style={[styles.temperoRow, size.active === false && { opacity: 0.5, backgroundColor: '#f0f0f0' }]}>
                       <Text style={styles.temperoText}>
                         {size.name} ({size.maxFlavors} sabores) {size.active === false ? '(Desativado)' : ''}
                       </Text>
-                      <View style={{ flexDirection: 'row', gap: 10 }}>
-                        <TouchableOpacity onPress={() => toggleTamanhoAtivo(size.originalIndex)}>
+                      <View style={{ flexDirection: 'row' }}>
+                        <TouchableOpacity onPress={() => toggleTamanhoAtivo(size.originalIndex)} style={{ marginRight: 10 }}>
                           <Ionicons name={size.active !== false ? "eye" : "eye-off"} size={20} color={size.active !== false ? "#2e7d32" : "#999"} />
                         </TouchableOpacity>
                         <TouchableOpacity onPress={() => iniciarEdicaoTamanho(size.originalIndex)}>
@@ -1133,8 +1392,8 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                     {getListaAtiva().map((item, index) => (
                       <View key={index} style={styles.temperoRow}>
                         <Text style={styles.temperoText}>{item}</Text>
-                        <View style={{ flexDirection: 'row', gap: 10 }}>
-                          <TouchableOpacity onPress={() => iniciarEdicaoTempero(index)}>
+                        <View style={{ flexDirection: 'row' }}>
+                          <TouchableOpacity onPress={() => iniciarEdicaoTempero(index)} style={{ marginRight: 10 }}>
                             <Ionicons name="pencil" size={20} color="#444" />
                           </TouchableOpacity>
                           <TouchableOpacity onPress={() => removerTempero(index)}>
@@ -1205,6 +1464,15 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                             : `${variacoes.length} variações`
                           }
                         </Text>
+                        {/* Display ingredients for pizza products */}
+                        {isPizzaProduct(primeiraVariacao) && primeiraVariacao.ingredients && primeiraVariacao.ingredients.length > 0 && (
+                          <Text style={styles.produtoIngredientes}>
+                            {primeiraVariacao.ingredients.length > 3
+                              ? primeiraVariacao.ingredients.slice(0, 3).join(', ') + '...'
+                              : primeiraVariacao.ingredients.join(', ')}
+                            {primeiraVariacao.customIngredients ? ' | ' + primeiraVariacao.customIngredients : ''}
+                          </Text>
+                        )}
                       </View>
                     </View>
 
@@ -1225,13 +1493,56 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                         <Text style={styles.stockBtnText}>Ficha T.</Text>
                       </TouchableOpacity>
 
+                      {/* Show Variações button for pizzas and espetinhos with multiple variations */}
+                      {(isPizzaProduct(primeiraVariacao) || variacoes.length > 1) && (
+                        <TouchableOpacity
+                          style={[styles.editBtn, { backgroundColor: '#E5B84A' }]}
+                          onPress={() => abrirVariacoes(variacoes)}
+                        >
+                          <Text style={[styles.editBtnText, { color: '#000' }]}>Variações</Text>
+                        </TouchableOpacity>
+                      )}
+
                       <TouchableOpacity
                         style={styles.editBtn}
-                        onPress={() => {
+                        onPress={async () => {
                           if (variacoes.length === 1) {
                             abrirEdicao(primeiraVariacao);
                           } else {
-                            abrirVariacoes(variacoes);
+                            // For pizza products with multiple sizes, fetch the complete product
+                            if (isPizzaProduct(primeiraVariacao)) {
+                              try {
+                                const { data, error } = await supabase
+                                  .from('products')
+                                  .select('*')
+                                  .eq('id', primeiraVariacao.id)
+                                  .single();
+                                
+                                if (error) throw error;
+                                
+                                if (data) {
+                                  const fullProduct: Product = {
+                                    id: data.id,
+                                    name: data.name,
+                                    price: Number(data.price),
+                                    category: data.category,
+                                    subcategory: data.subcategory,
+                                    active: data.active,
+                                    createdAt: new Date(data.created_at).getTime(),
+                                    prices: data.prices || {},
+                                    ingredients: data.ingredients || [],
+                                    customIngredients: data.custom_ingredients || '',
+                                    inventoryItems: data.inventory_items || []
+                                  };
+                                  abrirEdicao(fullProduct);
+                                }
+                              } catch (e) {
+                                console.error('Error fetching pizza product:', e);
+                                Alert.alert('Erro', 'Não foi possível carregar os dados da pizza');
+                              }
+                            } else {
+                              abrirVariacoes(variacoes);
+                            }
                           }
                         }}
                       >
@@ -1274,23 +1585,122 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                 onChangeText={setEditNome}
               />
 
-              {editCategoria === 'pizza' ? (
+              {editCategoria?.toLowerCase().includes('pizza') ? (
                 <>
-                  <Text style={styles.label}>Preços por tamanho:</Text>
-                  <View style={styles.variacoesGrid}>
-                    {pizzaSizes.map((size, idx) => (
-                      <View key={idx} style={styles.variacaoField}>
-                        <Text style={styles.variacaoLabel}>{size.name} ({size.maxFlavors} sab)</Text>
-                        <TextInput
-                          style={styles.inputVariacao}
-                          placeholder="0.00"
-                          placeholderTextColor="#999"
-                          value={precosPizza[size.name] !== undefined ? String(precosPizza[size.name]) : ''}
-                          onChangeText={(text) => setPrecosPizza(prev => ({ ...prev, [size.name]: text }))}
-                          keyboardType="numeric"
-                        />
+                  {/* Pizza Subcategory */}
+                  <Text style={styles.label}>Categoria da Pizza:</Text>
+                  <View style={styles.categoriaButtons}>
+                    <TouchableOpacity
+                      style={[
+                        styles.categoriaBtn,
+                        subcategoria === 'Tradicional' && styles.categoriaBtnActive
+                      ]}
+                      onPress={() => setSubcategoria('Tradicional')}
+                    >
+                      <Text style={[
+                        styles.categoriaBtnText,
+                        subcategoria === 'Tradicional' && styles.categoriaBtnTextActive
+                      ]}>
+                        🍅 Tradicional
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.categoriaBtn,
+                        subcategoria === 'Especiais' && styles.categoriaBtnActive
+                      ]}
+                      onPress={() => setSubcategoria('Especiais')}
+                    >
+                      <Text style={[
+                        styles.categoriaBtnText,
+                        subcategoria === 'Especiais' && styles.categoriaBtnTextActive
+                      ]}>
+                        🍄 Especiais
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.categoriaBtn,
+                        subcategoria === 'Doces' && styles.categoriaBtnActive
+                      ]}
+                      onPress={() => setSubcategoria('Doces')}
+                    >
+                      <Text style={[
+                        styles.categoriaBtnText,
+                        subcategoria === 'Doces' && styles.categoriaBtnTextActive
+                      ]}>
+                        🍫 Doces
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Ingredients */}
+                  <Text style={styles.label}>Ingredientes:</Text>
+                  <View style={styles.ingredientesContainer}>
+                    {ingredientesSelecionados.map((ing, idx) => (
+                      <View key={idx} style={styles.ingredienteChip}>
+                        <Text style={styles.ingredienteText}>{ing}</Text>
+                        <TouchableOpacity
+                          onPress={() => {
+                            setIngredientesSelecionados(prev => prev.filter((_, i) => i !== idx));
+                          }}
+                        >
+                          <Text style={styles.ingredienteRemove}>×</Text>
+                        </TouchableOpacity>
                       </View>
                     ))}
+                  </View>
+                  
+                  <View style={{ flexDirection: 'row', marginBottom: 15 }}>
+                    <TextInput
+                      style={[styles.input, { flex: 1, marginRight: 8 }]}
+                      placeholder="Adicionar ingrediente..."
+                      placeholderTextColor="#999"
+                      value={novoIngrediente}
+                      onChangeText={setNovoIngrediente}
+                    />
+                    <TouchableOpacity
+                      style={[styles.addIngredienteBtn]}
+                      onPress={() => {
+                        if (novoIngrediente.trim()) {
+                          setIngredientesSelecionados(prev => [...prev, novoIngrediente.trim()]);
+                          setNovoIngrediente('');
+                        }
+                      }}
+                    >
+                      <Text style={styles.addIngredienteBtnText}>+</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <Text style={styles.label}>Ingredientes Personalizados (opcional):</Text>
+                  <TextInput
+                    style={[styles.input, { height: 60 }]}
+                    placeholder="Ex: Ingredientes especiais, observações..."
+                    placeholderTextColor="#999"
+                    value={ingredientesPersonalizados}
+                    onChangeText={setIngredientesPersonalizados}
+                    multiline
+                  />
+
+                  <Text style={styles.label}>Preços por tamanho:</Text>
+                  <View style={styles.variacoesGrid}>
+                    {pizzaSizes.length === 0 ? (
+                      <Text style={{color: 'red', marginBottom: 10}}>Nenhum tamanho de pizza configurado. Vá em Configurações.</Text>
+                    ) : (
+                      pizzaSizes.map((size, idx) => (
+                        <View key={idx} style={styles.variacaoField}>
+                          <Text style={styles.variacaoLabel}>{size.name} ({size.maxFlavors} sab)</Text>
+                          <TextInput
+                            style={styles.inputVariacao}
+                            placeholder="0.00"
+                            placeholderTextColor="#999"
+                            value={precosPizza[size.name] !== undefined ? String(precosPizza[size.name]) : ''}
+                            onChangeText={(text) => setPrecosPizza(prev => ({ ...prev, [size.name]: text }))}
+                            keyboardType="numeric"
+                          />
+                        </View>
+                      ))
+                    )}
                   </View>
                 </>
               ) : (
@@ -1359,6 +1769,52 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                   <VariacaoItem
                     variacao={variacao}
                     onSalvar={salvarVariacao}
+                    onEditarCompleto={async (prod) => {
+                        // For pizza variations, load the original product with all data
+                        if (prod._isPizzaVariation && prod._originalProductId) {
+                          setShowVariacoesModal(false);
+                          try {
+                            // Fetch the complete product from database
+                            const { data, error } = await supabase
+                              .from('products')
+                              .select('*')
+                              .eq('id', prod._originalProductId)
+                              .single();
+                            
+                            if (error) throw error;
+                            
+                            if (data) {
+                              // Map database fields to Product interface
+                              const fullProduct: Product = {
+                                id: data.id,
+                                name: data.name,
+                                price: Number(data.price),
+                                category: data.category,
+                                subcategory: data.subcategory,
+                                active: data.active,
+                                createdAt: new Date(data.created_at).getTime(),
+                                prices: data.prices || {},
+                                ingredients: data.ingredients || [],
+                                customIngredients: data.custom_ingredients || '',
+                                inventoryItems: data.inventory_items || []
+                              };
+                              
+                              setTimeout(() => {
+                                abrirEdicao(fullProduct);
+                              }, 100);
+                            }
+                          } catch (error) {
+                            console.error('Error loading full product:', error);
+                            Alert.alert('Erro', 'Não foi possível carregar os dados do produto');
+                          }
+                        } else {
+                          // For non-pizza products, use existing behavior
+                          setShowVariacoesModal(false);
+                          setTimeout(() => {
+                            abrirEdicao(prod);
+                          }, 100);
+                        }
+                    }}
                   />
                   <TouchableOpacity
                     style={styles.miniStockBtn}
@@ -1410,9 +1866,9 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
             </ScrollView>
             {stockItems.length === 0 && <Text style={{ color: '#999', fontStyle: 'italic', marginBottom: 10 }}>Nenhum item no estoque.</Text>}
 
-            <View style={{ flexDirection: 'row', gap: 10 }}>
+            <View style={{ flexDirection: 'row' }}>
               <TextInput
-                style={[styles.input, { flex: 0.4 }]}
+                style={[styles.input, { flex: 0.4, marginRight: 10 }]}
                 placeholder="Qtd"
                 cursorColor='#8B2F2F'
                 value={qtyIngredient}
@@ -1530,7 +1986,7 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   form: {
-    gap: 15,
+    marginBottom: 15,
   },
   label: {
     fontSize: 14,
@@ -1551,7 +2007,6 @@ const styles = StyleSheet.create({
   categoriaButtons: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
     marginBottom: 10,
   },
   categoriaBtn: {
@@ -1561,6 +2016,8 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 2,
     borderColor: '#E5B84A',
+    marginRight: 10,
+    marginBottom: 10,
   },
   categoriaBtnActive: {
     backgroundColor: '#E5B84A',
@@ -1604,12 +2061,13 @@ const styles = StyleSheet.create({
   variacoesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
     marginBottom: 15,
   },
   variacaoField: {
     flex: 1,
     minWidth: '45%',
+    marginRight: 10,
+    marginBottom: 10,
   },
   variacaoLabel: {
     fontSize: 12,
@@ -1727,12 +2185,19 @@ const styles = StyleSheet.create({
     color: '#999',
     marginTop: 2,
   },
+  produtoIngredientes: {
+    fontSize: 11,
+    color: '#666',
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
   produtoActions: {
     flexDirection: 'row',
-    gap: 8,
     justifyContent: 'flex-end',
     flexWrap: 'wrap',
     maxWidth: '50%',
+    rowGap: 8,
+    columnGap: 8,
   },
   statusBtn: {
     paddingVertical: 8,
@@ -1749,7 +2214,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#DC3545',
   },
   statusBtnText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     color: '#FFFFFF',
   },
@@ -1892,12 +2357,12 @@ const styles = StyleSheet.create({
   variacaoPrecoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
   },
   variacaoLabelLarge: {
     fontSize: 16,
     fontWeight: '600',
     color: '#8B2F2F',
+    marginRight: 8,
   },
   variacaoPrecoInput: {
     backgroundColor: '#FFFFFF',
@@ -1957,7 +2422,6 @@ const styles = StyleSheet.create({
   },
   addTemperoRow: {
     flexDirection: 'row',
-    gap: 10,
     marginBottom: 10,
     alignItems: 'center'
   },
@@ -1968,7 +2432,8 @@ const styles = StyleSheet.create({
     padding: 10,
     fontSize: 14,
     borderWidth: 1,
-    borderColor: '#ddd'
+    borderColor: '#ddd',
+    marginRight: 10,
   },
   addBtn: {
     width: 40,
@@ -1996,5 +2461,45 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#444',
     fontWeight: '500'
+  },
+  ingredientesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 10,
+    minHeight: 40,
+  },
+  ingredienteChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E5B84A',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  ingredienteText: {
+    fontSize: 14,
+    color: '#2C2C2C',
+    fontWeight: '600',
+    marginRight: 6,
+  },
+  ingredienteRemove: {
+    fontSize: 18,
+    color: '#8B2F2F',
+    fontWeight: 'bold',
+  },
+  addIngredienteBtn: {
+    backgroundColor: '#8B2F2F',
+    width: 50,
+    height: 50,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addIngredienteBtnText: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: 'bold',
   }
 });

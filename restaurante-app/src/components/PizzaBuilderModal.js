@@ -9,11 +9,14 @@ export default function PizzaBuilderModal({
     onConfirm,
     sizes = [],
     pizzas = [],
-    initialFlavor = null
+    initialFlavor = null,
+    extras = [] // New prop for extras
 }) {
-    const [step, setStep] = useState(1); // 1: Tamanho, 2: Sabores
+    const [step, setStep] = useState(1); // 1: Tamanho, 2: Sabores, 3: Extras
     const [selectedSize, setSelectedSize] = useState(null);
     const [selectedFlavors, setSelectedFlavors] = useState([]);
+    const [selectedBorda, setSelectedBorda] = useState(null);
+    const [selectedAdicionais, setSelectedAdicionais] = useState([]);
     const [searchText, setSearchText] = useState('');
 
     // Reset when modal opens
@@ -22,6 +25,8 @@ export default function PizzaBuilderModal({
             setStep(1);
             setSelectedSize(null);
             setSelectedFlavors(initialFlavor ? [initialFlavor] : []);
+            setSelectedBorda(null);
+            setSelectedAdicionais([]);
             setSearchText('');
         }
     }, [visible, initialFlavor]);
@@ -97,11 +102,45 @@ export default function PizzaBuilderModal({
             return Number(val) || 0;
         });
 
+        const basePrice = Math.max(...prices);
+        
+        // Add extras prices
+        let extrasPrice = 0;
+        if (selectedBorda) {
+            extrasPrice += selectedBorda.price || 0;
+        }
+        selectedAdicionais.forEach(adicional => {
+            extrasPrice += adicional.price || 0;
+        });
+
+        return basePrice + extrasPrice;
+    };
+
+    const getBasePrice = () => {
+        if (!selectedSize || selectedFlavors.length === 0) return 0;
+        const prices = selectedFlavors.map(f => {
+            const val = f.prices && f.prices[selectedSize] ? f.prices[selectedSize] : 0;
+            if (typeof val === 'string') {
+                return parseFloat(val.replace(',', '.')) || 0;
+            }
+            return Number(val) || 0;
+        });
         return Math.max(...prices);
     };
 
+    const getExtrasPrice = () => {
+        let total = 0;
+        if (selectedBorda) {
+            total += selectedBorda.price || 0;
+        }
+        selectedAdicionais.forEach(adicional => {
+            total += adicional.price || 0;
+        });
+        return total;
+    };
+
     const handleConfirm = () => {
-        onConfirm(selectedSize, selectedFlavors);
+        onConfirm(selectedSize, selectedFlavors, selectedBorda, selectedAdicionais);
         onClose();
     };
 
@@ -213,13 +252,119 @@ export default function PizzaBuilderModal({
                 <TouchableOpacity
                     style={[styles.confirmBtn, selectedFlavors.length === 0 && styles.disabledBtn]}
                     disabled={selectedFlavors.length === 0}
-                    onPress={handleConfirm}
+                    onPress={() => setStep(3)}
                 >
-                    <Text style={styles.nextBtnText}>Adicionar ao Pedido</Text>
+                    <Text style={styles.nextBtnText}>Próximo: Extras</Text>
                 </TouchableOpacity>
             </View>
         </View>
     );
+
+    const renderStep3 = () => {
+        const bordas = extras.filter(e => e.type === 'borda');
+        const adicionais = extras.filter(e => e.type === 'adicional');
+
+        return (
+            <View style={styles.stepContainer}>
+                <View style={styles.headerRow}>
+                    <TouchableOpacity onPress={() => setStep(2)} style={styles.backBtn}>
+                        <Ionicons name="arrow-back" size={24} color={colors.primary} />
+                    </TouchableOpacity>
+                    <Text style={styles.titleSmall}>Extras (Opcional)</Text>
+                </View>
+
+                <ScrollView style={{ flex: 1 }}>
+                    {/* Bordas Recheadas */}
+                    {bordas.length > 0 && (
+                        <View style={{ marginBottom: 20 }}>
+                            <Text style={styles.sectionTitle}>🥖 Borda Recheada</Text>
+                            {bordas.map(borda => {
+                                const isSelected = selectedBorda?.id === borda.id;
+                                return (
+                                    <TouchableOpacity
+                                        key={borda.id}
+                                        style={[styles.extraRow, isSelected && styles.extraRowActive]}
+                                        onPress={() => setSelectedBorda(isSelected ? null : borda)}
+                                    >
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={styles.extraName}>{borda.name}</Text>
+                                            <Text style={styles.extraPrice}>+ R$ {borda.price.toFixed(2)}</Text>
+                                        </View>
+                                        <View style={[styles.radio, isSelected && styles.radioActive]}>
+                                            {isSelected && <View style={styles.radioDot} />}
+                                        </View>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+                    )}
+
+                    {/* Adicionais */}
+                    {adicionais.length > 0 && (
+                        <View>
+                            <Text style={styles.sectionTitle}>➕ Adicionais</Text>
+                            {adicionais.map(adicional => {
+                                const isSelected = selectedAdicionais.some(a => a.id === adicional.id);
+                                return (
+                                    <TouchableOpacity
+                                        key={adicional.id}
+                                        style={[styles.extraRow, isSelected && styles.extraRowActive]}
+                                        onPress={() => {
+                                            if (isSelected) {
+                                                setSelectedAdicionais(prev => prev.filter(a => a.id !== adicional.id));
+                                            } else {
+                                                setSelectedAdicionais(prev => [...prev, adicional]);
+                                            }
+                                        }}
+                                    >
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={styles.extraName}>{adicional.name}</Text>
+                                            <Text style={styles.extraPrice}>+ R$ {adicional.price.toFixed(2)}</Text>
+                                        </View>
+                                        <View style={[styles.checkbox, isSelected && { borderColor: colors.primary, backgroundColor: colors.primary }]}>
+                                            {isSelected && <Ionicons name="checkmark" size={16} color="#fff" />}
+                                        </View>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+                    )}
+
+                    {bordas.length === 0 && adicionais.length === 0 && (
+                        <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+                            <Text style={{ fontSize: 16, color: '#999' }}>Nenhum extra disponível</Text>
+                        </View>
+                    )}
+                </ScrollView>
+
+                <View style={styles.footer}>
+                    <View style={{ marginBottom: 12 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                            <Text style={{ fontSize: 14, color: '#666' }}>Pizza:</Text>
+                            <Text style={{ fontSize: 14, color: '#666' }}>R$ {getBasePrice().toFixed(2)}</Text>
+                        </View>
+                        {getExtrasPrice() > 0 && (
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                                <Text style={{ fontSize: 14, color: '#666' }}>Extras:</Text>
+                                <Text style={{ fontSize: 14, color: '#666' }}>R$ {getExtrasPrice().toFixed(2)}</Text>
+                            </View>
+                        )}
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 8 }}>
+                            <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#333' }}>Total:</Text>
+                            <Text style={styles.totalText}>R$ {calculatePrice().toFixed(2)}</Text>
+                        </View>
+                    </View>
+
+                    <TouchableOpacity
+                        style={styles.confirmBtn}
+                        onPress={handleConfirm}
+                    >
+                        <Text style={styles.nextBtnText}>Adicionar ao Pedido</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        );
+    };
 
     return (
         <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -230,7 +375,7 @@ export default function PizzaBuilderModal({
                         <Ionicons name="close-circle" size={30} color="#ddd" />
                     </TouchableOpacity>
 
-                    {step === 1 ? renderStep1() : renderStep2()}
+                    {step === 1 ? renderStep1() : step === 2 ? renderStep2() : renderStep3()}
                 </View>
             </View>
         </Modal>
@@ -286,5 +431,15 @@ const styles = StyleSheet.create({
     totalText: { fontSize: 24, fontWeight: 'bold', color: colors.primary },
     confirmBtn: { backgroundColor: colors.success, padding: 18, borderRadius: 14, alignItems: 'center' },
     disabledBtn: { backgroundColor: '#ccc' },
-    nextBtnText: { color: '#fff', fontSize: 18, fontWeight: 'bold' }
+    nextBtnText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+
+    // Extras styles
+    sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#333', marginBottom: 12 },
+    extraRow: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: '#fff', borderRadius: 12, marginBottom: 8, borderWidth: 1, borderColor: '#eee' },
+    extraRowActive: { borderColor: colors.primary, backgroundColor: '#FFF5F5' },
+    extraName: { fontSize: 16, fontWeight: '600', color: '#333' },
+    extraPrice: { fontSize: 14, color: colors.primary, fontWeight: 'bold', marginTop: 2 },
+    radio: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: '#ddd', justifyContent: 'center', alignItems: 'center' },
+    radioActive: { borderColor: colors.primary },
+    radioDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: colors.primary }
 });
