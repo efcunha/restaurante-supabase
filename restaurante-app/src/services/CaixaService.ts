@@ -232,9 +232,22 @@ class CaixaService {
     return (data || []).map(this._mapCaixaToType);
   }
 
-  async fecharCaixa(companyId: string, usuarioId: string, usuarioNome: string, saldoRealContado: string | number) {
-    const caixa = await this.getCaixaAberto(companyId);
-    if (!caixa) throw new Error('Nenhum caixa aberto.');
+  async fecharCaixa(companyId: string, usuarioId: string | null, usuarioNome: string, saldoRealContado: string | number, caixaId?: string) {
+    let caixa: Caixa | null = null;
+
+    if (caixaId) {
+      const { data } = await supabase.from(TABLE_CAIXA)
+        .select('*')
+        .eq('id', caixaId)
+        .eq('company_id', companyId)
+        .single();
+      
+      if (data) caixa = this._mapCaixaToType(data);
+    } else {
+      caixa = await this.getCaixaAberto(companyId);
+    }
+
+    if (!caixa) throw new Error('Nenhum caixa aberto encontrado.');
 
     const saldoReal = typeof saldoRealContado === 'string' ? parseFloat(saldoRealContado) : saldoRealContado;
     const dif = saldoReal - caixa.saldoEsperado;
@@ -253,10 +266,12 @@ class CaixaService {
 
     if (error) throw new Error(error.message);
     this.invalidateCache();
-
-    // Optional: Call cleanup like original `limparDadosDoDia` if needed, 
-    // but usually with Supabase we rely on good Queries vs deleting data.
-    // Original logic deleted abandoned orders. We can implement a cleanup RPC or function later.
+    
+    return {
+      saldoEsperado: caixa.saldoEsperado,
+      saldoReal,
+      diferenca: dif
+    };
   }
 
   async historico(companyId: string, limitVal: number = 30): Promise<Caixa[]> {
@@ -273,17 +288,17 @@ class CaixaService {
     try {
       const { data, error } = await supabase
         .from('comandas')
-        .select('total_amount')
+        .select('total_consumed')
         .eq('company_id', companyId)
         .eq('date_key', dateKey)
-        .eq('comanda_status', 'cancelada');
+        .eq('status', 'cancelada');
 
       if (error) {
         console.error('Erro ao buscar comandas canceladas:', error.message);
         return 0;
       }
 
-      const total = (data || []).reduce((sum, comanda) => sum + (comanda.total_amount || 0), 0);
+      const total = (data || []).reduce((sum, comanda) => sum + (comanda.total_consumed || 0), 0);
       return total;
     } catch (error) {
       console.error('Erro ao calcular total cancelado:', error);

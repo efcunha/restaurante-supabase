@@ -82,18 +82,28 @@ export const getNextComandaNumber = async (): Promise<number> => {
 
     const dateKey = getDateKey();
 
-    // Chama função RPC para obter próximo número
-    const { data, error } = await supabase.rpc('get_next_comanda_number', {
-      p_company_id: profile.company_id,
-      p_date_key: dateKey
-    });
+    // FALLBACK: Manualmente buscar o maior número de comanda para hoje
+    // Originalmente usava RPC 'get_next_comanda_number', mas estava dando erro de ambiguidade (PGRST203)
+    const { data, error } = await supabase
+      .from('comandas')
+      .select('comanda_number')
+      .eq('company_id', profile.company_id)
+      .eq('date_key', dateKey)
+      .order('comanda_number', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
     if (error) {
-      console.error('[ComandaNumber] Erro ao gerar número:', error);
+      console.error('[ComandaNumber] Erro ao consultar último número:', error);
       throw error;
     }
 
-    return data as number;
+    // Se não há comandas hoje, próximo é 1
+    if (!data) return 1;
+
+    // Próximo número é o maior + 1
+    return (data.comanda_number || 0) + 1;
+
   } catch (error) {
     console.error('[ComandaNumber] Erro em getNextComandaNumber:', error);
     throw error;

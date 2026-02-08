@@ -43,7 +43,8 @@ interface UseNovoPedidoReturn {
     temperosComidas: string[];
     variacoesEspetinho: string[];
     pizzaConfig: PizzaConfig | null;
-    addPizzaToOrder: (sizeName: string, flavors: Product[]) => void;
+    addPizzaToOrder: (sizeName: string, flavors: Product[], selectedBorda?: any, selectedAdicionais?: any[]) => void;
+    extras: any[];
 }
 
 export function useNovoPedido(): UseNovoPedidoReturn {
@@ -64,6 +65,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
     const [pizzaConfig, setPizzaConfig] = useState<PizzaConfig | null>(null);
     const [customPrices, setCustomPrices] = useState<Record<string, number>>({}); // { 'Pizza Grande (Calabresa)': 40.00 }
     const [loadingCardapio, setLoadingCardapio] = useState(true);
+    const [extras, setExtras] = useState<any[]>([]); // Pizza extras (bordas and adicionais)
 
     const cardapioLoadedRef = useRef(false);
     const lastLoadTimeRef = useRef(0);
@@ -90,6 +92,13 @@ export function useNovoPedido(): UseNovoPedidoReturn {
             if (error) throw error;
 
             console.log('Products fetched:', productsData?.length);
+            
+            // Debug: Log pizza products specifically
+            const pizzaProducts = productsData?.filter(p => p.category === 'pizza') || [];
+            console.log('🍕 Pizza products from database:', pizzaProducts.length);
+            pizzaProducts.forEach(p => {
+                console.log(`  - ${p.name} (active: ${p.active}, subcategory: ${p.subcategory})`);
+            });
 
             // OTIMIZAÇÃO: Processamento em único loop (Single Pass)
             const buckets: Record<string, Product[]> = {
@@ -133,6 +142,12 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                     buckets.outro.push(item);
                 }
             });
+            
+            // Debug: Log bucket contents
+            console.log('🍕 Pizzas in bucket after processing:', buckets['pizza']?.length || 0);
+            buckets['pizza']?.forEach(p => {
+                console.log(`  - ${p.name} (subcategory: ${p.subcategory})`);
+            });
 
             // Ordenação local (Client-Side)
             const sortFn = (a: Product, b: Product) => a.name.localeCompare(b.name);
@@ -149,17 +164,70 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                 pizzas: (buckets['pizza'] || []).sort(sortFn)
             };
 
-            // Config Defaults (Since 'settings' table isn't migrated/populated yet)
-            // Use defaults if variables are not customized remotely
-            setPizzaConfig({
-                sizes: [
-                    { name: 'Fatia', maxFlavors: 1 },
-                    { name: 'Broto', maxFlavors: 1 },
-                    { name: 'Média', maxFlavors: 2 },
-                    { name: 'Grande', maxFlavors: 4 }
-                ],
-                pricingMode: 'HIGHER'
-            });
+            // Load Pizza Config from company settings
+            try {
+                const { data: companyData, error: companyError } = await supabase
+                    .from('companies')
+                    .select('settings')
+                    .eq('id', user.companyId)
+                    .single();
+
+                if (companyError) throw companyError;
+
+                if (companyData?.settings?.pizzaConfig) {
+                    setPizzaConfig(companyData.settings.pizzaConfig);
+                } else {
+                    // Fallback to defaults if not configured
+                    setPizzaConfig({
+                        sizes: [
+                            { name: 'Fatia', maxFlavors: 1 },
+                            { name: 'Broto', maxFlavors: 1 },
+                            { name: 'Média', maxFlavors: 2 },
+                            { name: 'Grande/Família', maxFlavors: 4 }
+                        ],
+                        pricingMode: 'HIGHER'
+                    });
+                }
+            } catch (error) {
+                console.error('❌ Erro ao carregar configuração de pizza:', error);
+                // Use defaults on error
+                setPizzaConfig({
+                    sizes: [
+                        { name: 'Fatia', maxFlavors: 1 },
+                        { name: 'Broto', maxFlavors: 1 },
+                        { name: 'Média', maxFlavors: 2 },
+                        { name: 'Grande/Família', maxFlavors: 4 }
+                    ],
+                    pricingMode: 'HIGHER'
+                });
+            }
+
+            // Fetch Pizza Extras
+            try {
+                const { data: extrasData, error: extrasError } = await supabase
+                    .from('pizza_extras')
+                    .select('*')
+                    .eq('company_id', user.companyId)
+                    .eq('active', true);
+
+                if (extrasError) throw extrasError;
+
+                const extrasFormatted = (extrasData || []).map((e: any) => ({
+                    id: e.id,
+                    companyId: e.company_id,
+                    type: e.type,
+                    name: e.name,
+                    price: e.price,
+                    active: e.active,
+                    createdAt: new Date(e.created_at),
+                    updatedAt: e.updated_at ? new Date(e.updated_at) : undefined
+                }));
+
+                setExtras(extrasFormatted);
+            } catch (error) {
+                console.error('❌ Erro ao carregar extras:', error);
+                setExtras([]);
+            }
 
             setCardapio(novoCardapio);
             cardapioLoadedRef.current = true;
@@ -179,27 +247,10 @@ export function useNovoPedido(): UseNovoPedidoReturn {
 
     const carregarCardapio = useCallback(async () => {
         try {
-            // OTIMIZAÇÃO 3: Usar cache primeiro (Stale-While-Revalidate)
+            // ALWAYS reload from database to ensure fresh data
+            // Cache was causing stale data issues where new pizzas weren't showing
+            console.log('🔄 Reloading cardápio from database...');
             setLoadingCardapio(true);
-
-            const cached = await AsyncStorage.getItem(CARDAPIO_CACHE_KEY);
-            if (cached) {
-                const { data, timestamp } = JSON.parse(cached);
-
-                // Se cache for recente (usar constante), usar e não bloquear
-                if (data && (Date.now() - timestamp < CARDAPIO_CACHE_EXPIRY)) {
-                    console.log('⚡ Usando cardápio do cache');
-                    setCardapio(data);
-                    cardapioLoadedRef.current = true;
-                    setLoadingCardapio(false); // Libera UI imediatamente
-
-                    // Atualiza em background
-                    carregarCardapioSupabase(true);
-                    return;
-                }
-            }
-
-            // Se não tem cache ou é muito velho, carrega normal
             await carregarCardapioSupabase(false);
         } catch (error) {
             console.error('❌ Erro ao carregar cardápio:', error);
@@ -210,10 +261,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
 
     useFocusEffect(
         useCallback(() => {
-            const now = Date.now();
-            if (cardapioLoadedRef.current && (now - lastLoadTimeRef.current) < CARDAPIO_CACHE_EXPIRY) {
-                // return; // FORCE RELOAD for testing/updates
-            }
+            // ALWAYS reload to ensure fresh data (especially for active/inactive status changes)
             carregarCardapio();
         }, [carregarCardapio])
     );
@@ -333,12 +381,12 @@ export function useNovoPedido(): UseNovoPedidoReturn {
         );
     }, []);
 
-    const addPizzaToOrder = useCallback((sizeName: string, flavors: Product[]) => {
+    const addPizzaToOrder = useCallback((sizeName: string, flavors: Product[], selectedBorda?: any, selectedAdicionais?: any[]) => {
         if (!flavors || flavors.length === 0) return;
 
-        // 1. Calcular preço
+        // 1. Calcular preço base
         // Se pricingMode for HIGHER (padrão), pega o maior preço entre os sabores para aquele tamanho
-        let finalPrice = 0;
+        let basePrice = 0;
         const prices = flavors.map(f => {
             // f é o objeto produto do cardápio array
             // ele deve ter .prices[sizeName]
@@ -356,9 +404,40 @@ export function useNovoPedido(): UseNovoPedidoReturn {
         console.log('🍕 [addPizzaToOrder] Preços dos sabores:', prices);
 
         // Modo padrão: Maior valor
-        finalPrice = Math.max(...prices);
+        basePrice = Math.max(...prices);
 
-        console.log('🍕 [addPizzaToOrder] Preço final calculado:', finalPrice);
+        // 2. Adicionar preços dos extras
+        let extrasPrice = 0;
+        const extrasNames: string[] = [];
+        const extrasDetails: Array<{id: string, name: string, type: string, price: number}> = [];
+        
+        if (selectedBorda) {
+            extrasPrice += selectedBorda.price || 0;
+            extrasNames.push(`Borda: ${selectedBorda.name}`);
+            extrasDetails.push({
+                id: selectedBorda.id,
+                name: selectedBorda.name,
+                type: 'borda',
+                price: selectedBorda.price || 0
+            });
+        }
+        
+        if (selectedAdicionais && selectedAdicionais.length > 0) {
+            selectedAdicionais.forEach(adicional => {
+                extrasPrice += adicional.price || 0;
+                extrasNames.push(adicional.name);
+                extrasDetails.push({
+                    id: adicional.id,
+                    name: adicional.name,
+                    type: 'adicional',
+                    price: adicional.price || 0
+                });
+            });
+        }
+
+        const finalPrice = basePrice + extrasPrice;
+
+        console.log('🍕 [addPizzaToOrder] Preço base:', basePrice, 'Extras:', extrasPrice, 'Final:', finalPrice);
 
         // Validar que não é NaN
         if (isNaN(finalPrice) || finalPrice <= 0) {
@@ -367,9 +446,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
             return;
         }
 
-        // TODO: Suportar 'AVERAGE' se configurado no futuro
-
-        // 2. Gerar nome
+        // 3. Gerar nome
 
         // Melhor formatação de nome:
         let flavorsString = "";
@@ -379,9 +456,20 @@ export function useNovoPedido(): UseNovoPedidoReturn {
             flavorsString = flavors.map(f => `1/${flavors.length} ${f.name}`).join(', ');
         }
 
-        const itemName = `Pizza ${sizeName} (${flavorsString})`;
+        let itemName = `Pizza ${sizeName} (${flavorsString})`;
+        
+        // Adicionar extras ao nome se houver
+        if (extrasNames.length > 0) {
+            itemName += ` + ${extrasNames.join(', ')}`;
+        }
 
-        setCustomPrices(prev => ({ ...prev, [itemName]: finalPrice }));
+        // Store structured extras data in customPrices with a special key
+        const extrasKey = `${itemName}__extras`;
+        setCustomPrices(prev => ({ 
+            ...prev, 
+            [itemName]: finalPrice,
+            [extrasKey]: extrasDetails as any // Store extras metadata
+        }));
 
         setProdutos(prev => {
             const currentQty = prev[itemName] || 0;
@@ -568,6 +656,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
         temperosComidas,
         variacoesEspetinho,
         pizzaConfig,
-        addPizzaToOrder
+        addPizzaToOrder,
+        extras
     };
 }

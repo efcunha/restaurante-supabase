@@ -86,6 +86,7 @@ export interface Product {
   name: string;
   price?: number;
   category: string;
+  subcategory?: string; // For pizza categories: Tradicional, Especiais, Doces
   active: boolean;
   createdAt: number;
   description?: string;
