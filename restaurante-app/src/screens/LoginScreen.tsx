@@ -6,6 +6,7 @@ import { useToast } from '../context/ToastContext';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../config/SupabaseConfig'; // Replaced firebase config
 import { getUserFriendlyMessage } from '../utils/errors';
+import { validateEmail } from '../utils/validation';
 import MFAVerificationModal from '../components/MFAVerificationModal';
 // @ts-ignore
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -183,16 +184,24 @@ export default function LoginScreen({ navigation }: Props) {
                     return;
                   }
 
+                  const validation = validateEmail(email.trim());
+                  if (!validation.isValid) {
+                    Alert.alert('Email Inválido', validation.error || 'Por favor, digite um email válido.');
+                    return;
+                  }
+
                   Alert.alert(
                     'Redefinir Senha',
-                    `Enviar link de redefinição para:\n${email}?`,
+                    `Enviar link de redefinição para:\n${email.trim()}?`,
                     [
                       { text: 'Cancelar', style: 'cancel' },
                       {
                         text: 'Enviar Email',
                         onPress: async () => {
                           try {
-                            const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+                            const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+                              redirectTo: 'your-app://reset-password'
+                            });
                             if (error) throw error;
                             Alert.alert('Sucesso', '✅ Email enviado!\nVerifique sua caixa de entrada (e spam) para redefinir a senha.');
                           } catch (error: any) {
