@@ -13,9 +13,9 @@ LogBox.ignoreLogs([
   'Non-serializable values were found',
 ]);
 
-// import { initSentry } from './src/config/sentryConfig';
+import { initSentry } from './src/config/sentryConfig';
 // import * as Sentry from '@sentry/react-native';
-// initSentry();
+initSentry();
 
 import NovoPedidoScreen from './src/screens/NovoPedidoScreen';
 import MontagemScreen from './src/screens/MontagemScreen';
