@@ -134,9 +134,12 @@ class PagamentosService {
     const novoTotalPago = totalPagoAnt + valorNum;
     const novoSaldo = Math.max(0, (comanda.total_consumed || 0) - novoTotalPago); // ✅ Supabase field name
 
-    // Note: pagamentos_resumo doesn't exist in Supabase schema
-    // We'll track this differently or add the field to schema if needed
-    const pagamentosResumo = {}; // Simplified for now
+    // Build pagamentos_resumo (reused for both RPC and Fallback)
+    const pagamentosResumoAtual = comanda.pagamentos_resumo || {};
+    const novoPagamentosResumo = {
+      ...pagamentosResumoAtual,
+      [formaKey]: (pagamentosResumoAtual[formaKey] || 0) + valorNum
+    };
 
     // Usar RPC para transação atômica (if it exists)
     const { data: result, error: rpcError } = await supabase.rpc('registrar_pagamento_comanda', {
@@ -150,14 +153,14 @@ class PagamentosService {
       p_usuario_nome: safeUsuarioNome,
       p_total_pago: novoTotalPago,
       p_saldo_aberto: novoSaldo,
-      p_pagamentos_resumo: pagamentosResumo,
-      p_garcom: comanda.opened_by || null, // ✅ Supabase field name
-      p_garcom_nome: comanda.opened_by_name || null, // ✅ Supabase field name
+      p_pagamentos_resumo: novoPagamentosResumo,
+      p_garcom: comanda.opened_by || null,
+      p_garcom_nome: comanda.opened_by_name || null,
     });
 
     if (rpcError) {
       // Fallback: fazer update manual se RPC não existir
-      console.warn('[PagamentosService] RPC not available, using manual update');
+      console.warn('[PagamentosService] RPC error (falling back to manual):', rpcError);
       
       // First, insert the new payment
       const { error: insertError } = await supabase
@@ -175,12 +178,8 @@ class PagamentosService {
 
       if (insertError) throw insertError;
 
-      // Build pagamentos_resumo
-      const pagamentosResumoAtual = comanda.pagamentos_resumo || {};
-      const novoPagamentosResumo = {
-        ...pagamentosResumoAtual,
-        [formaKey]: (pagamentosResumoAtual[formaKey] || 0) + valorNum
-      };
+      // Note: pagamentos_resumo is already calculated above (novoPagamentosResumo)
+
 
       // Then update comanda with the new totals and payment info
       const updateData: any = {
