@@ -698,13 +698,11 @@ export default function NovoPedidoScreen() {
           onPress={handleSubmit}
           disabled={isSubmitting}
         >
-          <Text style={styles.submitBtnText}>
-            {isSubmitting ? (
-              <ActivityIndicator size="small" color={colors.white} />
-            ) : (
-              <Text style={styles.submitBtnText}>Criar Pedido</Text>
-            )}
-          </Text>
+          {isSubmitting ? (
+            <ActivityIndicator size="small" color={colors.white} />
+          ) : (
+            <Text style={styles.submitBtnText}>Criar Pedido</Text>
+          )}
         </TouchableOpacity>
       </View>
 
