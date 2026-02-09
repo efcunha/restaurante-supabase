@@ -197,7 +197,22 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
         if (settings.temperosCaldos) setTemperosCaldos(settings.temperosCaldos);
         if (settings.temperosComidas) setTemperosComidas(settings.temperosComidas);
         if (settings.variacoesEspetinho) setVariacoesEspetinho(settings.variacoesEspetinho);
-        if (settings.ingredientesPizza) setIngredientesPizza(settings.ingredientesPizza);
+        console.log('[GerenciarCardapio] Pizza ingredients from DB:', settings.ingredientesPizza);
+        if (settings.ingredientesPizza && settings.ingredientesPizza.length > 0) {
+            setIngredientesPizza(settings.ingredientesPizza);
+        } else {
+             // Default ingredients if DB is empty
+             const defaultIngredients = ['Milho', 'Bacon', 'Ovo', 'Cebola', 'Azeitona', 'Tomate', 'Pimentão', 'Orégano', 'Mussarela', 'Catupiry', 'Presunto', 'Frango'];
+             setIngredientesPizza(defaultIngredients);
+             
+             // OPTIONAL: Save defaults to DB immediately so it's not "hardcoded" next time
+             // We can do this silently
+             const newSettings = { ...settings, ingredientesPizza: defaultIngredients };
+             supabase.from('companies').update({ settings: newSettings }).eq('id', user.companyId).then(({ error }) => {
+                 if (error) console.error('Error saving default ingredients:', error);
+                 else console.log('Default ingredients saved to DB');
+             });
+        }
 
         if (settings.pizzaConfig) {
           setPizzaConfig(settings.pizzaConfig);
@@ -262,13 +277,19 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
         price: Number(p.price),
         category: p.category,
         subcategory: p.subcategory || null,
-        active: p.active,
+        active: p.available !== undefined ? p.available : p.active, // Map available -> active
         createdAt: new Date(p.created_at).getTime(),
         prices: p.prices || {},
         ingredients: p.ingredients || [],
         customIngredients: p.custom_ingredients || '',
         inventoryItems: p.inventory_items || []
       })) as Product[];
+
+      console.log(`[GerenciarCardapio] Fetched ${produtosData.length} products total.`);
+      const inactiveCount = produtosData.filter(p => !p.active).length;
+      console.log(`[GerenciarCardapio] Inactive products: ${inactiveCount}`);
+      console.log(`[GerenciarCardapio] Categories found:`, [...new Set(produtosData.map(p => p.category))]);
+
 
       const ordemCategorias: Record<string, number> = {
         'espetinho-simples': 1,
@@ -281,8 +302,10 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
       };
 
       produtosData.sort((a, b) => {
-        const ordemA = ordemCategorias[a.category] || 99;
-        const ordemB = ordemCategorias[b.category] || 99;
+        const catA = a.category?.toLowerCase() || 'outro';
+        const catB = b.category?.toLowerCase() || 'outro';
+        const ordemA = ordemCategorias[catA] || 99;
+        const ordemB = ordemCategorias[catB] || 99;
 
         if (ordemA !== ordemB) {
           return ordemA - ordemB;
@@ -334,7 +357,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
           name: `${nome.trim()} ${v}`,
           price: parseFloat(precosVariacoes[v].replace(',', '.')) || 0,
           category: categoria,
-          active: true
+          available: true // DB Column is available
         }));
 
         const { error } = await supabase.from('products').insert(variacoes);
@@ -390,7 +413,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
           name: nome.trim(),
           category: 'pizza',
           subcategory: subcategoria || null, // Add subcategory for pizza
-          active: true,
+          available: true, // DB Column is available
           price: 0, // Base price 0, uses prices JSON
           prices: pricesToSave,
           ingredients: ingredientesSelecionados, // array of strings
@@ -431,7 +454,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
           name: nome.trim(),
           price: parseFloat(preco.toString().replace(',', '.')) || 0,
           category: categoria,
-          active: true
+          available: true // DB Column is available
         };
 
         const { error } = await supabase.from('products').insert(novoProduto);
@@ -514,7 +537,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
           const ids = variacoes.map(v => v.id);
           const { error } = await supabase
             .from('products')
-            .update({ active: !todosAtivos })
+            .update({ available: !todosAtivos }) // DB Column is available
             .in('id', ids);
 
           if (error) throw error;
@@ -850,6 +873,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
     novos[index] = { ...novos[index], active: !novos[index].active };
     setPizzaSizes(novos);
     
+    
     if (user?.companyId) {
         const newSettings = {
            temperosCaldos,
@@ -1048,7 +1072,14 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
 
 
   // Lógica de filtragem e agrupamento
-  const produtosFiltrados = produtos.filter(p => categoriaFiltro === 'todos' || p.category === categoriaFiltro);
+  // Lógica de filtragem e agrupamento
+  const produtosFiltrados = produtos.filter(p => {
+      if (categoriaFiltro === 'todos') return true;
+      const cat = p.category?.toLowerCase() || '';
+      const filtro = categoriaFiltro.toLowerCase();
+      // Special handling for 'outros'/others if needed, but strict match is better for tabs
+      return cat === filtro;
+  });
 
   const produtosAgrupados = produtosFiltrados.reduce((acc, produto) => {
     // Normalização básica: remove conteúdo entre parênteses para agrupar variações
@@ -1527,7 +1558,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                                     price: Number(data.price),
                                     category: data.category,
                                     subcategory: data.subcategory,
-                                    active: data.active,
+                                    active: data.available !== undefined ? data.available : data.active, // Map available
                                     createdAt: new Date(data.created_at).getTime(),
                                     prices: data.prices || {},
                                     ingredients: data.ingredients || [],
