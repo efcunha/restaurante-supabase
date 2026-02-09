@@ -41,7 +41,9 @@ export default function ComandaList({ comandas, onSelectComanda, refreshing, onR
     if (comandas.length === 0) {
         return (
             <View style={styles.emptyContainer}>
+                <Text style={styles.emptyIcon}>📝</Text>
                 <Text style={styles.emptyText}>Nenhuma comanda encontrada.</Text>
+                <Text style={styles.emptySubtext}>Crie uma nova ou aguarde pedidos.</Text>
             </View>
         );
     }
@@ -73,11 +75,21 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 20,
+        paddingVertical: 60,
+    },
+    emptyIcon: {
+        fontSize: 80,
+        marginBottom: 20,
     },
     emptyText: {
-        fontSize: 16,
-        color: colors.textLight,
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: colors.primary,
+        marginBottom: 8,
+    },
+    emptySubtext: {
+        fontSize: 14,
+        color: '#999',
     },
     card: {
         backgroundColor: colors.white,
