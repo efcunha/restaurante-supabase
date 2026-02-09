@@ -76,6 +76,12 @@ export function useNovoPedido(): UseNovoPedidoReturn {
 
             if (!user?.companyId) {
                 console.warn('⚠️ Usuário sem empresa vinculada');
+                if (!isBackground) {
+                    Alert.alert(
+                        'Atenção',
+                        'Seu usuário não está vinculado a nenhuma empresa/loja.\n\nContate o administrador ou verifique seu cadastro.'
+                    );
+                }
                 setCardapio({ caldos: [], comidas: [], bebidas: [], porcoes: [], outros: [], espetinhos: [], espetinhosSimples: [], espetinhosEspeciais: [], pizzas: [] });
                 setLoadingCardapio(false);
                 return;
@@ -114,25 +120,32 @@ export function useNovoPedido(): UseNovoPedidoReturn {
 
             productsData?.forEach((data: any) => {
                 // Client-side Active Filter
-                if (data.active === false) return;
+                // Check both 'available' (correct DB column) and 'active' (legacy/potential)
+                const isActive = data.available !== undefined ? data.available : data.active;
+                
+                if (isActive === false) return;
 
                 const item: Product = {
+                    ...data,
                     id: data.id,
                     name: data.name,
                     category: data.category || 'outro',
                     price: data.price ? Number(data.price) : 0, // Ensure number
                     prices: data.prices || {}, // Map de preços para Pizza
                     // inventoryItems: data.inventoryItems, // Not yet in SQL schema?
-                    active: data.active,
+                    active: isActive !== undefined ? isActive : true, // Default to true if missing
                     createdAt: new Date(data.created_at).getTime(),
                     description: data.description,
                     image: data.image_url,
-                    ...data
                 };
 
                 // Normalizar categoria para o bucket correto
-                let cat = item.category;
+                let cat = item.category?.toLowerCase() || 'outro';
                 if (cat === 'outros') cat = 'outro';
+                
+                // Compatibilidade para Espetinhos (hifen ou espaço)
+                if (cat.includes('espetinho') && cat.includes('simples')) cat = 'espetinho-simples';
+                if (cat.includes('espetinho') && cat.includes('especial')) cat = 'espetinho-especial';
 
                 if (buckets[cat]) {
                     buckets[cat].push(item);
@@ -602,7 +615,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                     }
                 }
 
-                if (stockItemsToDeduct.length > 0) {
+                if (stockItemsToDeduct.length > 0 && user?.companyId) {
                     const result = await InventoryService.deductStock(user.companyId, stockItemsToDeduct);
 
                     // Se houve custo calculado, atualizar o pedido com o CMV
