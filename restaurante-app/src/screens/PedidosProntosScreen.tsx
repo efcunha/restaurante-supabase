@@ -242,6 +242,7 @@ export default function PedidosProntosScreen() {
 
   const ListEmptyComponent = useCallback(() => (
     <View style={styles.emptyState}>
+      <Text style={styles.emptyIcon}>🛎️</Text>
       <Text style={styles.emptyText}>Nenhum item pronto</Text>
       <Text style={styles.emptySubtext}>Marque itens na montagem e eles aparecerão aqui</Text>
     </View>
@@ -477,6 +478,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 60,
+  },
+  emptyIcon: {
+    fontSize: 80,
+    marginBottom: 20,
   },
   emptyText: {
     fontSize: 16,
