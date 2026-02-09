@@ -317,6 +317,7 @@ export default function MontagemScreen() {
       <ScrollView style={styles.content}>
         {orders.length === 0 ? (
           <View style={styles.emptyState}>
+            <Text style={styles.emptyIcon}>🍽️</Text>
             <Text style={styles.emptyText}>Nenhum pedido para montar</Text>
             <Text style={styles.emptySubtext}>Os pedidos da cozinha aparecerão aqui</Text>
           </View>
@@ -634,6 +635,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 60,
+  },
+  emptyIcon: {
+    fontSize: 80,
+    marginBottom: 20,
   },
   emptyText: {
     fontSize: 16,
