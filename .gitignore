@@ -95,6 +95,18 @@ __tests__*
 .gemini/
 .expo/
 *.bak
+kiro/*
+.vscode/*
+.cursor/*
+.windsurf/*
+.trae/*
+.gemini/*
+.antigravity/*
+.kiro/*
+.cursor/*
+.windsurf/*
+.trae/*
+
 # Temporary files (added by cleanup script)
 *output*.txt
 *results*.txt
