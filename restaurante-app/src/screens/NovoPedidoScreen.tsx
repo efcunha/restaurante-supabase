@@ -196,8 +196,9 @@ interface EspetinhoRowProps {
 const EspetinhoRow = memo(({ baseName, cardapioEspetinhos, produtos, updateProduto, variacoes = [] }: EspetinhoRowProps) => {
   // 1. Map available variations to actual products
   const itensVariaveis = variacoes.map(variacao => {
-    // Try to find exact match "Nome Variação"
-    const produto = cardapioEspetinhos.find(p => p.name === `${baseName} ${variacao}`);
+    // Try to find exact match "Nome Variação" (Case Insensitive)
+    const targetName = `${baseName} ${variacao}`.toLowerCase();
+    const produto = cardapioEspetinhos.find(p => p.name.toLowerCase() === targetName);
     return {
       label: variacao,
       produto: produto
@@ -492,7 +493,9 @@ export default function NovoPedidoScreen() {
       const baseNames = [...new Set(activeEspetinhos.map(p => {
         let name = p.name;
         variacoesEspetinho.forEach(v => {
-          name = name.replace(` ${v}`, '');
+          // Replace case insensitive
+          const regex = new RegExp(` ${v}`, 'gi');
+          name = name.replace(regex, '');
         });
         return name.trim();
       }))];
@@ -510,7 +513,9 @@ export default function NovoPedidoScreen() {
       const baseNames = [...new Set(activeEspetinhos.map(p => {
         let name = p.name;
         variacoesEspetinho.forEach(v => {
-          name = name.replace(` ${v}`, '');
+          // Replace case insensitive
+          const regex = new RegExp(` ${v}`, 'gi');
+          name = name.replace(regex, '');
         });
         return name.trim();
       }))];
