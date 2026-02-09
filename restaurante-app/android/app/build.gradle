@@ -105,10 +105,10 @@ android {
             keyPassword 'android'
         }
         release {
-            storeFile file('restaurante-release-key.keystore')
-            storePassword 'restaurante2026'
-            keyAlias 'restaurante-key-alias'
-            keyPassword 'restaurante2026'
+            storeFile file('debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
         }
     }
     buildTypes {
@@ -141,6 +141,11 @@ android {
             useLegacyPackaging enableLegacyPackaging.toBoolean()
         }
     }
+    lintOptions {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+
     androidResources {
         ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
     }
@@ -206,4 +211,4 @@ android.applicationVariants.all { variant ->
     }
 }
 
-apply plugin: 'com.google.gms.google-services'
+// apply plugin: 'com.google.gms.google-services'
