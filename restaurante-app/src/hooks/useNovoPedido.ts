@@ -12,9 +12,11 @@ import { useFocusEffect } from '@react-navigation/native';
 // @ts-ignore
 import { confirmLogout } from '../utils/appUtils';
 // @ts-ignore
+// @ts-ignore
 import InventoryService from '../services/InventoryService';
 import CaixaService from '../services/CaixaService';
-import { Product, Cardapio, PizzaConfig, PizzaSize, Ingredient } from '../types';
+import { listarFuncionarios } from '../services/FuncionariosService';
+import { Product, Cardapio, PizzaConfig, PizzaSize, Ingredient, Funcionario } from '../types';
 
 const CARDAPIO_CACHE_KEY = '@cardapio_cache';
 const CARDAPIO_CACHE_EXPIRY = 5 * 60 * 1000;
@@ -32,6 +34,7 @@ interface UseNovoPedidoReturn {
     setTableId: (id: string) => void;
     waiterId: string;
     setWaiterId: (id: string) => void;
+    waiters: Funcionario[];
     mesa: string;
     setMesa: (mesa: string) => void;
     observations: string;
@@ -61,6 +64,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
     const [mesa, setMesa] = useState(''); // ✅ Novo estado para Mesa
     const [tableId, setTableId] = useState('');
     const [waiterId, setWaiterId] = useState('');
+    const [waiters, setWaiters] = useState<Funcionario[]>([]);
     const [observations, setObservations] = useState('');
     const [produtos, setProdutos] = useState<Record<string, number>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -75,6 +79,29 @@ export function useNovoPedido(): UseNovoPedidoReturn {
 
     const cardapioLoadedRef = useRef(false);
     const lastLoadTimeRef = useRef(0);
+
+    // Fetch wait staff
+    useEffect(() => {
+        const fetchWaiters = async () => {
+            if (!user?.companyId) return;
+            const result = await listarFuncionarios();
+            if (result.success && result.funcionarios) {
+                setWaiters(result.funcionarios.filter(f => f.ativo));
+            }
+        };
+        fetchWaiters();
+    }, [user?.companyId]);
+
+    // Auto-select current user as waiter if they are in the list
+    useEffect(() => {
+        if (user && waiters.length > 0 && !waiterId) {
+            // Find current user in waiters list
+            const currentUser = waiters.find(w => w.uid === user.uid || w.id === user.uid || w.email === user.email);
+            if (currentUser) {
+                setWaiterId(currentUser.id);
+            }
+        }
+    }, [user, waiters, waiterId]);
 
     const carregarCardapioSupabase = async (isBackground = false) => {
         try {
@@ -668,6 +695,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
         setTableId,
         waiterId,
         setWaiterId,
+        waiters,
         observations,
         setObservations,
         updateProduto,

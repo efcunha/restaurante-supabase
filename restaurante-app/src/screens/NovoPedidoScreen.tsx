@@ -7,7 +7,8 @@ import { useNovoPedido } from '../hooks/useNovoPedido';
 import { colors } from '../theme/colors';
 // @ts-ignore
 import PizzaBuilderModal from '../components/PizzaBuilderModal';
-import { Product, PizzaSize, PizzaConfig } from '../types';
+import { Product, PizzaSize, PizzaConfig, Funcionario } from '../types';
+import { Modal, FlatList } from 'react-native';
 
 if (Platform.OS === 'android') {
   if (UIManager.setLayoutAnimationEnabledExperimental) {
@@ -311,38 +312,118 @@ interface HeaderComponentProps {
   setClientName: (name: string) => void;
   mesa: string;
   setMesa: (mesa: string) => void;
+  waiterId: string;
+  setWaiterId: (id: string) => void;
+  waiters: Funcionario[];
 }
 
-const HeaderComponent = memo(({ clientName, setClientName, mesa, setMesa }: HeaderComponentProps) => (
-  <View style={styles.headerForm}>
-    <View style={{ flexDirection: 'row' }}>
-      {/* Campo Nome do Cliente */}
-      <View style={{ flex: 1, marginRight: 10 }}>
-        <Text style={styles.label}>Nome do Cliente:</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Digite o nome"
-          value={clientName}
-          onChangeText={setClientName}
-          placeholderTextColor="#999"
-        />
+const HeaderComponent = memo(({ clientName, setClientName, mesa, setMesa, waiterId, setWaiterId, waiters }: HeaderComponentProps) => {
+  const [showWaiterModal, setShowWaiterModal] = useState(false);
+
+  const selectedWaiter = useMemo(() =>
+    waiters.find(w => w.id === waiterId || w.uid === waiterId),
+    [waiters, waiterId]);
+
+  return (
+    <View style={styles.headerForm}>
+      <View style={{ flexDirection: 'row', marginBottom: 10 }}>
+        {/* Campo Nome do Cliente */}
+        <View style={{ flex: 1, marginRight: 10 }}>
+          <Text style={styles.label}>Nome do Cliente:</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Digite o nome"
+            value={clientName}
+            onChangeText={setClientName}
+            placeholderTextColor="#999"
+          />
+        </View>
+
+        {/* Campo Mesa (Opcional) */}
+        <View style={{ width: 80 }}>
+          <Text style={styles.label}>Mesa:</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Nº"
+            value={mesa}
+            onChangeText={setMesa}
+            placeholderTextColor="#999"
+            keyboardType="numeric"
+          />
+        </View>
       </View>
 
-      {/* Campo Mesa (Opcional) */}
-      <View style={{ width: 80 }}>
-        <Text style={styles.label}>Mesa:</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Nº"
-          value={mesa}
-          onChangeText={setMesa}
-          placeholderTextColor="#999"
-          keyboardType="numeric"
-        />
+      {/* Campo Garçom */}
+      <View>
+        <Text style={styles.label}>Atendente / Garçom:</Text>
+        <TouchableOpacity
+          style={styles.selectorBtn}
+          onPress={() => setShowWaiterModal(true)}
+        >
+          <Text style={[styles.selectorBtnText, !selectedWaiter && { color: '#999' }]}>
+            {selectedWaiter ? (selectedWaiter.nome || selectedWaiter.email) : 'Selecione o garçom'}
+          </Text>
+          <Ionicons name="chevron-down" size={20} color="#666" />
+        </TouchableOpacity>
       </View>
+
+      <Modal
+        visible={showWaiterModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowWaiterModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Selecionar Atendente</Text>
+              <TouchableOpacity onPress={() => setShowWaiterModal(false)} style={styles.closeBtn}>
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+
+            {waiters.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>Nenhum atendente encontrado.</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={waiters}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={[
+                      styles.waiterItem,
+                      (item.id === waiterId || item.uid === waiterId) && styles.waiterItemActive
+                    ]}
+                    onPress={() => {
+                      setWaiterId(item.id);
+                      setShowWaiterModal(false);
+                    }}
+                  >
+                    <View style={styles.waiterInfo}>
+                      <Text style={[
+                        styles.waiterName,
+                        (item.id === waiterId || item.uid === waiterId) && styles.waiterNameActive
+                      ]}>
+                        {item.nome || item.email}
+                      </Text>
+                      <Text style={styles.waiterRole}>{item.funcao || 'Atendente'}</Text>
+                    </View>
+                    {(item.id === waiterId || item.uid === waiterId) && (
+                      <Ionicons name="checkmark-circle" size={24} color={colors.primary} />
+                    )}
+                  </TouchableOpacity>
+                )}
+                ItemSeparatorComponent={() => <View style={styles.separator} />}
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
-  </View>
-));
+  );
+});
 HeaderComponent.displayName = 'HeaderComponent';
 
 interface FooterComponentProps {
@@ -378,6 +459,7 @@ interface Section {
 export default function NovoPedidoScreen({ route }: any) {
   const [showPizzaModal, setShowPizzaModal] = useState(false);
   const [selectedPizza, setSelectedPizza] = useState<Product | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const {
     user,
@@ -402,7 +484,9 @@ export default function NovoPedidoScreen({ route }: any) {
     variacoesEspetinho = ['Simples', 'com Arroz', 'com Macaxeira', 'Completo'],
     pizzaConfig,
     addPizzaToOrder,
-    extras = []
+    extras = [],
+    waiters,
+    waiterId
   } = useNovoPedido();
 
   // Handle Route Params (from Map or other screens)
@@ -504,8 +588,8 @@ export default function NovoPedidoScreen({ route }: any) {
     }
 
     // Espetinhos Simples
-    if (cardapio.espetinhosSimples?.length > 0) {
-      const activeEspetinhos = cardapio.espetinhosSimples.filter(isActive);
+    if (cardapio.espetinhosSimples && cardapio.espetinhosSimples.length > 0) {
+      const activeEspetinhos = (cardapio.espetinhosSimples || []).filter(isActive);
       const baseNames = [...new Set(activeEspetinhos.map(p => {
         let name = p.name;
         variacoesEspetinho.forEach(v => {
@@ -524,8 +608,8 @@ export default function NovoPedidoScreen({ route }: any) {
     }
 
     // Espetinhos Especiais
-    if (cardapio.espetinhosEspeciais?.length > 0) {
-      const activeEspetinhos = cardapio.espetinhosEspeciais.filter(isActive);
+    if (cardapio.espetinhosEspeciais && cardapio.espetinhosEspeciais.length > 0) {
+      const activeEspetinhos = (cardapio.espetinhosEspeciais || []).filter(isActive);
       const baseNames = [...new Set(activeEspetinhos.map(p => {
         let name = p.name;
         variacoesEspetinho.forEach(v => {
@@ -551,13 +635,13 @@ export default function NovoPedidoScreen({ route }: any) {
       }
     }
 
-    if (cardapio.porcoes?.length > 0) {
-      const activePorcoes = cardapio.porcoes.filter(isActive);
+    if (cardapio.porcoes && cardapio.porcoes.length > 0) {
+      const activePorcoes = (cardapio.porcoes || []).filter(isActive);
       sectionsData.push({ title: '🍟 Porções', data: activePorcoes, type: 'porcoes' });
     }
 
-    if (cardapio.outros?.length > 0) {
-      const activeOutros = cardapio.outros.filter(isActive);
+    if (cardapio.outros && cardapio.outros.length > 0) {
+      const activeOutros = (cardapio.outros || []).filter(isActive);
       sectionsData.push({ title: '📦 Outros', data: activeOutros, type: 'outros' });
     }
 
@@ -568,6 +652,20 @@ export default function NovoPedidoScreen({ route }: any) {
 
     return sectionsData;
   }, [cardapio, variacoesEspetinho]);
+
+  // Filter sections based on search query
+  const filteredSections = React.useMemo(() => {
+    if (!searchQuery.trim()) return sections;
+
+    const query = searchQuery.toLowerCase().trim();
+    return sections.map(section => {
+      const filteredData = section.data.filter(item => {
+        if (typeof item === 'string') return false; // Skip variation strings
+        return item.name?.toLowerCase().includes(query);
+      });
+      return { ...section, data: filteredData };
+    }).filter(section => section.data.length > 0); // Remove empty sections
+  }, [sections, searchQuery]);
 
   // Wrappers for animation
   const updateProdutoAnimated = useCallback((itemName: string, delta: number) => {
@@ -688,8 +786,27 @@ export default function NovoPedidoScreen({ route }: any) {
         </TouchableOpacity>
       </View>
 
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Buscar item do cardápio..."
+          placeholderTextColor={colors.textSecondary}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.searchClearBtn}>
+            <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
+        )}
+      </View>
+
       <SectionList
-        sections={sections}
+        sections={filteredSections}
         renderItem={renderItem}
         renderSectionHeader={renderSectionHeader}
         keyExtractor={(item, index) => {
@@ -698,7 +815,15 @@ export default function NovoPedidoScreen({ route }: any) {
           return item.id ? String(item.id) : (item.name ? `${item.name}-${index}` : `item-${index}`);
         }}
         contentContainerStyle={styles.listContent}
-        ListHeaderComponent={<HeaderComponent clientName={clientName} setClientName={setClientName} mesa={mesa} setMesa={setMesa} />}
+        ListHeaderComponent={<HeaderComponent
+          clientName={clientName}
+          setClientName={setClientName}
+          mesa={mesa}
+          setMesa={setMesa}
+          waiters={waiters}
+          waiterId={waiterId}
+          setWaiterId={setWaiterId}
+        />}
         ListFooterComponent={<FooterComponent selectedItems={selectedItems} onRemoveItem={handleRemoveItemAnimated} />}
         stickySectionHeadersEnabled={false}
         initialNumToRender={12}
@@ -733,6 +858,7 @@ export default function NovoPedidoScreen({ route }: any) {
         onConfirm={addPizzaToOrder}
         sizes={pizzaConfig?.sizes}
         pizzas={cardapio.pizzas}
+        // @ts-ignore
         initialFlavor={selectedPizza}
         extras={extras}
       />
@@ -799,6 +925,87 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  selectorBtn: {
+    backgroundColor: colors.white,
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  selectorBtnText: {
+    fontSize: 16,
+    color: colors.text,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: colors.white,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '70%',
+    paddingBottom: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.text,
+  },
+  closeBtn: {
+    padding: 5,
+  },
+  emptyContainer: {
+    padding: 30,
+    alignItems: 'center',
+  },
+  emptyText: {
+    color: '#999',
+    fontSize: 16,
+  },
+  waiterItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 15,
+    backgroundColor: '#fff',
+  },
+  waiterItemActive: {
+    backgroundColor: '#f0f9ff',
+  },
+  waiterInfo: {
+    flex: 1,
+  },
+  waiterName: {
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 4,
+  },
+  waiterNameActive: {
+    fontWeight: 'bold',
+    color: colors.primary,
+  },
+  waiterRole: {
+    fontSize: 12,
+    color: '#999',
+  },
+  separator: {
+    height: 1,
+    backgroundColor: '#eee',
+    marginLeft: 15,
+  },
+
   sectionTitle: { fontSize: 18, fontWeight: 'bold', color: colors.primary, marginTop: 20, marginBottom: 12 },
 
   // Card Styles
@@ -920,4 +1127,27 @@ const styles = StyleSheet.create({
 
   priceLegend: { fontSize: 13, color: colors.textSecondary, textAlign: 'center', marginBottom: 12 },
   totalSpace: { height: 100 },
+
+  // Search Bar
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: colors.text,
+    paddingVertical: 8,
+  },
+  searchClearBtn: {
+    padding: 4,
+  },
 });

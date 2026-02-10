@@ -30,6 +30,7 @@ export default function MapaMesasScreen() {
     const [selectedEnvId, setSelectedEnvId] = useState<string | null>(null);
     const [tables, setTables] = useState<Table[]>([]);
     const [activeOrders, setActiveOrders] = useState<Order[]>([]);
+    const [selectedFilters, setSelectedFilters] = useState<string[]>(['Livre', 'Ocupada', 'Pagando']); // All selected by default
 
     // Load Environments and Tables
     const loadStructure = async () => {
@@ -54,6 +55,19 @@ export default function MapaMesasScreen() {
         loadStructure();
         setLoading(false);
     }, [user?.companyId]);
+
+    // Reload tables when screen gains focus (e.g., returning from config screen)
+    useFocusEffect(
+        React.useCallback(() => {
+            if (user?.companyId) {
+                TableService.getTables(user.companyId).then(allTables => {
+                    setTables(allTables);
+                }).catch(error => {
+                    console.error('Error reloading tables:', error);
+                });
+            }
+        }, [user?.companyId])
+    );
 
     // Real-time Orders Listener
     useEffect(() => {
@@ -119,6 +133,24 @@ export default function MapaMesasScreen() {
         });
     }, [tables, selectedEnvId, activeOrders]);
 
+    // Filter tables by selected status
+    const filteredTables = useMemo(() => {
+        return tablesWithStatus.filter(table => selectedFilters.includes(table.status));
+    }, [tablesWithStatus, selectedFilters]);
+
+    // Toggle filter
+    const toggleFilter = (status: string) => {
+        setSelectedFilters(prev => {
+            if (prev.includes(status)) {
+                // Remove if already selected
+                return prev.filter(s => s !== status);
+            } else {
+                // Add if not selected
+                return [...prev, status];
+            }
+        });
+    };
+
     // Handlers
     const handleTablePress = (table: any) => {
         if (table.status === 'Livre') {
@@ -183,6 +215,42 @@ export default function MapaMesasScreen() {
         </View>
     );
 
+    const renderFilterChips = () => {
+        const filterOptions = [
+            { status: 'Livre', icon: 'checkmark-circle', color: colors.success },
+            { status: 'Ocupada', icon: 'time', color: colors.warning },
+            { status: 'Pagando', icon: 'card', color: colors.danger }
+        ];
+
+        return (
+            <View style={styles.filterContainer}>
+                <Ionicons name="filter" size={18} color={colors.textSecondary} style={{ marginRight: 8 }} />
+                {filterOptions.map(({ status, icon, color }) => (
+                    <TouchableOpacity
+                        key={status}
+                        style={[
+                            styles.filterChip,
+                            selectedFilters.includes(status) && { ...styles.filterChipActive, borderColor: color, backgroundColor: color + '15' }
+                        ]}
+                        onPress={() => toggleFilter(status)}
+                    >
+                        <Ionicons
+                            name={icon as any}
+                            size={14}
+                            color={selectedFilters.includes(status) ? color : colors.textSecondary}
+                        />
+                        <Text style={[
+                            styles.filterChipText,
+                            selectedFilters.includes(status) && { ...styles.filterChipTextActive, color }
+                        ]}>
+                            {status}
+                        </Text>
+                    </TouchableOpacity>
+                ))}
+            </View>
+        );
+    };
+
     return (
         <View style={styles.container}>
             <BackgroundPattern />
@@ -195,42 +263,85 @@ export default function MapaMesasScreen() {
             ) : (
                 <>
                     {renderEnvTabs()}
+                    {renderFilterChips()}
                     <ScrollView contentContainerStyle={styles.content}>
                         {selectedEnvId ? (
-                            <View style={styles.grid}>
-                                {tablesWithStatus.length === 0 && (
+                            <View>
+                                {filteredTables.length === 0 && (
                                     <View style={styles.emptyStateContainer}>
                                         <Ionicons name="alert-circle-outline" size={48} color={colors.secondary} />
-                                        <Text style={styles.emptyText}>Nenhuma mesa neste ambiente.</Text>
-                                        <Text style={styles.emptySubText}>Cadastre mesas na Configuração.</Text>
+                                        <Text style={styles.emptyText}>Nenhuma mesa {selectedFilters.length < 3 ? 'com esse status' : 'neste ambiente'}.</Text>
+                                        <Text style={styles.emptySubText}>{selectedFilters.length < 3 ? 'Ajuste os filtros acima.' : 'Cadastre mesas na Configuração.'}</Text>
                                     </View>
                                 )}
-                                {tablesWithStatus.map(table => (
-                                    <TouchableOpacity
-                                        key={table.id}
-                                        style={styles.tableWrapper}
-                                        onPress={() => handleTablePress(table)}
-                                    >
-                                        <TableGraphic
-                                            shape={table.shape as any}
-                                            seats={table.seats}
-                                            status={table.status}
-                                            tableNumber={table.number}
-                                            size={70}
-                                        />
 
-                                        <View style={styles.infoTag}>
-                                            {table.status === 'Ocupada' ? (
-                                                <View>
-                                                    <Text style={styles.infoPrice}>R$ {table.order_total?.toFixed(2)}</Text>
-                                                    {table.order_time ? <Text style={styles.infoTime}>{table.order_time}</Text> : null}
+                                {/* Layout Logic: Check if any table has non-zero position */}
+                                {filteredTables.some(t => t.position_x !== 0 || t.position_y !== 0) ? (
+                                    <View style={{ position: 'relative', height: Math.max(600, ...filteredTables.map(t => t.position_y + 150)) }}>
+                                        {filteredTables.map(table => (
+                                            <TouchableOpacity
+                                                key={table.id}
+                                                style={{
+                                                    position: 'absolute',
+                                                    left: table.position_x,
+                                                    top: table.position_y,
+                                                    alignItems: 'center',
+                                                    width: 100,
+                                                    flexDirection: 'column-reverse' // Info tag above table
+                                                }}
+                                                onPress={() => handleTablePress(table)}
+                                            >
+                                                <TableGraphic
+                                                    shape={table.shape as any}
+                                                    seats={table.seats}
+                                                    status={table.status}
+                                                    tableNumber={table.number}
+                                                    size={60}
+                                                />
+
+                                                <View style={styles.infoTag}>
+                                                    {table.status === 'Ocupada' ? (
+                                                        <View>
+                                                            <Text style={styles.infoPrice}>R$ {table.order_total?.toFixed(2)}</Text>
+                                                            {table.order_time ? <Text style={styles.infoTime}>{table.order_time}</Text> : null}
+                                                        </View>
+                                                    ) : (
+                                                        <Text style={styles.infoSeats}>{table.seats} lug.</Text>
+                                                    )}
                                                 </View>
-                                            ) : (
-                                                <Text style={styles.infoSeats}>{table.seats} lug.</Text>
-                                            )}
-                                        </View>
-                                    </TouchableOpacity>
-                                ))}
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                ) : (
+                                    <View style={styles.grid}>
+                                        {filteredTables.map(table => (
+                                            <TouchableOpacity
+                                                key={table.id}
+                                                style={styles.tableWrapper}
+                                                onPress={() => handleTablePress(table)}
+                                            >
+                                                <TableGraphic
+                                                    shape={table.shape as any}
+                                                    seats={table.seats}
+                                                    status={table.status}
+                                                    tableNumber={table.number}
+                                                    size={70}
+                                                />
+
+                                                <View style={styles.infoTag}>
+                                                    {table.status === 'Ocupada' ? (
+                                                        <View>
+                                                            <Text style={styles.infoPrice}>R$ {table.order_total?.toFixed(2)}</Text>
+                                                            {table.order_time ? <Text style={styles.infoTime}>{table.order_time}</Text> : null}
+                                                        </View>
+                                                    ) : (
+                                                        <Text style={styles.infoSeats}>{table.seats} lug.</Text>
+                                                    )}
+                                                </View>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                )}
                             </View>
                         ) : (
                             <View style={styles.emptyState}>
@@ -240,6 +351,19 @@ export default function MapaMesasScreen() {
                     </ScrollView>
                 </>
             )}
+
+            {/* Floating Action Button to Edit Layout */}
+            <TouchableOpacity
+                style={styles.fab}
+                onPress={() => {
+                    // @ts-ignore
+                    navigation.navigate('Admin', {
+                        screen: 'Configuração de Mesas'
+                    });
+                }}
+            >
+                <Ionicons name="settings-outline" size={24} color={colors.white} />
+            </TouchableOpacity>
         </View>
     );
 }
@@ -282,7 +406,7 @@ const styles = StyleSheet.create({
         // Optional: specific width if needed, or let component decide
     },
     infoTag: {
-        marginTop: 4,
+        marginBottom: 6, // Changed from marginTop since tag is now above table
         backgroundColor: '#fff',
         paddingHorizontal: 8,
         paddingVertical: 4,
@@ -303,4 +427,55 @@ const styles = StyleSheet.create({
     emptyStateContainer: { width: '100%', alignItems: 'center', padding: 40 },
     emptyText: { color: '#999', fontSize: 16, marginTop: 10, fontWeight: 'bold' },
     emptySubText: { color: '#ccc', fontSize: 14, marginTop: 5 },
+
+    // Filter Chips
+    filterContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 15,
+        paddingVertical: 12,
+        backgroundColor: '#fff',
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee',
+    },
+    filterChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        marginRight: 8,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: '#ddd',
+        backgroundColor: '#f5f5f5',
+        gap: 4,
+    },
+    filterChipActive: {
+        borderWidth: 1.5,
+    },
+    filterChipText: {
+        fontSize: 12,
+        color: colors.textSecondary,
+        fontWeight: '500',
+    },
+    filterChipTextActive: {
+        fontWeight: 'bold',
+    },
+
+    fab: {
+        position: 'absolute',
+        bottom: 30,
+        right: 30,
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: colors.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+    },
 });
