@@ -5,6 +5,7 @@ import React, { memo, useCallback, useState, useMemo } from 'react';
 import BackgroundPattern from '../components/BackgroundPattern';
 import { useNovoPedido } from '../hooks/useNovoPedido';
 import { colors } from '../theme/colors';
+import { useFocusEffect } from '@react-navigation/native';
 // @ts-ignore
 import PizzaBuilderModal from '../components/PizzaBuilderModal';
 import { Product, PizzaSize, PizzaConfig, Funcionario } from '../types';
@@ -470,24 +471,37 @@ export default function NovoPedidoScreen({ route }: any) {
     setClientName,
     mesa,
     setMesa,
+    tableId,
     setTableId,
+    waiterId,
     setWaiterId,
+    waiters,
+    observations,
+    setObservations,
     updateProduto,
     total,
     selectedItems,
     handleRemoveItem,
     handleSubmit,
     isSubmitting,
-    handleLogout, // Logout handler
-    temperosCaldos = ['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada'],
-    temperosComidas = ['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada'],
-    variacoesEspetinho = ['Simples', 'com Arroz', 'com Macaxeira', 'Completo'],
+    handleLogout,
+    temperosCaldos,
+    temperosComidas,
+    variacoesEspetinho,
     pizzaConfig,
     addPizzaToOrder,
-    extras = [],
-    waiters,
-    waiterId
+    carregarCardapio,
+    extras
   } = useNovoPedido();
+
+  // Refresh menu whenever screen gains focus
+  useFocusEffect(
+    useCallback(() => {
+      console.log('🔄 NovoPedidoScreen focused, refreshing menu...');
+      carregarCardapio();
+    }, [carregarCardapio])
+  );
+
 
   // Handle Route Params (from Map or other screens)
   React.useEffect(() => {
@@ -501,7 +515,8 @@ export default function NovoPedidoScreen({ route }: any) {
     if (route?.params?.waiterId) {
       setWaiterId(route.params.waiterId);
     }
-  }, [route?.params, setMesa, setTableId]);
+  }, [route?.params, setMesa, setTableId, setWaiterId]);
+
 
   // Prepare sections for SectionList (Must be before conditional return)
   const sections = React.useMemo<Section[]>(() => {
