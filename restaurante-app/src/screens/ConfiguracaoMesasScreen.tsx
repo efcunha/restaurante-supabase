@@ -371,43 +371,45 @@ export default function ConfiguracaoMesasScreen({ onClose }: Props) {
                     <ScrollView contentContainerStyle={styles.content}>
                         {selectedEnvId ? (
                             <>
+                                {/* Environment Header */}
+                                <View style={styles.envHeader}>
+                                    <Text style={styles.sectionTitle}>{environments.find(e => e.id === selectedEnvId)?.name}</Text>
+                                    <TouchableOpacity
+                                        style={styles.editEnvButton}
+                                        onPress={() => {
+                                            const env = environments.find(e => e.id === selectedEnvId);
+                                            if (env) {
+                                                setEditingEnv(env);
+                                                setEnvName(env.name);
+                                                setShowEnvModal(true);
+                                            }
+                                        }}
+                                    >
+                                        <Ionicons name="create-outline" size={16} color={colors.primary} />
+                                        <Text style={styles.editEnvButtonText}>Editar</Text>
+                                    </TouchableOpacity>
+                                </View>
+
                                 <View style={styles.actionsBar}>
-                                    <View style={{ flex: 1 }}>
-                                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                            <Text style={styles.sectionTitle}>{environments.find(e => e.id === selectedEnvId)?.name}</Text>
-                                            <TouchableOpacity
-                                                style={styles.editEnvButton}
-                                                onPress={() => {
-                                                    const env = environments.find(e => e.id === selectedEnvId);
-                                                    if (env) {
-                                                        setEditingEnv(env);
-                                                        setEnvName(env.name);
-                                                        setShowEnvModal(true);
-                                                    }
-                                                }}
-                                            >
-                                                <Ionicons name="create-outline" size={18} color={colors.primary} />
-                                                <Text style={styles.editEnvButtonText}>Editar</Text>
-                                            </TouchableOpacity>
-                                        </View>
-                                        <Text style={styles.subtitle}>Mesas ({tables.length})</Text>
+                                    <Text style={styles.subtitle}>Mesas ({tables.length})</Text>
+
+                                    <View style={styles.actionButtons}>
+                                        <TouchableOpacity
+                                            style={styles.addTableButton}
+                                            onPress={() => openTableModal()}
+                                        >
+                                            <Ionicons name="add" size={20} color={colors.white} />
+                                            <Text style={styles.addTableText}>Mesa</Text>
+                                        </TouchableOpacity>
+
+                                        <TouchableOpacity
+                                            style={[styles.addTableButton, { backgroundColor: '#2196F3' }]}
+                                            onPress={openLayoutEditor}
+                                        >
+                                            <Ionicons name="move" size={20} color={colors.white} />
+                                            <Text style={styles.addTableText}>Layout</Text>
+                                        </TouchableOpacity>
                                     </View>
-
-                                    <TouchableOpacity
-                                        style={styles.addTableButton}
-                                        onPress={() => openTableModal()}
-                                    >
-                                        <Ionicons name="add" size={20} color={colors.white} />
-                                        <Text style={styles.addTableText}>Mesa</Text>
-                                    </TouchableOpacity>
-
-                                    <TouchableOpacity
-                                        style={[styles.addTableButton, { backgroundColor: '#2196F3', marginLeft: 8 }]}
-                                        onPress={openLayoutEditor}
-                                    >
-                                        <Ionicons name="move" size={20} color={colors.white} />
-                                        <Text style={styles.addTableText}>Layout</Text>
-                                    </TouchableOpacity>
                                 </View>
 
                                 <View style={styles.grid}>
@@ -668,7 +670,27 @@ const styles = StyleSheet.create({
     addTabText: { color: colors.primary, fontWeight: 'bold', marginLeft: 4 },
 
     content: { padding: 20 },
-    actionsBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+
+    envHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 15,
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee',
+        paddingBottom: 10,
+    },
+
+    actionsBar: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 20
+    },
+
+    actionButtons: {
+        flexDirection: 'row',
+        gap: 10,
+    },
     sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#333' },
     addTableButton: {
         flexDirection: 'row',
@@ -683,24 +705,22 @@ const styles = StyleSheet.create({
     editEnvButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#fff',
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 15,
-        marginLeft: 10,
-        borderWidth: 1,
-        borderColor: colors.primary,
+        backgroundColor: '#f5f5f5',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        marginLeft: 12,
     },
     editEnvButtonText: {
         color: colors.primary,
-        fontSize: 12,
-        fontWeight: 'bold',
-        marginLeft: 4,
+        fontSize: 13,
+        fontWeight: '600',
+        marginLeft: 6,
     },
     subtitle: {
         fontSize: 14,
         color: '#666',
-        marginTop: 2,
+        fontWeight: '500',
     },
 
     grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 15 },

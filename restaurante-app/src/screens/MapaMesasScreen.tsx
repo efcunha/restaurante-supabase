@@ -138,6 +138,28 @@ export default function MapaMesasScreen() {
         return tablesWithStatus.filter(table => selectedFilters.includes(table.status));
     }, [tablesWithStatus, selectedFilters]);
 
+    // Calculate map centering offset
+    const mapCenterOffset = useMemo(() => {
+        // Only valid for Absolute Layout mode
+        const hasAbsolutePosition = filteredTables.some(t => t.position_x !== 0 || t.position_y !== 0);
+        if (!hasAbsolutePosition || filteredTables.length === 0) return 0;
+
+        const tableWidth = 100; // Matches style width
+        const minX = Math.min(...filteredTables.map(t => t.position_x));
+        const maxX = Math.max(...filteredTables.map(t => t.position_x));
+
+        const contentWidth = maxX - minX + tableWidth;
+        const availableWidth = width - 40; // Screen width minus container padding (20 * 2)
+
+        // Calculate shift needed to center the content
+        const targetX = (availableWidth - contentWidth) / 2;
+
+        // If content is wider than screen, we might want to clamp or just center it.
+        // Centering is usually safer visually.
+
+        return targetX - minX;
+    }, [filteredTables]);
+
     // Toggle filter
     const toggleFilter = (status: string) => {
         setSelectedFilters(prev => {
@@ -283,7 +305,7 @@ export default function MapaMesasScreen() {
                                                 key={table.id}
                                                 style={{
                                                     position: 'absolute',
-                                                    left: table.position_x,
+                                                    left: table.position_x + mapCenterOffset,
                                                     top: table.position_y,
                                                     alignItems: 'center',
                                                     width: 100,
