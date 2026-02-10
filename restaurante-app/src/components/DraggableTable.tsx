@@ -14,10 +14,10 @@ export default function DraggableTable({ table, onDragEnd, scale = 1 }: Draggabl
     const pan = useRef(new Animated.ValueXY({ x: table.position_x, y: table.position_y })).current;
     const [isDragging, setIsDragging] = useState(false);
 
-    // Update pan when props change (e.g. initial load or reset)
-    // Be careful not to loop. We trust the parent passes initial pos.
-    // Actually, animated value is stable. If parent updates, we might need useEffect to setValue.
-    // But for this simple editor, parent state updates only on drag end.
+    // Sync internal pan state if props change (useful for resets or initial layout distribution)
+    React.useEffect(() => {
+        pan.setValue({ x: table.position_x, y: table.position_y });
+    }, [table.position_x, table.position_y]);
 
     const panResponder = useRef(
         PanResponder.create({
@@ -79,5 +79,7 @@ export default function DraggableTable({ table, onDragEnd, scale = 1 }: Draggabl
 const styles = StyleSheet.create({
     draggable: {
         position: 'absolute',
+        top: 0,
+        left: 0,
     }
 });
