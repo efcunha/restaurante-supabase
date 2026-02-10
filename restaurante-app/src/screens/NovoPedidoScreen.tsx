@@ -375,7 +375,7 @@ interface Section {
   original?: Product[];
 }
 
-export default function NovoPedidoScreen() {
+export default function NovoPedidoScreen({ route }: any) {
   const [showPizzaModal, setShowPizzaModal] = useState(false);
   const [selectedPizza, setSelectedPizza] = useState<Product | null>(null);
 
@@ -388,6 +388,8 @@ export default function NovoPedidoScreen() {
     setClientName,
     mesa,
     setMesa,
+    setTableId,
+    setWaiterId,
     updateProduto,
     total,
     selectedItems,
@@ -403,6 +405,20 @@ export default function NovoPedidoScreen() {
     extras = []
   } = useNovoPedido();
 
+  // Handle Route Params (from Map or other screens)
+  React.useEffect(() => {
+    if (route?.params?.mesaParam) {
+      setMesa(route.params.mesaParam);
+    }
+    if (route?.params?.tableId) {
+      setTableId(route.params.tableId);
+    }
+    // Optional: Pre-fill waiter if passed
+    if (route?.params?.waiterId) {
+      setWaiterId(route.params.waiterId);
+    }
+  }, [route?.params, setMesa, setTableId]);
+
   // Prepare sections for SectionList (Must be before conditional return)
   const sections = React.useMemo<Section[]>(() => {
     const sectionsData: Section[] = [];
@@ -413,7 +429,7 @@ export default function NovoPedidoScreen() {
     // Section for Pizza Builder - Grouped by Subcategory
     if (cardapio.pizzas && cardapio.pizzas.length > 0) {
       console.log('🍕 [DEBUG] Total pizzas loaded:', cardapio.pizzas.length);
-      
+
       // Deduplicate pizzas by name (Case Insensitive) AND Filter Active
       const uniquePizzas: Product[] = [];
       const seenNames = new Set<string>();
@@ -591,7 +607,7 @@ export default function NovoPedidoScreen() {
       }).filter(p => !isNaN(p) && p > 0) : [];
       const minPrice = validPrices.length > 0 ? Math.min(...validPrices) : 0;
       const maxPrice = validPrices.length > 0 ? Math.max(...validPrices) : 0;
-      
+
       // Format price range
       const formatPriceRange = (min: number, max: number): string => {
         if (min === max || validPrices.length === 1) {

@@ -1,0 +1,306 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+    View,
+    Text,
+    StyleSheet,
+    TouchableOpacity,
+    ScrollView,
+    Dimensions,
+    ActivityIndicator,
+    Alert
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { colors } from '../theme/colors';
+import BackgroundPattern from '../components/BackgroundPattern';
+import TableService from '../services/TableService';
+import SupabaseOrderService from '../services/supabase/SupabaseOrderService';
+import { Environment, Table, Order } from '../types';
+import { useAuth } from '../context/AuthContext';
+
+const { width } = Dimensions.get('window');
+const SAFE_AREA_TOP = 50;
+
+export default function MapaMesasScreen() {
+    const navigation = useNavigation();
+    const { user } = useAuth();
+
+    const [loading, setLoading] = useState(true);
+    const [environments, setEnvironments] = useState<Environment[]>([]);
+    const [selectedEnvId, setSelectedEnvId] = useState<string | null>(null);
+    const [tables, setTables] = useState<Table[]>([]);
+    const [activeOrders, setActiveOrders] = useState<Order[]>([]);
+
+    // Load Environments and Tables
+    const loadStructure = async () => {
+        if (!user?.companyId) return;
+        try {
+            const envs = await TableService.getEnvironments(user.companyId);
+            setEnvironments(envs);
+            if (envs.length > 0 && !selectedEnvId) {
+                setSelectedEnvId(envs[0].id);
+            }
+
+            const allTables = await TableService.getTables(user.companyId);
+            setTables(allTables);
+        } catch (error) {
+            console.error('Error loading structure:', error);
+            Alert.alert('Erro', 'Falha ao carregar estrutura de mesas.');
+        }
+    };
+
+    // Load once on mount or when companyId changes
+    useEffect(() => {
+        loadStructure();
+        setLoading(false);
+    }, [user?.companyId]);
+
+    // Real-time Orders Listener
+    useEffect(() => {
+        if (!user?.companyId) return;
+
+        const unsubscribe = SupabaseOrderService.listenToActiveOrders(user.companyId, ({ orders }) => {
+            // Filter only truly active orders (not paid/delivered if we want strict "occupied")
+            // For now, let's consider anything not 'delivered' 'cancelled' or 'paid' as active on table
+            // Or maybe 'isPago' means table is free?
+            // Usually table is occupied until client leaves. 'isPago' might mean they just paid.
+            // Let's filter out 'cancelled' and maybe 'delivered' if delivered means "done".
+            // But in restaurants, delivered means food is on table. Table is still occupied.
+            // So mainly filter 'cancelled' and potentially 'closed' (if we had closed status).
+            // Assuming 'isPago' + 'delivered' might mean ready to leave.
+            // For simplicity: Show all non-cancelled, non-paid orders.
+            const active = orders.filter(o =>
+                o.status !== 'cancelada' &&
+                o.status !== 'cancelled' &&
+                !o.isPago
+            );
+            setActiveOrders(active);
+        });
+
+        return () => {
+            if (unsubscribe) unsubscribe();
+        };
+    }, [user?.companyId]);
+
+    // Derived state: Tables with status
+    const tablesWithStatus = useMemo(() => {
+        const envTables = tables.filter(t => t.environment_id === selectedEnvId);
+
+        return envTables.map(table => {
+            // Find orders for this table
+            // Matching by table.number (string) vs order.mesa (string)
+            const tableOrders = activeOrders.filter(o => o.mesa === table.number);
+
+            let status: Table['status'] = 'Livre';
+            let total = 0;
+            let time = '';
+
+            if (tableOrders.length > 0) {
+                status = 'Ocupada';
+                // Check if asking for bill (not implemented yet, but could be flag)
+
+                // Sum total
+                total = tableOrders.reduce((acc, o) => acc + (o.totalPrice || 0), 0);
+
+                // Oldest order time
+                const stats = tableOrders.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+                if (stats.length > 0) {
+                    time = stats[0].horarioCriacao;
+                }
+            }
+
+            return {
+                ...table,
+                status,
+                order_total: total,
+                order_time: time,
+                activeOrders: tableOrders // Keep ref for click handler
+            };
+        });
+    }, [tables, selectedEnvId, activeOrders]);
+
+    // Handlers
+    const handleTablePress = (table: any) => {
+        if (table.status === 'Livre') {
+            // New Order
+            // @ts-ignore
+            navigation.navigate('Novo Pedido', {
+                mesaParam: table.number, // Pass as param to pre-fill
+                tableId: table.id
+            });
+        } else {
+            // View Tables Orders
+            // For V1, if multiple orders, specific logic needed.
+            // If single, open it.
+            if (table.activeOrders.length === 1) {
+                // Navigate to details or edit
+                // Assuming we have a way to edit/view order.
+                // If not, maybe just 'NovoPedido' with the table again to add more items?
+                // @ts-ignore
+                navigation.navigate('NovoPedido', {
+                    mesaParam: table.number,
+                    tableId: table.id,
+                    existingOrders: table.activeOrders
+                });
+            } else {
+                // Multiple orders?
+                // @ts-ignore
+                navigation.navigate('Novo Pedido', {
+                    mesaParam: table.number,
+                    tableId: table.id,
+                    existingOrders: table.activeOrders
+                });
+            }
+        }
+    };
+
+    // Render
+    const renderHeader = () => (
+        <View style={styles.header}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                <Ionicons name="arrow-back" size={24} color={colors.white} />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Mapa de Mesas</Text>
+            <View style={{ width: 24 }} />
+        </View>
+    );
+
+    const renderEnvTabs = () => (
+        <View style={styles.tabsContainer}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsScroll}>
+                {environments.map(env => (
+                    <TouchableOpacity
+                        key={env.id}
+                        style={[styles.tab, selectedEnvId === env.id && styles.tabActive]}
+                        onPress={() => setSelectedEnvId(env.id)}
+                    >
+                        <Text style={[styles.tabText, selectedEnvId === env.id && styles.tabTextActive]}>
+                            {env.name}
+                        </Text>
+                    </TouchableOpacity>
+                ))}
+            </ScrollView>
+        </View>
+    );
+
+    return (
+        <View style={styles.container}>
+            <BackgroundPattern />
+            {renderHeader()}
+
+            {loading ? (
+                <View style={styles.center}>
+                    <ActivityIndicator size="large" color={colors.primary} />
+                </View>
+            ) : (
+                <>
+                    {renderEnvTabs()}
+                    <ScrollView contentContainerStyle={styles.content}>
+                        {selectedEnvId ? (
+                            <View style={styles.grid}>
+                                {tablesWithStatus.length === 0 && (
+                                    <View style={styles.emptyStateContainer}>
+                                        <Ionicons name="alert-circle-outline" size={48} color={colors.secondary} />
+                                        <Text style={styles.emptyText}>Nenhuma mesa neste ambiente.</Text>
+                                        <Text style={styles.emptySubText}>Cadastre mesas na Configuração.</Text>
+                                    </View>
+                                )}
+                                {tablesWithStatus.map(table => (
+                                    <TouchableOpacity
+                                        key={table.id}
+                                        style={styles.tableWrapper}
+                                        onPress={() => handleTablePress(table)}
+                                    >
+                                        <TableGraphic
+                                            shape={table.shape as any}
+                                            seats={table.seats}
+                                            status={table.status}
+                                            tableNumber={table.number}
+                                            size={70}
+                                        />
+
+                                        <View style={styles.infoTag}>
+                                            {table.status === 'Ocupada' ? (
+                                                <View>
+                                                    <Text style={styles.infoPrice}>R$ {table.order_total?.toFixed(2)}</Text>
+                                                    {table.order_time ? <Text style={styles.infoTime}>{table.order_time}</Text> : null}
+                                                </View>
+                                            ) : (
+                                                <Text style={styles.infoSeats}>{table.seats} lug.</Text>
+                                            )}
+                                        </View>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        ) : (
+                            <View style={styles.emptyState}>
+                                <Text style={styles.emptyText}>Selecione um ambiente</Text>
+                            </View>
+                        )}
+                    </ScrollView>
+                </>
+            )}
+        </View>
+    );
+}
+
+import TableGraphic from '../components/TableGraphic';
+
+// ... (keep existing imports, but remove unused if any)
+
+const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingTop: SAFE_AREA_TOP,
+        paddingHorizontal: 20,
+        paddingBottom: 15,
+        backgroundColor: colors.primary,
+    },
+    headerTitle: { fontSize: 20, fontWeight: 'bold', color: colors.white },
+    backButton: { padding: 5 },
+
+    tabsContainer: { height: 60, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee' },
+    tabsScroll: { paddingHorizontal: 15, alignItems: 'center' },
+    tab: {
+        paddingVertical: 8, paddingHorizontal: 16, marginRight: 10, borderRadius: 20,
+        backgroundColor: '#f0f0f0', borderWidth: 1, borderColor: '#e0e0e0',
+    },
+    tabActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+    tabText: { color: '#666', fontWeight: '600' },
+    tabTextActive: { color: '#fff' },
+
+    content: { padding: 20, paddingBottom: 100 },
+    grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 30 },
+
+    tableWrapper: {
+        alignItems: 'center',
+        marginBottom: 10,
+        // Optional: specific width if needed, or let component decide
+    },
+    infoTag: {
+        marginTop: 4,
+        backgroundColor: '#fff',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.2,
+        shadowRadius: 1.41,
+        elevation: 2,
+        minWidth: 60,
+        alignItems: 'center'
+    },
+    infoPrice: { fontSize: 12, fontWeight: 'bold', color: colors.danger },
+    infoTime: { fontSize: 10, color: '#666' },
+    infoSeats: { fontSize: 12, color: '#666' },
+
+    emptyState: { padding: 40, alignItems: 'center' },
+    emptyStateContainer: { width: '100%', alignItems: 'center', padding: 40 },
+    emptyText: { color: '#999', fontSize: 16, marginTop: 10, fontWeight: 'bold' },
+    emptySubText: { color: '#ccc', fontSize: 14, marginTop: 5 },
+});
