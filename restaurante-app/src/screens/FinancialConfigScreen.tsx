@@ -7,7 +7,7 @@ import BackgroundPattern from '../components/BackgroundPattern';
 import { supabase } from '../config/SupabaseConfig';
 
 interface Props {
-  onClose?: () => void;
+    onClose?: () => void;
 }
 
 export default function FinancialConfigScreen({ onClose }: Props) {
@@ -27,13 +27,13 @@ export default function FinancialConfigScreen({ onClose }: Props) {
         if (!user?.companyId) return;
         try {
             setLoading(true);
-            
+
             const { data, error } = await supabase
-                .from('settings')
+                .from('app_settings')
                 .select('*')
                 .eq('company_id', user.companyId)
                 .eq('key', 'financeiro')
-                .single();
+                .maybeSingle();
 
             if (error && error.code !== 'PGRST116') throw error;
 
@@ -55,7 +55,7 @@ export default function FinancialConfigScreen({ onClose }: Props) {
             setSaving(true);
 
             const { error } = await supabase
-                .from('settings')
+                .from('app_settings')
                 .upsert({
                     company_id: user.companyId,
                     key: 'financeiro',
