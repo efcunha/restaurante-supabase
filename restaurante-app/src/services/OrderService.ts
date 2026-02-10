@@ -180,18 +180,20 @@ class OrderService {
    * - Agora aceita categoryMap para enriquecer itens com categoria
    */
   createOrder(
-    orderId: string, 
-    clientName: string, 
-    items: string[], 
-    observations: string, 
-    comandaNumber: string = '', 
-    createdBy: string = '', 
-    createdByName: string = '', 
-    totalPrice: number = 0, 
-    isPago: boolean = false, 
-    mesa: string = '', 
+    orderId: string,
+    clientName: string,
+    items: string[],
+    observations: string,
+    comandaNumber: string = '',
+    createdBy: string = '',
+    createdByName: string = '',
+    totalPrice: number = 0,
+    isPago: boolean = false,
+    mesa: string = '',
     categoryMap: any = null,
-    priceMap: Record<string, number> | null = null
+    priceMap: Record<string, number> | null = null,
+    tableId: string = '',
+    waiterId: string = ''
   ): Order {
     const now = new Date();
     const nowISO = now.toISOString();
@@ -276,6 +278,8 @@ class OrderService {
       criadoPor: createdBy, // Alias para estatísticas
       criadoPorNome: createdByName, // Alias para compatibilidade com telas
       priceMap: priceMap || undefined,
+      tableId,
+      waiterId,
     };
     return order;
   }
@@ -295,7 +299,7 @@ class OrderService {
         updates.movidoParaMontagemPorNome = movidoPorNome;
         // Also update churrasqueira time if it wasn't set (fallback)
         if (!order.timeInChurrasqueira) {
-             updates.timeInChurrasqueira = now;
+          updates.timeInChurrasqueira = now;
         }
         break;
       case 'ready':

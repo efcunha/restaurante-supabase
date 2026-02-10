@@ -62,7 +62,7 @@ export class QueryOptimizerService {
     try {
       // Execute EXPLAIN ANALYZE to get query execution plan
       const explainQuery = `EXPLAIN (ANALYZE, FORMAT JSON) ${sql}`;
-      
+
       const { data, error } = await supabase.rpc('execute_sql', {
         query: explainQuery
       });
@@ -71,26 +71,37 @@ export class QueryOptimizerService {
         throw new Error(`Failed to analyze query: ${error.message}`);
       }
 
-      // The RPC returns an array with a single JSONB result
-      // Parse the JSONB to get the execution plan array
-      let planArray: any[];
-      
+      // The RPC returns the JSONB result directly.
+      // Since FORMAT JSON is used, it should be an array of query plans.
+      let planArray: any[] = [];
+      let planData: any = null;
+
       if (Array.isArray(data)) {
-        // data is the result array from the RPC
-        const resultJson = data[0]?.result;
-        if (resultJson && Array.isArray(resultJson)) {
-          planArray = resultJson;
-        } else {
-          throw new Error('Invalid execution plan format - expected array');
+        // Case 1: data is the plan array itself (most common with RPC returning JSONB)
+        if (data.length > 0 && (data[0]['Plan'] || data[0]['QUERY PLAN'])) {
+          planArray = data;
         }
-      } else {
-        throw new Error('Invalid RPC response format');
+        // Case 2: data is wrapped in a 'result' property (legacy or specific RPC config)
+        else if (data[0]?.result && Array.isArray(data[0].result)) {
+          planArray = data[0].result;
+        }
+        // Case 3: Just treat data as the array if it has valid items
+        else if (data.length > 0) {
+          planArray = data;
+        }
       }
 
-      // The plan array contains objects with "QUERY PLAN" key
-      const planData = planArray[0]?.['QUERY PLAN'];
-      
+      if (planArray.length === 0) {
+        console.warn('[QueryOptimizer] Unexpected RPC response format:', JSON.stringify(data));
+        throw new Error('Invalid execution plan format - expected array');
+      }
+
+      // The plan array contains objects with "Plan" (JSON) or "QUERY PLAN" (Text) key
+      planData = planArray[0]?.['Plan'] || planArray[0]?.['QUERY PLAN'];
+
       if (!planData) {
+        // Sometimes the plan is the object itself if parsing failed in a specific way
+        console.warn('[QueryOptimizer] No Plan found in:', JSON.stringify(planArray[0]));
         throw new Error('No QUERY PLAN found in response');
       }
 
@@ -98,7 +109,7 @@ export class QueryOptimizerService {
       return this.parseExecutionPlan(planData, sql);
     } catch (error) {
       console.error('[QueryOptimizer] Error analyzing query:', error);
-      
+
       // Return a basic analysis on error
       return {
         executionTime: 0,
@@ -149,7 +160,7 @@ export class QueryOptimizerService {
       indexesUsed,
       suggestions,
       severity,
-      executionPlan: plan,
+      executionPlan: plan, // Keep as is for internal use
     };
   }
 
@@ -270,7 +281,7 @@ export class QueryOptimizerService {
   async explainQuery(sql: string): Promise<ExecutionPlan> {
     try {
       const explainQuery = `EXPLAIN (FORMAT JSON) ${sql}`;
-      
+
       const { data, error } = await supabase.rpc('execute_sql', {
         query: explainQuery
       });
@@ -279,21 +290,25 @@ export class QueryOptimizerService {
         throw new Error(`Failed to explain query: ${error.message}`);
       }
 
-      // Parse the RPC response
-      let planArray: any[];
-      
+      // Parse the RPC response (same logic as analyzeQuery)
+      let planArray: any[] = [];
+      let planData: any = null;
+
       if (Array.isArray(data)) {
-        const resultJson = data[0]?.result;
-        if (resultJson && Array.isArray(resultJson)) {
-          planArray = resultJson;
-        } else {
-          throw new Error('Invalid execution plan format - expected array');
+        if (data.length > 0 && (data[0]['Plan'] || data[0]['QUERY PLAN'])) {
+          planArray = data;
+        } else if (data[0]?.result && Array.isArray(data[0].result)) {
+          planArray = data[0].result;
+        } else if (data.length > 0) {
+          planArray = data;
         }
-      } else {
-        throw new Error('Invalid RPC response format');
       }
 
-      const planData = planArray[0]?.['QUERY PLAN'];
+      if (planArray.length === 0) {
+        throw new Error('Invalid execution plan format - expected array');
+      }
+
+      planData = planArray[0]?.['Plan'] || planArray[0]?.['QUERY PLAN'];
 
       if (!planData) {
         throw new Error('No QUERY PLAN found in response');
@@ -324,7 +339,7 @@ export class QueryOptimizerService {
     if (this.isSupabaseQueryBuilder(query)) {
       return this.optimizeSupabaseQuery(query);
     }
-    
+
     // If query is a SQL string, return as-is (optimization happens at analysis level)
     return query;
   }
@@ -333,9 +348,9 @@ export class QueryOptimizerService {
    * Check if object is a Supabase query builder
    */
   private isSupabaseQueryBuilder(query: any): boolean {
-    return query && typeof query === 'object' && 
-           typeof query.select === 'function' &&
-           typeof query.filter === 'function';
+    return query && typeof query === 'object' &&
+      typeof query.select === 'function' &&
+      typeof query.filter === 'function';
   }
 
   /**
@@ -346,11 +361,11 @@ export class QueryOptimizerService {
     // 1. Ensure company_id filter is present (for RLS optimization)
     // 2. Add appropriate ordering
     // 3. Limit results to prevent large result sets
-    
+
     // Note: Actual query modification depends on the query builder API
     // This is a framework for optimization - specific optimizations
     // will be applied based on query patterns
-    
+
     return query;
   }
 
@@ -388,7 +403,7 @@ export class QueryOptimizerService {
     // In PostgreSQL/Supabase, the query optimizer handles operation ordering
     // This method is a placeholder for any client-side reordering logic
     // that might be beneficial
-    
+
     return query;
   }
 
@@ -419,7 +434,7 @@ export class QueryOptimizerService {
 
         if (isRapidSuccession) {
           const totalTime = executions.reduce((sum, e) => sum + e.executionTime, 0);
-          
+
           patterns.set(pattern, {
             queryPattern: pattern,
             occurrences: executions.length,
@@ -441,11 +456,11 @@ export class QueryOptimizerService {
 
     for (const query of queries) {
       const pattern = this.normalizeQuery(query.query);
-      
+
       if (!groups.has(pattern)) {
         groups.set(pattern, []);
       }
-      
+
       groups.get(pattern)!.push(query);
     }
 
@@ -479,10 +494,10 @@ export class QueryOptimizerService {
    */
   private generateN1Suggestion(pattern: string, occurrences: number, totalTime: number): string {
     const avgTime = totalTime / occurrences;
-    
+
     let suggestion = `N+1 query pattern detected: ${occurrences} similar queries executed in rapid succession. `;
     suggestion += `Total time: ${totalTime.toFixed(2)}ms (avg: ${avgTime.toFixed(2)}ms per query). `;
-    
+
     // Provide specific suggestions based on query pattern
     if (pattern.includes('WHERE') && pattern.includes('=')) {
       suggestion += 'Consider using a JOIN or IN clause to fetch all related data in a single query.';
@@ -791,7 +806,7 @@ export class QueryOptimizerService {
   shouldUsePreparedStatement(query: string): boolean {
     const normalized = this.normalizeQuery(query);
     const statement = this.preparedStatements.get(normalized);
-    
+
     return statement
       ? statement.executionCount >= this.PREPARED_STATEMENT_THRESHOLD
       : false;
