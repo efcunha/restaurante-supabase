@@ -49,9 +49,9 @@ export const RolePermissions = {
 
 // Telas permitidas por papel
 export const RoleScreens = {
-  [Roles.ADMIN]: ['Novo Pedido', 'Cozinha', 'Montagem', 'Prontos', 'Comandas', 'Admin'],
-  [Roles.GERENTE]: ['Novo Pedido', 'Cozinha', 'Montagem', 'Prontos', 'Comandas', 'Admin'],
-  [Roles.GARCOM]: ['Novo Pedido', 'Comandas'],
+  [Roles.ADMIN]: ['Novo Pedido', 'Cozinha', 'Montagem', 'Prontos', 'Comandas', 'Mapa', 'Admin'],
+  [Roles.GERENTE]: ['Novo Pedido', 'Cozinha', 'Montagem', 'Prontos', 'Comandas', 'Mapa', 'Admin'],
+  [Roles.GARCOM]: ['Novo Pedido', 'Comandas', 'Mapa', 'Prontos'],
   [Roles.COZINHEIRO]: ['Cozinha'],
   [Roles.MONTAGEM]: ['Montagem', 'Prontos'],
 };

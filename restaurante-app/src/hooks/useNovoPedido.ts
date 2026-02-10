@@ -51,6 +51,7 @@ interface UseNovoPedidoReturn {
     variacoesEspetinho: string[];
     pizzaConfig: PizzaConfig | null;
     addPizzaToOrder: (sizeName: string, flavors: Product[], selectedBorda?: any, selectedAdicionais?: any[]) => void;
+    carregarCardapio: () => Promise<void>;
     extras: any[];
 }
 
@@ -710,6 +711,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
         variacoesEspetinho,
         pizzaConfig,
         addPizzaToOrder,
+        carregarCardapio,
         extras
     };
 }

@@ -73,8 +73,8 @@ export default function EstoqueScreen({ onClose }: Props) {
         .single();
 
       let cats = [];
-      if (data && data.value && data.value.stockCategories) {
-        cats = data.value.stockCategories;
+      if (data && data.value && data.value.stock_categories) {
+        cats = data.value.stock_categories;
       } else {
         cats = [
           { id: 'descartaveis', nome: 'Descartáveis', icon: '🥤' },
