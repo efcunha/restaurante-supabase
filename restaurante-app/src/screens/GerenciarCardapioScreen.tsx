@@ -46,7 +46,7 @@ function VariacaoItem({ variacao, onSalvar, onEditarCompleto }: VariacaoItemProp
           >
             <Text style={styles.variacaoSalvarText}>Salvar</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity
             style={[styles.variacaoSalvarBtn, { backgroundColor: '#E5B84A', marginLeft: 8 }]}
             onPress={() => onEditarCompleto(variacao)}
@@ -65,7 +65,7 @@ interface GerenciarCardapioScreenProps {
 
 export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioScreenProps) {
   const { user } = useAuth();
-  
+
   // Estados para cadastro
   const [nome, setNome] = useState('');
   const [preco, setPreco] = useState('');
@@ -136,21 +136,21 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
     if (!product.prices || Object.keys(product.prices).length === 0) {
       return [];
     }
-    
+
     // Use pizza sizes from database configuration (pizzaSizes state)
     const sizeOrder = pizzaSizes.map(s => s.name);
-    
+
     // Sort sizes: standard order first, then alphabetically
     const sortedSizes = Object.keys(product.prices).sort((a, b) => {
       const indexA = sizeOrder.findIndex(s => a.toLowerCase().includes(s.toLowerCase()));
       const indexB = sizeOrder.findIndex(s => b.toLowerCase().includes(s.toLowerCase()));
-      
+
       if (indexA !== -1 && indexB !== -1) return indexA - indexB;
       if (indexA !== -1) return -1;
       if (indexB !== -1) return 1;
       return a.localeCompare(b);
     });
-    
+
     // Create pseudo-Product objects for each size
     return sortedSizes.map(sizeName => ({
       ...product,
@@ -199,43 +199,43 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
         if (settings.variacoesEspetinho) setVariacoesEspetinho(settings.variacoesEspetinho);
         console.log('[GerenciarCardapio] Pizza ingredients from DB:', settings.ingredientesPizza);
         if (settings.ingredientesPizza && settings.ingredientesPizza.length > 0) {
-            setIngredientesPizza(settings.ingredientesPizza);
+          setIngredientesPizza(settings.ingredientesPizza);
         } else {
-             // Default ingredients if DB is empty
-             const defaultIngredients = ['Milho', 'Bacon', 'Ovo', 'Cebola', 'Azeitona', 'Tomate', 'Pimentão', 'Orégano', 'Mussarela', 'Catupiry', 'Presunto', 'Frango'];
-             setIngredientesPizza(defaultIngredients);
-             
-             // OPTIONAL: Save defaults to DB immediately so it's not "hardcoded" next time
-             // We can do this silently
-             const newSettings = { ...settings, ingredientesPizza: defaultIngredients };
-             supabase.from('companies').update({ settings: newSettings }).eq('id', user.companyId).then(({ error }) => {
-                 if (error) console.error('Error saving default ingredients:', error);
-                 else console.log('Default ingredients saved to DB');
-             });
+          // Default ingredients if DB is empty
+          const defaultIngredients = ['Milho', 'Bacon', 'Ovo', 'Cebola', 'Azeitona', 'Tomate', 'Pimentão', 'Orégano', 'Mussarela', 'Catupiry', 'Presunto', 'Frango'];
+          setIngredientesPizza(defaultIngredients);
+
+          // OPTIONAL: Save defaults to DB immediately so it's not "hardcoded" next time
+          // We can do this silently
+          const newSettings = { ...settings, ingredientesPizza: defaultIngredients };
+          supabase.from('companies').update({ settings: newSettings }).eq('id', user.companyId).then(({ error }) => {
+            if (error) console.error('Error saving default ingredients:', error);
+            else console.log('Default ingredients saved to DB');
+          });
         }
 
         if (settings.pizzaConfig) {
           setPizzaConfig(settings.pizzaConfig);
           if (settings.pizzaConfig.sizes) setPizzaSizes(settings.pizzaConfig.sizes);
         } else {
-             // Defaults if not found
-             const defaultSizes = [
-                { name: 'Fatia', maxFlavors: 1 },
-                { name: 'Broto', maxFlavors: 1 },
-                { name: 'Média', maxFlavors: 2 },
-                { name: 'Grande/Família', maxFlavors: 4 }
-             ];
-             setPizzaConfig({ sizes: defaultSizes, pricingMode: 'HIGHER' });
-             setPizzaSizes(defaultSizes);
-        }
-      } else {
-        // Defaults if no settings found
-        const defaultSizes = [
+          // Defaults if not found
+          const defaultSizes = [
             { name: 'Fatia', maxFlavors: 1 },
             { name: 'Broto', maxFlavors: 1 },
             { name: 'Média', maxFlavors: 2 },
             { name: 'Grande/Família', maxFlavors: 4 }
-         ];
+          ];
+          setPizzaConfig({ sizes: defaultSizes, pricingMode: 'HIGHER' });
+          setPizzaSizes(defaultSizes);
+        }
+      } else {
+        // Defaults if no settings found
+        const defaultSizes = [
+          { name: 'Fatia', maxFlavors: 1 },
+          { name: 'Broto', maxFlavors: 1 },
+          { name: 'Média', maxFlavors: 2 },
+          { name: 'Grande/Família', maxFlavors: 4 }
+        ];
         setPizzaConfig({ sizes: defaultSizes, pricingMode: 'HIGHER' });
         setPizzaSizes(defaultSizes);
       }
@@ -255,22 +255,20 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
       }
 
       console.log('Fetching products from Supabase for Manage Menu...');
+
+      // Optimized query: select only needed fields instead of SELECT *
       const { data, error } = await supabase
         .from('products')
-        .select('*')
-        .eq('company_id', user.companyId);
+        .select('id, name, price, category, subcategory, available, active, created_at, prices, ingredients, custom_ingredients, inventory_items')
+        .eq('company_id', user.companyId)
+        .order('category', { ascending: true })
+        .order('name', { ascending: true });
 
       if (error) {
-          throw error;
+        throw error;
       }
 
-      // Map snake_case database fields to camelCase app state if needed
-      // Actually Product type uses camelCase in app, but database is lower case?
-      // Wait, Supabase client returns what is in the columns.
-      // Columns: name, price, category, active, created_at, prices, ingredients
-      // Product type (src/types.ts): name, price (number), createdAt (number/string), etc.
-      // We need mapping!
-
+      // Map snake_case database fields to camelCase app state
       const produtosData = (data || []).map((p: any) => ({
         id: p.id,
         name: p.name,
@@ -290,47 +288,26 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
       console.log(`[GerenciarCardapio] Inactive products: ${inactiveCount}`);
       console.log(`[GerenciarCardapio] Categories found:`, [...new Set(produtosData.map(p => p.category))]);
 
-
-      const ordemCategorias: Record<string, number> = {
-        'espetinho-simples': 1,
-        'espetinho-especial': 2,
-        'caldo': 3,
-        'porcao': 4,
-        'bebida': 5,
-        'comida': 6,
-        'outro': 7
-      };
-
-      produtosData.sort((a, b) => {
-        const catA = a.category?.toLowerCase() || 'outro';
-        const catB = b.category?.toLowerCase() || 'outro';
-        const ordemA = ordemCategorias[catA] || 99;
-        const ordemB = ordemCategorias[catB] || 99;
-
-        if (ordemA !== ordemB) {
-          return ordemA - ordemB;
-        }
-        return a.name.localeCompare(b.name);
-      });
-
+      // Sorting is now done by database, no need to sort again
       setProdutos(produtosData);
-    } catch (error) { 
-       console.error(error);
-       Alert.alert('Erro', 'Não foi possível carregar os produtos');
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Erro', 'Não foi possível carregar os produtos');
     } finally {
       setLoadingProdutos(false);
     }
   };
 
+
   // Helper function to handle database errors, especially duplicate key violations
   const handleDatabaseError = (error: any, productName: string): string => {
     console.error('Database error:', error);
-    
+
     // Check for unique constraint violation (PostgreSQL error code 23505)
     if (error.code === '23505' || error.message?.includes('unique_product_per_company')) {
       return `Já existe um produto "${productName}" nesta categoria. Escolha outro nome ou edite o produto existente.`;
     }
-    
+
     // Generic error message
     return 'Erro ao salvar o produto. Tente novamente.';
   };
@@ -389,8 +366,8 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
           const sanitized = p.toString().replace(',', '.');
           const val = parseFloat(sanitized);
           if (!isNaN(val)) {
-             pricesToSave[size.name] = val;
-             hasPrice = true;
+            pricesToSave[size.name] = val;
+            hasPrice = true;
           }
         }
       });
@@ -477,7 +454,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
       }
     }
   };
-  
+
   // HELPERS FOR LISTS
   const getListaAtiva = () => {
     if (tipoTemperoAtivo === 'caldos') return temperosCaldos || [];
@@ -487,20 +464,20 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
   };
 
   const salvarListas = async (
-    novaListaCaldos?: string[], 
-    novaListaComidas?: string[], 
-    novaListaVariacoes?: string[], 
+    novaListaCaldos?: string[],
+    novaListaComidas?: string[],
+    novaListaVariacoes?: string[],
     novaListaPizzas?: string[]
   ) => {
     if (!user?.companyId) return;
-    
+
     // Construct new settings object merge
     const updates: any = {};
     if (novaListaCaldos !== undefined) updates.temperosCaldos = novaListaCaldos;
     if (novaListaComidas !== undefined) updates.temperosComidas = novaListaComidas;
     if (novaListaVariacoes !== undefined) updates.variacoesEspetinho = novaListaVariacoes;
     if (novaListaPizzas !== undefined) updates.ingredientesPizza = novaListaPizzas;
-    
+
     // Always include pizzaConfig to persist size changes if any
     updates.pizzaConfig = { ...pizzaConfig, sizes: pizzaSizes };
 
@@ -508,80 +485,81 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
     // Actually, simple UPDATE on a JSONB column replaces the whole value or needs specific syntax.
     // Safer to read-modify-write for JSONB columns if we don't use 'jsonb_set'.
     // Or we can just read what we have in state (which should be current) + updates.
-    
+
     // Let's assume the state variables (temperosCaldos etc) are up to date.
-    
+
     const newSettings = {
-        temperosCaldos: novaListaCaldos !== undefined ? novaListaCaldos : temperosCaldos,
-        temperosComidas: novaListaComidas !== undefined ? novaListaComidas : temperosComidas,
-        variacoesEspetinho: novaListaVariacoes !== undefined ? novaListaVariacoes : variacoesEspetinho,
-        ingredientesPizza: novaListaPizzas !== undefined ? novaListaPizzas : ingredientesPizza,
-        pizzaConfig: { ...pizzaConfig, sizes: pizzaSizes }
+      temperosCaldos: novaListaCaldos !== undefined ? novaListaCaldos : temperosCaldos,
+      temperosComidas: novaListaComidas !== undefined ? novaListaComidas : temperosComidas,
+      variacoesEspetinho: novaListaVariacoes !== undefined ? novaListaVariacoes : variacoesEspetinho,
+      ingredientesPizza: novaListaPizzas !== undefined ? novaListaPizzas : ingredientesPizza,
+      pizzaConfig: { ...pizzaConfig, sizes: pizzaSizes }
     };
 
     try {
-        const { error } = await supabase
-            .from('companies')
-            .update({ settings: newSettings })
-            .eq('id', user.companyId);
+      const { error } = await supabase
+        .from('companies')
+        .update({ settings: newSettings })
+        .eq('id', user.companyId);
 
-        if (error) throw error;
+      if (error) throw error;
     } catch (e) {
-        console.error('Erro ao salvar configurações:', e);
-        Alert.alert('Erro', 'Falha ao salvar configurações');
+      console.error('Erro ao salvar configurações:', e);
+      Alert.alert('Erro', 'Falha ao salvar configurações');
     }
   };
-  
-  const toggleGrupoAtivo = async (variacoes: Product[], todosAtivos: boolean) => {
-      try {
-          const ids = variacoes.map(v => v.id);
-          const { error } = await supabase
-            .from('products')
-            .update({ available: !todosAtivos }) // DB Column is available
-            .in('id', ids);
 
-          if (error) throw error;
-          carregarProdutos();
-      } catch (e) { console.error(e);
-          Alert.alert('Erro', 'Falha ao atualizar status');
-      }
+  const toggleGrupoAtivo = async (variacoes: Product[], todosAtivos: boolean) => {
+    try {
+      const ids = variacoes.map(v => v.id);
+      const { error } = await supabase
+        .from('products')
+        .update({ available: !todosAtivos }) // DB Column is available
+        .in('id', ids);
+
+      if (error) throw error;
+      carregarProdutos();
+    } catch (e) {
+      console.error(e);
+      Alert.alert('Erro', 'Falha ao atualizar status');
+    }
   };
-  
+
   const abrirEdicao = (produto: Product) => {
     setEditando(produto);
     setEditNome(produto.name);
     setEditCategoria(produto.category);
-    
+
     console.log('✏️ [abrirEdicao] Produto:', produto.name, 'Categoria:', produto.category);
     console.log('🍕 [abrirEdicao] Subcategoria:', produto.subcategory);
     console.log('🍕 [abrirEdicao] Ingredientes:', produto.ingredients);
-    
+
     // Check loosely for 'pizza'
     const categoryLower = produto.category?.toLowerCase() || '';
     if (categoryLower.includes('pizza')) {
-        // Handle prices mapping
-        const pricesStr: Record<string, string> = {};
-        if (produto.prices) {
-            Object.entries(produto.prices).forEach(([size, price]) => {
-               pricesStr[size] = String(price);
-            });
-        }
-        setPrecosPizza(pricesStr);
-        
-        // Load subcategory
-        setSubcategoria(produto.subcategory || '');
-        
-        // Load ingredients
-        setIngredientesSelecionados(produto.ingredients || []);
-        setIngredientesPersonalizados(produto.customIngredients || '');
+      // Handle prices mapping
+      const pricesStr: Record<string, string> = {};
+      if (produto.prices) {
+        Object.entries(produto.prices).forEach(([size, price]) => {
+          pricesStr[size] = String(price);
+        });
+      }
+      setPrecosPizza(pricesStr);
+
+      // Load subcategory
+      setSubcategoria(produto.subcategory || '');
+
+      // Load ingredients
+      setIngredientesSelecionados(produto.ingredients || []);
+      setIngredientesPersonalizados(produto.customIngredients || '');
     } else {
-        setPrecosPizza({});
-        setSubcategoria('');
-        setIngredientesSelecionados([]);
-        setIngredientesPersonalizados('');
-        setEditPreco(produto.price?.toString() || '0');
+      setPrecosPizza({});
+      setSubcategoria('');
+      setIngredientesSelecionados([]);
+      setIngredientesPersonalizados('');
+      setEditPreco(produto.price?.toString() || '0');
     }
-    
+
     setShowEditModal(true);
   };
 
@@ -613,7 +591,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
         Alert.alert('Atenção', 'Preencha pelo menos um preço para a pizza');
         return;
       }
-      
+
       // Validate at least one ingredient
       if (ingredientesSelecionados.length === 0 && !ingredientesPersonalizados.trim()) {
         Alert.alert('Atenção', 'Adicione pelo menos um ingrediente para a pizza');
@@ -661,7 +639,8 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
       setShowEditModal(false);
       setEditando(null);
       carregarProdutos();
-    } catch (error) { console.error(error);
+    } catch (error) {
+      console.error(error);
       Alert.alert('Erro', 'Não foi possível editar o produto');
     } finally {
       setLoading(false);
@@ -703,7 +682,8 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
 
       Alert.alert('Sucesso', 'Produto excluído');
       carregarProdutos();
-    } catch (error) { console.error(error);
+    } catch (error) {
+      console.error(error);
       Alert.alert('Erro', 'Não foi possível excluir o produto');
     } finally {
       setLoading(false);
@@ -726,7 +706,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
       } else {
         novos.push(novoTempero.trim());
       }
-      
+
       const args: [string[] | undefined, string[] | undefined, string[] | undefined, string[] | undefined] = [undefined, undefined, undefined, undefined];
 
       if (tipoTemperoAtivo === 'caldos') {
@@ -742,41 +722,43 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
         setVariacoesEspetinho(novos);
         args[2] = novos;
       }
-      
+
       await salvarListas(...args);
 
       setNovoTempero('');
       setEditTemperoIndex(-1);
-    } catch (e) { console.error(e);
+    } catch (e) {
+      console.error(e);
       Alert.alert('Erro', 'Falha ao salvar item.');
     }
   };
-  
+
   const removerTempero = async (index: number) => {
     const listaAtual = getListaAtiva();
     const novos = listaAtual.filter((_, i) => i !== index);
-    
+
     try {
-       const args: [string[] | undefined, string[] | undefined, string[] | undefined, string[] | undefined] = [undefined, undefined, undefined, undefined];
-       if (tipoTemperoAtivo === 'caldos') {
+      const args: [string[] | undefined, string[] | undefined, string[] | undefined, string[] | undefined] = [undefined, undefined, undefined, undefined];
+      if (tipoTemperoAtivo === 'caldos') {
         setTemperosCaldos(novos);
         args[0] = novos;
       } else if (tipoTemperoAtivo === 'comidas') {
         setTemperosComidas(novos);
-         args[1] = novos;
+        args[1] = novos;
       } else if (tipoTemperoAtivo === 'pizza') {
         setIngredientesPizza(novos);
-         args[3] = novos;
+        args[3] = novos;
       } else {
         setVariacoesEspetinho(novos);
-         args[2] = novos;
+        args[2] = novos;
       }
       await salvarListas(...args);
-    } catch (e) { console.error(e);
+    } catch (e) {
+      console.error(e);
       Alert.alert('Erro', 'Falha ao remover item.');
     }
   };
-  
+
   const iniciarEdicaoTempero = (index: number) => {
     setNovoTempero(getListaAtiva()[index]);
     setEditTemperoIndex(index);
@@ -786,7 +768,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
     setNovoTempero('');
     setEditTemperoIndex(-1);
   };
-  
+
   const adicionarTamanhoPizza = async () => {
     if (!novoTamanho.trim() || !novosSaboresMax) {
       Alert.alert('Erro', 'Preencha nome e quantidades de sabores.');
@@ -807,31 +789,31 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
 
     setPizzaSizes(novos);
     // Reuse saving logic
-    await salvarListas(undefined, undefined, undefined, undefined); 
+    await salvarListas(undefined, undefined, undefined, undefined);
     // salvarListas will pick up the updated pizzaSizes from state or we need to pass it explicitly?
     // In React state updates are async, so 'pizzaSizes' might not be updated inside 'salvarListas' immediately if called like this.
     // Better to modify 'salvarListas' to accept optional override or update state first then call function that reads state.
     // BUT 'salvarListas' reads 'pizzaConfig' state which contains 'sizes'.
     // Let's manually trigger update:
-    
-    if (user?.companyId) {
-       const newSettings = {
-           temperosCaldos,
-           temperosComidas,
-           variacoesEspetinho,
-           ingredientesPizza,
-           pizzaConfig: { ...pizzaConfig, sizes: novos }
-       };
 
-       try {
-           const { error } = await supabase.from('companies').update({ settings: newSettings }).eq('id', user.companyId);
-           if (error) throw error;
-       } catch (e) {
-           console.error('Erro salvando tamanho pizza:', e);
-           Alert.alert('Erro ao salvar');
-       }
+    if (user?.companyId) {
+      const newSettings = {
+        temperosCaldos,
+        temperosComidas,
+        variacoesEspetinho,
+        ingredientesPizza,
+        pizzaConfig: { ...pizzaConfig, sizes: novos }
+      };
+
+      try {
+        const { error } = await supabase.from('companies').update({ settings: newSettings }).eq('id', user.companyId);
+        if (error) throw error;
+      } catch (e) {
+        console.error('Erro salvando tamanho pizza:', e);
+        Alert.alert('Erro ao salvar');
+      }
     }
-    
+
     setNovoTamanho('');
     setNovosSaboresMax('');
     setEditTamanhoIndex(-1);
@@ -843,7 +825,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
     setNovosSaboresMax(item.maxFlavors.toString());
     setEditTamanhoIndex(index);
   };
-  
+
   const cancelarEdicaoTamanho = () => {
     setNovoTamanho('');
     setNovosSaboresMax('');
@@ -853,18 +835,18 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
   const removerTamanhoPizza = async (index: number) => {
     const novos = pizzaSizes.filter((_, i) => i !== index);
     setPizzaSizes(novos);
-    
+
     if (user?.companyId) {
-        const newSettings = {
-           temperosCaldos,
-           temperosComidas,
-           variacoesEspetinho,
-           ingredientesPizza,
-           pizzaConfig: { ...pizzaConfig, sizes: novos }
-       };
-       try {
-           await supabase.from('companies').update({ settings: newSettings }).eq('id', user.companyId);
-       } catch (e) { console.error(e); }
+      const newSettings = {
+        temperosCaldos,
+        temperosComidas,
+        variacoesEspetinho,
+        ingredientesPizza,
+        pizzaConfig: { ...pizzaConfig, sizes: novos }
+      };
+      try {
+        await supabase.from('companies').update({ settings: newSettings }).eq('id', user.companyId);
+      } catch (e) { console.error(e); }
     }
   };
 
@@ -872,26 +854,26 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
     const novos = [...pizzaSizes];
     novos[index] = { ...novos[index], active: !novos[index].active };
     setPizzaSizes(novos);
-    
-    
+
+
     if (user?.companyId) {
-        const newSettings = {
-           temperosCaldos,
-           temperosComidas,
-           variacoesEspetinho,
-           ingredientesPizza,
-           pizzaConfig: { ...pizzaConfig, sizes: novos }
-       };
-       try {
-           await supabase.from('companies').update({ settings: newSettings }).eq('id', user.companyId);
-       } catch (e) { console.error(e); }
+      const newSettings = {
+        temperosCaldos,
+        temperosComidas,
+        variacoesEspetinho,
+        ingredientesPizza,
+        pizzaConfig: { ...pizzaConfig, sizes: novos }
+      };
+      try {
+        await supabase.from('companies').update({ settings: newSettings }).eq('id', user.companyId);
+      } catch (e) { console.error(e); }
     }
   };
-  
+
   // Helper function to save pizza variation price
   const savePizzaVariation = async (productId: string, sizeName: string, newPrice: number): Promise<boolean> => {
     if (!user?.companyId) return false;
-    
+
     try {
       // Fetch current product to get existing prices
       const { data: currentProduct, error: fetchError } = await supabase
@@ -899,30 +881,30 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
         .select('prices')
         .eq('id', productId)
         .single();
-      
+
       if (fetchError) throw fetchError;
-      
+
       // Update the specific size price
       const updatedPrices = {
         ...(currentProduct.prices || {}),
         [sizeName]: newPrice
       };
-      
+
       // Save back to database
       const { error: updateError } = await supabase
         .from('products')
         .update({ prices: updatedPrices })
         .eq('id', productId);
-      
+
       if (updateError) throw updateError;
-      
+
       return true;
     } catch (e) {
       console.error('Error saving pizza variation:', e);
       throw e;
     }
   };
-  
+
   const abrirVariacoes = (variacoes: Product[]) => {
     // Check if this is a pizza product
     if (variacoes.length > 0 && isPizzaProduct(variacoes[0])) {
@@ -935,33 +917,33 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
     }
     setShowVariacoesModal(true);
   };
-  
+
   const salvarVariacao = async (prod: any, novaStr: string, novoNome: string) => {
     const novoP = parseFloat(novaStr.replace(',', '.'));
     if (!prod.id || !user?.companyId) return;
-    
+
     // Check if this is a pizza variation
     if (prod._isPizzaVariation) {
       // Handle pizza variation save
       try {
         const originalProductId = prod._originalProductId;
         const sizeName = prod._sizeName;
-        
+
         // Validate price
         if (isNaN(novoP)) {
           Alert.alert('Erro', 'Digite um preço válido');
           return;
         }
-        
+
         // Save pizza variation
         await savePizzaVariation(originalProductId, sizeName, novoP);
-        
+
         // Update local state
-        const updated = variacoesSelecionadas.map(v => 
+        const updated = variacoesSelecionadas.map(v =>
           v.id === prod.id ? { ...v, price: novoP } : v
         );
         setVariacoesSelecionadas(updated);
-        
+
         // Refresh product list
         carregarProdutos();
       } catch (e) {
@@ -977,9 +959,9 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
           .eq('id', prod.id);
 
         if (error) throw error;
-        
+
         // Update local state
-        const updated = variacoesSelecionadas.map(v => 
+        const updated = variacoesSelecionadas.map(v =>
           v.id === prod.id ? { ...v, price: novoP, name: novoNome } : v
         );
         setVariacoesSelecionadas(updated);
@@ -990,82 +972,84 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
       }
     }
   };
-  
+
   const abrirEstoque = async (produto: Product) => {
-      if (!user?.companyId) return;
-      setCurrentProductForStock(produto);
-      setShowStockModal(true);
-      
-      // Load stock items if empty
-      if (stockItems.length === 0) {
-          try {
-              // Inventory collection/table
-              const { data, error } = await supabase
-                .from('inventory')
-                .select('*')
-                .eq('company_id', user.companyId);
+    if (!user?.companyId) return;
+    setCurrentProductForStock(produto);
+    setShowStockModal(true);
 
-              if (!error && data) {
-                  const items = data.map((d: any) => ({ 
-                      id: d.id, 
-                      nome: d.name, // Mapping 'name' to 'nome'
-                      unidadeOriginal: d.unit 
-                  }));
-                  setStockItems(items);
-              }
-          } catch (e) { console.error(e); }
-      }
-  };
-  
-  const addIngredient = async () => {
-    if (!selectedStockId || !currentProductForStock || !user?.companyId) return;
-    
-    const itemEstoque = stockItems.find(i => i.id === selectedStockId);
-    if (!itemEstoque) return;
-    
-    const novoIngrediente = {
-        id: selectedStockId,
-        nome: itemEstoque.nome,
-        qt: parseFloat(qtyIngredient.replace(',', '.')) || 0,
-        un: unitIngredient
-    };
-    
-    const currentList = currentProductForStock.inventoryItems || [];
-    const updatedList = [...currentList, novoIngrediente];
-    
-    try {
-        const { error } = await supabase
-            .from('products')
-            .update({ inventory_items: updatedList }) // Mapping to snake_case column
-            .eq('id', currentProductForStock.id);
+    // Load stock items if empty
+    if (stockItems.length === 0) {
+      try {
+        // Inventory collection/table
+        const { data, error } = await supabase
+          .from('inventory')
+          .select('*')
+          .eq('company_id', user.companyId);
 
-        if (error) throw error;
-
-        setCurrentProductForStock({ ...currentProductForStock, inventoryItems: updatedList });
-        carregarProdutos();
-        setQtyIngredient('');
-    } catch (e) { console.error(e);
-        Alert.alert('Erro', 'Falha ao adicionar ingrediente');
+        if (!error && data) {
+          const items = data.map((d: any) => ({
+            id: d.id,
+            nome: d.name, // Mapping 'name' to 'nome'
+            unidadeOriginal: d.unit
+          }));
+          setStockItems(items);
+        }
+      } catch (e) { console.error(e); }
     }
   };
-  
-  const removeIngredient = async (ingId: string) => {
-      if (!currentProductForStock || !user?.companyId) return;
-      const currentList = currentProductForStock.inventoryItems || [];
-      const updatedList = currentList.filter(i => i.id !== ingId);
-      
-      try {
-        const { error } = await supabase
-            .from('products')
-            .update({ inventory_items: updatedList })
-            .eq('id', currentProductForStock.id);
 
-        if (error) throw error;
-        
-        setCurrentProductForStock({ ...currentProductForStock, inventoryItems: updatedList });
-        carregarProdutos();
-    } catch (e) { console.error(e);
-        Alert.alert('Erro', 'Falha ao remover ingrediente');
+  const addIngredient = async () => {
+    if (!selectedStockId || !currentProductForStock || !user?.companyId) return;
+
+    const itemEstoque = stockItems.find(i => i.id === selectedStockId);
+    if (!itemEstoque) return;
+
+    const novoIngrediente = {
+      id: selectedStockId,
+      nome: itemEstoque.nome,
+      qt: parseFloat(qtyIngredient.replace(',', '.')) || 0,
+      un: unitIngredient
+    };
+
+    const currentList = currentProductForStock.inventoryItems || [];
+    const updatedList = [...currentList, novoIngrediente];
+
+    try {
+      const { error } = await supabase
+        .from('products')
+        .update({ inventory_items: updatedList }) // Mapping to snake_case column
+        .eq('id', currentProductForStock.id);
+
+      if (error) throw error;
+
+      setCurrentProductForStock({ ...currentProductForStock, inventoryItems: updatedList });
+      carregarProdutos();
+      setQtyIngredient('');
+    } catch (e) {
+      console.error(e);
+      Alert.alert('Erro', 'Falha ao adicionar ingrediente');
+    }
+  };
+
+  const removeIngredient = async (ingId: string) => {
+    if (!currentProductForStock || !user?.companyId) return;
+    const currentList = currentProductForStock.inventoryItems || [];
+    const updatedList = currentList.filter(i => i.id !== ingId);
+
+    try {
+      const { error } = await supabase
+        .from('products')
+        .update({ inventory_items: updatedList })
+        .eq('id', currentProductForStock.id);
+
+      if (error) throw error;
+
+      setCurrentProductForStock({ ...currentProductForStock, inventoryItems: updatedList });
+      carregarProdutos();
+    } catch (e) {
+      console.error(e);
+      Alert.alert('Erro', 'Falha ao remover ingrediente');
     }
   };
 
@@ -1074,11 +1058,11 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
   // Lógica de filtragem e agrupamento
   // Lógica de filtragem e agrupamento
   const produtosFiltrados = produtos.filter(p => {
-      if (categoriaFiltro === 'todos') return true;
-      const cat = p.category?.toLowerCase() || '';
-      const filtro = categoriaFiltro.toLowerCase();
-      // Special handling for 'outros'/others if needed, but strict match is better for tabs
-      return cat === filtro;
+    if (categoriaFiltro === 'todos') return true;
+    const cat = p.category?.toLowerCase() || '';
+    const filtro = categoriaFiltro.toLowerCase();
+    // Special handling for 'outros'/others if needed, but strict match is better for tabs
+    return cat === filtro;
   });
 
   const produtosAgrupados = produtosFiltrados.reduce((acc, produto) => {
@@ -1218,8 +1202,8 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                     value={novoIngrediente}
                     onChangeText={setNovoIngrediente}
                   />
-                  <TouchableOpacity 
-                    style={styles.addBtn} 
+                  <TouchableOpacity
+                    style={styles.addBtn}
                     onPress={() => {
                       if (novoIngrediente.trim()) {
                         setIngredientesSelecionados([...ingredientesSelecionados, novoIngrediente.trim()]);
@@ -1548,9 +1532,9 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                                   .select('*')
                                   .eq('id', primeiraVariacao.id)
                                   .single();
-                                
+
                                 if (error) throw error;
-                                
+
                                 if (data) {
                                   const fullProduct: Product = {
                                     id: data.id,
@@ -1681,7 +1665,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                       </View>
                     ))}
                   </View>
-                  
+
                   <View style={{ flexDirection: 'row', marginBottom: 15 }}>
                     <TextInput
                       style={[styles.input, { flex: 1, marginRight: 8 }]}
@@ -1716,7 +1700,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                   <Text style={styles.label}>Preços por tamanho:</Text>
                   <View style={styles.variacoesGrid}>
                     {pizzaSizes.length === 0 ? (
-                      <Text style={{color: 'red', marginBottom: 10}}>Nenhum tamanho de pizza configurado. Vá em Configurações.</Text>
+                      <Text style={{ color: 'red', marginBottom: 10 }}>Nenhum tamanho de pizza configurado. Vá em Configurações.</Text>
                     ) : (
                       pizzaSizes.map((size, idx) => (
                         <View key={idx} style={styles.variacaoField}>
@@ -1801,50 +1785,50 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                     variacao={variacao}
                     onSalvar={salvarVariacao}
                     onEditarCompleto={async (prod) => {
-                        // For pizza variations, load the original product with all data
-                        if (prod._isPizzaVariation && prod._originalProductId) {
-                          setShowVariacoesModal(false);
-                          try {
-                            // Fetch the complete product from database
-                            const { data, error } = await supabase
-                              .from('products')
-                              .select('*')
-                              .eq('id', prod._originalProductId)
-                              .single();
-                            
-                            if (error) throw error;
-                            
-                            if (data) {
-                              // Map database fields to Product interface
-                              const fullProduct: Product = {
-                                id: data.id,
-                                name: data.name,
-                                price: Number(data.price),
-                                category: data.category,
-                                subcategory: data.subcategory,
-                                active: data.active,
-                                createdAt: new Date(data.created_at).getTime(),
-                                prices: data.prices || {},
-                                ingredients: data.ingredients || [],
-                                customIngredients: data.custom_ingredients || '',
-                                inventoryItems: data.inventory_items || []
-                              };
-                              
-                              setTimeout(() => {
-                                abrirEdicao(fullProduct);
-                              }, 100);
-                            }
-                          } catch (error) {
-                            console.error('Error loading full product:', error);
-                            Alert.alert('Erro', 'Não foi possível carregar os dados do produto');
+                      // For pizza variations, load the original product with all data
+                      if (prod._isPizzaVariation && prod._originalProductId) {
+                        setShowVariacoesModal(false);
+                        try {
+                          // Fetch the complete product from database
+                          const { data, error } = await supabase
+                            .from('products')
+                            .select('*')
+                            .eq('id', prod._originalProductId)
+                            .single();
+
+                          if (error) throw error;
+
+                          if (data) {
+                            // Map database fields to Product interface
+                            const fullProduct: Product = {
+                              id: data.id,
+                              name: data.name,
+                              price: Number(data.price),
+                              category: data.category,
+                              subcategory: data.subcategory,
+                              active: data.active,
+                              createdAt: new Date(data.created_at).getTime(),
+                              prices: data.prices || {},
+                              ingredients: data.ingredients || [],
+                              customIngredients: data.custom_ingredients || '',
+                              inventoryItems: data.inventory_items || []
+                            };
+
+                            setTimeout(() => {
+                              abrirEdicao(fullProduct);
+                            }, 100);
                           }
-                        } else {
-                          // For non-pizza products, use existing behavior
-                          setShowVariacoesModal(false);
-                          setTimeout(() => {
-                            abrirEdicao(prod);
-                          }, 100);
+                        } catch (error) {
+                          console.error('Error loading full product:', error);
+                          Alert.alert('Erro', 'Não foi possível carregar os dados do produto');
                         }
+                      } else {
+                        // For non-pizza products, use existing behavior
+                        setShowVariacoesModal(false);
+                        setTimeout(() => {
+                          abrirEdicao(prod);
+                        }, 100);
+                      }
                     }}
                   />
                   <TouchableOpacity
