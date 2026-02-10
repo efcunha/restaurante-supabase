@@ -110,7 +110,7 @@ export const criarFuncionario = async (dados: CreateFuncionarioData) => {
     setIgnorarMudancaAuth(false);
 
     let errorMessage = 'Erro: ' + error.message;
-    
+
     // Mapear erros do Supabase
     if (error.message?.includes('already registered') || error.message?.includes('already exists')) {
       errorMessage = 'Email já cadastrado';
@@ -131,25 +131,30 @@ export const criarFuncionario = async (dados: CreateFuncionarioData) => {
  * Lista todos os funcionários ativos da empresa do usuário logado
  * @returns {Promise<Object>} {success, funcionarios, error}
  */
-export const listarFuncionarios = async () => {
+export const listarFuncionarios = async (companyId?: string) => {
   try {
-    // Buscar company_id do usuário logado
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Usuário não autenticado');
+    let targetCompanyId = companyId;
 
-    const { data: currentProfile } = await supabase
-      .from('profiles')
-      .select('company_id')
-      .eq('id', user.id)
-      .single();
+    // Only fetch company_id if not provided
+    if (!targetCompanyId) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Usuário não autenticado');
 
-    if (!currentProfile?.company_id) throw new Error('Usuário sem empresa vinculada');
+      const { data: currentProfile } = await supabase
+        .from('profiles')
+        .select('company_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!currentProfile?.company_id) throw new Error('Usuário sem empresa vinculada');
+      targetCompanyId = currentProfile.company_id;
+    }
 
     // Buscar todos os funcionários da mesma empresa
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
-      .eq('company_id', currentProfile.company_id)
+      .eq('company_id', targetCompanyId)
       .order('full_name', { ascending: true });
 
     if (error) throw error;
@@ -174,6 +179,7 @@ export const listarFuncionarios = async () => {
     return { success: false, error: error.message, funcionarios: [] };
   }
 };
+
 
 /**
  * Lista funcionários por função
@@ -425,7 +431,7 @@ export const atualizarFuncionario = async (
     if (updateError) throw updateError;
 
     console.log('[Funcionarios] ✅ Funcionário atualizado com sucesso!');
-    
+
     // Tentar atualizar senha via Edge Function
     // Senha não pode ser alterada via admin por limitações de segurança do Supabase
     // O usuário deve usar "Esqueci minha senha" na tela de login
@@ -436,7 +442,7 @@ export const atualizarFuncionario = async (
         warning: 'Dados atualizados com sucesso!\n\n⚠️ Para alterar a senha, o funcionário deve usar "Esqueci minha senha" na tela de login.'
       };
     }
-    
+
     return { success: true };
   } catch (error: any) {
     console.error('[Funcionarios] ❌ Erro ao atualizar:', error);

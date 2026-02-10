@@ -37,7 +37,10 @@ export default function FuncionariosScreen({ onClose }: Props) {
   const carregarFuncionarios = async () => {
     console.log('[FuncionariosScreen] 🔄 Carregando funcionários...');
     setLoading(true);
-    const result = await listarFuncionarios();
+
+    // Pass companyId from context to avoid redundant query
+    const result = await listarFuncionarios(user?.companyId);
+
     console.log('[FuncionariosScreen] 📊 Resultado da listagem:', result);
     if (result.success) {
       console.log('[FuncionariosScreen] 📋 Funcionários recebidos:', result.funcionarios.map(f => ({ id: f.id, nome: f.nome })));
@@ -48,6 +51,7 @@ export default function FuncionariosScreen({ onClose }: Props) {
     }
     setLoading(false);
   };
+
 
   const handleCriarFuncionario = async () => {
     // console.log('[FuncionariosScreen] 🔵 handleCriarFuncionario chamado');
@@ -190,7 +194,7 @@ export default function FuncionariosScreen({ onClose }: Props) {
   // Validação de senha forte
   const validatePassword = (password: string): { valid: boolean; errors: string[] } => {
     const errors: string[] = [];
-    
+
     if (password.length < 6) {
       errors.push('Mínimo 6 caracteres');
     }
@@ -209,7 +213,7 @@ export default function FuncionariosScreen({ onClose }: Props) {
     if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
       errors.push('Pelo menos 1 caractere especial (!@#$%^&*...)');
     }
-    
+
     return {
       valid: errors.length === 0,
       errors
