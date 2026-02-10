@@ -64,13 +64,18 @@ export default function EstoqueScreen({ onClose }: Props) {
 
   const carregarConfigECategorias = async () => {
     try {
-      // @ts-ignore
+      if (!user?.companyId) return;
+      console.log('[EstoqueScreen] Loading inventory config from app_settings...');
       const { data, error } = await supabase
-        .from('settings')
+        .from('app_settings')
         .select('*')
         .eq('company_id', user.companyId)
         .eq('key', 'estoque_config')
-        .single();
+        .maybeSingle();
+
+      if (error) {
+        console.warn('[EstoqueScreen] Error loading from app_settings:', error);
+      }
 
       let cats = [];
       if (data && data.value && data.value.stock_categories) {
@@ -94,7 +99,7 @@ export default function EstoqueScreen({ onClose }: Props) {
 
   const carregarFornecedores = async () => {
     try {
-      // @ts-ignore
+      if (!user?.companyId) return;
       const { data, error } = await supabase
         .from('suppliers')
         .select('*')
@@ -386,7 +391,7 @@ export default function EstoqueScreen({ onClose }: Props) {
 
                 {/* LISTA DE UNIDADES FILTRADA */}
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  {(SUPPORTED_UNITS[tipoUnidade] || []).map((un: string) => (
+                  {(SUPPORTED_UNITS[tipoUnidade as keyof typeof SUPPORTED_UNITS] || []).map((un: string) => (
                     <TouchableOpacity
                       key={un}
                       style={[styles.unidadeBtn, unidade === un && styles.unidadeBtnActive]}

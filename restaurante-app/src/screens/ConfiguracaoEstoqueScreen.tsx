@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../config/SupabaseConfig';
 
 interface Props {
-  onClose: () => void;
+    onClose: () => void;
 }
 
 export default function ConfiguracaoEstoqueScreen({ onClose }: Props) {
@@ -31,17 +31,16 @@ export default function ConfiguracaoEstoqueScreen({ onClose }: Props) {
     }, []);
 
     const carregarConfig = async () => {
-        // @ts-ignore
         if (!user?.companyId) return;
         try {
             setLoading(true);
-            
+
             const { data, error } = await supabase
-                .from('settings')
+                .from('app_settings')
                 .select('*')
                 .eq('company_id', user.companyId)
                 .eq('key', 'estoque_config')
-                .single();
+                .maybeSingle();
 
             if (error && error.code !== 'PGRST116') throw error;
 
@@ -58,9 +57,10 @@ export default function ConfiguracaoEstoqueScreen({ onClose }: Props) {
     const salvarConfig = async (novasCategorias: any[]) => {
         try {
             setLoading(true);
-            
+
+            if (!user?.companyId) return;
             const { error } = await supabase
-                .from('settings')
+                .from('app_settings')
                 .upsert({
                     company_id: user.companyId,
                     key: 'estoque_config',
