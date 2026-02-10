@@ -38,8 +38,12 @@ export default function MapaMesasScreen() {
         try {
             const envs = await TableService.getEnvironments(user.companyId);
             setEnvironments(envs);
-            if (envs.length > 0 && !selectedEnvId) {
-                setSelectedEnvId(envs[0].id);
+            // Priority: keep existing selected if still valid, else select first
+            if (envs.length > 0) {
+                const currentStillExists = envs.find(e => e.id === selectedEnvId);
+                if (!currentStillExists) {
+                    setSelectedEnvId(envs[0].id);
+                }
             }
 
             const allTables = await TableService.getTables(user.companyId);
@@ -56,15 +60,11 @@ export default function MapaMesasScreen() {
         setLoading(false);
     }, [user?.companyId]);
 
-    // Reload tables when screen gains focus (e.g., returning from config screen)
+    // Reload structure when screen gains focus (e.g., returning from config screen)
     useFocusEffect(
         React.useCallback(() => {
             if (user?.companyId) {
-                TableService.getTables(user.companyId).then(allTables => {
-                    setTables(allTables);
-                }).catch(error => {
-                    console.error('Error reloading tables:', error);
-                });
+                loadStructure();
             }
         }, [user?.companyId])
     );
@@ -358,7 +358,7 @@ export default function MapaMesasScreen() {
                 onPress={() => {
                     // @ts-ignore
                     navigation.navigate('Admin', {
-                        screen: 'Configuração de Mesas'
+                        openConfigMesas: true
                     });
                 }}
             >

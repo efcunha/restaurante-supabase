@@ -3,8 +3,9 @@ import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Modal, Alert, Act
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useRoute } from '@react-navigation/native';
 import { supabase } from '../config/SupabaseConfig';
-import { getTodayKey, getDateKeyRange } from '../utils/dateUtils'; // Migrated from FirebaseOptimizations
+import { getTodayKey, getDateKeyRange, Period } from '../utils/dateUtils'; // Migrated from FirebaseOptimizations
 import BackgroundPattern from '../components/BackgroundPattern';
 
 // @ts-ignore
@@ -51,10 +52,14 @@ import MFASetupModal from '../components/MFASetupModal';
  */
 export default function AdminScreen() {
   const { user, logout } = useAuth();
+  const route = useRoute() as any;
+  const params = route?.params;
 
-  const handleLogout = () => {
-    confirmLogout(logout);
-  };
+  useEffect(() => {
+    if (params?.openConfigMesas) {
+      setShowConfiguracaoMesas(true);
+    }
+  }, [params]);
 
   // Helper para formatar valores em Real brasileiro
   const formatarMoeda = (valor: any) => {
@@ -93,7 +98,7 @@ export default function AdminScreen() {
   const [loadingStats, setLoadingStats] = useState(true);
 
   // Estados para estatísticas de vendas
-  const [periodoSelecionado, setPeriodoSelecionado] = useState('hoje'); // 'hoje', 'semana', 'mes'
+  const [periodoSelecionado, setPeriodoSelecionado] = useState<Period>('hoje'); // 'hoje', 'semana', 'mes'
   const [vendasStats, setVendasStats] = useState({
     totalVendido: 0,
     totalPedidos: 0,

@@ -4,7 +4,7 @@ import offlineQueueService from './OfflineQueueService';
 import { isRetryableError } from '../utils/errors';
 
 class TableService {
-    
+
   // ============================================================================
   // ENVIRONMENTS (AMBIENTES)
   // ============================================================================
@@ -41,8 +41,8 @@ class TableService {
   }
 
   async deleteEnvironment(environmentId: string): Promise<void> {
-      // Check for tables first? Or cascade on DB? 
-      // DB has ON DELETE SET NULL, so tables become orphaned (no environment).
+    // Check for tables first? Or cascade on DB? 
+    // DB has ON DELETE SET NULL, so tables become orphaned (no environment).
     const { error } = await supabase
       .from('environments')
       .delete()
@@ -87,7 +87,6 @@ class TableService {
   }
 
   async deleteTable(tableId: string): Promise<void> {
-    // Soft delete usually, but sticking to hard delete or active=false per requirement
     const { error } = await supabase
       .from('tables')
       .update({ active: false }) // Soft delete
@@ -95,11 +94,16 @@ class TableService {
 
     if (error) throw error;
   }
-  
-  /**
-   * Find table by number (exact match)
-   * Used for the "Fast Order" flow where user types "5"
-   */
+
+  async deleteTablesByEnvironment(environmentId: string): Promise<void> {
+    const { error } = await supabase
+      .from('tables')
+      .update({ active: false }) // Soft delete
+      .eq('environment_id', environmentId);
+
+    if (error) throw error;
+  }
+
   async findTableByNumber(companyId: string, number: string): Promise<Table | null> {
     const { data, error } = await supabase
       .from('tables')
@@ -110,8 +114,8 @@ class TableService {
       .single();
 
     if (error) {
-        if(error.code === 'PGRST116') return null; // Not found
-        throw error;
+      if (error.code === 'PGRST116') return null; // Not found
+      throw error;
     }
     return data;
   }

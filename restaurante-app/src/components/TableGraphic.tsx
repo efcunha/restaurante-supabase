@@ -78,18 +78,6 @@ export default function TableGraphic({
         const chairs = [];
         const spacing = 2; // visual spacing from table edge
 
-        // Helper to create chair view
-        const Chair = ({ style, keyVal }: { style: any, keyVal: string }) => (
-            <View key={keyVal} style={[{
-                position: 'absolute',
-                width: chairSize,
-                height: chairSize,
-                backgroundColor: chairColor,
-                borderRadius: shape === 'round' ? 8 : 4,
-                zIndex: 1, // Below table
-            }, style]} />
-        );
-
         if (shape === 'round') {
             // Radial distribution
             const radius = (size / 2) + spacing + (chairSize / 2);
@@ -105,7 +93,21 @@ export default function TableGraphic({
                 const top = centerY + (Math.sin(angle) * (tableHeight / 2 + spacing + chairSize / 2)) - (chairSize / 2);
                 const left = centerX + (Math.cos(angle) * (tableWidth / 2 + spacing + chairSize / 2)) - (chairSize / 2);
 
-                chairs.push(<Chair keyVal={`c-${i}`} style={{ top, left }} />);
+                chairs.push(
+                    <View
+                        key={`c-${i}`}
+                        style={{
+                            position: 'absolute',
+                            width: chairSize,
+                            height: chairSize,
+                            backgroundColor: chairColor,
+                            borderRadius: (size / 2),
+                            zIndex: 1,
+                            top,
+                            left
+                        }}
+                    />
+                );
             }
         } else {
             // Square/Rect: Distribute sides
@@ -142,56 +144,71 @@ export default function TableGraphic({
             const renderSideChairs = (side: string, count: number) => {
                 if (count === 0) return [];
                 const sideChairs = [];
-                // Center of container
-                const centerX = (tableWidth + 40) / 2;
-                const centerY = (tableHeight + 40) / 2;
-
-                // Adjust for container padding if logic needs it, but we are absolute positioning relative to the wrapper
-                // Wrapper width = tableWidth + 40 (padding 20 each side roughly)
-                // Let's assume standard positioning relative to the wrapper View 
-
-                // Using pure math relative to table center
-                const tW = tableWidth; // 80 or 120
-                const tH = tableHeight; // 80
+                const tW = tableWidth;
+                const tH = tableHeight;
 
                 // Top
                 if (side === 'top') {
                     const step = tW / (count + 1);
                     for (let i = 1; i <= count; i++) {
-                        sideChairs.push(<Chair keyVal={`t-${i}`} style={{
-                            top: -chairSize - spacing,
-                            left: (step * i) - (chairSize / 2)
-                        }} />);
+                        sideChairs.push(
+                            <View
+                                key={`top-${i}`}
+                                style={[styles.chair, {
+                                    backgroundColor: chairColor,
+                                    top: -chairSize - spacing,
+                                    left: (step * i) - (chairSize / 2)
+                                }]}
+                            />
+                        );
                     }
                 }
                 // Bottom
                 if (side === 'bottom') {
                     const step = tW / (count + 1);
                     for (let i = 1; i <= count; i++) {
-                        sideChairs.push(<Chair keyVal={`b-${i}`} style={{
-                            bottom: -chairSize - spacing,
-                            left: (step * i) - (chairSize / 2)
-                        }} />);
+                        sideChairs.push(
+                            <View
+                                key={`bot-${i}`}
+                                style={[styles.chair, {
+                                    backgroundColor: chairColor,
+                                    bottom: -chairSize - spacing,
+                                    left: (step * i) - (chairSize / 2)
+                                }]}
+                            />
+                        );
                     }
                 }
                 // Left
                 if (side === 'left') {
                     const step = tH / (count + 1);
                     for (let i = 1; i <= count; i++) {
-                        sideChairs.push(<Chair keyVal={`l-${i}`} style={{
-                            left: -chairSize - spacing,
-                            top: (step * i) - (chairSize / 2)
-                        }} />);
+                        sideChairs.push(
+                            <View
+                                key={`left-${i}`}
+                                style={[styles.chair, {
+                                    backgroundColor: chairColor,
+                                    left: -chairSize - spacing,
+                                    top: (step * i) - (chairSize / 2)
+                                }]}
+                            />
+                        );
                     }
                 }
                 // Right
                 if (side === 'right') {
                     const step = tH / (count + 1);
                     for (let i = 1; i <= count; i++) {
-                        sideChairs.push(<Chair keyVal={`r-${i}`} style={{
-                            right: -chairSize - spacing,
-                            top: (step * i) - (chairSize / 2)
-                        }} />);
+                        sideChairs.push(
+                            <View
+                                key={`right-${i}`}
+                                style={[styles.chair, {
+                                    backgroundColor: chairColor,
+                                    right: -chairSize - spacing,
+                                    top: (step * i) - (chairSize / 2)
+                                }]}
+                            />
+                        );
                     }
                 }
                 return sideChairs;
@@ -230,5 +247,12 @@ const styles = StyleSheet.create({
     tableNumber: {
         fontWeight: 'bold',
         fontSize: 18,
+    },
+    chair: {
+        position: 'absolute',
+        width: 16,
+        height: 16,
+        borderRadius: 4,
+        zIndex: 1,
     }
 });
