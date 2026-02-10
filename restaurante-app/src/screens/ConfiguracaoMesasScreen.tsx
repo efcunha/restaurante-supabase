@@ -67,7 +67,11 @@ export default function ConfiguracaoMesasScreen({ onClose }: Props) {
             const envs = await TableService.getEnvironments(user.companyId);
             setEnvironments(envs);
 
-            if (envs.length > 0 && !selectedEnvId) {
+            setEnvironments(envs);
+
+            // If we have environments and none selected, or selected one was deleted
+            const currentStillExists = envs.find(e => e.id === selectedEnvId);
+            if (envs.length > 0 && (!selectedEnvId || !currentStillExists)) {
                 setSelectedEnvId(envs[0].id);
             }
         } catch (error) {
@@ -130,19 +134,27 @@ export default function ConfiguracaoMesasScreen({ onClose }: Props) {
     const handleDeleteEnv = async (env: Environment) => {
         Alert.alert(
             'Excluir Ambiente',
-            `Tem certeza que deseja excluir "${env.name}"? As mesas ficarão sem ambiente.`,
+            `Deseja mesmo excluir "${env.name}"?\n\n⚠️ TODAS AS MESAS deste ambiente também serão excluídas. Esta ação não pode ser desfeita.`,
             [
                 { text: 'Cancelar', style: 'cancel' },
                 {
-                    text: 'Excluir',
+                    text: 'Excluir Ambiente e Mesas',
                     style: 'destructive',
                     onPress: async () => {
                         try {
+                            setLoading(true);
+                            // 1. Delete/Deactivate all tables in this environment
+                            await TableService.deleteTablesByEnvironment(env.id);
+                            // 2. Delete the environment
                             await TableService.deleteEnvironment(env.id);
+
                             if (selectedEnvId === env.id) setSelectedEnvId(null);
                             loadData();
                         } catch (error) {
-                            Alert.alert('Erro', 'Falha ao excluir ambiente.');
+                            console.error(error);
+                            Alert.alert('Erro', 'Falha ao excluir ambiente e mesas.');
+                        } finally {
+                            setLoading(false);
                         }
                     }
                 }
@@ -200,6 +212,7 @@ export default function ConfiguracaoMesasScreen({ onClose }: Props) {
                             // Reload
                             const allTables = await TableService.getTables(user.companyId);
                             setTables(allTables.filter(t => t.environment_id === selectedEnvId));
+                            setShowTableModal(false); // Close modal if open
                         } catch (error) {
                             Alert.alert('Erro', 'Falha ao excluir mesa.');
                         }
@@ -230,21 +243,22 @@ export default function ConfiguracaoMesasScreen({ onClose }: Props) {
             return;
         }
 
-        // Initialize positions if main ones are 0,0
-        // Heuristic: If all are 0,0, auto-distribute in a grid for easier starting point
-        const needsInit = tables.every(t => t.position_x === 0 && t.position_y === 0);
-
+        // Heuristic: Auto-distribute tables that are at (0,0)
         let initialTables = JSON.parse(JSON.stringify(tables)); // Deep clone
 
-        if (needsInit) {
-            const cols = 3; // Reduced columns for more space
-            const spacing = 140; // Increased spacing to prevent overlap
-            initialTables = initialTables.map((t: Table, i: number) => ({
-                ...t,
-                position_x: 50 + (i % cols) * spacing,
-                position_y: 100 + Math.floor(i / cols) * spacing
-            }));
-        }
+        const cols = 3;
+        const spacing = 140;
+
+        initialTables = initialTables.map((t: Table, i: number) => {
+            if (t.position_x === 0 && t.position_y === 0) {
+                return {
+                    ...t,
+                    position_x: 20 + (i % cols) * spacing,
+                    position_y: 20 + Math.floor(i / cols) * spacing
+                };
+            }
+            return t;
+        });
 
         setLayoutTables(initialTables);
         setHasUnsavedChanges(false);
@@ -320,11 +334,6 @@ export default function ConfiguracaoMesasScreen({ onClose }: Props) {
                         key={env.id}
                         style={[styles.tab, selectedEnvId === env.id && styles.tabActive]}
                         onPress={() => setSelectedEnvId(env.id)}
-                        onLongPress={() => {
-                            setEditingEnv(env);
-                            setEnvName(env.name);
-                            setShowEnvModal(true);
-                        }}
                     >
                         <Text style={[styles.tabText, selectedEnvId === env.id && styles.tabTextActive]}>
                             {env.name}
@@ -363,21 +372,41 @@ export default function ConfiguracaoMesasScreen({ onClose }: Props) {
                         {selectedEnvId ? (
                             <>
                                 <View style={styles.actionsBar}>
-                                    <Text style={styles.sectionTitle}>Mesas ({tables.length})</Text>
+                                    <View style={{ flex: 1 }}>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                            <Text style={styles.sectionTitle}>{environments.find(e => e.id === selectedEnvId)?.name}</Text>
+                                            <TouchableOpacity
+                                                style={styles.editEnvButton}
+                                                onPress={() => {
+                                                    const env = environments.find(e => e.id === selectedEnvId);
+                                                    if (env) {
+                                                        setEditingEnv(env);
+                                                        setEnvName(env.name);
+                                                        setShowEnvModal(true);
+                                                    }
+                                                }}
+                                            >
+                                                <Ionicons name="create-outline" size={18} color={colors.primary} />
+                                                <Text style={styles.editEnvButtonText}>Editar</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                        <Text style={styles.subtitle}>Mesas ({tables.length})</Text>
+                                    </View>
+
                                     <TouchableOpacity
                                         style={styles.addTableButton}
                                         onPress={() => openTableModal()}
                                     >
                                         <Ionicons name="add" size={20} color={colors.white} />
-                                        <Text style={styles.addTableText}>Adicionar Mesa</Text>
+                                        <Text style={styles.addTableText}>Mesa</Text>
                                     </TouchableOpacity>
 
                                     <TouchableOpacity
-                                        style={[styles.addTableButton, { backgroundColor: '#2196F3', marginLeft: 10 }]}
+                                        style={[styles.addTableButton, { backgroundColor: '#2196F3', marginLeft: 8 }]}
                                         onPress={openLayoutEditor}
                                     >
                                         <Ionicons name="move" size={20} color={colors.white} />
-                                        <Text style={styles.addTableText}>Editar Layout</Text>
+                                        <Text style={styles.addTableText}>Layout</Text>
                                     </TouchableOpacity>
                                 </View>
 
@@ -431,8 +460,12 @@ export default function ConfiguracaoMesasScreen({ onClose }: Props) {
                         />
                         <View style={styles.modalButtons}>
                             {editingEnv && (
-                                <TouchableOpacity onPress={() => handleDeleteEnv(editingEnv)} style={[styles.modalBtn, styles.deleteBtn]}>
+                                <TouchableOpacity
+                                    onPress={() => handleDeleteEnv(editingEnv)}
+                                    style={[styles.modalBtn, styles.deleteBtn]}
+                                >
                                     <Ionicons name="trash-outline" size={20} color={colors.white} />
+                                    <Text style={styles.deleteText}>Excluir Ambiente</Text>
                                 </TouchableOpacity>
                             )}
                             <TouchableOpacity onPress={() => setShowEnvModal(false)} style={[styles.modalBtn, styles.cancelBtn]}>
@@ -494,6 +527,15 @@ export default function ConfiguracaoMesasScreen({ onClose }: Props) {
                         </View>
 
                         <View style={styles.modalButtons}>
+                            {tableForm.id && (
+                                <TouchableOpacity
+                                    onPress={() => handleDeleteTable(tableForm.id!)}
+                                    style={[styles.modalBtn, styles.deleteBtn]}
+                                >
+                                    <Ionicons name="trash-outline" size={20} color={colors.white} />
+                                    <Text style={styles.deleteText}>Excluir</Text>
+                                </TouchableOpacity>
+                            )}
                             <TouchableOpacity onPress={() => setShowTableModal(false)} style={[styles.modalBtn, styles.cancelBtn]}>
                                 <Text style={styles.cancelText}>Cancelar</Text>
                             </TouchableOpacity>
@@ -636,7 +678,30 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         alignItems: 'center',
     },
-    addTableText: { color: '#fff', fontWeight: 'bold', marginLeft: 4 },
+    addTableText: { color: '#fff', fontWeight: 'bold', marginLeft: 4, fontSize: 13 },
+
+    editEnvButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#fff',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 15,
+        marginLeft: 10,
+        borderWidth: 1,
+        borderColor: colors.primary,
+    },
+    editEnvButtonText: {
+        color: colors.primary,
+        fontSize: 12,
+        fontWeight: 'bold',
+        marginLeft: 4,
+    },
+    subtitle: {
+        fontSize: 14,
+        color: '#666',
+        marginTop: 2,
+    },
 
     grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 15 },
     tableCard: {
@@ -679,6 +744,7 @@ const styles = StyleSheet.create({
     deleteBtn: { backgroundColor: colors.danger, marginRight: 'auto' },
     cancelText: { color: '#333', fontWeight: '600' },
     saveText: { color: '#fff', fontWeight: '600' },
+    deleteText: { color: '#fff', fontWeight: '600', marginLeft: 4 },
 
     shapeSelector: { flexDirection: 'row', gap: 10, marginBottom: 20 },
     shapeOption: { flex: 1, padding: 10, borderWidth: 1, borderColor: '#ddd', borderRadius: 8, alignItems: 'center' },
