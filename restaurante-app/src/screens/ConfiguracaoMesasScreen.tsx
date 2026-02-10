@@ -16,10 +16,12 @@ import { useNavigation } from '@react-navigation/native';
 import { colors } from '../theme/colors';
 import BackgroundPattern from '../components/BackgroundPattern';
 import TableService from '../services/TableService';
+import TableGraphic from '../components/TableGraphic';
+import DraggableTable from '../components/DraggableTable'; // Added
 import { Environment, Table } from '../types';
 import { useAuth } from '../context/AuthContext';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 // Mock for safe area if not available
 const SAFE_AREA_TOP = 50;
@@ -31,6 +33,11 @@ interface Props {
 export default function ConfiguracaoMesasScreen({ onClose }: Props) {
     const navigation = useNavigation();
     const { user } = useAuth();
+
+    // Editor State
+    const [isEditingLayout, setIsEditingLayout] = useState(false);
+    const [layoutTables, setLayoutTables] = useState<Table[]>([]);
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
     const [loading, setLoading] = useState(true);
     const [environments, setEnvironments] = useState<Environment[]>([]);
@@ -187,10 +194,11 @@ export default function ConfiguracaoMesasScreen({ onClose }: Props) {
                     text: 'Excluir',
                     style: 'destructive',
                     onPress: async () => {
+                        if (!user?.companyId) return;
                         try {
                             await TableService.deleteTable(tableId);
                             // Reload
-                            const allTables = await TableService.getTables(user!.companyId);
+                            const allTables = await TableService.getTables(user.companyId);
                             setTables(allTables.filter(t => t.environment_id === selectedEnvId));
                         } catch (error) {
                             Alert.alert('Erro', 'Falha ao excluir mesa.');
@@ -213,6 +221,75 @@ export default function ConfiguracaoMesasScreen({ onClose }: Props) {
             setTableForm({ number: '', seats: '4', shape: 'square' });
         }
         setShowTableModal(true);
+    };
+
+    // Layout Editor Handlers
+    const openLayoutEditor = () => {
+        if (tables.length === 0) {
+            Alert.alert('Aviso', 'Adicione mesas antes de editar o layout.');
+            return;
+        }
+
+        // Initialize positions if main ones are 0,0
+        // Heuristic: If all are 0,0, auto-distribute in a grid for easier starting point
+        const needsInit = tables.every(t => t.position_x === 0 && t.position_y === 0);
+
+        let initialTables = JSON.parse(JSON.stringify(tables)); // Deep clone
+
+        if (needsInit) {
+            const cols = 3; // Reduced columns for more space
+            const spacing = 140; // Increased spacing to prevent overlap
+            initialTables = initialTables.map((t: Table, i: number) => ({
+                ...t,
+                position_x: 50 + (i % cols) * spacing,
+                position_y: 100 + Math.floor(i / cols) * spacing
+            }));
+        }
+
+        setLayoutTables(initialTables);
+        setHasUnsavedChanges(false);
+        setIsEditingLayout(true);
+    };
+
+    const handleDragEnd = (id: string, x: number, y: number) => {
+        setLayoutTables(prev => {
+            const updated = prev.map(t =>
+                t.id === id ? { ...t, position_x: x, position_y: y } : t
+            );
+            return updated;
+        });
+        setHasUnsavedChanges(true);
+    };
+
+    const saveLayout = async () => {
+        try {
+            setLoading(true);
+            // Save all positions
+            // Optimization: Only save changed tables if we tracked them, but for < 50 items Promise.all is fast enough
+            const updates = layoutTables.map(t =>
+                TableService.updateTable(t.id, {
+                    position_x: Math.round(t.position_x),
+                    position_y: Math.round(t.position_y)
+                })
+            );
+
+            await Promise.all(updates);
+
+            // Reload
+            if (user?.companyId) { // Check again to satisfy TS
+                const allTables = await TableService.getTables(user.companyId);
+                setTables(allTables.filter(t => t.environment_id === selectedEnvId));
+            }
+
+            setIsEditingLayout(false);
+            setHasUnsavedChanges(false);
+            Alert.alert('Sucesso', 'Layout salvo com sucesso!');
+        } catch (error) {
+            console.error(error);
+            Alert.alert('Erro', 'Falha ao salvar o layout.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     // Renderers
@@ -294,6 +371,14 @@ export default function ConfiguracaoMesasScreen({ onClose }: Props) {
                                         <Ionicons name="add" size={20} color={colors.white} />
                                         <Text style={styles.addTableText}>Adicionar Mesa</Text>
                                     </TouchableOpacity>
+
+                                    <TouchableOpacity
+                                        style={[styles.addTableButton, { backgroundColor: '#2196F3', marginLeft: 10 }]}
+                                        onPress={openLayoutEditor}
+                                    >
+                                        <Ionicons name="move" size={20} color={colors.white} />
+                                        <Text style={styles.addTableText}>Editar Layout</Text>
+                                    </TouchableOpacity>
                                 </View>
 
                                 <View style={styles.grid}>
@@ -304,10 +389,16 @@ export default function ConfiguracaoMesasScreen({ onClose }: Props) {
                                             onPress={() => openTableModal(table)}
                                             onLongPress={() => handleDeleteTable(table.id)}
                                         >
-                                            <View style={[styles.tableShape, styles[table.shape]]}>
-                                                <Text style={styles.tableNumber}>{table.number}</Text>
+                                            <View pointerEvents="none" style={{ marginBottom: 5 }}>
+                                                <TableGraphic
+                                                    shape={table.shape}
+                                                    seats={table.seats}
+                                                    status="Livre"
+                                                    size={60}
+                                                    tableNumber={table.number}
+                                                />
                                             </View>
-                                            <Text style={styles.seatsText}>{table.seats} lugares</Text>
+                                            {/* <Text style={styles.seatsText}>{table.seats} lugares</Text> */}
                                         </TouchableOpacity>
                                     ))}
                                 </View>
@@ -386,6 +477,15 @@ export default function ConfiguracaoMesasScreen({ onClose }: Props) {
                                     style={[styles.shapeOption, tableForm.shape === s && styles.shapeOptionActive]}
                                     onPress={() => setTableForm(prev => ({ ...prev, shape: s }))}
                                 >
+                                    <View pointerEvents="none" style={{ transform: [{ scale: 0.6 }] }}>
+                                        <TableGraphic
+                                            shape={s}
+                                            seats={parseInt(tableForm.seats) || 4}
+                                            status="Livre"
+                                            size={50}
+                                            tableNumber=""
+                                        />
+                                    </View>
                                     <Text style={[styles.shapeText, tableForm.shape === s && styles.shapeTextActive]}>
                                         {s === 'square' ? 'Quadrada' : s === 'round' ? 'Redonda' : 'Retangular'}
                                     </Text>
@@ -402,6 +502,71 @@ export default function ConfiguracaoMesasScreen({ onClose }: Props) {
                             </TouchableOpacity>
                         </View>
                     </View>
+                </View>
+            </Modal>
+
+            {/* Layout Editor Modal */}
+            <Modal visible={isEditingLayout} animationType="slide" onRequestClose={() => setIsEditingLayout(false)}>
+                <View style={styles.editorContainer}>
+                    <View style={styles.editorHeader}>
+                        <TouchableOpacity
+                            onPress={() => {
+                                if (hasUnsavedChanges) {
+                                    Alert.alert(
+                                        'Alterações não salvas',
+                                        'Deseja descartar as alterações?',
+                                        [
+                                            { text: 'Cancelar', style: 'cancel' },
+                                            {
+                                                text: 'Descartar',
+                                                style: 'destructive',
+                                                onPress: () => {
+                                                    setIsEditingLayout(false);
+                                                    setHasUnsavedChanges(false);
+                                                }
+                                            }
+                                        ]
+                                    );
+                                } else {
+                                    setIsEditingLayout(false);
+                                }
+                            }}
+                            style={styles.editorCloseBtn}
+                        >
+                            <Ionicons name="close" size={28} color={colors.white} />
+                        </TouchableOpacity>
+                        <Text style={styles.editorTitle}>Editar Layout - {environments.find(e => e.id === selectedEnvId)?.name}</Text>
+                        <TouchableOpacity
+                            onPress={saveLayout}
+                            style={[styles.editorSaveBtn, !hasUnsavedChanges && styles.editorSaveBtnDisabled]}
+                            disabled={!hasUnsavedChanges}
+                        >
+                            <Ionicons name="checkmark" size={28} color={colors.white} />
+                            <Text style={styles.editorSaveBtnText}>Salvar</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.editorInstructions}>
+                        <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
+                        <Text style={styles.editorInstructionsText}>
+                            Arraste as mesas para posicioná-las como no salão físico
+                        </Text>
+                    </View>
+
+                    <ScrollView
+                        style={styles.editorCanvas}
+                        contentContainerStyle={{ minHeight: 800, minWidth: width }}
+                    >
+                        <View style={{ position: 'relative', height: 800, width: '100%' }}>
+                            {layoutTables.map(table => (
+                                <DraggableTable
+                                    key={table.id}
+                                    table={table}
+                                    onDragEnd={handleDragEnd}
+                                />
+                            ))}
+                        </View>
+                    </ScrollView>
                 </View>
             </Modal>
 
@@ -486,19 +651,7 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         shadowOffset: { width: 0, height: 2 },
     },
-    tableShape: {
-        width: 50,
-        height: 50,
-        backgroundColor: '#e0e0e0',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 8,
-        borderWidth: 2,
-        borderColor: '#ccc',
-    },
-    square: { borderRadius: 4 },
-    round: { borderRadius: 25 },
-    rect: { width: 70, borderRadius: 4 },
+    // Removed unused shape styles
 
     tableNumber: { fontWeight: 'bold', fontSize: 16, color: '#333' },
     seatsText: { fontSize: 12, color: '#666' },
@@ -532,4 +685,69 @@ const styles = StyleSheet.create({
     shapeOptionActive: { borderColor: colors.primary, backgroundColor: '#f0f9ff' },
     shapeText: { fontSize: 12, color: '#666' },
     shapeTextActive: { color: colors.primary, fontWeight: 'bold' },
+
+    // Layout Editor Styles
+    editorContainer: {
+        flex: 1,
+        backgroundColor: '#f5f5f5',
+    },
+    editorHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingTop: SAFE_AREA_TOP,
+        paddingHorizontal: 20,
+        paddingBottom: 15,
+        backgroundColor: colors.primary,
+        elevation: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+    },
+    editorTitle: {
+        flex: 1,
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: colors.white,
+        textAlign: 'center',
+        marginHorizontal: 10,
+    },
+    editorCloseBtn: {
+        padding: 5,
+    },
+    editorSaveBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#4CAF50',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 8,
+        gap: 5,
+    },
+    editorSaveBtnDisabled: {
+        backgroundColor: '#999',
+        opacity: 0.5,
+    },
+    editorSaveBtnText: {
+        color: colors.white,
+        fontWeight: 'bold',
+        fontSize: 14,
+    },
+    editorInstructions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#e3f2fd',
+        padding: 12,
+        gap: 10,
+    },
+    editorInstructionsText: {
+        flex: 1,
+        fontSize: 14,
+        color: '#1976d2',
+    },
+    editorCanvas: {
+        flex: 1,
+        backgroundColor: '#fff',
+    },
 });

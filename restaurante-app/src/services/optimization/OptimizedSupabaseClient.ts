@@ -271,7 +271,7 @@ class OptimizedSupabaseClient {
       }
 
       return queryStr;
-    } catch (error) {
+    } catch {
       return 'UNKNOWN_QUERY';
     }
   }
@@ -296,11 +296,12 @@ class OptimizedSupabaseClient {
       case 'like': return `${key} LIKE ${this.formatValue(operand)}`;
       case 'ilike': return `${key} ILIKE ${this.formatValue(operand)}`;
       case 'is': return `${key} IS ${operand.toUpperCase()}`; // null, true, false
-      case 'in':
+      case 'in': {
         // Handle (val1,val2) format
         const cleanOperand = operand.replace(/^\(|\)$/g, '');
         const values = cleanOperand.split(',').map(v => this.formatValue(v));
         return `${key} IN (${values.join(', ')})`;
+      }
       default: return `${key} = ${this.formatValue(value)}`;
     }
   }
@@ -327,7 +328,7 @@ class OptimizedSupabaseClient {
     try {
       const match = url.match(/\/rest\/v1\/([^?]+)/);
       return match ? match[1] : 'unknown';
-    } catch (error) {
+    } catch {
       return 'unknown';
     }
   }
