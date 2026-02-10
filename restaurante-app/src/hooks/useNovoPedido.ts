@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Alert } from 'react-native';
 // @ts-ignore
 import { useOrders } from '../context/OrderContext';
@@ -28,6 +28,10 @@ interface UseNovoPedidoReturn {
     produtos: Record<string, number>;
     clientName: string;
     setClientName: (name: string) => void;
+    tableId: string;
+    setTableId: (id: string) => void;
+    waiterId: string;
+    setWaiterId: (id: string) => void;
     mesa: string;
     setMesa: (mesa: string) => void;
     observations: string;
@@ -55,6 +59,8 @@ export function useNovoPedido(): UseNovoPedidoReturn {
     // Removed unused loadingComanda state
     const [clientName, setClientName] = useState('');
     const [mesa, setMesa] = useState(''); // ✅ Novo estado para Mesa
+    const [tableId, setTableId] = useState('');
+    const [waiterId, setWaiterId] = useState('');
     const [observations, setObservations] = useState('');
     const [produtos, setProdutos] = useState<Record<string, number>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -98,7 +104,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
             if (error) throw error;
 
             console.log('Products fetched:', productsData?.length);
-            
+
             // Debug: Log pizza products specifically
             const pizzaProducts = productsData?.filter(p => p.category === 'pizza') || [];
             console.log('🍕 Pizza products from database:', pizzaProducts.length);
@@ -122,7 +128,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                 // Client-side Active Filter
                 // Check both 'available' (correct DB column) and 'active' (legacy/potential)
                 const isActive = data.available !== undefined ? data.available : data.active;
-                
+
                 if (isActive === false) return;
 
                 const item: Product = {
@@ -142,7 +148,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                 // Normalizar categoria para o bucket correto
                 let cat = item.category?.toLowerCase() || 'outro';
                 if (cat === 'outros') cat = 'outro';
-                
+
                 // Compatibilidade para Espetinhos (hifen ou espaço)
                 if (cat.includes('espetinho') && cat.includes('simples')) cat = 'espetinho-simples';
                 if (cat.includes('espetinho') && cat.includes('especial')) cat = 'espetinho-especial';
@@ -155,7 +161,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                     buckets.outro.push(item);
                 }
             });
-            
+
             // Debug: Log bucket contents
             console.log('🍕 Pizzas in bucket after processing:', buckets['pizza']?.length || 0);
             buckets['pizza']?.forEach(p => {
@@ -272,12 +278,10 @@ export function useNovoPedido(): UseNovoPedidoReturn {
         }
     }, [user]);
 
-    useFocusEffect(
-        useCallback(() => {
-            // ALWAYS reload to ensure fresh data (especially for active/inactive status changes)
-            carregarCardapio();
-        }, [carregarCardapio])
-    );
+    // Load menu once on mount (or when user changes)
+    useEffect(() => {
+        carregarCardapio();
+    }, [user?.companyId]);
 
 
     const updateProduto = useCallback((itemName: string, delta: number) => {
@@ -422,8 +426,8 @@ export function useNovoPedido(): UseNovoPedidoReturn {
         // 2. Adicionar preços dos extras
         let extrasPrice = 0;
         const extrasNames: string[] = [];
-        const extrasDetails: Array<{id: string, name: string, type: string, price: number}> = [];
-        
+        const extrasDetails: Array<{ id: string, name: string, type: string, price: number }> = [];
+
         if (selectedBorda) {
             extrasPrice += selectedBorda.price || 0;
             extrasNames.push(`Borda: ${selectedBorda.name}`);
@@ -434,7 +438,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                 price: selectedBorda.price || 0
             });
         }
-        
+
         if (selectedAdicionais && selectedAdicionais.length > 0) {
             selectedAdicionais.forEach(adicional => {
                 extrasPrice += adicional.price || 0;
@@ -470,7 +474,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
         }
 
         let itemName = `Pizza ${sizeName} (${flavorsString})`;
-        
+
         // Adicionar extras ao nome se houver
         if (extrasNames.length > 0) {
             itemName += ` + ${extrasNames.join(', ')}`;
@@ -478,8 +482,8 @@ export function useNovoPedido(): UseNovoPedidoReturn {
 
         // Store structured extras data in customPrices with a special key
         const extrasKey = `${itemName}__extras`;
-        setCustomPrices(prev => ({ 
-            ...prev, 
+        setCustomPrices(prev => ({
+            ...prev,
             [itemName]: finalPrice,
             [extrasKey]: extrasDetails as any // Store extras metadata
         }));
@@ -561,7 +565,9 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                 false, // isPago
                 mesa, // ✅ Passar mesa
                 priceMap, // ✅ Passar mapa de preços cached
-                categoryMap // ✅ Passar mapa de categorias
+                categoryMap, // ✅ Passar mapa de categorias
+                tableId,
+                waiterId
             );
 
             // 🔒 VALIDAÇÃO: Alertar se o pedido foi criado com total zerado
@@ -583,6 +589,8 @@ export function useNovoPedido(): UseNovoPedidoReturn {
 
             setClientName('');
             setMesa('');
+            setTableId('');
+            setWaiterId('');
             setObservations('');
             setProdutos({});
 
@@ -656,6 +664,10 @@ export function useNovoPedido(): UseNovoPedidoReturn {
         setClientName,
         mesa,
         setMesa,
+        tableId,
+        setTableId,
+        waiterId,
+        setWaiterId,
         observations,
         setObservations,
         updateProduto,

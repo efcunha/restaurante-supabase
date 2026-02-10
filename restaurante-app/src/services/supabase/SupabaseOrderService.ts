@@ -66,7 +66,7 @@ class SupabaseOrderService {
 
     // Subscribe using RealTimeListenerManager with filters and debouncing
     const channelName = `orders-${companyId}-${todayKey}`;
-    
+
     this._subscription = realTimeListenerManager.subscribe(
       channelName,
       {
@@ -96,23 +96,65 @@ class SupabaseOrderService {
     // Use optimized client with caching for active orders
     const cacheKey = `orders:active:${companyId}:${dateKey}`;
     const cacheTags = [`orders:${companyId}`, `orders:date:${dateKey}`];
-    
-    const query = optimizedSupabaseClient
-      .from('orders')
-      .select('*')
-      .eq('company_id', companyId)
-      .eq('date_key', dateKey)
-      .not('status', 'eq', 'cancelled')
-      .order('created_at', { ascending: false });
 
-    const { data, error } = await query.execute();
+    try {
+      // console.log('[SupabaseOrder] Building query for active orders...');
+      const query = optimizedSupabaseClient
+        .from('orders')
+        .select('*')
+        .eq('company_id', companyId)
+        .eq('date_key', dateKey)
+        .not('status', 'eq', 'cancelled')
+        .order('created_at', { ascending: false });
 
-    if (error) {
-       console.error('[SupabaseOrder] Fetch error:', error);
-       return [];
+      // Check if query is valid
+      if (typeof query.execute !== 'function') {
+        console.error('[SupabaseOrder] CRITICAL: query.execute happens to not be a function. Using standard client fallback.');
+
+        // Fallback to standard client
+        const { data, error } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('company_id', companyId)
+          .eq('date_key', dateKey)
+          .not('status', 'eq', 'cancelled')
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        return (data || []).map(this.mapRowToOrder);
+      }
+
+      const { data, error } = await query.execute();
+
+      if (error) {
+        console.error('[SupabaseOrder] Fetch error:', error);
+        return [];
+      }
+
+      return (data || []).map(this.mapRowToOrder);
+    } catch (err: any) {
+      console.error('[SupabaseOrder] Exception in fetchActiveOrders, trying fallback:', err);
+
+      // Fallback in catch block as well
+      try {
+        const { data, error } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('company_id', companyId)
+          .eq('date_key', dateKey)
+          .not('status', 'eq', 'cancelled')
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('[SupabaseOrder] Fallback fetch error:', error);
+          return [];
+        }
+        return (data || []).map(this.mapRowToOrder);
+      } catch (fallbackErr) {
+        console.error('[SupabaseOrder] Fallback failed:', fallbackErr);
+        return [];
+      }
     }
-
-    return (data || []).map(this.mapRowToOrder);
   }
 
 
@@ -121,27 +163,27 @@ class SupabaseOrderService {
    * Internal method for creating order directly
    */
   private async _createOrderInternal(companyId: string, order: Partial<Order>): Promise<string> {
-      const { data, error } = await supabase
+    const { data, error } = await supabase
       .from('orders')
       .insert({
-         company_id: companyId,
-         client_name: order.client,
-         table_number: parseInt(order.mesa || '0'),
-         comanda_number: parseInt(order.comandaNumber || '0'),
-         items: order.items,
-         observations: order.observations,
-         status: 'pending',
-         total_amount: order.totalPrice,
-         is_paid: false,
-         created_by: order.createdBy,
-         date_key: getTodayKey()
+        company_id: companyId,
+        client_name: order.client,
+        table_number: parseInt(order.mesa || '0'),
+        comanda_number: parseInt(order.comandaNumber || '0'),
+        items: order.items,
+        observations: order.observations,
+        status: 'pending',
+        total_amount: order.totalPrice,
+        is_paid: false,
+        created_by: order.createdBy,
+        date_key: getTodayKey()
       })
       .select()
       .single();
 
     if (error) {
-       console.error('[SupabaseOrder] Create error:', error);
-       throw error;
+      console.error('[SupabaseOrder] Create error:', error);
+      throw error;
     }
 
     // Invalidate cache for orders
@@ -156,96 +198,96 @@ class SupabaseOrderService {
    */
   async createOrder(companyId: string, order: Partial<Order>): Promise<string | null> {
     const isOnline = offlineQueueService.getIsOnline();
-    
+
     // Simple UUID generator for temp ID
     const tempId = 'temp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-    
+
     if (!isOnline) {
-       console.log('[SupabaseOrder] Offline, queuing creation of order');
-       await offlineQueueService.enqueue('CREATE_ORDER', async () => {
-           return this._createOrderInternal(companyId, order);
-       }, { companyId, order });
-       return tempId;
+      console.log('[SupabaseOrder] Offline, queuing creation of order');
+      await offlineQueueService.enqueue('CREATE_ORDER', async () => {
+        return this._createOrderInternal(companyId, order);
+      }, { companyId, order });
+      return tempId;
     }
 
     try {
-       return await this._createOrderInternal(companyId, order);
+      return await this._createOrderInternal(companyId, order);
     } catch (error: any) {
-       if (isRetryableError(error) || error.message.includes('Network request failed') || error.message.includes('fetch')) {
-           console.log('[SupabaseOrder] Network fail, queuing creation');
-           await offlineQueueService.enqueue('CREATE_ORDER', async () => {
-               return this._createOrderInternal(companyId, order);
-           }, { companyId, order });
-           return tempId;
-       }
-       throw error;
+      if (isRetryableError(error) || error.message.includes('Network request failed') || error.message.includes('fetch')) {
+        console.log('[SupabaseOrder] Network fail, queuing creation');
+        await offlineQueueService.enqueue('CREATE_ORDER', async () => {
+          return this._createOrderInternal(companyId, order);
+        }, { companyId, order });
+        return tempId;
+      }
+      throw error;
     }
   }
 
   async updateOrderStatus(orderId: string, status: string) {
     const isOnline = offlineQueueService.getIsOnline();
-    
+
     const operation = async () => {
-        const { error } = await supabase
-          .from('orders')
-          .update({ status })
-          .eq('id', orderId);
-        if (error) throw error;
-        
-        // Invalidate cache after update
-        const { cacheLayerService } = await import('../CacheLayerService');
-        await cacheLayerService.invalidatePattern('orders:');
+      const { error } = await supabase
+        .from('orders')
+        .update({ status })
+        .eq('id', orderId);
+      if (error) throw error;
+
+      // Invalidate cache after update
+      const { cacheLayerService } = await import('../CacheLayerService');
+      await cacheLayerService.invalidatePattern('orders:');
     };
 
     if (!isOnline) {
-        await offlineQueueService.enqueue('UPDATE_STATUS', operation, { orderId, status });
-        return;
+      await offlineQueueService.enqueue('UPDATE_STATUS', operation, { orderId, status });
+      return;
     }
 
     try {
-        await operation();
+      await operation();
     } catch (error: any) {
-        if (isRetryableError(error)) {
-             await offlineQueueService.enqueue('UPDATE_STATUS', operation, { orderId, status });
-             return;
-        }
-        throw error;
+      if (isRetryableError(error)) {
+        await offlineQueueService.enqueue('UPDATE_STATUS', operation, { orderId, status });
+        return;
+      }
+      throw error;
     }
   }
 
   async updateOrder(orderId: string, updates: Partial<Order>) {
-     const payload: any = {};
-     if (updates.client) payload.client_name = updates.client;
-     if (updates.items) payload.items = updates.items;
-     if (updates.totalPrice) payload.total_amount = updates.totalPrice;
-     
-     const operation = async () => {
-         const { error } = await supabase
-           .from('orders')
-           .update(payload)
-           .eq('id', orderId);
-         if (error) throw error;
-         
-         // Invalidate cache after update
-         const { cacheLayerService } = await import('../CacheLayerService');
-         await cacheLayerService.invalidatePattern('orders:');
-     };
+    const payload: any = {};
+    if (updates.client) payload.client_name = updates.client;
+    if (updates.items) payload.items = updates.items;
+    if (updates.totalPrice) payload.total_amount = updates.totalPrice;
 
-     const isOnline = offlineQueueService.getIsOnline();
-     if (!isOnline) {
-          await offlineQueueService.enqueue('UPDATE_ORDER', operation, { orderId, updates });
-          return;
-     }
+    const operation = async () => {
+      const { error } = await supabase
+        .from('orders')
+        .update(payload)
+        .eq('id', orderId);
+      if (error) throw error;
 
-     try {
-         await operation();
-     } catch (error: any) {
-         if (isRetryableError(error)) {
-              await offlineQueueService.enqueue('UPDATE_ORDER', operation, { orderId, updates });
-              return;
-         }
-         throw error;
-     }
+      // Invalidate cache after update
+      const { cacheLayerService } = await import('../CacheLayerService');
+      await cacheLayerService.invalidatePattern('orders:');
+    };
+
+    const isOnline = offlineQueueService.getIsOnline();
+    if (!isOnline) {
+      await offlineQueueService.enqueue('UPDATE_ORDER', operation, { orderId, updates });
+      return;
+    }
+
+    try {
+      await operation();
+    } catch (error: any) {
+      if (isRetryableError(error)) {
+        await offlineQueueService.enqueue('UPDATE_ORDER', operation, { orderId, updates });
+        return;
+      }
+      throw error;
+    }
   }
 
 
@@ -258,7 +300,7 @@ class SupabaseOrderService {
       .delete()
       .eq('id', orderId)
       .eq('company_id', companyId);
-    
+
     if (error) throw error;
   }
 
@@ -287,6 +329,83 @@ class SupabaseOrderService {
     if (error) throw error;
     return data.id;
   }
+
+  /**
+   * Transfere um pedido para outra mesa
+   */
+  async transferOrder(
+    companyId: string,
+    orderId: string,
+    targetTableNumber: string,
+    targetTableId?: string,
+    reason?: string,
+    userId?: string
+  ): Promise<void> {
+    const isOnline = offlineQueueService.getIsOnline();
+
+    // Fetch current order details for the log
+    // We do this optimistically or let the server handle it (triggered functions would be better but we do it client-side for now)
+
+    const operation = async () => {
+      // 1. Get current order info to log 'from_table'
+      const { data: currentOrder, error: fetchError } = await supabase
+        .from('orders')
+        .select('table_number, id') // add more fields if we can join with tables
+        .eq('id', orderId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // 2. Perform the transfer (update order)
+      const { error: updateError } = await supabase
+        .from('orders')
+        .update({
+          table_number: parseInt(targetTableNumber),
+          // table_id: targetTableId // If we had a direct FK column active
+        })
+        .eq('id', orderId);
+
+      if (updateError) throw updateError;
+
+      // 3. Log the transfer
+      const { error: logError } = await supabase
+        .from('order_transfers')
+        .insert({
+          company_id: companyId,
+          order_id: orderId,
+          from_table_id: null, // We'd need to lookup the ID from the number or have it passed
+          to_table_id: targetTableId || null,
+          transferred_by: userId || (await supabase.auth.getUser()).data.user?.id,
+          reason: reason || `Transferência para mesa ${targetTableNumber}`,
+          // We store the numbers in metadata or reason if IDs aren't available yet
+        });
+
+      if (logError) {
+        console.warn('[SupabaseOrderService] Failed to log transfer:', logError);
+        // We don't throw here to avoid failing the user-facing action if just logging fails
+      }
+
+      // 4. Invalidate cache
+      const { cacheLayerService } = await import('../CacheLayerService');
+      await cacheLayerService.invalidatePattern('orders:');
+    };
+
+    if (!isOnline) {
+      await offlineQueueService.enqueue('TRANSFER_ORDER', operation, { companyId, orderId, targetTableNumber, targetTableId, reason });
+      return;
+    }
+
+    try {
+      await operation();
+    } catch (error: any) {
+      if (isRetryableError(error)) {
+        await offlineQueueService.enqueue('TRANSFER_ORDER', operation, { companyId, orderId, targetTableNumber, targetTableId, reason });
+        return;
+      }
+      throw error;
+    }
+  }
+
 
   // ============================================================================
   // STATISTICS METHODS

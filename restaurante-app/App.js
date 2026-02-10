@@ -24,6 +24,7 @@ import PedidosProntosScreen from './src/screens/PedidosProntosScreen';
 import AdminScreen from './src/screens/AdminScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import ComandaGerenciamentoScreen from './src/screens/ComandaGerenciamentoScreen';
+import MapaMesasScreen from './src/screens/MapaMesasScreen';
 
 import RegisterCompanyScreen from './src/screens/RegisterCompanyScreen';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -52,6 +53,7 @@ function TabNavigator() {
           else if (route.name === 'Montagem') iconName = focused ? 'restaurant' : 'restaurant-outline';
           else if (route.name === 'Cozinha') iconName = focused ? 'restaurant' : 'restaurant-outline';
           else if (route.name === 'Prontos') iconName = focused ? 'checkmark-done-circle' : 'checkmark-done-circle-outline';
+          else if (route.name === 'Mapa') iconName = focused ? 'map' : 'map-outline';
           else if (route.name === 'Comandas') iconName = focused ? 'receipt' : 'receipt-outline';
           else if (route.name === 'Admin') iconName = focused ? 'stats-chart' : 'stats-chart-outline';
           return <Ionicons name={iconName} size={size} color={color} />;
@@ -69,6 +71,7 @@ function TabNavigator() {
       })}
     >
       {canAccessScreen(user?.funcao, 'Novo Pedido') && <Tab.Screen name="Novo Pedido" component={NovoPedidoScreen} />}
+      {canAccessScreen(user?.funcao, 'Novo Pedido') && <Tab.Screen name="Mapa" component={MapaMesasScreen} />}
       {canAccessScreen(user?.funcao, 'Comandas') && <Tab.Screen name="Comandas" component={ComandaGerenciamentoScreen} />}
       {canAccessScreen(user?.funcao, 'Cozinha') && <Tab.Screen name="Cozinha" component={CozinhaScreen} />}
       {canAccessScreen(user?.funcao, 'Montagem') && <Tab.Screen name="Montagem" component={MontagemScreen} />}

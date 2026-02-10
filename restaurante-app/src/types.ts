@@ -13,6 +13,8 @@ export interface Order {
   id: string;
   client: string;
   mesa?: string;
+  tableId?: string; // Link to actual table record
+  waiterId?: string; // Assigned waiter
   comandaNumber: string;
   items: string[];
   itemsWithStatus: OrderItemStatus[];
@@ -151,4 +153,34 @@ export interface Comanda {
   motivoCancelamento?: string;
   atualizado?: any; // Timestamp
   [key: string]: any;
+}
+
+export interface Environment {
+  id: string;
+  company_id: string;
+  name: string;
+  section_order: number;
+  created_at?: string;
+}
+
+export interface Table {
+  id: string;
+  company_id: string;
+  environment_id: string | null;
+  number: string;
+  seats: number;
+  position_x: number;
+  position_y: number;
+  shape: 'round' | 'square' | 'rect';
+  width: number;
+  height: number;
+  rotation: number;
+  active: boolean;
+  created_at?: string;
+  // Extended properties for UI (not in DB)
+  status?: 'Livre' | 'Ocupada' | 'Pagamento' | 'Reservada';
+  order_total?: number;
+  order_time?: string;
+  current_order_id?: string;
+  waiter_name?: string;
 }
