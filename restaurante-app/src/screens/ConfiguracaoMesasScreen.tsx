@@ -1,0 +1,535 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+    View,
+    Text,
+    StyleSheet,
+    TouchableOpacity,
+    ScrollView,
+    Modal,
+    TextInput,
+    Alert,
+    Dimensions,
+    ActivityIndicator
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { colors } from '../theme/colors';
+import BackgroundPattern from '../components/BackgroundPattern';
+import TableService from '../services/TableService';
+import { Environment, Table } from '../types';
+import { useAuth } from '../context/AuthContext';
+
+const { width } = Dimensions.get('window');
+
+// Mock for safe area if not available
+const SAFE_AREA_TOP = 50;
+
+interface Props {
+    onClose?: () => void;
+}
+
+export default function ConfiguracaoMesasScreen({ onClose }: Props) {
+    const navigation = useNavigation();
+    const { user } = useAuth();
+
+    const [loading, setLoading] = useState(true);
+    const [environments, setEnvironments] = useState<Environment[]>([]);
+    const [selectedEnvId, setSelectedEnvId] = useState<string | null>(null);
+    const [tables, setTables] = useState<Table[]>([]);
+
+    // Modals state
+    const [showEnvModal, setShowEnvModal] = useState(false);
+    const [showTableModal, setShowTableModal] = useState(false);
+
+    // Form state
+    const [envName, setEnvName] = useState('');
+    const [editingEnv, setEditingEnv] = useState<Environment | null>(null);
+
+    const [tableForm, setTableForm] = useState<{
+        id?: string;
+        number: string;
+        seats: string;
+        shape: 'square' | 'round' | 'rect';
+    }>({ number: '', seats: '4', shape: 'square' });
+
+    // Load data
+    const loadData = useCallback(async () => {
+        if (!user?.companyId) return;
+        try {
+            setLoading(true);
+            const envs = await TableService.getEnvironments(user.companyId);
+            setEnvironments(envs);
+
+            if (envs.length > 0 && !selectedEnvId) {
+                setSelectedEnvId(envs[0].id);
+            }
+        } catch (error) {
+            console.error('Error loading environments:', error);
+            Alert.alert('Erro', 'Falha ao carregar ambientes.');
+        } finally {
+            setLoading(false);
+        }
+    }, [user?.companyId, selectedEnvId]);
+
+    // Load tables when environment changes - Local filtering
+    useEffect(() => {
+        if (!user?.companyId || !selectedEnvId) return;
+
+        // We could optimize this by fetching ALL tables once in loadData and filtering locally.
+        // But for now, let's just keep it simple but ensure it doesn't loop.
+        // The real issue might be that this effect runs on every render if dependencies change.
+        // selectedEnvId changes only on user tap.
+
+        const companyId = user.companyId;
+
+        const fetchTables = async () => {
+            try {
+                // If we want to optimize further, we should fetch all tables ONCE and filter locally.
+                // For now, let's stick to the pattern but ensure we don't block UI.
+                const allTables = await TableService.getTables(companyId);
+                const envTables = allTables.filter(t => t.environment_id === selectedEnvId);
+                setTables(envTables);
+            } catch (error) {
+                console.error('Error loading tables:', error);
+            }
+        };
+
+        fetchTables();
+    }, [selectedEnvId, user?.companyId]);
+
+    useEffect(() => {
+        loadData();
+    }, [loadData]);
+
+    // Environment Handlers
+    const handleSaveEnv = async () => {
+        if (!user?.companyId || !envName.trim()) return;
+
+        try {
+            if (editingEnv) {
+                await TableService.updateEnvironment(editingEnv.id, { name: envName });
+            } else {
+                await TableService.createEnvironment(user.companyId, envName);
+            }
+            setShowEnvModal(false);
+            setEnvName('');
+            setEditingEnv(null);
+            loadData();
+        } catch (error) {
+            Alert.alert('Erro', 'Falha ao salvar ambiente.');
+        }
+    };
+
+    const handleDeleteEnv = async (env: Environment) => {
+        Alert.alert(
+            'Excluir Ambiente',
+            `Tem certeza que deseja excluir "${env.name}"? As mesas ficarão sem ambiente.`,
+            [
+                { text: 'Cancelar', style: 'cancel' },
+                {
+                    text: 'Excluir',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await TableService.deleteEnvironment(env.id);
+                            if (selectedEnvId === env.id) setSelectedEnvId(null);
+                            loadData();
+                        } catch (error) {
+                            Alert.alert('Erro', 'Falha ao excluir ambiente.');
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
+    // Table Handlers
+    const handleSaveTable = async () => {
+        if (!user?.companyId || !selectedEnvId || !tableForm.number.trim()) return;
+
+        try {
+            const payload = {
+                number: tableForm.number,
+                seats: parseInt(tableForm.seats) || 4,
+                shape: tableForm.shape,
+                environment_id: selectedEnvId, // Ensure it's linked to current env
+                // Default position for simple list view (or future grid)
+                position_x: 0,
+                position_y: 0
+            };
+
+            if (tableForm.id) {
+                await TableService.updateTable(tableForm.id, payload);
+            } else {
+                await TableService.createTable(user.companyId, payload);
+            }
+
+            setShowTableModal(false);
+            setTableForm({ number: '', seats: '4', shape: 'square' });
+
+            // Reload tables
+            const allTables = await TableService.getTables(user.companyId);
+            setTables(allTables.filter(t => t.environment_id === selectedEnvId));
+
+        } catch (error) {
+            console.error(error);
+            Alert.alert('Erro', 'Falha ao salvar mesa. Verifique se o número já existe.');
+        }
+    };
+
+    const handleDeleteTable = async (tableId: string) => {
+        Alert.alert(
+            'Excluir Mesa',
+            'Tem certeza?',
+            [
+                { text: 'Cancelar', style: 'cancel' },
+                {
+                    text: 'Excluir',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await TableService.deleteTable(tableId);
+                            // Reload
+                            const allTables = await TableService.getTables(user!.companyId);
+                            setTables(allTables.filter(t => t.environment_id === selectedEnvId));
+                        } catch (error) {
+                            Alert.alert('Erro', 'Falha ao excluir mesa.');
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
+    const openTableModal = (table?: Table) => {
+        if (table) {
+            setTableForm({
+                id: table.id,
+                number: table.number,
+                seats: String(table.seats),
+                shape: table.shape
+            });
+        } else {
+            setTableForm({ number: '', seats: '4', shape: 'square' });
+        }
+        setShowTableModal(true);
+    };
+
+    // Renderers
+    const renderHeader = () => (
+        <View style={styles.header}>
+            <TouchableOpacity
+                onPress={() => {
+                    if (onClose) {
+                        onClose();
+                    } else {
+                        navigation.goBack();
+                    }
+                }}
+                style={styles.backButton}
+            >
+                <Ionicons name="arrow-back" size={24} color={colors.white} />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Configuração de Mesas</Text>
+            <View style={{ width: 24 }} />
+        </View>
+    );
+
+    const renderEnvTabs = () => (
+        <View style={styles.tabsContainer}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsScroll}>
+                {environments.map(env => (
+                    <TouchableOpacity
+                        key={env.id}
+                        style={[styles.tab, selectedEnvId === env.id && styles.tabActive]}
+                        onPress={() => setSelectedEnvId(env.id)}
+                        onLongPress={() => {
+                            setEditingEnv(env);
+                            setEnvName(env.name);
+                            setShowEnvModal(true);
+                        }}
+                    >
+                        <Text style={[styles.tabText, selectedEnvId === env.id && styles.tabTextActive]}>
+                            {env.name}
+                        </Text>
+                    </TouchableOpacity>
+                ))}
+                <TouchableOpacity
+                    style={[styles.tab, styles.addTab]}
+                    onPress={() => {
+                        setEditingEnv(null);
+                        setEnvName('');
+                        setShowEnvModal(true);
+                    }}
+                >
+                    <Ionicons name="add" size={20} color={colors.primary} />
+                    <Text style={styles.addTabText}>Novo</Text>
+                </TouchableOpacity>
+            </ScrollView>
+        </View>
+    );
+
+    return (
+        <View style={styles.container}>
+            <BackgroundPattern />
+            {renderHeader()}
+
+            {loading ? (
+                <View style={styles.center}>
+                    <ActivityIndicator size="large" color={colors.primary} />
+                </View>
+            ) : (
+                <>
+                    {renderEnvTabs()}
+
+                    <ScrollView contentContainerStyle={styles.content}>
+                        {selectedEnvId ? (
+                            <>
+                                <View style={styles.actionsBar}>
+                                    <Text style={styles.sectionTitle}>Mesas ({tables.length})</Text>
+                                    <TouchableOpacity
+                                        style={styles.addTableButton}
+                                        onPress={() => openTableModal()}
+                                    >
+                                        <Ionicons name="add" size={20} color={colors.white} />
+                                        <Text style={styles.addTableText}>Adicionar Mesa</Text>
+                                    </TouchableOpacity>
+                                </View>
+
+                                <View style={styles.grid}>
+                                    {tables.map(table => (
+                                        <TouchableOpacity
+                                            key={table.id}
+                                            style={styles.tableCard}
+                                            onPress={() => openTableModal(table)}
+                                            onLongPress={() => handleDeleteTable(table.id)}
+                                        >
+                                            <View style={[styles.tableShape, styles[table.shape]]}>
+                                                <Text style={styles.tableNumber}>{table.number}</Text>
+                                            </View>
+                                            <Text style={styles.seatsText}>{table.seats} lugares</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+
+                                {tables.length === 0 && (
+                                    <View style={styles.emptyState}>
+                                        <Text style={styles.emptyText}>Nenhuma mesa neste ambiente.</Text>
+                                    </View>
+                                )}
+                            </>
+                        ) : (
+                            <View style={styles.emptyState}>
+                                <Text style={styles.emptyText}>Crie ou selecione um ambiente.</Text>
+                            </View>
+                        )}
+                    </ScrollView>
+                </>
+            )}
+
+            {/* Modal Environment */}
+            <Modal visible={showEnvModal} transparent animationType="fade" onRequestClose={() => setShowEnvModal(false)}>
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>{editingEnv ? 'Editar Ambiente' : 'Novo Ambiente'}</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Nome do ambiente (ex: Salão, Varanda)"
+                            value={envName}
+                            onChangeText={setEnvName}
+                        />
+                        <View style={styles.modalButtons}>
+                            {editingEnv && (
+                                <TouchableOpacity onPress={() => handleDeleteEnv(editingEnv)} style={[styles.modalBtn, styles.deleteBtn]}>
+                                    <Ionicons name="trash-outline" size={20} color={colors.white} />
+                                </TouchableOpacity>
+                            )}
+                            <TouchableOpacity onPress={() => setShowEnvModal(false)} style={[styles.modalBtn, styles.cancelBtn]}>
+                                <Text style={styles.cancelText}>Cancelar</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={handleSaveEnv} style={[styles.modalBtn, styles.saveBtn]}>
+                                <Text style={styles.saveText}>Salvar</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Modal Table */}
+            <Modal visible={showTableModal} transparent animationType="fade" onRequestClose={() => setShowTableModal(false)}>
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>{tableForm.id ? 'Editar Mesa' : 'Nova Mesa'}</Text>
+
+                        <Text style={styles.label}>Número / Identificação</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Ex: 10, M1, VIP"
+                            value={tableForm.number}
+                            onChangeText={(t) => setTableForm(prev => ({ ...prev, number: t }))}
+                        />
+
+                        <Text style={styles.label}>Lugares</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Ex: 4"
+                            value={tableForm.seats}
+                            keyboardType="numeric"
+                            onChangeText={(t) => setTableForm(prev => ({ ...prev, seats: t }))}
+                        />
+
+                        <Text style={styles.label}>Formato</Text>
+                        <View style={styles.shapeSelector}>
+                            {(['square', 'round', 'rect'] as const).map(s => (
+                                <TouchableOpacity
+                                    key={s}
+                                    style={[styles.shapeOption, tableForm.shape === s && styles.shapeOptionActive]}
+                                    onPress={() => setTableForm(prev => ({ ...prev, shape: s }))}
+                                >
+                                    <Text style={[styles.shapeText, tableForm.shape === s && styles.shapeTextActive]}>
+                                        {s === 'square' ? 'Quadrada' : s === 'round' ? 'Redonda' : 'Retangular'}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+
+                        <View style={styles.modalButtons}>
+                            <TouchableOpacity onPress={() => setShowTableModal(false)} style={[styles.modalBtn, styles.cancelBtn]}>
+                                <Text style={styles.cancelText}>Cancelar</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={handleSaveTable} style={[styles.modalBtn, styles.saveBtn]}>
+                                <Text style={styles.saveText}>Salvar</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+        </View>
+    );
+}
+
+const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingTop: SAFE_AREA_TOP,
+        paddingHorizontal: 20,
+        paddingBottom: 15,
+        backgroundColor: colors.primary,
+    },
+    headerTitle: { fontSize: 20, fontWeight: 'bold', color: colors.white },
+    backButton: { padding: 5 },
+
+    tabsContainer: {
+        height: 60,
+        backgroundColor: '#fff',
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee',
+    },
+    tabsScroll: {
+        paddingHorizontal: 15,
+        alignItems: 'center',
+    },
+    tab: {
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        marginRight: 10,
+        borderRadius: 20,
+        backgroundColor: '#f0f0f0',
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
+    },
+    tabActive: {
+        backgroundColor: colors.primary,
+        borderColor: colors.primary,
+    },
+    addTab: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingLeft: 12,
+        marginTop: 0,
+        borderColor: colors.primary,
+        backgroundColor: '#fff',
+        borderStyle: 'dashed',
+    },
+    tabText: { color: '#666', fontWeight: '600' },
+    tabTextActive: { color: '#fff' },
+    addTabText: { color: colors.primary, fontWeight: 'bold', marginLeft: 4 },
+
+    content: { padding: 20 },
+    actionsBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+    sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#333' },
+    addTableButton: {
+        flexDirection: 'row',
+        backgroundColor: colors.success,
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 8,
+        alignItems: 'center',
+    },
+    addTableText: { color: '#fff', fontWeight: 'bold', marginLeft: 4 },
+
+    grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 15 },
+    tableCard: {
+        width: (width - 60) / 3,
+        backgroundColor: '#fff',
+        borderRadius: 8,
+        padding: 10,
+        alignItems: 'center',
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 2 },
+    },
+    tableShape: {
+        width: 50,
+        height: 50,
+        backgroundColor: '#e0e0e0',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 8,
+        borderWidth: 2,
+        borderColor: '#ccc',
+    },
+    square: { borderRadius: 4 },
+    round: { borderRadius: 25 },
+    rect: { width: 70, borderRadius: 4 },
+
+    tableNumber: { fontWeight: 'bold', fontSize: 16, color: '#333' },
+    seatsText: { fontSize: 12, color: '#666' },
+
+    emptyState: { padding: 40, alignItems: 'center' },
+    emptyText: { color: '#999', fontSize: 16 },
+
+    // Modal
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
+    modalContent: { backgroundColor: '#fff', borderRadius: 12, padding: 20 },
+    modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
+    input: {
+        borderWidth: 1,
+        borderColor: '#ddd',
+        borderRadius: 8,
+        padding: 12,
+        fontSize: 16,
+        marginBottom: 15,
+    },
+    label: { fontSize: 14, color: '#666', marginBottom: 6, fontWeight: '600' },
+    modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10, gap: 10 },
+    modalBtn: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8 },
+    cancelBtn: { backgroundColor: '#f0f0f0' },
+    saveBtn: { backgroundColor: colors.primary },
+    deleteBtn: { backgroundColor: colors.danger, marginRight: 'auto' },
+    cancelText: { color: '#333', fontWeight: '600' },
+    saveText: { color: '#fff', fontWeight: '600' },
+
+    shapeSelector: { flexDirection: 'row', gap: 10, marginBottom: 20 },
+    shapeOption: { flex: 1, padding: 10, borderWidth: 1, borderColor: '#ddd', borderRadius: 8, alignItems: 'center' },
+    shapeOptionActive: { borderColor: colors.primary, backgroundColor: '#f0f9ff' },
+    shapeText: { fontSize: 12, color: '#666' },
+    shapeTextActive: { color: colors.primary, fontWeight: 'bold' },
+});

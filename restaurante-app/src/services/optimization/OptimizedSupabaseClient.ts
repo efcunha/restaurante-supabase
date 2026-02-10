@@ -57,7 +57,7 @@ class OptimizedSupabaseClient {
    * @returns Query result with optimization applied
    */
   async executeQuery<T>(
-    queryBuilder: PostgrestFilterBuilder<any, any, T[]>,
+    queryBuilder: PostgrestFilterBuilder<any, any, any, any>,
     operationName: string,
     cacheOptions?: {
       enabled?: boolean;
@@ -74,7 +74,7 @@ class OptimizedSupabaseClient {
       // If caching is enabled, try cache first
       if (cacheOptions?.enabled && cacheOptions.key) {
         const cacheKey = cacheOptions.key;
-        
+
         // Use cache wrapper
         const result = await cacheLayerService.withCache(
           cacheKey,
@@ -112,7 +112,7 @@ class OptimizedSupabaseClient {
 
       // Execute without cache
       const result = await queryBuilder;
-      
+
       const executionTime = Date.now() - startTime;
 
       // Track query execution for N+1 detection
@@ -165,7 +165,7 @@ class OptimizedSupabaseClient {
 
     try {
       const result = await queryBuilder;
-      
+
       const executionTime = Date.now() - startTime;
 
       // Invalidate cache after successful mutation
@@ -232,43 +232,92 @@ class OptimizedSupabaseClient {
       // We'll construct a representative string from the builder state
       const url = queryBuilder.url?.toString() || '';
       const params = new URL(url).searchParams;
-      
+
       let queryStr = `SELECT * FROM ${this.extractTableName(url)}`;
-      
+
       // Add filters
       const select = params.get('select');
       if (select) {
         queryStr = `SELECT ${select} FROM ${this.extractTableName(url)}`;
       }
-      
+
       // Add WHERE clauses from URL params
       const filters: string[] = [];
       params.forEach((value, key) => {
-        if (key !== 'select' && key !== 'order' && key !== 'limit') {
-          filters.push(`${key}=${value}`);
+        if (key !== 'select' && key !== 'order' && key !== 'limit' && key !== 'offset') {
+          filters.push(this.parseFilter(key, value));
         }
       });
-      
+
       if (filters.length > 0) {
         queryStr += ` WHERE ${filters.join(' AND ')}`;
       }
-      
+
       // Add ORDER BY
       const order = params.get('order');
       if (order) {
-        queryStr += ` ORDER BY ${order}`;
+        // Handle PostgREST order syntax: col.desc, col.asc
+        const orderParts = order.split(',').map(part => {
+          const [col, dir] = part.split('.');
+          return `${col} ${dir ? dir.toUpperCase() : 'ASC'}`;
+        });
+        queryStr += ` ORDER BY ${orderParts.join(', ')}`;
       }
-      
+
       // Add LIMIT
       const limit = params.get('limit');
       if (limit) {
         queryStr += ` LIMIT ${limit}`;
       }
-      
+
       return queryStr;
     } catch (error) {
       return 'UNKNOWN_QUERY';
     }
+  }
+
+  /**
+   * Parse PostgREST filter syntax to SQL
+   */
+  private parseFilter(key: string, value: string): string {
+    const separatorIndex = value.indexOf('.');
+    if (separatorIndex === -1) return `${key} = ${this.formatValue(value)}`;
+
+    const operator = value.substring(0, separatorIndex);
+    const operand = value.substring(separatorIndex + 1);
+
+    switch (operator) {
+      case 'eq': return `${key} = ${this.formatValue(operand)}`;
+      case 'neq': return `${key} <> ${this.formatValue(operand)}`;
+      case 'gt': return `${key} > ${this.formatValue(operand)}`;
+      case 'gte': return `${key} >= ${this.formatValue(operand)}`;
+      case 'lt': return `${key} < ${this.formatValue(operand)}`;
+      case 'lte': return `${key} <= ${this.formatValue(operand)}`;
+      case 'like': return `${key} LIKE ${this.formatValue(operand)}`;
+      case 'ilike': return `${key} ILIKE ${this.formatValue(operand)}`;
+      case 'is': return `${key} IS ${operand.toUpperCase()}`; // null, true, false
+      case 'in':
+        // Handle (val1,val2) format
+        const cleanOperand = operand.replace(/^\(|\)$/g, '');
+        const values = cleanOperand.split(',').map(v => this.formatValue(v));
+        return `${key} IN (${values.join(', ')})`;
+      default: return `${key} = ${this.formatValue(value)}`;
+    }
+  }
+
+  /**
+   * Format value for SQL (quote strings, leave numbers/booleans)
+   */
+  private formatValue(value: string): string {
+    // Check if number
+    if (!isNaN(Number(value)) && value.trim() !== '') return value;
+    // Check for boolean
+    if (value === 'true' || value === 'false') return value;
+    // Check for null
+    if (value === 'null') return 'NULL';
+
+    // String - single quote and escape existing quotes
+    return `'${value.replace(/'/g, "''")}'`;
   }
 
   /**
@@ -319,7 +368,7 @@ class OptimizedQueryBuilder<T> {
   constructor(
     private queryBuilder: any,
     private tableName: string
-  ) {}
+  ) { }
 
   /**
    * Select columns

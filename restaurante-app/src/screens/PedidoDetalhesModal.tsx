@@ -12,6 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import { useOrders } from '../context/OrderContext';
+import TransferModal from '../components/TransferModal';
 
 interface Props {
   visible: boolean;
@@ -20,7 +21,26 @@ interface Props {
 }
 
 export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props) {
-  const { getOrderById, editOrder, deleteOrder } = useOrders();
+  const { getOrderById, editOrder, deleteOrder, transferOrder } = useOrders();
+  const [isTransferModalVisible, setIsTransferModalVisible] = useState(false);
+
+  // ... (existing helper functions)
+
+  const handleTransfer = async (newTable: string) => {
+    try {
+      await transferOrder(orderId, newTable);
+      Alert.alert('Sucesso', `Pedido transferido para a mesa ${newTable}`);
+      setIsTransferModalVisible(false);
+      onClose(); // Optional: close details modal after transfer
+    } catch (error: any) {
+      Alert.alert('Erro', 'Falha ao transferir pedido: ' + error.message);
+    }
+  };
+
+  // ... (existing handleEdit, handleDelete)
+
+  // ... (render)
+
 
   // Helper para formatar valores em Real brasileiro
   const formatarMoeda = (valor: any) => {
@@ -273,6 +293,13 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
           {canEdit && (
             <View style={styles.actions}>
               <TouchableOpacity
+                style={[styles.actionBtn, { backgroundColor: '#FF9800', marginRight: 10 }]}
+                onPress={() => setIsTransferModalVisible(true)}
+              >
+                <Text style={styles.actionBtnText}>🔄 Mover</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
                 style={[styles.actionBtn, styles.editBtn]}
                 onPress={handleEdit}
               >
@@ -310,6 +337,12 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
           )}
         </View>
       </View>
+      <TransferModal
+        visible={isTransferModalVisible}
+        onClose={() => setIsTransferModalVisible(false)}
+        onConfirm={handleTransfer}
+        currentTable={order.mesa}
+      />
     </Modal>
   );
 }

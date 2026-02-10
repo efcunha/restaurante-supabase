@@ -26,6 +26,8 @@ import EstoqueScreen from './EstoqueScreen';
 // @ts-ignore
 import ExtrasConfigScreen from './ExtrasConfigScreen';
 // @ts-ignore
+import ConfiguracaoMesasScreen from './ConfiguracaoMesasScreen';
+// @ts-ignore
 import PrinterConfigScreen from './PrinterConfigScreen';
 // @ts-ignore
 import EditarEmpresaScreen from './EditarEmpresaScreen';
@@ -76,6 +78,7 @@ export default function AdminScreen() {
   const [showPrinterConfig, setShowPrinterConfig] = useState(false);
   const [showEditarEmpresa, setShowEditarEmpresa] = useState(false);
   const [showFinancialConfig, setShowFinancialConfig] = useState(false);
+  const [showConfiguracaoMesas, setShowConfiguracaoMesas] = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);
   const [showBiometricSetup, setShowBiometricSetup] = useState(false);
   const [showMFASetup, setShowMFASetup] = useState(false);
@@ -159,7 +162,7 @@ export default function AdminScreen() {
     if (!user?.companyId) return;
 
     const dateKey = getTodayKey();
-    
+
     // Supabase Realtime para pedidos
     const pedidosChannel = supabase
       .channel('admin-pedidos-changes')
@@ -245,7 +248,7 @@ export default function AdminScreen() {
     let attempt = 0;
     while (attempt < maxAttempts) {
       attempt++;
-      
+
       // Buscar para ver quantos docs existem
       const { data: dataBefore, error: errorBefore } = await supabase
         .from(nomeTabela)
@@ -306,69 +309,69 @@ export default function AdminScreen() {
     // Previously measured by PerformanceService (removed - Firebase specific)
     try {
       setLoadingStats(true);
-        if (!user?.companyId) return;
+      if (!user?.companyId) return;
 
-        const today = getTodayKey();
-        const { data: pedidos, error } = await supabase
-          .from('orders')
-          .select('*')
-          .eq('company_id', user.companyId)
-          .eq('date_key', today);
+      const today = getTodayKey();
+      const { data: pedidos, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('company_id', user.companyId)
+        .eq('date_key', today);
 
-        if (error) throw error;
-        
-        // Optimizing aggregation loop
-        const statsResult = (pedidos || []).reduce((acc, pedido) => {
-            acc.totalPedidos++;
-            
-            // Itens aggregation
-            const items = pedido.itens || pedido.items;
-            if (Array.isArray(items)) {
-                for (const item of items) {
-                    if (typeof item === 'string') {
-                         const qtyMatch = item.match(/^(\d+)x/);
-                         acc.totalItens += qtyMatch ? parseInt(qtyMatch[1], 10) : 1;
-                    }
-                }
+      if (error) throw error;
+
+      // Optimizing aggregation loop
+      const statsResult = (pedidos || []).reduce((acc, pedido) => {
+        acc.totalPedidos++;
+
+        // Itens aggregation
+        const items = pedido.itens || pedido.items;
+        if (Array.isArray(items)) {
+          for (const item of items) {
+            if (typeof item === 'string') {
+              const qtyMatch = item.match(/^(\d+)x/);
+              acc.totalItens += qtyMatch ? parseInt(qtyMatch[1], 10) : 1;
             }
+          }
+        }
 
-            // Time calculation
-            const inicio = pedido.criado_em || pedido.hora_pedido || pedido.created_at;
-            const fim = pedido.time_in_prontos;
+        // Time calculation
+        const inicio = pedido.criado_em || pedido.hora_pedido || pedido.created_at;
+        const fim = pedido.time_in_prontos;
 
-            if (inicio && fim) {
-                const getSeconds = (val: any) => {
-                     if (typeof val === 'string') return new Date(val).getTime() / 1000;
-                     if (typeof val === 'number') return val;
-                     return 0;
-                };
+        if (inicio && fim) {
+          const getSeconds = (val: any) => {
+            if (typeof val === 'string') return new Date(val).getTime() / 1000;
+            if (typeof val === 'number') return val;
+            return 0;
+          };
 
-                const inicioSec = getSeconds(inicio);
-                const fimSec = getSeconds(fim);
-                
-                if (inicioSec && fimSec) {
-                    const diffMin = Math.round((fimSec - inicioSec) / 60);
-                    if (diffMin > 0 && diffMin < 180) {
-                        acc.totalTempo += diffMin;
-                        acc.countTempo++;
-                    }
-                }
+          const inicioSec = getSeconds(inicio);
+          const fimSec = getSeconds(fim);
+
+          if (inicioSec && fimSec) {
+            const diffMin = Math.round((fimSec - inicioSec) / 60);
+            if (diffMin > 0 && diffMin < 180) {
+              acc.totalTempo += diffMin;
+              acc.countTempo++;
             }
-            return acc;
-        }, { totalPedidos: 0, totalItens: 0, totalTempo: 0, countTempo: 0 });
+          }
+        }
+        return acc;
+      }, { totalPedidos: 0, totalItens: 0, totalTempo: 0, countTempo: 0 });
 
-        setStats({
-            totalPedidos: statsResult.totalPedidos,
-            totalItens: statsResult.totalItens,
-            tempoMedio: statsResult.countTempo > 0 
-                ? Math.round(statsResult.totalTempo / statsResult.countTempo) 
-                : 0
-        });
+      setStats({
+        totalPedidos: statsResult.totalPedidos,
+        totalItens: statsResult.totalItens,
+        tempoMedio: statsResult.countTempo > 0
+          ? Math.round(statsResult.totalTempo / statsResult.countTempo)
+          : 0
+      });
 
-        } catch (error) {
-        console.error('❌ Erro ao carregar estatísticas:', error);
+    } catch (error) {
+      console.error('❌ Erro ao carregar estatísticas:', error);
     } finally {
-        setLoadingStats(false);
+      setLoadingStats(false);
     }
   };
 
@@ -382,62 +385,62 @@ export default function AdminScreen() {
   const carregarEstatisticasVendas = async () => {
     // Previously measured by PerformanceService (removed - Firebase specific)
     try {
-        setLoadingVendas(true);
-            
-            const { startKey: dateKeyInicio, endKey: dateKeyFim } = getDateKeyRange(periodoSelecionado);
-            if (!user?.companyId) return;
+      setLoadingVendas(true);
 
-            // Fetch concurrently
-            const [salesResult, canceledResult] = await Promise.all([
-              supabase
-                .from('comandas')
-                .select('*')
-                .eq('company_id', user.companyId)
-                .eq('status', 'fechada')
-                .gte('date_key', dateKeyInicio)
-                .lte('date_key', dateKeyFim),
-              supabase
-                .from('comandas')
-                .select('*')
-                .eq('company_id', user.companyId)
-                .eq('status', 'cancelada')
-                .gte('date_key', dateKeyInicio)
-                .lte('date_key', dateKeyFim)
-            ]);
+      const { startKey: dateKeyInicio, endKey: dateKeyFim } = getDateKeyRange(periodoSelecionado);
+      if (!user?.companyId) return;
 
-            if (salesResult.error) throw salesResult.error;
-            if (canceledResult.error) throw canceledResult.error;
+      // Fetch concurrently
+      const [salesResult, canceledResult] = await Promise.all([
+        supabase
+          .from('comandas')
+          .select('*')
+          .eq('company_id', user.companyId)
+          .eq('status', 'fechada')
+          .gte('date_key', dateKeyInicio)
+          .lte('date_key', dateKeyFim),
+        supabase
+          .from('comandas')
+          .select('*')
+          .eq('company_id', user.companyId)
+          .eq('status', 'cancelada')
+          .gte('date_key', dateKeyInicio)
+          .lte('date_key', dateKeyFim)
+      ]);
 
-            // Sales Stats
-            const salesStats = (salesResult.data || []).reduce((acc, data) => {
-                acc.totalVendido += (data.total_consumed || 0);
-                acc.totalPedidos++;
-                return acc;
-            }, { totalVendido: 0, totalPedidos: 0 });
+      if (salesResult.error) throw salesResult.error;
+      if (canceledResult.error) throw canceledResult.error;
 
-            // Canceled Stats
-            const canceledStats = (canceledResult.data || []).reduce((acc, data) => {
-                acc.totalCancelado += (data.total_consumed || 0);
-                acc.qtdCanceladas++;
-                return acc;
-            }, { totalCancelado: 0, qtdCanceladas: 0 });
+      // Sales Stats
+      const salesStats = (salesResult.data || []).reduce((acc, data) => {
+        acc.totalVendido += (data.total_consumed || 0);
+        acc.totalPedidos++;
+        return acc;
+      }, { totalVendido: 0, totalPedidos: 0 });
 
-            const ticketMedio = salesStats.totalPedidos > 0 
-                ? salesStats.totalVendido / salesStats.totalPedidos 
-                : 0;
+      // Canceled Stats
+      const canceledStats = (canceledResult.data || []).reduce((acc, data) => {
+        acc.totalCancelado += (data.total_consumed || 0);
+        acc.qtdCanceladas++;
+        return acc;
+      }, { totalCancelado: 0, qtdCanceladas: 0 });
 
-            setVendasStats({
-                totalVendido: salesStats.totalVendido,
-                totalPedidos: salesStats.totalPedidos,
-                ticketMedio,
-                totalCancelado: canceledStats.totalCancelado,
-                qtdCanceladas: canceledStats.qtdCanceladas
-            });
+      const ticketMedio = salesStats.totalPedidos > 0
+        ? salesStats.totalVendido / salesStats.totalPedidos
+        : 0;
 
-        } catch (error) {
-        console.error('❌ Erro ao carregar estatísticas de vendas:', error);
+      setVendasStats({
+        totalVendido: salesStats.totalVendido,
+        totalPedidos: salesStats.totalPedidos,
+        ticketMedio,
+        totalCancelado: canceledStats.totalCancelado,
+        qtdCanceladas: canceledStats.qtdCanceladas
+      });
+
+    } catch (error) {
+      console.error('❌ Erro ao carregar estatísticas de vendas:', error);
     } finally {
-        setLoadingVendas(false);
+      setLoadingVendas(false);
     }
   };
 
@@ -544,6 +547,7 @@ export default function AdminScreen() {
     { name: 'Estatísticas dos Garçons', icon: '📊', action: () => setShowComandasVisualizacao(true) },
     { name: 'Gerenciar Estoque', icon: '📦', action: () => setShowEstoque(true) },
     { name: 'Gerenciar Cardápio', icon: '🍴', action: () => setShowGerenciarCardapio(true) },
+    { name: 'Configurar Mesas e Ambientes', icon: '🪑', action: () => setShowConfiguracaoMesas(true) },
     { name: 'Configurar Extras de Pizza', icon: '🍕', action: () => setShowExtrasConfig(true) },
     { name: 'Configurar Impressora', icon: '🖨️', action: () => setShowPrinterConfig(true) },
     { name: 'Dados da Empresa', icon: '🏢', action: () => setShowEditarEmpresa(true) },
@@ -762,6 +766,17 @@ export default function AdminScreen() {
         </View>
       </Modal>
 
+      {/* Modal Configuração de Mesas */}
+      <Modal
+        visible={showConfiguracaoMesas}
+        animationType="slide"
+        onRequestClose={() => setShowConfiguracaoMesas(false)}
+      >
+        <View style={{ flex: 1 }}>
+          <ConfiguracaoMesasScreen onClose={() => setShowConfiguracaoMesas(false)} />
+        </View>
+      </Modal>
+
       {/* Modal Menu Caixa */}
       <Modal visible={showCaixaMenu} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
@@ -977,18 +992,18 @@ export default function AdminScreen() {
       </Modal>
 
       <StatusBar style="light" />
-      <BiometricSetupModal 
+      <BiometricSetupModal
         visible={showBiometricSetup}
         onClose={() => setShowBiometricSetup(false)}
         onSuccess={() => {
-            // Optional: visual feedback
+          // Optional: visual feedback
         }}
       />
       <MFASetupModal
         visible={showMFASetup}
         onClose={() => setShowMFASetup(false)}
         onSuccess={() => {
-            // Optional: visual feedback
+          // Optional: visual feedback
         }}
       />
     </View>
