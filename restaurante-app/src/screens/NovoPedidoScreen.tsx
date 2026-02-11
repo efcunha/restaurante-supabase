@@ -319,11 +319,7 @@ interface HeaderComponentProps {
 }
 
 const HeaderComponent = memo(({ clientName, setClientName, mesa, setMesa, waiterId, setWaiterId, waiters }: HeaderComponentProps) => {
-  const [showWaiterModal, setShowWaiterModal] = useState(false);
 
-  const selectedWaiter = useMemo(() =>
-    waiters.find(w => w.id === waiterId || w.uid === waiterId),
-    [waiters, waiterId]);
 
   return (
     <View style={styles.headerForm}>
@@ -354,74 +350,6 @@ const HeaderComponent = memo(({ clientName, setClientName, mesa, setMesa, waiter
         </View>
       </View>
 
-      {/* Campo Garçom */}
-      <View>
-        <Text style={styles.label}>Atendente / Garçom:</Text>
-        <TouchableOpacity
-          style={styles.selectorBtn}
-          onPress={() => setShowWaiterModal(true)}
-        >
-          <Text style={[styles.selectorBtnText, !selectedWaiter && { color: '#999' }]}>
-            {selectedWaiter ? (selectedWaiter.nome || selectedWaiter.email) : 'Selecione o garçom'}
-          </Text>
-          <Ionicons name="chevron-down" size={20} color="#666" />
-        </TouchableOpacity>
-      </View>
-
-      <Modal
-        visible={showWaiterModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowWaiterModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Selecionar Atendente</Text>
-              <TouchableOpacity onPress={() => setShowWaiterModal(false)} style={styles.closeBtn}>
-                <Ionicons name="close" size={24} color="#333" />
-              </TouchableOpacity>
-            </View>
-
-            {waiters.length === 0 ? (
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>Nenhum atendente encontrado.</Text>
-              </View>
-            ) : (
-              <FlatList
-                data={waiters}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={[
-                      styles.waiterItem,
-                      (item.id === waiterId || item.uid === waiterId) && styles.waiterItemActive
-                    ]}
-                    onPress={() => {
-                      setWaiterId(item.id);
-                      setShowWaiterModal(false);
-                    }}
-                  >
-                    <View style={styles.waiterInfo}>
-                      <Text style={[
-                        styles.waiterName,
-                        (item.id === waiterId || item.uid === waiterId) && styles.waiterNameActive
-                      ]}>
-                        {item.nome || item.email}
-                      </Text>
-                      <Text style={styles.waiterRole}>{item.funcao || 'Atendente'}</Text>
-                    </View>
-                    {(item.id === waiterId || item.uid === waiterId) && (
-                      <Ionicons name="checkmark-circle" size={24} color={colors.primary} />
-                    )}
-                  </TouchableOpacity>
-                )}
-                ItemSeparatorComponent={() => <View style={styles.separator} />}
-              />
-            )}
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 });
