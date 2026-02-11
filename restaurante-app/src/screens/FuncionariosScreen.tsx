@@ -1,5 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Alert, Modal } from 'react-native';
+// @ts-ignore
+import KeyboardWrapper from '../components/KeyboardWrapper';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
@@ -357,7 +359,7 @@ export default function FuncionariosScreen({ onClose }: Props) {
         transparent={true}
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardWrapper style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
@@ -592,7 +594,7 @@ export default function FuncionariosScreen({ onClose }: Props) {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardWrapper>
       </Modal>
 
       {/* Modal de Confirmação de Exclusão */}
