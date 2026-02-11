@@ -11,7 +11,7 @@
     "web": "expo start --web",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
-    "format": "prettier --write .",    
+    "format": "prettier --write .",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
@@ -29,7 +29,8 @@
     "analyze-bundle:build": "node scripts/analyze-bundle.js --build",
     "analyze-bundle:report": "node scripts/analyze-bundle.js --build --report",
     "cleanup": "node scripts/cleanup/cleanup.js",
-    "cleanup:dry-run": "node scripts/cleanup/cleanup.js --dry-run"
+    "cleanup:dry-run": "node scripts/cleanup/cleanup.js --dry-run",
+    "generate-icons": "node scripts/generate-android-icons.js"
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",
@@ -101,6 +102,7 @@
     "patch-package": "^8.0.1",
     "pixelmatch": "^7.1.0",
     "react-test-renderer": "^19.1.0",
+    "sharp": "^0.34.5",
     "ts-jest": "^29.4.6",
     "typescript-eslint": "^8.54.0"
   }
