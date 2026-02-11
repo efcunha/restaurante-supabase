@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useState, useEffect } from 'react';
 import { useOrders } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
@@ -317,7 +317,14 @@ export default function MontagemScreen() {
       <ScrollView style={styles.content}>
         {orders.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>🍽️</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+              <MaterialCommunityIcons name="silverware-fork-knife" size={40} color="#8B2F2F" style={{ marginRight: -10, transform: [{ rotate: '-15deg' }] }} />
+              <View style={{ alignItems: 'center', zIndex: 1 }}>
+                <MaterialCommunityIcons name="chef-hat" size={80} color="#E5B84A" />
+                <MaterialCommunityIcons name="plate-warm" size={50} color="#2C2C2C" style={{ marginTop: -15 }} />
+              </View>
+              <MaterialCommunityIcons name="food-turkey" size={45} color="#D84315" style={{ marginLeft: -15, marginTop: 20 }} />
+            </View>
             <Text style={styles.emptyText}>Nenhum pedido para montar</Text>
             <Text style={styles.emptySubtext}>Os pedidos da cozinha aparecerão aqui</Text>
           </View>
@@ -636,10 +643,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 60,
   },
-  emptyIcon: {
-    fontSize: 80,
-    marginBottom: 20,
-  },
+
   emptyText: {
     fontSize: 16,
     fontWeight: '600',
