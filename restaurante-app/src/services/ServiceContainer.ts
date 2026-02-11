@@ -8,7 +8,7 @@
 import OrderService from './OrderService';
 import OrderFirestoreService from './OrderFirestoreService';
 import StatisticsService from './StatisticsService';
-import AuthService from './AuthService';
+// import AuthService from './AuthService';
 import CaixaService from './CaixaService';
 import ComandasService from './ComandasService';
 import PagamentosService from './PagamentosService';
@@ -71,7 +71,7 @@ class ServiceContainer {
     this.services.set('orderService', OrderService);
     this.services.set('orderFirestoreService', OrderFirestoreService);
     this.services.set('statisticsService', StatisticsService);
-    this.services.set('authService', AuthService);
+    // this.services.set('authService', AuthService); // AuthService removed or not implemented yet
     this.services.set('caixaService', CaixaService);
     this.services.set('comandasService', ComandasService);
     this.services.set('pagamentosService', PagamentosService);
