@@ -2,6 +2,7 @@
 import React, { createContext, useState, useContext, useCallback, useEffect, ReactNode } from 'react';
 import { Platform, Alert } from 'react-native';
 import { supabase } from '../config/SupabaseConfig';
+import ProductService from '../services/ProductService';
 import OrderService from '../services/OrderService';
 import OrderFirestoreService from '../services/OrderFirestoreService';
 import { useAuth } from './AuthContext';
@@ -77,10 +78,8 @@ const calculateTotalFromSupabase = async (companyId: string, items: string[], pr
       // But this function is called inside the component/hook where auth exists.
       // Ideally we should inject the prices or fetch them using the service.
 
-      // Let's use the ProductService or direct supabase call. Direct call is faster here if we just want prices.
-      // We don't have 'supabase' imported here yet, so we will use ProductService.listarProdutos() which is cleaner anyway.
-
-      const { produtos } = await import('../services/ProductService').then(m => m.listarProdutos());
+      // Fetch from Supabase using ProductService directly
+      const { produtos } = await ProductService.listarProdutos();
       (produtos || []).forEach((p: any) => {
         if (p.name && p.price) {
           cardapioMap[p.name.toLowerCase()] = p.price;
