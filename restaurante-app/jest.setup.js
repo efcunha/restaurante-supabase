@@ -73,9 +73,34 @@ jest.mock('expo-modules-core', () => {
         EventEmitter: EventEmitter,
         NativeModulesProxy: {},
         requireNativeModule: jest.fn(),
+        requireOptionalNativeModule: jest.fn(),
         requireNativeViewManager: jest.fn(),
     };
 });
+
+jest.mock('expo-haptics', () => ({
+    notificationAsync: jest.fn(),
+    impactAsync: jest.fn(),
+    NotificationFeedbackType: {
+        Success: 'success',
+        Warning: 'warning',
+        Error: 'error',
+    },
+    ImpactFeedbackStyle: {
+        Light: 'light',
+        Medium: 'medium',
+        Heavy: 'heavy',
+    },
+}));
+
+jest.mock('expo-constants', () => ({
+    manifest: {
+        extra: {
+            supabaseUrl: 'https://test.supabase.co',
+            supabaseAnonKey: 'test-key',
+        },
+    },
+}));
 
 // Mock lz-string for cache compression tests
 jest.mock('lz-string', () => ({
