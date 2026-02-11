@@ -1,0 +1,39 @@
+# ============================================================================
+# .gitignore para pasta database-backup
+# IMPORTANTE: Esta pasta contém dados sensíveis e NÃO deve ser commitada
+# ============================================================================
+
+# Ignorar TODOS os arquivos de backup
+*.dump
+*.sql
+*.backup
+*.bak
+*.tar
+*.gz
+*.zip
+
+# Ignorar arquivo de credenciais
+.env
+.env.local
+.env.production
+credentials.txt
+config.local.sh
+
+# Ignorar logs
+*.log
+logs/
+
+# Ignorar arquivos temporários
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# PERMITIR apenas os scripts de automação
+!backup.sh
+!restore.sh
+!backup.bat
+!restore.bat
+!README.md
+!.gitignore
+!config.example.sh
