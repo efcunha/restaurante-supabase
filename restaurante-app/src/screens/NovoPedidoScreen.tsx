@@ -10,6 +10,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import PizzaBuilderModal from '../components/PizzaBuilderModal';
 import { Product, PizzaSize, PizzaConfig, Funcionario } from '../types';
 import { Modal, FlatList } from 'react-native';
+// @ts-ignore
+import KeyboardWrapper from '../components/KeyboardWrapper';
 
 if (Platform.OS === 'android') {
   if (UIManager.setLayoutAnimationEnabledExperimental) {
@@ -706,10 +708,12 @@ export default function NovoPedidoScreen({ route }: any) {
   };
 
   return (
-    <View style={styles.container}>
+    <KeyboardWrapper style={styles.container}>
       <BackgroundPattern />
 
+      {/* Header e Conteúdo mantidos dentro do Wrapper */}
       <View style={styles.header}>
+        {/* ... (código do header) */}
         <View style={styles.headerLeft}>
           {user && (
             <View>
@@ -807,7 +811,7 @@ export default function NovoPedidoScreen({ route }: any) {
       />
 
       <StatusBar style="dark" />
-    </View>
+    </KeyboardWrapper>
   );
 }
 
