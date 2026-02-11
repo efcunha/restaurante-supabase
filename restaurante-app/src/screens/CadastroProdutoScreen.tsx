@@ -3,6 +3,8 @@ import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Alert 
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 // @ts-ignore
+import KeyboardWrapper from '../components/KeyboardWrapper';
+// @ts-ignore
 import { criarProduto } from '../services/ProductService';
 
 export default function CadastroProdutoScreen() {
@@ -31,7 +33,7 @@ export default function CadastroProdutoScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <KeyboardWrapper style={styles.container}>
       <View style={styles.header}><Text style={styles.headerTitle}>Cadastro de Produtos</Text></View>
       <ScrollView contentContainerStyle={{ padding: 20 }}>
         <Text style={styles.label}>Nome do Produto</Text>
@@ -54,7 +56,7 @@ export default function CadastroProdutoScreen() {
         </TouchableOpacity>
       </ScrollView>
       <StatusBar style="light" />
-    </View>
+    </KeyboardWrapper>
   );
 }
 

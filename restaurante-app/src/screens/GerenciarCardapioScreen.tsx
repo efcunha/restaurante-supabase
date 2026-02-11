@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Alert, ActivityIndicator, Platform, TouchableOpacity, ScrollView, TextInput, Modal } from 'react-native';
+// @ts-ignore
+import KeyboardWrapper from '../components/KeyboardWrapper';
 // import { doc, getDoc, getDocs, setDoc, updateDoc, writeBatch, addDoc } from 'firebase/firestore'; // Removed Firebase
 // import { db } from '../config/firebaseConfig'; // Removed Firebase
 import { supabase } from '../config/SupabaseConfig';
@@ -1074,7 +1076,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
   }, {} as Record<string, Product[]>);
 
   return (
-    <View style={styles.container}>
+    <KeyboardWrapper style={styles.container}>
       <BackgroundPattern />
 
       <View style={styles.header}>
@@ -1950,7 +1952,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
         </View>
       </Modal>
 
-    </View>
+    </KeyboardWrapper>
   );
 }
 
