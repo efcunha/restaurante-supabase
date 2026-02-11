@@ -12,22 +12,32 @@ Recomenda-se uma arquitetura **Híbrida**, onde o App Mobile serve como "Control
 ## 2. Análise do Projeto Atual
 
 ### 2.1 Tecnologias Identificadas
-- **Frontend/Mobile:** React Native com Expo (SDK 54), TypeScript.
+- **Frontend/Mobile:** React Native com Expo (SDK 54.0.31), TypeScript.
 - **Backend/Database:** Supabase (PostgreSQL, Auth, Realtime).
+- **Segurança:** Row Level Security (RLS) já implementado com políticas baseadas em `company_id` e roles.
 - **Serviços Principais:** 
   - `OrderService.ts`: Gerencia regras de negócio de pedidos.
   - `PagamentosService.ts`: Registra pagamentos e atualiza comandas.
   - `PrinterService.ts`: Já existe suporte a impressoras térmicas (importante para Delivery e Fiscal).
+- **Infraestrutura:** Sistema já preparado para escala com particionamento mensal de tabelas.
 
 ### 2.2 O que já existe (e pode ser aproveitado)
-- **Estrutura de Pedidos (`OrderService`):** O sistema já possui um fluxo de status (`preparing`, `ready`, `delivered`). Isso pode ser expandido para o Delivery adicionando status como `dispatched` (saiu para entrega).
+- **Estrutura de Pedidos (`OrderService`):** O sistema já possui um fluxo de status (`pending`, `preparing`, `ready`, `delivered`, `cancelled`). O status `delivered` pode ser reutilizado para delivery, ou podemos adicionar `dispatched` para diferenciar "pronto para retirada" de "saiu para entrega".
 - **Impressão (`PrinterService`):** A lógica de comunicação com impressoras já existe, facilitando a impressão de vias de entrega e DANFE (NFC-e).
-- **Cadastro de Produtos:** Já suporta categorias e preços, mas precisará de campos extras para integração com iFood (ex: códigos PDV externos) e Balança (flag "vendido por peso").
+- **Cadastro de Produtos:** Já suporta categorias, preços (incluindo JSONB para múltiplos preços), ingredientes e subcategorias. Precisará de campos extras para integração com iFood e Balança.
+- **Segurança RLS:** Políticas de segurança já implementadas garantem isolamento por empresa e controle de acesso por roles.
 
 ### 2.3 O que falta (Lacunas)
-- **Delivery:** Não há campos para Endereço, Telefone, Taxa de Entrega ou Origem do Pedido (iFood/App/Telefone) na tabela `orders`.
-- **Fiscal:** `PagamentosService` apenas registra valores. Não há lógica de tributação (NCM, CFOP, Alíquotas) nem comunicação com SEFAZ.
-- **Balança:** Não há integração com hardware de pesagem nem leitura de etiquetas de automação.
+- **Delivery:** 
+  - Campos ausentes na tabela `orders`: `order_source` (TEXT), `delivery_info` (JSONB com endereço, telefone, taxa)
+  - Tabela `entregadores` não existe
+  - Biblioteca de leitura de código de barras não instalada (necessário `expo-barcode-scanner` ou similar)
+- **Fiscal:** 
+  - `PagamentosService` apenas registra valores. Não há lógica de tributação (NCM, CFOP, Alíquotas) nem comunicação com SEFAZ.
+  - Campos fiscais ausentes na tabela `products`: `ncm`, `cfop`, `tax_rate`
+- **Balança:** 
+  - Campos ausentes na tabela `products`: `barcode` (TEXT), `pdv_code` (TEXT), `sold_by_weight` (BOOLEAN)
+  - Não há lógica de decomposição de código de barras (formato EAN-13 para peso/preço)
 
 ---
 
@@ -43,15 +53,35 @@ Criar um **Integrador Backend** (ver seção 4).
 1.  **Vendas do tipo "Delivery" & Integração (iFood/99):**
     *   O Backend consulta ou recebe do iFood. Ao identificar um pedido, insere no Supabase.
     *   O App Mobile, que já usa Supabase Realtime, receberá o pedido automaticamente na tela de "Novos Pedidos" ou uma nova aba "Delivery".
-    *   *Ajuste no Projeto:* Adicionar coluna `order_source` (iFood, Local, Whatsapp) e `delivery_info` (JSON com endereço) na tabela `orders`.
+    *   *Ajuste no Projeto:* 
+        ```sql
+        ALTER TABLE orders ADD COLUMN order_source TEXT CHECK (order_source IN ('local', 'ifood', '99food', 'whatsapp', 'web'));
+        ALTER TABLE orders ADD COLUMN delivery_info JSONB DEFAULT '{}'::jsonb;
+        -- delivery_info structure: {"address": "...", "phone": "...", "delivery_fee": 5.00, "distance_km": 2.5}
+        ```
 
 2.  **Cardápio Digital:**
     *   Não faça isso dentro do App Mobile de gestão. Crie uma **Web Page** simples (Next.js ou React) que lê do mesmo Supabase. Cliente acessa pelo navegador, faz o pedido, e cai direto no Supabase.
 
 3.  **Fluxo de Status e Entregador:**
-    *   *Ajuste no Projeto:* Criar tabela `entregadores`.
+    *   *Ajuste no Projeto:* Criar tabela `entregadores`:
+        ```sql
+        CREATE TABLE entregadores (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+          name TEXT NOT NULL,
+          phone TEXT,
+          vehicle_type TEXT CHECK (vehicle_type IN ('moto', 'carro', 'bicicleta')),
+          active BOOLEAN DEFAULT true,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        
+        ALTER TABLE orders ADD COLUMN delivery_person_id UUID REFERENCES entregadores(id);
+        ALTER TABLE orders ADD COLUMN dispatched_at TIMESTAMPTZ;
+        ```
     *   No App Mobile, ao finalizar um pedido Delivery, o operador seleciona o entregador.
-    *   O Backend atualiza o status no iFood automaticamente (via Trigger do Supabase).
+    *   O Backend atualiza o status no iFood automaticamente (via Trigger do Supabase ou Edge Function).
 
 **Resumo da Implementação Delivery:**
 *   **Backend:** Serviço de Polling iFood -> Insere no Supabase.
@@ -90,6 +120,17 @@ Contratar um serviço como **eNotas**, **Focus NFe**, **WebmaniBR** ou **Nuvar**
 *   **Viabilidade:** **Altíssima**. O código de barras já contém o preço ou o peso.
     *   Exemplo: `2AAAAAVVVVVVJ` (A=Item, V=Valor).
     *   O App Mobile precisa apenas de uma função no `NovoPedidoScreen` para "Ler Código de Barras". Nada de integração de hardware complexa.
+    *   *Ajuste no Projeto:*
+        ```sql
+        ALTER TABLE products ADD COLUMN barcode TEXT;
+        ALTER TABLE products ADD COLUMN pdv_code TEXT;
+        ALTER TABLE products ADD COLUMN sold_by_weight BOOLEAN DEFAULT false;
+        CREATE INDEX idx_products_barcode ON products(barcode) WHERE barcode IS NOT NULL;
+        ```
+    *   *Dependência:* Instalar `expo-barcode-scanner`:
+        ```bash
+        npx expo install expo-barcode-scanner
+        ```
 
 **Recomendação:** Se o layout do restaurante permitir, adote a **Abordagem B (Etiquetas)** ou **Balanças com Bluetooth**. Evite cabos seriais ligados a tablets/celulares.
 
@@ -163,17 +204,53 @@ Caso você precise de processamento muito pesado, manter conexões TCP persisten
 
 Para não travar a operação, sugerimos a seguinte ordem:
 
-1.  **Fase 1: Preparação da Base (Mobile + DB)**
-    *   Alterar `orders` e `products` para suportar novos campos.
-    *   Criar UI de "Pedido Delivery" (campos de endereço).
-2.  **Fase 2: Balança (Mais simples)**
-    *   Implementar leitura de código de barras (camera) no `NovoPedidoScreen` (Abordagem B).
-3.  **Fase 3: Delivery (Backend Serverless)**
-    *   Criar Edge Function `webhook-delivery` para receber pedidos.
-    *   Criar Edge Function `sync-status` para atualizar plataformas.
-4.  **Fase 4: Fiscal (API + Edge Function)**
-    *   Contratar API Fiscal.
-    *   Criar Edge Function `emitir-nfce` para comunicar com a API.
+1.  **Fase 1: Preparação da Base (Mobile + DB)** - 2-3 dias
+    *   Executar migrations SQL para adicionar campos em `orders` e `products`
+    *   Criar tabela `entregadores`
+    *   Instalar `expo-barcode-scanner`
+    *   Criar UI de "Pedido Delivery" (campos de endereço no `NovoPedidoScreen`)
+    
+2.  **Fase 2: Balança (Mais simples)** - 2-3 dias
+    *   Implementar leitura de código de barras (câmera) no `NovoPedidoScreen`
+    *   Criar função de decomposição de código EAN-13 no `ProductService`
+    *   Adicionar lógica de cálculo por peso
+    
+3.  **Fase 3: Delivery (Backend Serverless)** - 5-7 dias
+    *   Configurar Supabase Edge Functions (ambiente de desenvolvimento)
+    *   Criar Edge Function `webhook-delivery` para receber pedidos do iFood
+    *   Criar Edge Function `sync-status` para atualizar status nas plataformas
+    *   Implementar tela de gestão de entregadores no App
+    *   Adicionar fluxo de despacho de pedidos
+    
+4.  **Fase 4: Fiscal (API + Edge Function)** - 5-7 dias
+    *   Selecionar e contratar API Fiscal (Focus NFe, eNotas, etc.)
+    *   Criar Edge Function `emitir-nfce`
+    *   Integrar retorno da API (URL do QRCode) com `PrinterService`
+    *   Adicionar campos fiscais no cadastro de produtos
+    *   Implementar tela de configuração fiscal
 
-## Conclusão
+## 6. Conclusão e Validação Técnica
+
+### Validação do Projeto Atual
+O projeto está bem estruturado com:
+- ✅ Arquitetura sólida (React Native + Supabase)
+- ✅ Segurança implementada (RLS policies)
+- ✅ Preparado para escala (particionamento de tabelas)
+- ✅ Serviços principais bem organizados
+- ✅ Suporte a impressão já existente
+
+### Recomendações Finais
 Mantenha o App Mobile focado na **Experiência do Usuário (Operador)** e na **Coleta de Dados**. Toda a lógica pesada de integração externa (iFood, SEFAZ) deve residir nas **Supabase Edge Functions**. Esta arquitetura garante um app rápido, seguro e fácil de manter.
+
+### Estimativa Total de Implementação
+- **Fase 1 (Base):** 2-3 dias
+- **Fase 2 (Balança):** 2-3 dias  
+- **Fase 3 (Delivery):** 5-7 dias
+- **Fase 4 (Fiscal):** 5-7 dias
+- **Total:** 14-20 dias úteis (3-4 semanas)
+
+### Próximos Passos Imediatos
+1. Revisar e aprovar as migrations SQL propostas
+2. Criar ambiente de testes no Supabase
+3. Instalar dependências necessárias (`expo-barcode-scanner`)
+4. Iniciar Fase 1 (Preparação da Base)

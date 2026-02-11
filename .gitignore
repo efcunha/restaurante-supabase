@@ -128,5 +128,11 @@ snyk-mcp.log
 # Debug scripts (added by cleanup script)
 scripts/debug/
 
-# Archived documentation (added by cleanup script)
-docs/archive/
+# Database backups (NEVER commit these!)
+database-backup/backups/
+database-backup/logs/
+database-backup/config.local.sh
+database-backup/*.dump
+database-backup/*.sql
+database-backup/*.backup
+database-backup/*.bak
