@@ -1,7 +1,8 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useResponsive } from '../hooks/useResponsive';
 // @ts-ignore
 import KeyboardWrapper from '../components/KeyboardWrapper';
 // @ts-ignore
@@ -9,6 +10,7 @@ import { criarProduto } from '../services/ProductService';
 
 export default function CadastroProdutoScreen() {
   const { user } = useAuth();
+  const { isTablet, horizontalPadding, inputMaxWidth } = useResponsive();
   const [nome, setNome] = useState('');
   const [preco, setPreco] = useState('');
   const [categoria, setCategoria] = useState('espetinho');
@@ -33,30 +35,37 @@ export default function CadastroProdutoScreen() {
   };
 
   return (
-    <KeyboardWrapper style={styles.container}>
-      <View style={styles.header}><Text style={styles.headerTitle}>Cadastro de Produtos</Text></View>
-      <ScrollView contentContainerStyle={{ padding: 20 }}>
-        <Text style={styles.label}>Nome do Produto</Text>
-        <TextInput style={styles.input} value={nome} onChangeText={setNome} placeholder="Ex: Picanha" placeholderTextColor="#999" />
+    <KeyboardAvoidingView 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={{ flex: 1 }}
+    >
+      <KeyboardWrapper style={styles.container}>
+        <View style={styles.header}><Text style={styles.headerTitle}>Cadastro de Produtos</Text></View>
+        <ScrollView contentContainerStyle={[styles.scrollContent, { paddingHorizontal: horizontalPadding }]}>
+          <View style={[styles.formContainer, { maxWidth: inputMaxWidth, alignSelf: 'center', width: '100%' }]}>
+            <Text style={styles.label}>Nome do Produto</Text>
+            <TextInput style={styles.input} value={nome} onChangeText={setNome} placeholder="Ex: Picanha" placeholderTextColor="#999" />
 
-        <Text style={styles.label}>Preço (R$)</Text>
-        <TextInput style={styles.input} keyboardType="numeric" value={preco} onChangeText={setPreco} placeholder="Ex: 12.99" placeholderTextColor="#999" />
+            <Text style={styles.label}>Preço (R$)</Text>
+            <TextInput style={styles.input} keyboardType="numeric" value={preco} onChangeText={setPreco} placeholder="Ex: 12.99" placeholderTextColor="#999" />
 
-        <Text style={styles.label}>Categoria</Text>
-        <View style={styles.row}>
-          {['espetinho', 'bebida'].map(cat => (
-            <TouchableOpacity key={cat} style={[styles.catChip, categoria === cat && styles.catChipActive]} onPress={() => setCategoria(cat)}>
-              <Text style={[styles.catText, categoria === cat && styles.catTextActive]}>{cat.toUpperCase()}</Text>
+            <Text style={styles.label}>Categoria</Text>
+            <View style={styles.row}>
+              {['espetinho', 'bebida'].map(cat => (
+                <TouchableOpacity key={cat} style={[styles.catChip, categoria === cat && styles.catChipActive]} onPress={() => setCategoria(cat)}>
+                  <Text style={[styles.catText, categoria === cat && styles.catTextActive]}>{cat.toUpperCase()}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TouchableOpacity style={styles.btn} onPress={cadastrar}>
+              <Text style={styles.btnText}>CADASTRAR PRODUTO</Text>
             </TouchableOpacity>
-          ))}
-        </View>
-
-        <TouchableOpacity style={styles.btn} onPress={cadastrar}>
-          <Text style={styles.btnText}>CADASTRAR PRODUTO</Text>
-        </TouchableOpacity>
-      </ScrollView>
-      <StatusBar style="light" />
-    </KeyboardWrapper>
+          </View>
+        </ScrollView>
+        <StatusBar style="light" />
+      </KeyboardWrapper>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -64,6 +73,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F1E8' },
   header: { backgroundColor: '#8B2F2F', paddingTop: 50, paddingBottom: 20, paddingHorizontal: 20 },
   headerTitle: { color: '#fff', fontSize: 24, fontWeight: '600' },
+  scrollContent: { paddingVertical: 20, paddingBottom: 100 },
+  formContainer: {},
   label: { color: '#8B2F2F', fontWeight: '600', marginBottom: 8, marginTop: 10 },
   input: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#E0D8C8', borderRadius: 12, padding: 14, marginBottom: 12 },
   btn: { backgroundColor: '#E5B84A', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 20 },

@@ -15,6 +15,7 @@ import { supabase } from '../config/SupabaseConfig'; // Replaced firebase config
 import { colors } from '../theme/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
+import { useResponsive } from '../hooks/useResponsive';
 // @ts-ignore
 import { validateCPF, validateCNPJ } from '../utils/validation';
 // @ts-ignore
@@ -28,6 +29,7 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
   const { register } = useAuth(); // Use context register which acts as wrapper or we can use direct supabase too
   // Actually, context 'register' wraps firebase. We should use direct supabase here or update context register?
   // Context register in our new Supabase Auth Context DOES use supabase.auth.signUp.
+  const { isTablet, horizontalPadding, inputMaxWidth } = useResponsive();
   
   const [restaurantName, setRestaurantName] = useState('');
   const [adminName, setAdminName] = useState('');
@@ -259,7 +261,7 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
-      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}>
+      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: 100, paddingHorizontal: horizontalPadding }]}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
@@ -269,7 +271,7 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
           <Text style={styles.subtitle}>Gerencie seu restaurante de forma inteligente</Text>
         </View>
 
-        <View style={styles.form}>
+        <View style={[styles.form, { maxWidth: isTablet ? 700 : '100%', alignSelf: 'center', width: '100%' }]}>
           <Text style={styles.label}>Tipo de Documento</Text>
           <View style={styles.docTypeContainer}>
             <TouchableOpacity
@@ -424,7 +426,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F1E8',
   },
   scrollContent: {
-    padding: 20,
     flexGrow: 1,
   },
   backBtn: {
@@ -453,6 +454,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 10,
     elevation: 3,
+    marginBottom: 20,
   },
   label: {
     fontSize: 14,
