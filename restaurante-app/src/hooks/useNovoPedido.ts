@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 // @ts-ignore
 import { useOrders } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
@@ -41,7 +41,7 @@ interface UseNovoPedidoReturn {
     setObservations: (obs: string) => void;
     updateProduto: (itemName: string, delta: number) => void;
     total: number;
-    selectedItems: { text: string; price: number }[];
+    selectedItems: { text: string; price: number; name: string }[];
     handleRemoveItem: (itemText: string) => void;
     handleSubmit: () => Promise<void>;
     isSubmitting: boolean;
@@ -265,9 +265,22 @@ export function useNovoPedido(): UseNovoPedidoReturn {
             cardapioLoadedRef.current = true;
             lastLoadTimeRef.current = Date.now();
 
+            setCardapio(novoCardapio);
+            cardapioLoadedRef.current = true;
+            lastLoadTimeRef.current = Date.now();
+
+            // Find the latest update time from the fetched products
+            const maxUpdatedAt = productsData?.reduce((max: number, p: any) => {
+                const pTime = p.updated_at ? new Date(p.updated_at).getTime() : 0;
+                return pTime > max ? pTime : max;
+            }, 0) || Date.now();
+
             await AsyncStorage.setItem(CARDAPIO_CACHE_KEY, JSON.stringify({
                 data: novoCardapio,
-                timestamp: Date.now()
+                pizzaConfig: pizzaConfig, // Cache config too
+                extras: extras,         // Cache extras too
+                timestamp: Date.now(),   // When we fetched
+                lastUpdated: maxUpdatedAt // The max server timestamp
             }));
         } catch (error) {
             console.error('❌ Erro ao carregar cardápio do Supabase:', error);
@@ -277,13 +290,61 @@ export function useNovoPedido(): UseNovoPedidoReturn {
         }
     };
 
+    const checkMenuUpdates = async () => {
+        try {
+            if (!user?.companyId) return true; // Force load if no company
+
+            // 1. Get the latest timestamp from the server (Lite query)
+            const { data: updates, error } = await supabase
+                .from('products')
+                .select('updated_at')
+                .eq('company_id', user.companyId)
+                .order('updated_at', { ascending: false })
+                .limit(1);
+
+            if (error) throw error;
+
+            const latestServerUpdate = updates && updates.length > 0 ? new Date(updates[0].updated_at).getTime() : 0;
+
+            // 2. Get local cache info
+            const cached = await AsyncStorage.getItem(CARDAPIO_CACHE_KEY);
+            if (!cached) return true; // No cache, load full
+
+            const parsedCache = JSON.parse(cached);
+            const localTimestamp = parsedCache.lastUpdated || 0;
+
+            // 3. Compare: If server is newer (> 1s diff to be safe), reload
+            // Also reload if cache is older than 24h (force refresh just in case)
+            const isCacheExpired = (Date.now() - parsedCache.timestamp) > (24 * 60 * 60 * 1000);
+            
+            if (latestServerUpdate > localTimestamp || isCacheExpired) {
+                console.log('🔄 New data available or cache expired. Reloading...', { server: latestServerUpdate, local: localTimestamp });
+                return true; // Need reload
+            }
+
+            console.log('✅ Menu is up to date. Using cache.');
+            setCardapio(parsedCache.data);
+            if (parsedCache.pizzaConfig) setPizzaConfig(parsedCache.pizzaConfig);
+            if (parsedCache.extras) setExtras(parsedCache.extras);
+            setLoadingCardapio(false);
+            return false; // No reload needed
+        } catch (err) {
+            console.warn('⚠️ Error checking updates, forcing reload:', err);
+            return true;
+        }
+    };
+
     const carregarCardapio = useCallback(async () => {
         try {
-            // ALWAYS reload from database to ensure fresh data
-            // Cache was causing stale data issues where new pizzas weren't showing
-            console.log('🔄 Reloading cardápio from database...');
             setLoadingCardapio(true);
-            await carregarCardapioSupabase(false);
+            
+            // Smart Cache Check
+            const needsReload = await checkMenuUpdates();
+            
+            if (needsReload) {
+                console.log('🔄 Reloading cardápio from database (Smart Cache trigger)...');
+                await carregarCardapioSupabase(false);
+            }
         } catch (error) {
             console.error('❌ Erro ao carregar cardápio:', error);
             // Fallback
@@ -372,36 +433,49 @@ export function useNovoPedido(): UseNovoPedidoReturn {
     }, [produtos, calculateItemPrice]);
 
     const selectedItems = useMemo(() => {
-        const items: { text: string; price: number }[] = [];
+        const items: { text: string; price: number; name: string }[] = [];
         for (const [name, qty] of Object.entries(produtos)) {
             if (qty > 0) {
                 const itemPrice = calculateItemPrice(name, 1); // Unit price
                 items.push({
                     text: `${qty}x ${name}`,
-                    price: itemPrice * qty
+                    price: itemPrice * qty,
+                    name: name // Pass the KEY explicitly
                 });
             }
         }
         return items;
     }, [produtos, calculateItemPrice]);
 
-    const handleRemoveItem = useCallback((itemText: string) => {
+    const handleRemoveItem = useCallback((itemName: string) => {
+        if (Platform.OS === 'web') {
+            // Web-specific confirmation
+            if (window.confirm(`Deseja remover "${itemName}" do pedido?`)) {
+                setProdutos(prev => {
+                    const newProdutos = { ...prev };
+                    if (newProdutos[itemName]) {
+                        delete newProdutos[itemName];
+                    }
+                    return newProdutos;
+                });
+            }
+            return;
+        }
+
         Alert.alert(
             'Remover Item',
-            `Deseja remover "${itemText}" do pedido?`,
+            `Deseja remover "${itemName}" do pedido?`,
             [
                 { text: 'Cancelar', style: 'cancel' },
                 {
                     text: 'Remover',
                     style: 'destructive',
                     onPress: () => {
-                        // Remover prefixo de quantidade "1x ", "2x " para obter a chave original
-                        const keyToRemove = itemText.replace(/^\d+x\s*/, '');
-
+                        // Directly delete by key, no regex needed
                         setProdutos(prev => {
                             const newProdutos = { ...prev };
-                            if (newProdutos[keyToRemove]) {
-                                delete newProdutos[keyToRemove];
+                            if (newProdutos[itemName]) {
+                                delete newProdutos[itemName];
                             }
                             return newProdutos;
                         });
