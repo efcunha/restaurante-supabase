@@ -393,7 +393,7 @@ export default function MontagemScreen() {
         <MaterialCommunityIcons name="silverware-fork-knife" size={40} color="#8B2F2F" style={{ marginRight: -10, transform: [{ rotate: '-15deg' }] }} />
         <View style={{ alignItems: 'center', zIndex: 1 }}>
           <MaterialCommunityIcons name="chef-hat" size={80} color="#E5B84A" />
-          <MaterialCommunityIcons name="plate-warm" size={50} color="#2C2C2C" style={{ marginTop: -15 }} />
+          <MaterialCommunityIcons name="food-variant" size={50} color="#2C2C2C" style={{ marginTop: -15 }} />
         </View>
         <MaterialCommunityIcons name="food-turkey" size={45} color="#D84315" style={{ marginLeft: -15, marginTop: 20 }} />
       </View>

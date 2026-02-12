@@ -416,7 +416,7 @@ const HeaderComponent = memo(({ clientName, setClientName, mesa, setMesa, waiter
 HeaderComponent.displayName = 'HeaderComponent';
 
 interface FooterComponentProps {
-  selectedItems: { text: string; price: number }[];
+  selectedItems: { text: string; price: number; name: string }[];
   onRemoveItem: (item: string) => void;
 }
 
@@ -427,7 +427,7 @@ const FooterComponent = memo(({ selectedItems, onRemoveItem }: FooterComponentPr
         key={index}
         item={item.text}
         price={item.price}
-        onRemove={() => onRemoveItem(item.text)}
+        onRemove={() => onRemoveItem(item.name)}
       />
     ))}
     <View style={styles.totalSpace} />
