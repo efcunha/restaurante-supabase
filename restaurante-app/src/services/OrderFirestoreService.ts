@@ -42,10 +42,10 @@ class OrderFirestoreService {
       isPago: row.is_paid,
       createdBy: row.created_by,
       createdByName: '',
-      deliveredAt: null, // Delivery time tracked at item level in items_with_status
-      timeInChurrasqueira: null,
-      timeInMontagem: null,
-      timeInProntos: null,
+      deliveredAt: row.delivered_at,
+      timeInChurrasqueira: row.time_in_churrasqueira,
+      timeInMontagem: row.time_in_montagem,
+      timeInProntos: row.time_in_prontos,
     } as Order;
   }
 
@@ -168,13 +168,14 @@ class OrderFirestoreService {
     }
   }
 
-  async updateOrderStatus(companyId: string, orderId: string, status: string) {
+  async updateOrderStatus(companyId: string, orderId: string, status: string, additionalUpdates?: Partial<Order>) {
     const isOnline = offlineQueueService.getIsOnline();
 
     const operation = async () => {
+      const payload = { status, ...this._mapUpdatesToPayload(additionalUpdates || {}) };
       const { error } = await supabase
         .from('orders')
-        .update({ status })
+        .update(payload)
         .eq('id', orderId)
         .eq('company_id', companyId);
       if (error) throw error;
@@ -197,12 +198,7 @@ class OrderFirestoreService {
   }
 
   async updateOrder(companyId: string, orderId: string, updates: Partial<Order>) {
-    const payload: any = {};
-    if (updates.client) payload.client_name = updates.client;
-    if (updates.items) payload.items = updates.items;
-    if (updates.totalPrice) payload.total_amount = updates.totalPrice;
-    if (updates.status) payload.status = updates.status;
-    if (updates.observations) payload.observations = updates.observations;
+    const payload = this._mapUpdatesToPayload(updates);
 
     const operation = async () => {
       const { error } = await supabase
@@ -241,6 +237,27 @@ class OrderFirestoreService {
       .eq('company_id', companyId);
 
     if (error) throw error;
+  }
+
+  private _mapUpdatesToPayload(updates: Partial<Order>) {
+    const payload: any = {};
+    if (updates.client) payload.client_name = updates.client;
+    if (updates.items) payload.items = updates.items;
+    if (updates.totalPrice) payload.total_amount = updates.totalPrice;
+    if (updates.status) payload.status = updates.status;
+    if (updates.observations) payload.observations = updates.observations;
+    if (updates.timeInChurrasqueira) payload.time_in_churrasqueira = updates.timeInChurrasqueira;
+    if (updates.timeInMontagem) payload.time_in_montagem = updates.timeInMontagem;
+    if (updates.timeInProntos) payload.time_in_prontos = updates.timeInProntos;
+    if (updates.deliveredAt) payload.delivered_at = updates.deliveredAt;
+    if (updates.itemsWithStatus) payload.items_with_status = updates.itemsWithStatus;
+    
+    // Helper fields regarding who moved the order
+    if ((updates as any).movidoParaMontagemPor) payload.movido_para_montagem_por = (updates as any).movidoParaMontagemPor;
+    if ((updates as any).movidoParaProntoPor) payload.movido_para_pronto_por = (updates as any).movidoParaProntoPor;
+    if ((updates as any).entreguePor) payload.entregue_por = (updates as any).entreguePor;
+
+    return payload;
   }
 
   /**
