@@ -11,6 +11,7 @@ import {
   Alert,
   Platform,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useOrders } from '../context/OrderContext';
 import TransferModal from '../components/TransferModal';
 
@@ -21,6 +22,7 @@ interface Props {
 }
 
 export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props) {
+  const navigation = useNavigation<any>();
   const { getOrderById, editOrder, deleteOrder, transferOrder } = useOrders();
   const [isTransferModalVisible, setIsTransferModalVisible] = useState(false);
 
@@ -95,34 +97,13 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
       }
     } else {
       // Entrar em modo de edição
-      setEditedClient(order.client);
-      setEditedObservations(order.observations);
+      setEditedClient(order.client || '');
+      setEditedObservations(order.observations || '');
       setIsEditing(true);
     }
   };
 
-  const handleDelete = () => {
-    Alert.alert(
-      'Confirmar Exclusão',
-      `Deseja realmente excluir o pedido ${order.id}?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Excluir',
-          style: 'destructive',
-          onPress: () => {
-            try {
-              deleteOrder(orderId);
-              Alert.alert('Sucesso', 'Pedido excluído!');
-              onClose();
-            } catch (error: any) {
-              Alert.alert('Erro', error.message);
-            }
-          },
-        },
-      ]
-    );
-  };
+
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -290,43 +271,49 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
           </ScrollView>
 
           {/* Botões de Ação */}
-          {canEdit && (
-            <View style={styles.actions}>
-              <TouchableOpacity
-                style={[styles.actionBtn, { backgroundColor: '#FF9800', marginRight: 10 }]}
-                onPress={() => setIsTransferModalVisible(true)}
-              >
-                <Text style={styles.actionBtnText}>🔄 Mover</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.actionBtn, styles.editBtn]}
-                onPress={handleEdit}
-              >
-                <Text style={styles.actionBtnText}>
-                  {isEditing ? '💾 Salvar' : '✏️ Editar'}
-                </Text>
-              </TouchableOpacity>
-
-              {!isEditing && (
+          {/* Botões de Ação */}
+          <View style={styles.actions}>
+            {canEdit && (
+              <>
                 <TouchableOpacity
-                  style={[styles.actionBtn, styles.deleteBtn]}
-                  onPress={handleDelete}
+                  style={[styles.actionBtn, { backgroundColor: '#FF9800', flex: 1 }]}
+                  onPress={() => setIsTransferModalVisible(true)}
                 >
-                  <Text style={styles.actionBtnText}>🗑️ Excluir</Text>
+                  <Text style={styles.actionBtnText}>🔄 Mover</Text>
                 </TouchableOpacity>
-              )}
 
-              {isEditing && (
                 <TouchableOpacity
-                  style={[styles.actionBtn, styles.cancelBtn]}
-                  onPress={() => setIsEditing(false)}
+                  style={[styles.actionBtn, styles.editBtn, { flex: 1 }]}
+                  onPress={handleEdit}
                 >
-                  <Text style={styles.actionBtnText}>Cancelar</Text>
+                  <Text style={styles.actionBtnText}>
+                    {isEditing ? '💾 Salvar' : '✏️ Editar'}
+                  </Text>
                 </TouchableOpacity>
-              )}
-            </View>
-          )}
+              </>
+            )}
+
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: '#4CAF50', flex: 1 }]}
+              onPress={() => {
+                onClose();
+                setTimeout(() => {
+                  navigation.navigate('Comandas', { searchComanda: order.comandaNumber });
+                }, 300);
+              }}
+            >
+              <Text style={styles.actionBtnText}>💰 Pagar</Text>
+            </TouchableOpacity>
+
+            {isEditing && (
+              <TouchableOpacity
+                style={[styles.actionBtn, styles.cancelBtn, { flex: 1 }]}
+                onPress={() => setIsEditing(false)}
+              >
+                <Text style={styles.actionBtnText}>Cancelar</Text>
+              </TouchableOpacity>
+            )}
+          </View>
 
           {!canEdit && (
             <View style={styles.warningBox}>
