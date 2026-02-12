@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Image, BackHandler, ScrollView, Pressable, Keyboard, useWindowDimensions, NativeModules } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Image, BackHandler, ScrollView, Pressable, Keyboard, NativeModules } from 'react-native';
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -22,8 +22,6 @@ export default function LoginScreen({ navigation }: Props) {
   const [senha, setSenha] = useState('');
   const [loading, setLoading] = useState(false);
   const [mostrarSenha, setMostrarSenha] = useState(false);
-
-  const { height } = useWindowDimensions();
 
   const handleLogin = async () => {
     if (!email.trim() || !senha.trim()) {
@@ -94,13 +92,8 @@ export default function LoginScreen({ navigation }: Props) {
             {/* Logo/Título */}
             <View style={styles.header}>
               <Image
-                source={require('../assets/images/login_v13.png')}
-                style={{
-                  width: '100%',
-                  height: height * 0.32,
-                  marginBottom: 10,
-                  maxHeight: 300,
-                }}
+                source={require('../../imagem/icone.png')}
+                style={styles.logo}
                 resizeMode="contain"
               />
             </View>
@@ -282,12 +275,17 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: 0,
-    marginTop: 0,
+    marginBottom: 20,
+    marginTop: 10,
+    width: '100%',
   },
   logo: {
-    // Dynamic size via inline styles
-    marginBottom: 10,
+    width: '80%',
+    aspectRatio: 1,
+    maxWidth: 280,
+    maxHeight: 280,
+    minWidth: 180,
+    minHeight: 180,
   },
   form: {
     backgroundColor: '#FFFFFF',

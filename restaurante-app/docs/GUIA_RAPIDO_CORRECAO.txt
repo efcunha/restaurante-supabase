@@ -1,0 +1,124 @@
+================================================================================
+                    GUIA RÁPIDO - CORREÇÃO DO ÍCONE CORTADO
+================================================================================
+
+PROBLEMA: O ícone está sendo cortado nas bordas quando exibido no Android
+
+CAUSA: Adaptive Icons do Android usam apenas 66% da área central da imagem
+
+SOLUÇÃO: Adicionar padding automático ao ícone
+
+================================================================================
+                         COMANDO ÚNICO (MAIS FÁCIL)
+================================================================================
+
+Execute este comando para corrigir tudo automaticamente:
+
+    cd restaurante-app
+    npm run update-icon
+
+Este comando faz:
+  1. ✅ Adiciona padding ao ícone (usando icone-bak.png)
+  2. ✅ Gera todos os ícones Android em 5 densidades
+  3. ✅ Remove arquivos antigos
+
+================================================================================
+                         APLICAR NO CELULAR
+================================================================================
+
+Após executar o comando acima, reconstrua o app:
+
+    cd android
+    ./gradlew clean
+    cd ..
+    npx expo run:android
+
+================================================================================
+                         O QUE FOI FEITO
+================================================================================
+
+1. BACKUP DA IMAGEM ORIGINAL
+   ✅ icone-bak.png = imagem original (sem alterações)
+
+2. SCRIPT DE CORREÇÃO
+   ✅ fix-icon-padding.js = adiciona padding automático
+
+3. NOVO COMANDO NPM
+   ✅ npm run fix-icon-padding = corrige o padding
+   ✅ npm run update-icon = corrige + gera ícones (tudo de uma vez)
+
+================================================================================
+                         COMO FUNCIONA
+================================================================================
+
+ANTES (Imagem Cortada):
+┌─────────────────────────┐
+│ ░░░░░░░░░░░░░░░░░░░░░░░ │ ← Cortado
+│ ░░┌─────────────────┐░░ │
+│ ░░│   IMAGEM        │░░ │
+│ ░░│   (visível)     │░░ │
+│ ░░└─────────────────┘░░ │
+│ ░░░░░░░░░░░░░░░░░░░░░░░ │ ← Cortado
+└─────────────────────────┘
+
+DEPOIS (Imagem com Padding):
+┌─────────────────────────┐
+│                         │ ← Padding
+│     ┌─────────────┐     │
+│     │   IMAGEM    │     │
+│     │  (completa) │     │
+│     └─────────────┘     │
+│                         │ ← Padding
+└─────────────────────────┘
+
+================================================================================
+                         ARQUIVOS
+================================================================================
+
+Imagens:
+  imagem/icone-bak.png  → Imagem original (backup)
+  imagem/icone.png      → Imagem com padding (gerada automaticamente)
+
+Scripts:
+  scripts/fix-icon-padding.js        → Adiciona padding
+  scripts/generate-android-icons.js  → Gera ícones Android
+
+Documentação:
+  CORRECAO_ENQUADRAMENTO_ICONE.md    → Explicação detalhada
+  GUIA_RAPIDO_CORRECAO.txt           → Este arquivo
+
+================================================================================
+                         COMANDOS ÚTEIS
+================================================================================
+
+# Corrigir padding + gerar ícones (RECOMENDADO)
+npm run update-icon
+
+# Apenas corrigir padding
+npm run fix-icon-padding
+
+# Apenas gerar ícones Android
+npm run generate-icons
+
+# Verificar se está correto
+bash scripts/verificar-icone.sh
+
+# Limpar cache Android
+cd android && ./gradlew clean && cd ..
+
+# Reconstruir app
+npx expo run:android
+
+================================================================================
+                         RESUMO
+================================================================================
+
+1. Execute: npm run update-icon
+2. Limpe o cache: cd android && ./gradlew clean && cd ..
+3. Reconstrua: npx expo run:android
+4. Verifique no celular: ícone deve aparecer completo!
+
+================================================================================
+Data: 11 de Fevereiro de 2026
+Status: ✅ SOLUÇÃO PRONTA
+================================================================================

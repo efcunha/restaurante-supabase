@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import PrinterService from '../services/PrinterService';
+import { useResponsive } from '../hooks/useResponsive';
 // @ts-ignore
 import BackgroundPattern from '../components/BackgroundPattern';
 
@@ -19,6 +20,7 @@ interface Props {
 }
 
 export default function PrinterConfigScreen({ navigation }: Props) {
+  const { isTablet, horizontalPadding } = useResponsive();
   const [printers, setPrinters] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [connected, setConnected] = useState(false);
@@ -149,7 +151,10 @@ export default function PrinterConfigScreen({ navigation }: Props) {
         <View style={styles.headerRight} />
       </View>
 
-      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView style={styles.content} contentContainerStyle={{ 
+        paddingBottom: 100,
+        paddingHorizontal: horizontalPadding,
+      }}>
         {/* Status da Conexão */}
         <View style={styles.statusCard}>
           <Text style={styles.cardTitle}>Status da Conexão</Text>
@@ -170,11 +175,19 @@ export default function PrinterConfigScreen({ navigation }: Props) {
         </View>
 
         {/* Configuração de Largura */}
-        <View style={styles.card}>
+        <View style={[styles.card, {
+          maxWidth: isTablet ? 500 : '100%',
+          alignSelf: 'center',
+          width: '100%',
+        }]}>
           <Text style={styles.cardTitle}>Largura do Papel</Text>
-          <View style={styles.widthOptions}>
+          <View style={[styles.widthOptions, {
+            maxWidth: isTablet ? 400 : '100%',
+          }]}>
             <TouchableOpacity
-              style={[styles.widthButton, printerWidth === 48 && styles.widthButtonActive]}
+              style={[styles.widthButton, printerWidth === 48 && styles.widthButtonActive, {
+                maxWidth: isTablet ? 180 : '100%',
+              }]}
               onPress={() => setPrinterWidth(48)}
             >
               <Text style={[styles.widthButtonText, printerWidth === 48 && styles.widthButtonTextActive]}>
@@ -183,7 +196,9 @@ export default function PrinterConfigScreen({ navigation }: Props) {
               <Text style={styles.widthButtonSubtext}>48 caracteres</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.widthButton, printerWidth === 32 && styles.widthButtonActive]}
+              style={[styles.widthButton, printerWidth === 32 && styles.widthButtonActive, {
+                maxWidth: isTablet ? 180 : '100%',
+              }]}
               onPress={() => setPrinterWidth(32)}
             >
               <Text style={[styles.widthButtonText, printerWidth === 32 && styles.widthButtonTextActive]}>

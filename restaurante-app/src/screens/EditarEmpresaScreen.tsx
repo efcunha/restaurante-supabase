@@ -12,6 +12,7 @@ import {
     ScrollView
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { useResponsive } from '../hooks/useResponsive';
 import { colors } from '../theme/colors';
 import { Ionicons } from '@expo/vector-icons';
 // @ts-ignore
@@ -24,6 +25,7 @@ interface Props {
 
 export default function EditarEmpresaScreen({ onBack }: Props) {
     const { user } = useAuth();
+    const { isTablet, horizontalPadding, inputMaxWidth } = useResponsive();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
@@ -282,13 +284,20 @@ export default function EditarEmpresaScreen({ onBack }: Props) {
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={styles.content}
             >
-                <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}>
-                    <View style={styles.card}>
+                <ScrollView contentContainerStyle={[styles.scrollContent, { 
+                    paddingBottom: 100,
+                    paddingHorizontal: horizontalPadding,
+                }]}>
+                    <View style={[styles.card, {
+                        maxWidth: isTablet ? 700 : '100%',
+                        alignSelf: 'center',
+                        width: '100%',
+                    }]}>
                         <Text style={styles.sectionTitle}>Informações Básicas</Text>
 
                         <Text style={styles.label}>Nome do Restaurante</Text>
                         <TextInput
-                            style={styles.input}
+                            style={[styles.input, { maxWidth: inputMaxWidth }]}
                             value={restaurantName}
                             onChangeText={setRestaurantName}
                             placeholder="Nome do seu negócio"
@@ -312,7 +321,7 @@ export default function EditarEmpresaScreen({ onBack }: Props) {
 
                         <Text style={styles.label}>{documentType === 'cpf' ? 'CPF' : 'CNPJ'}</Text>
                         <TextInput
-                            style={styles.input}
+                            style={[styles.input, { maxWidth: inputMaxWidth }]}
                             value={documentValue}
                             onChangeText={handleDocumentChange}
                             placeholder={documentType === 'cpf' ? '000.000.000-00' : '00.000.000/0000-00'}
@@ -548,5 +557,5 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         minWidth: 48,
-    }
+    },
 });
