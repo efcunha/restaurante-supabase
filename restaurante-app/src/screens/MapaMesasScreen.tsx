@@ -17,20 +17,25 @@ import TableService from '../services/TableService';
 import SupabaseOrderService from '../services/supabase/SupabaseOrderService';
 import { Environment, Table, Order } from '../types';
 import { useAuth } from '../context/AuthContext';
+// @ts-ignore
+import PedidoDetalhesModal from './PedidoDetalhesModal';
 
 const { width } = Dimensions.get('window');
 const SAFE_AREA_TOP = 50;
 
-export default function MapaMesasScreen() {
-    const navigation = useNavigation();
+export default function MapaMesasScreen({ navigation }: any) {
     const { user } = useAuth();
 
     const [loading, setLoading] = useState(true);
-    const [environments, setEnvironments] = useState<Environment[]>([]);
-    const [selectedEnvId, setSelectedEnvId] = useState<string | null>(null);
+    const [environments, setEnvironments] = useState<any[]>([]);
+    const [selectedEnvId, setSelectedEnvId] = useState<number | null>(null);
     const [tables, setTables] = useState<Table[]>([]);
     const [activeOrders, setActiveOrders] = useState<Order[]>([]);
     const [selectedFilters, setSelectedFilters] = useState<string[]>(['Livre', 'Ocupada', 'Pagando']); // All selected by default
+
+    // Modal State
+    const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+    const [modalVisible, setModalVisible] = useState(false);
 
     // Load Environments and Tables
     const loadStructure = async () => {
@@ -103,7 +108,10 @@ export default function MapaMesasScreen() {
         return envTables.map(table => {
             // Find orders for this table
             // Matching by table.number (string) vs order.mesa (string)
-            const tableOrders = activeOrders.filter(o => o.mesa === table.number);
+            // Normalize numbers to avoid "01" !== "1" mismatch
+            const tableOrders = activeOrders.filter(o => 
+                String(o.mesa || '').replace(/^0+/, '') === String(table.number || '').replace(/^0+/, '')
+            );
 
             let status: Table['status'] = 'Livre';
             let total = 0;
@@ -117,7 +125,7 @@ export default function MapaMesasScreen() {
                 total = tableOrders.reduce((acc, o) => acc + (o.totalPrice || 0), 0);
 
                 // Oldest order time
-                const stats = tableOrders.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+                const stats = [...tableOrders].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
                 if (stats.length > 0) {
                     time = stats[0].horarioCriacao;
                 }
@@ -184,26 +192,16 @@ export default function MapaMesasScreen() {
             });
         } else {
             // View Tables Orders
-            // For V1, if multiple orders, specific logic needed.
-            // If single, open it.
-            if (table.activeOrders.length === 1) {
-                // Navigate to details or edit
-                // Assuming we have a way to edit/view order.
-                // If not, maybe just 'NovoPedido' with the table again to add more items?
-                // @ts-ignore
-                navigation.navigate('NovoPedido', {
-                    mesaParam: table.number,
-                    tableId: table.id,
-                    existingOrders: table.activeOrders
-                });
+            // Open Details Modal for the first active order
+            if (table.activeOrders.length > 0) {
+                // Determine which order to show (e.g., the most recent or the first one)
+                // For now, let's show the first one. 
+                // Future improvement: If multiple orders, show a list or combine them.
+                const orderToShow = table.activeOrders[0];
+                setSelectedOrderId(orderToShow.id);
+                setModalVisible(true);
             } else {
-                // Multiple orders?
-                // @ts-ignore
-                navigation.navigate('Novo Pedido', {
-                    mesaParam: table.number,
-                    tableId: table.id,
-                    existingOrders: table.activeOrders
-                });
+                Alert.alert('Aviso', 'Mesa ocupada, mas nenhum pedido ativo encontrado.');
             }
         }
     };
@@ -386,6 +384,18 @@ export default function MapaMesasScreen() {
             >
                 <Ionicons name="settings-outline" size={24} color={colors.white} />
             </TouchableOpacity>
+
+            {/* Modal de Detalhes do Pedido */}
+            {selectedOrderId && (
+                <PedidoDetalhesModal
+                    visible={modalVisible}
+                    orderId={selectedOrderId}
+                    onClose={() => {
+                        setModalVisible(false);
+                        setSelectedOrderId(null);
+                    }}
+                />
+            )}
         </View>
     );
 }
