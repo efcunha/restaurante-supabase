@@ -3,7 +3,7 @@ import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Alert,
 import { supabase } from '../config/SupabaseConfig';
 import { useAuth } from '../context/AuthContext';
 // @ts-ignore
-import BackgroundPattern from '../components/BackgroundPattern';
+
 import { Ionicons } from '@expo/vector-icons';
 
 // --- VALIDATION & MASKING HELPERS ---
@@ -242,7 +242,7 @@ export default function GerenciarFornecedoresScreen({ onClose }: Props) {
 
     return (
         <View style={styles.container}>
-            <BackgroundPattern />
+
 
             <View style={styles.header}>
                 <TouchableOpacity onPress={onClose} style={styles.backBtn}>
@@ -355,7 +355,7 @@ export default function GerenciarFornecedoresScreen({ onClose }: Props) {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F5F1E8' },
+    container: { flex: 1, backgroundColor: '#F5F5DC' },
     header: {
         backgroundColor: '#8B2F2F',
         flexDirection: 'row',
