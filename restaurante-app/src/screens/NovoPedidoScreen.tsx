@@ -32,6 +32,57 @@ const QuantityButton = memo(({ onPress, text }: QuantityButtonProps) => (
 ));
 QuantityButton.displayName = 'QuantityButton';
 
+interface PizzaRowProps {
+  item: Product;
+  onPress: (item: Product) => void;
+}
+
+const PizzaRow = memo(({ item, onPress }: PizzaRowProps) => {
+  // Render Pizza Item Row with Espetinho-like Styling
+  // FIX: Tratar preços com vírgula (comum no Brasil) e converter para float
+  const validPrices = item.prices ? Object.values(item.prices).map(p => {
+    if (typeof p === 'string') return Number((p as string).replace(',', '.'));
+    return Number(p);
+  }).filter(p => !isNaN(p) && p > 0) : [];
+  const minPrice = validPrices.length > 0 ? Math.min(...validPrices) : 0;
+  const maxPrice = validPrices.length > 0 ? Math.max(...validPrices) : 0;
+
+  // Format price range
+  const formatPriceRange = (min: number, max: number): string => {
+    if (min === max || validPrices.length === 1) {
+      return `R$ ${min.toFixed(2).replace('.', ',')}`;
+    }
+    return `R$ ${min.toFixed(2).replace('.', ',')} - R$ ${max.toFixed(2).replace('.', ',')}`;
+  };
+  const priceDisplay = formatPriceRange(minPrice, maxPrice);
+
+  const ingredientsText = item.ingredients ? item.ingredients.join(', ') : item.description || '';
+  const customIngredientsText = item.customIngredients || '';
+
+  // Cycle colors to look like the example (Orange, Green, Gray, Blue...)
+  const rowColors = [colors.warning, colors.success, colors.disabled, '#4a90e2', '#9013fe'];
+  // FIX: Ensure hash is safe for strings
+  const hash = item.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const colorIndex = hash % rowColors.length;
+  const cardColor = rowColors[colorIndex] || colors.primary; // Fallback
+
+  return (
+    <TouchableOpacity
+      style={[styles.stackedInfoCard, { backgroundColor: cardColor, marginBottom: 12, elevation: 2 }]}
+      onPress={() => onPress(item)}
+      activeOpacity={0.8}
+    >
+      <View style={{ alignItems: 'center' }}>
+        <Text style={styles.stackedNameText}>{item.name}</Text>
+        {!!ingredientsText && <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 13, textAlign: 'center', marginBottom: 4, fontStyle: 'italic' }}>{ingredientsText}</Text>}
+        {!!customIngredientsText && <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12, textAlign: 'center', marginBottom: 4, fontStyle: 'italic' }}>({customIngredientsText})</Text>}
+        <Text style={styles.stackedPriceText}>{priceDisplay}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+});
+PizzaRow.displayName = 'PizzaRow';
+
 interface SelectedItemProps {
   item: string;
   price: number;
@@ -398,12 +449,9 @@ export default function NovoPedidoScreen({ route }: any) {
   const [showPizzaModal, setShowPizzaModal] = useState(false);
   const [selectedPizza, setSelectedPizza] = useState<Product | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isScrolling, setIsScrolling] = useState(false);
   
   // Performance monitoring
   const { metrics, startMonitoring, stopMonitoring, logMetrics, isMonitoring } = usePerformanceMonitor();
-  const [scrolling, setScrolling] = useState(false);
-  const scrollTimeoutRef = useRef<NodeJS.Timeout>();
 
   const {
     user,
@@ -601,7 +649,11 @@ export default function NovoPedidoScreen({ route }: any) {
     const query = searchQuery.toLowerCase().trim();
     return sections.map(section => {
       const filteredData = section.data.filter(item => {
-        if (typeof item === 'string') return false; // Skip variation strings
+        if (typeof item === 'string') {
+          // Allow string items (Caldos, Espetinhos base names) to be searched
+          return item.toLowerCase().includes(query);
+        }
+        // Product items
         return item.name?.toLowerCase().includes(query);
       });
       return { ...section, data: filteredData };
@@ -640,28 +692,19 @@ export default function NovoPedidoScreen({ route }: any) {
     return product.id ? String(product.id) : product.name || `item-${index}`;
   }, []);
   
+  
   // Performance monitoring handlers
   const handleScrollBeginDrag = useCallback(() => {
-    setScrolling(true);
-    setIsScrolling(true);
     if (!isMonitoring) {
       startMonitoring();
     }
   }, [isMonitoring, startMonitoring]);
   
   const handleScrollEndDrag = useCallback(() => {
-    if (scrollTimeoutRef.current) {
-      clearTimeout(scrollTimeoutRef.current);
-    }
-    
-    scrollTimeoutRef.current = setTimeout(() => {
-      setScrolling(false);
-      setIsScrolling(false);
       if (isMonitoring) {
         stopMonitoring();
         logMetrics();
       }
-    }, 150);
   }, [isMonitoring, stopMonitoring, logMetrics]);
   
   // Log baseline metrics on mount
@@ -669,74 +712,21 @@ export default function NovoPedidoScreen({ route }: any) {
     console.log('📊 [Performance] Baseline measurement ready');
     console.log('📊 [Performance] Current SectionList config:', {
       initialNumToRender: 12,
-      windowSize: 5,
+      windowSize: 11,
       maxToRenderPerBatch: 10,
       updateCellsBatchingPeriod: 50,
-      removeClippedSubviews: Platform.OS === 'android'
+      removeClippedSubviews: true
     });
   }, []);
 
-  if (loadingCardapio) {
-    return (
-      <View style={styles.container}>
-        <BackgroundPattern />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Carregando cardápio...</Text>
-        </View>
-      </View>
-    );
-  }
-
-  const renderSectionHeader = ({ section: { title } }: { section: Section }) => (
-    <Text style={styles.sectionTitle}>{title}</Text>
-  );
-
-  const renderItem: SectionListRenderItem<SectionItem, Section> = ({ item, section }) => {
+  // Moved renderItem before early return to comply with Rules of Hooks
+  const renderItem = useCallback<SectionListRenderItem<SectionItem, Section>>(({ item, section }) => {
     if (section.type === 'pizzas-v2') {
-      const pizzaItem = item as Product;
-      // Render Pizza Item Row with Espetinho-like Styling
-      // FIX: Tratar preços com vírgula (comum no Brasil) e converter para float
-      const validPrices = pizzaItem.prices ? Object.values(pizzaItem.prices).map(p => {
-        if (typeof p === 'string') return Number((p as string).replace(',', '.'));
-        return Number(p);
-      }).filter(p => !isNaN(p) && p > 0) : [];
-      const minPrice = validPrices.length > 0 ? Math.min(...validPrices) : 0;
-      const maxPrice = validPrices.length > 0 ? Math.max(...validPrices) : 0;
-
-      // Format price range
-      const formatPriceRange = (min: number, max: number): string => {
-        if (min === max || validPrices.length === 1) {
-          return `R$ ${min.toFixed(2).replace('.', ',')}`;
-        }
-        return `R$ ${min.toFixed(2).replace('.', ',')} - R$ ${max.toFixed(2).replace('.', ',')}`;
-      };
-      const priceDisplay = formatPriceRange(minPrice, maxPrice);
-
-      const ingredientsText = pizzaItem.ingredients ? pizzaItem.ingredients.join(', ') : pizzaItem.description || '';
-      const customIngredientsText = pizzaItem.customIngredients || '';
-
-      // Cycle colors to look like the example (Orange, Green, Gray, Blue...)
-      const rowColors = [colors.warning, colors.success, colors.disabled, '#4a90e2', '#9013fe'];
-      // FIX: Ensure hash is safe for strings
-      const hash = pizzaItem.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-      const colorIndex = hash % rowColors.length;
-      const cardColor = rowColors[colorIndex] || colors.primary; // Fallback
-
       return (
-        // ... (inside renderItem for pizzas-v2)
-        <TouchableOpacity
-          style={[styles.stackedInfoCard, { backgroundColor: cardColor, marginBottom: 12, elevation: 2 }]}
-          onPress={() => { setSelectedPizza(pizzaItem); setShowPizzaModal(true); }}
-          activeOpacity={0.8}
-        >
-          <View style={{ alignItems: 'center' }}>
-            <Text style={styles.stackedNameText}>{pizzaItem.name}</Text>
-            {!!ingredientsText && <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 13, textAlign: 'center', marginBottom: 4, fontStyle: 'italic' }}>{ingredientsText}</Text>}
-            {!!customIngredientsText && <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12, textAlign: 'center', marginBottom: 4, fontStyle: 'italic' }}>({customIngredientsText})</Text>}
-            <Text style={styles.stackedPriceText}>{priceDisplay}</Text>
-          </View>
-        </TouchableOpacity>
+        <PizzaRow 
+          item={item as Product} 
+          onPress={(pizzaItem) => { setSelectedPizza(pizzaItem); setShowPizzaModal(true); }} 
+        />
       );
     }
     if (section.type === 'caldos') {
@@ -755,7 +745,25 @@ export default function NovoPedidoScreen({ route }: any) {
       );
     }
     return <StandardRow item={item as Product} produtos={produtos} onIncrement={handleIncrement} onDecrement={handleDecrement} type={section.type} temperos={temperosComidas} />;
-  };
+  }, [produtos, temperosCaldos, temperosComidas, variacoesEspetinho, handleIncrement, handleDecrement]);
+
+  if (loadingCardapio) {
+    return (
+      <View style={styles.container}>
+        <BackgroundPattern />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Carregando cardápio...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  const renderSectionHeader = ({ section: { title } }: { section: Section }) => (
+    <Text style={styles.sectionTitle}>{title}</Text>
+  );
+
+
 
   return (
     <KeyboardWrapper style={styles.container}>
@@ -819,11 +827,11 @@ export default function NovoPedidoScreen({ route }: any) {
         />}
         ListFooterComponent={<FooterComponent selectedItems={selectedItems} onRemoveItem={handleRemoveItemAnimated} />}
         stickySectionHeadersEnabled={false}
-        initialNumToRender={8}
+        initialNumToRender={10}
         maxToRenderPerBatch={5}
         windowSize={5}
-        updateCellsBatchingPeriod={100}
-        removeClippedSubviews={Platform.OS === 'android'}
+        updateCellsBatchingPeriod={50}
+        removeClippedSubviews={true}
         onScrollBeginDrag={handleScrollBeginDrag}
         onScrollEndDrag={handleScrollEndDrag}
         onMomentumScrollEnd={handleScrollEndDrag}
@@ -832,7 +840,7 @@ export default function NovoPedidoScreen({ route }: any) {
         scrollEventThrottle={16}
         getItemLayout={undefined}
         disableScrollViewPanResponder={false}
-        decelerationRate="fast"
+        decelerationRate="normal"
       />
 
       <View style={styles.stickyFooter}>
