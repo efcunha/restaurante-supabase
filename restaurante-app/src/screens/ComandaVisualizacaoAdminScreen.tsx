@@ -330,7 +330,7 @@ export default function ComandaVisualizacaoAdminScreen({ onClose }: Props) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F5F1E8',
+        backgroundColor: '#F5F5DC',
     },
     header: {
         backgroundColor: '#8B2F2F',

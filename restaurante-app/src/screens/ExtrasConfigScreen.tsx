@@ -24,7 +24,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../config/SupabaseConfig';
 import { Extra, ExtraType } from '../types/models';
-import BackgroundPattern from '../components/BackgroundPattern';
+
 
 interface ExtrasConfigScreenProps {
   onClose: () => void;
@@ -219,7 +219,7 @@ export default function ExtrasConfigScreen({ onClose }: ExtrasConfigScreenProps)
 
   return (
     <View style={styles.container}>
-      <BackgroundPattern />
+
 
       {/* Header */}
       <View style={styles.header}>
@@ -367,7 +367,7 @@ export default function ExtrasConfigScreen({ onClose }: ExtrasConfigScreenProps)
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F1E8',
+    backgroundColor: '#F5F5DC',
   },
   header: {
     flexDirection: 'row',

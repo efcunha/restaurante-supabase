@@ -13,7 +13,7 @@ import { StatusBar } from 'expo-status-bar';
 import PrinterService from '../services/PrinterService';
 import { useResponsive } from '../hooks/useResponsive';
 // @ts-ignore
-import BackgroundPattern from '../components/BackgroundPattern';
+
 
 interface Props {
   navigation: any;
@@ -101,7 +101,7 @@ export default function PrinterConfigScreen({ navigation }: Props) {
   if (!PrinterService.isAvailable()) {
     return (
       <View style={styles.container}>
-        <BackgroundPattern />
+
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -133,7 +133,7 @@ export default function PrinterConfigScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
-      <BackgroundPattern />
+
 
       {/* Header */}
       <View style={styles.header}>
@@ -274,7 +274,7 @@ export default function PrinterConfigScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F1E8',
+    backgroundColor: '#F5F5DC',
   },
   header: {
     backgroundColor: '#8B2F2F',

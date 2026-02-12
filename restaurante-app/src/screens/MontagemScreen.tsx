@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, memo } from 'react';
 import { useOrders } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
 // @ts-ignore
-import BackgroundPattern from '../components/BackgroundPattern';
+
 // @ts-ignore
 import PedidoDetalhesModal from './PedidoDetalhesModal';
 import { supabase } from '../config/SupabaseConfig';
@@ -417,7 +417,7 @@ export default function MontagemScreen() {
 
   return (
     <View style={styles.container}>
-      <BackgroundPattern />
+
 
       {/* Header */}
       <View style={styles.header}>
@@ -445,6 +445,7 @@ export default function MontagemScreen() {
         renderItem={renderItem}
         keyExtractor={keyExtractor}
         ListEmptyComponent={ListEmptyComponent}
+        style={styles.list}
         contentContainerStyle={styles.content}
         initialNumToRender={8}
         windowSize={3}
@@ -469,7 +470,7 @@ export default function MontagemScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F1E8',
+    backgroundColor: '#F5F5DC',
   },
   header: {
     backgroundColor: '#8B2F2F',
@@ -521,9 +522,14 @@ const styles = StyleSheet.create({
     padding: 5,
   },
 
-  content: {
+  list: {
     flex: 1,
+    width: '100%',
+  },
+  content: {
+    flexGrow: 1,
     padding: 20,
+    paddingBottom: 100,
   },
   orderCard: {
     backgroundColor: '#FFFFFF',

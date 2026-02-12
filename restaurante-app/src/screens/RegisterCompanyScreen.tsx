@@ -423,7 +423,7 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F1E8',
+    backgroundColor: '#F5F5DC',
   },
   scrollContent: {
     flexGrow: 1,

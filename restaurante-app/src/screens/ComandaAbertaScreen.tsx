@@ -8,7 +8,7 @@ import ComandasService from '../services/ComandasService';
 // @ts-ignore
 import PagamentosService from '../services/PagamentosService';
 // @ts-ignore
-import BackgroundPattern from '../components/BackgroundPattern';
+
 import { exitApp } from '../utils/appUtils';
 import { supabase } from '../config/SupabaseConfig';
 
@@ -117,7 +117,7 @@ export default function ComandaAbertaScreen() {
 
   return (
     <View style={styles.container}>
-      <BackgroundPattern />
+
       <View style={styles.header}>
         <Text style={styles.title}>Comandas Abertas</Text>
         <TouchableOpacity onPress={onRefresh}>
@@ -218,7 +218,7 @@ export default function ComandaAbertaScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F1E8' },
+  container: { flex: 1, backgroundColor: '#F5F5DC' },
   header: {
     backgroundColor: '#8B2F2F',
     paddingTop: 50,

@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 // @ts-ignore
-import BackgroundPattern from '../components/BackgroundPattern';
+
 // @ts-ignore
 import OrderService from '../services/OrderService';
 import { supabase } from '../config/SupabaseConfig';
@@ -189,7 +189,7 @@ export default function CozinhaScreen() {
 
   return (
     <View style={styles.container}>
-      <BackgroundPattern />
+
 
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -232,7 +232,7 @@ export default function CozinhaScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F1E8',
+    backgroundColor: '#F5F5DC',
   },
   header: {
     flexDirection: 'row',

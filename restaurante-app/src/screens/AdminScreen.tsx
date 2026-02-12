@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { useRoute } from '@react-navigation/native';
 import { supabase } from '../config/SupabaseConfig';
 import { getTodayKey, getDateKeyRange, Period } from '../utils/dateUtils'; // Migrated from FirebaseOptimizations
-import BackgroundPattern from '../components/BackgroundPattern';
+
 
 // @ts-ignore
 import FuncionariosScreen from './FuncionariosScreen';
@@ -562,7 +562,7 @@ export default function AdminScreen() {
 
   return (
     <View style={styles.container}>
-      <BackgroundPattern />
+
 
       {/* Header */}
       <View style={styles.header}>
@@ -766,7 +766,7 @@ export default function AdminScreen() {
         animationType="slide"
         onRequestClose={() => setShowFuncionarios(false)}
       >
-        <View style={{ flex: 1, backgroundColor: '#F5F1E8' }}>
+        <View style={{ flex: 1, backgroundColor: '#F5F5DC' }}>
           <FuncionariosScreen onClose={() => setShowFuncionarios(false)} />
         </View>
       </Modal>
@@ -1034,7 +1034,7 @@ const styles = StyleSheet.create({
 
   container: {
     flex: 1,
-    backgroundColor: '#F5F1E8',
+    backgroundColor: '#F5F5DC',
   },
   header: {
     backgroundColor: '#8B2F2F',
