@@ -123,12 +123,25 @@ export function useNovoPedido(): UseNovoPedidoReturn {
 
             console.log('Fetching products from Supabase for company:', user.companyId);
 
-            // Fetch Products
-            const { data: productsData, error } = await supabase
-                .from('products')
-                .select('*')
-                .eq('company_id', user.companyId);
+            // Fetch Products, Company Settings, and Pizza Extras in parallel
+            const [productsResult, companyResult, extrasResult] = await Promise.all([
+                supabase
+                    .from('products')
+                    .select('*')
+                    .eq('company_id', user.companyId),
+                supabase
+                    .from('companies')
+                    .select('settings')
+                    .eq('id', user.companyId)
+                    .single(),
+                supabase
+                    .from('pizza_extras')
+                    .select('*')
+                    .eq('company_id', user.companyId)
+                    .eq('active', true)
+            ]);
 
+            const { data: productsData, error } = productsResult;
             if (error) throw error;
 
             console.log('Products fetched:', productsData?.length);
@@ -211,33 +224,13 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                 pizzas: (buckets['pizza'] || []).sort(sortFn)
             };
 
-            // Load Pizza Config from company settings
-            try {
-                const { data: companyData, error: companyError } = await supabase
-                    .from('companies')
-                    .select('settings')
-                    .eq('id', user.companyId)
-                    .single();
-
-                if (companyError) throw companyError;
-
-                if (companyData?.settings?.pizzaConfig) {
-                    setPizzaConfig(companyData.settings.pizzaConfig);
-                } else {
-                    // Fallback to defaults if not configured
-                    setPizzaConfig({
-                        sizes: [
-                            { name: 'Fatia', maxFlavors: 1 },
-                            { name: 'Broto', maxFlavors: 1 },
-                            { name: 'Média', maxFlavors: 2 },
-                            { name: 'Grande/Família', maxFlavors: 4 }
-                        ],
-                        pricingMode: 'HIGHER'
-                    });
-                }
-            } catch (error) {
-                console.error('❌ Erro ao carregar configuração de pizza:', error);
-                // Use defaults on error
+            // Load Pizza Config from company settings (already fetched in parallel)
+            const { data: companyData, error: companyError } = companyResult;
+            
+            if (!companyError && companyData?.settings?.pizzaConfig) {
+                setPizzaConfig(companyData.settings.pizzaConfig);
+            } else {
+                // Fallback to defaults if not configured
                 setPizzaConfig({
                     sizes: [
                         { name: 'Fatia', maxFlavors: 1 },
@@ -249,17 +242,11 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                 });
             }
 
-            // Fetch Pizza Extras
-            try {
-                const { data: extrasData, error: extrasError } = await supabase
-                    .from('pizza_extras')
-                    .select('*')
-                    .eq('company_id', user.companyId)
-                    .eq('active', true);
-
-                if (extrasError) throw extrasError;
-
-                const extrasFormatted = (extrasData || []).map((e: any) => ({
+            // Fetch Pizza Extras (already fetched in parallel)
+            const { data: extrasData, error: extrasError } = extrasResult;
+            
+            if (!extrasError && extrasData) {
+                const extrasFormatted = extrasData.map((e: any) => ({
                     id: e.id,
                     companyId: e.company_id,
                     type: e.type,
@@ -269,10 +256,8 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                     createdAt: new Date(e.created_at),
                     updatedAt: e.updated_at ? new Date(e.updated_at) : undefined
                 }));
-
                 setExtras(extrasFormatted);
-            } catch (error) {
-                console.error('❌ Erro ao carregar extras:', error);
+            } else {
                 setExtras([]);
             }
 
