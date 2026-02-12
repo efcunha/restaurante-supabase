@@ -1,10 +1,11 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Alert, Modal } from 'react-native';
+import { StyleSheet, Text, View, FlatList, TouchableOpacity, TextInput, Alert, Modal, ScrollView } from 'react-native';
 // @ts-ignore
 import KeyboardWrapper from '../components/KeyboardWrapper';
 import { Ionicons } from '@expo/vector-icons';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useResponsive } from '../hooks/useResponsive';
 // @ts-ignore
 import { criarFuncionario, listarFuncionarios, deletarFuncionario, atualizarFuncionario } from '../services/FuncionariosService';
 import { supabase } from '../config/SupabaseConfig';
@@ -15,6 +16,7 @@ interface Props {
 
 export default function FuncionariosScreen({ onClose }: Props) {
   const { user } = useAuth();
+  const { isTablet, horizontalPadding, modalWidth, modalMaxWidth, inputMaxWidth } = useResponsive();
   const [funcionarios, setFuncionarios] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -278,6 +280,59 @@ export default function FuncionariosScreen({ onClose }: Props) {
     return colors[func] || '#999';
   };
 
+  // Componente memoizado para o card de funcionário
+  const renderFuncionarioCard = useCallback(({ item: func }: { item: any }) => (
+    <View style={styles.funcionarioCard}>
+      <View style={styles.funcionarioHeader}>
+        <Text style={styles.funcionarioNome}>{func.nome}</Text>
+        <View style={[styles.funcaoBadge, { backgroundColor: getFuncaoColor(func.funcao) }]}>
+          <Text style={styles.funcaoText}>{getFuncaoLabel(func.funcao)}</Text>
+        </View>
+      </View>
+
+      <Text style={styles.funcionarioInfo}>CPF: {formatCPF(func.cpf)}</Text>
+      <Text style={styles.funcionarioInfo}>Email: {func.email}</Text>
+      {func.phone && <Text style={styles.funcionarioInfo}>Telefone: {formatPhone(func.phone)}</Text>}
+
+      <View style={styles.actionButtons}>
+        <TouchableOpacity
+          style={styles.editarBtn}
+          onPress={() => handleEditar(func)}
+        >
+          <Text style={styles.editarText}>✏️ Editar</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.desativarBtn}
+          onPress={() => handleDesativar(func)}
+        >
+          <Text style={styles.desativarText}>🗑️ Excluir</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  ), []);
+
+  const ListHeaderComponent = useCallback(() => (
+    <>
+      {/* Botão Adicionar */}
+      <TouchableOpacity
+        style={styles.addButton}
+        onPress={() => setModalVisible(true)}
+      >
+        <Text style={styles.addButtonText}>+ NOVO FUNCIONÁRIO</Text>
+      </TouchableOpacity>
+
+      {/* Título da Lista */}
+      <Text style={styles.sectionTitle}>Funcionários Cadastrados ({funcionarios.length})</Text>
+    </>
+  ), [funcionarios.length]);
+
+  const ListEmptyComponent = useCallback(() => (
+    <Text style={styles.emptyText}>
+      {loading && funcionarios.length === 0 ? 'Carregando...' : 'Nenhum funcionário cadastrado'}
+    </Text>
+  ), [loading, funcionarios.length]);
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -299,58 +354,18 @@ export default function FuncionariosScreen({ onClose }: Props) {
         <View style={styles.headerRightButton} />
       </View>
 
-      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }}>
-        {/* Botão Adicionar */}
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => setModalVisible(true)}
-        >
-          <Text style={styles.addButtonText}>+ NOVO FUNCIONÁRIO</Text>
-        </TouchableOpacity>
-
-        {/* Lista de Funcionários */}
-        <Text style={styles.sectionTitle}>Funcionários Cadastrados ({funcionarios.length})</Text>
-
-        {loading && funcionarios.length === 0 ? (
-          <Text style={styles.emptyText}>Carregando...</Text>
-        ) : funcionarios.length === 0 ? (
-          <Text style={styles.emptyText}>Nenhum funcionário cadastrado</Text>
-        ) : (
-          funcionarios.map((func) => (
-            <View key={func.id} style={styles.funcionarioCard}>
-              <View style={styles.funcionarioHeader}>
-                <Text style={styles.funcionarioNome}>{func.nome}</Text>
-                <View style={[styles.funcaoBadge, { backgroundColor: getFuncaoColor(func.funcao) }]}>
-                  <Text style={styles.funcaoText}>{getFuncaoLabel(func.funcao)}</Text>
-                </View>
-              </View>
-
-              <Text style={styles.funcionarioInfo}>CPF: {formatCPF(func.cpf)}</Text>
-              <Text style={styles.funcionarioInfo}>Email: {func.email}</Text>
-              {func.phone && <Text style={styles.funcionarioInfo}>Telefone: {formatPhone(func.phone)}</Text>}
-
-              <View style={styles.actionButtons}>
-                <TouchableOpacity
-                  style={styles.editarBtn}
-                  onPress={() => handleEditar(func)}
-                >
-                  <Text style={styles.editarText}>✏️ Editar</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.desativarBtn}
-                  onPress={() => {
-                    // console.log('[FuncionariosScreen] 🖱️ Botão Excluir clicado para:', func.nome);
-                    handleDesativar(func);
-                  }}
-                >
-                  <Text style={styles.desativarText}>🗑️ Excluir</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))
-        )}
-      </ScrollView>
+      <FlatList
+        data={funcionarios}
+        renderItem={renderFuncionarioCard}
+        keyExtractor={(item) => item.id}
+        ListHeaderComponent={ListHeaderComponent}
+        ListEmptyComponent={ListEmptyComponent}
+        contentContainerStyle={[styles.content, { 
+          paddingHorizontal: horizontalPadding,
+          paddingBottom: 100,
+        }]}
+        style={{ flex: 1 }}
+      />
 
       {/* Modal de Cadastro */}
       <Modal
@@ -360,7 +375,11 @@ export default function FuncionariosScreen({ onClose }: Props) {
         onRequestClose={() => setModalVisible(false)}
       >
         <KeyboardWrapper style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, {
+            width: modalWidth,
+            maxWidth: modalMaxWidth,
+            padding: isTablet ? 30 : 25,
+          }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
                 {editandoFuncionario ? 'Editar Funcionário' : 'Novo Funcionário'}
@@ -379,7 +398,7 @@ export default function FuncionariosScreen({ onClose }: Props) {
             <ScrollView>
               <Text style={styles.label}>Nome Completo</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { maxWidth: inputMaxWidth }]}
                 placeholder="Ex: João Silva"
                 value={nome}
                 onChangeText={setNome}
@@ -387,7 +406,7 @@ export default function FuncionariosScreen({ onClose }: Props) {
 
               <Text style={styles.label}>CPF</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { maxWidth: inputMaxWidth }]}
                 placeholder="000.000.000-00"
                 value={cpf}
                 onChangeText={(text) => {
@@ -414,7 +433,7 @@ export default function FuncionariosScreen({ onClose }: Props) {
 
               <Text style={styles.label}>Email</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { maxWidth: inputMaxWidth }]}
                 placeholder="joao@email.com"
                 value={email}
                 onChangeText={setEmail}
@@ -424,7 +443,7 @@ export default function FuncionariosScreen({ onClose }: Props) {
 
               <Text style={styles.label}>Telefone (opcional)</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { maxWidth: inputMaxWidth }]}
                 placeholder="(00) 00000-0000"
                 value={phone}
                 onChangeText={(text) => {
@@ -605,7 +624,10 @@ export default function FuncionariosScreen({ onClose }: Props) {
         onRequestClose={() => setModalExcluirVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalExcluirContent}>
+          <View style={[styles.modalExcluirContent, {
+            width: modalWidth,
+            maxWidth: 400,
+          }]}>
             <Text style={styles.modalExcluirTitle}>⚠️ Confirmar Exclusão</Text>
             <Text style={styles.modalExcluirText}>
               Tem certeza que deseja excluir{'\n'}
@@ -926,9 +948,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
     padding: 30,
-    maxWidth: 400,
-    width: '100%',
     alignItems: 'center',
+    alignSelf: 'center',
   },
   modalExcluirTitle: {
     fontSize: 24,

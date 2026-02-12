@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Alert, ActivityIndicator, Platform, TouchableOpacity, ScrollView, TextInput, Modal } from 'react-native';
 // @ts-ignore
 import KeyboardWrapper from '../components/KeyboardWrapper';
+import { useResponsive } from '../hooks/useResponsive';
 // import { doc, getDoc, getDocs, setDoc, updateDoc, writeBatch, addDoc } from 'firebase/firestore'; // Removed Firebase
 // import { db } from '../config/firebaseConfig'; // Removed Firebase
 import { supabase } from '../config/SupabaseConfig';
@@ -67,6 +68,7 @@ interface GerenciarCardapioScreenProps {
 
 export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioScreenProps) {
   const { user } = useAuth();
+  const { isTablet, horizontalPadding, modalWidth, modalMaxWidth, inputMaxWidth } = useResponsive();
 
   // Estados para cadastro
   const [nome, setNome] = useState('');
@@ -1098,14 +1100,21 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
         <View style={styles.headerRight} />
       </View>
 
-      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView style={styles.content} contentContainerStyle={{ 
+        paddingBottom: 100,
+        paddingHorizontal: horizontalPadding 
+      }}>
         {/* SEÇÃO 1: CADASTRAR PRODUTO */}
-        <View style={styles.section}>
+        <View style={[styles.section, {
+          maxWidth: isTablet ? 700 : '100%',
+          alignSelf: 'center',
+          width: '100%',
+        }]}>
           <Text style={styles.sectionTitle}>➕ Cadastrar Produto</Text>
 
           <View style={styles.form}>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { maxWidth: inputMaxWidth }]}
               placeholder="Nome do produto (ex: Camarão)"
               placeholderTextColor="#999"
               value={nome}
@@ -1427,7 +1436,11 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
         </View>
 
         {/* SEÇÃO 2: LISTAR PRODUTOS POR CATEGORIA */}
-        <View style={styles.section}>
+        <View style={[styles.section, {
+          maxWidth: isTablet ? 700 : '100%',
+          alignSelf: 'center',
+          width: '100%',
+        }]}>
           <Text style={styles.sectionTitle}>📋 Produtos Cadastrados</Text>
 
           {/* Filtros de categoria */}
@@ -1584,7 +1597,12 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
       {/* MODAL DE EDIÇÃO (Produto Único) */}
       <Modal visible={showEditModal} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { maxHeight: '90%' }]}>
+          <View style={[styles.modalContent, { 
+            maxHeight: '90%',
+            width: modalWidth,
+            maxWidth: modalMaxWidth,
+            padding: isTablet ? 30 : 25,
+          }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>✏️ Editar Produto</Text>
               <TouchableOpacity onPress={() => setShowEditModal(false)}>
@@ -1595,7 +1613,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
             <ScrollView showsVerticalScrollIndicator={false}>
               <Text style={styles.label}>Nome:</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { maxWidth: inputMaxWidth }]}
                 placeholder="Nome do produto"
                 placeholderTextColor="#999"
                 value={editNome}
@@ -1670,7 +1688,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
 
                   <View style={{ flexDirection: 'row', marginBottom: 15 }}>
                     <TextInput
-                      style={[styles.input, { flex: 1, marginRight: 8 }]}
+                      style={[styles.input, { flex: 1, marginRight: 8, maxWidth: inputMaxWidth }]}
                       placeholder="Adicionar ingrediente..."
                       placeholderTextColor="#999"
                       value={novoIngrediente}
@@ -1691,7 +1709,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
 
                   <Text style={styles.label}>Ingredientes Personalizados (opcional):</Text>
                   <TextInput
-                    style={[styles.input, { height: 60 }]}
+                    style={[styles.input, { height: 60, maxWidth: inputMaxWidth }]}
                     placeholder="Ex: Ingredientes especiais, observações..."
                     placeholderTextColor="#999"
                     value={ingredientesPersonalizados}
@@ -1724,7 +1742,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                 <>
                   <Text style={styles.label}>Preço:</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { maxWidth: inputMaxWidth }]}
                     placeholder="Preço"
                     placeholderTextColor="#999"
                     value={editPreco}
@@ -1772,7 +1790,11 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
       {/* MODAL DE VARIAÇÕES */}
       <Modal visible={showVariacoesModal} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, {
+            width: modalWidth,
+            maxWidth: modalMaxWidth,
+            padding: isTablet ? 30 : 25,
+          }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>✏️ Editar Variações</Text>
               <TouchableOpacity onPress={() => setShowVariacoesModal(false)}>
@@ -1856,7 +1878,11 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
       {/* MODAL FICHA TÉCNICA */}
       <Modal visible={showStockModal} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, {
+            width: modalWidth,
+            maxWidth: modalMaxWidth,
+            padding: isTablet ? 30 : 25,
+          }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>📦 Ficha Técnica</Text>
               <TouchableOpacity onPress={() => setShowStockModal(false)}>
@@ -2287,14 +2313,12 @@ const styles = StyleSheet.create({
   modalContent: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
-    padding: 20,
-    width: '100%',
-    maxWidth: 400,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.3,
     shadowRadius: 20,
     elevation: 10,
+    alignSelf: 'center',
   },
   modalHeader: {
     flexDirection: 'row',

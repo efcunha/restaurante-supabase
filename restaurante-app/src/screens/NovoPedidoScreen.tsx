@@ -1,9 +1,10 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, SectionList, TouchableOpacity, TextInput, ActivityIndicator, LayoutAnimation, Platform, UIManager, SectionListRenderItem } from 'react-native';
+import { StyleSheet, Text, View, SectionList, TouchableOpacity, TextInput, ActivityIndicator, LayoutAnimation, Platform, UIManager, SectionListRenderItem, InteractionManager } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import React, { memo, useCallback, useState, useMemo } from 'react';
+import React, { memo, useCallback, useState, useMemo, useRef, useEffect } from 'react';
 import BackgroundPattern from '../components/BackgroundPattern';
 import { useNovoPedido } from '../hooks/useNovoPedido';
+import { usePerformanceMonitor } from '../hooks/usePerformanceMonitor';
 import { colors } from '../theme/colors';
 import { useFocusEffect } from '@react-navigation/native';
 // @ts-ignore
@@ -54,12 +55,13 @@ interface CaldoRowProps {
   caldoBase: string; // Base name derived from string[] in section data
   cardapioCaldos: Product[];
   produtos: Record<string, number>;
-  updateProduto: (name: string, delta: number) => void;
+  onIncrement: (name: string) => void;
+  onDecrement: (name: string) => void;
   temperos: string[];
 }
 
 // Helper to render complex Caldo rows which are not just 1:1 with cardapio items
-const CaldoRow = memo(({ caldoBase, cardapioCaldos, produtos, updateProduto, temperos }: CaldoRowProps) => {
+const CaldoRow = memo(({ caldoBase, cardapioCaldos, produtos, onIncrement, onDecrement, temperos }: CaldoRowProps) => {
   const item300 = cardapioCaldos.find(c => c.name.includes(caldoBase) && c.name.match(/300\s*ml/i));
   const item180 = cardapioCaldos.find(c => c.name.includes(caldoBase) && c.name.match(/180\s*ml/i));
 
@@ -83,8 +85,8 @@ const CaldoRow = memo(({ caldoBase, cardapioCaldos, produtos, updateProduto, tem
           label={`${icone} ${tempero}`}
           qty={qty}
           color={cor}
-          onInc={() => updateProduto(nome, 1)}
-          onDec={() => updateProduto(nome, -1)}
+          onInc={() => onIncrement(nome)}
+          onDec={() => onDecrement(nome)}
           last={idx === temperos.length - 1} // Logic for styling if needed
         />
       );
@@ -118,13 +120,14 @@ CaldoRow.displayName = 'CaldoRow';
 interface StandardRowProps {
   item: Product;
   produtos: Record<string, number>;
-  updateProduto: (name: string, delta: number) => void;
+  onIncrement: (name: string) => void;
+  onDecrement: (name: string) => void;
   type: string;
   temperos: string[];
 }
 
 // Helper for other items (Comidas/Bebidas/Porcoes)
-const StandardRow = memo(({ item, produtos, updateProduto, type, temperos }: StandardRowProps) => {
+const StandardRow = memo(({ item, produtos, onIncrement, onDecrement, type, temperos }: StandardRowProps) => {
   const isComida = type === 'comidas';
 
 
@@ -148,14 +151,15 @@ const StandardRow = memo(({ item, produtos, updateProduto, type, temperos }: Sta
           else if (t.toLowerCase().includes('sem nada')) label = `⚪ ${t}`;
           else label = `🔸 ${t}`;
 
+          const itemName = `${item.name} ${suffix}`;
           return (
             <VariationRow
               key={suffix}
               label={label}
-              qty={produtos[`${item.name} ${suffix}`] || 0}
+              qty={produtos[itemName] || 0}
               color={color}
-              onInc={() => updateProduto(`${item.name} ${suffix}`, 1)}
-              onDec={() => updateProduto(`${item.name} ${suffix}`, -1)}
+              onInc={() => onIncrement(itemName)}
+              onDec={() => onDecrement(itemName)}
               last={idx === temperos.length - 1}
             />
           );
@@ -174,11 +178,11 @@ const StandardRow = memo(({ item, produtos, updateProduto, type, temperos }: Sta
         <Text style={styles.verticalPrice}>R$ {item.price?.toFixed(2)}</Text>
 
         <View style={styles.quantityControl}>
-          <TouchableOpacity style={[styles.roundBtn, { backgroundColor: colors.danger }]} onPress={() => updateProduto(item.name, -1)}>
+          <TouchableOpacity style={[styles.roundBtn, { backgroundColor: colors.danger }]} onPress={() => onDecrement(item.name)}>
             <Text style={styles.roundBtnText}>−</Text>
           </TouchableOpacity>
           <Text style={styles.qtyText}>{qty}</Text>
-          <TouchableOpacity style={[styles.roundBtn, { backgroundColor: colors.success }]} onPress={() => updateProduto(item.name, 1)}>
+          <TouchableOpacity style={[styles.roundBtn, { backgroundColor: colors.success }]} onPress={() => onIncrement(item.name)}>
             <Text style={styles.roundBtnText}>+</Text>
           </TouchableOpacity>
         </View>
@@ -192,12 +196,13 @@ interface EspetinhoRowProps {
   baseName: string;
   cardapioEspetinhos: Product[];
   produtos: Record<string, number>;
-  updateProduto: (name: string, delta: number) => void;
+  onIncrement: (name: string) => void;
+  onDecrement: (name: string) => void;
   variacoes?: string[];
 }
 
 // Helper for Espetinhos (Simples/Especiais) with dynamic variations
-const EspetinhoRow = memo(({ baseName, cardapioEspetinhos, produtos, updateProduto, variacoes = [] }: EspetinhoRowProps) => {
+const EspetinhoRow = memo(({ baseName, cardapioEspetinhos, produtos, onIncrement, onDecrement, variacoes = [] }: EspetinhoRowProps) => {
   // 1. Map available variations to actual products
   const itensVariaveis = variacoes.map(variacao => {
     // Try to find exact match "Nome Variação" (Case Insensitive)
@@ -230,8 +235,8 @@ const EspetinhoRow = memo(({ baseName, cardapioEspetinhos, produtos, updateProdu
             price={item.produto.price || 0}
             qty={qty}
             color={color}
-            onInc={() => updateProduto(item.produto.name, 1)}
-            onDec={() => updateProduto(item.produto.name, -1)}
+            onInc={() => onIncrement(item.produto.name)}
+            onDec={() => onDecrement(item.produto.name)}
             last={idx === itensVariaveis.length - 1}
           />
         );
@@ -251,7 +256,7 @@ interface StackedVariationRowProps {
   last: boolean;
 }
 
-const StackedVariationRow = ({ name, price, qty, color, onInc, onDec, last }: StackedVariationRowProps) => (
+const StackedVariationRow = memo(({ name, price, qty, color, onInc, onDec, last }: StackedVariationRowProps) => (
   <View style={[styles.stackedRowContainer, last && { marginBottom: 12 }]}>
     {/* Left Side: Info Card (Name + Price) */}
     <TouchableOpacity
@@ -274,7 +279,8 @@ const StackedVariationRow = ({ name, price, qty, color, onInc, onDec, last }: St
       </TouchableOpacity>
     </View>
   </View>
-);
+));
+StackedVariationRow.displayName = 'StackedVariationRow';
 
 interface VariationRowProps {
   label: string;
@@ -286,7 +292,7 @@ interface VariationRowProps {
   forceOneLine?: boolean;
 }
 
-const VariationRow = ({ label, qty, color, onInc, onDec, last, forceOneLine = false }: VariationRowProps) => (
+const VariationRow = memo(({ label, qty, color, onInc, onDec, last, forceOneLine = false }: VariationRowProps) => (
   <View style={[styles.variationRow, last && { marginBottom: 12 }]}>
     <TouchableOpacity style={[styles.variationLabelBtn, { backgroundColor: color }]} onPress={onInc}>
       <Text
@@ -308,7 +314,8 @@ const VariationRow = ({ label, qty, color, onInc, onDec, last, forceOneLine = fa
       </TouchableOpacity>
     </View>
   </View>
-);
+));
+VariationRow.displayName = 'VariationRow';
 
 interface HeaderComponentProps {
   clientName: string;
@@ -391,6 +398,12 @@ export default function NovoPedidoScreen({ route }: any) {
   const [showPizzaModal, setShowPizzaModal] = useState(false);
   const [selectedPizza, setSelectedPizza] = useState<Product | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isScrolling, setIsScrolling] = useState(false);
+  
+  // Performance monitoring
+  const { metrics, startMonitoring, stopMonitoring, logMetrics, isMonitoring } = usePerformanceMonitor();
+  const [scrolling, setScrolling] = useState(false);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout>();
 
   const {
     user,
@@ -457,8 +470,6 @@ export default function NovoPedidoScreen({ route }: any) {
 
     // Section for Pizza Builder - Grouped by Subcategory
     if (cardapio.pizzas && cardapio.pizzas.length > 0) {
-      console.log('🍕 [DEBUG] Total pizzas loaded:', cardapio.pizzas.length);
-
       // Deduplicate pizzas by name (Case Insensitive) AND Filter Active
       const uniquePizzas: Product[] = [];
       const seenNames = new Set<string>();
@@ -468,11 +479,8 @@ export default function NovoPedidoScreen({ route }: any) {
         if (normalizedName && !seenNames.has(normalizedName)) {
           seenNames.add(normalizedName);
           uniquePizzas.push(p);
-          console.log('🍕 [DEBUG] Added pizza:', p.name, 'Subcategory:', p.subcategory);
         }
       });
-
-      console.log('🍕 [DEBUG] Unique pizzas after dedup:', uniquePizzas.length);
 
       // Group pizzas by subcategory
       const pizzasByCategory: Record<string, Product[]> = {
@@ -484,7 +492,6 @@ export default function NovoPedidoScreen({ route }: any) {
 
       uniquePizzas.forEach(pizza => {
         const subcategory = pizza.subcategory || 'Outras';
-        console.log('🍕 [DEBUG] Grouping pizza:', pizza.name, 'into', subcategory);
         if (pizzasByCategory[subcategory]) {
           pizzasByCategory[subcategory].push(pizza);
         } else {
@@ -492,18 +499,10 @@ export default function NovoPedidoScreen({ route }: any) {
         }
       });
 
-      console.log('🍕 [DEBUG] Pizzas by category:', {
-        Tradicional: pizzasByCategory['Tradicional'].length,
-        Especiais: pizzasByCategory['Especiais'].length,
-        Doces: pizzasByCategory['Doces'].length,
-        Outras: pizzasByCategory['Outras'].length
-      });
-
       // Add sections for each category that has pizzas
       const categoryOrder = ['Tradicional', 'Especiais', 'Doces', 'Outras'];
       categoryOrder.forEach(category => {
         if (pizzasByCategory[category].length > 0) {
-          console.log('🍕 [DEBUG] Adding section:', category, 'with', pizzasByCategory[category].length, 'pizzas');
           sectionsData.push({
             title: `🍕 PIZZAS ${category.toUpperCase()}`,
             data: pizzasByCategory[category],
@@ -515,7 +514,6 @@ export default function NovoPedidoScreen({ route }: any) {
 
     // Helper strict filter to avoid pizzas appearing in other categories
     const isPizza = (name: string) => {
-      // Safe check even if uniquePizzas is empty
       const pizzas = cardapio.pizzas || [];
       return pizzas.some(p => p.name.trim().toLowerCase() === name.trim().toLowerCase());
     };
@@ -538,7 +536,6 @@ export default function NovoPedidoScreen({ route }: any) {
       const baseNames = [...new Set(activeEspetinhos.map(p => {
         let name = p.name;
         variacoesEspetinho.forEach(v => {
-          // Replace case insensitive
           const regex = new RegExp(` ${v}`, 'gi');
           name = name.replace(regex, '');
         });
@@ -558,7 +555,6 @@ export default function NovoPedidoScreen({ route }: any) {
       const baseNames = [...new Set(activeEspetinhos.map(p => {
         let name = p.name;
         variacoesEspetinho.forEach(v => {
-          // Replace case insensitive
           const regex = new RegExp(` ${v}`, 'gi');
           name = name.replace(regex, '');
         });
@@ -614,14 +610,81 @@ export default function NovoPedidoScreen({ route }: any) {
 
   // Wrappers for animation
   const updateProdutoAnimated = useCallback((itemName: string, delta: number) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    updateProduto(itemName, delta);
-  }, [updateProduto]);
+    // Only animate when not scrolling
+    if (!isScrolling) {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    }
+    
+    // Use InteractionManager to defer update if scrolling
+    if (isScrolling) {
+      InteractionManager.runAfterInteractions(() => {
+        updateProduto(itemName, delta);
+      });
+    } else {
+      updateProduto(itemName, delta);
+    }
+  }, [updateProduto, isScrolling]);
 
   const handleRemoveItemAnimated = useCallback((item: string) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.spring); // Spring for deletion feeling
     handleRemoveItem(item);
   }, [handleRemoveItem]);
+  
+  // Memoized callbacks for increment/decrement
+  const handleIncrement = useCallback((itemName: string) => {
+    updateProdutoAnimated(itemName, 1);
+  }, [updateProdutoAnimated]);
+  
+  const handleDecrement = useCallback((itemName: string) => {
+    updateProdutoAnimated(itemName, -1);
+  }, [updateProdutoAnimated]);
+  
+  // Memoized keyExtractor for stable keys
+  const keyExtractor = useCallback((item: SectionItem, index: number) => {
+    if (typeof item === 'string') {
+      // For string items (caldos, espetinhos base names), use the string itself as key
+      return item;
+    }
+    // For Product items, prefer id, fallback to name (without index for stability)
+    const product = item as Product;
+    return product.id ? String(product.id) : product.name || `item-${index}`;
+  }, []);
+  
+  // Performance monitoring handlers
+  const handleScrollBeginDrag = useCallback(() => {
+    setScrolling(true);
+    setIsScrolling(true);
+    if (!isMonitoring) {
+      startMonitoring();
+    }
+  }, [isMonitoring, startMonitoring]);
+  
+  const handleScrollEndDrag = useCallback(() => {
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+    
+    scrollTimeoutRef.current = setTimeout(() => {
+      setScrolling(false);
+      setIsScrolling(false);
+      if (isMonitoring) {
+        stopMonitoring();
+        logMetrics();
+      }
+    }, 150);
+  }, [isMonitoring, stopMonitoring, logMetrics]);
+  
+  // Log baseline metrics on mount
+  useEffect(() => {
+    console.log('📊 [Performance] Baseline measurement ready');
+    console.log('📊 [Performance] Current SectionList config:', {
+      initialNumToRender: 12,
+      windowSize: 5,
+      maxToRenderPerBatch: 10,
+      updateCellsBatchingPeriod: 50,
+      removeClippedSubviews: Platform.OS === 'android'
+    });
+  }, []);
 
   if (loadingCardapio) {
     return (
@@ -660,10 +723,6 @@ export default function NovoPedidoScreen({ route }: any) {
       };
       const priceDisplay = formatPriceRange(minPrice, maxPrice);
 
-      // Debug para identificar porque Calabresa aparece errado
-      if (pizzaItem.name.toLowerCase().includes('calabresa')) {
-        console.log('🍕 [DEBUG] Calabresa Prices:', pizzaItem.prices, 'Min:', minPrice);
-      }
       const ingredientsText = pizzaItem.ingredients ? pizzaItem.ingredients.join(', ') : pizzaItem.description || '';
       const customIngredientsText = pizzaItem.customIngredients || '';
 
@@ -691,7 +750,7 @@ export default function NovoPedidoScreen({ route }: any) {
       );
     }
     if (section.type === 'caldos') {
-      return <CaldoRow caldoBase={item as string} cardapioCaldos={section.original || []} produtos={produtos} updateProduto={updateProdutoAnimated} temperos={temperosCaldos} />;
+      return <CaldoRow caldoBase={item as string} cardapioCaldos={section.original || []} produtos={produtos} onIncrement={handleIncrement} onDecrement={handleDecrement} temperos={temperosCaldos} />;
     }
     if (section.type === 'espetinhos-simples' || section.type === 'espetinhos-especiais') {
       return (
@@ -699,12 +758,13 @@ export default function NovoPedidoScreen({ route }: any) {
           baseName={item as string}
           cardapioEspetinhos={section.original || []}
           produtos={produtos}
-          updateProduto={updateProdutoAnimated}
+          onIncrement={handleIncrement}
+          onDecrement={handleDecrement}
           variacoes={variacoesEspetinho}
         />
       );
     }
-    return <StandardRow item={item as Product} produtos={produtos} updateProduto={updateProdutoAnimated} type={section.type} temperos={temperosComidas} />;
+    return <StandardRow item={item as Product} produtos={produtos} onIncrement={handleIncrement} onDecrement={handleDecrement} type={section.type} temperos={temperosComidas} />;
   };
 
   return (
@@ -756,11 +816,7 @@ export default function NovoPedidoScreen({ route }: any) {
         sections={filteredSections}
         renderItem={renderItem}
         renderSectionHeader={renderSectionHeader}
-        keyExtractor={(item, index) => {
-          if (typeof item === 'string') return `${item}-${index}`;
-          // @ts-ignore
-          return item.id ? String(item.id) : (item.name ? `${item.name}-${index}` : `item-${index}`);
-        }}
+        keyExtractor={keyExtractor}
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={<HeaderComponent
           clientName={clientName}
@@ -773,11 +829,18 @@ export default function NovoPedidoScreen({ route }: any) {
         />}
         ListFooterComponent={<FooterComponent selectedItems={selectedItems} onRemoveItem={handleRemoveItemAnimated} />}
         stickySectionHeadersEnabled={false}
-        initialNumToRender={12}
-        windowSize={5}
-        maxToRenderPerBatch={10}
-        updateCellsBatchingPeriod={50}
-        removeClippedSubviews={Platform.OS === 'android'}
+        initialNumToRender={5}
+        windowSize={2}
+        maxToRenderPerBatch={3}
+        updateCellsBatchingPeriod={150}
+        removeClippedSubviews={true}
+        onScrollBeginDrag={handleScrollBeginDrag}
+        onScrollEndDrag={handleScrollEndDrag}
+        onMomentumScrollEnd={handleScrollEndDrag}
+        onScrollToIndexFailed={() => {}}
+        legacyImplementation={false}
+        disableIntervalMomentum={true}
+        scrollEventThrottle={16}
       />
 
       <View style={styles.stickyFooter}>

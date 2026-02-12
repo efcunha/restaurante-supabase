@@ -1,0 +1,250 @@
+================================================================================
+                    GUIA COMPLETO - ATUALIZAÇÃO DE ÍCONES
+================================================================================
+
+PROBLEMAS CORRIGIDOS:
+  1. ✅ Ícone estava sendo cortado nas bordas
+  2. ✅ Splash screen mostrava imagem antiga
+
+SOLUÇÕES IMPLEMENTADAS:
+  1. ✅ Adicionado padding automático ao ícone
+  2. ✅ Atualizado splash screen para usar novo ícone
+
+================================================================================
+                    COMANDO ÚNICO (ATUALIZA TUDO)
+================================================================================
+
+Execute este comando para corrigir TUDO de uma vez:
+
+    cd restaurante-app
+    npm run update-all-icons
+
+Este comando faz:
+  1. ✅ Adiciona padding ao ícone (usando icone-bak.png)
+  2. ✅ Gera todos os ícones Android (5 densidades)
+  3. ✅ Gera todos os splash screens Android (5 densidades)
+  4. ✅ Remove arquivos antigos
+
+================================================================================
+                         APLICAR NO CELULAR
+================================================================================
+
+Após executar o comando acima, reconstrua o app:
+
+    cd android
+    ./gradlew clean
+    cd ..
+    npx expo run:android
+
+================================================================================
+                         O QUE FOI ATUALIZADO
+================================================================================
+
+1. CONFIGURAÇÃO (app.json)
+   ✅ icon: ./imagem/icone.png
+   ✅ adaptiveIcon: ./imagem/icone.png
+   ✅ splash.image: ./imagem/icone.png
+
+2. ÍCONES ANDROID (15 arquivos)
+   ✅ ic_launcher.png (5 densidades)
+   ✅ ic_launcher_round.png (5 densidades)
+   ✅ ic_launcher_foreground.png (5 densidades)
+
+3. SPLASH SCREENS ANDROID (5 arquivos)
+   ✅ splashscreen_logo.png (5 densidades)
+
+TOTAL: 20 arquivos gerados + 1 configuração atualizada
+
+================================================================================
+                         SCRIPTS CRIADOS
+================================================================================
+
+1. fix-icon-padding.js
+   → Adiciona padding ao ícone para evitar cortes
+
+2. generate-android-icons.js
+   → Gera ícones Android em todas as densidades
+
+3. update-splash-screen.js
+   → Gera splash screens Android em todas as densidades
+
+4. verificar-icone.sh
+   → Verifica se tudo está configurado corretamente
+
+================================================================================
+                         COMANDOS DISPONÍVEIS
+================================================================================
+
+# ATUALIZAR TUDO (RECOMENDADO)
+npm run update-all-icons
+
+# Atualizar apenas ícone do app
+npm run update-icon
+
+# Atualizar apenas splash screen
+npm run update-splash
+
+# Adicionar padding ao ícone
+npm run fix-icon-padding
+
+# Gerar ícones Android
+npm run generate-icons
+
+# Verificar configuração
+bash scripts/verificar-icone.sh
+
+# Limpar cache Android
+cd android && ./gradlew clean && cd ..
+
+# Reconstruir app
+npx expo run:android
+
+================================================================================
+                         ESTRUTURA DE ARQUIVOS
+================================================================================
+
+restaurante-app/
+├── imagem/
+│   ├── icone-bak.png       → Imagem original (backup)
+│   └── icone.png           → Imagem com padding (gerada)
+│
+├── android/app/src/main/res/
+│   ├── mipmap-mdpi/        → Ícones 48x48
+│   ├── mipmap-hdpi/        → Ícones 72x72
+│   ├── mipmap-xhdpi/       → Ícones 96x96
+│   ├── mipmap-xxhdpi/      → Ícones 144x144
+│   ├── mipmap-xxxhdpi/     → Ícones 192x192
+│   ├── drawable-mdpi/      → Splash 200x200
+│   ├── drawable-hdpi/      → Splash 300x300
+│   ├── drawable-xhdpi/     → Splash 400x400
+│   ├── drawable-xxhdpi/    → Splash 600x600
+│   └── drawable-xxxhdpi/   → Splash 800x800
+│
+├── scripts/
+│   ├── fix-icon-padding.js
+│   ├── generate-android-icons.js
+│   ├── update-splash-screen.js
+│   └── verificar-icone.sh
+│
+└── app.json                → Configuração atualizada
+
+================================================================================
+                         COMO FUNCIONA
+================================================================================
+
+PROBLEMA 1: Ícone Cortado
+┌─────────────────────────┐
+│ ░░░░░░░░░░░░░░░░░░░░░░░ │ ← Cortado
+│ ░░┌─────────────────┐░░ │
+│ ░░│   IMAGEM        │░░ │
+│ ░░└─────────────────┘░░ │
+│ ░░░░░░░░░░░░░░░░░░░░░░░ │ ← Cortado
+└─────────────────────────┘
+
+SOLUÇÃO: Padding Automático
+┌─────────────────────────┐
+│                         │ ← Padding
+│     ┌─────────────┐     │
+│     │   IMAGEM    │     │
+│     │  (completa) │     │
+│     └─────────────┘     │
+│                         │ ← Padding
+└─────────────────────────┘
+
+PROBLEMA 2: Splash Screen Antiga
+Ao abrir app:
+  1. Ícone novo ✅
+  2. Splash antiga ❌
+  3. Tela login ✅
+
+SOLUÇÃO: Atualizar Splash Screen
+Ao abrir app:
+  1. Ícone novo ✅
+  2. Splash nova ✅
+  3. Tela login ✅
+
+================================================================================
+                         RESUMO EXECUTIVO
+================================================================================
+
+ANTES:
+  ❌ Ícone cortado nas bordas
+  ❌ Splash screen com imagem antiga
+  ❌ Experiência inconsistente
+
+DEPOIS:
+  ✅ Ícone completo e bem enquadrado
+  ✅ Splash screen com novo ícone
+  ✅ Experiência consistente e profissional
+
+================================================================================
+                         PASSO A PASSO
+================================================================================
+
+1. Atualizar todos os ícones:
+   cd restaurante-app
+   npm run update-all-icons
+
+2. Limpar cache do Android:
+   cd android
+   ./gradlew clean
+   cd ..
+
+3. Reconstruir e instalar:
+   npx expo run:android
+
+4. Testar no celular:
+   - Feche o app completamente
+   - Abra novamente
+   - Observe: ícone + splash screen devem estar corretos
+
+================================================================================
+                         DOCUMENTAÇÃO
+================================================================================
+
+Documentos criados:
+  1. CORRECAO_ENQUADRAMENTO_ICONE.md  → Problema do ícone cortado
+  2. CORRECAO_SPLASH_SCREEN.md        → Problema da splash screen
+  3. GUIA_RAPIDO_CORRECAO.txt         → Guia rápido (ícone)
+  4. GUIA_COMPLETO_ATUALIZACAO.txt    → Este arquivo (completo)
+  5. ANALISE_ICONE.md                 → Análise técnica
+  6. CONFIRMACAO_ICONE.md             → Confirmação da alteração
+  7. EVIDENCIAS_ALTERACAO.md          → Evidências técnicas
+
+================================================================================
+                         VERIFICAÇÃO
+================================================================================
+
+Para verificar se tudo está correto:
+
+1. Execute o script de verificação:
+   bash scripts/verificar-icone.sh
+
+2. Verifique os arquivos gerados:
+   ls -lh android/app/src/main/res/mipmap-*/ic_launcher.png
+   ls -lh android/app/src/main/res/drawable-*/splashscreen_logo.png
+
+3. Verifique o app.json:
+   grep -A 3 '"splash"' app.json
+
+================================================================================
+                         SUPORTE
+================================================================================
+
+Se algo não funcionar:
+
+1. Verifique se sharp está instalado:
+   npm list sharp
+
+2. Se não estiver, instale:
+   npm install --save-dev sharp
+
+3. Execute novamente:
+   npm run update-all-icons
+
+4. Se o problema persistir, verifique os logs de erro
+
+================================================================================
+Data: 11 de Fevereiro de 2026
+Status: ✅ SOLUÇÃO COMPLETA PRONTA
+================================================================================
