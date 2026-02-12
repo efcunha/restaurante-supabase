@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { formatCurrency } from '../utils/formatCurrency';
-import BackgroundPattern from '../components/BackgroundPattern';
+
 // @ts-ignore
 import { SalesByDayChart, SalesByPaymentChart } from '../components/FinancialCharts';
 import { Ionicons } from '@expo/vector-icons';
@@ -276,7 +276,7 @@ export default function FinancialDashboardScreen({ onClose }: FinancialDashboard
 
     return (
         <View style={styles.container}>
-            <BackgroundPattern />
+
 
             {/* Header */}
             <View style={styles.header}>
@@ -388,7 +388,7 @@ export default function FinancialDashboardScreen({ onClose }: FinancialDashboard
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F5F1E8' },
+    container: { flex: 1, backgroundColor: '#F5F5DC' },
     header: {
         backgroundColor: '#8B2F2F',
         paddingTop: 50,

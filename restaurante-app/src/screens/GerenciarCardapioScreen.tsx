@@ -11,7 +11,7 @@ import { useAuth } from '../context/AuthContext';
 import { Product, PizzaConfig, PizzaSize } from '../types';
 import { Ionicons } from '@expo/vector-icons';
 // @ts-ignore
-import BackgroundPattern from '../components/BackgroundDecoration'; // Fix missing import if needed, assuming component exists
+ // Fix missing import if needed, assuming component exists
 import { SUPPORTED_UNITS } from '../utils/unitConversion';
 
 // Componente para cada item de variação
@@ -1079,7 +1079,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
 
   return (
     <KeyboardWrapper style={styles.container}>
-      <BackgroundPattern />
+
 
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -1983,7 +1983,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F1E8' },
+  container: { flex: 1, backgroundColor: '#F5F5DC' },
   header: {
     backgroundColor: '#8B2F2F',
     paddingTop: 50,

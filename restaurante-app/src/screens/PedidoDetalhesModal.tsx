@@ -26,25 +26,17 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
   const { getOrderById, editOrder, deleteOrder, transferOrder } = useOrders();
   const [isTransferModalVisible, setIsTransferModalVisible] = useState(false);
 
-  // ... (existing helper functions)
-
   const handleTransfer = async (newTable: string) => {
     try {
       await transferOrder(orderId, newTable);
       Alert.alert('Sucesso', `Pedido transferido para a mesa ${newTable}`);
       setIsTransferModalVisible(false);
-      onClose(); // Optional: close details modal after transfer
+      onClose();
     } catch (error: any) {
       Alert.alert('Erro', 'Falha ao transferir pedido: ' + error.message);
     }
   };
 
-  // ... (existing handleEdit, handleDelete)
-
-  // ... (render)
-
-
-  // Helper para formatar valores em Real brasileiro
   const formatarMoeda = (valor: any) => {
     if (valor === null || valor === undefined || isNaN(valor)) return 'R$ 0,00';
     const numero = parseFloat(valor);
@@ -84,7 +76,6 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
 
   const handleEdit = () => {
     if (isEditing) {
-      // Salvar alterações
       try {
         editOrder(orderId, {
           client: editedClient,
@@ -96,14 +87,11 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
         Alert.alert('Erro', error.message);
       }
     } else {
-      // Entrar em modo de edição
       setEditedClient(order.client || '');
       setEditedObservations(order.observations || '');
       setIsEditing(true);
     }
   };
-
-
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -127,210 +115,205 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
   };
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent={true}
-      onRequestClose={onClose}
-    >
-      <View style={styles.overlay}>
-        <View style={styles.modalContainer}>
-          {/* Header */}
-          <View style={styles.header}>
-            <View>
-              <Text style={styles.orderId}>{order.id}</Text>
-              <View style={[styles.statusBadge, { backgroundColor: getStatusColor(order.status) }]}>
-                <Text style={styles.statusText}>{getStatusLabel(order.status)}</Text>
+    <>
+      <Modal
+        visible={visible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={onClose}
+      >
+        <View style={styles.overlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.header}>
+              <View>
+                <Text style={styles.orderId}>
+                  Comanda {order.comandaNumber || order.numeroComanda || order.id.slice(0, 8)}
+                </Text>
+                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(order.status) }]}>
+                  <Text style={styles.statusText}>{getStatusLabel(order.status)}</Text>
+                </View>
               </View>
+              <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+                <Text style={styles.closeBtnText}>✕</Text>
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Text style={styles.closeBtnText}>✕</Text>
-            </TouchableOpacity>
-          </View>
 
-          <ScrollView style={styles.content}>
-            {/* Cliente */}
-            <View style={styles.section}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.sectionTitle}>Cliente</Text>
-                  {isEditing ? (
-                    <TextInput
-                      style={styles.input}
-                      value={editedClient}
-                      onChangeText={setEditedClient}
-                      placeholder="Nome do cliente"
-                    />
-                  ) : (
-                    <Text style={styles.clientName}>{order.client}</Text>
+            <ScrollView style={styles.content}>
+              <View style={styles.section}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.sectionTitle}>Cliente</Text>
+                    {isEditing ? (
+                      <TextInput
+                        style={styles.input}
+                        value={editedClient}
+                        onChangeText={setEditedClient}
+                        placeholder="Nome do cliente"
+                      />
+                    ) : (
+                      <Text style={styles.clientName}>{order.client}</Text>
+                    )}
+                  </View>
+
+                  {order.mesa && (
+                    <View style={{ marginLeft: 20 }}>
+                      <Text style={styles.sectionTitle}>Mesa</Text>
+                      <Text style={styles.clientName}>{order.mesa}</Text>
+                    </View>
                   )}
                 </View>
+              </View>
 
-                {order.mesa && (
-                  <View style={{ marginLeft: 20 }}>
-                    <Text style={styles.sectionTitle}>Mesa</Text>
-                    <Text style={styles.clientName}>{order.mesa}</Text>
+              {order.createdByName && (
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>Garçom</Text>
+                  <Text style={styles.clientName}>{order.createdByName}</Text>
+                </View>
+              )}
+
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Itens do Pedido</Text>
+                {order.items.map((item: string, index: number) => (
+                  <View key={index} style={styles.itemRow}>
+                    <Text style={styles.itemBullet}>*</Text>
+                    <Text style={styles.itemText}>{item}</Text>
                   </View>
+                ))}
+              </View>
+
+              <View style={styles.section}>
+                <View style={styles.totalRow}>
+                  <Text style={styles.totalLabel}>Total do Pedido:</Text>
+                  <Text style={styles.totalValue}>{formatarMoeda(order.totalPrice)}</Text>
+                </View>
+              </View>
+
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Observações</Text>
+                {isEditing ? (
+                  <TextInput
+                    style={[styles.input, styles.textArea]}
+                    value={editedObservations}
+                    onChangeText={setEditedObservations}
+                    placeholder="Observações"
+                    multiline
+                    numberOfLines={3}
+                  />
+                ) : (
+                  <Text style={styles.observations}>
+                    {order.observations || 'Sem observações'}
+                  </Text>
                 )}
               </View>
-            </View>
 
-            {/* Garçom */}
-            {order.createdByName && (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Garçom</Text>
-                <Text style={styles.clientName}>{order.createdByName}</Text>
-              </View>
-            )}
+                <Text style={styles.sectionTitle}>Histórico do Pedido</Text>
+                <View style={styles.timeline}>
+                  <View style={styles.timelineItem}>
+                    <View style={styles.timelineDot} />
+                    <View style={styles.timelineContent}>
+                      <Text style={styles.timelineLabel}>Criado</Text>
+                      <Text style={styles.timelineTime}>{formatDateFull(order.createdAt)}</Text>
+                    </View>
+                  </View>
 
-            {/* Itens do Pedido */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Itens do Pedido</Text>
-              {order.items.map((item: string, index: number) => (
-                <View key={index} style={styles.itemRow}>
-                  <Text style={styles.itemBullet}>•</Text>
-                  <Text style={styles.itemText}>{item}</Text>
+                  <View style={styles.timelineItem}>
+                    <View style={[styles.timelineDot, { backgroundColor: order.timeInChurrasqueira ? '#E5B84A' : '#DDD' }]} />
+                    <View style={styles.timelineContent}>
+                      <Text style={styles.timelineLabel}>Cozinha/Churrasqueira</Text>
+                      <Text style={styles.timelineTime}>{formatDate(order.timeInChurrasqueira)}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.timelineItem}>
+                    <View style={[styles.timelineDot, { backgroundColor: order.timeInMontagem ? '#4A90E2' : '#DDD' }]} />
+                    <View style={styles.timelineContent}>
+                      <Text style={styles.timelineLabel}>Montagem</Text>
+                      <Text style={styles.timelineTime}>{formatDate(order.timeInMontagem)}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.timelineItem}>
+                    <View style={[styles.timelineDot, { backgroundColor: order.timeInProntos ? '#7ED321' : '#DDD' }]} />
+                    <View style={styles.timelineContent}>
+                      <Text style={styles.timelineLabel}>Pronto</Text>
+                      <Text style={styles.timelineTime}>{formatDate(order.timeInProntos)}</Text>
+                    </View>
+                  </View>
+
+                  {order.deliveredAt && (
+                    <View style={styles.timelineItem}>
+                      <View style={[styles.timelineDot, { backgroundColor: '#8B2F2F' }]} />
+                      <View style={styles.timelineContent}>
+                        <Text style={styles.timelineLabel}>Entregue</Text>
+                        <Text style={styles.timelineTime}>{formatDate(order.deliveredAt)}</Text>
+                      </View>
+                    </View>
+                  )}
                 </View>
-              ))}
-            </View>
-
-            {/* Total */}
-            <View style={styles.section}>
-              <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>Total do Pedido:</Text>
-                <Text style={styles.totalValue}>{formatarMoeda(order.totalPrice)}</Text>
               </View>
-            </View>
+            </ScrollView>
 
-            {/* Observações */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Observações</Text>
-              {isEditing ? (
-                <TextInput
-                  style={[styles.input, styles.textArea]}
-                  value={editedObservations}
-                  onChangeText={setEditedObservations}
-                  placeholder="Observações"
-                  multiline
-                  numberOfLines={3}
-                />
-              ) : (
-                <Text style={styles.observations}>
-                  {order.observations || 'Sem observações'}
-                </Text>
+            <View style={styles.actions}>
+              {canEdit && (
+                <>
+                  <TouchableOpacity
+                    style={[styles.actionBtn, { backgroundColor: '#FF9800', flex: 1 }]}
+                    onPress={() => setIsTransferModalVisible(true)}
+                  >
+                    <Text style={styles.actionBtnText}>🔄 Mover</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.actionBtn, styles.editBtn, { flex: 1 }]}
+                    onPress={handleEdit}
+                  >
+                    <Text style={styles.actionBtnText}>
+                      {isEditing ? '💾 Salvar' : '✏️ Editar'}
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
+
+              <TouchableOpacity
+                style={[styles.actionBtn, { backgroundColor: '#4CAF50', flex: 1 }]}
+                onPress={() => {
+                  onClose();
+                  setTimeout(() => {
+                    navigation.navigate('Comandas', { searchComanda: order.comandaNumber });
+                  }, 300);
+                }}
+              >
+                <Text style={styles.actionBtnText}>💰 Pagar</Text>
+              </TouchableOpacity>
+
+              {isEditing && (
+                <TouchableOpacity
+                  style={[styles.actionBtn, styles.cancelBtn, { flex: 1 }]}
+                  onPress={() => setIsEditing(false)}
+                >
+                  <Text style={styles.actionBtnText}>Cancelar</Text>
+                </TouchableOpacity>
               )}
             </View>
 
-            {/* Linha do Tempo */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Histórico do Pedido</Text>
-              <View style={styles.timeline}>
-                <View style={styles.timelineItem}>
-                  <View style={styles.timelineDot} />
-                  <View style={styles.timelineContent}>
-                    <Text style={styles.timelineLabel}>Criado</Text>
-                    <Text style={styles.timelineTime}>{formatDateFull(order.createdAt)}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.timelineItem}>
-                  <View style={[styles.timelineDot, { backgroundColor: order.timeInChurrasqueira ? '#E5B84A' : '#DDD' }]} />
-                  <View style={styles.timelineContent}>
-                    <Text style={styles.timelineLabel}>Churrasqueira</Text>
-                    <Text style={styles.timelineTime}>{formatDate(order.timeInChurrasqueira)}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.timelineItem}>
-                  <View style={[styles.timelineDot, { backgroundColor: order.timeInMontagem ? '#4A90E2' : '#DDD' }]} />
-                  <View style={styles.timelineContent}>
-                    <Text style={styles.timelineLabel}>Montagem</Text>
-                    <Text style={styles.timelineTime}>{formatDate(order.timeInMontagem)}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.timelineItem}>
-                  <View style={[styles.timelineDot, { backgroundColor: order.timeInProntos ? '#7ED321' : '#DDD' }]} />
-                  <View style={styles.timelineContent}>
-                    <Text style={styles.timelineLabel}>Pronto</Text>
-                    <Text style={styles.timelineTime}>{formatDate(order.timeInProntos)}</Text>
-                  </View>
-                </View>
-
-                {order.deliveredAt && (
-                  <View style={styles.timelineItem}>
-                    <View style={[styles.timelineDot, { backgroundColor: '#8B2F2F' }]} />
-                    <View style={styles.timelineContent}>
-                      <Text style={styles.timelineLabel}>Entregue</Text>
-                      <Text style={styles.timelineTime}>{formatDate(order.deliveredAt)}</Text>
-                    </View>
-                  </View>
-                )}
+            {!canEdit && (
+              <View style={styles.warningBox}>
+                <Text style={styles.warningText}>
+                  ⚠️ Pedidos em montagem ou prontos não podem ser editados
+                </Text>
               </View>
-            </View>
-          </ScrollView>
-
-          {/* Botões de Ação */}
-          {/* Botões de Ação */}
-          <View style={styles.actions}>
-            {canEdit && (
-              <>
-                <TouchableOpacity
-                  style={[styles.actionBtn, { backgroundColor: '#FF9800', flex: 1 }]}
-                  onPress={() => setIsTransferModalVisible(true)}
-                >
-                  <Text style={styles.actionBtnText}>🔄 Mover</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.actionBtn, styles.editBtn, { flex: 1 }]}
-                  onPress={handleEdit}
-                >
-                  <Text style={styles.actionBtnText}>
-                    {isEditing ? '💾 Salvar' : '✏️ Editar'}
-                  </Text>
-                </TouchableOpacity>
-              </>
-            )}
-
-            <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: '#4CAF50', flex: 1 }]}
-              onPress={() => {
-                onClose();
-                setTimeout(() => {
-                  navigation.navigate('Comandas', { searchComanda: order.comandaNumber });
-                }, 300);
-              }}
-            >
-              <Text style={styles.actionBtnText}>💰 Pagar</Text>
-            </TouchableOpacity>
-
-            {isEditing && (
-              <TouchableOpacity
-                style={[styles.actionBtn, styles.cancelBtn, { flex: 1 }]}
-                onPress={() => setIsEditing(false)}
-              >
-                <Text style={styles.actionBtnText}>Cancelar</Text>
-              </TouchableOpacity>
             )}
           </View>
-
-          {!canEdit && (
-            <View style={styles.warningBox}>
-              <Text style={styles.warningText}>
-                ⚠️ Pedidos em montagem ou prontos não podem ser editados
-              </Text>
-            </View>
-          )}
         </View>
-      </View>
+      </Modal>
       <TransferModal
         visible={isTransferModalVisible}
         onClose={() => setIsTransferModalVisible(false)}
         onConfirm={handleTransfer}
         currentTable={order.mesa}
       />
-    </Modal>
+    </>
   );
 }
 
@@ -343,6 +326,7 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     width: '90%',
+    maxWidth: 500,
     maxHeight: '85%',
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
@@ -375,6 +359,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
     marginBottom: 8,
+    textAlign: 'center',
   },
   statusBadge: {
     paddingHorizontal: 12,
@@ -401,7 +386,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   content: {
-    flex: 1,
+    flexShrink: 1,
     padding: 20,
   },
   section: {

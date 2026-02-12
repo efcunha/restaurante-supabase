@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 // @ts-ignore
-import BackgroundPattern from '../components/BackgroundPattern';
+
 import PedidoDetalhesModal from './PedidoDetalhesModal';
 import { supabase } from '../config/SupabaseConfig';
 import { getLocalDateKey } from '../utils/dateUtils';
@@ -255,7 +255,7 @@ export default function PedidosProntosScreen() {
 
   return (
     <View style={styles.container}>
-      <BackgroundPattern />
+
 
       {/* Header */}
       <View style={styles.header}>
@@ -306,7 +306,7 @@ export default function PedidosProntosScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F1E8',
+    backgroundColor: '#F5F5DC',
   },
   header: {
     backgroundColor: '#8B2F2F',

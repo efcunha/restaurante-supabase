@@ -12,7 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { colors } from '../theme/colors';
-import BackgroundPattern from '../components/BackgroundPattern';
+
 import TableService from '../services/TableService';
 import SupabaseOrderService from '../services/supabase/SupabaseOrderService';
 import { Environment, Table, Order } from '../types';
@@ -109,10 +109,20 @@ export default function MapaMesasScreen({ navigation }: any) {
             // Find orders for this table
             // Matching by table.number (string) vs order.mesa (string)
             // Normalize numbers to avoid "01" !== "1" mismatch
-            const tableOrders = activeOrders.filter(o => 
-                String(o.mesa || '').replace(/^0+/, '') === String(table.number || '').replace(/^0+/, '') &&
-                !o.isPago // Mesa fica LIVRE se o pedido estiver pago
-            );
+// Helper for robust table matching (ignores "Mesa", leading zeros, etc)
+            const isActiveOrder = (o: Order) => {
+                 if (o.isPago || o.status === 'cancelled' || o.status === 'cancelada') return false;
+                 
+                 const orderMesaStr = String(o.mesa || '').replace(/\D/g, ''); // "Mesa 1" -> "1"
+                 const tableNumStr = String(table.number || '').replace(/\D/g, ''); // "01" -> "1"
+
+                 // Ensure we have valid numbers to compare
+                 if (!orderMesaStr || !tableNumStr) return false;
+                 
+                 return Number(orderMesaStr) === Number(tableNumStr);
+            };
+
+            const tableOrders = activeOrders.filter(isActiveOrder);
 
             let status: Table['status'] = 'Livre';
             let total = 0;
@@ -280,7 +290,6 @@ export default function MapaMesasScreen({ navigation }: any) {
 
     return (
         <View style={styles.container}>
-            <BackgroundPattern />
             {renderHeader()}
 
             {loading ? (
@@ -393,7 +402,7 @@ export default function MapaMesasScreen({ navigation }: any) {
             </TouchableOpacity>
 
             {/* Modal de Detalhes do Pedido */}
-            {selectedOrderId && (
+            {!!selectedOrderId && (
                 <PedidoDetalhesModal
                     visible={modalVisible}
                     orderId={selectedOrderId}
@@ -412,7 +421,7 @@ import TableGraphic from '../components/TableGraphic';
 // ... (keep existing imports, but remove unused if any)
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.background },
+    container: { flex: 1, backgroundColor: '#F5F5DC' },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     header: {
         flexDirection: 'row',

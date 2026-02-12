@@ -14,7 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '../theme/colors';
-import BackgroundPattern from '../components/BackgroundPattern';
+
 import TableService from '../services/TableService';
 import TableGraphic from '../components/TableGraphic';
 import DraggableTable from '../components/DraggableTable'; // Added
@@ -357,7 +357,7 @@ export default function ConfiguracaoMesasScreen({ onClose }: Props) {
 
     return (
         <View style={styles.container}>
-            <BackgroundPattern />
+
             {renderHeader()}
 
             {loading ? (
@@ -619,7 +619,7 @@ export default function ConfiguracaoMesasScreen({ onClose }: Props) {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.background },
+    container: { flex: 1, backgroundColor: '#F5F5DC' },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     header: {
         flexDirection: 'row',
