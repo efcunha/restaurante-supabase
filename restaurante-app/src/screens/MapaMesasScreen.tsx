@@ -28,7 +28,7 @@ export default function MapaMesasScreen({ navigation }: any) {
 
     const [loading, setLoading] = useState(true);
     const [environments, setEnvironments] = useState<any[]>([]);
-    const [selectedEnvId, setSelectedEnvId] = useState<number | null>(null);
+    const [selectedEnvId, setSelectedEnvId] = useState<string | null>(null);
     const [tables, setTables] = useState<Table[]>([]);
     const [activeOrders, setActiveOrders] = useState<Order[]>([]);
     const [selectedFilters, setSelectedFilters] = useState<string[]>(['Livre', 'Ocupada', 'Pagando']); // All selected by default
@@ -110,7 +110,8 @@ export default function MapaMesasScreen({ navigation }: any) {
             // Matching by table.number (string) vs order.mesa (string)
             // Normalize numbers to avoid "01" !== "1" mismatch
             const tableOrders = activeOrders.filter(o => 
-                String(o.mesa || '').replace(/^0+/, '') === String(table.number || '').replace(/^0+/, '')
+                String(o.mesa || '').replace(/^0+/, '') === String(table.number || '').replace(/^0+/, '') &&
+                !o.isPago // Mesa fica LIVRE se o pedido estiver pago
             );
 
             let status: Table['status'] = 'Livre';
@@ -193,15 +194,21 @@ export default function MapaMesasScreen({ navigation }: any) {
         } else {
             // View Tables Orders
             // Open Details Modal for the first active order
-            if (table.activeOrders.length > 0) {
-                // Determine which order to show (e.g., the most recent or the first one)
-                // For now, let's show the first one. 
-                // Future improvement: If multiple orders, show a list or combine them.
-                const orderToShow = table.activeOrders[0];
-                setSelectedOrderId(orderToShow.id);
+            // Ignora pedidos pagos ou cancelados
+            const filteredOrders = table.activeOrders.filter((o: Order) => !o.isPago && o.status !== 'cancelled' && o.status !== 'cancelada');
+            
+            if (filteredOrders.length > 0) {
+                // Se tem pedidos ativos (não pagos), abre detalhes
+                const order = filteredOrders[0]; // Pega o primeiro/mais recente
+                setSelectedOrderId(order.id);
                 setModalVisible(true);
             } else {
-                Alert.alert('Aviso', 'Mesa ocupada, mas nenhum pedido ativo encontrado.');
+                // Se não tem pedidos (ou todos pagos), abre novo pedido
+                // @ts-ignore
+                navigation.navigate('Novo Pedido', {
+                    mesaParam: table.number,
+                    tableId: table.id
+                });
             }
         }
     };

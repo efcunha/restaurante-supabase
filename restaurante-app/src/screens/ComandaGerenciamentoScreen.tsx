@@ -38,7 +38,7 @@ if (Platform.OS === 'android') {
   }
 }
 
-export default function ComandaGerenciamentoScreen() {
+export default function ComandaGerenciamentoScreen(props: any) {
   const { user, logout } = useAuth();
   const { addOrder } = useOrders();
   const {
@@ -48,6 +48,23 @@ export default function ComandaGerenciamentoScreen() {
     isRefreshing, carregarComandas,
     isLoadingMore, onLoadMore
   } = useComandaManagement();
+
+  // Auto-open comanda from params
+  // @ts-ignore
+  const searchComanda = props.route?.params?.searchComanda;
+  
+  React.useEffect(() => {
+    if (searchComanda && comandasAbertas.length > 0) {
+      const found = comandasAbertas.find((c: any) => 
+        String(c.comandaNumber) === String(searchComanda)
+      );
+      if (found) {
+        setSelectedComanda(found);
+        // Clear param to avoid re-opening
+        props.navigation.setParams({ searchComanda: undefined });
+      }
+    }
+  }, [searchComanda, comandasAbertas]);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
