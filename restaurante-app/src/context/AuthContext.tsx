@@ -160,7 +160,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             .single();
             
           const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('TIMEOUT_FETCH_PROFILE')), 10000)
+            setTimeout(() => reject(new Error('TIMEOUT_FETCH_PROFILE')), 15000)
           );
           
           const { data: profile, error: profileError } = await Promise.race([fetchPromise, timeoutPromise]) as any;

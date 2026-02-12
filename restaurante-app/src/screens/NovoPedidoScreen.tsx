@@ -610,20 +610,10 @@ export default function NovoPedidoScreen({ route }: any) {
 
   // Wrappers for animation
   const updateProdutoAnimated = useCallback((itemName: string, delta: number) => {
-    // Only animate when not scrolling
-    if (!isScrolling) {
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    }
-    
-    // Use InteractionManager to defer update if scrolling
-    if (isScrolling) {
-      InteractionManager.runAfterInteractions(() => {
-        updateProduto(itemName, delta);
-      });
-    } else {
-      updateProduto(itemName, delta);
-    }
-  }, [updateProduto, isScrolling]);
+    // Removed LayoutAnimation - it was causing lag on item selection
+    // Direct update for better performance
+    updateProduto(itemName, delta);
+  }, [updateProduto]);
 
   const handleRemoveItemAnimated = useCallback((item: string) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.spring); // Spring for deletion feeling
@@ -829,18 +819,20 @@ export default function NovoPedidoScreen({ route }: any) {
         />}
         ListFooterComponent={<FooterComponent selectedItems={selectedItems} onRemoveItem={handleRemoveItemAnimated} />}
         stickySectionHeadersEnabled={false}
-        initialNumToRender={5}
-        windowSize={2}
-        maxToRenderPerBatch={3}
-        updateCellsBatchingPeriod={150}
-        removeClippedSubviews={true}
+        initialNumToRender={8}
+        maxToRenderPerBatch={5}
+        windowSize={5}
+        updateCellsBatchingPeriod={100}
+        removeClippedSubviews={Platform.OS === 'android'}
         onScrollBeginDrag={handleScrollBeginDrag}
         onScrollEndDrag={handleScrollEndDrag}
         onMomentumScrollEnd={handleScrollEndDrag}
         onScrollToIndexFailed={() => {}}
         legacyImplementation={false}
-        disableIntervalMomentum={true}
         scrollEventThrottle={16}
+        getItemLayout={undefined}
+        disableScrollViewPanResponder={false}
+        decelerationRate="fast"
       />
 
       <View style={styles.stickyFooter}>
