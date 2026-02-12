@@ -18,7 +18,7 @@ import { colors } from '../theme/colors';
 import { getTodayKey } from '../utils/dateUtils'; // Migrated from FirebaseOptimizations
 import { fixDecimal, calcularPrecoItem } from '../utils/orderCalculator';
 import CancelOrderModal from '../components/comandas/CancelOrderModal';
-import BackgroundPattern from '../components/BackgroundPattern';
+
 import { confirmLogout } from '../utils/appUtils';
 
 import PagamentosService from '../services/PagamentosService';
@@ -366,7 +366,7 @@ export default function ComandaGerenciamentoScreen(props: any) {
 
   return (
     <View style={styles.container}>
-      <BackgroundPattern />
+
 
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -448,7 +448,7 @@ export default function ComandaGerenciamentoScreen(props: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1, backgroundColor: '#F5F5DC' },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',

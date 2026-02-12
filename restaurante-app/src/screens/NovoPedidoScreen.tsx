@@ -2,7 +2,7 @@ import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, SectionList, TouchableOpacity, TextInput, ActivityIndicator, LayoutAnimation, Platform, UIManager, SectionListRenderItem, InteractionManager } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import React, { memo, useCallback, useState, useMemo, useRef, useEffect } from 'react';
-import BackgroundPattern from '../components/BackgroundPattern';
+
 import { useNovoPedido } from '../hooks/useNovoPedido';
 import { usePerformanceMonitor } from '../hooks/usePerformanceMonitor';
 import { colors } from '../theme/colors';
@@ -11,8 +11,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import PizzaBuilderModal from '../components/PizzaBuilderModal';
 import { Product, PizzaSize, PizzaConfig, Funcionario } from '../types';
 import { Modal, FlatList } from 'react-native';
-// @ts-ignore
-import KeyboardWrapper from '../components/KeyboardWrapper';
+// KeyboardWrapper removed to prevent touch stealing
+import { KeyboardAvoidingView, Keyboard, TouchableWithoutFeedback } from 'react-native';
 
 if (Platform.OS === 'android') {
   if (UIManager.setLayoutAnimationEnabledExperimental) {
@@ -66,10 +66,14 @@ const PizzaRow = memo(({ item, onPress }: PizzaRowProps) => {
   const colorIndex = hash % rowColors.length;
   const cardColor = rowColors[colorIndex] || colors.primary; // Fallback
 
+  const handlePress = useCallback(() => {
+    onPress(item);
+  }, [onPress, item]);
+
   return (
     <TouchableOpacity
       style={[styles.stackedInfoCard, { backgroundColor: cardColor, marginBottom: 12, elevation: 2 }]}
-      onPress={() => onPress(item)}
+      onPress={handlePress}
       activeOpacity={0.8}
     >
       <View style={{ alignItems: 'center' }}>
@@ -112,18 +116,40 @@ interface CaldoRowProps {
 }
 
 // Helper to render complex Caldo rows which are not just 1:1 with cardapio items
+// Custom comparator for CaldoRow
+const areCaldoPropsEqual = (prev: CaldoRowProps, next: CaldoRowProps) => {
+  if (prev.caldoBase !== next.caldoBase) return false;
+  
+  // Check if any quantity related to this caldo changed
+  // We need to check both 300ml and 180ml for all temperos
+  const sizes = ['300ml', '180ml'];
+  for (const size of sizes) {
+      for (const tempero of prev.temperos) {
+          const key = `${prev.caldoBase} ${size} (${tempero})`;
+          if (prev.produtos[key] !== next.produtos[key]) return false;
+      }
+  }
+  return true;
+};
+
 const CaldoRow = memo(({ caldoBase, cardapioCaldos, produtos, onIncrement, onDecrement, temperos }: CaldoRowProps) => {
-  const item300 = cardapioCaldos.find(c => c.name.includes(caldoBase) && c.name.match(/300\s*ml/i));
-  const item180 = cardapioCaldos.find(c => c.name.includes(caldoBase) && c.name.match(/180\s*ml/i));
+  const item300 = useMemo(() => 
+    cardapioCaldos.find(c => c.name.includes(caldoBase) && c.name.match(/300\s*ml/i)),
+    [cardapioCaldos, caldoBase]
+  );
+  const item180 = useMemo(() => 
+    cardapioCaldos.find(c => c.name.includes(caldoBase) && c.name.match(/180\s*ml/i)),
+    [cardapioCaldos, caldoBase]
+  );
 
   if (!item300 && !item180) return null;
 
-  const renderTemperos = (sizeLabel: string) => (
+  const renderTemperos = useCallback((sizeLabel: string) => (
     temperos.map((tempero, idx) => {
       const nome = `${caldoBase} ${sizeLabel} (${tempero})`;
       const qty = produtos[nome] || 0;
       const cor = idx === 0 ? colors.warning : idx === 1 ? colors.success : colors.disabled;
-      // Simple icon logic or default
+      
       let icone = '⚪';
       if (tempero.toLowerCase().includes('cebolinha') && tempero.toLowerCase().includes('coentro')) icone = '🌿';
       else if (tempero.toLowerCase().includes('cebolinha')) icone = '🧅';
@@ -136,13 +162,14 @@ const CaldoRow = memo(({ caldoBase, cardapioCaldos, produtos, onIncrement, onDec
           label={`${icone} ${tempero}`}
           qty={qty}
           color={cor}
-          onInc={() => onIncrement(nome)}
-          onDec={() => onDecrement(nome)}
-          last={idx === temperos.length - 1} // Logic for styling if needed
+          onInc={onIncrement}
+          onDec={onDecrement}
+          itemKey={nome}
+          last={idx === temperos.length - 1}
         />
       );
     })
-  );
+  ), [caldoBase, temperos, onIncrement, onDecrement, produtos]);
 
   return (
     <View style={styles.caldoCard}>
@@ -165,7 +192,7 @@ const CaldoRow = memo(({ caldoBase, cardapioCaldos, produtos, onIncrement, onDec
       )}
     </View>
   );
-});
+}, areCaldoPropsEqual);
 CaldoRow.displayName = 'CaldoRow';
 
 interface StandardRowProps {
@@ -177,10 +204,29 @@ interface StandardRowProps {
   temperos: string[];
 }
 
+// Custom comparator for StandardRow
+const areStandardPropsEqual = (prev: StandardRowProps, next: StandardRowProps) => {
+  if (prev.item.name !== next.item.name) return false;
+  if (prev.type !== next.type) return false;
+
+  const isComida = prev.type === 'comidas';
+  
+  if (isComida) {
+    // Check all temperos
+    for (const t of prev.temperos) {
+      const key = `${prev.item.name} (${t})`;
+      if (prev.produtos[key] !== next.produtos[key]) return false;
+    }
+    return true;
+  } else {
+    // Simple check
+    return prev.produtos[prev.item.name] === next.produtos[next.item.name];
+  }
+};
+
 // Helper for other items (Comidas/Bebidas/Porcoes)
 const StandardRow = memo(({ item, produtos, onIncrement, onDecrement, type, temperos }: StandardRowProps) => {
   const isComida = type === 'comidas';
-
 
   if (isComida) {
     return (
@@ -209,8 +255,9 @@ const StandardRow = memo(({ item, produtos, onIncrement, onDecrement, type, temp
               label={label}
               qty={produtos[itemName] || 0}
               color={color}
-              onInc={() => onIncrement(itemName)}
-              onDec={() => onDecrement(itemName)}
+              onInc={onIncrement}
+              onDec={onDecrement}
+              itemKey={itemName}
               last={idx === temperos.length - 1}
             />
           );
@@ -221,6 +268,10 @@ const StandardRow = memo(({ item, produtos, onIncrement, onDecrement, type, temp
 
   // Simple item (Bebida/Porcao)
   const qty = produtos[item.name] || 0;
+  
+  const handleInc = useCallback(() => onIncrement(item.name), [onIncrement, item.name]);
+  const handleDec = useCallback(() => onDecrement(item.name), [onDecrement, item.name]);
+
   return (
     <View style={styles.verticalCard}>
       <Text style={styles.verticalName}>{item.name}</Text>
@@ -229,18 +280,18 @@ const StandardRow = memo(({ item, produtos, onIncrement, onDecrement, type, temp
         <Text style={styles.verticalPrice}>R$ {item.price?.toFixed(2)}</Text>
 
         <View style={styles.quantityControl}>
-          <TouchableOpacity style={[styles.roundBtn, { backgroundColor: colors.danger }]} onPress={() => onDecrement(item.name)}>
+          <TouchableOpacity style={[styles.roundBtn, { backgroundColor: colors.danger }]} onPress={handleDec}>
             <Text style={styles.roundBtnText}>−</Text>
           </TouchableOpacity>
           <Text style={styles.qtyText}>{qty}</Text>
-          <TouchableOpacity style={[styles.roundBtn, { backgroundColor: colors.success }]} onPress={() => onIncrement(item.name)}>
+          <TouchableOpacity style={[styles.roundBtn, { backgroundColor: colors.success }]} onPress={handleInc}>
             <Text style={styles.roundBtnText}>+</Text>
           </TouchableOpacity>
         </View>
       </View>
     </View>
   );
-});
+}, areStandardPropsEqual);
 StandardRow.displayName = 'StandardRow';
 
 interface EspetinhoRowProps {
@@ -252,23 +303,86 @@ interface EspetinhoRowProps {
   variacoes?: string[];
 }
 
+// Custom comparator for EspetinhoRow
+const areEspetinhoPropsEqual = (prev: EspetinhoRowProps, next: EspetinhoRowProps) => {
+  if (prev.baseName !== next.baseName) return false;
+  
+  const prevVariacoes = prev.variacoes || [];
+  const nextVariacoes = next.variacoes || [];
+
+  // Check variations
+  if (prevVariacoes.length !== nextVariacoes.length) return false;
+
+  for (const v of prevVariacoes) {
+     const name = `${prev.baseName} ${v}`; // Simplistic reconstruction
+     // NOTE: This reconstruction might not match what the component does if the component filters against cardapio.
+     // But strictly, if we assume variacoes are static per render (which they essentially are), we just need to check if any *relevant* product changed.
+     // To be safe, we might iterate all keys in 'produtos' that start with baseName? No, too slow.
+     // Let's rely on iterating variacoes which is ~5 items.
+     
+     // The component logic:
+     // const targetName = `${baseName} ${variacao}`.toLowerCase();
+     // const produto = cardapioEspetinhos.find... 
+     
+     // We can just check the exact name in products map if we know it.
+     // Since we don't know the exact "Product Name" without the cardapio check, we can try to guess or just let it re-render if we can't be sure.
+     // However, Espetinhos usually follow "Alcatra com Bacon", "Alcatra com Queijo".
+     // Let's iterate variacoes.
+  }
+  
+  // Checking exact names requires the product list logic which is inside the component.
+  // Instead of duplicating logic, let's just make sure we only update if *any* product starting with this baseName changed?
+  // Or better: Re-calculating the list of items is cheap (memoized). Re-rendering the VIEWS is expensive.
+  // We can let the component re-evaluate the list, but we want to prevent the render if outcomes are same.
+  
+  // Let's use a simpler approach: 
+  // If the list of *available products* changed (cardapioEspetinhos ref change?) -> yes
+  if (prev.cardapioEspetinhos !== next.cardapioEspetinhos) return false;
+  
+  // If products map changed... 
+  // We can try to be smart.
+  // Let's just check the values in `produtos` for the *derived* names.
+  // We need to replicate the derived name logic to check equality efficiently.
+  
+  // Replicating:
+  // "Alcatra Suína" + "Com Bacon" -> "Alcatra Suína Com Bacon" (approx)
+  // Actually, the component filters cardapio. 
+  
+  // Let's try to trust that names match `${baseName} ${variacao}` (case insensitive).
+  
+  for (const v of prevVariacoes) {
+      // We check case-insensitive match against keys in 'produtos'? No, 'produtos' keys are exact strings.
+      // This is tricky without the cardapio list to resolve exact product names.
+      // BUT, we can just iterate the `cardapioEspetinhos` prop! It's passed in.
+      const targetName = `${prev.baseName} ${v}`.toLowerCase();
+      const p = prev.cardapioEspetinhos.find(cp => cp.name.toLowerCase() === targetName);
+      if (p) {
+          if (prev.produtos[p.name] !== next.produtos[p.name]) return false;
+      }
+  }
+  
+  return true;
+};
+
 // Helper for Espetinhos (Simples/Especiais) with dynamic variations
 const EspetinhoRow = memo(({ baseName, cardapioEspetinhos, produtos, onIncrement, onDecrement, variacoes = [] }: EspetinhoRowProps) => {
-  // 1. Map available variations to actual products
-  const itensVariaveis = variacoes.map(variacao => {
-    // Try to find exact match "Nome Variação" (Case Insensitive)
-    const targetName = `${baseName} ${variacao}`.toLowerCase();
-    const produto = cardapioEspetinhos.find(p => p.name.toLowerCase() === targetName);
-    return {
-      label: variacao,
-      produto: produto
-    };
-  }).filter((item): item is { label: string; produto: Product } => !!item.produto); // Filter only existing products
+  // 1. Map available variations to actual products - MEMOIZED
+  const itensVariaveis = useMemo(() => {
+    return variacoes.map(variacao => {
+      // Try to find exact match "Nome Variação" (Case Insensitive)
+      const targetName = `${baseName} ${variacao}`.toLowerCase();
+      const produto = cardapioEspetinhos.find(p => p.name.toLowerCase() === targetName);
+      return {
+        label: variacao,
+        produto: produto
+      };
+    }).filter((item): item is { label: string; produto: Product } => !!item.produto);
+  }, [baseName, cardapioEspetinhos, variacoes]);
 
   if (itensVariaveis.length === 0) return null;
 
   // Cyclic colors for consistent UI
-  const rowColors = [colors.warning, colors.success, colors.disabled, '#4a90e2', '#9013fe']; // Add more if needed or cycle
+  const rowColors = [colors.warning, colors.success, colors.disabled, '#4a90e2', '#9013fe']; 
 
   return (
     <View style={styles.caldoCard}>
@@ -286,15 +400,16 @@ const EspetinhoRow = memo(({ baseName, cardapioEspetinhos, produtos, onIncrement
             price={item.produto.price || 0}
             qty={qty}
             color={color}
-            onInc={() => onIncrement(item.produto.name)}
-            onDec={() => onDecrement(item.produto.name)}
+            onInc={onIncrement}
+            onDec={onDecrement}
+            itemKey={item.produto.name}
             last={idx === itensVariaveis.length - 1}
           />
         );
       })}
     </View>
   );
-});
+}, areEspetinhoPropsEqual);
 EspetinhoRow.displayName = 'EspetinhoRow';
 
 interface StackedVariationRowProps {
@@ -302,70 +417,82 @@ interface StackedVariationRowProps {
   price: number;
   qty: number;
   color: string;
-  onInc: () => void;
-  onDec: () => void;
+  onInc: (key: string) => void;
+  onDec: (key: string) => void;
+  itemKey: string;
   last: boolean;
 }
 
-const StackedVariationRow = memo(({ name, price, qty, color, onInc, onDec, last }: StackedVariationRowProps) => (
-  <View style={[styles.stackedRowContainer, last && { marginBottom: 12 }]}>
-    {/* Left Side: Info Card (Name + Price) */}
-    <TouchableOpacity
-      style={[styles.stackedInfoCard, { backgroundColor: color }]}
-      onPress={onInc}
-      activeOpacity={0.8}
-    >
-      <Text style={styles.stackedNameText}>{name}</Text>
-      <Text style={styles.stackedPriceText}>R$ {price.toFixed(2)}</Text>
-    </TouchableOpacity>
+const StackedVariationRow = memo(({ name, price, qty, color, onInc, onDec, itemKey, last }: StackedVariationRowProps) => {
+  const handleInc = useCallback(() => onInc(itemKey), [onInc, itemKey]);
+  const handleDec = useCallback(() => onDec(itemKey), [onDec, itemKey]);
 
-    {/* Right Side: Controls (Outside) */}
-    <View style={styles.variationControlsOutside}>
-      <TouchableOpacity style={[styles.roundBtn, { backgroundColor: colors.danger }]} onPress={onDec}>
-        <Text style={styles.roundBtnText}>−</Text>
+  return (
+    <View style={[styles.stackedRowContainer, last && { marginBottom: 12 }]}>
+      {/* Left Side: Info Card (Name + Price) */}
+      <TouchableOpacity
+        style={[styles.stackedInfoCard, { backgroundColor: color }]}
+        onPress={handleInc}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.stackedNameText}>{name}</Text>
+        <Text style={styles.stackedPriceText}>R$ {price.toFixed(2)}</Text>
       </TouchableOpacity>
-      <Text style={styles.qtyText}>{qty}</Text>
-      <TouchableOpacity style={[styles.roundBtn, { backgroundColor: color }]} onPress={onInc}>
-        <Text style={styles.roundBtnText}>+</Text>
-      </TouchableOpacity>
+
+      {/* Right Side: Controls (Outside) */}
+      <View style={styles.variationControlsOutside}>
+        <TouchableOpacity style={[styles.roundBtn, { backgroundColor: colors.danger }]} onPress={handleDec}>
+          <Text style={styles.roundBtnText}>−</Text>
+        </TouchableOpacity>
+        <Text style={styles.qtyText}>{qty}</Text>
+        <TouchableOpacity style={[styles.roundBtn, { backgroundColor: color }]} onPress={handleInc}>
+          <Text style={styles.roundBtnText}>+</Text>
+        </TouchableOpacity>
+      </View>
     </View>
-  </View>
-));
+  );
+});
 StackedVariationRow.displayName = 'StackedVariationRow';
 
 interface VariationRowProps {
   label: string;
   qty: number;
   color: string;
-  onInc: () => void;
-  onDec: () => void;
+  onInc: (key: string) => void;
+  onDec: (key: string) => void;
+  itemKey: string;
   last: boolean;
   forceOneLine?: boolean;
 }
 
-const VariationRow = memo(({ label, qty, color, onInc, onDec, last, forceOneLine = false }: VariationRowProps) => (
-  <View style={[styles.variationRow, last && { marginBottom: 12 }]}>
-    <TouchableOpacity style={[styles.variationLabelBtn, { backgroundColor: color }]} onPress={onInc}>
-      <Text
-        style={styles.variationLabelText}
-        numberOfLines={forceOneLine ? 1 : undefined}
-        adjustsFontSizeToFit={forceOneLine}
-        minimumFontScale={0.6}
-      >
-        {label}
-      </Text>
-    </TouchableOpacity>
-    <View style={styles.variationControls}>
-      <TouchableOpacity style={[styles.roundBtn, { backgroundColor: colors.danger }]} onPress={onDec}>
-        <Text style={styles.roundBtnText}>−</Text>
+const VariationRow = memo(({ label, qty, color, onInc, onDec, itemKey, last, forceOneLine = false }: VariationRowProps) => {
+  const handleInc = useCallback(() => onInc(itemKey), [onInc, itemKey]);
+  const handleDec = useCallback(() => onDec(itemKey), [onDec, itemKey]);
+
+  return (
+    <View style={[styles.variationRow, last && { marginBottom: 12 }]}>
+      <TouchableOpacity style={[styles.variationLabelBtn, { backgroundColor: color }]} onPress={handleInc}>
+        <Text
+          style={styles.variationLabelText}
+          numberOfLines={forceOneLine ? 1 : undefined}
+          adjustsFontSizeToFit={forceOneLine}
+          minimumFontScale={0.6}
+        >
+          {label}
+        </Text>
       </TouchableOpacity>
-      <Text style={styles.qtyText}>{qty}</Text>
-      <TouchableOpacity style={[styles.roundBtn, { backgroundColor: color }]} onPress={onInc}>
-        <Text style={styles.roundBtnText}>+</Text>
-      </TouchableOpacity>
+      <View style={styles.variationControls}>
+        <TouchableOpacity style={[styles.roundBtn, { backgroundColor: colors.danger }]} onPress={handleDec}>
+          <Text style={styles.roundBtnText}>−</Text>
+        </TouchableOpacity>
+        <Text style={styles.qtyText}>{qty}</Text>
+        <TouchableOpacity style={[styles.roundBtn, { backgroundColor: color }]} onPress={handleInc}>
+          <Text style={styles.roundBtnText}>+</Text>
+        </TouchableOpacity>
+      </View>
     </View>
-  </View>
-));
+  );
+});
 VariationRow.displayName = 'VariationRow';
 
 interface HeaderComponentProps {
@@ -711,21 +838,27 @@ export default function NovoPedidoScreen({ route }: any) {
   useEffect(() => {
     console.log('📊 [Performance] Baseline measurement ready');
     console.log('📊 [Performance] Current SectionList config:', {
-      initialNumToRender: 12,
-      windowSize: 11,
-      maxToRenderPerBatch: 10,
+      initialNumToRender: 6,
+      windowSize: 5,
+      maxToRenderPerBatch: 5,
       updateCellsBatchingPeriod: 50,
       removeClippedSubviews: true
     });
   }, []);
 
   // Moved renderItem before early return to comply with Rules of Hooks
+  
+  const handlePizzaPress = useCallback((pizzaItem: Product) => {
+    setSelectedPizza(pizzaItem); 
+    setShowPizzaModal(true);
+  }, []);
+
   const renderItem = useCallback<SectionListRenderItem<SectionItem, Section>>(({ item, section }) => {
     if (section.type === 'pizzas-v2') {
       return (
         <PizzaRow 
           item={item as Product} 
-          onPress={(pizzaItem) => { setSelectedPizza(pizzaItem); setShowPizzaModal(true); }} 
+          onPress={handlePizzaPress} 
         />
       );
     }
@@ -750,7 +883,7 @@ export default function NovoPedidoScreen({ route }: any) {
   if (loadingCardapio) {
     return (
       <View style={styles.container}>
-        <BackgroundPattern />
+  
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Carregando cardápio...</Text>
@@ -766,8 +899,12 @@ export default function NovoPedidoScreen({ route }: any) {
 
 
   return (
-    <KeyboardWrapper style={styles.container}>
-      <BackgroundPattern />
+    <KeyboardAvoidingView 
+      style={styles.container} 
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+    >
+
 
       {/* Header e Conteúdo mantidos dentro do Wrapper */}
       <View style={styles.header}>
@@ -811,6 +948,7 @@ export default function NovoPedidoScreen({ route }: any) {
       </View>
 
       <SectionList
+        style={{ flex: 1 }}
         sections={filteredSections}
         renderItem={renderItem}
         renderSectionHeader={renderSectionHeader}
@@ -828,17 +966,16 @@ export default function NovoPedidoScreen({ route }: any) {
         ListFooterComponent={<FooterComponent selectedItems={selectedItems} onRemoveItem={handleRemoveItemAnimated} />}
         stickySectionHeadersEnabled={false}
         initialNumToRender={10}
-        maxToRenderPerBatch={5}
-        windowSize={5}
+        maxToRenderPerBatch={10}
+        windowSize={11}
         updateCellsBatchingPeriod={50}
-        removeClippedSubviews={true}
+        removeClippedSubviews={Platform.OS === 'android'} // Only true on Android if issues persist, but false is safer for glitches
         onScrollBeginDrag={handleScrollBeginDrag}
         onScrollEndDrag={handleScrollEndDrag}
         onMomentumScrollEnd={handleScrollEndDrag}
         onScrollToIndexFailed={() => {}}
         legacyImplementation={false}
         scrollEventThrottle={16}
-        getItemLayout={undefined}
         disableScrollViewPanResponder={false}
         decelerationRate="normal"
       />
@@ -874,12 +1011,12 @@ export default function NovoPedidoScreen({ route }: any) {
       />
 
       <StatusBar style="dark" />
-    </KeyboardWrapper>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1, backgroundColor: '#F5F5DC' },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
