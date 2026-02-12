@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Image, BackHandler, ScrollView, Pressable, Keyboard, NativeModules } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Image, BackHandler, ScrollView, Pressable, Keyboard, NativeModules, Dimensions } from 'react-native';
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -69,26 +69,21 @@ export default function LoginScreen({ navigation }: Props) {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-    >
-      <Pressable onPress={Keyboard.dismiss} style={{ flex: 1 }}>
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.content}>
-            {/* Botão Sair - Mover para fora do ScrollView se quiser fixo, mas aqui ok */}
-            <TouchableOpacity
-              style={styles.exitButton}
-              onPress={handleSair}
-            >
-              <Ionicons name="close" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
+    <View style={styles.container}>
+      {/* Botão Sair - Fixo no topo */}
+      <TouchableOpacity
+        style={styles.exitButton}
+        onPress={handleSair}
+      >
+        <Ionicons name="close" size={24} color="#FFFFFF" />
+      </TouchableOpacity>
 
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.content}>
             {/* Logo/Título */}
             <View style={styles.header}>
               <Image
@@ -215,34 +210,33 @@ export default function LoginScreen({ navigation }: Props) {
             </Text>
 
             <TouchableOpacity
-              style={{ marginTop: 20, padding: 10 }}
+              style={styles.registerLink}
               onPress={() => navigation.navigate('Register')}
             >
-              <Text style={{ color: '#FFF', textAlign: 'center', textDecorationLine: 'underline' }}>
-                Não tem uma conta? Cadastre seu restaurante
+              <Text style={styles.registerLinkText}>
+                Não tem conta? Cadastre seu restaurante
               </Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
-      </Pressable>
 
-      <StatusBar style="light" />
+        <StatusBar style="light" />
 
-      {/* MFA Verification Modal */}
-      <MFAVerificationModal
-        visible={!!mfaResolver}
-        resolver={mfaResolver}
-        onSuccess={() => {
-            setMfaResolver(null);
-            // Auth state listener in AuthContext will handle the successful login/redirect
-        }}
-        onCancel={() => {
-            setMfaResolver(null);
-        }}
-      />
-    </KeyboardAvoidingView>
-  );
-}
+        {/* MFA Verification Modal */}
+        <MFAVerificationModal
+          visible={!!mfaResolver}
+          resolver={mfaResolver}
+          onSuccess={() => {
+              setMfaResolver(null);
+              // Auth state listener in AuthContext will handle the successful login/redirect
+          }}
+          onCancel={() => {
+              setMfaResolver(null);
+          }}
+        />
+      </View>
+    );
+  }
 
 const styles = StyleSheet.create({
   container: {
@@ -250,20 +244,19 @@ const styles = StyleSheet.create({
     backgroundColor: '#7f2821', // Updated to match the image background perfectly
   },
   content: {
-    padding: 20,
-    paddingHorizontal: 25,
-    paddingTop: 10,
+    padding: 10,
+    paddingHorizontal: 20,
+    paddingTop: 5,
     width: '100%',
   },
 
   scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
+    paddingTop: 60,
     paddingBottom: 20,
   },
   exitButton: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 40 : 20,
+    top: Platform.OS === 'ios' ? 50 : 30,
     right: 20,
     width: 40,
     height: 40,
@@ -271,44 +264,40 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.2)', // Darker background for visibility
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 1,
+    zIndex: 999,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 20,
-    marginTop: 10,
+    marginBottom: 10,
+    marginTop: 0,
     width: '100%',
   },
   logo: {
-    width: '80%',
-    aspectRatio: 1,
-    maxWidth: 280,
-    maxHeight: 280,
-    minWidth: 180,
-    minHeight: 180,
+    width: 200,
+    height: 200,
   },
   form: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 20, // Reduzido de 25
+    borderRadius: 15,
+    padding: 12,
     // @ts-ignore
     boxShadow: '0px 10px 20px rgba(0, 0, 0, 0.3)',
     elevation: 10,
   },
   label: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
-    color: '#7f2821', // Updated primary color
-    marginBottom: 6,
-    marginTop: 10, // Menos margem
+    color: '#7f2821',
+    marginBottom: 4,
+    marginTop: 6,
   },
   input: {
     backgroundColor: '#F5F1E8',
     borderWidth: 1,
     borderColor: '#E0D8C8',
     borderRadius: 12,
-    padding: 12, // Menos padding interno
-    fontSize: 16,
+    padding: 10,
+    fontSize: 15,
     color: '#2C2C2C',
   },
   passwordContainer: {
@@ -322,8 +311,8 @@ const styles = StyleSheet.create({
   },
   passwordInput: {
     flex: 1,
-    padding: 12, // Menos padding interno
-    fontSize: 16,
+    padding: 10,
+    fontSize: 15,
     color: '#2C2C2C',
   },
   eyeButton: {
@@ -331,10 +320,10 @@ const styles = StyleSheet.create({
   },
   loginBtn: {
     backgroundColor: '#7f2821', // Updated primary color
-    padding: 15, // Menos padding vertical
+    padding: 12,
     borderRadius: 12,
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: 12,
     // @ts-ignore
     boxShadow: '0px 5px 10px rgba(127, 40, 33, 0.3)',
     elevation: 5,
@@ -351,13 +340,13 @@ const styles = StyleSheet.create({
   footer: {
     textAlign: 'center',
     color: '#FFFFFF',
-    fontSize: 12, // Fonte um pouco menor
-    marginTop: 20,
+    fontSize: 10,
+    marginTop: 10,
     opacity: 0.8,
-    lineHeight: 18,
+    lineHeight: 14,
   },
   forgotPasswordBtn: {
-    marginTop: 15,
+    marginTop: 10,
     padding: 5,
     alignSelf: 'center',
   },
@@ -371,7 +360,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F1E8',
     borderColor: '#7f2821',
     borderWidth: 1,
-    padding: 12,
+    padding: 10,
     borderRadius: 12,
     alignItems: 'center',
     flexDirection: 'row',
@@ -381,5 +370,16 @@ const styles = StyleSheet.create({
     color: '#7f2821',
     fontSize: 16,
     fontWeight: '600',
+  },
+  registerLink: {
+    marginTop: 10,
+    padding: 8,
+    alignSelf: 'center',
+  },
+  registerLinkText: {
+    color: '#FFF',
+    fontSize: 11,
+    textDecorationLine: 'underline',
+    textAlign: 'center',
   },
 });
