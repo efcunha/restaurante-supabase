@@ -30,7 +30,11 @@
     "analyze-bundle:report": "node scripts/analyze-bundle.js --build --report",
     "cleanup": "node scripts/cleanup/cleanup.js",
     "cleanup:dry-run": "node scripts/cleanup/cleanup.js --dry-run",
-    "generate-icons": "node scripts/generate-android-icons.js"
+    "fix-icon-padding": "node scripts/fix-icon-padding.js",
+    "generate-icons": "node scripts/generate-android-icons.js",
+    "update-splash": "node scripts/update-splash-screen.js",
+    "update-icon": "npm run fix-icon-padding && npm run generate-icons",
+    "update-all-icons": "npm run fix-icon-padding && npm run generate-icons && npm run update-splash"
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",

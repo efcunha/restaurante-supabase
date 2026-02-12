@@ -1,7 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
+import { StyleSheet, Text, View, FlatList, TouchableOpacity, Alert, Platform } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import { useOrders } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
 // @ts-ignore
@@ -15,6 +15,111 @@ import { exitApp } from '../utils/appUtils';
 import { getLocalDateKey } from '../utils/dateUtils';
 // @ts-ignore
 import OrderService from '../services/OrderService';
+
+// Verificar se pedido é urgente (mais de 15 minutos)
+const isUrgent = (timestamp: string) => {
+  const orderTime = new Date(timestamp);
+  const now = new Date();
+  const diffMinutes = (now.getTime() - orderTime.getTime()) / 1000 / 60;
+  return diffMinutes > 15;
+};
+
+// Componente OrderCard memoizado
+interface OrderCardProps {
+  order: any;
+  onOpenDetails: (orderId: string) => void;
+  onToggleItem: (orderId: string, itemId: string, status: string) => void;
+  onMarkReady: (order: any) => void;
+}
+
+const OrderCard = memo(({ order, onOpenDetails, onToggleItem, onMarkReady }: OrderCardProps) => {
+  const urgent = isUrgent(order.timestamp);
+  const allItemsDone = order.itemsWithStatus && order.itemsWithStatus.length > 0
+    ? order.itemsWithStatus.every((item: any) => item.checked === true)
+    : true;
+
+  const handleCardPress = useCallback(() => {
+    onOpenDetails(order.id);
+  }, [order.id, onOpenDetails]);
+
+  const handleReadyPress = useCallback((e: any) => {
+    e.stopPropagation();
+    onMarkReady(order);
+  }, [order, onMarkReady]);
+
+  return (
+    <TouchableOpacity
+      style={[styles.orderCard, urgent && styles.orderCardUrgent]}
+      onPress={handleCardPress}
+      activeOpacity={0.7}
+    >
+      <View style={styles.orderHeader}>
+        <Text style={styles.orderNumber}>
+          Comanda {order.comandaNumber || order.numeroComanda || '?'}
+          {order.mesa ? ` - Mesa ${order.mesa}` : ''}
+        </Text>
+        <Text style={styles.orderTime}>
+          {order.horarioCriacao || (order.timestamp ? new Date(order.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '--:--')}
+        </Text>
+      </View>
+      <Text style={styles.orderClient}>{order.client}</Text>
+      {(order.criadoPorNome || order.createdByName) && (
+        <Text style={styles.garcomText}>👤 Garçom: {order.criadoPorNome || order.createdByName}</Text>
+      )}
+      {order.movidoParaMontagemPorNome && (
+        <Text style={styles.movimentadoPorText}>🔧 Recebido de: {order.movidoParaMontagemPorNome}</Text>
+      )}
+      {order.observations && (
+        <Text style={styles.orderObs}>Obs: {order.observations}</Text>
+      )}
+      <View style={styles.orderItems}>
+        {order.itemsWithStatus && order.itemsWithStatus.length > 0 ? (
+          order.itemsWithStatus.map((item: any) => (
+            <TouchableOpacity
+              key={item.id}
+              style={styles.orderItem}
+              onPress={() => onToggleItem(item.originalOrderId || order.id, item.id, item.status)}
+              activeOpacity={0.7}
+            >
+              <View style={[
+                styles.checkbox,
+                item.checked && styles.checkboxChecked
+              ]}>
+                {item.checked && <Text style={styles.checkmark}>✓</Text>}
+              </View>
+              <Text style={[
+                styles.itemText,
+                item.checked && styles.itemTextDone
+              ]}>
+                {item.name}
+              </Text>
+            </TouchableOpacity>
+          ))
+        ) : (
+          order.items?.map((item: string, idx: number) => (
+            <View key={idx} style={styles.orderItem}>
+              <View style={[styles.itemDot, idx % 2 === 1 && styles.itemDotSecondary]} />
+              <Text style={styles.itemText}>{item}</Text>
+            </View>
+          ))
+        )}
+      </View>
+      <TouchableOpacity
+        style={[
+          styles.readyBtn,
+          !allItemsDone && styles.readyBtnDisabled
+        ]}
+        disabled={!allItemsDone}
+        onPress={handleReadyPress}
+      >
+        <Text style={styles.readyBtnText}>
+          {allItemsDone ? 'PEDIDO MONTADO' : 'MARQUE TODOS OS ITENS'}
+        </Text>
+      </TouchableOpacity>
+    </TouchableOpacity>
+  );
+});
+OrderCard.displayName = 'OrderCard';
 
 export default function MontagemScreen() {
   const { moveToProntos, updateItemStatus } = useOrders();
@@ -238,7 +343,7 @@ export default function MontagemScreen() {
     }
   };
 
-  const handleMarkReady = async (order: any) => {
+  const handleMarkReady = useCallback(async (order: any) => {
     // @ts-ignore
     if (!hasPermission || !hasPermission(Permissions.UPDATE_STATUS)) {
       Alert.alert('Sem permissão', 'Seu usuário não pode atualizar status dos pedidos.');
@@ -269,25 +374,46 @@ export default function MontagemScreen() {
       console.error('Erro ao mover para prontos:', error);
       Alert.alert('Erro', 'Não foi possível mover para prontos');
     }
-  };
+  }, [hasPermission, Permissions, user]);
 
-  const handleOpenDetails = (orderId: string) => {
+  const handleOpenDetails = useCallback((orderId: string) => {
     setSelectedOrderId(orderId);
     setModalVisible(true);
-  };
+  }, []);
 
-  const handleCloseModal = () => {
+  const handleCloseModal = useCallback(() => {
     setModalVisible(false);
     setSelectedOrderId(null);
-  };
+  }, []);
 
-  // Verificar se pedido é urgente (mais de 15 minutos)
-  const isUrgent = (timestamp: string) => {
-    const orderTime = new Date(timestamp);
-    const now = new Date();
-    const diffMinutes = (now.getTime() - orderTime.getTime()) / 1000 / 60;
-    return diffMinutes > 15;
-  };
+  // Componente de lista vazia memoizado
+  const ListEmptyComponent = useCallback(() => (
+    <View style={styles.emptyState}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+        <MaterialCommunityIcons name="silverware-fork-knife" size={40} color="#8B2F2F" style={{ marginRight: -10, transform: [{ rotate: '-15deg' }] }} />
+        <View style={{ alignItems: 'center', zIndex: 1 }}>
+          <MaterialCommunityIcons name="chef-hat" size={80} color="#E5B84A" />
+          <MaterialCommunityIcons name="plate-warm" size={50} color="#2C2C2C" style={{ marginTop: -15 }} />
+        </View>
+        <MaterialCommunityIcons name="food-turkey" size={45} color="#D84315" style={{ marginLeft: -15, marginTop: 20 }} />
+      </View>
+      <Text style={styles.emptyText}>Nenhum pedido para montar</Text>
+      <Text style={styles.emptySubtext}>Os pedidos da cozinha aparecerão aqui</Text>
+    </View>
+  ), []);
+
+  // RenderItem memoizado
+  const renderItem = useCallback(({ item }: { item: any }) => (
+    <OrderCard
+      order={item}
+      onOpenDetails={handleOpenDetails}
+      onToggleItem={handleToggleItem}
+      onMarkReady={handleMarkReady}
+    />
+  ), [handleOpenDetails, handleToggleItem, handleMarkReady]);
+
+  // KeyExtractor memoizado
+  const keyExtractor = useCallback((item: any) => item.id, []);
 
   return (
     <View style={styles.container}>
@@ -314,109 +440,18 @@ export default function MontagemScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content}>
-        {orders.length === 0 ? (
-          <View style={styles.emptyState}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
-              <MaterialCommunityIcons name="silverware-fork-knife" size={40} color="#8B2F2F" style={{ marginRight: -10, transform: [{ rotate: '-15deg' }] }} />
-              <View style={{ alignItems: 'center', zIndex: 1 }}>
-                <MaterialCommunityIcons name="chef-hat" size={80} color="#E5B84A" />
-                <MaterialCommunityIcons name="plate-warm" size={50} color="#2C2C2C" style={{ marginTop: -15 }} />
-              </View>
-              <MaterialCommunityIcons name="food-turkey" size={45} color="#D84315" style={{ marginLeft: -15, marginTop: 20 }} />
-            </View>
-            <Text style={styles.emptyText}>Nenhum pedido para montar</Text>
-            <Text style={styles.emptySubtext}>Os pedidos da cozinha aparecerão aqui</Text>
-          </View>
-        ) : (
-          orders.map((order: any, index: number) => (
-            <TouchableOpacity
-              key={index}
-              style={[styles.orderCard, isUrgent(order.timestamp) && styles.orderCardUrgent]}
-              onPress={() => handleOpenDetails(order.id)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.orderHeader}>
-                <Text style={styles.orderNumber}>
-                  Comanda {order.comandaNumber || order.numeroComanda || '?'}
-                  {order.mesa ? ` - Mesa ${order.mesa}` : ''}
-                </Text>
-                <Text style={styles.orderTime}>
-                  {order.horarioCriacao || (order.timestamp ? new Date(order.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '--:--')}
-                </Text>
-              </View>
-              <Text style={styles.orderClient}>{order.client}</Text>
-              {(order.criadoPorNome || order.createdByName) && (
-                <Text style={styles.garcomText}>👤 Garçom: {order.criadoPorNome || order.createdByName}</Text>
-              )}
-              {order.movidoParaMontagemPorNome && (
-                <Text style={styles.movimentadoPorText}>🔧 Recebido de: {order.movidoParaMontagemPorNome}</Text>
-              )}
-              {order.observations && (
-                <Text style={styles.orderObs}>Obs: {order.observations}</Text>
-              )}
-              <View style={styles.orderItems}>
-                {order.itemsWithStatus && order.itemsWithStatus.length > 0 ? (
-                  // Renderizar com checkboxes
-                  order.itemsWithStatus.map((item: any, idx: number) => (
-                    <TouchableOpacity
-                      key={item.id}
-                      style={styles.orderItem}
-                      onPress={() => handleToggleItem(item.originalOrderId || order.id, item.id, item.status)}
-                      activeOpacity={0.7}
-                    >
-                      <View style={[
-                        styles.checkbox,
-                        item.checked && styles.checkboxChecked
-                      ]}>
-                        {item.checked && <Text style={styles.checkmark}>✓</Text>}
-                      </View>
-                      <Text style={[
-                        styles.itemText,
-                        item.checked && styles.itemTextDone
-                      ]}>
-                        {item.name}
-                      </Text>
-                    </TouchableOpacity>
-                  ))
-                ) : (
-                  // Fallback: renderizar itens simples
-                  order.items?.map((item: string, idx: number) => (
-                    <View key={idx} style={styles.orderItem}>
-                      <View style={[styles.itemDot, idx % 2 === 1 && styles.itemDotSecondary]} />
-                      <Text style={styles.itemText}>{item}</Text>
-                    </View>
-                  ))
-                )}
-              </View>
-              {(() => {
-                // Verificar se todos os itens estão prontos
-                const allItemsDone = order.itemsWithStatus && order.itemsWithStatus.length > 0
-                  ? order.itemsWithStatus.every((item: any) => item.checked === true)
-                  : true;
-
-                return (
-                  <TouchableOpacity
-                    style={[
-                      styles.readyBtn,
-                      !allItemsDone && styles.readyBtnDisabled
-                    ]}
-                    disabled={!allItemsDone}
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      handleMarkReady(order);
-                    }}
-                  >
-                    <Text style={styles.readyBtnText}>
-                      {allItemsDone ? 'PEDIDO MONTADO' : 'MARQUE TODOS OS ITENS'}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })()}
-            </TouchableOpacity>
-          ))
-        )}
-      </ScrollView>
+      <FlatList
+        data={orders}
+        renderItem={renderItem}
+        keyExtractor={keyExtractor}
+        ListEmptyComponent={ListEmptyComponent}
+        contentContainerStyle={styles.content}
+        initialNumToRender={8}
+        windowSize={3}
+        maxToRenderPerBatch={5}
+        updateCellsBatchingPeriod={100}
+        removeClippedSubviews={true}
+      />
 
       {selectedOrderId && (
         <PedidoDetalhesModal
