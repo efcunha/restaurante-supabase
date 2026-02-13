@@ -197,7 +197,9 @@ export function useComandaManagement() {
                 comanda.saldoAberto = fixDecimal(Math.max(0, comanda.totalConsumido - comanda.totalPago));
 
                 const todosPagos = comanda.pedidos && comanda.pedidos.length > 0 && 
-                    comanda.pedidos.every(p => (p.is_pago === true || p.is_pago === 'true' || p.is_pago === 1));
+                    comanda.pedidos
+                        .filter(p => p.status !== 'cancelled' && p.status !== 'cancelada')
+                        .every(p => (p.is_pago === true || p.is_pago === 'true' || p.is_pago === 1));
 
                 if (comanda.status === 'aberta' && todosPagos) {
                     comanda.status = 'paga';
@@ -301,7 +303,10 @@ export function useComandaManagement() {
                     table: 'orders',
                     filter: `company_id=eq.${user.companyId}`
                 },
-                () => carregarComandas(true)
+                (payload) => {
+                    console.log('[useComandaManagement] 🔄 Realtime update for Orders:', payload.eventType);
+                    carregarComandas(true);
+                }
             )
             .subscribe();
 
@@ -316,7 +321,10 @@ export function useComandaManagement() {
                     table: 'comandas',
                     filter: `company_id=eq.${user.companyId}`
                 },
-                () => carregarComandas(true)
+                (payload) => {
+                    console.log('[useComandaManagement] 🔄 Realtime update for Comandas:', payload.eventType);
+                    carregarComandas(true);
+                }
             )
             .subscribe();
 
