@@ -15,6 +15,7 @@ interface ComandaDetailsProps {
     onCancel: () => void;
     onAddItems: () => void;
     onShare?: () => void;
+    onFullPayment?: () => void;
 }
 
 interface ItemResumo {
@@ -24,7 +25,7 @@ interface ItemResumo {
     precoUnit: number;
 }
 
-export default function ComandaDetails({ comanda, onClose, onPay, onPrint, onCancel, onAddItems, onShare }: ComandaDetailsProps) {
+export default function ComandaDetails({ comanda, onClose, onPay, onPrint, onCancel, onAddItems, onShare, onFullPayment }: ComandaDetailsProps) {
     // Calcular Saldo devedor (with safe defaults)
     const saldoDevedor = useMemo(() => {
         const totalConsumido = Number(comanda.totalConsumido) || 0;
@@ -295,6 +296,14 @@ export default function ComandaDetails({ comanda, onClose, onPay, onPrint, onCan
                         <TouchableOpacity style={styles.addBtn} onPress={onAddItems}>
                             <Text style={styles.addBtnIcon}>➕</Text>
                             <Text style={styles.addBtnText}>ADICIONAR MAIS ITENS</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity 
+                            style={[styles.addBtn, { backgroundColor: '#4CAF50', marginBottom: 20 }]} 
+                            onPress={onFullPayment}
+                        >
+                            <Text style={styles.addBtnIcon}>💰</Text>
+                            <Text style={styles.addBtnText}>RATEIO (DIVISÃO)</Text>
                         </TouchableOpacity>
 
                         <Text style={styles.sectionTitle}>Pagamento Rápido</Text>

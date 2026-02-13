@@ -15,6 +15,7 @@ interface PagamentoData {
   valor: number | string;
   usuarioId: string;
   usuarioNome: string;
+  paidItemsIds?: string[]; // IDs dos itens sendo pagos nessa transação
 }
 
 class PagamentosService {
@@ -56,7 +57,7 @@ class PagamentosService {
     }
   }
 
-  async registrarPagamento({ companyId, dateKey, comandaNumber, forma, valor, usuarioId, usuarioNome }: PagamentoData) {
+  async registrarPagamento({ companyId, dateKey, comandaNumber, forma, valor, usuarioId, usuarioNome, paidItemsIds }: PagamentoData) {
     if (!companyId) throw new Error('Company ID required');
     const safeUsuarioNome = usuarioNome || 'Sistema';
     const safeUsuarioId = usuarioId || null; // ✅ NULL instead of 'system' for UUID field
@@ -93,7 +94,7 @@ class PagamentosService {
     // Se offline, adicionar à fila e retornar sucesso
     if (!SyncService.getIsConnected()) {
       SyncService.addToQueue('ADD_PAYMENT_TRANSACTION', {
-        companyId, dateKey, comandaNumber, forma, valor, usuarioId, usuarioNome
+        companyId, dateKey, comandaNumber, forma, valor, usuarioId, usuarioNome, paidItemsIds
       });
       return { success: true };
     }
@@ -211,7 +212,53 @@ class PagamentosService {
     CaixaService.registrarVenda(companyId, formaKey, valorNum)
       .catch(err => console.error('[PagamentosService] Erro ao registrar no caixa:', err));
 
+    // Se houver itens específicos sendo pagos, atualizar na tabela orders
+    if (paidItemsIds && paidItemsIds.length > 0) {
+      this._marcarItensComoPagos(companyId, dateKey, comandaNumber, paidItemsIds)
+        .catch(err => console.error('[PagamentosService] Erro ao marcar itens como pagos:', err));
+    }
+
     return { success: true };
+  }
+
+  /**
+   * Atualiza o status 'paid' nos itens do pedido correspondente
+   */
+  private async _marcarItensComoPagos(companyId: string, dateKey: string, comandaNumber: string | number, itemIds: string[]) {
+    try {
+      // 1. Buscar pedidos da comanda
+      const { data: orders, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('company_id', companyId)
+        .eq('date_key', dateKey)
+        .eq('comanda_number', String(comandaNumber));
+
+      if (error || !orders) return;
+
+      // 2. Para cada pedido, verificar se tem itens a atualizar
+      for (const order of orders) {
+        let hasUpdates = false;
+        
+        // Atualizar items_with_status
+        const updatedItemsWithStatus = (order.items_with_status || []).map((item: any) => {
+          if (itemIds.includes(item.id)) {
+            hasUpdates = true;
+            return { ...item, paid: true };
+          }
+          return item;
+        });
+
+        if (hasUpdates) {
+          await supabase
+            .from('orders')
+            .update({ items_with_status: updatedItemsWithStatus })
+            .eq('id', order.id);
+        }
+      }
+    } catch (e) {
+      console.error('[PagamentosService] Erro interno ao marcar itens:', e);
+    }
   }
 }
 

@@ -92,10 +92,12 @@ class SupabaseOrderService {
     };
   }
 
-  async fetchActiveOrders(companyId: string, dateKey: string): Promise<Order[]> {
+  async fetchActiveOrders(companyId: string, dateKey?: string): Promise<Order[]> {
     // Use optimized client with caching for active orders
-    const cacheKey = `orders:active:${companyId}:${dateKey}`;
-    const cacheTags = [`orders:${companyId}`, `orders:date:${dateKey}`];
+    // We filter orders from the current day (starting at 00:00) to ensure tables are cleared when the day turns
+    // Use Start of Day (00:00:00) as cutoff
+    const cutoffDate = new Date();
+    cutoffDate.setHours(0, 0, 0, 0);
 
     try {
       // console.log('[SupabaseOrder] Building query for active orders...');
@@ -103,9 +105,11 @@ class SupabaseOrderService {
         .from('orders')
         .select('*')
         .eq('company_id', companyId)
-        .eq('date_key', dateKey)
+        .gte('created_at', cutoffDate.toISOString()) // STRICTLY today's orders
+
         .not('status', 'eq', 'cancelled')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(100);
 
       // Check if query is valid
       if (typeof query.execute !== 'function') {
@@ -116,9 +120,10 @@ class SupabaseOrderService {
           .from('orders')
           .select('*')
           .eq('company_id', companyId)
-          .eq('date_key', dateKey)
+          .gte('created_at', cutoffDate.toISOString())
           .not('status', 'eq', 'cancelled')
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false })
+          .limit(100);
 
         if (error) throw error;
         return (data || []).map(this.mapRowToOrder);
@@ -141,9 +146,10 @@ class SupabaseOrderService {
           .from('orders')
           .select('*')
           .eq('company_id', companyId)
-          .eq('date_key', dateKey)
+          .gte('created_at', cutoffDate.toISOString())
           .not('status', 'eq', 'cancelled')
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false })
+          .limit(100);
 
         if (error) {
           console.error('[SupabaseOrder] Fallback fetch error:', error);

@@ -346,6 +346,11 @@ export default function ComandaGerenciamentoScreen(props: any) {
           onAddItems={() => setShowAddModal(true)}
           onPrint={() => handlePrint(selectedComanda)}
           onShare={() => handleShare(selectedComanda)}
+          onFullPayment={() => {
+            const comandaNum = selectedComanda.comandaNumber;
+            setSelectedComanda(null);
+            props.navigation.navigate('Pagamento', { comandaNumber: comandaNum });
+          }}
         />
 
         <AddItemsModal

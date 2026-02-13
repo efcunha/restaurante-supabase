@@ -37,6 +37,20 @@ import OfflineQueueManager from './src/components/OfflineQueueManager';
 import PrinterService from './src/services/PrinterService';
 import { useEffect } from 'react'; // Ensure useEffect is imported if not already
 
+// @ts-ignore
+import PagamentoScreen from './src/screens/PagamentoScreen';
+
+const ComandaStack = createNativeStackNavigator();
+
+function ComandaStackScreen() {
+  return (
+    <ComandaStack.Navigator screenOptions={{ headerShown: false }}>
+      <ComandaStack.Screen name="ComandaList" component={ComandaGerenciamentoScreen} />
+      <ComandaStack.Screen name="Pagamento" component={PagamentoScreen} />
+    </ComandaStack.Navigator>
+  );
+}
+
 const Tab = createBottomTabNavigator();
 
 function TabNavigator() {
@@ -72,7 +86,7 @@ function TabNavigator() {
     >
       {canAccessScreen(user?.funcao, 'Novo Pedido') && <Tab.Screen name="Novo Pedido" component={NovoPedidoScreen} />}
       {canAccessScreen(user?.funcao, 'Novo Pedido') && <Tab.Screen name="Mapa" component={MapaMesasScreen} />}
-      {canAccessScreen(user?.funcao, 'Comandas') && <Tab.Screen name="Comandas" component={ComandaGerenciamentoScreen} />}
+      {canAccessScreen(user?.funcao, 'Comandas') && <Tab.Screen name="Comandas" component={ComandaStackScreen} />}
       {canAccessScreen(user?.funcao, 'Cozinha') && <Tab.Screen name="Cozinha" component={CozinhaScreen} />}
       {canAccessScreen(user?.funcao, 'Montagem') && <Tab.Screen name="Montagem" component={MontagemScreen} />}
       {canAccessScreen(user?.funcao, 'Prontos') && <Tab.Screen name="Prontos" component={PedidosProntosScreen} options={{ tabBarLabel: 'Entrega' }} />}
