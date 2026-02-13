@@ -36,6 +36,8 @@ import EditarEmpresaScreen from './EditarEmpresaScreen';
 import FinancialConfigScreen from './FinancialConfigScreen';
 // @ts-ignore
 import FinancialDashboardScreen from './FinancialDashboardScreen';
+// @ts-ignore
+import OperationalSettingsScreen from './OperationalSettingsScreen';
 import { confirmLogout } from '../utils/appUtils';
 import BiometricSetupModal from '../components/BiometricSetupModal';
 import MFASetupModal from '../components/MFASetupModal';
@@ -84,6 +86,7 @@ export default function AdminScreen() {
   const [showEditarEmpresa, setShowEditarEmpresa] = useState(false);
   const [showFinancialConfig, setShowFinancialConfig] = useState(false);
   const [showConfiguracaoMesas, setShowConfiguracaoMesas] = useState(false);
+  const [showOperationalSettings, setShowOperationalSettings] = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);
   const [showBiometricSetup, setShowBiometricSetup] = useState(false);
   const [showMFASetup, setShowMFASetup] = useState(false);
@@ -553,6 +556,7 @@ export default function AdminScreen() {
     { name: 'Gerenciar Estoque', icon: '📦', action: () => setShowEstoque(true) },
     { name: 'Gerenciar Cardápio', icon: '🍴', action: () => setShowGerenciarCardapio(true) },
     { name: 'Configurar Mesas e Ambientes', icon: '🪑', action: () => setShowConfiguracaoMesas(true) },
+    { name: 'Configurações Operacionais', icon: '🕐', action: () => setShowOperationalSettings(true) },
     { name: 'Configurar Extras de Pizza', icon: '🍕', action: () => setShowExtrasConfig(true) },
     { name: 'Configurar Impressora', icon: '🖨️', action: () => setShowPrinterConfig(true) },
     { name: 'Dados da Empresa', icon: '🏢', action: () => setShowEditarEmpresa(true) },
@@ -966,6 +970,17 @@ export default function AdminScreen() {
       >
         <View style={{ flex: 1, backgroundColor: '#F5F1E8' }}>
           <PrinterConfigScreen navigation={{ goBack: () => setShowPrinterConfig(false) }} />
+        </View>
+      </Modal>
+
+      {/* Modal Configurações Operacionais */}
+      <Modal
+        visible={showOperationalSettings}
+        animationType="slide"
+        onRequestClose={() => setShowOperationalSettings(false)}
+      >
+        <View style={{ flex: 1 }}>
+          <OperationalSettingsScreen onClose={() => setShowOperationalSettings(false)} />
         </View>
       </Modal>
 

@@ -224,6 +224,10 @@ class PagamentosService {
   /**
    * Atualiza o status 'paid' nos itens do pedido correspondente
    */
+  /**
+   * Atualiza o status 'paid' nos itens do pedido correspondente
+   * Suporta pagamento parcial de itens (ex: 2x Chopp -> Pagar 1)
+   */
   private async _marcarItensComoPagos(companyId: string, dateKey: string, comandaNumber: string | number, itemIds: string[]) {
     try {
       // 1. Buscar pedidos da comanda
@@ -242,10 +246,42 @@ class PagamentosService {
         
         // Atualizar items_with_status
         const updatedItemsWithStatus = (order.items_with_status || []).map((item: any) => {
-          if (itemIds.includes(item.id)) {
+          // Verificar se este item foi alvo de pagamento direto (ID exato)
+          const directMatch = itemIds.includes(item.id);
+          
+          // Verificar se foi alvo de pagamento parcial (ID com sufixo _split_)
+          // Formato esperado do ID parcial: "{itemId}_split_{index}"
+          const splitMatches = itemIds.filter(id => id.startsWith(`${item.id}_split_`));
+          const qtdPagaNestaTransacao = splitMatches.length;
+
+          if (directMatch) {
+            // Pagamento total do item (legado ou seleção completa)
+            if (!item.paid) {
+              hasUpdates = true;
+              return { 
+                ...item, 
+                paid: true,
+                paid_quantity: item.quantity // Garante que quantidade paga = total
+              };
+            }
+          } else if (qtdPagaNestaTransacao > 0) {
+            // Pagamento parcial
             hasUpdates = true;
-            return { ...item, paid: true };
+            
+            // Calcular nova quantidade paga
+            const currentPaidQtd = item.paid_quantity || (item.paid ? item.quantity : 0);
+            const newPaidQtd = Math.min(item.quantity, currentPaidQtd + qtdPagaNestaTransacao);
+            
+            // Verificar se completou o pagamento do item
+            const isFullyPaid = newPaidQtd >= item.quantity;
+            
+            return {
+              ...item,
+              paid: isFullyPaid,
+              paid_quantity: newPaidQtd
+            };
           }
+          
           return item;
         });
 

@@ -84,40 +84,82 @@ export default function SplitPaymentModal({
              parsedPrice = calc.precoUnitario;
           }
 
+          // LÓGICA DE EXPLOSÃO DE ITENS (SPLIT)
+          const qty = item.quantity || 1;
+          const paidQty = item.paid_quantity || (item.paid ? qty : 0);
+
+          // Criar uma entrada para CADA unidade do item
+          for (let i = 0; i < qty; i++) {
+             const isUnitPaid = i < paidQty;
+             
+             // Sufixo para diferenciar cada unidade
+             // Se qty > 1, usamos _split_
+             // Se qty == 1, mantemos ID original para compatibilidade, ou usamos padrão unificado?
+             // Melhor usar padrão unificado se for split, mas para item único o ID original é mais seguro?
+             // Vamos usar ID original se qty=1, e _split_ se qty > 1 para facilitar
+             
+             let uniqueId = item.id;
+             let displayName = item.name || item.productId || 'Item sem nome';
+             
+             if (qty > 1) {
+                uniqueId = `${item.id}_split_${i}`; // ID que será detectado no Service
+                displayName = `${displayName} (${i + 1}/${qty})`;
+             } else {
+                // Se é item único mas já temos uniqueId vinda do map anterior, use-a. 
+                // Mas aqui estamos iterando itemsWithStatus originais.
+                uniqueId = item.id || `${order.id}-${Math.random()}`;
+             }
+
              items.push({
                ...item,
                orderId: order.id,
-               uniqueId: item.id || `${order.id}-${Math.random()}`,
+               uniqueId: uniqueId,
                price: parsedPrice,
-               unitPrice: parsedPrice, // Garante que unitPrice tenha o valor calculado
+               unitPrice: parsedPrice,
                // @ts-ignore
-               name: item.name || item.productId || 'Item sem nome'
+               name: displayName,
+               quantity: 1, // Visualmente é 1 unidade
+               paid: isUnitPaid
              });
+          }
         });
       } else if (Array.isArray(order.items)) {
+         // LEGACY SUPPORT (String array)
+         // Itens legados geralmente são strings únicas "2x Chopp"
+         // Dificil explodir sem parsing complexo. Mantemos comportamento 'por linha'
          order.items.forEach((itemParam: any, idx) => {
              let name = '';
              let price = 0;
+             let qtyLegacy = 1;
              
              if (typeof itemParam === 'string') {
                  name = itemParam;
-                 const calc = calcularPrecoItem(itemParam, menuItems); // Passamos menu dinâmico
+                 const calc = calcularPrecoItem(itemParam, menuItems); 
                  price = calc.precoUnitario; 
+                 qtyLegacy = calc.quantidade;
+                 
+                 // Se for legacy string "2x Chopp", o calc já traz unitPrice de 1 unidade? 
+                 // Sim, calcularPrecoItem retorna precoUnitario e subtotal.
+                 // Mas a string "2x Chopp" é tratada como 1 linha visual.
+                 // Vamos tentar explodir também se possível, mas o ID é instável.
              } else {
                  name = itemParam.name;
                  price = itemParam.unitPrice || itemParam.price || 0;
-                 // Fallback também aqui se necessário
                  if ((!price || price === 0) && name) {
-                    const calc = calcularPrecoItem(name, menuItems); // Passamos menu dinâmico
+                    const calc = calcularPrecoItem(name, menuItems);
                     price = calc.precoUnitario;
                  }
+                 qtyLegacy = itemParam.quantity || 1;
              }
+             
+             // Simplificação para Legacy: Se for string, não explodimos visualmente pois não temos ID estável para rastrear partials
+             // Apenas itemsWithStatus (novos pedidos) suportarão divisão granular perfeita.
              
              items.push({
                id: `legacy-${order.id}-${idx}`,
                productId: 'unknown',
-               quantity: 1,
-               subtotal: price,
+               quantity: qtyLegacy, // Mostra quantidade original
+               subtotal: price * qtyLegacy,
                name: name,
                unitPrice: price,
                orderId: order.id,

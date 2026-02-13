@@ -201,7 +201,7 @@ export default function PagamentoScreen({ route, navigation }: any) {
           <Ionicons name="arrow-back" size={24} color="#FFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>💰 PAGAMENTO / RATEIO</Text>
-        <View style={{ width: 24 }} /> {/* Spacer */}
+        <View style={{ width: 24 }} />
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 20 }}>
