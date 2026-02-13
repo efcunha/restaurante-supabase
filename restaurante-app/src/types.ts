@@ -7,6 +7,7 @@ export interface OrderItemStatus {
   category: string;
   delivered?: boolean;
   deliveredAt?: string;
+  quantity?: number; // Added to track quantity per item split
 }
 
 export interface Order {
