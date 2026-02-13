@@ -54,6 +54,8 @@ export interface OrderItem {
   notes?: string;
   modifiers?: ItemModifier[];
   status?: ItemStatus;
+  paid?: boolean;
+  paid_quantity?: number;
 }
 
 export type ItemStatus = 
@@ -136,6 +138,11 @@ export interface Company {
   email?: string;
   createdAt: Date | Timestamp;
   updatedAt?: Date | Timestamp;
+  settings?: CompanySettings;
+}
+
+export interface CompanySettings {
+  businessDayCutoff?: number; // Hora do corte (0-23), default 6
 }
 
 // ============================================================================
