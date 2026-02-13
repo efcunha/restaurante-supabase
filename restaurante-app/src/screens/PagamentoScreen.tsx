@@ -77,6 +77,11 @@ export default function PagamentoScreen({ route, navigation }: any) {
         pago: data.total_paid || 0,
         aberto: data.open_balance || 0,
       });
+
+      // Pre-fill value with open balance
+      if (data.open_balance > 0) {
+        setValor(data.open_balance.toFixed(2));
+      }
     } catch (e: any) { Alert.alert('Erro', e.message); }
   };
 
@@ -146,7 +151,7 @@ export default function PagamentoScreen({ route, navigation }: any) {
       await new Promise(resolve => setTimeout(resolve, 200));
       await carregarDadosComanda();
       
-      setValor('');
+      setValor(''); // Clear value after payment
       Alert.alert('Sucesso', 'Pagamento registrado! Saldo atualizado.');
 
     } catch (e: any) {
@@ -189,6 +194,9 @@ export default function PagamentoScreen({ route, navigation }: any) {
           )}
         </View>
       ))}
+      {orders.length === 0 && (
+          <Text style={{color: '#999', fontStyle: 'italic'}}>Nenhum pedido encontrado.</Text>
+      )}
     </View>
   );
 
@@ -200,25 +208,27 @@ export default function PagamentoScreen({ route, navigation }: any) {
         <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color="#FFF" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>💰 PAGAMENTO / RATEIO</Text>
+        <Text style={styles.headerTitle}>RESUMO & PAGAMENTO</Text>
         <View style={{ width: 24 }} />
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 20 }}>
         {/* INFO DA COMANDA */}
         <View style={styles.comandaInfoCard}>
-          <Text style={styles.label}>Nº Comanda</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <TextInput
-              style={[styles.input, { flex: 1, marginRight: 10 }]}
-              value={comanda}
-              onChangeText={setComanda}
-              keyboardType="number-pad"
-              placeholder="Ex: 5"
-            />
-            <TouchableOpacity style={styles.searchBtn} onPress={carregarDadosComanda}>
-              <Text style={styles.searchBtnText}>BUSCAR</Text>
-            </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+             <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                <Text style={styles.label}>Nº Comanda:</Text>
+                <TextInput
+                  style={[styles.input, { width: 60, marginLeft: 10, textAlign: 'center' }]}
+                  value={comanda}
+                  onChangeText={setComanda}
+                  keyboardType="number-pad"
+                  placeholder="Nº"
+                />
+             </View>
+             <TouchableOpacity style={styles.searchBtn} onPress={carregarDadosComanda}>
+               <Ionicons name="search" size={16} color="#FFF" />
+             </TouchableOpacity>
           </View>
 
           {saldo && (
@@ -239,34 +249,120 @@ export default function PagamentoScreen({ route, navigation }: any) {
           )}
         </View>
 
-          {saldo && (
-            <View style={styles.tabContent}>
-              <Text style={styles.sectionTitle}>Modos de Divisão</Text>
-              <Text style={styles.helperText}>Escolha como deseja dividir a conta desta comanda:</Text>
+        {/* 1. RESUMO DO PEDIDO */}
+        {renderResumoItens()}
 
-              <TouchableOpacity style={styles.optionCard} onPress={() => openSplitModal('pessoas')}>
-                <View style={[styles.iconCircle, { backgroundColor: '#E3F2FD' }]}>
-                  <Ionicons name="people" size={32} color="#2196F3" />
+        {/* 2. PAGAMENTO RÁPIDO */}
+        {saldo && saldo.aberto > 0 && (
+            <View style={styles.paymentSection}>
+                <Text style={styles.sectionTitle}>Pagamento</Text>
+                
+                <View style={styles.paymentRow}>
+                    <Text style={styles.paymentLabel}>Valor (R$):</Text>
+                    <TextInput
+                        style={styles.paymentInput}
+                        value={valor}
+                        onChangeText={setValor}
+                        keyboardType="numeric"
+                        placeholder="0,00"
+                    />
                 </View>
-                <View style={styles.optionTextContainer}>
-                  <Text style={styles.optionTitle}>Por Pessoas</Text>
-                  <Text style={styles.optionDesc}>Divide o saldo restante igualmente pelo número de pessoas informado.</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={24} color="#CCC" />
-              </TouchableOpacity>
 
-              <TouchableOpacity style={styles.optionCard} onPress={() => openSplitModal('itens')}>
-                <View style={[styles.iconCircle, { backgroundColor: '#E8F5E9' }]}>
-                  <Ionicons name="list" size={32} color="#4CAF50" />
+                <Text style={styles.subTitle}>Forma de Pagamento:</Text>
+                <View style={styles.formaBtnContainer}>
+                    {['dinheiro', 'pix', 'cartao_credito', 'cartao_debito'].map((f) => {
+                       const isSelected = forma === f;
+                       let bgColor = '#F5F5F5';
+                       let borderColor = '#E0E0E0';
+                       let textColor = '#333';
+                       
+                       // Define colors for each method
+                       switch(f) {
+                           case 'dinheiro': 
+                              bgColor = isSelected ? '#4CAF50' : '#E8F5E9'; // Green 
+                              borderColor = isSelected ? '#4CAF50' : '#C8E6C9';
+                              textColor = isSelected ? '#FFF' : '#2E7D32';
+                              break;
+                           case 'pix': 
+                              bgColor = isSelected ? '#32BCAD' : '#E0F2F1'; // Teal
+                              borderColor = isSelected ? '#32BCAD' : '#B2DFDB';
+                              textColor = isSelected ? '#FFF' : '#00695C';
+                              break;
+                           case 'cartao_debito': 
+                              bgColor = isSelected ? '#2196F3' : '#E3F2FD'; // Blue
+                              borderColor = isSelected ? '#2196F3' : '#BBDEFB';
+                              textColor = isSelected ? '#FFF' : '#1565C0';
+                              break;
+                           case 'cartao_credito': 
+                              bgColor = isSelected ? '#FF9800' : '#FFF3E0'; // Orange
+                              borderColor = isSelected ? '#FF9800' : '#FFE0B2';
+                              textColor = isSelected ? '#FFF' : '#EF6C00';
+                              break;
+                       }
+
+                       return (
+                        <TouchableOpacity
+                            key={f}
+                            style={[
+                                styles.formaBtn, 
+                                { 
+                                    backgroundColor: bgColor,
+                                    borderColor: borderColor,
+                                    borderWidth: isSelected ? 2 : 1
+                                }
+                            ]}
+                            onPress={() => setForma(f)}
+                        >
+                            <Text style={[
+                                styles.formaBtnText, 
+                                { color: textColor, fontWeight: isSelected ? 'bold' : 'normal' }
+                            ]}>
+                            {f.replace('_', ' ').toUpperCase()}
+                            </Text>
+                            {isSelected && (
+                                <View style={{
+                                    position: 'absolute', 
+                                    right: 5, 
+                                    top: 5, 
+                                    backgroundColor: 'rgba(255,255,255,0.3)', 
+                                    borderRadius: 10, 
+                                    width: 16, 
+                                    height: 16, 
+                                    alignItems: 'center', 
+                                    justifyContent: 'center'
+                                }}>
+                                    <Ionicons name="checkmark" size={10} color="#FFF" />
+                                </View>
+                            )}
+                        </TouchableOpacity>
+                       );
+                    })}
                 </View>
-                <View style={styles.optionTextContainer}>
-                  <Text style={styles.optionTitle}>Por Itens</Text>
-                  <Text style={styles.optionDesc}>Permite selecionar itens específicos da comanda para pagar individualmente.</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={24} color="#CCC" />
-              </TouchableOpacity>
+
+                <TouchableOpacity style={styles.payBtn} onPress={pagar}>
+                    <Text style={styles.payBtnText}>CONFIRMAR PAGAMENTO</Text>
+                </TouchableOpacity>
             </View>
-          )}
+        )}
+
+        {/* 3. OPÇÕES DE DIVISÃO ALTERNATIVAS */}
+        {saldo && saldo.aberto > 0 && (
+            <View style={styles.splitSection}>
+              <Text style={styles.sectionTitle}>Opções de Divisão</Text>
+              
+              <View style={styles.splitButtonsRow}>
+                  <TouchableOpacity style={styles.splitBtn} onPress={() => openSplitModal('pessoas')}>
+                    <Ionicons name="people-outline" size={20} color="#007BFF" />
+                    <Text style={styles.splitBtnText}>Por Pessoas</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity style={styles.splitBtn} onPress={() => openSplitModal('itens')}>
+                    <Ionicons name="list-outline" size={20} color="#28A745" />
+                    <Text style={styles.splitBtnText}>Por Itens</Text>
+                  </TouchableOpacity>
+              </View>
+            </View>
+        )}
       </ScrollView>
       
       <SplitPaymentModal
@@ -294,8 +390,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     backgroundColor: colors.primary,
     elevation: 4,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
   },
   backBtn: { padding: 5 },
   headerTitle: { color: '#FFF', fontSize: 18, fontWeight: 'bold' },
@@ -307,17 +401,16 @@ const styles = StyleSheet.create({
     elevation: 2,
     marginBottom: 20
   },
-  label: { fontSize: 16, fontWeight: '600', color: '#333', marginBottom: 8 },
+  label: { fontSize: 16, fontWeight: '600', color: '#333' },
   input: {
     backgroundColor: '#F9F9F9',
     borderWidth: 1,
     borderColor: '#E0E0E0',
     borderRadius: 8,
-    padding: 12,
+    padding: 8,
     fontSize: 16
   },
-  searchBtn: { backgroundColor: '#333', padding: 12, borderRadius: 8 },
-  searchBtnText: { color: '#fff', fontWeight: 'bold' },
+  searchBtn: { backgroundColor: colors.primary, padding: 10, borderRadius: 8 },
   
   saldoRow: {
     flexDirection: 'row',
@@ -330,65 +423,100 @@ const styles = StyleSheet.create({
   saldoLabel: { fontSize: 12, color: '#666' },
   saldoValue: { fontSize: 18, fontWeight: 'bold', color: '#333' },
 
-  tabContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#FFF',
-    borderRadius: 10,
-    padding: 5,
+  // Resumo styles
+  resumoContainer: {
     marginBottom: 20,
+    backgroundColor: '#FFF',
+    padding: 15,
+    borderRadius: 10,
     elevation: 2
   },
-  tabBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderRadius: 8
+  resumoTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEE',
+    paddingBottom: 5
   },
-  tabBtnActive: {
-    backgroundColor: colors.primary
+  orderItemContainer: {
+    marginBottom: 5,
+    paddingBottom: 5
   },
-  tabTxt: {
+  itemRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 4
+  },
+  itemText: {
+    fontSize: 14,
+    color: '#333',
+    flex: 1
+  },
+  itemPrice: {
+    fontSize: 14,
     fontWeight: '600',
-    color: '#666'
+    color: '#555'
   },
-  tabTxtActive: {
-    color: '#FFF',
-    fontWeight: 'bold'
+  itemTextSimple: {
+    fontSize: 14,
+    color: '#333'
   },
-  
-  tabContent: {
+
+  // Payment Section
+  paymentSection: {
     backgroundColor: '#FFF',
     padding: 20,
     borderRadius: 10,
     elevation: 2,
-    minHeight: 200
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 5
-  },
-  helperText: {
-    fontSize: 14,
-    color: '#666',
     marginBottom: 20
   },
-  
-  formasContainer: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 20 },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 15
+  },
+  paymentRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 15
+  },
+  paymentLabel: {
+      fontSize: 16,
+      marginRight: 10,
+      color: '#333'
+  },
+  paymentInput: {
+      flex: 1,
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: colors.success,
+      borderBottomWidth: 1,
+      borderBottomColor: '#EEE',
+      padding: 5
+  },
+  subTitle: {
+      fontSize: 14,
+      color: '#666',
+      marginBottom: 10
+  },
+  formaBtnContainer: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 15 },
   formaBtn: {
     backgroundColor: '#F5F5F5',
-    padding: 12,
+    paddingVertical: 14, // increased for touch target
+    paddingHorizontal: 12,
     borderRadius: 8,
-    marginRight: 10,
-    marginBottom: 10,
+    marginRight: 8,
+    marginBottom: 8,
     borderWidth: 1,
     borderColor: '#E0E0E0',
-    minWidth: '45%',
+    minWidth: '45%', // slightly wider
     alignItems: 'center'
   },
   formaBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  formaBtnText: { color: '#333' },
+  formaBtnText: { color: '#333', fontSize: 16, fontWeight: 'bold' }, // Significantly bigger
   formaBtnTextActive: { color: '#fff', fontWeight: 'bold' },
   
   payBtn: {
@@ -396,87 +524,33 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',
-    marginTop: 10
+    marginTop: 5
   },
   payBtnText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
-  
-  optionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F9F9F9',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 15,
-    borderWidth: 1,
-    borderColor: '#EEE'
+
+  // Split Section
+  splitSection: {
+      marginTop: 10
   },
-  iconCircle: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 15
+  splitButtonsRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between'
   },
-  optionTextContainer: {
-    flex: 1
+  splitBtn: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 12,
+      backgroundColor: '#FFF',
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: '#DDD',
+      marginHorizontal: 5
   },
-  optionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 4
-  },
-  optionDesc: {
-    fontSize: 12,
-    color: '#666',
-    lineHeight: 18
-  },
-  
-  // Estilos do Resumo
-  resumoContainer: {
-    marginBottom: 15,
-    backgroundColor: '#FAFAFA',
-    padding: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#EEE'
-  },
-  resumoTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 8,
-    textTransform: 'uppercase'
-  },
-  orderItemContainer: {
-    marginBottom: 5,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-    paddingBottom: 5
-  },
-  itemRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 2
-  },
-  itemText: {
-    fontSize: 14,
-    color: '#555',
-    flex: 1
-  },
-  itemPrice: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#333'
-  },
-  itemTextSimple: {
-    fontSize: 14,
-    color: '#555'
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#DDD',
-    marginVertical: 15
+  splitBtnText: {
+      marginLeft: 8,
+      fontWeight: '600',
+      color: '#333'
   }
 });
