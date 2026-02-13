@@ -23,7 +23,7 @@ import PedidoDetalhesModal from './PedidoDetalhesModal';
 const { width } = Dimensions.get('window');
 const SAFE_AREA_TOP = 50;
 
-export default function MapaMesasScreen({ navigation }: any) {
+export default function MapaMesasScreen({ navigation, route }: any) {
     const { user } = useAuth();
 
     const [loading, setLoading] = useState(true);
@@ -58,6 +58,20 @@ export default function MapaMesasScreen({ navigation }: any) {
             Alert.alert('Erro', 'Falha ao carregar estrutura de mesas.');
         }
     };
+
+    // Reabrir modal se voltar do pagamento com ID de pedido
+    useEffect(() => {
+        // @ts-ignore
+        if (route.params?.openOrderId) {
+            // @ts-ignore
+            const orderId = route.params.openOrderId;
+            setSelectedOrderId(orderId);
+            setModalVisible(true);
+            
+            // Limpar parametro para não reabrir em reload
+            navigation.setParams({ openOrderId: null });
+        }
+    }, [route.params?.openOrderId]);
 
     // Load once on mount or when companyId changes
     useEffect(() => {

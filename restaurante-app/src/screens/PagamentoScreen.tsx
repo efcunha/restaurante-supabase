@@ -161,6 +161,22 @@ export default function PagamentoScreen({ route, navigation }: any) {
 
   const handleBack = () => {
     try {
+      if (route.params?.returnScreen === 'Mapa') {
+        // Reset the Comanda stack to List so it doesn't get stuck on Payment
+        navigation.navigate('ComandaList'); 
+        
+        // Then go to Mapa and open the modal
+        // We use a small timeout to ensure the first navigation processes? 
+        // Actually, just navigating to Mapa usually switches tabs.
+        // But if we want to ensure Comanda stack is clean, we visit ComandaList first.
+        setTimeout(() => {
+             navigation.navigate('Mapa', { 
+                openOrderId: route.params.returnOrderId 
+            });
+        }, 50);
+        return;
+      }
+      
       if (navigation.canGoBack()) {
         navigation.goBack();
       } else {
