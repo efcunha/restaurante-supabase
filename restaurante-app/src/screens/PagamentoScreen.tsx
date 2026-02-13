@@ -163,7 +163,7 @@ export default function PagamentoScreen({ route, navigation }: any) {
       
       const realTotal = totalConsumedReal > 0 ? totalConsumedReal : financialTotal;
       
-      const displayPaid = totalItemsAllocated;
+      const displayPaid = Math.max(totalItemsAllocated, financialPaid);
       const displayOpen = Math.max(0, realTotal - displayPaid);
 
       setSaldo({
