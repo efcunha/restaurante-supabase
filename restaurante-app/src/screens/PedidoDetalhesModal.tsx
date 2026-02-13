@@ -206,42 +206,10 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
                 )}
               </View>
 
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Histórico do Pedido</Text>
-                <View style={styles.timeline}>
-                  <View style={styles.timelineItem}>
-                    <View style={styles.timelineDot} />
-                    <View style={styles.timelineContent}>
-                      <Text style={styles.timelineLabel}>Criado</Text>
-                      <Text style={styles.timelineTime}>{formatDateFull(order.createdAt)}</Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.timelineItem}>
-                    <View style={[styles.timelineDot, { backgroundColor: order.timeInChurrasqueira ? '#E5B84A' : '#DDD' }]} />
-                    <View style={styles.timelineContent}>
-                      <Text style={styles.timelineLabel}>Cozinha/Churrasqueira</Text>
-                      <Text style={styles.timelineTime}>{formatDate(order.timeInChurrasqueira)}</Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.timelineItem}>
-                    <View style={[styles.timelineDot, { backgroundColor: order.timeInMontagem ? '#4A90E2' : '#DDD' }]} />
-                    <View style={styles.timelineContent}>
-                      <Text style={styles.timelineLabel}>Montagem</Text>
-                      <Text style={styles.timelineTime}>{formatDate(order.timeInMontagem)}</Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.timelineItem}>
-                    <View style={[styles.timelineDot, { backgroundColor: order.timeInProntos ? '#7ED321' : '#DDD' }]} />
-                    <View style={styles.timelineContent}>
-                      <Text style={styles.timelineLabel}>Pronto</Text>
-                      <Text style={styles.timelineTime}>{formatDate(order.timeInProntos)}</Text>
-                    </View>
-                  </View>
-
-                  {order.deliveredAt && (
+              {order.deliveredAt && (
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>Histórico do Pedido</Text>
+                  <View style={styles.timeline}>
                     <View style={styles.timelineItem}>
                       <View style={[styles.timelineDot, { backgroundColor: '#8B2F2F' }]} />
                       <View style={styles.timelineContent}>
@@ -249,9 +217,9 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
                         <Text style={styles.timelineTime}>{formatDate(order.deliveredAt)}</Text>
                       </View>
                     </View>
-                  )}
+                  </View>
                 </View>
-              </View>
+              )}
             </ScrollView>
 
             <View style={styles.actions}>
@@ -280,7 +248,11 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
                 onPress={() => {
                   onClose();
                   setTimeout(() => {
-                    navigation.navigate('Comandas', { searchComanda: order.comandaNumber });
+                    // Navegar para a Tab Comandas, e dentro dela para a tela Pagamento
+                    navigation.navigate('Comandas', { 
+                      screen: 'Pagamento',
+                      params: { comandaNumber: order.comandaNumber }
+                    });
                   }, 300);
                 }}
               >

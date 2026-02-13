@@ -213,3 +213,32 @@ export interface AuthContextValue {
   /** Verifica permissão por chave */
   hasPermission?: (perm: string) => boolean;
 }
+// ============================================================================
+// EXPORTS FROM SUB-MODULES
+// ============================================================================
+export * from './models';
+export * from './order.types';
+// export * from './performance'; // Se necessário
+
+// ============================================================================
+// MENU MODELS
+// ============================================================================
+
+import { Product } from './models';
+
+export interface MenuItem {
+  name: string;
+  price: number;
+}
+
+export interface Cardapio {
+  caldos: Product[];
+  comidas: Product[];
+  bebidas: Product[];
+  porcoes: Product[];
+  outros: Product[];
+  espetinhos: Product[];
+  espetinhosSimples: Product[];
+  espetinhosEspeciais: Product[];
+  pizzas: Product[];
+}
