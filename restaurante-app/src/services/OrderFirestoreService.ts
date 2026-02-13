@@ -97,7 +97,8 @@ class OrderFirestoreService {
       .from('orders')
       .select('*')
       .eq('company_id', companyId)
-      .eq('date_key', dateKey)
+      // .eq('date_key', dateKey) // REMOVED: strict day partitioning hides orders after midnight
+      .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()) // Use 24h window
       .not('status', 'eq', 'cancelled')
       .order('created_at', { ascending: false });
 
@@ -118,7 +119,7 @@ class OrderFirestoreService {
       .insert({
         company_id: companyId,
         client_name: order.client,
-        table_number: parseInt(order.mesa || '0'),
+        table_number: parseInt(order.mesa?.toString().replace(/\D/g, '') || '0'),
         comanda_number: parseInt(order.comandaNumber || '0'),
         items: order.items,
         observations: order.observations,
@@ -269,7 +270,7 @@ class OrderFirestoreService {
       .insert({
         company_id: companyId,
         client_name: order.client,
-        table_number: parseInt(order.mesa || '0'),
+        table_number: parseInt(order.mesa?.toString().replace(/\D/g, '') || '0'),
         comanda_number: parseInt(order.comandaNumber || '0'),
         items: order.items,
         items_with_status: order.itemsWithStatus || [],

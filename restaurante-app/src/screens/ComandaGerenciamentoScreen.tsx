@@ -348,7 +348,8 @@ export default function ComandaGerenciamentoScreen(props: any) {
           onShare={() => handleShare(selectedComanda)}
           onFullPayment={() => {
             const comandaNum = selectedComanda.comandaNumber;
-            setSelectedComanda(null);
+            // Não limpar a comanda selecionada para permitir voltar para ela
+            // setSelectedComanda(null);
             props.navigation.navigate('Pagamento', { comandaNumber: comandaNum });
           }}
         />

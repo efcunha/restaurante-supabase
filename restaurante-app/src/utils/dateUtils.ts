@@ -120,3 +120,27 @@ export function isFuture(dateKey: string): boolean {
   const today = getTodayKey();
   return dateKey > today;
 }
+
+/**
+ * Returns the start Date of the current "Business Day".
+ * If now is before cutoffHour, it returns yesterday's cutoff time.
+ * If now is after cutoffHour, it returns today's cutoff time.
+ * 
+ * Example: Cutoff 06:00.
+ * - Now: Fri 02:00 -> Returns Thu 06:00
+ * - Now: Fri 08:00 -> Returns Fri 06:00
+ */
+export function getBusinessDayStart(cutoffHour: number = 6): Date {
+  const now = new Date();
+  const currentHour = now.getHours();
+
+  const startDate = new Date(now);
+  startDate.setHours(cutoffHour, 0, 0, 0);
+
+  if (currentHour < cutoffHour) {
+    // Before cutoff, so business day started yesterday
+    startDate.setDate(startDate.getDate() - 1);
+  }
+  
+  return startDate;
+}
