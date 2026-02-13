@@ -43,12 +43,17 @@ export const CARDAPIO_STATIC: MenuCategory = {
     { name: 'Caldinho de Macaxeira', price: 15 },
     { name: 'Caldo de Fava', price: 18 },
     { name: 'Caldo de Camarão', price: 25 },
+    { name: 'Caldo de Peixe', price: 20 },
+    { name: 'Caldo de Sururu', price: 20 },
   ],
   comidas: [
     { name: 'Risoto de Camarão', price: 25 },
     { name: 'Risoto de Charque', price: 20 },
     { name: 'Risoto de Frango', price: 20 },
     { name: 'Risoto de Queijo', price: 20 },
+    { name: 'Batata Frita', price: 20 },
+    { name: 'Macaxeira Frita', price: 12 },
+    { name: 'Charque Acebolado', price: 25 },
   ],
   bebidas: [
     { name: 'Refrigerante Lata', price: 7 },
@@ -56,7 +61,9 @@ export const CARDAPIO_STATIC: MenuCategory = {
     { name: 'Refrigerante 1L', price: 10 },
     { name: 'Água Mineral', price: 4 },
     { name: 'Água com Gás', price: 4 },
-    { name: 'Suco', price: 6 }
+    { name: 'Suco', price: 6 },
+    { name: 'Chopp', price: 8 }, // Inclui Chopp 400 ML se matching for parcial
+    { name: 'Cerveja', price: 9 },
   ],
   espetinhos: []
 };
@@ -75,31 +82,76 @@ export const fixDecimal = (value: number): number => {
 /**
  * Calcular preço de um item baseado no cardápio
  */
-export const calcularPrecoItem = (itemText: string): ItemCalculation => {
+export const calcularPrecoItem = (itemText: string, cardapioDin?: MenuItem[]): ItemCalculation => {
   try {
     const qtdMatch = itemText.match(/^(\d+)x?\s*/);
     const qtd = qtdMatch ? parseInt(qtdMatch[1], 10) : 1;
     const nome = itemText.replace(/^\d+x?\s*/, '').replace(/\s*\(.*\)$/, '').trim();
 
-    // Detectar tamanho para caldos
+    // Detectar tamanho para caldos (Lógica de negócio específica, pode ser mantida ou movida para BD se houver tabela de variações)
+    // Por enquanto, mantemos a lógica de tamanho mas tentamos buscar preço base dinâmico se possível
     let precoUnit = 0;
-    if (nome.includes('300ml')) {
-      precoUnit = 15.00;
-    } else if (nome.includes('180ml')) {
-      precoUnit = 10.00;
-    } else {
-      // Buscar no cardápio
-      const allItems: MenuItem[] = [
-        ...CARDAPIO_STATIC.caldos,
-        ...CARDAPIO_STATIC.comidas,
-        ...CARDAPIO_STATIC.bebidas
-      ];
+    
+    // Normalização para comparação mais robusta
+    const nomeNormalized = nome.toLowerCase();
+
+    // Lista de itens para busca: Dinâmico > Estático
+    const allItems: MenuItem[] = cardapioDin && cardapioDin.length > 0 
+      ? cardapioDin 
+      : [
+          ...CARDAPIO_STATIC.caldos,
+          ...CARDAPIO_STATIC.comidas,
+          ...CARDAPIO_STATIC.bebidas
+        ];
+
+      const produto = allItems.find(p => {
+        const pNameNormalized = p.name.toLowerCase();
+        // Verifica se o nome do item CONTÉM o nome do produto no menu (ex: "Chopp 400 ML" contém "Chopp")
+        // OU se o nome do produto no menu CONTÉM o nome do item (ex: "Caldo de Camarão" contém "Caldo de Camarão 300ml" - não, contrário)
+        return nomeNormalized.includes(pNameNormalized) || pNameNormalized.includes(nomeNormalized);
+      });
       
-      const produto = allItems.find(p => 
-        nome.toLowerCase().includes(p.name.toLowerCase())
-      );
-      precoUnit = produto?.price || 0;
-    }
+      // Lógica de Prioridade:
+      // 1. Se achou produto exato ou aproximado no banco, usa o preço dele.
+      // 2. Se for Chopp ou Caldo com variação de tamanho, aplica regra de negócio (HARDCODED LOGIC - idealmente mover para BD, mas mantendo para consistência com regra atual se o produto base não tiver preço de tamanho)
+      
+      if (produto) {
+         precoUnit = produto.price;
+      }
+
+      // Overrides de tamanho (Regra de Negócio Específica da Aplicação)
+      // Isso é necessário se o produto no banco for genérico "Chopp" com preço X, mas o pedido especificar tamanho
+      // Se o banco tiver "Chopp 400ml" explicitamente, o find acima deve pegar.
+      // Se não, caímos aqui.
+      
+      if (nomeNormalized.includes('chopp') && !produto?.name.toLowerCase().includes('400') && !produto?.name.toLowerCase().includes('500')) {
+          if (nomeNormalized.includes('500')) {
+             precoUnit = 15.00;
+          } else if (nomeNormalized.includes('400') || !nomeNormalized.includes('300')) { // Default chopp
+             precoUnit = 12.00;
+          }
+      }
+      
+      if (nomeNormalized.includes('caldo') || nomeNormalized.includes('caldinho')) {
+           if (nomeNormalized.includes('300ml')) {
+             precoUnit = 15.00; 
+           } else if (nomeNormalized.includes('180ml')) {
+             precoUnit = 10.00;
+           }
+           // Se não especificou tamanho, usa o do produto encontrado ou mantém o que achou
+      }
+      
+      // Fallback final se ainda for 0 e tivermos estático (apenas segurança)
+      if (precoUnit === 0) {
+           // Tenta buscar no estático explicitamente se o dinâmico falhou
+           const staticItems = [
+                ...CARDAPIO_STATIC.caldos,
+                ...CARDAPIO_STATIC.comidas,
+                ...CARDAPIO_STATIC.bebidas
+           ];
+           const staticProd = staticItems.find(p => nomeNormalized.includes(p.name.toLowerCase()));
+           if (staticProd) precoUnit = staticProd.price;
+      }
 
     return {
       quantidade: qtd,
