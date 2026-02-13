@@ -3,6 +3,7 @@
  * Migrated to Supabase
  */
 import { supabase } from '../config/SupabaseConfig';
+import { cacheLayerService } from '../services/CacheLayerService';
 import CaixaService from './CaixaService';
 import OrderService from './OrderService';
 import SyncService from './SyncService';
@@ -197,10 +198,20 @@ class PagamentosService {
 
     const rpcError = true; // Force fallback logic
 
+    // Initialize decision variables outside the block
+    let shouldClose = false;
+    let currentDbBalance = 0;
+    let isFullPaymentOfRecordedDebt = false;
+    
+    // Check closure conditions based on calculated values
+    const isBalanceZero = novoSaldo <= 0.05;
+    currentDbBalance = Number(comanda.open_balance || 0);
+    isFullPaymentOfRecordedDebt = Math.abs(valorNum - currentDbBalance) <= 0.05;
+    
+    shouldClose = isBalanceZero || isFullPaymentOfRecordedDebt;
+
     if (rpcError) {
       // Manual Update Logic (Now Primary)
-      // console.warn('[PagamentosService] RPC error (falling back to manual):', rpcError);
-      
       // First, insert the new payment
       const { error: insertError } = await supabase
         .from('pagamentos')
@@ -217,13 +228,10 @@ class PagamentosService {
 
       if (insertError) throw insertError;
 
-      // Note: pagamentos_resumo is already calculated above (novoPagamentosResumo)
-
-
-      // Then update comanda with the new totals and payment info
+      // Update comanda
       const updateData: any = {
         total_paid: novoTotalPago,
-        open_balance: novoSaldo,
+        open_balance: shouldClose ? 0 : novoSaldo,
         pagamentos_resumo: novoPagamentosResumo,
         ultimo_pagamento_por: safeUsuarioNome,
         ultimo_pagamento_forma: formaKey,
@@ -231,9 +239,7 @@ class PagamentosService {
         updated_at: new Date().toISOString(),
       };
       
-      // Only add to received_by array if we have a valid user ID
       if (safeUsuarioId) {
-        // Avoid duplicates in received_by
         const existingReceivedBy = comanda.received_by || [];
         if (!existingReceivedBy.includes(safeUsuarioId)) {
             updateData.received_by = [...existingReceivedBy, safeUsuarioId];
@@ -243,34 +249,106 @@ class PagamentosService {
       const { error: updateError } = await supabase
         .from('comandas')
         .update(updateData)
-        .eq('id', comanda.id); // ✅ Update by ID is safer and more reliable
+        .eq('id', comanda.id);
 
       if (updateError) throw updateError;
     }
+    
+    // ... continue to cache registration ...
 
     // Registrar no CAIXA (Assíncrono para não travar UI)
     CaixaService.registrarVenda(companyId, formaKey, valorNum)
       .catch(err => console.error('[PagamentosService] Erro ao registrar no caixa:', err));
 
+    console.log('[PagamentosService] DEBUG CALC:', {
+        realTotalConsumed,
+        comandaTotalConsumed: comanda.total_consumed,
+        totalConsumidoFinal,
+        totalPagoAnt,
+        valorNum,
+        novoTotalPago,
+        novoSaldo,
+        currentDbBalance,
+        isFullPaymentOfRecordedDebt,
+        shouldClose
+    });
+ 
     // Se houver itens específicos sendo pagos, atualizar na tabela orders
     if (paidItemsIds && paidItemsIds.length > 0) {
       this._marcarItensComoPagos(companyId, dateKey, comandaNumber, paidItemsIds)
         .catch(err => console.error('[PagamentosService] Erro ao marcar itens como pagos:', err));
-    } else if (novoSaldo <= 0.01) {
-       // 🔒 CRITICAL: Se o saldo for zerado e não foi pagamento por item específico (foi pagamento do total restante),
-       // devemos marcar TODOS os pedidos dessa comanda como pagos para liberar a mesa.
-       // Isso garante que a mesa fique "Livre" automaticamente.
+    }
+
+    // 🔒 CRITICAL FIX: Use the 'shouldClose' decision made above
+    if (shouldClose) {
+       console.log('[PagamentosService] Decisão de fechamento: TRUE. Comanda será fechada.');
+       
+       // 1. Mark ALL orders as paid
+       // 1. Mark ALL orders as paid
        try {
-         await supabase
-           .from('orders')
-           .update({ is_paid: true }) // Marca como pago
-           .eq('company_id', companyId)
-           .eq('comanda_number', String(comandaNumber))
-           .eq('date_key', dateKey)
-           .eq('is_paid', false); // Só atualiza os que não estavam pagos
+         // Fetch IDs first to ensure we target the correct rows and debug count
+         const { data: unpaidOrders, error: fetchUnpaidError } = await supabase
+            .from('orders')
+            .select('id')
+            .eq('company_id', companyId)
+            .eq('comanda_number', String(comandaNumber))
+            .eq('date_key', dateKey)
+            .eq('is_paid', false);
+
+         if (fetchUnpaidError) {
+             console.error('[PagamentosService] Erro ao buscar orders pendentes:', fetchUnpaidError);
+         } else {
+             const unpaidIds = unpaidOrders?.map(o => o.id) || [];
+             console.log(`[PagamentosService] Orders pendentes encontradas para fechar: ${unpaidIds.length}`, unpaidIds);
+
+             if (unpaidIds.length > 0) {
+                 const { error: updateOrdersError } = await supabase
+                   .from('orders')
+                   .update({ is_paid: true })
+                   .in('id', unpaidIds);
+                 
+                 if (updateOrdersError) {
+                     console.error('[PagamentosService] Erro ao atualizar orders por ID:', updateOrdersError);
+                 } else {
+                     console.log('[PagamentosService] Orders atualizadas para is_paid=true via IDs');
+                     
+                     // Invalidate cache directly
+                     try {
+                         await cacheLayerService.invalidatePattern(`orders:${companyId}`);
+                         await cacheLayerService.invalidatePattern(`orders:date:${dateKey}`);
+                         console.log('[PagamentosService] Cache de pedidos invalidado.');
+                     } catch (cacheError) {
+                         console.error('[PagamentosService] Failed to invalidate cache:', cacheError);
+                     }
+                 }
+             } else {
+                 console.log('[PagamentosService] Nenhuma order pendente para atualizar. Verificando por erro de dateKey...');
+                 // Fallback check: find any unpaid order with this comanda number regardless of date?
+                 // Maybe risky, but logging would help diagnosing.
+             }
+         }
        } catch (e) {
-         console.error('[PagamentosService] Erro ao fechar pedidos da comanda:', e);
+         console.error('[PagamentosService] Exception ao fechar pedidos:', e);
        }
+
+       // 2. Close Comanda
+       // Even though we updated valid fields above, we call this to ensure side effects (like closed_at, closed_by) are set if not set above.
+       // Actually, the update above sets 'open_balance: 0' but we should ensure 'status: fechada'.
+       // The update above did NOT set status='fechada' explicitly, it set totals.
+       // Let's force status='fechada' here to be sure.
+       
+       try {
+           await supabase
+            .from('comandas')
+            .update({ status: 'fechada', open_balance: 0, closed_at: new Date().toISOString(), closed_by: safeUsuarioId, closed_by_name: safeUsuarioNome })
+            .eq('id', comanda.id);
+            
+           console.log('[PagamentosService] Comanda status atualizado para FECHADA.');
+       } catch (e: any) {
+           console.error('[PagamentosService] Erro ao finalizar status da comanda:', e);
+       }
+    } else {
+        console.log('[PagamentosService] Decisão de fechamento: FALSE. Comanda permanece aberta.');
     }
 
     return { success: true };

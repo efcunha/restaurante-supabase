@@ -144,6 +144,7 @@ class SupabaseOrderService {
         return [];
       }
 
+      console.log(`[SupabaseOrder] fetchActiveOrders found ${data?.length} orders`);
       return (data || []).map(this.mapRowToOrder);
     } catch (err: any) {
       console.error('[SupabaseOrder] Exception in fetchActiveOrders, trying fallback:', err);
