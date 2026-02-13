@@ -17,7 +17,9 @@ export interface DateKeyRange {
  * IMPORTANT: Use local date for consistency with user timezone
  */
 export function getTodayKey(): string {
-  const now = new Date();
+  // Use business day start with default 6 AM cutoff
+  // This ensures orders made at 02:00 AM belong to the "previous" day key
+  const now = getBusinessDayStart(6);
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const day = String(now.getDate()).padStart(2, '0');
