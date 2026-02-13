@@ -12,9 +12,13 @@ import {
   Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { supabase } from '../config/SupabaseConfig';
 import { useOrders } from '../context/OrderContext';
+import { useAuth } from '../context/AuthContext';
 import TransferModal from '../components/TransferModal';
 import { calcularPrecoItem } from '../utils/orderCalculator';
+
+import { getTodayKey } from '../utils/dateUtils';
 
 interface Props {
   visible: boolean;
@@ -24,6 +28,7 @@ interface Props {
 
 export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props) {
   const navigation = useNavigation<any>();
+  const { user } = useAuth();
   const { getOrderById, editOrder, deleteOrder, transferOrder } = useOrders();
   const [isTransferModalVisible, setIsTransferModalVisible] = useState(false);
 
@@ -49,14 +54,39 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
   const [isEditing, setIsEditing] = useState(false);
   const [editedClient, setEditedClient] = useState('');
   const [editedObservations, setEditedObservations] = useState('');
+  const [comandaData, setComandaData] = useState<any>(null);
 
   const order = getOrderById(orderId);
 
-  if (!order) {
-    return null;
-  }
-
-  const canEdit = order.status === 'preparing';
+  // Fetch Comanda Data
+  React.useEffect(() => {
+      if (visible) {
+          const fetchComanda = async () => {
+              const order = getOrderById(orderId);
+              if (order && (order.comandaNumber || order.numeroComanda)) {
+                  const num = order.comandaNumber || order.numeroComanda;
+                  // Use order's dateKey if available, otherwise today
+                  const dateKey = order.dateKey || getTodayKey();
+                  
+                  const { data, error } = await supabase
+                      .from('comandas')
+                      .select('total_consumed, total_paid, open_balance')
+                      .eq('company_id', user?.companyId) // Added company_id check for safety
+                      .eq('comanda_number', String(num))
+                      .eq('date_key', dateKey) // CRITICAL FIX: Filter by date!
+                      .limit(1)
+                      .maybeSingle();
+                  
+                  if (data) {
+                      setComandaData(data);
+                  } else {
+                      setComandaData(null); // Clear incompatible data
+                  }
+              }
+          };
+          fetchComanda();
+      }
+  }, [visible, orderId]);
 
   const formatDate = (isoString: any) => {
     if (!isoString) return '--';
@@ -114,6 +144,10 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
       default: return status;
     }
   };
+
+  if (!order) return null;
+
+  const canEdit = order.status === 'preparing';
 
   return (
     <>
@@ -287,6 +321,22 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
                     return null;
                 })()}
               </View>
+
+                {/* --- COMANDA BALANCE INFO (NEW) --- */}
+                {/* Shows partial payments that are not allocated to specific items yet */}
+                {comandaData && comandaData.total_paid > 0 && (
+                   <View style={[styles.section, { marginTop: 10, padding: 10, backgroundColor: '#F9F9F9', borderRadius: 8 }]}>
+                      <Text style={[styles.sectionTitle, { fontSize: 14, marginBottom: 5 }]}>Status Financeiro da Comanda</Text>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                          <Text style={{ color: '#666' }}>Total Pago (Geral):</Text>
+                          <Text style={{ color: '#4CAF50', fontWeight: 'bold' }}>{formatarMoeda(comandaData.total_paid)}</Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
+                          <Text style={{ color: '#666' }}>Saldo Devedor:</Text>
+                          <Text style={{ color: '#F44336', fontWeight: 'bold' }}>{formatarMoeda(comandaData.open_balance)}</Text>
+                      </View>
+                   </View>
+                )}
 
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Observações</Text>

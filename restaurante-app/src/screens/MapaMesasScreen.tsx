@@ -353,7 +353,7 @@ export default function MapaMesasScreen({ navigation, route }: any) {
                                                     {table.status === 'Ocupada' ? (
                                                         <View>
                                                             <Text style={styles.infoPrice}>R$ {table.order_total?.toFixed(2)}</Text>
-                                                            {table.order_time ? <Text style={styles.infoTime}>{table.order_time}</Text> : null}
+                                                            {!!table.order_time && <Text style={styles.infoTime}>{table.order_time}</Text>}
                                                         </View>
                                                     ) : (
                                                         <Text style={styles.infoSeats}>{table.seats} lug.</Text>
@@ -382,7 +382,7 @@ export default function MapaMesasScreen({ navigation, route }: any) {
                                                     {table.status === 'Ocupada' ? (
                                                         <View>
                                                             <Text style={styles.infoPrice}>R$ {table.order_total?.toFixed(2)}</Text>
-                                                            {table.order_time ? <Text style={styles.infoTime}>{table.order_time}</Text> : null}
+                                                            {!!table.order_time && <Text style={styles.infoTime}>{table.order_time}</Text>}
                                                         </View>
                                                     ) : (
                                                         <Text style={styles.infoSeats}>{table.seats} lug.</Text>
