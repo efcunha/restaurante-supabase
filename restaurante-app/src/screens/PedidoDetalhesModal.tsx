@@ -251,7 +251,11 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
                     // Navegar para a Tab Comandas, e dentro dela para a tela Pagamento
                     navigation.navigate('Comandas', { 
                       screen: 'Pagamento',
-                      params: { comandaNumber: order.comandaNumber }
+                      params: { 
+                        comandaNumber: order.comandaNumber,
+                        returnScreen: 'Mapa', // Indica que veio do Mapa
+                        returnOrderId: order.id // ID para reabrir o modal
+                      }
                     });
                   }, 300);
                 }}
