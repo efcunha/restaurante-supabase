@@ -143,6 +143,8 @@ class PagamentosService {
     };
 
     // Usar RPC para transação atômica (if it exists)
+    // DISABLED: Forcing manual update to ensure logic control and fix reported balance issues
+    /* 
     const { data: result, error: rpcError } = await supabase.rpc('registrar_pagamento_comanda', {
       p_company_id: companyId,
       p_comanda_id: comanda.id,
@@ -158,10 +160,13 @@ class PagamentosService {
       p_garcom: comanda.opened_by || null,
       p_garcom_nome: comanda.opened_by_name || null,
     });
+    */
+
+    const rpcError = true; // Force fallback logic
 
     if (rpcError) {
-      // Fallback: fazer update manual se RPC não existir
-      console.warn('[PagamentosService] RPC error (falling back to manual):', rpcError);
+      // Manual Update Logic (Now Primary)
+      // console.warn('[PagamentosService] RPC error (falling back to manual):', rpcError);
       
       // First, insert the new payment
       const { error: insertError } = await supabase
@@ -195,15 +200,17 @@ class PagamentosService {
       
       // Only add to received_by array if we have a valid user ID
       if (safeUsuarioId) {
-        updateData.received_by = [...(comanda.received_by || []), safeUsuarioId];
+        // Avoid duplicates in received_by
+        const existingReceivedBy = comanda.received_by || [];
+        if (!existingReceivedBy.includes(safeUsuarioId)) {
+            updateData.received_by = [...existingReceivedBy, safeUsuarioId];
+        }
       }
       
       const { error: updateError } = await supabase
         .from('comandas')
         .update(updateData)
-        .eq('company_id', companyId)
-        .eq('date_key', dateKey)
-        .eq('comanda_number', String(comandaNumber));
+        .eq('id', comanda.id); // ✅ Update by ID is safer and more reliable
 
       if (updateError) throw updateError;
     }

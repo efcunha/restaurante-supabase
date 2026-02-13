@@ -350,7 +350,10 @@ export default function ComandaGerenciamentoScreen(props: any) {
             const comandaNum = selectedComanda.comandaNumber;
             // Não limpar a comanda selecionada para permitir voltar para ela
             // setSelectedComanda(null);
-            props.navigation.navigate('Pagamento', { comandaNumber: comandaNum });
+            props.navigation.navigate('Pagamento', { 
+              comandaNumber: comandaNum,
+              returnScreen: 'ComandaGerenciamento' // Explicit origin to prevent stale params
+            });
           }}
         />
 
