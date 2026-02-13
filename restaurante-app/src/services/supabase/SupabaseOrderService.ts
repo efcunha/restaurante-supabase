@@ -6,6 +6,8 @@ import { isRetryableError } from '../../utils/errors';
 import { optimizedSupabaseClient } from '../optimization/OptimizedSupabaseClient';
 import { realTimeListenerManager } from '../optimization/RealTimeListenerManager';
 import type { Subscription } from '../optimization/RealTimeListenerManager';
+import { CompanySettingsService } from '../CompanySettingsService';
+import { getBusinessDayStart } from '../../utils/dateUtils';
 
 // Helper to get today's date key YYYY-MM-DD
 const getTodayKey = (): string => {
@@ -95,9 +97,15 @@ class SupabaseOrderService {
   async fetchActiveOrders(companyId: string, dateKey?: string): Promise<Order[]> {
     // Use optimized client with caching for active orders
     // We filter orders from the current day (starting at 00:00) to ensure tables are cleared when the day turns
-    // Use Start of Day (00:00:00) as cutoff
-    const cutoffDate = new Date();
-    cutoffDate.setHours(0, 0, 0, 0);
+    // Use configurable Business Day Cutoff (default 6 AM)
+    let cutoffDate = new Date();
+    try {
+      const settings = await CompanySettingsService.getSettings(companyId);
+      cutoffDate = getBusinessDayStart(settings.businessDayCutoff);
+    } catch (e) {
+      console.warn('Failed to load settings, using default 6 AM cutoff', e);
+      cutoffDate = getBusinessDayStart(6);
+    }
 
     try {
       // console.log('[SupabaseOrder] Building query for active orders...');
@@ -174,7 +182,7 @@ class SupabaseOrderService {
       .insert({
         company_id: companyId,
         client_name: order.client,
-        table_number: parseInt(order.mesa || '0'),
+        table_number: parseInt(order.mesa?.toString().replace(/\D/g, '') || '0'),
         comanda_number: parseInt(order.comandaNumber || '0'),
         items: order.items,
         observations: order.observations,
@@ -319,7 +327,7 @@ class SupabaseOrderService {
       .insert({
         company_id: companyId,
         client_name: order.client,
-        table_number: parseInt(order.mesa || '0'),
+        table_number: parseInt(order.mesa?.toString().replace(/\D/g, '') || '0'),
         comanda_number: parseInt(order.comandaNumber || '0'),
         items: order.items,
         observations: order.observations,
