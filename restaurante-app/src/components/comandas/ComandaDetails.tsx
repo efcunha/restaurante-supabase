@@ -21,6 +21,7 @@ interface ComandaDetailsProps {
 interface ItemResumo {
     nome: string;
     quantidade: number;
+    quantidadePaga: number;
     subtotal: number;
     precoUnit: number;
 }
@@ -42,6 +43,37 @@ export default function ComandaDetails({ comanda, onClose, onPay, onPrint, onCan
         try {
              
             comanda.pedidos.forEach((p: any) => {
+                // PRIORIDADE: Usar itemsWithStatus se disponível (Dados ricos de pagamento)
+                if (p.itemsWithStatus && p.itemsWithStatus.length > 0) {
+                     p.itemsWithStatus.forEach((item: any) => {
+                        const nomeCompleto = item.name;
+                        const qty = item.quantity || 1;
+                        const paidQty = item.paid_quantity || (item.paid ? qty : 0);
+                        
+                        // Calcular preço unitário (estimado via calcularPrecoItem se não tiver no objeto)
+                        // Idealmente deveria vir do backend, mas itemsWithStatus hoje não tem preço salvo
+                        const calc = calcularPrecoItem(nomeCompleto);
+                        const precoUnit = calc.precoUnitario;
+                        const subtotal = fixDecimal(qty * precoUnit);
+
+                        if (!map[nomeCompleto]) {
+                            map[nomeCompleto] = {
+                                nome: nomeCompleto,
+                                quantidade: 0,
+                                quantidadePaga: 0,
+                                subtotal: 0,
+                                precoUnit: precoUnit
+                            };
+                        }
+
+                        map[nomeCompleto].quantidade += qty;
+                        map[nomeCompleto].quantidadePaga += paidQty;
+                        map[nomeCompleto].subtotal = fixDecimal(map[nomeCompleto].subtotal + subtotal);
+                     });
+                     return; // Skip legacy logic for this order
+                }
+
+                // Lógica Legada (Fallback para pedidos antigos sem itemsWithStatus)
                 let items: string[] = p.items || p.itens || [];
                 if (!Array.isArray(items)) items = [];
 
@@ -75,6 +107,7 @@ export default function ComandaDetails({ comanda, onClose, onPay, onPrint, onCan
                             map[nomeCompleto] = {
                                 nome: nomeCompleto,
                                 quantidade: 0,
+                                quantidadePaga: 0,
                                 subtotal: 0,
                                 precoUnit: precoUnit
                             };
@@ -102,6 +135,7 @@ export default function ComandaDetails({ comanda, onClose, onPay, onPrint, onCan
                             map[nomeCompleto] = {
                                 nome: nomeCompleto,
                                 quantidade: 0,
+                                quantidadePaga: 0,
                                 subtotal: 0,
                                 precoUnit: precoUnit
                             };
@@ -120,6 +154,7 @@ export default function ComandaDetails({ comanda, onClose, onPay, onPrint, onCan
                             map[nomeCompleto] = {
                                 nome: nomeCompleto,
                                 quantidade: 0,
+                                quantidadePaga: 0,
                                 subtotal: 0,
                                 precoUnit: itemCalc.precoUnitario
                             };
@@ -207,7 +242,14 @@ export default function ComandaDetails({ comanda, onClose, onPay, onPrint, onCan
                             <View key={idx} style={styles.itemRow}>
                                 <View style={{ flex: 1 }}>
                                     <Text style={styles.itemName}>{item.nome}</Text>
-                                    <Text style={styles.itemQty}>{item.quantidade}x R$ {(Number(item.precoUnit) || 0).toFixed(2)}</Text>
+                                    <Text style={styles.itemQty}>
+                                        {item.quantidade}x R$ {(Number(item.precoUnit) || 0).toFixed(2)}
+                                        {item.quantidadePaga > 0 && (
+                                            <Text style={{color: colors.success, fontWeight: 'bold'}}>
+                                                {'  '}• {item.quantidadePaga} Pago(s)
+                                            </Text>
+                                        )}
+                                    </Text>
                                 </View>
                                 <Text style={styles.itemTotal}>R$ {(Number(item.subtotal) || 0).toFixed(2)}</Text>
                             </View>
