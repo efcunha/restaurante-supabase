@@ -216,14 +216,26 @@ class PagamentosService {
     if (paidItemsIds && paidItemsIds.length > 0) {
       this._marcarItensComoPagos(companyId, dateKey, comandaNumber, paidItemsIds)
         .catch(err => console.error('[PagamentosService] Erro ao marcar itens como pagos:', err));
+    } else if (novoSaldo <= 0.01) {
+       // 🔒 CRITICAL: Se o saldo for zerado e não foi pagamento por item específico (foi pagamento do total restante),
+       // devemos marcar TODOS os pedidos dessa comanda como pagos para liberar a mesa.
+       // Isso garante que a mesa fique "Livre" automaticamente.
+       try {
+         await supabase
+           .from('orders')
+           .update({ is_paid: true }) // Marca como pago
+           .eq('company_id', companyId)
+           .eq('comanda_number', String(comandaNumber))
+           .eq('date_key', dateKey)
+           .eq('is_paid', false); // Só atualiza os que não estavam pagos
+       } catch (e) {
+         console.error('[PagamentosService] Erro ao fechar pedidos da comanda:', e);
+       }
     }
 
     return { success: true };
   }
 
-  /**
-   * Atualiza o status 'paid' nos itens do pedido correspondente
-   */
   /**
    * Atualiza o status 'paid' nos itens do pedido correspondente
    * Suporta pagamento parcial de itens (ex: 2x Chopp -> Pagar 1)
@@ -286,9 +298,20 @@ class PagamentosService {
         });
 
         if (hasUpdates) {
+          // 🔒 CRITICAL: Verificar se TODOS os itens deste pedido agora estão pagos
+          const allItemsPaid = updatedItemsWithStatus.every((i: any) => i.paid === true);
+
+          const updatePayload: any = { items_with_status: updatedItemsWithStatus };
+          
+          // Se todos os itens foram pagos, marca o pedido inteiro como pago
+          // Isso libera a mesa se todos os pedidos estiverem pagos
+          if (allItemsPaid) {
+             updatePayload.is_paid = true;
+          }
+
           await supabase
             .from('orders')
-            .update({ items_with_status: updatedItemsWithStatus })
+            .update(updatePayload)
             .eq('id', order.id);
         }
       }
