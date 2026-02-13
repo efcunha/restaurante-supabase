@@ -84,29 +84,41 @@ export default function SplitPaymentModal({
              parsedPrice = calc.precoUnitario;
           }
 
-          // LÓGICA DE EXPLOSÃO DE ITENS (SPLIT)
-          const qty = item.quantity || 1;
+          let displayName = item.name || item.productId || 'Item sem nome';
+          let qty = 1;
+                
+          // 1. Check if we have explicit quantity from data model (New Way)
+          // @ts-ignore - quantity added to interface recently
+          if (item.quantity && typeof item.quantity === 'number' && item.quantity > 0) {
+              qty = item.quantity;
+          }
+          
+          // 2. Fallback: Parse from name if quantity is 1 (Legacy/Error recovery)
+          if (qty === 1) {
+              const calcName = calcularPrecoItem(displayName, menuItems);
+              if (calcName.quantidade > 1) {
+                  qty = calcName.quantidade;
+              }
+          }
+
+          // Clean name for display (remove "2x " prefix)
+          if (qty > 1) {
+              displayName = displayName.replace(/^\d+x?\s*/, '').trim();
+          }
+
+          // Determine how many are paid
           const paidQty = item.paid_quantity || (item.paid ? qty : 0);
 
-          // Criar uma entrada para CADA unidade do item
           for (let i = 0; i < qty; i++) {
              const isUnitPaid = i < paidQty;
              
-             // Sufixo para diferenciar cada unidade
-             // Se qty > 1, usamos _split_
-             // Se qty == 1, mantemos ID original para compatibilidade, ou usamos padrão unificado?
-             // Melhor usar padrão unificado se for split, mas para item único o ID original é mais seguro?
-             // Vamos usar ID original se qty=1, e _split_ se qty > 1 para facilitar
-             
              let uniqueId = item.id;
-             let displayName = item.name || item.productId || 'Item sem nome';
-             
+             let displayLabel = displayName;
+
              if (qty > 1) {
-                uniqueId = `${item.id}_split_${i}`; // ID que será detectado no Service
-                displayName = `${displayName} (${i + 1}/${qty})`;
+                uniqueId = `${item.id}_split_${i}`; // Unique ID for split item
+                displayLabel = `${displayName} (${i + 1}/${qty})`;
              } else {
-                // Se é item único mas já temos uniqueId vinda do map anterior, use-a. 
-                // Mas aqui estamos iterando itemsWithStatus originais.
                 uniqueId = item.id || `${order.id}-${Math.random()}`;
              }
 
@@ -117,7 +129,7 @@ export default function SplitPaymentModal({
                price: parsedPrice,
                unitPrice: parsedPrice,
                // @ts-ignore
-               name: displayName,
+               name: displayLabel,
                quantity: 1, // Visualmente é 1 unidade
                paid: isUnitPaid
              });
@@ -137,11 +149,6 @@ export default function SplitPaymentModal({
                  const calc = calcularPrecoItem(itemParam, menuItems); 
                  price = calc.precoUnitario; 
                  qtyLegacy = calc.quantidade;
-                 
-                 // Se for legacy string "2x Chopp", o calc já traz unitPrice de 1 unidade? 
-                 // Sim, calcularPrecoItem retorna precoUnitario e subtotal.
-                 // Mas a string "2x Chopp" é tratada como 1 linha visual.
-                 // Vamos tentar explodir também se possível, mas o ID é instável.
              } else {
                  name = itemParam.name;
                  price = itemParam.unitPrice || itemParam.price || 0;
@@ -152,20 +159,34 @@ export default function SplitPaymentModal({
                  qtyLegacy = itemParam.quantity || 1;
              }
              
-             // Simplificação para Legacy: Se for string, não explodimos visualmente pois não temos ID estável para rastrear partials
-             // Apenas itemsWithStatus (novos pedidos) suportarão divisão granular perfeita.
-             
-             items.push({
-               id: `legacy-${order.id}-${idx}`,
-               productId: 'unknown',
-               quantity: qtyLegacy, // Mostra quantidade original
-               subtotal: price * qtyLegacy,
-               name: name,
-               unitPrice: price,
-               orderId: order.id,
-               uniqueId: `legacy-${order.id}-${idx}`,
-               paid: (itemParam as any).paid
-             });
+             // CORREÇÃO: Explodir itens legados também para permitir seleção individual
+             for (let i = 0; i < qtyLegacy; i++) {
+                 let displayName = name;
+                 // Remover a quantidade do nome se vier do string parsing (ex: "2x Chopp")
+                 // O calcularPrecoItem já retorna nomeCompleto sem o "2x", mas aqui estamos usando "name = itemParam" direto no if string
+                 // Vamos corrigir isso p/ usar o nome limpo se for string
+                 
+                 if (typeof itemParam === 'string') {
+                      const calc = calcularPrecoItem(itemParam, menuItems);
+                      displayName = calc.nomeCompleto;
+                 }
+
+                 if (qtyLegacy > 1) {
+                     displayName = `${displayName} (${i + 1}/${qtyLegacy})`;
+                 }
+
+                 items.push({
+                   id: `legacy-${order.id}-${idx}-split-${i}`,
+                   productId: 'unknown',
+                   quantity: 1, // Visualmente é 1 unidade
+                   subtotal: price,
+                   name: displayName,
+                   unitPrice: price,
+                   orderId: order.id,
+                   uniqueId: `legacy-${order.id}-${idx}-split-${i}`,
+                   paid: (itemParam as any).paid
+                 });
+             }
          });
       }
     });
