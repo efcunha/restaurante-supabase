@@ -20,6 +20,7 @@ export interface Order {
   dateKey: string; // YYYY-MM-DD format
   status: OrderStatus;
   items: OrderItem[];
+  itemsWithStatus?: any[]; // Array com status para cozinha/pagamento
   totalAmount: number;
   subtotal: number;
   tax: number;
