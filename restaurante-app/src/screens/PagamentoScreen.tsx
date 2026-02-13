@@ -56,7 +56,41 @@ export default function PagamentoScreen({ route, navigation }: any) {
     if (route.params?.comandaNumber && comanda === String(route.params.comandaNumber)) {
       carregarDadosComanda();
     }
-  }, [comanda]);
+    
+    // 🔒 REALTIME: Subscribe to changes in Orders to reflect payment status instantly
+    // The user complained that items don't update as paid.
+    // This is because we were only fetching once.
+    if (user?.companyId && comanda) {
+        // Subscribe to Orders
+        const channelByComanda = supabase.channel(`orders-comanda-${comanda}`)
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'orders',
+              filter: `company_id=eq.${user.companyId}` 
+              // Note: We can't easily filter by comanda_number in realtime filter string if it's not a direct column or if types mismatch.
+              // But 'company_id' is safe. We will filter in callback.
+            },
+            (payload) => {
+              // Refresh if the order belongs to this comanda
+              // @ts-ignore
+              if (payload.new && String(payload.new.comanda_number) === String(comanda)) {
+                  console.log('[PagamentoScreen] Realtime update for Order in this Comanda');
+                  carregarDadosComanda();
+              } else if (payload.old && payload.eventType === 'DELETE') {
+                  carregarDadosComanda();
+              }
+            }
+          )
+          .subscribe();
+
+        return () => {
+            supabase.removeChannel(channelByComanda);
+        };
+    }
+  }, [comanda, user?.companyId]);
 
   const carregarSaldo = async () => {
     try {
@@ -260,16 +294,37 @@ export default function PagamentoScreen({ route, navigation }: any) {
       {orders.map((order, idx) => (
         <View key={order.id || idx} style={styles.orderItemContainer}>
           {order.itemsWithStatus ? (
-            order.itemsWithStatus.map((item: any, i: number) => (
-              <View key={i} style={styles.itemRow}>
-                <Text style={styles.itemText}>
-                  {item.quantity || 1}x {item.name || item.nome}
-                </Text>
-                <Text style={styles.itemPrice}>
-                  {item.price ? formatarMoeda(item.price) : '-'}
-                </Text>
-              </View>
-            ))
+            order.itemsWithStatus.map((item: any, i: number) => {
+              // @ts-ignore
+              const qty = item.quantity || 1;
+              // @ts-ignore
+              const paidQty = item.paid_quantity || (item.paid ? qty : 0);
+              const isFullyPaid = paidQty >= qty;
+              const isPartiallyPaid = paidQty > 0 && !isFullyPaid;
+
+              return (
+                <View key={i} style={styles.itemRow}>
+                  <View style={{flexDirection: 'row', alignItems: 'center', flex: 1}}>
+                      <Text style={[styles.itemText, isFullyPaid && {textDecorationLine: 'line-through', color: '#888'}]}>
+                        {qty}x {item.name || item.nome}
+                      </Text>
+                      {isPartiallyPaid ? (
+                          <Text style={{fontSize: 12, color: colors.success, marginLeft: 5}}>
+                              ({paidQty}/{qty} pago)
+                          </Text>
+                      ) : null}
+                      {isFullyPaid ? (
+                          <Text style={{fontSize: 12, color: colors.success, marginLeft: 5}}>
+                              (Pago)
+                          </Text>
+                      ) : null}
+                  </View>
+                  <Text style={[styles.itemPrice, isFullyPaid && {textDecorationLine: 'line-through', color: '#888'}]}>
+                    {item.price ? formatarMoeda(item.price) : (item.unitPrice ? formatarMoeda(item.unitPrice) : '-')}
+                  </Text>
+                </View>
+              );
+            })
           ) : (
             order.items && order.items.map((itemStr: string, i: number) => (
               <Text key={i} style={styles.itemTextSimple}>• {itemStr}</Text>
