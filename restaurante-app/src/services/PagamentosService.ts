@@ -4,6 +4,7 @@
  */
 import { supabase } from '../config/SupabaseConfig';
 import CaixaService from './CaixaService';
+import OrderService from './OrderService';
 import SyncService from './SyncService';
 import { Comanda } from '../types';
 
@@ -34,26 +35,42 @@ class PagamentosService {
       throw new Error('Lista de pedidos inválida');
     }
 
-    // OPTIMIZATION: Use single batch update instead of N queries
-    // This eliminates the N+1 pattern where we were doing:
-    // 1. SELECT for each order ID (N queries)
-    // 2. UPDATE for each order ID (N queries)
-    // Now we do: 1 UPDATE query for all orders
-    
-    const updateData: any = { is_paid: true };
-    if (formaPagamento) {
-      updateData.payment_method = formaPagamento;
-    }
-
-    const { error } = await supabase
+    // 1. Fetch orders to get current items_with_status
+    const { data: orders, error: fetchError } = await supabase
       .from('orders')
-      .update(updateData)
+      .select('*')
       .eq('company_id', companyId)
       .in('id', pedidosIds);
 
-    if (error) {
-      console.error('[PagamentosService] Error updating orders:', error);
-      throw new Error(`Failed to mark orders as paid: ${error.message}`);
+    if (fetchError || !orders) {
+       console.error('[PagamentosService] Error fetching orders for update:', fetchError);
+       throw new Error(`Falha ao buscar pedidos: ${fetchError?.message}`);
+    }
+
+    // 2. Update each order
+    for (const order of orders) {
+       const updatePayload: any = { 
+         is_paid: true,
+         payment_method: formaPagamento || order.payment_method
+       };
+
+       // Update items_with_status if it exists
+       if (order.items_with_status && order.items_with_status.length > 0) {
+         updatePayload.items_with_status = order.items_with_status.map((item: any) => ({
+           ...item,
+           paid: true,
+           paid_quantity: item.quantity // Mark full quantity as paid
+         }));
+       }
+
+       const { error: updateError } = await supabase
+         .from('orders')
+         .update(updatePayload)
+         .eq('id', order.id);
+
+       if (updateError) {
+         console.error(`[PagamentosService] Failed to mark order ${order.id} as paid:`, updateError);
+       }
     }
   }
 
@@ -131,9 +148,25 @@ class PagamentosService {
       .eq('comanda_number', String(comandaNumber))
       .eq('date_key', dateKey);
 
+    // 🔒 RECÁLCULO DE SEGURANÇA: Buscar total consumido real dos pedidos
+    // Isso corrige casos onde o campo total_consumed da comanda ficou desatualizado
+    const { data: ordersData } = await supabase
+      .from('orders')
+      .select('total_amount')
+      .eq('company_id', companyId)
+      .eq('comanda_number', String(comandaNumber)) // Ensure string match
+      .eq('date_key', dateKey)
+      .neq('status', 'cancelled');
+
+    const realTotalConsumed = ordersData?.reduce((sum, o) => sum + (Number(o.total_amount) || 0), 0) || 0;
+    
+    // Se houver discrepância significativa, usar o valor recalculado
+    // (Mas se o valor da comanda for maior, pode haver pedidos deletados? Melhor confiar nos pedidos ativos existentes)
+    const totalConsumidoFinal = realTotalConsumed > 0 ? realTotalConsumed : (comanda.total_consumed || 0);
+
     const totalPagoAnt = existingPayments?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
     const novoTotalPago = totalPagoAnt + valorNum;
-    const novoSaldo = Math.max(0, (comanda.total_consumed || 0) - novoTotalPago); // ✅ Supabase field name
+    const novoSaldo = Math.max(0, totalConsumidoFinal - novoTotalPago);
 
     // Build pagamentos_resumo (reused for both RPC and Fallback)
     const pagamentosResumoAtual = comanda.pagamentos_resumo || {};
@@ -249,6 +282,8 @@ class PagamentosService {
    */
   private async _marcarItensComoPagos(companyId: string, dateKey: string, comandaNumber: string | number, itemIds: string[]) {
     try {
+      console.log(`[PagamentosService] Marking items as paid. Comanda: ${comandaNumber}, Items: ${itemIds.length}`);
+      
       // 1. Buscar pedidos da comanda
       const { data: orders, error } = await supabase
         .from('orders')
@@ -257,47 +292,133 @@ class PagamentosService {
         .eq('date_key', dateKey)
         .eq('comanda_number', String(comandaNumber));
 
-      if (error || !orders) return;
+      if (error || !orders) {
+          console.error('[PagamentosService] Error fetching orders:', error);
+          return;
+      }
 
       // 2. Para cada pedido, verificar se tem itens a atualizar
       for (const order of orders) {
         let hasUpdates = false;
         
+        // Ensure items_with_status exists
+        let currentItems = order.items_with_status || [];
+        
+        console.log(`[PagamentosService] Processing order ${order.id}. Items: ${currentItems.length}. TargetIDs: ${JSON.stringify(itemIds)}`);
+
+        
+        if (currentItems.length === 0 && Array.isArray(order.items) && order.items.length > 0) {
+            console.log(`[PagamentosService] Backfilling items_with_status for order ${order.id}`);
+            currentItems = OrderService.generateItemsWithStatus(
+                order.items, 
+                order.id, 
+                String(order.comanda_number || ''), 
+                null
+            );
+        }
+
+        if (currentItems.length === 0) continue;
+
+        // 🔒 SELF-HEAL: Check for corrupted quantities (e.g. name "3x..." but quantity 1)
+        // This fixes orders that were backfilled incorrectly before the trim() fix
+        let dataHealed = false;
+        currentItems = currentItems.map((item: any) => {
+             const safeName = (item.name || '').trim();
+             const qtyMatch = safeName.match(/^(\d+)x?\s*/);
+             const parsedQty = qtyMatch ? parseInt(qtyMatch[1], 10) : 1;
+             
+             if (parsedQty > 1 && (item.quantity === 1 || !item.quantity)) {
+                 console.log(`[PagamentosService] Healing corrupted quantity for ${safeName}. ${item.quantity} -> ${parsedQty}`);
+                 dataHealed = true;
+                 return { ...item, quantity: parsedQty };
+             }
+             return item;
+        });
+
         // Atualizar items_with_status
-        const updatedItemsWithStatus = (order.items_with_status || []).map((item: any) => {
-          // Verificar se este item foi alvo de pagamento direto (ID exato)
-          const directMatch = itemIds.includes(item.id);
-          
-          // Verificar se foi alvo de pagamento parcial (ID com sufixo _split_)
-          // Formato esperado do ID parcial: "{itemId}_split_{index}"
-          const splitMatches = itemIds.filter(id => id.startsWith(`${item.id}_split_`));
+        // Atualizar items_with_status
+        const updatedItemsWithStatus = currentItems.map((item: any, itemIndex: number) => {
+          let directMatch = itemIds.includes(item.id);
+          let splitMatches = itemIds.filter(id => id.startsWith(`${item.id}_split_`));
+
+          // 🔒 ROBUST MATCHING: If exact match fails, try matching by Index/Order pattern
+          // This handles cases where comanda_number format differs ("2" vs "temp" vs "02")
+          if (!directMatch && splitMatches.length === 0) {
+             // Extract index from current item ID (or use loop index as fallback)
+             const indexMatch = item.id ? item.id.match(/-item-(\d+)$/) : null;
+             const index = indexMatch ? indexMatch[1] : String(itemIndex);
+             
+             // Define pattern: OrderID + "-comanda-" + ANY + "-item-" + Index
+             // Ex: 123-comanda-temp-item-0 matches 123-comanda-2-item-0
+             const orderPrefix = `${order.id}-comanda-`;
+             
+             // Find direct match by pattern
+             const flexibleDirect = itemIds.find(pid => 
+                 pid.startsWith(orderPrefix) && 
+                 pid.endsWith(`-item-${index}`)
+             );
+
+             if (flexibleDirect) {
+                 console.log(`[PagamentosService] Flexible Direct Match: ${item.id} matched with ${flexibleDirect}`);
+                 directMatch = true;
+             } else {
+                 // Find split matches by pattern
+                 const flexibleSplits = itemIds.filter(pid => 
+                     pid.startsWith(orderPrefix) && 
+                     pid.match(new RegExp(`-item-${index}_split_\\d+$`))
+                 );
+                 
+                 if (flexibleSplits.length > 0) {
+                     console.log(`[PagamentosService] Flexible Split Match: ${item.id} matched with ${flexibleSplits.length} items`);
+                     splitMatches = flexibleSplits;
+                 }
+             }
+          }
+
           const qtdPagaNestaTransacao = splitMatches.length;
 
+          // Se for pagamento DIRETO do item (sem split), marca tudo como pago
           if (directMatch) {
-            // Pagamento total do item (legado ou seleção completa)
+            // Pagamento total do item
             if (!item.paid) {
               hasUpdates = true;
+              console.log(`[PagamentosService] Marking FULL item as paid: ${item.name} (${item.id})`);
               return { 
                 ...item, 
                 paid: true,
                 paid_quantity: item.quantity // Garante que quantidade paga = total
               };
             }
-          } else if (qtdPagaNestaTransacao > 0) {
+          } 
+          
+          // Se houver pagamentos parciais (split nodes)
+          if (qtdPagaNestaTransacao > 0) {
             // Pagamento parcial
+            
+            // Calc current paid quantity safely
+            const currentPaidQtd = (typeof item.paid_quantity === 'number') 
+                ? item.paid_quantity 
+                : (item.paid ? (item.quantity || 1) : 0);
+            
+            const itemQty = item.quantity || 1;
+                
+            // Don't update if already fully paid
+            if (currentPaidQtd >= itemQty) return item;
+
             hasUpdates = true;
             
-            // Calcular nova quantidade paga
-            const currentPaidQtd = item.paid_quantity || (item.paid ? item.quantity : 0);
-            const newPaidQtd = Math.min(item.quantity, currentPaidQtd + qtdPagaNestaTransacao);
+            const newPaidQtd = Math.min(itemQty, currentPaidQtd + qtdPagaNestaTransacao);
             
             // Verificar se completou o pagamento do item
-            const isFullyPaid = newPaidQtd >= item.quantity;
+            const isFullyPaid = newPaidQtd >= itemQty;
+
+            console.log(`[PagamentosService] Marking PARTIAL item as paid: ${item.name}. OldQty: ${currentPaidQtd}, Added: ${qtdPagaNestaTransacao}, NewQty: ${newPaidQtd}, FullyPaid: ${isFullyPaid}`);
             
             return {
               ...item,
               paid: isFullyPaid,
-              paid_quantity: newPaidQtd
+              paid_quantity: newPaidQtd,
+              quantity: itemQty // Ensure quantity is set
             };
           }
           
@@ -311,15 +432,21 @@ class PagamentosService {
           const updatePayload: any = { items_with_status: updatedItemsWithStatus };
           
           // Se todos os itens foram pagos, marca o pedido inteiro como pago
-          // Isso libera a mesa se todos os pedidos estiverem pagos
           if (allItemsPaid) {
              updatePayload.is_paid = true;
+             console.log(`[PagamentosService] Order ${order.id} is now FULLY PAID.`);
           }
 
-          await supabase
+          const { error: updateError } = await supabase
             .from('orders')
             .update(updatePayload)
             .eq('id', order.id);
+            
+          if (updateError) {
+              console.error(`[PagamentosService] Failed to update order ${order.id}:`, updateError);
+          } else {
+              console.log(`[PagamentosService] Successfully updated order ${order.id} items.`);
+          }
         }
       }
     } catch (e) {

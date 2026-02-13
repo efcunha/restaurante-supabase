@@ -176,6 +176,65 @@ class OrderService {
   }
 
   /**
+   * Helper gera itemsWithStatus a partir de lista de strings
+   * Útil para criação e migração de pedidos legados
+   */
+  generateItemsWithStatus(items: string[], orderId: string, comanda: string, categoryMap: any = null): OrderItemStatus[] {
+      const nowISO = new Date().toISOString();
+      console.log(`[OrderService] Generating ItemsWithStatus for ${items.length} items (Backfill/Create)`);
+      
+      return items.map((itemName, index) => {
+          // Tentar encontrar a categoria
+          let category = 'outro'; // Default
+          
+          if (typeof itemName !== 'string') {
+              console.warn('[OrderService] Item name is not string:', itemName);
+              itemName = String(itemName || '');
+          }
+
+          if (categoryMap) {
+            // Limpar nome para busca (remover '2x ', trim, lowercase)
+            const cleanName = itemName.replace(/^\d+x?\s*/, '').replace(/\s*\(.*\)$/, '').trim().toLowerCase();
+
+            // Tentar encontrar no mapa
+            if (categoryMap[cleanName]) {
+              if (typeof categoryMap[cleanName] === 'string') {
+                category = categoryMap[cleanName];
+              } else if (categoryMap[cleanName].category) {
+                category = categoryMap[cleanName].category;
+              }
+            }
+          }
+
+          // DEBUG:
+          if (category === 'pizza' || itemName.toLowerCase().includes('pizza')) {
+            if (category === 'outro' && itemName.toLowerCase().includes('pizza')) {
+              category = 'pizza';
+            }
+          }
+
+          // Extract quantity
+          const safeName = itemName.trim();
+          const qtyMatch = safeName.match(/^(\d+)x?\s*/);
+          const quantity = qtyMatch ? parseInt(qtyMatch[1], 10) : 1;
+          
+          if (quantity > 1) {
+              console.log(`[OrderService] Parsed quantity ${quantity} for item: ${safeName}`);
+          }
+
+          return {
+            id: `${orderId}-comanda-${comanda || 'temp'}-item-${index}`,
+            name: itemName,
+            status: 'preparing',
+            checked: false,
+            timestamp: nowISO,
+            category: category,
+            quantity: quantity
+          };
+      });
+  }
+
+  /**
    * Cria um novo pedido
    * - Agora aceita categoryMap para enriquecer itens com categoria
    */
@@ -216,48 +275,7 @@ class OrderService {
       timeZone: 'America/Sao_Paulo'
     });
 
-    // Criar estrutura de itens com status individual
-    const itemsWithStatus: OrderItemStatus[] = items.map((itemName, index) => {
-      // Tentar encontrar a categoria
-      let category = 'outro'; // Default
-
-      if (categoryMap) {
-        // Limpar nome para busca (remover '2x ', trim, lowercase)
-        const cleanName = itemName.replace(/^\d+x?\s*/, '').replace(/\s*\(.*\)$/, '').trim().toLowerCase();
-
-        // Tentar encontrar no mapa
-        // O mapa pode ser direto (nome -> category) ou objeto (nome -> { category })
-        if (categoryMap[cleanName]) {
-          if (typeof categoryMap[cleanName] === 'string') {
-            category = categoryMap[cleanName];
-          } else if (categoryMap[cleanName].category) {
-            category = categoryMap[cleanName].category;
-          }
-        }
-      }
-
-      // DEBUG:
-      if (category === 'pizza' || itemName.toLowerCase().includes('pizza')) {
-        // Se a categoria ainda é 'outro' mas o nome tem 'pizza', force 'pizza'
-        if (category === 'outro' && itemName.toLowerCase().includes('pizza')) {
-          category = 'pizza';
-        }
-      }
-
-      // Extract quantity from item name "2x Chopp" or default to 1
-      const qtyMatch = itemName.match(/^(\d+)x?\s*/);
-      const quantity = qtyMatch ? parseInt(qtyMatch[1], 10) : 1;
-
-      return {
-        id: `${orderId}-comanda-${comanda || 'temp'}-item-${index}`,
-        name: itemName,
-        status: 'preparing', // preparing | ready
-        checked: false,
-        timestamp: nowISO,
-        category: category, // ✅ Nova propriedade para filtragem
-        quantity: quantity // ✅ Tracking quantity per split item
-      };
-    });
+    const itemsWithStatus = this.generateItemsWithStatus(items, orderId, comanda, categoryMap);
 
     const order: Order = {
       id: orderId,

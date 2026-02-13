@@ -2,7 +2,7 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useOrders } from '../context/OrderContext';
 import OrderService from '../services/OrderService';
@@ -53,7 +53,14 @@ export default function ComandaGerenciamentoScreen(props: any) {
   // @ts-ignore
   const searchComanda = props.route?.params?.searchComanda;
   
+  // Force refresh when returning with a specific comanda to search
   React.useEffect(() => {
+    if (searchComanda) {
+      carregarComandas(true);
+    }
+  }, [searchComanda]);
+
+  useEffect(() => {
     if (searchComanda && comandasAbertas.length > 0) {
       const found = comandasAbertas.find((c: any) => 
         String(c.comandaNumber) === String(searchComanda)
@@ -65,6 +72,23 @@ export default function ComandaGerenciamentoScreen(props: any) {
       }
     }
   }, [searchComanda, comandasAbertas]);
+
+  // Sync selectedComanda with real-time updates
+  React.useEffect(() => {
+    if (selectedComanda && comandasAbertas.length > 0) {
+        // Find the updated version of the currently selected comanda
+        const updatedComanda = comandasAbertas.find((c: any) => 
+            c.id === selectedComanda.id || c.comandaNumber === selectedComanda.comandaNumber
+        );
+        
+        // If found and different, update it
+        // We use JSON stringify for a deep comparison to avoid infinite loops if object ref changes but content is same
+        if (updatedComanda && JSON.stringify(updatedComanda) !== JSON.stringify(selectedComanda)) {
+            // console.log('Syncing selectedComanda with fresh data');
+            setSelectedComanda(updatedComanda);
+        }
+    }
+  }, [comandasAbertas, selectedComanda]);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
