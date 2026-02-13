@@ -14,6 +14,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { useOrders } from '../context/OrderContext';
 import TransferModal from '../components/TransferModal';
+import { calcularPrecoItem } from '../utils/orderCalculator';
 
 interface Props {
   visible: boolean;
@@ -173,19 +174,118 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
 
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Itens do Pedido</Text>
-                {order.items.map((item: string, index: number) => (
-                  <View key={index} style={styles.itemRow}>
-                    <Text style={styles.itemBullet}>*</Text>
-                    <Text style={styles.itemText}>{item}</Text>
-                  </View>
-                ))}
+                {/* Render itemsWithStatus if available (Rich Data) */}
+                {order.itemsWithStatus && order.itemsWithStatus.length > 0 ? (
+                    order.itemsWithStatus.map((item: any, index: number) => {
+                       const qty = item.quantity || 1;
+                       const paidQty = item.paid_quantity || (item.paid ? qty : 0);
+                       const isFullyPaid = paidQty >= qty;
+                       const isPartiallyPaid = paidQty > 0 && !isFullyPaid;
+                       
+                       return (
+                          <View key={item.id || index} style={styles.itemRow}>
+                            <Text style={[styles.itemBullet, isFullyPaid && styles.itemPaidBullet]}>
+                                {isFullyPaid ? '✓' : '*'}
+                            </Text>
+                            <View style={{flex: 1}}>
+                                <Text style={[styles.itemText, isFullyPaid && styles.itemPaidText]}>
+                                    {item.name}
+                                </Text>
+                                {isPartiallyPaid && (
+                                    <Text style={styles.itemSubText}>
+                                        {paidQty}/{qty} Pago(s)
+                                    </Text>
+                                )}
+                                {isFullyPaid && (
+                                     <Text style={styles.itemSubText}>Pago</Text>
+                                )}
+                            </View>
+                          </View>
+                       );
+                    })
+                ) : (
+                    Array.isArray(order.items) && order.items.map((item: string, index: number) => (
+                      <View key={index} style={styles.itemRow}>
+                        <Text style={styles.itemBullet}>*</Text>
+                        <Text style={styles.itemText}>{String(item)}</Text>
+                      </View>
+                    ))
+                )}
               </View>
 
               <View style={styles.section}>
                 <View style={styles.totalRow}>
-                  <Text style={styles.totalLabel}>Total do Pedido:</Text>
-                  <Text style={styles.totalValue}>{formatarMoeda(order.totalPrice)}</Text>
+                   <View>
+                      <Text style={styles.totalLabel}>Total do Pedido:</Text>
+                      {/* Show paid items summary if needed, but Total do Pedido usually means Grand Total */}
+                   </View>
+                   <Text style={styles.totalValue}>{formatarMoeda(order.totalPrice)}</Text>
                 </View>
+                
+                {/* Show Remaining Balance if any payment exists */}
+                {(() => {
+                    const items = order.itemsWithStatus || [];
+                    
+                    // 1. Calculate paid amount based on ITEMS (Physical/Logical Status)
+                    let paidAmountItems = 0;
+                    if (items.length > 0) {
+                        items.forEach((item: any) => {
+                            // Calculate price dynamically since it's not in itemsWithStatus
+                            const calc = calcularPrecoItem(item.name);
+                            const unitPrice = calc.precoUnitario;
+                            
+                            const qty = item.quantity || 1;
+                            const paidQty = item.paid_quantity || (item.paid ? qty : 0);
+                            
+                            paidAmountItems += (paidQty * unitPrice);
+                        });
+                    } else if (order.isPago) {
+                        paidAmountItems = order.totalPrice;
+                    }
+
+                    // 2. Check for Discrepancies if this order belongs to a Comanda
+                    // If the Order is part of a Comanda, we might want to warn the user if 
+                    // the financial status doesn't match the item status (due to bugs or manual payments).
+                    // However, 'PedidoDetalhesModal' is Order-centric.
+                    
+                    // The user complains about "Restante a Pagar" being wrong.
+                    // If the Comanda is fully paid, the Order IS Paid financially, even if items aren't marked.
+                    
+                    const isOrderPaidFinancially = order.isPago; // From DB 'is_paid' field
+                    
+                    let displayPaid = paidAmountItems;
+                    let displayRemaining = Math.max(0, (order.totalPrice || 0) - displayPaid);
+                    
+                    // Override if Order is marked as paid at the header level
+                    if (isOrderPaidFinancially && displayRemaining > 0) {
+                        displayPaid = order.totalPrice || 0;
+                        displayRemaining = 0;
+                    }
+
+                    // Only show if there's a difference or if partially paid
+                    if (displayPaid > 0 && displayPaid < (order.totalPrice || 0)) {
+                        return (
+                            <>
+                                <View style={[styles.totalRow, { marginTop: 5, backgroundColor: 'transparent', paddingVertical: 0 }]}>
+                                   <Text style={[styles.totalLabel, { fontSize: 14, color: '#4CAF50' }]}>Pago (Itens):</Text>
+                                   <Text style={[styles.totalValue, { fontSize: 16, color: '#4CAF50' }]}>{formatarMoeda(displayPaid)}</Text>
+                                </View>
+                                <View style={[styles.totalRow, { marginTop: 5, borderTopWidth: 1, borderColor: '#ddd' }]}>
+                                   <Text style={[styles.totalLabel, { color: '#8B2F2F' }]}>Restante a Pagar:</Text>
+                                   <Text style={[styles.totalValue, { color: '#8B2F2F' }]}>{formatarMoeda(displayRemaining)}</Text>
+                                </View>
+                            </>
+                        );
+                    } else if (isOrderPaidFinancially || (displayPaid >= (order.totalPrice || 0) && (order.totalPrice || 0) > 0)) {
+                         return (
+                            <View style={[styles.totalRow, { marginTop: 5, backgroundColor: '#E8F5E9' }]}>
+                               <Text style={[styles.totalLabel, { color: '#4CAF50' }]}>PEDIDO PAGO</Text>
+                               <Text style={[styles.totalValue, { color: '#4CAF50' }]}>✓</Text>
+                            </View>
+                         );
+                    }
+                    return null;
+                })()}
               </View>
 
               <View style={styles.section}>
@@ -493,5 +593,17 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#856404',
     textAlign: 'center',
+  },
+  itemPaidText: {
+    textDecorationLine: 'line-through',
+    color: '#999',
+  },
+  itemPaidBullet: {
+    color: '#4CAF50',
+  },
+  itemSubText: {
+    fontSize: 12,
+    color: '#4CAF50',
+    fontWeight: '600',
   },
 });

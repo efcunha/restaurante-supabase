@@ -51,6 +51,10 @@ export default function SplitPaymentModal({
   useEffect(() => {
     if (visible) {
       if (initialMode) setMode(initialMode);
+      // Reset selections when opening to prevent stale styling
+      setSelectedItemIds([]);
+      setTotalSelected(0);
+      
       calculatePessoas();
       // Carregar itens dependentemente do menu estar carregado
       if (!loadingMenu) {
@@ -171,20 +175,24 @@ export default function SplitPaymentModal({
                       displayName = calc.nomeCompleto;
                  }
 
+                  const baseId = `${order.id}-comanda-${order.comandaNumber || 'temp'}-item-${idx}`; 
+                 let uniqueId = baseId;
+
                  if (qtyLegacy > 1) {
                      displayName = `${displayName} (${i + 1}/${qtyLegacy})`;
+                     uniqueId = `${baseId}_split_${i}`;
                  }
 
                  items.push({
-                   id: `legacy-${order.id}-${idx}-split-${i}`,
+                   id: baseId,
                    productId: 'unknown',
                    quantity: 1, // Visualmente é 1 unidade
                    subtotal: price,
                    name: displayName,
                    unitPrice: price,
                    orderId: order.id,
-                   uniqueId: `legacy-${order.id}-${idx}-split-${i}`,
-                   paid: (itemParam as any).paid
+                   uniqueId: uniqueId,
+                   paid: false // Legacy items start as unpaid
                  });
              }
          });

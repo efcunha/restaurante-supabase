@@ -9,6 +9,7 @@ import { getTodayKey } from '../utils/dateUtils';
 import { supabase } from '../config/SupabaseConfig';
 import SplitPaymentModal from '../components/SplitPaymentModal';
 import { colors } from '../theme/colors';
+import { calcularPrecoItem } from '../utils/orderCalculator';
 
 // Usar função centralizada para consistência de data local
 const todayKey = getTodayKey;
@@ -61,8 +62,9 @@ export default function PagamentoScreen({ route, navigation }: any) {
     try {
       if (!user?.companyId || !comanda) return;
       const dateKey = todayKey();
-      
-      const { data, error } = await supabase
+
+      // 1. Fetch Comanda (Financial Data)
+      const { data: comandaData, error: comandaError } = await supabase
         .from('comandas')
         .select('*')
         .eq('company_id', user.companyId)
@@ -70,26 +72,85 @@ export default function PagamentoScreen({ route, navigation }: any) {
         .eq('comanda_number', comanda)
         .single();
 
-      if (error || !data) throw new Error('Comanda não encontrada');
+      if (comandaError || !comandaData) throw new Error('Comanda não encontrada');
+
+      // 2. Fetch Orders (Operational Data - Items)
+      const { data: ordersData, error: ordersError } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('company_id', user.companyId)
+        .eq('date_key', dateKey)
+        .eq('comanda_number', comanda)
+        .not('status', 'eq', 'cancelled');
+
+      // 3. Calculate "Operational Paid" (Sum of Paid Items)
+      let totalItemsAllocated = 0; 
+      let totalConsumedReal = 0;   
+      
+      if (ordersData) {
+          ordersData.forEach((o: any) => {
+              totalConsumedReal += (Number(o.total_amount) || 0);
+              
+              const items = o.items_with_status || [];
+              
+              if (items.length > 0) {
+                  items.forEach((item: any) => {
+                     // @ts-ignore
+                     const qty = item.quantity || 1;
+                     // @ts-ignore
+                     const paidQty = item.paid_quantity || (item.paid ? qty : 0);
+                     
+                     // Get Price
+                     // @ts-ignore
+                     let price = item.unitPrice || item.price || 0;
+                     if (!price && item.name) {
+                         const calc = calcularPrecoItem(item.name);
+                         price = calc.precoUnitario;
+                     }
+                     
+                     // Fallback check
+                     if (price <= 0 && o.total_amount > 0 && o.items && o.items.length > 0) {
+                        price = o.total_amount / o.items.length;
+                     }
+                     
+                     if (price > 0) {
+                         totalItemsAllocated += (paidQty * price);
+                     }
+                  });
+              } else if (o.is_paid) {
+                  totalItemsAllocated += (Number(o.total_amount) || 0);
+              }
+          });
+      }
+
+      // 4. Reconciliation Logic
+      const financialTotal = Number(comandaData.total_consumed) || 0;
+      const financialPaid = Number(comandaData.total_paid) || 0;
+      
+      const realTotal = totalConsumedReal > 0 ? totalConsumedReal : financialTotal;
+      
+      const displayPaid = totalItemsAllocated;
+      const displayOpen = Math.max(0, realTotal - displayPaid);
 
       setSaldo({
-        total: data.total_consumed || 0,
-        pago: data.total_paid || 0,
-        aberto: data.open_balance || 0,
+        total: realTotal,
+        pago: displayPaid,
+        aberto: displayOpen,
       });
 
-      // Pre-fill value with open balance
-      if (data.open_balance > 0) {
-        setValor(data.open_balance.toFixed(2));
+      if (displayOpen > 0) {
+        setValor(displayOpen.toFixed(2));
       }
-    } catch (e: any) { Alert.alert('Erro', e.message); }
+    } catch (e: any) { 
+        console.error('Erro ao carregar saldo:', e);
+        Alert.alert('Erro', e.message); 
+    }
   };
 
   const carregarDadosComanda = async () => {
     if (!user?.companyId || !comanda) return;
     await Promise.all([carregarSaldo(), carregarPedidos()]);
   };
-
   const carregarPedidos = async () => {
     try {
       const dateKey = todayKey();
@@ -103,10 +164,12 @@ export default function PagamentoScreen({ route, navigation }: any) {
 
       if (!error && data) {
          const mappedOrders = data.map((o: any) => ({
+           ...o, // Pass all DB fields (comanda_number, etc)
            id: o.id,
            items: o.items,
            itemsWithStatus: o.items_with_status,
-           totalPrice: o.total_amount
+           totalPrice: o.total_amount,
+           comandaNumber: o.comanda_number
          }));
          setOrders(mappedOrders);
       }
