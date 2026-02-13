@@ -244,13 +244,18 @@ class OrderService {
         }
       }
 
+      // Extract quantity from item name "2x Chopp" or default to 1
+      const qtyMatch = itemName.match(/^(\d+)x?\s*/);
+      const quantity = qtyMatch ? parseInt(qtyMatch[1], 10) : 1;
+
       return {
         id: `${orderId}-comanda-${comanda || 'temp'}-item-${index}`,
         name: itemName,
         status: 'preparing', // preparing | ready
         checked: false,
         timestamp: nowISO,
-        category: category // ✅ Nova propriedade para filtragem
+        category: category, // ✅ Nova propriedade para filtragem
+        quantity: quantity // ✅ Tracking quantity per split item
       };
     });
 
