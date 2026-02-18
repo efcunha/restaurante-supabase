@@ -16,7 +16,7 @@ import { supabase } from '../config/SupabaseConfig';
 import { useOrders } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
 import TransferModal from '../components/TransferModal';
-import { calcularPrecoItem } from '../utils/orderCalculator';
+import { calcularPrecoItem, MenuItem } from '../utils/orderCalculator';
 
 import { getTodayKey } from '../utils/dateUtils';
 
@@ -55,6 +55,7 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
   const [editedClient, setEditedClient] = useState('');
   const [editedObservations, setEditedObservations] = useState('');
   const [comandaData, setComandaData] = useState<any>(null);
+  const [cardapioDin, setCardapioDin] = useState<MenuItem[]>([]);
 
   const order = getOrderById(orderId);
 
@@ -87,6 +88,27 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
           fetchComanda();
       }
   }, [visible, orderId]);
+
+  // Fetch Products for accurate pricing
+  React.useEffect(() => {
+    if (visible && user?.companyId) {
+      const fetchProducts = async () => {
+        const { data } = await supabase
+          .from('products')
+          .select('name, price')
+          .eq('company_id', user.companyId)
+          .eq('available', true);
+        
+        if (data) {
+          setCardapioDin(data.map(p => ({
+            name: p.name,
+            price: Number(p.price)
+          })));
+        }
+      };
+      fetchProducts();
+    }
+  }, [visible, user?.companyId]);
 
   const formatDate = (isoString: any) => {
     if (!isoString) return '--';
@@ -264,9 +286,25 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
                     let paidAmountItems = 0;
                     if (items.length > 0) {
                         items.forEach((item: any) => {
-                            // Calculate price dynamically since it's not in itemsWithStatus
-                            const calc = calcularPrecoItem(item.name);
-                            const unitPrice = calc.precoUnitario;
+                            // Tentar obter preço do priceMap primeiro
+                            let unitPrice = 0;
+                            let found = false;
+
+                            if (order.priceMap) {
+                                const cleanName = item.name.replace(/^\d+x?\s*/, '').replace(/\s*\(.*\)$/, '').trim().toLowerCase();
+                                if (order.priceMap[item.name] !== undefined) {
+                                  unitPrice = order.priceMap[item.name] / (item.quantity || 1);
+                                  found = true;
+                                } else if (order.priceMap[cleanName] !== undefined) {
+                                  unitPrice = order.priceMap[cleanName];
+                                  found = true;
+                                }
+                            }
+
+                            if (!found) {
+                                const calc = calcularPrecoItem(item.name, cardapioDin);
+                                unitPrice = calc.precoUnitario;
+                            }
                             
                             const qty = item.quantity || 1;
                             const paidQty = item.paid_quantity || (item.paid ? qty : 0);
@@ -322,9 +360,9 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
                 })()}
               </View>
 
-                {/* --- COMANDA BALANCE INFO (NEW) --- */}
-                {/* Shows partial payments that are not allocated to specific items yet */}
-                {comandaData && comandaData.total_paid > 0 && (
+              {/* --- COMANDA BALANCE INFO (NEW) --- */}
+              {/* Shows partial payments that are not allocated to specific items yet */}
+              {!!comandaData && comandaData.total_paid > 0 && (
                    <View style={[styles.section, { marginTop: 10, padding: 10, backgroundColor: '#F9F9F9', borderRadius: 8 }]}>
                       <Text style={[styles.sectionTitle, { fontSize: 14, marginBottom: 5 }]}>Status Financeiro da Comanda</Text>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>

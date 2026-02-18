@@ -105,6 +105,7 @@ export default function MapaMesasScreen({ navigation, route }: any) {
             const active = orders.filter(o =>
                 o.status !== 'cancelada' &&
                 o.status !== 'cancelled' &&
+                o.comandaStatus !== 'cancelada' &&
                 !o.isPago
             );
             setActiveOrders(active);
@@ -125,7 +126,7 @@ export default function MapaMesasScreen({ navigation, route }: any) {
             // Normalize numbers to avoid "01" !== "1" mismatch
 // Helper for robust table matching (ignores "Mesa", leading zeros, etc)
             const isActiveOrder = (o: Order) => {
-                 if (o.isPago || o.status === 'cancelled' || o.status === 'cancelada') return false;
+                 if (o.isPago || o.status === 'cancelled' || o.status === 'cancelada' || o.comandaStatus === 'cancelada') return false;
                  
                  const orderMesaStr = String(o.mesa || '').replace(/\D/g, ''); // "Mesa 1" -> "1"
                  const tableNumStr = String(table.number || '').replace(/\D/g, ''); // "01" -> "1"

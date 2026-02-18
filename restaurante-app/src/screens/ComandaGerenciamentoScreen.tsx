@@ -46,7 +46,8 @@ export default function ComandaGerenciamentoScreen(props: any) {
     comandasAbertas, comandasPagas, comandasCanceladas,
     selectedComanda, setSelectedComanda,
     isRefreshing, carregarComandas,
-    isLoadingMore, onLoadMore
+    isLoadingMore, onLoadMore,
+    cardapioDin
   } = useComandaManagement();
 
   // Auto-open comanda from params
@@ -113,7 +114,7 @@ export default function ComandaGerenciamentoScreen(props: any) {
         if (!Array.isArray(itemsArray)) itemsArray = [];
 
         itemsArray.forEach((itemText: string) => {
-          const calc = calcularPrecoItem(itemText);
+          const calc = calcularPrecoItem(itemText, cardapioDin);
           const nome = calc.nomeCompleto;
 
           if (!mapItens[nome]) {
@@ -252,6 +253,7 @@ export default function ComandaGerenciamentoScreen(props: any) {
             const { error } = await supabase
               .from('orders')
               .update({
+                status: 'cancelada',
                 comanda_status: 'cancelada',
                 cancelado_em: new Date().toISOString(),
                 cancelado_por: user?.nome || 'Admin'
@@ -319,7 +321,7 @@ export default function ComandaGerenciamentoScreen(props: any) {
         let itemsArray = p.items || p.itens || [];
         if (!Array.isArray(itemsArray)) itemsArray = [];
         itemsArray.forEach((itemText: string) => {
-          const calc = calcularPrecoItem(itemText);
+          const calc = calcularPrecoItem(itemText, cardapioDin);
           const nome = calc.nomeCompleto;
           if (!mapItens[nome]) {
             mapItens[nome] = { nome: nome, quantidade: 0, valor: calc.precoUnitario, observacao: '' };
@@ -364,6 +366,7 @@ export default function ComandaGerenciamentoScreen(props: any) {
       <>
         <ComandaDetails
           comanda={selectedComanda}
+          cardapioDin={cardapioDin}
           onClose={() => setSelectedComanda(null)}
           onPay={(comanda: any, forma: string, valor: number) => handlePayment(comanda, forma, valor)}
           onCancel={handleCancel}

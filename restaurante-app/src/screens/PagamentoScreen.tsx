@@ -9,7 +9,7 @@ import { getTodayKey } from '../utils/dateUtils';
 import { supabase } from '../config/SupabaseConfig';
 import SplitPaymentModal from '../components/SplitPaymentModal';
 import { colors } from '../theme/colors';
-import { calcularPrecoItem } from '../utils/orderCalculator';
+import { calcularPrecoItem, MenuItem } from '../utils/orderCalculator';
 
 // Usar função centralizada para consistência de data local
 const todayKey = getTodayKey;
@@ -38,6 +38,7 @@ export default function PagamentoScreen({ route, navigation }: any) {
   const [isSplitModalVisible, setIsSplitModalVisible] = useState(false);
   const [orders, setOrders] = useState<any[]>([]);
   const [paidItemsIds, setPaidItemsIds] = useState<string[]>([]);
+  const [cardapioDin, setCardapioDin] = useState<MenuItem[]>([]);
 
   const openSplitModal = (mode: 'pessoas' | 'itens') => {
     setSplitInitialMode(mode);
@@ -117,6 +118,19 @@ export default function PagamentoScreen({ route, navigation }: any) {
         .eq('comanda_number', comanda)
         .not('status', 'eq', 'cancelled');
 
+      // 2.5 Fetch Products for accurate pricing
+      const { data: produtos } = await supabase
+        .from('products')
+        .select('name, price')
+        .eq('company_id', user.companyId)
+        .eq('available', true);
+      
+      const currentCardapio = (produtos || []).map(p => ({
+        name: p.name,
+        price: Number(p.price)
+      }));
+      setCardapioDin(currentCardapio);
+
       // 3. Calculate "Operational Paid" (Sum of Paid Items)
       let totalItemsAllocated = 0; 
       let totalConsumedReal = 0;   
@@ -138,7 +152,7 @@ export default function PagamentoScreen({ route, navigation }: any) {
                      // @ts-ignore
                      let price = item.unitPrice || item.price || 0;
                      if (!price && item.name) {
-                         const calc = calcularPrecoItem(item.name);
+                         const calc = calcularPrecoItem(item.name, currentCardapio);
                          price = calc.precoUnitario;
                      }
                      
@@ -510,6 +524,7 @@ export default function PagamentoScreen({ route, navigation }: any) {
         totalAmount={saldo?.aberto || 0}
         orders={orders}
         initialMode={splitInitialMode}
+        menuItems={cardapioDin}
       />
       
       <StatusBar style="light" />
