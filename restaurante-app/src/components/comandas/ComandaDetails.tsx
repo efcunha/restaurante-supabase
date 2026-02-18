@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { colors } from '../../theme/colors';
-import { fixDecimal } from '../../utils/orderCalculator';
+import { fixDecimal, MenuItem } from '../../utils/orderCalculator';
 import { Comanda } from '../../types';
 
 // Declare módulo para avoid error se o arquivo não tiver tipos
@@ -9,6 +9,7 @@ import { calcularPrecoItem } from '../../utils/orderCalculator';
 
 interface ComandaDetailsProps {
     comanda: Comanda;
+    cardapioDin?: MenuItem[];
     onClose: () => void;
     onPay: (comanda: Comanda, method: string, value: number) => void;
     onPrint?: () => void;
@@ -26,7 +27,7 @@ interface ItemResumo {
     precoUnit: number;
 }
 
-export default function ComandaDetails({ comanda, onClose, onPay, onPrint, onCancel, onAddItems, onShare, onFullPayment }: ComandaDetailsProps) {
+export default function ComandaDetails({ comanda, cardapioDin, onClose, onPay, onPrint, onCancel, onAddItems, onShare, onFullPayment }: ComandaDetailsProps) {
     // Calcular Saldo devedor (with safe defaults)
     const saldoDevedor = useMemo(() => {
         const totalConsumido = Number(comanda.totalConsumido) || 0;
@@ -50,10 +51,26 @@ export default function ComandaDetails({ comanda, onClose, onPay, onPrint, onCan
                         const qty = item.quantity || 1;
                         const paidQty = item.paid_quantity || (item.paid ? qty : 0);
                         
-                        // Calcular preço unitário (estimado via calcularPrecoItem se não tiver no objeto)
-                        // Idealmente deveria vir do backend, mas itemsWithStatus hoje não tem preço salvo
-                        const calc = calcularPrecoItem(nomeCompleto);
-                        const precoUnit = calc.precoUnitario;
+                        // Tentar obter preço do priceMap primeiro para consistência com o que foi gravado
+                        let precoUnit = 0;
+                        let found = false;
+
+                        if (p.priceMap) {
+                            const cleanName = nomeCompleto.replace(/^\d+x?\s*/, '').replace(/\s*\(.*\)$/, '').trim().toLowerCase();
+                            if (p.priceMap[nomeCompleto] !== undefined) {
+                                precoUnit = p.priceMap[nomeCompleto] / qty;
+                                found = true;
+                            } else if (p.priceMap[cleanName] !== undefined) {
+                                precoUnit = p.priceMap[cleanName];
+                                found = true;
+                            }
+                        }
+
+                        if (!found) {
+                            const calc = calcularPrecoItem(nomeCompleto, cardapioDin);
+                            precoUnit = calc.precoUnitario;
+                        }
+
                         const subtotal = fixDecimal(qty * precoUnit);
 
                         if (!map[nomeCompleto]) {
@@ -83,7 +100,7 @@ export default function ComandaDetails({ comanda, onClose, onPay, onPrint, onCan
                 // Tenta usar priceMap se disponível (Preço Individuais)
                 if (p.priceMap) {
                     items.forEach((itemText: string) => {
-                        const itemCalc = calcularPrecoItem(itemText);
+                        const itemCalc = calcularPrecoItem(itemText, cardapioDin);
                         const nomeCompleto = itemCalc.nomeCompleto;
                         const quantidade = itemCalc.quantidade;
 
@@ -91,17 +108,31 @@ export default function ComandaDetails({ comanda, onClose, onPay, onPrint, onCan
                         const cleanName = itemText.replace(/^\d+x?\s*/, '').replace(/\s*\(.*\)$/, '').trim().toLowerCase();
 
                         let precoTotalItem = 0;
+                        let foundInMap = false;
 
                         // Tenta chaves diversas: nome original, lower, etc.
-                        if (p.priceMap[itemText] !== undefined) precoTotalItem = p.priceMap[itemText];
-                        else if (p.priceMap[cleanName] !== undefined) precoTotalItem = p.priceMap[cleanName];
-                        else if (p.priceMap[nomeCompleto] !== undefined) precoTotalItem = p.priceMap[nomeCompleto];
-                        else {
-                            // Fallback: se não achar no map, usa média
-                            precoTotalItem = (pedidoTotal / (items.length || 1));
+                        if (p.priceMap[itemText] !== undefined) {
+                            precoTotalItem = p.priceMap[itemText];
+                            foundInMap = true;
+                        } else if (p.priceMap[cleanName] !== undefined) {
+                            precoTotalItem = p.priceMap[cleanName];
+                            foundInMap = true;
+                        } else if (p.priceMap[nomeCompleto] !== undefined) {
+                            precoTotalItem = p.priceMap[nomeCompleto];
+                            foundInMap = true;
                         }
 
-                        const precoUnit = precoTotalItem / quantidade;
+                        if (!foundInMap) {
+                            // Tenta calcular via calculadora antes da média
+                            if (itemCalc.precoUnitario > 0) {
+                                precoTotalItem = itemCalc.subtotal;
+                            } else {
+                                // Fallback final: média
+                                precoTotalItem = fixDecimal(pedidoTotal / (items.length || 1));
+                            }
+                        }
+
+                        const precoUnit = fixDecimal(precoTotalItem / (quantidade || 1));
 
                         if (!map[nomeCompleto]) {
                             map[nomeCompleto] = {
@@ -117,19 +148,24 @@ export default function ComandaDetails({ comanda, onClose, onPay, onPrint, onCan
                         map[nomeCompleto].subtotal = fixDecimal(map[nomeCompleto].subtotal + precoTotalItem);
                     });
                 }
-                // Se o pedido tem preço total mas SEM priceMap, distribuir entre os itens (Média)
+                // Se o pedido tem preço total mas SEM priceMap, tentar resolver via calculadora
                 else if (pedidoTotal > 0) {
                     const numItens = items.length || 1;
-                    const precoMedioPorItem = pedidoTotal / numItens;
+                    const precoMedioPorItem = fixDecimal(pedidoTotal / numItens);
 
                     items.forEach((itemText: string) => {
-                        const itemCalc = calcularPrecoItem(itemText);
+                        const itemCalc = calcularPrecoItem(itemText, cardapioDin);
                         const nomeCompleto = itemCalc.nomeCompleto;
                         const quantidade = itemCalc.quantidade;
 
-                        // Usar preço médio do pedido para cada item
-                        const precoUnit = precoMedioPorItem / quantidade;
-                        const subtotal = precoMedioPorItem;
+                        // Se a calculadora resolveu o preço, usa ele. Se não, usa a média.
+                        let subtotalItem = precoMedioPorItem;
+                        let precoUnit = fixDecimal(precoMedioPorItem / (quantidade || 1));
+
+                        if (itemCalc.precoUnitario > 0) {
+                            subtotalItem = itemCalc.subtotal;
+                            precoUnit = itemCalc.precoUnitario;
+                        }
 
                         if (!map[nomeCompleto]) {
                             map[nomeCompleto] = {
@@ -142,12 +178,13 @@ export default function ComandaDetails({ comanda, onClose, onPay, onPrint, onCan
                         }
 
                         map[nomeCompleto].quantidade += quantidade;
-                        map[nomeCompleto].subtotal = fixDecimal(map[nomeCompleto].subtotal + subtotal);
+                        map[nomeCompleto].subtotal = fixDecimal(map[nomeCompleto].subtotal + subtotalItem);
                     });
-                } else {
+                }
+ else {
                     // Fallback: tentar calcular usando o cardápio estático
                     items.forEach((itemText: string) => {
-                        const itemCalc = calcularPrecoItem(itemText);
+                        const itemCalc = calcularPrecoItem(itemText, cardapioDin);
                         const nomeCompleto = itemCalc.nomeCompleto;
 
                         if (!map[nomeCompleto]) {
