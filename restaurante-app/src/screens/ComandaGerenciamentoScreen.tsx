@@ -79,7 +79,8 @@ export default function ComandaGerenciamentoScreen(props: any) {
     if (selectedComanda && comandasAbertas.length > 0) {
         // Find the updated version of the currently selected comanda
         const updatedComanda = comandasAbertas.find((c: any) => 
-            c.id === selectedComanda.id || c.comandaNumber === selectedComanda.comandaNumber
+            (selectedComanda.id && c.id === selectedComanda.id) || 
+            String(c.comandaNumber) === String(selectedComanda.comandaNumber)
         );
         
         // If found and different, update it
@@ -365,6 +366,7 @@ export default function ComandaGerenciamentoScreen(props: any) {
     return (
       <>
         <ComandaDetails
+          key={selectedComanda.comandaNumber} // Force re-mount to avoid stale data
           comanda={selectedComanda}
           cardapioDin={cardapioDin}
           onClose={() => setSelectedComanda(null)}
