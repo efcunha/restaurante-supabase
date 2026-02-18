@@ -31,6 +31,8 @@ export interface ItemCalculation {
 export interface Order {
   items?: string[];
   totalPrice?: number;
+  priceMap?: Record<string, number>;
+  [key: string]: any;
 }
 
 // ============================================================================
@@ -118,28 +120,9 @@ export const calcularPrecoItem = (itemText: string, cardapioDin?: MenuItem[]): I
       if (produto) {
          precoUnit = produto.price;
       }
-
-      // Overrides de tamanho (Regra de Negócio Específica da Aplicação)
-      // Isso é necessário se o produto no banco for genérico "Chopp" com preço X, mas o pedido especificar tamanho
-      // Se o banco tiver "Chopp 400ml" explicitamente, o find acima deve pegar.
-      // Se não, caímos aqui.
       
-      if (nomeNormalized.includes('chopp') && !produto?.name.toLowerCase().includes('400') && !produto?.name.toLowerCase().includes('500')) {
-          if (nomeNormalized.includes('500')) {
-             precoUnit = 15.00;
-          } else if (nomeNormalized.includes('400') || !nomeNormalized.includes('300')) { // Default chopp
-             precoUnit = 12.00;
-          }
-      }
-      
-      if (nomeNormalized.includes('caldo') || nomeNormalized.includes('caldinho')) {
-           if (nomeNormalized.includes('300ml')) {
-             precoUnit = 15.00; 
-           } else if (nomeNormalized.includes('180ml')) {
-             precoUnit = 10.00;
-           }
-           // Se não especificou tamanho, usa o do produto encontrado ou mantém o que achou
-      }
+      // Removed hardcoded size overrides for Chopp/Caldo.
+      // The system should now rely on exact matches or manual priceMap entries.
       
       // Fallback final se ainda for 0 e tivermos estático (apenas segurança)
       if (precoUnit === 0) {
@@ -173,18 +156,87 @@ export const calcularPrecoItem = (itemText: string, cardapioDin?: MenuItem[]): I
 /**
  * Calcular total de um pedido
  */
-export const calcularTotalPedido = (pedido: Order): number => {
+export const calcularTotalPedido = (pedido: Order, cardapioDin?: MenuItem[]): number => {
   if (!pedido.items || !Array.isArray(pedido.items)) {
     return Number(pedido.totalPrice) || 0;
   }
 
   let total = 0;
   pedido.items.forEach(itemText => {
-    const itemCalc = calcularPrecoItem(itemText);
-    total += itemCalc.subtotal;
+    let itemPrice = 0;
+    let found = false;
+
+    if (pedido.priceMap) {
+      const cleanName = itemText.replace(/^\d+x?\s*/, '').replace(/\s*\(.*\)$/, '').trim().toLowerCase();
+      const qtyMatch = itemText.match(/^(\d+)x?\s*/);
+      const quantity = qtyMatch ? parseInt(qtyMatch[1], 10) : 1;
+
+      if (pedido.priceMap[itemText] !== undefined) {
+        itemPrice = pedido.priceMap[itemText];
+        found = true;
+      } else if (pedido.priceMap[cleanName] !== undefined) {
+        itemPrice = pedido.priceMap[cleanName] * quantity;
+        found = true;
+      }
+    }
+
+    if (!found) {
+      const itemCalc = calcularPrecoItem(itemText, cardapioDin);
+      itemPrice = itemCalc.subtotal;
+    }
+
+    total += itemPrice;
   });
 
   return fixDecimal(total);
+};
+
+/**
+ * Calcular o valor total JÁ PAGO de um pedido
+ * (Baseado no itemsWithStatus e pagamentos parciais)
+ */
+export const calcularPagoPedido = (pedido: any, cardapioDin?: MenuItem[]): number => {
+    // 1. Se o pedido está marcado como pago no cabeçalho, retorna o total dele
+    if (pedido.is_paid === true || pedido.is_paid === 'true' || pedido.is_paid === 1 || pedido.isPago === true) {
+        return Number(pedido.totalPrice || pedido.total_amount) || 0;
+    }
+
+    // 2. Se tem items_with_status, soma os itens pagos individualmente
+    const items = pedido.items_with_status || pedido.itemsWithStatus || [];
+    if (items.length > 0) {
+        let totalPago = 0;
+        items.forEach((item: any) => {
+            const qty = item.quantity || 1;
+            const paidQty = item.paid_quantity || (item.paid ? qty : 0);
+            
+            if (paidQty > 0) {
+                // Tenta obter preço do priceMap primeiro para consistência
+                let unitPrice = 0;
+                let found = false;
+
+                if (pedido.priceMap) {
+                    const cleanName = item.name.replace(/^\d+x?\s*/, '').replace(/\s*\(.*\)$/, '').trim().toLowerCase();
+                    if (pedido.priceMap[item.name] !== undefined) {
+                      unitPrice = pedido.priceMap[item.name] / qty;
+                      found = true;
+                    } else if (pedido.priceMap[cleanName] !== undefined) {
+                      unitPrice = pedido.priceMap[cleanName];
+                      found = true;
+                    }
+                }
+
+                if (!found) {
+                    const calc = calcularPrecoItem(item.name, cardapioDin);
+                    unitPrice = calc.precoUnitario;
+                }
+
+                totalPago += (paidQty * unitPrice);
+            }
+        });
+        return fixDecimal(totalPago);
+    }
+
+    return 0;
 };
 
 // ============================================================================
@@ -195,5 +247,6 @@ export default {
   CARDAPIO_STATIC,
   fixDecimal,
   calcularPrecoItem,
-  calcularTotalPedido
+  calcularTotalPedido,
+  calcularPagoPedido
 };

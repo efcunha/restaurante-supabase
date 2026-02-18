@@ -178,12 +178,29 @@ class OrderService {
   /**
    * Helper gera itemsWithStatus a partir de lista de strings
    * Útil para criação e migração de pedidos legados
+   * ATUALIZAÇÃO: Agora expande itens com quantidade > 1 (ex: "4x Item" -> 4 entradas de "1x Item")
    */
   generateItemsWithStatus(items: string[], orderId: string, comanda: string, categoryMap: any = null): OrderItemStatus[] {
       const nowISO = new Date().toISOString();
-      console.log(`[OrderService] Generating ItemsWithStatus for ${items.length} items (Backfill/Create)`);
       
-      return items.map((itemName, index) => {
+      // 1. Expandir itens (ex: "4x Caldo" -> ["1x Caldo", "1x Caldo", "1x Caldo", "1x Caldo"])
+      const expandedItems: string[] = [];
+      items.forEach(item => {
+        const qty = this.extractQuantity(item);
+        const itemNameWithoutQty = item.replace(/^\d+x?\s*/, '').trim();
+        
+        if (qty > 1) {
+          for (let i = 0; i < qty; i++) {
+            expandedItems.push(`1x ${itemNameWithoutQty}`);
+          }
+        } else {
+          expandedItems.push(item);
+        }
+      });
+
+      console.log(`[OrderService] Generating ItemsWithStatus for ${expandedItems.length} items (from ${items.length} original)`);
+      
+      return expandedItems.map((itemName, index) => {
           // Tentar encontrar a categoria
           let category = 'outro'; // Default
           
@@ -193,7 +210,7 @@ class OrderService {
           }
 
           if (categoryMap) {
-            // Limpar nome para busca (remover '2x ', trim, lowercase)
+            // Limpar nome para busca (remover '1x ', trim, lowercase)
             const cleanName = itemName.replace(/^\d+x?\s*/, '').replace(/\s*\(.*\)$/, '').trim().toLowerCase();
 
             // Tentar encontrar no mapa
@@ -213,15 +230,7 @@ class OrderService {
             }
           }
 
-          // Extract quantity
-          const safeName = itemName.trim();
-          const qtyMatch = safeName.match(/^(\d+)x?\s*/);
-          const quantity = qtyMatch ? parseInt(qtyMatch[1], 10) : 1;
-          
-          if (quantity > 1) {
-              console.log(`[OrderService] Parsed quantity ${quantity} for item: ${safeName}`);
-          }
-
+          // Para itens expandidos, qty sempre será 1 aqui
           return {
             id: `${orderId}-comanda-${comanda || 'temp'}-item-${index}`,
             name: itemName,
@@ -229,7 +238,7 @@ class OrderService {
             checked: false,
             timestamp: nowISO,
             category: category,
-            quantity: quantity
+            quantity: 1
           };
       });
   }
@@ -276,13 +285,16 @@ class OrderService {
     });
 
     const itemsWithStatus = this.generateItemsWithStatus(items, orderId, comanda, categoryMap);
+    
+    // ATUALIZAÇÃO: Sincronizar order.items com a lista expandida para consistência visual/persistência
+    const itemsFinal = itemsWithStatus.map(i => i.name);
 
     const order: Order = {
       id: orderId,
       client: clientName,
       mesa: mesa?.trim() || '', // Mesa opcional
       comandaNumber: comanda,
-      items,
+      items: itemsFinal,
       itemsWithStatus, // Array de objetos com status individual
       observations,
       status,
