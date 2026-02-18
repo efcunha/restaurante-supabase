@@ -34,7 +34,7 @@ export default function CaixaFechamentoScreen() {
     if (!user?.companyId) return;
     try {
       const { data, error } = await supabase
-        .from('settings')
+        .from('app_settings')
         .select('*')
         .eq('company_id', user.companyId)
         .eq('key', 'financeiro')
