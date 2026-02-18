@@ -9,14 +9,10 @@ import { RealtimeChannel } from '@supabase/supabase-js';
 import offlineQueueService from './OfflineQueueService';
 import { isRetryableError } from '../utils/errors';
 
+import { getLocalDateKey } from '../utils/dateUtils';
+
 // Helper to get today's date key YYYY-MM-DD
-const getTodayKey = (): string => {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
+const getTodayKey = (): string => getLocalDateKey();
 
 class OrderFirestoreService {
   private _subscription: RealtimeChannel | null = null;
@@ -31,6 +27,7 @@ class OrderFirestoreService {
       mesa: row.table_number?.toString() || '',
       comandaNumber: row.comanda_number?.toString() || '',
       items: row.items || [],
+      priceMap: row.price_map || {},
       itemsWithStatus: row.items_with_status || [],
       observations: row.observations || '',
       status: row.status,
@@ -46,6 +43,7 @@ class OrderFirestoreService {
       timeInChurrasqueira: row.time_in_churrasqueira,
       timeInMontagem: row.time_in_montagem,
       timeInProntos: row.time_in_prontos,
+      comandaStatus: row.comanda_status,
     } as Order;
   }
 
@@ -100,6 +98,8 @@ class OrderFirestoreService {
       // .eq('date_key', dateKey) // REMOVED: strict day partitioning hides orders after midnight
       .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()) // Use 24h window
       .not('status', 'eq', 'cancelled')
+      .not('status', 'eq', 'cancelada')
+      .or('comanda_status.is.null,comanda_status.neq.cancelada')
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -127,7 +127,9 @@ class OrderFirestoreService {
         total_amount: order.totalPrice,
         is_paid: false,
         created_by: order.createdBy,
-        date_key: getTodayKey()
+        date_key: getTodayKey(),
+        price_map: order.priceMap || {},
+        items_with_status: order.itemsWithStatus || []
       })
       .select()
       .single();
@@ -252,6 +254,7 @@ class OrderFirestoreService {
     if (updates.timeInProntos) payload.time_in_prontos = updates.timeInProntos;
     if (updates.deliveredAt) payload.delivered_at = updates.deliveredAt;
     if (updates.itemsWithStatus) payload.items_with_status = updates.itemsWithStatus;
+    if (updates.priceMap) payload.price_map = updates.priceMap;
     
     // Helper fields regarding who moved the order
     if ((updates as any).movidoParaMontagemPor) payload.movido_para_montagem_por = (updates as any).movidoParaMontagemPor;
@@ -279,7 +282,8 @@ class OrderFirestoreService {
         total_amount: order.totalPrice,
         is_paid: order.isPago || false,
         created_by: order.createdBy,
-        date_key: getTodayKey()
+        date_key: getTodayKey(),
+        price_map: order.priceMap || {}
       })
       .select()
       .single();

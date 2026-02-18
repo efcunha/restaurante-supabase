@@ -4,7 +4,7 @@ import { supabase } from '../config/SupabaseConfig';
 import { useAuth } from '../context/AuthContext';
 import { getTodayKey } from '../utils/dateUtils'; // Migrated from FirebaseOptimizations
 import { normalizeComandaNumber } from '../services/OrderFirestoreService';
-import { calcularTotalPedido, fixDecimal } from '../utils/orderCalculator';
+import { calcularTotalPedido, calcularPagoPedido, fixDecimal } from '../utils/orderCalculator';
 
 export function useComandaManagement() {
     const { user } = useAuth();
@@ -16,6 +16,7 @@ export function useComandaManagement() {
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [hasMore, setHasMore] = useState({ pagas: true, canceladas: true });
+    const [cardapioDin, setCardapioDin] = useState([]);
 
     const reloadTimeout = useRef(null);
     const realtimeSubscription = useRef(null);
@@ -71,6 +72,20 @@ export function useComandaManagement() {
                 .eq('date_key', diaHoje);
 
             if (pedidosError) throw pedidosError;
+            
+            // 🔄 NEW: Fetch product list for accurate dynamic calculations (avoiding hardcode)
+            const { data: produtos, error: produtosError } = await supabase
+                .from('products')
+                .select('name, price')
+                .eq('company_id', user.companyId)
+                .eq('available', true);
+            
+            const cardapioList = (produtos || []).map(p => ({
+                name: p.name,
+                price: Number(p.price)
+            }));
+            
+            setCardapioDin(cardapioList);
 
             // Agrupar pedidos por comanda
             const comandasMap = {};
@@ -124,6 +139,8 @@ export function useComandaManagement() {
                     ...order,
                     totalPrice: order.total_amount || 0,
                     isPago: order.is_paid || false,
+                    priceMap: order.price_map || {},
+                    itemsWithStatus: order.items_with_status || []
                 };
 
                 comandasMap[comandaNum].pedidos.push(mappedOrder);
@@ -163,6 +180,10 @@ export function useComandaManagement() {
                     c.mesa = data.mesa || c.mesa;
                     c.abertaPorNome = data.opened_by_name || c.criadoPorNome;
 
+                    // Support for synced financial data
+                    c.totalPaidMetadata = data.total_paid || 0;
+                    c.totalConsumidoMetadata = data.total_consumed || 0;
+
                     if (data.cliente && data.cliente !== 'Não informado' && data.cliente !== 'Cliente Balcão') {
                         c.cliente = data.cliente;
                     }
@@ -176,32 +197,52 @@ export function useComandaManagement() {
             const todasComandas = Object.values(comandasMap);
 
             todasComandas.forEach(comanda => {
-                let totalConsumidoReal = 0;
-                let totalPagoReal = 0;
+                let totalConsumidoPedidos = 0;
+                let totalPagoPedidos = 0;
 
                 if (comanda.pedidos) {
                     comanda.pedidos.forEach(pedido => {
-                        const dbPrice = Number(pedido.total_amount) || 0; // ✅ FIXED: total_amount not total_price
-                        const totalPedidoRecalculado = calcularTotalPedido(pedido);
-                        const valor = dbPrice > 0 ? dbPrice : totalPedidoRecalculado;
+                        const dbPrice = Number(pedido.totalPrice || pedido.total_amount) || 0;
+                        const totalPedidoRecalculado = calcularTotalPedido(pedido, cardapioList);
+                        const totalPagoRecalculado = calcularPagoPedido(pedido, cardapioList);
                         
-                        totalConsumidoReal += valor;
-                        if (pedido.is_pago === true || pedido.is_pago === 'true' || pedido.is_pago === 1) {
-                            totalPagoReal += valor;
-                        }
+                        // Priorizar o recalculado se tiver itens (mais preciso após correção de preços)
+                        // Senão usar o valor do banco
+                        const valor = (pedido.items && pedido.items.length > 0 && totalPedidoRecalculado > 0) 
+                            ? totalPedidoRecalculado 
+                            : dbPrice;
+                        
+                        totalConsumidoPedidos += valor;
+                        totalPagoPedidos += totalPagoRecalculado;
                     });
                 }
 
-                comanda.totalConsumido = fixDecimal(totalConsumidoReal);
-                comanda.totalPago = fixDecimal(totalPagoReal);
+                // Prioritize calculation from orders over comanda metadata 
+                // UNLESS metadata is significantly higher (maybe due to manual charges not in orders)
+                const metadataTotal = Number(comanda.totalConsumidoMetadata || 0);
+                comanda.totalConsumido = fixDecimal(totalConsumidoPedidos > 0 ? totalConsumidoPedidos : metadataTotal);
+                
+                // totalPago must include both specific item payments AND general comanda payments
+                const totalPagoFinanceiro = Number(comanda.totalPaidMetadata || 0);
+                comanda.totalPago = fixDecimal(Math.max(totalPagoPedidos, totalPagoFinanceiro));
+                
                 comanda.saldoAberto = fixDecimal(Math.max(0, comanda.totalConsumido - comanda.totalPago));
+
+                // 🔄 Auto-sync metadata if different from items sum
+                // We only do this if we have orders, to avoid overwriting metadata with 0 if orders didn't load
+                if (totalConsumidoPedidos > 0 && Math.abs(totalConsumidoPedidos - metadataTotal) > 0.01) {
+                    console.log(`[useComandaManagement] 🔄 Syncing Comanda ${comanda.comandaNumber} total: ${metadataTotal} -> ${totalConsumidoPedidos}`);
+                    import('../services/ComandasService').then(m => {
+                        m.default.sincronizarTotalComanda(user.companyId, comanda.comandaNumber, totalConsumidoPedidos);
+                    });
+                }
 
                 const todosPagos = comanda.pedidos && comanda.pedidos.length > 0 && 
                     comanda.pedidos
                         .filter(p => p.status !== 'cancelled' && p.status !== 'cancelada')
-                        .every(p => (p.is_pago === true || p.is_pago === 'true' || p.is_pago === 1));
+                        .every(p => p.is_paid === true || p.is_paid === 'true' || p.is_paid === 1 || p.isPago === true);
 
-                if (comanda.status === 'aberta' && todosPagos) {
+                if (comanda.status === 'aberta' && (todosPagos || comanda.saldoAberto <= 0.01)) {
                     comanda.status = 'paga';
                 }
             });
@@ -380,6 +421,7 @@ export function useComandaManagement() {
         isLoadingMore,
         hasMore,
         carregarComandas,
-        onLoadMore: () => carregarComandas(false, true)
+        onLoadMore: () => carregarComandas(false, true),
+        cardapioDin
     };
 }

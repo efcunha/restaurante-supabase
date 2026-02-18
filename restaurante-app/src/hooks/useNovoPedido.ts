@@ -53,6 +53,7 @@ interface UseNovoPedidoReturn {
     addPizzaToOrder: (sizeName: string, flavors: Product[], selectedBorda?: any, selectedAdicionais?: any[]) => void;
     carregarCardapio: () => Promise<void>;
     extras: any[];
+    resetForm: () => void;
 }
 
 export function useNovoPedido(): UseNovoPedidoReturn {
@@ -583,6 +584,17 @@ export function useNovoPedido(): UseNovoPedidoReturn {
         showToast('Pizza adicionada!', 'success');
     }, [showToast]);
 
+    const resetForm = useCallback(() => {
+        console.log('🧹 [useNovoPedido] Resetting form state...');
+        setClientName('');
+        setMesa('');
+        setTableId('');
+        setWaiterId('');
+        setObservations('');
+        setProdutos({});
+        setCustomPrices({});
+    }, []);
+
     const handleSubmit = async () => {
         if (selectedItems.length === 0) {
             showToast('Adicione pelo menos um item ao pedido', 'warning');
@@ -674,12 +686,11 @@ export function useNovoPedido(): UseNovoPedidoReturn {
 
             showToast(`Pedido criado! Comanda ${novoNumeroComanda}`, 'success');
 
-            setClientName('');
-            setMesa('');
-            setTableId('');
-            setWaiterId('');
-            setObservations('');
-            setProdutos({});
+            showToast(`Pedido criado! Comanda ${novoNumeroComanda}`, 'success');
+
+            resetForm();
+
+            // --- ESTOQUE INTEGRATION ---
 
             // --- ESTOQUE INTEGRATION ---
             // Processar baixa de estoque em background (sem bloquear UI)
@@ -771,6 +782,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
         pizzaConfig,
         addPizzaToOrder,
         carregarCardapio,
-        extras
+        extras,
+        resetForm
     };
 }

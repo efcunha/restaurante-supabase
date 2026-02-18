@@ -115,7 +115,7 @@ export default function AddItemsModal({ visible, onClose, onConfirm, comandaNumb
                 <View style={styles.modalContainer}>
                     <View style={styles.header}>
                         <Text style={styles.title}>➕ Adicionar Itens</Text>
-                        <TouchableOpacity onPress={onClose}>
+                        <TouchableOpacity onPress={() => { setItensSelecionados([]); onClose(); }}>
                             <Text style={styles.closeBtn}>×</Text>
                         </TouchableOpacity>
                     </View>

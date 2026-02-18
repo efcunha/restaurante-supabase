@@ -31,7 +31,7 @@ class SupabaseOrderService {
       mesa: row.table_number?.toString() || '',
       comandaNumber: row.comanda_number?.toString() || '',
       items: row.items || [],
-      itemsWithStatus: [], // Supabase version handles status in items or separate table? Assuming items JSONB for now
+      itemsWithStatus: row.items_with_status || [],
       observations: row.observations || '',
       status: row.status,
       dateKey: row.date_key,
@@ -40,8 +40,10 @@ class SupabaseOrderService {
       horarioCriacao: new Date(row.created_at).toLocaleTimeString().slice(0, 5),
       totalPrice: row.total_amount,
       isPago: row.is_paid,
+      priceMap: row.price_map || {},
       createdBy: row.created_by,
-      createdByName: '', // Join logic would be needed here or stored in metadata
+      createdByName: '', 
+      comandaStatus: row.comanda_status,
       // Timestamps
       deliveredAt: null, // Delivery time tracked at item level in items_with_status
       timeInChurrasqueira: null, // Custom fields need schema extension if critical
@@ -108,36 +110,18 @@ class SupabaseOrderService {
     }
 
     try {
-      // console.log('[SupabaseOrder] Building query for active orders...');
-      const query = optimizedSupabaseClient
+      // Use standard client for complex filtering (with OR)
+      // OptimizedQueryBuilder currently lacks some complex methods like .or()
+      const { data, error } = await supabase
         .from('orders')
         .select('*')
         .eq('company_id', companyId)
-        .gte('created_at', cutoffDate.toISOString()) // STRICTLY today's orders
-
+        .gte('created_at', cutoffDate.toISOString())
         .not('status', 'eq', 'cancelled')
+        .not('status', 'eq', 'cancelada')
+        .or('comanda_status.is.null,comanda_status.neq.cancelada')
         .order('created_at', { ascending: false })
         .limit(100);
-
-      // Check if query is valid
-      if (typeof query.execute !== 'function') {
-        console.error('[SupabaseOrder] CRITICAL: query.execute happens to not be a function. Using standard client fallback.');
-
-        // Fallback to standard client
-        const { data, error } = await supabase
-          .from('orders')
-          .select('*')
-          .eq('company_id', companyId)
-          .gte('created_at', cutoffDate.toISOString())
-          .not('status', 'eq', 'cancelled')
-          .order('created_at', { ascending: false })
-          .limit(100);
-
-        if (error) throw error;
-        return (data || []).map(this.mapRowToOrder);
-      }
-
-      const { data, error } = await query.execute();
 
       if (error) {
         console.error('[SupabaseOrder] Fetch error:', error);
@@ -147,28 +131,8 @@ class SupabaseOrderService {
       console.log(`[SupabaseOrder] fetchActiveOrders found ${data?.length} orders`);
       return (data || []).map(this.mapRowToOrder);
     } catch (err: any) {
-      console.error('[SupabaseOrder] Exception in fetchActiveOrders, trying fallback:', err);
-
-      // Fallback in catch block as well
-      try {
-        const { data, error } = await supabase
-          .from('orders')
-          .select('*')
-          .eq('company_id', companyId)
-          .gte('created_at', cutoffDate.toISOString())
-          .not('status', 'eq', 'cancelled')
-          .order('created_at', { ascending: false })
-          .limit(100);
-
-        if (error) {
-          console.error('[SupabaseOrder] Fallback fetch error:', error);
-          return [];
-        }
-        return (data || []).map(this.mapRowToOrder);
-      } catch (fallbackErr) {
-        console.error('[SupabaseOrder] Fallback failed:', fallbackErr);
-        return [];
-      }
+      console.error('[SupabaseOrder] Exception in fetchActiveOrders:', err);
+      return [];
     }
   }
 
@@ -191,7 +155,10 @@ class SupabaseOrderService {
         total_amount: order.totalPrice,
         is_paid: false,
         created_by: order.createdBy,
-        date_key: getTodayKey()
+        date_key: getTodayKey(),
+        comanda_status: 'aberta',
+        price_map: order.priceMap || {},
+        items_with_status: order.itemsWithStatus || []
       })
       .select()
       .single();
@@ -275,6 +242,8 @@ class SupabaseOrderService {
     if (updates.client) payload.client_name = updates.client;
     if (updates.items) payload.items = updates.items;
     if (updates.totalPrice) payload.total_amount = updates.totalPrice;
+    if (updates.priceMap) payload.price_map = updates.priceMap;
+    if (updates.itemsWithStatus) payload.items_with_status = updates.itemsWithStatus;
 
     const operation = async () => {
       const { error } = await supabase
@@ -336,7 +305,10 @@ class SupabaseOrderService {
         total_amount: order.totalPrice,
         is_paid: order.isPago || false,
         created_by: order.createdBy,
-        date_key: getTodayKey()
+        date_key: getTodayKey(),
+        comanda_status: 'aberta',
+        price_map: order.priceMap || {},
+        items_with_status: order.itemsWithStatus || []
       })
       .select()
       .single();

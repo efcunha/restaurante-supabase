@@ -12,7 +12,7 @@ import {
   ActivityIndicator
 } from 'react-native';
 import { Order, OrderItem } from '../types/models';
-import { calcularPrecoItem } from '../utils/orderCalculator';
+import { calcularPrecoItem, MenuItem } from '../utils/orderCalculator';
 import { useMenu } from '../hooks/useMenu';
 
 interface SplitPaymentModalProps {
@@ -22,6 +22,7 @@ interface SplitPaymentModalProps {
   totalAmount: number;
   orders: Order[];
   initialMode?: SplitMode;
+  menuItems?: MenuItem[];
 }
 
 type SplitMode = 'pessoas' | 'itens';
@@ -32,12 +33,14 @@ export default function SplitPaymentModal({
   onConfirmPayment,
   totalAmount,
   orders,
-  initialMode = 'pessoas'
+  initialMode = 'pessoas',
+  menuItems: passedMenuItems
 }: SplitPaymentModalProps) {
   const [mode, setMode] = useState<SplitMode>(initialMode);
   
-  // Hook de Menu para preços dinâmicos
-  const { allItems: menuItems, loading: loadingMenu } = useMenu();
+  // Hook de Menu para preços dinâmicos (fallback se não passar via prop)
+  const { allItems: internalMenuItems, loading: loadingMenu } = useMenu();
+  const currentMenuItems = passedMenuItems || internalMenuItems;
 
   // States for "Por Pessoas"
   const [numPessoas, setNumPessoas] = useState('2');
@@ -57,11 +60,11 @@ export default function SplitPaymentModal({
       
       calculatePessoas();
       // Carregar itens dependentemente do menu estar carregado
-      if (!loadingMenu) {
+      if (passedMenuItems || !loadingMenu) {
           loadItems();
       }
     }
-  }, [visible, totalAmount, numPessoas, orders, initialMode, loadingMenu, menuItems]);
+  }, [visible, totalAmount, numPessoas, orders, initialMode, loadingMenu, internalMenuItems, passedMenuItems]);
 
   const calculatePessoas = () => {
     const n = parseInt(numPessoas) || 1;
@@ -83,8 +86,8 @@ export default function SplitPaymentModal({
           if ((!parsedPrice || parsedPrice === 0) && (item.name || item.productId)) {
              // @ts-ignore
              const nomeItem = item.name || item.productId;
-             // Passamos o menuItems (dinâmico) para a função de cálculo
-             const calc = calcularPrecoItem(nomeItem, menuItems);
+             // Passamos o currentMenuItems (dinâmico) para a função de cálculo
+             const calc = calcularPrecoItem(nomeItem, currentMenuItems);
              parsedPrice = calc.precoUnitario;
           }
 
@@ -99,7 +102,7 @@ export default function SplitPaymentModal({
           
           // 2. Fallback: Parse from name if quantity is 1 (Legacy/Error recovery)
           if (qty === 1) {
-              const calcName = calcularPrecoItem(displayName, menuItems);
+              const calcName = calcularPrecoItem(displayName, currentMenuItems);
               if (calcName.quantidade > 1) {
                   qty = calcName.quantidade;
               }
@@ -150,14 +153,14 @@ export default function SplitPaymentModal({
              
              if (typeof itemParam === 'string') {
                  name = itemParam;
-                 const calc = calcularPrecoItem(itemParam, menuItems); 
+                 const calc = calcularPrecoItem(itemParam, currentMenuItems); 
                  price = calc.precoUnitario; 
                  qtyLegacy = calc.quantidade;
              } else {
                  name = itemParam.name;
                  price = itemParam.unitPrice || itemParam.price || 0;
                  if ((!price || price === 0) && name) {
-                    const calc = calcularPrecoItem(name, menuItems);
+                    const calc = calcularPrecoItem(name, currentMenuItems);
                     price = calc.precoUnitario;
                  }
                  qtyLegacy = itemParam.quantity || 1;
@@ -171,7 +174,7 @@ export default function SplitPaymentModal({
                  // Vamos corrigir isso p/ usar o nome limpo se for string
                  
                  if (typeof itemParam === 'string') {
-                      const calc = calcularPrecoItem(itemParam, menuItems);
+                      const calc = calcularPrecoItem(itemParam, currentMenuItems);
                       displayName = calc.nomeCompleto;
                  }
 
