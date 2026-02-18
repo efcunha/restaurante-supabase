@@ -1,10 +1,15 @@
 import 'react-native-url-polyfill/auto';
 import { createClient } from '@supabase/supabase-js';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import SecureStorageAdapter from '../utils/SecureStorageAdapter';
 
-// Credentials provided by user
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://ykalocfhnetxenvmtlcn.supabase.co';
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_sUAhOXyPkUhEb4tpbVU8wQ_71qyFI3x';
+// Credentials provided by environment variables
+// Remove fallback hardcoded keys for security
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  console.warn('[SupabaseConfig] Missing environment variables for Supabase connection');
+}
 
 /**
  * Supabase client with optimized connection pool settings
@@ -12,9 +17,9 @@ const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'sb_publi
  */
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
-    storage: AsyncStorage,
+    storage: SecureStorageAdapter, // Use SecureStore on mobile
     autoRefreshToken: true,
-    persistSession: false,   // Disable auto-login - require authentication every time
+    persistSession: true, // Enable persistence with secure storage
     detectSessionInUrl: false,
   },
   db: {
