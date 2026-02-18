@@ -231,9 +231,14 @@ class BiometricAuthService {
       const types = await this.getAvailableBiometricTypes();
       const biometricName = this.getBiometricTypeName(types);
 
+      // Sanitize prompt message
+      let safePromptMessage = promptMessage || `Autentique com ${biometricName}`;
+      // Remove any non-printable characters and limit length
+      safePromptMessage = safePromptMessage.replace(/[^\x20-\x7E]/g, '').substring(0, 100);
+
       // Perform biometric authentication
       const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: promptMessage || `Autentique com ${biometricName}`,
+        promptMessage: safePromptMessage,
         cancelLabel: 'Cancelar',
         fallbackLabel: 'Usar senha',
         disableDeviceFallback: false,
