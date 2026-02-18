@@ -150,7 +150,9 @@ export default function ComandaAbertaScreen() {
                     </Text>
                   </View>
                   <Text style={styles.cardClient}>{item.cliente || 'Consumidor'}</Text>
-                  <Text style={styles.cardTotal}>R$ {item.totalConsumido?.toFixed(2)}</Text>
+                  <Text style={[styles.cardTotal, (item.saldoAberto || 0) > 0 ? { color: '#8B2F2F' } : { color: '#4CAF50' }]}>
+                    Saldo: R$ {(item.saldoAberto || 0).toFixed(2)}
+                  </Text>
                 </TouchableOpacity>
               ))
             )}
@@ -199,8 +201,14 @@ export default function ComandaAbertaScreen() {
               )}
 
               <View style={styles.totalContainer}>
-                <Text style={styles.totalLabel}>Total Consumido:</Text>
-                <Text style={styles.totalValue}>R$ {selected.totalConsumido?.toFixed(2)}</Text>
+                <Text style={styles.totalLabel}>Saldo a Pagar:</Text>
+                <Text style={[styles.totalValue, (selected.saldoAberto || 0) > 0 ? { color: '#8B2F2F' } : { color: '#4CAF50' }]}>
+                  R$ {(selected.saldoAberto || 0).toFixed(2)}
+                </Text>
+              </View>
+              <View style={[styles.totalContainer, { marginTop: 5 }]}>
+                <Text style={[styles.totalLabel, { fontSize: 14, color: '#666' }]}>Total Consumido:</Text>
+                <Text style={[styles.totalValue, { fontSize: 16, color: '#666' }]}>R$ {(selected.totalConsumido || 0).toFixed(2)}</Text>
               </View>
 
             </ScrollView>

@@ -2,9 +2,10 @@
 import React, { createContext, useState, useContext, useCallback, useEffect, ReactNode } from 'react';
 import { Platform, Alert } from 'react-native';
 import { supabase } from '../config/SupabaseConfig';
-import ProductService from '../services/ProductService';
+import * as ProductService from '../services/ProductService';
 import OrderService from '../services/OrderService';
 import OrderFirestoreService from '../services/OrderFirestoreService';
+import { calcularPrecoItem, fixDecimal } from '../utils/orderCalculator';
 import { useAuth } from './AuthContext';
 import SyncService from '../services/SyncService';
 import { Order } from '../types';
@@ -66,57 +67,21 @@ export const useOrders = (): OrderContextType => {
 
 // Helper for calculating total
 const calculateTotalFromSupabase = async (companyId: string, items: string[], priceMap: any = null): Promise<number> => {
-  try {
-    let cardapioMap: Record<string, number> = {};
-
-    if (priceMap && Object.keys(priceMap).length > 0) {
-      // console.log('⚡ [OrderContext] Usando priceMap fornecido (Cache)');
-      cardapioMap = priceMap;
-    } else {
-      // Fetch from Supabase
-      // Assuming RLS handles company_id, or we might need to pass it if we aren't using global auth in this helper context easily.
-      // But this function is called inside the component/hook where auth exists.
-      // Ideally we should inject the prices or fetch them using the service.
-
-      // Fetch from Supabase using ProductService directly
-      const { produtos } = await ProductService.listarProdutos();
-      (produtos || []).forEach((p: any) => {
-        if (p.name && p.price) {
-          cardapioMap[p.name.toLowerCase()] = p.price;
-        }
-      });
-    }
-
-    let total = 0;
-
-    items.forEach(item => {
-      const qtyMatch = item.match(/^(\d+)x?\s*/);
-      const quantity = qtyMatch ? parseInt(qtyMatch[1], 10) : 1;
-      const itemFull = item.replace(/^\d+x?\s*/, '').trim();
-      const itemName = itemFull.replace(/\s*\(.*\)$/, '').trim();
-
-      let price = 0;
-      const itemFullLower = itemFull.toLowerCase();
-      const itemBaseLower = itemName.toLowerCase();
-
-      if (itemFullLower.includes('300ml')) price = 15.00;
-      else if (itemFullLower.includes('180ml')) price = 10.00;
-      else {
-        if (cardapioMap[itemFullLower] !== undefined) price = cardapioMap[itemFullLower];
-        else if (cardapioMap[itemBaseLower] !== undefined) price = cardapioMap[itemBaseLower];
-        // else console.warn(`⚠️ [calculateTotal] Preço não encontrado para: "${item}"`);
-      }
-
-      const validPrice = typeof price === 'number' && !isNaN(price) ? price : 0;
-      const validQuantity = typeof quantity === 'number' && !isNaN(quantity) ? quantity : 1;
-      total += validQuantity * validPrice;
-    });
-
-    return typeof total === 'number' && !isNaN(total) ? total : 0;
-  } catch (error) {
-    console.error('❌ Erro ao calcular total (Supabase):', error);
-    return 0;
-  }
+   try {
+     const { produtos } = await ProductService.listarProdutos();
+     const cardapioDin = (produtos || []).map((p: any) => ({ name: p.name, price: p.price }));
+     
+     let total = 0;
+     items.forEach(item => {
+       const calc = calcularPrecoItem(item, cardapioDin, priceMap);
+       total += calc.subtotal;
+     });
+     
+     return fixDecimal(total);
+   } catch (error) {
+     console.error('❌ Erro ao calcular total (Supabase):', error);
+     return 0;
+   }
 };
 
 export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -252,8 +217,13 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
         await ComandasService.ensureComandaAberta(user.companyId, comandaNumber, createdBy, createdByName, mesa, clientName);
 
-        let calculatedTotal = await calculateTotalFromSupabase(user.companyId, items, priceMap);
-        if (calculatedTotal === 0 && totalPrice > 0) calculatedTotal = totalPrice;
+        // PRIORIDADE: Se o UI enviou um total calculado (totalPrice), usa ele.
+        // O calculateTotalFromSupabase serve apenas como conferência ou fallback se totalPrice for 0.
+        let calculatedTotal = totalPrice > 0 ? totalPrice : 0;
+        
+        if (calculatedTotal === 0) {
+           calculatedTotal = await calculateTotalFromSupabase(user.companyId, items, priceMap);
+        }
 
         // If _isPago is passed, we generally ignore it for new orders as they start unpaid, but let's keep it if needed for logic
         const order = OrderService.createOrder(orderId, clientName, items, observations, comandaNumber, createdBy, createdByName, calculatedTotal, false, mesa, categoryMap, priceMap, tableId, waiterId);
@@ -417,13 +387,13 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, [orders, firestoreDocMap, isOnline, user]);
 
   // Statistics Hooks
-  const getEstatisticasGarcom = useCallback(async (garcomId = null, periodo = 'hoje') => {
+  const getEstatisticasGarcom = useCallback(async (garcomId: string | null = null, periodo = 'hoje') => {
     try {
-      if (!user?.companyId) return OrderFirestoreService._getEmptyStats();
+      if (!user?.companyId) return OrderFirestoreService.getEmptyStats();
       return await OrderFirestoreService.getEstatisticasGarcom(user.companyId, garcomId, periodo);
     } catch (e) {
       console.error('[OrderContext] Erro em getEstatisticasGarcom:', e);
-      return OrderFirestoreService._getEmptyStats();
+      return OrderFirestoreService.getEmptyStats();
     }
   }, [user]);
 
@@ -437,7 +407,7 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   }, [user]);
 
-  const getEstatisticasPagamentos = useCallback(async (garcomId = null, periodo = 'hoje') => {
+  const getEstatisticasPagamentos = useCallback(async (garcomId: string | null = null, periodo = 'hoje') => {
     try {
       if (!user?.companyId) return {};
       return await OrderFirestoreService.getEstatisticasPagamentos(user.companyId, garcomId, periodo);
@@ -447,7 +417,7 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   }, [user]);
 
-  const getEstatisticasComandas = useCallback(async (garcomId = null, periodo = 'hoje') => {
+  const getEstatisticasComandas = useCallback(async (garcomId: string | null = null, periodo = 'hoje') => {
     try {
       if (!user?.companyId) return {};
       return await OrderFirestoreService.getEstatisticasComandas(user.companyId, garcomId, periodo);
@@ -457,22 +427,22 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   }, [user]);
 
-  const getEstatisticasCompletas = useCallback(async (garcomId = null, mesAno = null) => {
+  const getEstatisticasCompletas = useCallback(async (garcomId: string | null = null, mesAno: string | null = null) => {
     try {
       if (!user?.companyId) {
         return {
-          vendas: { hoje: {}, semana: {}, mes: {} },
+          vendas: { hoje: OrderFirestoreService.getEmptyStats(), semana: OrderFirestoreService.getEmptyStats(), mes: OrderFirestoreService.getEmptyStats() },
           pagamentos: { hoje: {}, semana: {}, mes: {} },
-          comandas: { hoje: {}, semana: {}, mes: {} },
+          comandas: { hoje: { total: 0, abertas: 0, fechadas: 0, totalConsumido: 0, totalPago: 0, saldoAberto: 0 }, semana: { total: 0, abertas: 0, fechadas: 0, totalConsumido: 0, totalPago: 0, saldoAberto: 0 }, mes: { total: 0, abertas: 0, fechadas: 0, totalConsumido: 0, totalPago: 0, saldoAberto: 0 } },
         };
       }
       return await OrderFirestoreService.getEstatisticasCompletas(user.companyId, garcomId, mesAno);
     } catch (e) {
       console.error('[OrderContext] Erro em getEstatisticasCompletas:', e);
       return {
-        vendas: { hoje: {}, semana: {}, mes: {} },
+        vendas: { hoje: OrderFirestoreService.getEmptyStats(), semana: OrderFirestoreService.getEmptyStats(), mes: OrderFirestoreService.getEmptyStats() },
         pagamentos: { hoje: {}, semana: {}, mes: {} },
-        comandas: { hoje: {}, semana: {}, mes: {} },
+        comandas: { hoje: { total: 0, abertas: 0, fechadas: 0, totalConsumido: 0, totalPago: 0, saldoAberto: 0 }, semana: { total: 0, abertas: 0, fechadas: 0, totalConsumido: 0, totalPago: 0, saldoAberto: 0 }, mes: { total: 0, abertas: 0, fechadas: 0, totalConsumido: 0, totalPago: 0, saldoAberto: 0 } },
       };
     }
   }, [user]);
