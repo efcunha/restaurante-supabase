@@ -19,7 +19,7 @@ export default function AddItemsModal({ visible, onClose, onConfirm, comandaNumb
             const fetchTemperos = async () => {
                 try {
                     const { data, error } = await supabase
-                        .from('settings')
+                        .from('app_settings')
                         .select('*')
                         .eq('company_id', user.companyId)
                         .eq('key', 'cardapio_config')

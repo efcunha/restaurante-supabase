@@ -47,47 +47,50 @@ export default function ComandaDetails({ comanda, cardapioDin, onClose, onPay, o
                 // PRIORIDADE: Usar itemsWithStatus se disponível (Dados ricos de pagamento)
                 if (p.itemsWithStatus && p.itemsWithStatus.length > 0) {
                      p.itemsWithStatus.forEach((item: any) => {
-                        const nomeCompleto = item.name;
-                        const qty = item.quantity || 1;
-                        const paidQty = item.paid_quantity || (item.paid ? qty : 0);
-                        
-                        // Tentar obter preço do priceMap primeiro para consistência com o que foi gravado
-                        let precoUnit = 0;
-                        let found = false;
+                         // Limpar nome para agrupamento (remover "1x " legado se houver)
+                         const nomeLimpo = item.name.replace(/^\d+x?\s*/, '').trim();
+                         const qty = item.quantity || 1;
+                         const paidQty = item.paid_quantity || (item.paid ? qty : 0);
+                         
+                         let precoUnit = 0;
+                         let found = false;
 
-                        if (p.priceMap) {
-                            const cleanName = nomeCompleto.replace(/^\d+x?\s*/, '').replace(/\s*\(.*\)$/, '').trim().toLowerCase();
-                            if (p.priceMap[nomeCompleto] !== undefined) {
-                                precoUnit = p.priceMap[nomeCompleto] / qty;
-                                found = true;
-                            } else if (p.priceMap[cleanName] !== undefined) {
-                                precoUnit = p.priceMap[cleanName];
-                                found = true;
-                            }
-                        }
+                         if (item.unitPrice !== undefined) {
+                             precoUnit = item.unitPrice;
+                             found = true;
+                         } else if (p.priceMap && Object.keys(p.priceMap).length > 0) {
+                             if (p.priceMap[item.name] !== undefined) {
+                                 precoUnit = p.priceMap[item.name] / qty;
+                                 found = true;
+                             } else if (p.priceMap[nomeLimpo] !== undefined) {
+                                 precoUnit = p.priceMap[nomeLimpo];
+                                 found = true;
+                             }
+                         }
 
-                        if (!found) {
-                            const calc = calcularPrecoItem(nomeCompleto, cardapioDin);
-                            precoUnit = calc.precoUnitario;
-                        }
+                         if (!found) {
+                             const calc = calcularPrecoItem(item.name, cardapioDin);
+                             precoUnit = calc.precoUnitario;
+                         }
 
-                        const subtotal = fixDecimal(qty * precoUnit);
+                         const subtotal = fixDecimal(qty * precoUnit);
+                         const key = nomeLimpo;
 
-                        if (!map[nomeCompleto]) {
-                            map[nomeCompleto] = {
-                                nome: nomeCompleto,
-                                quantidade: 0,
-                                quantidadePaga: 0,
-                                subtotal: 0,
-                                precoUnit: precoUnit
-                            };
-                        }
+                         if (!map[key]) {
+                             map[key] = {
+                                 nome: nomeLimpo,
+                                 quantidade: 0,
+                                 quantidadePaga: 0,
+                                 subtotal: 0,
+                                 precoUnit: precoUnit
+                             };
+                         }
 
-                        map[nomeCompleto].quantidade += qty;
-                        map[nomeCompleto].quantidadePaga += paidQty;
-                        map[nomeCompleto].subtotal = fixDecimal(map[nomeCompleto].subtotal + subtotal);
-                     });
-                     return; // Skip legacy logic for this order
+                         map[key].quantidade += qty;
+                         map[key].quantidadePaga += paidQty;
+                         map[key].subtotal = fixDecimal(map[key].subtotal + subtotal);
+                      });
+                      return; // Skip legacy logic for this order
                 }
 
                 // Lógica Legada (Fallback para pedidos antigos sem itemsWithStatus)

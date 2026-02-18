@@ -30,8 +30,10 @@ const ComandaCard = memo(({ comanda, onPress }) => (
         </View>
 
         <View style={styles.cardFooter}>
-            <Text style={styles.totalLabel}>Total:</Text>
-            <Text style={styles.totalValue}>R$ {comanda.totalConsumido.toFixed(2)}</Text>
+            <Text style={styles.totalLabel}>Saldo:</Text>
+            <Text style={[styles.totalValue, comanda.saldoAberto > 0 ? { color: colors.danger } : { color: colors.success }]}>
+                R$ {(comanda.saldoAberto || 0).toFixed(2)}
+            </Text>
         </View>
     </TouchableOpacity>
 ));
