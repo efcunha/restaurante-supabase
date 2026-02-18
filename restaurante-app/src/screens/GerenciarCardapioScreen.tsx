@@ -2007,7 +2007,7 @@ const styles = StyleSheet.create({
     color: '#FFF',
     marginLeft: 8,
   },
-  content: { flex: 1 },
+  content: { paddingBottom: 50 },
   section: {
     backgroundColor: '#FFFFFF',
     margin: 20,

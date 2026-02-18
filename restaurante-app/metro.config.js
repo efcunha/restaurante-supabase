@@ -32,4 +32,11 @@ config.resolver = {
   },
 };
 
+// Add exclusion list to prevent ENOENT errors from watcher
+config.resolver.blockList = [
+  // Exclude android/build and ios/build directories in node_modules
+  /node_modules\/.*\/android\/build\/.*/,
+  /node_modules\/.*\/ios\/build\/.*/,
+];
+
 module.exports = config;
