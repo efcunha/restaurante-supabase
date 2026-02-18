@@ -296,16 +296,26 @@ export function useNovoPedido(): UseNovoPedidoReturn {
             if (!user?.companyId) return true; // Force load if no company
 
             // 1. Get the latest timestamp from the server (Lite query)
-            const { data: updates, error } = await supabase
-                .from('products')
-                .select('updated_at')
-                .eq('company_id', user.companyId)
-                .order('updated_at', { ascending: false })
-                .limit(1);
+            // Query both products and pizza_extras to check for ANY changes
+            const [productsUpdate, extrasUpdate] = await Promise.all([
+                supabase
+                    .from('products')
+                    .select('updated_at')
+                    .eq('company_id', user.companyId)
+                    .order('updated_at', { ascending: false })
+                    .limit(1),
+                supabase
+                    .from('pizza_extras')
+                    .select('updated_at')
+                    .eq('company_id', user.companyId)
+                    .order('updated_at', { ascending: false })
+                    .limit(1)
+            ]);
 
-            if (error) throw error;
+            const lastProductUpdate = productsUpdate.data?.[0]?.updated_at ? new Date(productsUpdate.data[0].updated_at).getTime() : 0;
+            const lastExtraUpdate = extrasUpdate.data?.[0]?.updated_at ? new Date(extrasUpdate.data[0].updated_at).getTime() : 0;
 
-            const latestServerUpdate = updates && updates.length > 0 ? new Date(updates[0].updated_at).getTime() : 0;
+            const latestServerUpdate = Math.max(lastProductUpdate, lastExtraUpdate);
 
             // 2. Get local cache info
             const cached = await AsyncStorage.getItem(CARDAPIO_CACHE_KEY);

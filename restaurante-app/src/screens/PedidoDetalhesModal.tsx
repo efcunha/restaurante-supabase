@@ -128,6 +128,7 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
   };
 
   const handleEdit = () => {
+    if (!order) return;
     if (isEditing) {
       try {
         editOrder(orderId, {
@@ -238,6 +239,11 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
                        const isFullyPaid = paidQty >= qty;
                        const isPartiallyPaid = paidQty > 0 && !isFullyPaid;
                        
+                       /* Parse Extras */
+                       const parts = item.name.split(' + ');
+                       const mainName = parts[0];
+                       const extras = parts.length > 1 ? parts.slice(1).join(' + ') : null;
+
                        return (
                           <View key={item.id || index} style={styles.itemRow}>
                             <Text style={[styles.itemBullet, isFullyPaid && styles.itemPaidBullet]}>
@@ -245,8 +251,13 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
                             </Text>
                             <View style={{flex: 1}}>
                                 <Text style={[styles.itemText, isFullyPaid && styles.itemPaidText]}>
-                                    {item.name}
+                                    {mainName}
                                 </Text>
+                                {extras && (
+                                   <Text style={[styles.itemExtras, isFullyPaid && styles.itemPaidText]}>
+                                      + {extras}
+                                   </Text>
+                                )}
                                 {isPartiallyPaid && (
                                     <Text style={styles.itemSubText}>
                                         {paidQty}/{qty} Pago(s)
@@ -693,5 +704,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#4CAF50',
     fontWeight: '600',
+  },
+  itemExtras: {
+    fontSize: 13,
+    color: '#D32F2F',
+    fontWeight: 'bold',
+    marginTop: 2,
+    fontStyle: 'italic',
   },
 });
