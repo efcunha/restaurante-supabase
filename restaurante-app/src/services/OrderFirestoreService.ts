@@ -27,7 +27,7 @@ class OrderFirestoreService {
       mesa: row.table_number?.toString() || '',
       comandaNumber: row.comanda_number?.toString() || '',
       items: row.items || [],
-      priceMap: row.price_map || {},
+      priceMap: {}, // No longer stored in a dedicated column, prices moved to items_with_status
       itemsWithStatus: row.items_with_status || [],
       observations: row.observations || '',
       status: row.status,
@@ -128,7 +128,6 @@ class OrderFirestoreService {
         is_paid: false,
         created_by: order.createdBy,
         date_key: getTodayKey(),
-        price_map: order.priceMap || {},
         items_with_status: order.itemsWithStatus || []
       })
       .select()
@@ -254,7 +253,6 @@ class OrderFirestoreService {
     if (updates.timeInProntos) payload.time_in_prontos = updates.timeInProntos;
     if (updates.deliveredAt) payload.delivered_at = updates.deliveredAt;
     if (updates.itemsWithStatus) payload.items_with_status = updates.itemsWithStatus;
-    if (updates.priceMap) payload.price_map = updates.priceMap;
     
     // Helper fields regarding who moved the order
     if ((updates as any).movidoParaMontagemPor) payload.movido_para_montagem_por = (updates as any).movidoParaMontagemPor;
@@ -282,8 +280,7 @@ class OrderFirestoreService {
         total_amount: order.totalPrice,
         is_paid: order.isPago || false,
         created_by: order.createdBy,
-        date_key: getTodayKey(),
-        price_map: order.priceMap || {}
+        date_key: getTodayKey()
       })
       .select()
       .single();
@@ -299,7 +296,7 @@ class OrderFirestoreService {
   /**
    * Busca estatísticas de um garçom
    */
-  async getEstatisticasGarcom(companyId: string, garcomId: string | null = null, periodo: string = 'hoje') {
+  async getEstatisticasGarcom(companyId: string, garcomId?: string | null, periodo: string = 'hoje') {
     try {
       const { startDate, endDate } = this._getDateRange(periodo);
 
@@ -320,10 +317,9 @@ class OrderFirestoreService {
 
       const orders = (data || []).map(row => this.mapRowToOrder(row));
       return this._calcularEstatisticas(orders, []);
-
     } catch (error) {
       console.error('[OrderService] Erro em getEstatisticasGarcom:', error);
-      return this._getEmptyStats();
+      return this.getEmptyStats();
     }
   }
 
@@ -378,7 +374,7 @@ class OrderFirestoreService {
   /**
    * Busca estatísticas de pagamentos
    */
-  async getEstatisticasPagamentos(companyId: string, garcomId: string | null = null, periodo: string = 'hoje') {
+  async getEstatisticasPagamentos(companyId: string, garcomId?: string | null, periodo: string = 'hoje') {
     try {
       const { startDate, endDate } = this._getDateRange(periodo);
       
@@ -458,8 +454,9 @@ class OrderFirestoreService {
     };
 
     pagamentos.forEach(p => {
-      const metodo = p.payment_method?.toLowerCase() || '';
-      const valor = p.amount || 0;
+      const metodo = (p.payment_method || p.forma || '').toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // Remove accents
+      const valor = p.amount || p.valor || 0;
 
       if (metodo === 'dinheiro') {
         stats.dinheiro.total += valor;
@@ -467,10 +464,10 @@ class OrderFirestoreService {
       } else if (metodo === 'pix') {
         stats.pix.total += valor;
         stats.pix.quantidade += 1;
-      } else if (metodo === 'debito' || metodo === 'débito') {
+      } else if (metodo === 'debito') {
         stats.debito.total += valor;
         stats.debito.quantidade += 1;
-      } else if (metodo === 'credito' || metodo === 'crédito') {
+      } else if (metodo === 'credito') {
         stats.credito.total += valor;
         stats.credito.quantidade += 1;
       }
@@ -483,7 +480,7 @@ class OrderFirestoreService {
   /**
    * Busca estatísticas de comandas
    */
-  async getEstatisticasComandas(companyId: string, garcomId: string | null = null, periodo: string = 'hoje') {
+  async getEstatisticasComandas(companyId: string, garcomId?: string | null, periodo: string = 'hoje') {
     try {
       const { startDate, endDate } = this._getDateRange(periodo);
       let query = supabase
@@ -520,7 +517,7 @@ class OrderFirestoreService {
   /**
    * Busca estatísticas completas
    */
-  async getEstatisticasCompletas(companyId: string, garcomId: string | null = null, mesAno: string | null = null) {
+  async getEstatisticasCompletas(companyId: string, garcomId?: string | null, mesAno?: string | null) {
     const periodoBase = mesAno || 'mesVigente';
     
     const [vendasHoje, vendasSemana, vendasMes, pagamentosHoje, pagamentosSemana, pagamentosMes, comandasHoje, comandasSemana, comandasMes] = await Promise.all([
@@ -580,7 +577,22 @@ class OrderFirestoreService {
     return { startDate, endDate };
   }
 
-  private _getEmptyStats() {
+  /**
+   * Busca documento pelo ID de um item interno
+   */
+  async findDocByItemId(companyId: string, itemId: string): Promise<{ docId: string, orderId: string } | null> {
+    const { data, error } = await supabase
+      .from('orders')
+      .select('id')
+      .eq('company_id', companyId)
+      .contains('items_with_status', [{ id: itemId }])
+      .maybeSingle();
+
+    if (error || !data) return null;
+    return { docId: data.id, orderId: data.id };
+  }
+
+  getEmptyStats() {
     return {
       totalPedidos: 0,
       totalVendido: 0,
@@ -607,7 +619,7 @@ class OrderFirestoreService {
       totalVendido,
       totalRecebido,
       totalAberto,
-      quantidadeComandas: new Set(pedidos.map(p => p.comandaNumber)).size,
+      quantidadeComandas: new Set(pedidos.map(p => normalizeComandaNumber(p.comandaNumber || ''))).size,
       comandasAbertas: pedidosAbertos.length,
       comandasFechadas: pedidosPagos.length,
       ticketMedio: totalPedidos > 0 ? totalVendido / totalPedidos : 0,

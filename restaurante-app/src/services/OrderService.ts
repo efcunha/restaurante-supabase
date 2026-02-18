@@ -1,5 +1,6 @@
 import { getLocalDateKey } from '../utils/dateUtils';
 import { Order, OrderItemStatus } from '../types';
+import { calcularPrecoItem } from '../utils/orderCalculator';
 
 /**
  * OrderService - Business Logic for Order Management
@@ -19,6 +20,10 @@ interface CardapioSection {
 }
 
 // Cardápio
+/**
+ * @deprecated Use Supabase 'products' table instead. This hardcoded map is kept only for 
+ * emergency fallback for legacy offline orders.
+ */
 const CARDAPIO: Record<string, CardapioSection> = {
   espetinhos: {
     'Carne': 12.00,
@@ -78,6 +83,8 @@ const CARDAPIO: Record<string, CardapioSection> = {
   }
 };
 
+const fixDecimal = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
+
 class OrderService {
   calculateOrderTotal(items: string[]): number {
     let total = 0;
@@ -95,65 +102,8 @@ class OrderService {
   }
 
   calculateItemPrice(item: string): number {
-    // Remover quantidade e tempero
-    const itemName = item.replace(/^\d+x?\s*/, "").replace(/\s*\(.*\)$/, "").trim();
-    const itemLower = itemName.toLowerCase();
-
-    // NOTA: Este método usa preços hardcoded para compatibilidade com código legado
-    // Para preços dinâmicos do Firestore, use calculateOrderTotalFromFirestore()
-
-    // Caldos
-    if (itemLower.includes('caldinho') || itemLower.includes('caldo')) {
-      for (const [nome, preco] of Object.entries(CARDAPIO.caldos)) {
-        if (itemLower.includes(nome.toLowerCase())) return preco as number;
-      }
-    }
-
-    // Risotos
-    if (itemLower.includes('risoto')) {
-      for (const [nome, preco] of Object.entries(CARDAPIO.risotos)) {
-        if (itemLower.includes(nome.toLowerCase())) return preco as number;
-      }
-    }
-
-    // Bebidas
-    if (itemLower.includes('refrigerante') && itemLower.includes('lata')) return CARDAPIO.bebidas['Refrigerante Lata'] as number;
-    if (itemLower.includes('refrigerante') && (itemLower.includes('1l') || itemLower.includes('litro'))) return CARDAPIO.bebidas['Refrigerante 1L'] as number;
-    if (itemLower.includes('água') && itemLower.includes('gás')) return CARDAPIO.bebidas['Água com Gás'] as number;
-    if (itemLower.includes('água')) return CARDAPIO.bebidas['Água Mineral'] as number;
-    if (itemLower.includes('suco')) return CARDAPIO.bebidas.Suco as number;
-
-    // Jantinha Completa
-    if (itemLower.includes('jantinha completa')) {
-      const especiais = CARDAPIO.jantinhaCompleta.especiais as Record<string, number>;
-      if (itemLower.includes('carneiro')) return especiais.Carneiro;
-      if (itemLower.includes('cupim')) return especiais['Bife de Cupim'];
-      if (itemLower.includes('picanha')) return especiais.Picanha;
-      return CARDAPIO.jantinhaCompleta.base as number;
-    }
-
-    // Jantinha 1 Acompanhamento
-    if (itemLower.includes('jantinha') && (itemLower.includes('arroz') || itemLower.includes('macaxeira'))) {
-      const especiais = CARDAPIO.jantinha1Acomp.especiais as Record<string, number>;
-      if (itemLower.includes('carneiro')) return especiais.Carneiro;
-      if (itemLower.includes('cupim')) return especiais['Bife de Cupim'];
-      if (itemLower.includes('picanha')) return especiais.Picanha;
-      return CARDAPIO.jantinha1Acomp.base as number;
-    }
-
-    // Espetinhos Especiais
-    const especiaisGerais = CARDAPIO.especiais as Record<string, number>;
-    if (itemLower.includes('carneiro')) return especiaisGerais.Carneiro;
-    if (itemLower.includes('cupim')) return especiaisGerais.Cupim;
-    if (itemLower.includes('picanha')) return especiaisGerais.Picanha;
-
-    // Espetinhos Normais
-    for (const [nome, preco] of Object.entries(CARDAPIO.espetinhos)) {
-      if (itemLower.includes(nome.toLowerCase())) {
-        return preco as number;
-      }
-    }
-    return 0;
+    const calc = calcularPrecoItem(item);
+    return calc.precoUnitario;
   }
 
   /* 
@@ -179,68 +129,69 @@ class OrderService {
    * Helper gera itemsWithStatus a partir de lista de strings
    * Útil para criação e migração de pedidos legados
    * ATUALIZAÇÃO: Agora expande itens com quantidade > 1 (ex: "4x Item" -> 4 entradas de "1x Item")
+   * ATUALIZAÇÃO: Agora aceita priceMap para incluir preço unitário
    */
-  generateItemsWithStatus(items: string[], orderId: string, comanda: string, categoryMap: any = null): OrderItemStatus[] {
-      const nowISO = new Date().toISOString();
-      
-      // 1. Expandir itens (ex: "4x Caldo" -> ["1x Caldo", "1x Caldo", "1x Caldo", "1x Caldo"])
-      const expandedItems: string[] = [];
-      items.forEach(item => {
-        const qty = this.extractQuantity(item);
-        const itemNameWithoutQty = item.replace(/^\d+x?\s*/, '').trim();
-        
-        if (qty > 1) {
-          for (let i = 0; i < qty; i++) {
-            expandedItems.push(`1x ${itemNameWithoutQty}`);
-          }
-        } else {
-          expandedItems.push(item);
+  generateItemsWithStatus(
+    items: string[],
+    orderId: string,
+    comanda: string,
+    categoryMap: any = null,
+    priceMap: Record<string, number> | undefined = undefined
+  ): OrderItemStatus[] {
+    const nowISO = new Date().toISOString();
+
+    // 1. Expandir itens (ex: "4x Caldo" -> ["1x Caldo", "1x Caldo", "1x Caldo", "1x Caldo"])
+    const expandedItems: { originalItem: string; itemNameWithoutQty: string; qty: number }[] = [];
+    items.forEach(item => {
+      const qty = this.extractQuantity(item);
+      const itemNameWithoutQty = item.replace(/^\d+x?\s*/, '').trim();
+
+      expandedItems.push({ originalItem: item, itemNameWithoutQty, qty });
+    });
+
+    console.log(`[OrderService] Generating ItemsWithStatus for ${items.length} original items`);
+
+    const result: OrderItemStatus[] = [];
+    let absoluteIndex = 0;
+
+    expandedItems.forEach((info, index) => {
+      const lowerName = info.itemNameWithoutQty.toLowerCase();
+      let category = 'outro';
+
+      if (categoryMap) {
+        const cleanName = info.itemNameWithoutQty.replace(/\s*\(.*\)$/, '').trim().toLowerCase();
+        if (categoryMap[cleanName]) {
+          category = typeof categoryMap[cleanName] === 'string' ? categoryMap[cleanName] : categoryMap[cleanName].category;
         }
-      });
+      }
 
-      console.log(`[OrderService] Generating ItemsWithStatus for ${expandedItems.length} items (from ${items.length} original)`);
-      
-      return expandedItems.map((itemName, index) => {
-          // Tentar encontrar a categoria
-          let category = 'outro'; // Default
-          
-          if (typeof itemName !== 'string') {
-              console.warn('[OrderService] Item name is not string:', itemName);
-              itemName = String(itemName || '');
-          }
+      if (category === 'outro') {
+        if (lowerName.includes('espetinho')) category = 'espetinho';
+        else if (lowerName.includes('caldo') || lowerName.includes('caldinho')) category = 'caldo';
+        else if (lowerName.includes('cerveja') || lowerName.includes('refrigerante') || lowerName.includes('suco')) category = 'bebida';
+        else if (lowerName.includes('pizza')) category = 'pizza';
+      }
 
-          if (categoryMap) {
-            // Limpar nome para busca (remover '1x ', trim, lowercase)
-            const cleanName = itemName.replace(/^\d+x?\s*/, '').replace(/\s*\(.*\)$/, '').trim().toLowerCase();
+      // Determine unit price from orderCalculator (using priceMap)
+      const itemPriceCalc = calcularPrecoItem(info.originalItem, undefined, priceMap);
+      const unitPrice = itemPriceCalc.precoUnitario;
 
-            // Tentar encontrar no mapa
-            if (categoryMap[cleanName]) {
-              if (typeof categoryMap[cleanName] === 'string') {
-                category = categoryMap[cleanName];
-              } else if (categoryMap[cleanName].category) {
-                category = categoryMap[cleanName].category;
-              }
-            }
-          }
+      for (let i = 0; i < info.qty; i++) {
+        result.push({
+          id: `${orderId}-comanda-${comanda || 'temp'}-item-${absoluteIndex}`,
+          name: info.itemNameWithoutQty, // REMOVIDO "1x " prefixo para evitar duplicidade visual
+          status: 'preparing',
+          checked: false,
+          timestamp: nowISO,
+          category: category,
+          quantity: 1,
+          unitPrice: unitPrice > 0 ? unitPrice : undefined
+        });
+        absoluteIndex++;
+      }
+    });
 
-          // DEBUG:
-          if (category === 'pizza' || itemName.toLowerCase().includes('pizza')) {
-            if (category === 'outro' && itemName.toLowerCase().includes('pizza')) {
-              category = 'pizza';
-            }
-          }
-
-          // Para itens expandidos, qty sempre será 1 aqui
-          return {
-            id: `${orderId}-comanda-${comanda || 'temp'}-item-${index}`,
-            name: itemName,
-            status: 'preparing',
-            checked: false,
-            timestamp: nowISO,
-            category: category,
-            quantity: 1
-          };
-      });
+    return result;
   }
 
   /**
@@ -259,7 +210,7 @@ class OrderService {
     isPago: boolean = false,
     mesa: string = '',
     categoryMap: any = null,
-    priceMap: Record<string, number> | null = null,
+    priceMap: Record<string, number> | undefined = undefined,
     tableId: string = '',
     waiterId: string = ''
   ): Order {
@@ -284,7 +235,7 @@ class OrderService {
       timeZone: 'America/Sao_Paulo'
     });
 
-    const itemsWithStatus = this.generateItemsWithStatus(items, orderId, comanda, categoryMap);
+    const itemsWithStatus = this.generateItemsWithStatus(items, orderId, comanda, categoryMap, priceMap);
     
     // ATUALIZAÇÃO: Sincronizar order.items com a lista expandida para consistência visual/persistência
     const itemsFinal = itemsWithStatus.map(i => i.name);

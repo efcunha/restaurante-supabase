@@ -8,6 +8,7 @@ export interface OrderItemStatus {
   delivered?: boolean;
   deliveredAt?: string;
   quantity?: number; // Added to track quantity per item split
+  unitPrice?: number; // Added to track price per unit for historical accuracy
 }
 
 export interface Order {
