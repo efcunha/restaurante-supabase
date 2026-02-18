@@ -91,6 +91,7 @@ export default function PedidosProntosScreen() {
               comandaNumber: order.comandaNumber || order.numeroComanda,
               client: order.client,
               mesa: order.mesa, // ✅ Propagar mesa
+              observations: order.observations, // ✅ Propagar observações
               criadoPorNome: order.criadoPorNome || order.createdByName,
               orderTimestamp: order.timestamp || order.createdAt
             });
@@ -173,7 +174,7 @@ export default function PedidosProntosScreen() {
       const { error: updateError } = await supabase
         .from('orders')
         .update(updatePayload)
-        .eq('company_id', user.companyId)
+        .eq('company_id', user?.companyId)
         .eq('id', orderId);
 
       if (updateError) throw updateError;
@@ -201,42 +202,58 @@ export default function PedidosProntosScreen() {
     }
   }, [allOrders, user]);
 
-  const renderItem = useCallback(({ item }: { item: any }) => (
-    <View
-      style={styles.itemCard}
-    >
-      <View style={styles.itemHeader}>
-        <Text style={styles.comandaNumber}>
-          Comanda {item.comandaNumber || '?'}
-          {item.mesa ? ` - Mesa ${item.mesa}` : ''}
-        </Text>
-        <Text style={styles.clientName}>{item.client}</Text>
-      </View>
+  const renderItem = useCallback(({ item }: { item: any }) => {
+    // Parse Extras
+    const parts = item.name.split(' + ');
+    const mainName = parts[0];
+    const extras = parts.length > 1 ? parts.slice(1).join(' + ') : null;
 
-      <View style={styles.itemBody}>
-        <View style={styles.checkIcon}>
-          <Text style={styles.checkIconText}>✓</Text>
+    return (
+      <View style={styles.itemCard}>
+        <View style={styles.itemHeader}>
+          <Text style={styles.comandaNumber}>
+            Comanda {item.comandaNumber || '?'}
+            {item.mesa ? ` - Mesa ${item.mesa}` : ''}
+          </Text>
+          <Text style={styles.clientName}>{item.client}</Text>
         </View>
-        <Text style={styles.itemName}>{item.name}</Text>
+
+        {!!item.observations && (
+            <Text style={styles.orderObs}>📝 Obs: {String(item.observations)}</Text>
+        )}
+
+        <View style={styles.itemBody}>
+          <View style={styles.checkIcon}>
+            <Text style={styles.checkIconText}>✓</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.itemName}>{mainName}</Text>
+            {!!extras && (
+              <Text style={styles.itemExtras}>
+                + {extras}
+              </Text>
+            )}
+          </View>
+        </View>
+
+        {!!item.criadoPorNome && (
+          <Text style={styles.garcomText}>👤 Garçom: {item.criadoPorNome}</Text>
+        )}
+
+        <TouchableOpacity
+          style={styles.deliverBtn}
+          onPress={() => handleDeliver(item.orderId, item.id)}
+        >
+          <Text style={styles.deliverBtnText}>
+            {
+              // @ts-ignore
+              processingItems.has(`${item.orderId}-${item.id}`) ? 'AGUARDE...' : 'ENTREGUE'
+            }
+          </Text>
+        </TouchableOpacity>
       </View>
-
-      {item.criadoPorNome && (
-        <Text style={styles.garcomText}>👤 Garçom: {item.criadoPorNome}</Text>
-      )}
-
-      <TouchableOpacity
-        style={styles.deliverBtn}
-        onPress={() => handleDeliver(item.orderId, item.id)}
-      >
-        <Text style={styles.deliverBtnText}>
-          {
-            // @ts-ignore
-            processingItems.has(`${item.orderId}-${item.id}`) ? 'AGUARDE...' : 'ENTREGUE'
-          }
-        </Text>
-      </TouchableOpacity>
-    </View>
-  ), [handleDeliver, processingItems]);
+    );
+  }, [handleDeliver, processingItems]);
 
   const keyExtractor = useCallback((item: any) => `${item.orderId}-${item.id}`, []);
 
@@ -436,6 +453,23 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#2C2C2C',
     marginBottom: 10,
+  },
+  orderObs: {
+    fontSize: 14,
+    fontStyle: 'italic',
+    color: '#E65100', // Orange highlighting
+    fontWeight: 'bold',
+    marginBottom: 10,
+    backgroundColor: '#FFF3E0',
+    padding: 8,
+    borderRadius: 8,
+  },
+  itemExtras: {
+    fontSize: 14,
+    color: '#D32F2F',
+    fontWeight: 'bold',
+    marginTop: 2,
+    fontStyle: 'italic',
   },
   garcomText: {
     fontSize: 13,

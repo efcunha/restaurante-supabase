@@ -67,31 +67,48 @@ const OrderCard = memo(({ order, onOpenDetails, onToggleItem, onMarkReady }: Ord
         <Text style={styles.movimentadoPorText}>🔧 Recebido de: {order.movidoParaMontagemPorNome}</Text>
       )}
       {order.observations && (
-        <Text style={styles.orderObs}>Obs: {order.observations}</Text>
+        <Text style={styles.orderObs}>📝 Obs: {order.observations}</Text>
       )}
       <View style={styles.orderItems}>
         {order.itemsWithStatus && order.itemsWithStatus.length > 0 ? (
-          order.itemsWithStatus.map((item: any) => (
-            <TouchableOpacity
-              key={item.id}
-              style={styles.orderItem}
-              onPress={() => onToggleItem(item.originalOrderId || order.id, item.id, item.status)}
-              activeOpacity={0.7}
-            >
-              <View style={[
-                styles.checkbox,
-                item.checked && styles.checkboxChecked
-              ]}>
-                {item.checked && <Text style={styles.checkmark}>✓</Text>}
-              </View>
-              <Text style={[
-                styles.itemText,
-                item.checked && styles.itemTextDone
-              ]}>
-                {item.name}
-              </Text>
-            </TouchableOpacity>
-          ))
+          order.itemsWithStatus.map((item: any) => {
+            // Parse Extras
+            const parts = item.name.split(' + ');
+            const mainName = parts[0];
+            const extras = parts.length > 1 ? parts.slice(1).join(' + ') : null;
+
+            return (
+              <TouchableOpacity
+                key={item.id}
+                style={styles.orderItem}
+                onPress={() => onToggleItem(item.originalOrderId || order.id, item.id, item.status)}
+                activeOpacity={0.7}
+              >
+                <View style={[
+                  styles.checkbox,
+                  item.checked && styles.checkboxChecked
+                ]}>
+                  {item.checked && <Text style={styles.checkmark}>✓</Text>}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[
+                    styles.itemText,
+                    item.checked && styles.itemTextDone
+                  ]}>
+                    {mainName}
+                  </Text>
+                  {extras && (
+                    <Text style={[
+                      styles.itemExtras,
+                      item.checked && styles.itemTextDone
+                    ]}>
+                      + {extras}
+                    </Text>
+                  )}
+                </View>
+              </TouchableOpacity>
+            );
+          })
         ) : (
           order.items?.map((item: string, idx: number) => (
             <View key={idx} style={styles.orderItem}>
@@ -303,7 +320,7 @@ export default function MontagemScreen() {
       const { error: updateError } = await supabase
         .from('orders')
         .update({ items_with_status: updatedItems })
-        .eq('company_id', user.companyId)
+        .eq('company_id', user?.companyId)
         .eq('id', orderId);
 
       if (updateError) throw updateError;
@@ -362,7 +379,7 @@ export default function MontagemScreen() {
             // @ts-ignore
             movido_para_prontos_por_nome: user?.nome || null,
           })
-          .eq('company_id', user.companyId)
+          .eq('company_id', user?.companyId)
           .eq('id', orderId);
 
         if (updateError) throw updateError;
@@ -590,11 +607,15 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   orderObs: {
-    fontSize: 13,
+    fontSize: 14,
     fontStyle: 'italic',
-    color: '#8B2F2F',
+    color: '#E65100', // Orange highlighting
+    fontWeight: 'bold',
     marginBottom: 10,
     paddingLeft: 10,
+    backgroundColor: '#FFF3E0',
+    padding: 8,
+    borderRadius: 8,
   },
   orderItems: {
     marginBottom: 15,
@@ -635,9 +656,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#E5B84A',
   },
   itemText: {
+    fontSize: 16, // Increased size
+    color: '#2C2C2C', // Darker for readability
+    fontWeight: '600',
+  },
+  itemExtras: {
     fontSize: 14,
-    color: '#5C5C5C',
-    flex: 1,
+    color: '#D32F2F',
+    fontWeight: 'bold',
+    marginTop: 2,
+    fontStyle: 'italic',
   },
   itemTextReady: {
     fontSize: 14,

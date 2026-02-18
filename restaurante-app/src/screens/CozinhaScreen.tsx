@@ -68,7 +68,6 @@ export default function CozinhaScreen() {
     };
   }, [user]);
 
-  // ✅ FILTRO SEGURO: Excluir pedidos de comandas canceladas usando comandaStatus do pedido
   const ordersRaw = allOrders.filter(order => {
     // Filtrar apenas pedidos em preparing
     if (order.status !== 'preparing') return false;
@@ -82,6 +81,21 @@ export default function CozinhaScreen() {
     return true;
   });
 
+  // DEBUG: Verificar nomes chegando na cozinha
+  useEffect(() => {
+    if (ordersRaw.length > 0) {
+       // Log sampling to avoid spam
+       const sample = ordersRaw.slice(0, 3);
+       console.log(`[Cozinha] 🔍 Visualizando ${ordersRaw.length} pedidos. Amostra de itens:`);
+       sample.forEach(o => {
+          o.itemsWithStatus?.forEach((i: any) => {
+             if (i.name.includes('+')) {
+                 console.log(`  🍕 ITEM COM EXTRA: "${i.name}"`);
+             }
+          });
+       });
+    }
+  }, [ordersRaw]);
 
   const seenItemIds = new Set();
 
@@ -106,7 +120,8 @@ export default function CozinhaScreen() {
         allValidItems.push({
           ...item,
           comandaNumber: order.comandaNumber,
-          mesa: order.mesa // ✅ Propagar mesa
+          mesa: order.mesa, // ✅ Propagar mesa
+          observations: order.observations // ✅ Propagar observações do pedido
         });
       }
     });
@@ -127,6 +142,7 @@ export default function CozinhaScreen() {
     quantidade: extrairQuantidade(item.name),
     comanda: item.comandaNumber,
     mesa: item.mesa || '', // ✅ Mapear mesa
+    observations: item.observations, // ✅ Mapear observações
     nomeCompleto: item.name
   }));
 
@@ -144,7 +160,8 @@ export default function CozinhaScreen() {
       grupos[caldo.nome].comandas.push({
         numero: caldo.comanda,
         mesa: caldo.mesa,
-        quantidade: caldo.quantidade
+        quantidade: caldo.quantidade,
+        observacoes: caldo.observations // ✅ Agrupar observações
       });
     });
     return Object.values(grupos).sort((a: any, b: any) => a.nome.localeCompare(b.nome));
@@ -153,25 +170,44 @@ export default function CozinhaScreen() {
   // @ts-ignore
   const grupos: any[] = useMemo(() => agruparPorTipo(), [caldosPendentes]);
 
-  const renderGrupoItem = useCallback(({ item: grupo }: { item: any }) => (
-    <View style={styles.grupoCard}>
-      <View style={styles.grupoHeader}>
-        <Text style={styles.grupoNome}>{grupo.nome}</Text>
-        <View style={styles.totalBadge}>
-          <Text style={styles.totalText}>{grupo.total}x</Text>
+  const renderGrupoItem = useCallback(({ item: grupo }: { item: any }) => {
+    // Parse Extras from Name: "Pizza ... + Borda: ..."
+    const parts = grupo.nome.split(' + ');
+    const mainName = parts[0];
+    const extras = parts.length > 1 ? parts.slice(1).join(' + ') : null;
+
+    return (
+      <View style={styles.grupoCard}>
+        <View style={styles.grupoHeader}>
+          <View style={{ flex: 1, marginRight: 8 }}>
+            <Text style={styles.grupoNome}>{mainName}</Text>
+            {extras && (
+              <Text style={styles.grupoExtras}>
+                + {extras}
+              </Text>
+            )}
+          </View>
+          <View style={styles.totalBadge}>
+            <Text style={styles.totalText}>{grupo.total}x</Text>
+          </View>
+        </View>
+        <View style={styles.comandasList}>
+          {grupo.comandas.map((cmd: any, i: number) => (
+            <View key={i} style={styles.comandaItem}>
+              <Text style={styles.comandaNumero}>#{cmd.numero}</Text>
+              {!!cmd.mesa && <Text style={styles.comandaNumero}> (Mesa {cmd.mesa})</Text>}
+              {!!cmd.observacoes && (
+                <Text style={styles.comandaObs}>
+                   📝 {cmd.observacoes}
+                </Text>
+              )}
+              <Text style={styles.comandaQtd}>{cmd.quantidade}x</Text>
+            </View>
+          ))}
         </View>
       </View>
-      <View style={styles.comandasList}>
-        {grupo.comandas.map((cmd: any, i: number) => (
-          <View key={i} style={styles.comandaItem}>
-            <Text style={styles.comandaNumero}>#{cmd.numero}</Text>
-            {!!cmd.mesa && <Text style={styles.comandaNumero}> (Mesa {cmd.mesa})</Text>}
-            <Text style={styles.comandaQtd}>{cmd.quantidade}x</Text>
-          </View>
-        ))}
-      </View>
-    </View>
-  ), []);
+    );
+  }, []);
 
   const keyExtractor = useCallback((item: any, index: number) => `${item.nome}-${index}`, []);
 
@@ -344,6 +380,17 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
   },
+  grupoExtras: {
+    fontSize: 14,
+    color: '#D32F2F', // Red color for visibility
+    fontWeight: 'bold',
+    marginTop: 4,
+    fontStyle: 'italic',
+    backgroundColor: '#FFF5F5',
+    padding: 4,
+    borderRadius: 4,
+    alignSelf: 'flex-start'
+  },
   comandasList: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -366,5 +413,12 @@ const styles = StyleSheet.create({
   comandaQtd: {
     fontSize: 14,
     color: '#666',
+  },
+  comandaObs: {
+    fontSize: 12,
+    color: '#E65100', // Orange for visibility
+    fontStyle: 'italic',
+    marginLeft: 4,
+    flexShrink: 1 // Allow text to wrap if too long
   },
 });
