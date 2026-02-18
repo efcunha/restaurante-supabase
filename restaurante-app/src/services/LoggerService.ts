@@ -43,11 +43,45 @@ class LoggerService {
     }
 
     const errorObj = typeof error === 'string' ? new Error(error) : error;
+    const scrubbedExtra = this.scrubData(extra);
 
     Sentry.captureException(errorObj, {
       tags: { context } as SentryTags,
-      extra,
+      extra: scrubbedExtra,
     });
+  }
+
+  /**
+   * Scrub sensitive data from logs
+   */
+  private scrubData(data: any): any {
+    if (!data) return data;
+    
+    // Deep copy to avoid mutating original data
+    try {
+      const sensitiveKeys = ['password', 'token', 'secret', 'auth', 'key', 'credit_card', 'cvv', 'card_number'];
+      const str = JSON.stringify(data);
+      const parsed = JSON.parse(str);
+
+      const redact = (obj: any) => {
+        if (typeof obj !== 'object' || obj === null) return;
+        
+        Object.keys(obj).forEach(key => {
+          const lowerKey = key.toLowerCase();
+          if (sensitiveKeys.some(k => lowerKey.includes(k))) {
+            obj[key] = '[REDACTED]';
+          } else if (typeof obj[key] === 'object') {
+            redact(obj[key]);
+          }
+        });
+      };
+
+      redact(parsed);
+      return parsed;
+
+    } catch (e) {
+      return data; // Return original if parsing fails
+    }
   }
 
   /**
