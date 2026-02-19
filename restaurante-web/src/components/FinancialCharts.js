@@ -3,13 +3,12 @@ import { View, Text, StyleSheet, Dimensions, Platform } from 'react-native';
 import { colors } from '../theme/colors';
 
 // Conditional import to prevent Web bundling errors if module is native-only
+// Tentar carregar para todas as plataformas (incluindo Web)
 let BarChart, PieChart;
 try {
-  if (Platform.OS !== 'web') {
-    const Charts = require('react-native-chart-kit');
-    BarChart = Charts.BarChart;
-    PieChart = Charts.PieChart;
-  }
+  const Charts = require('react-native-chart-kit');
+  BarChart = Charts.BarChart;
+  PieChart = Charts.PieChart;
 } catch (e) {
   console.warn('Charts module not available:', e);
 }
@@ -30,10 +29,10 @@ const chartConfig = {
 };
 
 export const SalesByDayChart = ({ data }) => {
-  if (Platform.OS === 'web' || !BarChart) {
+  if (!BarChart) {
     return (
       <View style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>Gráficos disponíveis apenas no App (Mobile)</Text>
+        <Text style={styles.emptyText}>Gráficos não carregados ou indisponíveis.</Text>
       </View>
     );
   }
@@ -72,7 +71,7 @@ export const SalesByDayChart = ({ data }) => {
 };
 
 export const SalesByPaymentChart = ({ data }) => {
-  if (Platform.OS === 'web' || !PieChart) {
+  if (!PieChart) {
     return null;
   }
 
