@@ -560,7 +560,7 @@ export default function AdminScreen() {
     { name: 'Configurar Extras de Pizza', icon: '🍕', action: () => setShowExtrasConfig(true) },
     { name: 'Configurar Impressora', icon: '🖨️', action: () => setShowPrinterConfig(true) },
     { name: 'Dados da Empresa', icon: '🏢', action: () => setShowEditarEmpresa(true) },
-    { name: 'Configurar Biometria', icon: '👆', action: () => setShowBiometricSetup(true) },
+    // { name: 'Configurar Biometria', icon: '👆', action: () => setShowBiometricSetup(true) },
     // { name: 'Configurar MFA (2FA)', icon: '🛡️', action: () => setShowMFASetup(true) }, // Desabilitado para futura implementação
   ];
 
