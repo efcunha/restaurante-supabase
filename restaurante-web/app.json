@@ -1,0 +1,68 @@
+{
+  "expo": {
+    "name": "Restaurante Web",
+    "slug": "comandapraia-web",
+    "version": "1.0.1",
+    "orientation": "default",
+    "icon": "./imagem/icone.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./imagem/icone.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#8B2F2F"
+    },
+    "assetBundlePatterns": [
+      "assets/**/*",
+      "components/**/*.js",
+      "screens/**/*.js",
+      "context/**/*.js"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.comandapraia.donacida",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "UISupportedInterfaceOrientations": [
+          "UIInterfaceOrientationPortrait",
+          "UIInterfaceOrientationLandscapeLeft",
+          "UIInterfaceOrientationLandscapeRight"
+        ],
+        "UISupportedInterfaceOrientations~ipad": [
+          "UIInterfaceOrientationPortrait",
+          "UIInterfaceOrientationPortraitUpsideDown",
+          "UIInterfaceOrientationLandscapeLeft",
+          "UIInterfaceOrientationLandscapeRight"
+        ]
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./imagem/icone.png",
+        "backgroundColor": "#8B2F2F"
+      },
+      "package": "com.comandapraia.donacida",
+      "ndkVersion": "26.1.10909125",
+      "screenOrientation": "default"
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "jsEngine": "hermes",
+    "extra": {
+      "eas": {
+        "projectId": "e81efdb8-d3ed-4e6f-82b4-dcf4b8e8f49e"
+      }
+    },
+    "plugins": [
+        "expo-font",
+        [
+            "@sentry/react-native/expo",
+            {
+                "url": "https://sentry.io/",
+                "project": "javascript-react",
+                "organization": "restaurante-app"
+            }
+        ]
+    ]
+  }
+}
