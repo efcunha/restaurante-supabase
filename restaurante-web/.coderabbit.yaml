@@ -1,0 +1,44 @@
+# CodeRabbit Configuration File
+# Documentation: https://docs.coderabbit.ai/
+
+language: "pt-BR" # Respostas em Português
+early_access: true # Funcionalidades beta
+
+reviews:
+  profile: "chill" # Tom de voz: chill, assertive, professional
+  request_changes_workflow: false # Se deve pedir mudanças automaticamente
+  high_level_summary: true # Resumo arquitetural
+  auto_review:
+    enabled: true
+    drafts: false # Não revisar PRs de rascunho
+
+  # Arquivos para ignorar na revisão
+  path_filters:
+    - "!package-lock.json"
+    - "!yarn.lock"
+    - "!**/*.lock"
+    - "!node_modules/**"
+    - "!dist/**"
+    - "!build/**"
+    - "!**/*.min.js"
+    - "!**/*.map"
+    - "!expo-env.d.ts"
+    - "!assets/**"
+    - "!ios/**" # Ignorar código nativo gerado a menos que explicitamente alterado
+    - "!android/**" # Ignorar código nativo gerado
+
+  # Instruções específicas para a AI
+  instructions: |
+    Você é um especialista em React Native e Firebase (Firestore).
+
+    Ao revisar o código:
+    1. Verifique vazamentos de memória (listeners não removidos em useEffect).
+    2. Sugira o uso de `useCallback` e `useMemo` apenas quando necessário para evitar re-renders pesados.
+    3. Garanta que todas as chamadas ao Firestore tratem erros (try/catch).
+    4. Verifique se componentes visuais usam estilos do theme/colors.js em vez de cores hardcoded.
+    5. Priorize performance em listas (FlatList/SectionList).
+
+    Se encontrar código complexo sem comentários, sugira adicionar documentação.
+
+chat:
+  auto_reply: true # Responder a comentários nos PRs
