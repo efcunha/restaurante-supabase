@@ -67,7 +67,17 @@ export const CARDAPIO_STATIC: MenuCategory = {
     { name: 'Chopp', price: 8 }, // Inclui Chopp 400 ML se matching for parcial
     { name: 'Cerveja', price: 9 },
   ],
-  espetinhos: []
+  espetinhos: [
+    { name: 'Carne', price: 12.00 },
+    { name: 'Frango', price: 12.00 },
+    { name: 'Frango com Bacon', price: 12.00 },
+    { name: 'Calabresa', price: 12.00 },
+    { name: 'Coração', price: 12.00 },
+    { name: 'Medalhão', price: 12.00 },
+    { name: 'Salsichão', price: 12.00 },
+    { name: 'Pão de Alho', price: 12.00 },
+    { name: 'Asinha', price: 12.00 }
+  ]
 };
 
 // ============================================================================
@@ -145,12 +155,24 @@ export const calcularPrecoItem = (itemText: string, cardapioDin?: MenuItem[], pr
         const staticItems = [
             ...CARDAPIO_STATIC.caldos,
             ...CARDAPIO_STATIC.comidas,
-            ...CARDAPIO_STATIC.bebidas
+            ...CARDAPIO_STATIC.bebidas,
+            ...CARDAPIO_STATIC.espetinhos
         ];
-        const staticProd = staticItems.find(p => {
-            const pNameLower = p.name.toLowerCase();
-            return itemFullLower.includes(pNameLower) || pNameLower.includes(nomeBaseLower);
-        });
+        // Prioritize exact match
+        let staticProd = staticItems.find(p => p.name.toLowerCase() === nomeBaseLower);
+        
+        // Then try startsWith (e.g. "Caldinho de Camarão" matches "Caldinho de Camarão 300ml")
+        if (!staticProd) {
+             staticProd = staticItems.find(p => itemFullLower.startsWith(p.name.toLowerCase()));
+        }
+
+        // Then try reverse inclusion (item includes product name) - e.g. "Sanduiche de Frango" includes "Frango"
+        if (!staticProd) {
+             staticProd = staticItems.find(p => itemFullLower.includes(p.name.toLowerCase()));
+        }
+        
+        // Removed loose pName.includes(nomeBase) to prevent "Risoto de Frango" matching "Frango"
+
         if (staticProd) precoUnit = staticProd.price;
     }
 
