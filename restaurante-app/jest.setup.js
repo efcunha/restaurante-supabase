@@ -1,6 +1,14 @@
 // Load test environment variables
 require('dotenv').config({ path: '.env.test' });
 
+// Map TEST_ env vars to EXPO_PUBLIC_ so SupabaseConfig.ts picks them up
+if (process.env.TEST_SUPABASE_URL) {
+    process.env.EXPO_PUBLIC_SUPABASE_URL = process.env.TEST_SUPABASE_URL;
+}
+if (process.env.TEST_SUPABASE_ANON_KEY) {
+    process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY = process.env.TEST_SUPABASE_ANON_KEY;
+}
+
 import 'react-native-gesture-handler/jestSetup';
 
 // Mock Supabase config to use test client

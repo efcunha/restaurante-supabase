@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { getTodayKey } from '../utils/dateUtils'; // Migrated from FirebaseOptimizations
 import { normalizeComandaNumber } from '../services/OrderFirestoreService';
 import { calcularTotalPedido, calcularPagoPedido, fixDecimal } from '../utils/orderCalculator';
+import ComandasService from '../services/ComandasService';
 
 export function useComandaManagement() {
     const { user } = useAuth();
@@ -232,9 +233,7 @@ export function useComandaManagement() {
                 // We only do this if we have orders, to avoid overwriting metadata with 0 if orders didn't load
                 if (totalConsumidoPedidos > 0 && Math.abs(totalConsumidoPedidos - metadataTotal) > 0.01) {
                     console.log(`[useComandaManagement] 🔄 Syncing Comanda ${comanda.comandaNumber} total: ${metadataTotal} -> ${totalConsumidoPedidos}`);
-                    import('../services/ComandasService').then(m => {
-                        m.default.sincronizarTotalComanda(user.companyId, comanda.comandaNumber, totalConsumidoPedidos);
-                    });
+                    ComandasService.sincronizarTotalComanda(user.companyId, comanda.comandaNumber, totalConsumidoPedidos);
                 }
 
                 const todosPagos = comanda.pedidos && comanda.pedidos.length > 0 && 
