@@ -1077,6 +1077,16 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
     return acc;
   }, {} as Record<string, Product[]>);
 
+  const displayedCategorias = React.useMemo(() => {
+    const extraCategorias = produtos
+      .map(p => p.category)
+      .filter(c => c && !categorias.some(cat => cat.value.toLowerCase() === c.toLowerCase()))
+      .filter((v, i, a) => a.indexOf(v) === i) // unique
+      .map(c => ({ value: c, label: `📦 ${c.charAt(0).toUpperCase() + c.slice(1)}` }));
+    
+    return [...categorias, ...extraCategorias];
+  }, [produtos, categorias]);
+
   return (
     <KeyboardWrapper style={styles.container}>
 
@@ -1105,11 +1115,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
         paddingHorizontal: horizontalPadding 
       }}>
         {/* SEÇÃO 1: CADASTRAR PRODUTO */}
-        <View style={[styles.section, {
-          maxWidth: isTablet ? 700 : '100%',
-          alignSelf: 'center',
-          width: '100%',
-        }]}>
+        <View style={styles.section}>
           <Text style={styles.sectionTitle}>➕ Cadastrar Produto</Text>
 
           <View style={styles.form}>
@@ -1123,7 +1129,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
 
             <Text style={styles.label}>Categoria:</Text>
             <View style={styles.categoriaButtons}>
-              {categorias.map(cat => (
+              {displayedCategorias.map(cat => (
                 <TouchableOpacity
                   key={cat.value}
                   style={[
@@ -1436,15 +1442,11 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
         </View>
 
         {/* SEÇÃO 2: LISTAR PRODUTOS POR CATEGORIA */}
-        <View style={[styles.section, {
-          maxWidth: isTablet ? 700 : '100%',
-          alignSelf: 'center',
-          width: '100%',
-        }]}>
+        <View style={styles.section}>
           <Text style={styles.sectionTitle}>📋 Produtos Cadastrados</Text>
 
           {/* Filtros de categoria */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtros}>
+          <ScrollView horizontal style={styles.filtros}>
             <TouchableOpacity
               style={[styles.filtroBtn, categoriaFiltro === 'todos' && styles.filtroBtnActive]}
               onPress={() => setCategoriaFiltro('todos')}
@@ -1454,7 +1456,8 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
               </Text>
             </TouchableOpacity>
 
-            {categorias.map(cat => (
+            {/* Combine static categories with any extra categories found in products */}
+            {displayedCategorias.map(cat => (
               <TouchableOpacity
                 key={cat.value}
                 style={[styles.filtroBtn, categoriaFiltro === cat.value && styles.filtroBtnActive]}
@@ -1610,7 +1613,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
               <Text style={styles.label}>Nome:</Text>
               <TextInput
                 style={[styles.input, { maxWidth: inputMaxWidth }]}
@@ -1802,7 +1805,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.variacoesLista}>
+            <ScrollView style={[styles.variacoesLista, Platform.OS === 'web' && { maxHeight: '60vh' }]}>
               {variacoesSelecionadas.map(variacao => (
                 <View key={variacao.id}>
                   <VariacaoItem
@@ -1896,7 +1899,13 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
 
             <Text style={styles.label}>Adicionar Ingrediente do Estoque:</Text>
 
-            <ScrollView style={{ maxHeight: 150, marginBottom: 10, borderWidth: 1, borderColor: '#eee', borderRadius: 8 }}>
+            <ScrollView style={{ 
+              maxHeight: Platform.OS === 'web' ? 300 : 150, 
+              marginBottom: 10, 
+              borderWidth: 1, 
+              borderColor: '#eee', 
+              borderRadius: 8 
+            }}>
               {stockItems.map(item => (
                 <TouchableOpacity
                   key={item.id}
@@ -2152,6 +2161,7 @@ const styles = StyleSheet.create({
   filtros: {
     flexDirection: 'row',
     marginBottom: 15,
+    maxWidth: '100%', // Ensure it doesn't overflow parent
   },
   filtroBtn: {
     backgroundColor: '#FFFFFF',
@@ -2319,6 +2329,8 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 10,
     alignSelf: 'center',
+    display: 'flex',
+    flexDirection: 'column', // Prepare for flex children
   },
   modalHeader: {
     flexDirection: 'row',
@@ -2374,7 +2386,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   variacoesLista: {
-    maxHeight: 400,
+    maxHeight: Platform.OS === 'web' ? '60vh' : 400,
+    flexGrow: 0, // Ensure it doesn't force expansion beyond limits
   },
   variacaoItem: {
     backgroundColor: '#F5F1E8',

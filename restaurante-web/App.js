@@ -2,7 +2,9 @@ import 'react-native-gesture-handler';
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useFonts } from 'expo-font';
 import { Ionicons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { View, Text, Platform, ActivityIndicator, LogBox, StatusBar, StyleSheet } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
@@ -11,7 +13,10 @@ LogBox.ignoreLogs([
   'AsyncStorage has been extracted',
   'Non-serializable values were found',
   'Non-serializable values were found',
+  'shadow*', // Ignorar aviso de shadow style
 ]);
+
+
 
 import { initSentry } from './src/config/sentryConfig';
 // import * as Sentry from '@sentry/react-native';
@@ -188,6 +193,19 @@ const styles = StyleSheet.create({
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 
 export default function App() {
+  const [fontsLoaded] = useFonts({
+    ...Ionicons.font,
+    ...MaterialCommunityIcons.font,
+  });
+
+  if (!fontsLoaded) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#8B2F2F" />
+      </View>
+    );
+  }
+
   return (
     <ErrorBoundary>
       <AuthProvider>
