@@ -4,6 +4,7 @@
   "private": true,
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
+    "deploy:vercel": "bash scripts/deploy-vercel.sh",
     "build": "expo export -p web",
     "start": "expo start --web",
     "start:mobile": "expo start",
