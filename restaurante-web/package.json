@@ -4,6 +4,7 @@
   "private": true,
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
+    "build": "expo export -p web",
     "start": "expo start --web",
     "start:mobile": "expo start",
     "start:web": "expo start --web",
@@ -98,7 +99,7 @@
     "@types/uuid": "^10.0.0",
     "dotenv": "^17.2.3",
     "eslint": "^10.0.0",
-    "eslint-plugin-react": "^7.22.0",
+    "eslint-plugin-react": "^7.34.1",
     "fast-check": "^3.23.2",
     "globals": "^17.0.0",
     "jest": "^30.2.0",
@@ -112,6 +113,11 @@
     "typescript-eslint": "^7.3.1"
   },
   "overrides": {
-    "qs": "^6.15.0"
+    "qs": "^6.15.0",
+    "eslint": "$eslint",
+    "eslint-plugin-react": "$eslint-plugin-react"
+  },
+  "engines": {
+    "node": ">= 18"
   }
 }
