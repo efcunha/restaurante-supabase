@@ -12,6 +12,7 @@ import { exitApp } from '../utils/appUtils';
 import { getLocalDateKey } from '../utils/dateUtils';
 // @ts-ignore
 import OrderService from '../services/OrderService';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Verificar se pedido é urgente (mais de 15 minutos)
 const isUrgent = (timestamp: string) => {
@@ -140,6 +141,7 @@ export default function MontagemScreen() {
   const { user, logout, hasPermission, Permissions } = useAuth();
   const [processingItems, setProcessingItems] = useState(new Set()); // Loading state
   const [allOrders, setAllOrders] = useState<any[]>([]);
+  const insets = useSafeAreaInsets();
 
   // ✅ TEMPO REAL: Listener para multi-usuários
   useEffect(() => {
@@ -434,7 +436,7 @@ export default function MontagemScreen() {
 
 
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
         <View style={styles.headerLeft}>
           {user && (
             <View>
@@ -488,7 +490,6 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: '#8B2F2F',
-    paddingTop: 50,
     paddingBottom: 15,
     paddingHorizontal: 20,
     flexDirection: 'row',

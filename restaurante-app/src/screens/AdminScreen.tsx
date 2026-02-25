@@ -41,6 +41,7 @@ import OperationalSettingsScreen from './OperationalSettingsScreen';
 import { confirmLogout } from '../utils/appUtils';
 import BiometricSetupModal from '../components/BiometricSetupModal';
 import MFASetupModal from '../components/MFASetupModal';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 // import PerformanceService from '../services/PerformanceService'; // Removed - Firebase specific
 
 /**
@@ -62,6 +63,8 @@ export default function AdminScreen() {
       setShowConfiguracaoMesas(true);
     }
   }, [params]);
+
+  const insets = useSafeAreaInsets();
 
   // Helper para formatar valores em Real brasileiro
   const formatarMoeda = (valor: any) => {
@@ -569,7 +572,7 @@ export default function AdminScreen() {
 
 
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
         <View style={styles.headerLeft}>
           {user && (
             <View>
@@ -1124,13 +1127,19 @@ const styles = StyleSheet.create({
   },
   statsHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 15,
+    justifyContent: 'space-between',
+    paddingBottom: 20,
+    paddingHorizontal: 20,
     backgroundColor: '#8B2F2F',
-    borderBottomWidth: 2,
-    borderBottomColor: '#7A2828',
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.65,
+    zIndex: 10,
   },
   refreshButton: {
     fontSize: 20,

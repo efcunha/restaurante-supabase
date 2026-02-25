@@ -18,6 +18,7 @@ import { colors } from '../theme/colors';
 import { getTodayKey } from '../utils/dateUtils'; // Migrated from FirebaseOptimizations
 import { fixDecimal, calcularPrecoItem } from '../utils/orderCalculator';
 import CancelOrderModal from '../components/comandas/CancelOrderModal';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { confirmLogout } from '../utils/appUtils';
 
@@ -73,6 +74,8 @@ export default function ComandaGerenciamentoScreen(props: any) {
       }
     }
   }, [searchComanda, comandasAbertas]);
+
+  const insets = useSafeAreaInsets();
 
   // Sync selectedComanda with real-time updates
   React.useEffect(() => {
@@ -406,7 +409,7 @@ export default function ComandaGerenciamentoScreen(props: any) {
     <View style={styles.container}>
 
 
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
         <View style={styles.headerLeft}>
           {user && (
             <View>
@@ -492,12 +495,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 50,
     paddingBottom: 15,
     backgroundColor: colors.primary,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
-    elevation: 4,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.65,
     zIndex: 10,
   },
   headerLeft: {

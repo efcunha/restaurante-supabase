@@ -1,6 +1,8 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
+import { colors } from '../theme/colors';
 
 /**
  * Header compartilhado para todas as telas
@@ -8,9 +10,10 @@ import { useAuth } from '../context/AuthContext';
  */
 export default function ScreenHeader({ title, onBack = null }) {
   const { user, logout } = useAuth();
+  const insets = useSafeAreaInsets();
 
   return (
-    <View style={styles.header}>
+    <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
       {onBack && (
         <TouchableOpacity onPress={onBack} style={styles.backBtn}>
           <Text style={styles.backBtnText}>← Voltar</Text>
@@ -33,15 +36,17 @@ export default function ScreenHeader({ title, onBack = null }) {
 
 const styles = StyleSheet.create({
   header: {
-    backgroundColor: '#8B2F2F',
-    paddingTop: 40,
+    backgroundColor: colors.primary,
     paddingBottom: 15,
     paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     elevation: 5,
-    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.25)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   backBtn: {
     padding: 5,

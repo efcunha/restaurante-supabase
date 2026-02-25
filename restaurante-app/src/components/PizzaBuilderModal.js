@@ -383,9 +383,9 @@ export default function PizzaBuilderModal({
 }
 
 const styles = StyleSheet.create({
-    overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
-    container: { height: '85%', backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingTop: 10 },
-    modalHeaderDrag: { width: 40, height: 4, backgroundColor: '#ddd', borderRadius: 2, alignSelf: 'center', marginBottom: 15 },
+    overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+    container: { height: '85%', backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingTop: 10, shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 10 },
+    modalHeaderDrag: { width: 40, height: 4, backgroundColor: '#E0E0E0', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
 
     closeBtn: { position: 'absolute', top: 15, right: 15, zIndex: 10 },
 
@@ -416,29 +416,29 @@ const styles = StyleSheet.create({
 
     headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 15, gap: 15 },
     backBtn: { padding: 8, backgroundColor: '#f0f0f0', borderRadius: 50 },
-    search: { backgroundColor: '#f5f5f5', padding: 12, borderRadius: 12, marginBottom: 15, fontSize: 16 },
+    search: { backgroundColor: '#F9F9F9', padding: 14, borderRadius: 12, marginBottom: 15, fontSize: 16, borderWidth: 1, borderColor: '#EAEAEA', minHeight: 48 },
 
-    flavorRow: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: '#fff', borderRadius: 12, marginBottom: 8, borderWidth: 1, borderColor: '#eee' },
-    flavorRowActive: { borderColor: colors.primary, backgroundColor: '#FFF5F5' },
-    flavorRowDisabled: { opacity: 0.5, backgroundColor: '#f9f9f9' },
+    flavorRow: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: '#fff', borderRadius: 16, marginBottom: 10, borderWidth: 1, borderColor: '#F0F0F0', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 },
+    flavorRowActive: { borderColor: colors.primary, backgroundColor: '#FFF9F9', borderWidth: 2 },
+    flavorRowDisabled: { opacity: 0.5, backgroundColor: '#F9F9F9' },
 
-    flavorName: { fontSize: 16, fontWeight: '600', color: '#333' },
-    flavorPrice: { fontSize: 14, color: colors.primary, fontWeight: 'bold', marginTop: 2 },
+    flavorName: { fontSize: 16, fontWeight: '700', color: '#2C2C2C' },
+    flavorPrice: { fontSize: 15, color: colors.primary, fontWeight: 'bold', marginTop: 4 },
 
-    checkbox: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: '#ddd', justifyContent: 'center', alignItems: 'center' },
+    checkbox: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: '#ddd', justifyContent: 'center', alignItems: 'center' },
 
-    footer: { borderTopWidth: 1, borderTopColor: '#f0f0f0', paddingTop: 20, marginTop: 10, paddingBottom: 30 },
-    totalText: { fontSize: 24, fontWeight: 'bold', color: colors.primary },
-    confirmBtn: { backgroundColor: colors.success, padding: 18, borderRadius: 14, alignItems: 'center' },
-    disabledBtn: { backgroundColor: '#ccc' },
+    footer: { borderTopWidth: 1, borderTopColor: '#F0F0F0', paddingTop: 20, marginTop: 10, paddingBottom: 20 },
+    totalText: { fontSize: 24, fontWeight: '800', color: colors.primary },
+    confirmBtn: { backgroundColor: colors.success, padding: 16, borderRadius: 14, alignItems: 'center', minHeight: 56, justifyContent: 'center' },
+    disabledBtn: { backgroundColor: '#E0E0E0' },
     nextBtnText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
 
     // Extras styles
-    sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#333', marginBottom: 12 },
-    extraRow: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: '#fff', borderRadius: 12, marginBottom: 8, borderWidth: 1, borderColor: '#eee' },
-    extraRowActive: { borderColor: colors.primary, backgroundColor: '#FFF5F5' },
-    extraName: { fontSize: 16, fontWeight: '600', color: '#333' },
-    extraPrice: { fontSize: 14, color: colors.primary, fontWeight: 'bold', marginTop: 2 },
+    sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#2C2C2C', marginBottom: 14 },
+    extraRow: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: '#fff', borderRadius: 16, marginBottom: 10, borderWidth: 1, borderColor: '#F0F0F0', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 },
+    extraRowActive: { borderColor: colors.primary, backgroundColor: '#FFF9F9', borderWidth: 2 },
+    extraName: { fontSize: 16, fontWeight: '700', color: '#2C2C2C' },
+    extraPrice: { fontSize: 15, color: colors.primary, fontWeight: 'bold', marginTop: 4 },
     radio: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: '#ddd', justifyContent: 'center', alignItems: 'center' },
     radioActive: { borderColor: colors.primary },
     radioDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: colors.primary }

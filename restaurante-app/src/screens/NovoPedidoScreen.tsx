@@ -11,8 +11,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import PizzaBuilderModal from '../components/PizzaBuilderModal';
 import { Product, PizzaSize, PizzaConfig, Funcionario } from '../types';
 import { Modal, FlatList } from 'react-native';
-// KeyboardWrapper removed to prevent touch stealing
 import { KeyboardAvoidingView, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 if (Platform.OS === 'android') {
   if (UIManager.setLayoutAnimationEnabledExperimental) {
@@ -65,6 +65,8 @@ const PizzaRow = memo(({ item, onPress }: PizzaRowProps) => {
   const hash = item.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
   const colorIndex = hash % rowColors.length;
   const cardColor = rowColors[colorIndex] || colors.primary; // Fallback
+  // Em vez de usar a cor como fundo inteiro, usaremos como destaque (border/tag)
+  const bgColor = colors.white;
 
   const handlePress = useCallback(() => {
     onPress(item);
@@ -72,15 +74,17 @@ const PizzaRow = memo(({ item, onPress }: PizzaRowProps) => {
 
   return (
     <TouchableOpacity
-      style={[styles.stackedInfoCard, { backgroundColor: cardColor, marginBottom: 12, elevation: 2 }]}
+      style={[styles.stackedInfoCard, { backgroundColor: bgColor, borderLeftColor: cardColor, borderLeftWidth: 6, marginBottom: 12, elevation: 2 }]}
       onPress={handlePress}
       activeOpacity={0.8}
     >
-      <View style={{ alignItems: 'center' }}>
-        <Text style={styles.stackedNameText}>{item.name}</Text>
-        {!!ingredientsText && <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 13, textAlign: 'center', marginBottom: 4, fontStyle: 'italic' }}>{ingredientsText}</Text>}
-        {!!customIngredientsText && <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12, textAlign: 'center', marginBottom: 4, fontStyle: 'italic' }}>({customIngredientsText})</Text>}
-        <Text style={styles.stackedPriceText}>{priceDisplay}</Text>
+      <View style={{ alignItems: 'flex-start' }}>
+        <Text style={[styles.stackedNameText, { color: colors.text }]}>{item.name}</Text>
+        {!!ingredientsText && <Text style={{ color: colors.textSecondary, fontSize: 13, textAlign: 'left', marginBottom: 4, fontStyle: 'italic' }}>{ingredientsText}</Text>}
+        {!!customIngredientsText && <Text style={{ color: colors.textLight, fontSize: 12, textAlign: 'left', marginBottom: 4, fontStyle: 'italic' }}>({customIngredientsText})</Text>}
+        <View style={{ backgroundColor: '#F5F5F5', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, marginTop: 4 }}>
+          <Text style={[styles.stackedPriceText, { color: '#2C2C2C', fontSize: 15 }]}>{priceDisplay}</Text>
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -611,6 +615,8 @@ export default function NovoPedidoScreen({ route }: any) {
     carregarCardapio,
     extras
   } = useNovoPedido();
+  
+  const insets = useSafeAreaInsets();
 
   // Refresh menu whenever screen gains focus
   useFocusEffect(
@@ -907,7 +913,7 @@ export default function NovoPedidoScreen({ route }: any) {
 
 
       {/* Header e Conteúdo mantidos dentro do Wrapper */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
         {/* ... (código do header) */}
         <View style={styles.headerLeft}>
           {user && (
@@ -980,7 +986,7 @@ export default function NovoPedidoScreen({ route }: any) {
         decelerationRate="normal"
       />
 
-      <View style={styles.stickyFooter}>
+      <View style={[styles.stickyFooter, { paddingBottom: Math.max(insets.bottom, 20) }]}>
         <View style={styles.totalContainer}>
           <Text style={styles.totalLabel}>Total:</Text>
           <Text style={styles.totalValue}>R$ {total.toFixed(2)}</Text>
@@ -1022,13 +1028,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 50,
     paddingBottom: 15,
     backgroundColor: colors.primary,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
     zIndex: 10,
     elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.65,
   },
   headerLeft: {
     flex: 1,
@@ -1064,9 +1073,19 @@ const styles = StyleSheet.create({
   listContent: { padding: 20, paddingBottom: 120 },
   headerForm: { marginBottom: 20 },
   label: { fontSize: 16, color: colors.text, marginBottom: 6, fontWeight: 'bold' },
+  obsInput: {
+    backgroundColor: '#F9F9F9',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#EAEAEA',
+    padding: 15,
+    fontSize: 16,
+    color: '#333',
+    minHeight: 120,
+    textAlignVertical: 'top',
+  },
   input: {
     backgroundColor: colors.white,
-    borderRadius: 8,
     padding: 12,
     fontSize: 16,
     borderWidth: 1,
@@ -1260,6 +1279,10 @@ const styles = StyleSheet.create({
     borderTopWidth: 1, borderTopColor: colors.border,
     padding: 20,
     elevation: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
   },
   totalContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   totalLabel: { fontSize: 20, fontWeight: 'bold', color: colors.text },
@@ -1292,7 +1315,10 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: colors.text,
-    paddingVertical: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
   },
   searchClearBtn: {
     padding: 4,
