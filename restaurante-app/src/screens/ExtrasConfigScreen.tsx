@@ -21,6 +21,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../config/SupabaseConfig';
 import { Extra, ExtraType } from '../types/models';
@@ -38,6 +39,8 @@ export default function ExtrasConfigScreen({ onClose }: ExtrasConfigScreenProps)
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingExtra, setEditingExtra] = useState<Extra | null>(null);
+
+  const insets = useSafeAreaInsets();
 
   // Form state
   const [formName, setFormName] = useState('');
@@ -220,9 +223,8 @@ export default function ExtrasConfigScreen({ onClose }: ExtrasConfigScreenProps)
   return (
     <View style={styles.container}>
 
-
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 16) }]}>
         <TouchableOpacity onPress={onClose} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#FFF" />
         </TouchableOpacity>
@@ -294,7 +296,7 @@ export default function ExtrasConfigScreen({ onClose }: ExtrasConfigScreenProps)
 
       {/* Add Button */}
       <TouchableOpacity
-        style={styles.addButton}
+        style={[styles.addButton, { bottom: Math.max(insets.bottom + 20, 20) }]}
         onPress={() => openAddModal(activeTab)}
       >
         <Ionicons name="add" size={24} color="#FFF" />
@@ -375,7 +377,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     backgroundColor: '#8B2F2F',
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingBottom: 16,
     elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },

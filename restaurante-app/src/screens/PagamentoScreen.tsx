@@ -10,6 +10,7 @@ import { supabase } from '../config/SupabaseConfig';
 import SplitPaymentModal from '../components/SplitPaymentModal';
 import { colors } from '../theme/colors';
 import { calcularPrecoItem, MenuItem } from '../utils/orderCalculator';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Usar função centralizada para consistência de data local
 const todayKey = getTodayKey;
@@ -26,6 +27,8 @@ export default function PagamentoScreen({ route, navigation }: any) {
     return 'R$ ' + partes.join(',');
   };
   
+  const insets = useSafeAreaInsets();
+
   // --- STATE ---
   const [activeTab, setActiveTab] = useState<'completo' | 'rateio'>('completo');
   const [splitInitialMode, setSplitInitialMode] = useState<'pessoas' | 'itens'>('pessoas');
@@ -356,7 +359,7 @@ export default function PagamentoScreen({ route, navigation }: any) {
   return (
     <View style={styles.container}>
       {/* HEADER PERSONALIZADO */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color="#FFF" />
         </TouchableOpacity>
@@ -538,7 +541,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 50,
     paddingBottom: 20,
     paddingHorizontal: 20,
     backgroundColor: colors.primary,
@@ -561,7 +563,8 @@ const styles = StyleSheet.create({
     borderColor: '#E0E0E0',
     borderRadius: 8,
     padding: 8,
-    fontSize: 16
+    fontSize: 16,
+    minHeight: 48,
   },
   searchBtn: { backgroundColor: colors.primary, padding: 10, borderRadius: 8 },
   
