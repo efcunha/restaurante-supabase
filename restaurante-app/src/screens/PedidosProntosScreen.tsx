@@ -10,6 +10,7 @@ import { supabase } from '../config/SupabaseConfig';
 import { getLocalDateKey } from '../utils/dateUtils';
 import { exitApp } from '../utils/appUtils';
 import OptimizedFlatList from '../components/OptimizedFlatList';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function PedidosProntosScreen() {
   const { user } = useAuth();
@@ -17,6 +18,7 @@ export default function PedidosProntosScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [processingItems, setProcessingItems] = useState(new Set()); // Loading state
   const [allOrders, setAllOrders] = useState<any[]>([]);
+  const insets = useSafeAreaInsets();
 
   // ✅ TEMPO REAL: Listener para multi-usuários
   useEffect(() => {
@@ -275,7 +277,7 @@ export default function PedidosProntosScreen() {
 
 
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
         <View style={styles.headerLeft}>
           {user && (
             <View>
@@ -327,7 +329,6 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: '#8B2F2F',
-    paddingTop: 50,
     paddingBottom: 15,
     paddingHorizontal: 20,
     flexDirection: 'row',
