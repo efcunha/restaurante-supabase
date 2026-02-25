@@ -299,6 +299,7 @@ const styles = StyleSheet.create({
     padding: 10,
     fontSize: 15,
     color: '#2C2C2C',
+    minHeight: 48,
   },
   passwordContainer: {
     flexDirection: 'row',
@@ -308,6 +309,7 @@ const styles = StyleSheet.create({
     borderColor: '#E0D8C8',
     borderRadius: 12,
     paddingRight: 10,
+    minHeight: 48,
   },
   passwordInput: {
     flex: 1,

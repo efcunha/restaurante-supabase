@@ -110,21 +110,21 @@ const styles = StyleSheet.create({
         width: '100%',
         maxWidth: 340,
         backgroundColor: '#FFF',
-        borderRadius: 16,
+        borderRadius: 20,
         overflow: 'hidden',
         ...Platform.select({
             ios: {
                 shadowColor: '#000',
                 shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.3,
-                shadowRadius: 8,
+                shadowOpacity: 0.15,
+                shadowRadius: 10,
             },
             android: {
                 elevation: 8,
             },
             web: {
                 // @ts-ignore
-                boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.2)',
+                boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.15)',
             }
         }),
     },
@@ -166,13 +166,14 @@ const styles = StyleSheet.create({
         marginBottom: 8
     },
     input: {
-        backgroundColor: '#F5F5F5',
+        backgroundColor: '#F9F9F9',
         borderWidth: 1,
-        borderColor: '#E0E0E0',
-        borderRadius: 8,
+        borderColor: '#EAEAEA',
+        borderRadius: 12,
         padding: 12,
         fontSize: 16,
-        marginBottom: 24
+        marginBottom: 24,
+        minHeight: 48,
     },
     actions: {
         flexDirection: 'row',
@@ -181,9 +182,10 @@ const styles = StyleSheet.create({
     btn: {
         flex: 1,
         paddingVertical: 12,
-        borderRadius: 8,
+        borderRadius: 12,
         alignItems: 'center',
-        justifyContent: 'center'
+        justifyContent: 'center',
+        minHeight: 48,
     },
     cancelBtn: {
         backgroundColor: '#F5F5F5',
