@@ -18,7 +18,7 @@ import CaixaService from '../services/CaixaService';
 import { listarFuncionarios } from '../services/FuncionariosService';
 import { Product, Cardapio, PizzaConfig, PizzaSize, Ingredient, Funcionario } from '../types';
 
-const CARDAPIO_CACHE_KEY = '@cardapio_cache';
+const CARDAPIO_CACHE_KEY = '@cardapio_cache_v2';
 const CARDAPIO_CACHE_EXPIRY = 5 * 60 * 1000;
 
 export const fixDecimal = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
@@ -246,11 +246,10 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                 setPizzaConfig(newPizzaConfig);
             }
 
-            // Fetch Pizza Extras (already fetched in parallel)
             const { data: extrasData, error: extrasError } = extrasResult;
-            
+            let currentExtras: any[] = [];
             if (!extrasError && extrasData) {
-                const extrasFormatted = extrasData.map((e: any) => ({
+                currentExtras = extrasData.map((e: any) => ({
                     id: e.id,
                     companyId: e.company_id,
                     type: e.type,
@@ -260,14 +259,10 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                     createdAt: new Date(e.created_at),
                     updatedAt: e.updated_at ? new Date(e.updated_at) : undefined
                 }));
-                setExtras(extrasFormatted);
+                setExtras(currentExtras);
             } else {
                 setExtras([]);
             }
-
-            setCardapio(novoCardapio);
-            cardapioLoadedRef.current = true;
-            lastLoadTimeRef.current = Date.now();
 
             setCardapio(novoCardapio);
             cardapioLoadedRef.current = true;
@@ -281,10 +276,10 @@ export function useNovoPedido(): UseNovoPedidoReturn {
 
             await AsyncStorage.setItem(CARDAPIO_CACHE_KEY, JSON.stringify({
                 data: novoCardapio,
-                pizzaConfig: newPizzaConfig, // Cache config too (utilizando a variável local correta)
-                extras: extras,         // Cache extras too
-                timestamp: Date.now(),   // When we fetched
-                lastUpdated: maxUpdatedAt // The max server timestamp
+                pizzaConfig: newPizzaConfig, // Cache config too
+                extras: currentExtras,       // FIX: Use the loaded array instead of the stale state component `extras` variable
+                timestamp: Date.now(),       // When we fetched
+                lastUpdated: maxUpdatedAt    // The max server timestamp
             }));
         } catch (error) {
             console.error('❌ Erro ao carregar cardápio do Supabase:', error);
