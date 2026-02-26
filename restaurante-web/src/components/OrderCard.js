@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 /**
  * OrderCard - Card otimizado para exibir pedido
@@ -18,8 +19,25 @@ const OrderCard = React.memo(({
       onPress={() => onPress(order.id)}
       activeOpacity={0.7}
     >
-      <Text style={styles.orderNumber}>{order.id}</Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <Text style={styles.orderNumber}>{order.id}</Text>
+        {order.orderType === 'delivery' && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FDECEC', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
+            <Ionicons name="bicycle" size={16} color="#8B2F2F" />
+            <Text style={{ marginLeft: 4, fontSize: 13, fontWeight: 'bold', color: '#8B2F2F' }}>Delivery</Text>
+          </View>
+        )}
+      </View>
+
       <Text style={styles.orderClient}>{order.client}</Text>
+
+      {order.orderType === 'delivery' && order.deliveryAddress && (
+        <Text style={styles.orderAddress} numberOfLines={2}>📍 {order.deliveryAddress}</Text>
+      )}
+
+      {order.orderType === 'delivery' && order.deliveryFee > 0 && (
+        <Text style={styles.orderFee}>Moto-boy: R$ {order.deliveryFee.toFixed(2)}</Text>
+      )}
 
       {order.observations && (
         <Text style={styles.orderObs}>Obs: {order.observations}</Text>
@@ -107,6 +125,19 @@ const styles = StyleSheet.create({
   itemText: {
     fontSize: 14,
     color: '#5C5C5C',
+  },
+  orderAddress: {
+    fontSize: 13,
+    color: '#444',
+    marginBottom: 6,
+    paddingHorizontal: 4,
+  },
+  orderFee: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#E5B84A',
+    marginBottom: 10,
+    paddingHorizontal: 4,
   },
   actionBtn: {
     backgroundColor: '#8B2F2F',

@@ -31,7 +31,11 @@ interface OrderContextType {
     priceMap?: any,
     categoryMap?: any,
     tableId?: string,
-    waiterId?: string
+    waiterId?: string,
+    orderType?: string,
+    customerPhone?: string,
+    deliveryAddress?: string,
+    deliveryFee?: number
   ) => Promise<string>;
   editOrder: (orderId: string, updatedData: Partial<Order>) => Promise<void>;
   deleteOrder: (orderId: string) => Promise<void>;
@@ -183,7 +187,8 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     clientName: string, items: string[], observations: string, comandaNumber: string = '',
     createdBy: string = '', createdByName: string = '', totalPrice: number = 0,
     _isPago: boolean = false, mesa: string = '', priceMap: any = null, categoryMap: any = null,
-    tableId: string = '', waiterId: string = ''
+    tableId: string = '', waiterId: string = '',
+    orderType: string = 'local', customerPhone: string = '', deliveryAddress: string = '', deliveryFee: number = 0
   ) => {
     const orderId = OrderService.generateOrderId(orderCounter);
 
@@ -226,7 +231,7 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         }
 
         // If _isPago is passed, we generally ignore it for new orders as they start unpaid, but let's keep it if needed for logic
-        const order = OrderService.createOrder(orderId, clientName, items, observations, comandaNumber, createdBy, createdByName, calculatedTotal, false, mesa, categoryMap, priceMap, tableId, waiterId);
+        const order = OrderService.createOrder(orderId, clientName, items, observations, comandaNumber, createdBy, createdByName, calculatedTotal, false, mesa, categoryMap, priceMap, tableId, waiterId, orderType, customerPhone, deliveryAddress, deliveryFee);
         const valorPedido = order.totalPrice || 0;
 
         const [firestoreDocId] = await Promise.all([
@@ -239,7 +244,7 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         return orderId;
       } else {
         // Offline fallback
-        const order = OrderService.createOrder(orderId, clientName, items, observations, comandaNumber, createdBy, createdByName, totalPrice, false, mesa, categoryMap, priceMap, tableId, waiterId);
+        const order = OrderService.createOrder(orderId, clientName, items, observations, comandaNumber, createdBy, createdByName, totalPrice, false, mesa, categoryMap, priceMap, tableId, waiterId, orderType, customerPhone, deliveryAddress, deliveryFee);
         SyncService.addToQueue('ADD_ORDER', { companyId: user?.companyId, id: orderId, orderData: order });
         setOrders(prev => [order as Order, ...prev]);
         setOrderCounter(prev => prev + 1);
