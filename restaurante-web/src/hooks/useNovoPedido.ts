@@ -228,19 +228,22 @@ export function useNovoPedido(): UseNovoPedidoReturn {
             // Load Pizza Config from company settings (already fetched in parallel)
             const { data: companyData, error: companyError } = companyResult;
             
-            if (!companyError && companyData?.settings?.pizzaConfig) {
-                setPizzaConfig(companyData.settings.pizzaConfig);
+            let newPizzaConfig = null;
+            if (!companyError && companyData?.settings?.pizzaConfig?.sizes?.length > 0) {
+                newPizzaConfig = companyData.settings.pizzaConfig;
+                setPizzaConfig(newPizzaConfig);
             } else {
                 // Fallback to defaults if not configured
-                setPizzaConfig({
+                newPizzaConfig = {
                     sizes: [
                         { name: 'Fatia', maxFlavors: 1 },
                         { name: 'Broto', maxFlavors: 1 },
                         { name: 'Média', maxFlavors: 2 },
                         { name: 'Grande/Família', maxFlavors: 4 }
                     ],
-                    pricingMode: 'HIGHER'
-                });
+                    pricingMode: 'HIGHER' as const
+                };
+                setPizzaConfig(newPizzaConfig);
             }
 
             // Fetch Pizza Extras (already fetched in parallel)
@@ -278,7 +281,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
 
             await AsyncStorage.setItem(CARDAPIO_CACHE_KEY, JSON.stringify({
                 data: novoCardapio,
-                pizzaConfig: pizzaConfig, // Cache config too
+                pizzaConfig: newPizzaConfig, // Cache config too (utilizando a variável local correta)
                 extras: extras,         // Cache extras too
                 timestamp: Date.now(),   // When we fetched
                 lastUpdated: maxUpdatedAt // The max server timestamp
@@ -323,6 +326,12 @@ export function useNovoPedido(): UseNovoPedidoReturn {
 
             const parsedCache = JSON.parse(cached);
             const localTimestamp = parsedCache.lastUpdated || 0;
+
+            // 🐛 FIX: Se o cache estiver quebrado sem pizzaConfig, forçar recarregamento!
+            if (!parsedCache.pizzaConfig || !parsedCache.pizzaConfig.sizes) {
+                console.log('🔄 Cache quebrado (pizzaConfig ausente). Forçando recarga...');
+                return true;
+            }
 
             // 3. Compare: If server is newer (> 1s diff to be safe), reload
             // Also reload if cache is older than 24h (force refresh just in case)

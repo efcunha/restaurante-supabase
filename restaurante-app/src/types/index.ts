@@ -57,6 +57,14 @@ export interface Order extends OrderTimestamps {
   createdBy?: string;
   /** Nome do funcionário que criou o pedido */
   createdByName?: string;
+  /** Tipo de pedido: mesa/local ou entrega */
+  orderType?: 'local' | 'delivery';
+  /** Telefone do cliente (para delivery) */
+  customerPhone?: string;
+  /** Endereço de entrega */
+  deliveryAddress?: string;
+  /** Taxa de entrega */
+  deliveryFee?: number;
   /** Timestamp legado (mantido para compatibilidade) */
   timestamp?: string;
 }
@@ -68,6 +76,10 @@ export interface CreateOrderData {
   client: string;
   items: string[];
   observations?: string;
+  orderType?: 'local' | 'delivery';
+  customerPhone?: string;
+  deliveryAddress?: string;
+  deliveryFee?: number;
 }
 
 /**
@@ -77,6 +89,10 @@ export interface UpdateOrderData {
   client?: string;
   items?: string[];
   observations?: string;
+  orderType?: 'local' | 'delivery';
+  customerPhone?: string;
+  deliveryAddress?: string;
+  deliveryFee?: number;
 }
 
 /**

@@ -49,6 +49,11 @@ class SupabaseOrderService {
       timeInChurrasqueira: null, // Custom fields need schema extension if critical
       timeInMontagem: null,
       timeInProntos: null,
+      // Delivery fields
+      orderType: row.order_type || 'local',
+      customerPhone: row.customer_phone || '',
+      deliveryAddress: row.delivery_address || '',
+      deliveryFee: row.delivery_fee || 0,
     } as Order;
   }
 
@@ -158,7 +163,11 @@ class SupabaseOrderService {
         date_key: getTodayKey(),
         comanda_status: 'aberta',
         price_map: order.priceMap || {},
-        items_with_status: order.itemsWithStatus || []
+        items_with_status: order.itemsWithStatus || [],
+        order_type: order.orderType || 'local',
+        customer_phone: order.customerPhone || null,
+        delivery_address: order.deliveryAddress || null,
+        delivery_fee: order.deliveryFee || 0
       })
       .select()
       .single();
@@ -244,6 +253,10 @@ class SupabaseOrderService {
     if (updates.totalPrice) payload.total_amount = updates.totalPrice;
     if (updates.priceMap) payload.price_map = updates.priceMap;
     if (updates.itemsWithStatus) payload.items_with_status = updates.itemsWithStatus;
+    if (updates.orderType) payload.order_type = updates.orderType;
+    if (updates.customerPhone !== undefined) payload.customer_phone = updates.customerPhone;
+    if (updates.deliveryAddress !== undefined) payload.delivery_address = updates.deliveryAddress;
+    if (updates.deliveryFee !== undefined) payload.delivery_fee = updates.deliveryFee;
 
     const operation = async () => {
       const { error } = await supabase
@@ -308,7 +321,11 @@ class SupabaseOrderService {
         date_key: getTodayKey(),
         comanda_status: 'aberta',
         price_map: order.priceMap || {},
-        items_with_status: order.itemsWithStatus || []
+        items_with_status: order.itemsWithStatus || [],
+        order_type: order.orderType || 'local',
+        customer_phone: order.customerPhone || null,
+        delivery_address: order.deliveryAddress || null,
+        delivery_fee: order.deliveryFee || 0
       })
       .select()
       .single();
