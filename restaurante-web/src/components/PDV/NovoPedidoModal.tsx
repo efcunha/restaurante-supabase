@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../config/SupabaseConfig';
 import { useAuth } from '../../context/AuthContext';
 import { getTodayKey } from '../../utils/dateUtils';
-import SupabaseOrderService from '../../services/supabase/SupabaseOrderService';
+import supabaseOrderService from '../../services/supabase/SupabaseOrderService';
 
 interface ItemCart {
   id: string;
@@ -29,9 +29,7 @@ export default function NovoPedidoModal({ onClose }: NovoPedidoModalProps) {
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [deliveryFee, setDeliveryFee] = useState<string>('0');
   
-  // Local Form
-  const [tableNumber, setTableNumber] = useState('');
-  const [comandaNumber, setComandaNumber] = useState('');
+  // Local Form Removido (Foco Delivery)
   
   // Catalog & Cart
   const [searchText, setSearchText] = useState('');
@@ -76,9 +74,16 @@ export default function NovoPedidoModal({ onClose }: NovoPedidoModalProps) {
 
   const addToCart = (product: any) => {
     setCart(prev => {
-      const existing = prev.find(i => i.id === product.id);
-      if (existing) {
-        return prev.map(i => i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i);
+      let existingIndex = -1;
+      for (let i = 0; i < prev.length; i++) {
+        if (prev[i].id === product.id) {
+          existingIndex = i;
+          break;
+        }
+      }
+      
+      if (existingIndex > -1) {
+        return prev.map((item, index) => index === existingIndex ? { ...item, quantity: item.quantity + 1 } : item);
       }
       return [...prev, {
         id: product.id,
@@ -110,8 +115,8 @@ export default function NovoPedidoModal({ onClose }: NovoPedidoModalProps) {
 
   const total = useMemo(() => {
     const fee = parseFloat(deliveryFee.replace(',', '.')) || 0;
-    return orderType === 'delivery' ? subtotal + fee : subtotal;
-  }, [subtotal, deliveryFee, orderType]);
+    return subtotal + fee;
+  }, [subtotal, deliveryFee]);
 
   const handleSubmit = async () => {
     if (cart.length === 0) {
@@ -119,14 +124,14 @@ export default function NovoPedidoModal({ onClose }: NovoPedidoModalProps) {
       return;
     }
     
-    if (orderType === 'delivery' && !clientName) {
+    if (!clientName) {
        Alert.alert('Atenção', 'Nome do cliente é obrigatório para Delivery.');
        return;
     }
 
-    if (orderType === 'local' && !tableNumber && !comandaNumber) {
-      Alert.alert('Atenção', 'Informe a Mesa ou Comanda para pedidos Locais.');
-      return;
+    if (!user || !user.companyId) {
+       Alert.alert('Atenção', 'Sessão inválida. Faça login novamente.');
+       return;
     }
 
     setIsSubmitting(true);
@@ -149,24 +154,21 @@ export default function NovoPedidoModal({ onClose }: NovoPedidoModalProps) {
       const finalFee = parseFloat(deliveryFee.replace(',', '.')) || 0;
 
       const newOrder = {
-        client: clientName || `Mesa ${tableNumber || comandaNumber}`,
-        mesa: tableNumber,
-        comandaNumber: comandaNumber,
+        client: clientName,
         items: parsedItems,
         itemsWithStatus: itemsWithStatus,
         priceMap: priceMap,
         totalPrice: total,
         status: 'pending',
         createdBy: user?.id,
-        // Delivery Specifics
-        orderType: orderType,
-        customerPhone: orderType === 'delivery' ? customerPhone : undefined,
-        deliveryAddress: orderType === 'delivery' ? deliveryAddress : undefined,
-        deliveryFee: orderType === 'delivery' ? finalFee : undefined,
+        // Delivery Specifics Trava
+        orderType: 'delivery',
+        customerPhone: customerPhone,
+        deliveryAddress: deliveryAddress,
+        deliveryFee: finalFee,
       };
 
-      const orderService = new SupabaseOrderService();
-      await orderService.saveOrder(user!.companyId, newOrder as any);
+      await supabaseOrderService.saveOrder(user.companyId, newOrder as any);
 
       Alert.alert('Sucesso', 'Pedido lançado com sucesso!');
       onClose();
@@ -184,7 +186,7 @@ export default function NovoPedidoModal({ onClose }: NovoPedidoModalProps) {
         <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
           <Ionicons name="close" size={28} color="#FFF" />
         </TouchableOpacity>
-        <Text style={styles.title}>Módulo PDV / Caixa</Text>
+        <Text style={styles.title}>Lançamento de Delivery</Text>
       </View>
 
       <View style={styles.content}>
@@ -226,44 +228,16 @@ export default function NovoPedidoModal({ onClose }: NovoPedidoModalProps) {
 
         {/* === RIGHT PANEL: CART & CHECKOUT === */}
         <View style={styles.rightPanel}>
-          <View style={styles.typeSelector}>
-            <TouchableOpacity 
-              style={[styles.typeBtn, orderType === 'delivery' && styles.typeBtnActive]}
-              onPress={() => setOrderType('delivery')}
-            >
-              <Text style={[styles.typeBtnText, orderType === 'delivery' && styles.typeBtnTextActive]}>
-                🛵 Delivery
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.typeBtn, orderType === 'local' && styles.typeBtnActive]}
-              onPress={() => setOrderType('local')}
-            >
-              <Text style={[styles.typeBtnText, orderType === 'local' && styles.typeBtnTextActive]}>
-                🏪 Local
-              </Text>
-            </TouchableOpacity>
-          </View>
-
           <ScrollView style={styles.cartContainer}>
             {/* INFORMAÇÕES DO CLIENTE */}
             <View style={styles.formSection}>
-              {orderType === 'delivery' ? (
-                <>
-                  <TextInput style={styles.input} placeholder="Nome do Cliente *" value={clientName} onChangeText={setClientName} />
-                  <TextInput style={styles.input} placeholder="Telefone" value={customerPhone} onChangeText={setCustomerPhone} keyboardType="phone-pad" />
-                  <TextInput style={[styles.input, { height: 60 }]} placeholder="Endereço Completo" value={deliveryAddress} onChangeText={setDeliveryAddress} multiline />
-                  <View style={styles.feeRow}>
-                    <Text style={styles.feeLabel}>Taxa de Entrega (R$):</Text>
-                    <TextInput style={styles.feeInput} value={deliveryFee} onChangeText={setDeliveryFee} keyboardType="numeric" />
-                  </View>
-                </>
-              ) : (
-                <View style={styles.localFormRow}>
-                  <TextInput style={[styles.input, { flex: 1, marginRight: 10 }]} placeholder="Mesa" value={tableNumber} onChangeText={setTableNumber} keyboardType="numeric" />
-                  <TextInput style={[styles.input, { flex: 1 }]} placeholder="Comanda" value={comandaNumber} onChangeText={setComandaNumber} keyboardType="numeric" />
-                </View>
-              )}
+              <TextInput style={styles.input} placeholder="Nome do Cliente *" value={clientName} onChangeText={setClientName} />
+              <TextInput style={styles.input} placeholder="Telefone" value={customerPhone} onChangeText={setCustomerPhone} keyboardType="phone-pad" />
+              <TextInput style={[styles.input, { height: 60 }]} placeholder="Endereço Completo" value={deliveryAddress} onChangeText={setDeliveryAddress} multiline />
+              <View style={styles.feeRow}>
+                <Text style={styles.feeLabel}>Taxa de Entrega (R$):</Text>
+                <TextInput style={styles.feeInput} value={deliveryFee} onChangeText={setDeliveryFee} keyboardType="numeric" />
+              </View>
             </View>
 
             {/* ITENS DO CARRINHO */}
