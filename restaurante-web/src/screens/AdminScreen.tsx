@@ -41,7 +41,6 @@ import OperationalSettingsScreen from './OperationalSettingsScreen';
 import { confirmLogout } from '../utils/appUtils';
 import BiometricSetupModal from '../components/BiometricSetupModal';
 import MFASetupModal from '../components/MFASetupModal';
-import NovoPedidoModal from '../components/PDV/NovoPedidoModal';
 // import PerformanceService from '../services/PerformanceService'; // Removed - Firebase specific
 
 /**
@@ -91,7 +90,6 @@ export default function AdminScreen() {
   const [showDashboard, setShowDashboard] = useState(false);
   const [showBiometricSetup, setShowBiometricSetup] = useState(false);
   const [showMFASetup, setShowMFASetup] = useState(false);
-  const [showPDVModal, setShowPDVModal] = useState(false);
   const [loadingLimpar, setLoadingLimpar] = useState(false);
 
   // Estados para estatísticas
@@ -598,21 +596,6 @@ export default function AdminScreen() {
 
       <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }}>
         
-        {/* PDV / Novo Pedido Button - Destaque */}
-        <TouchableOpacity 
-          style={styles.pdvFabCard}
-          onPress={() => setShowPDVModal(true)}
-        >
-          <View style={styles.pdvFabIconContainer}>
-            <Ionicons name="cart" size={32} color="#FFFFFF" />
-          </View>
-          <View style={styles.pdvFabTextContainer}>
-            <Text style={styles.pdvFabTitle}>NOVO PEDIDO (PDV/CAIXA)</Text>
-            <Text style={styles.pdvFabSubtitle}>Toque para criar Mesas, Balcão ou Delivery</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={24} color="#8B2F2F" />
-        </TouchableOpacity>
-
         {/* Stats Card */}
         <View style={styles.statsCard}>
           <View style={styles.statsHeader}>
@@ -1027,19 +1010,6 @@ export default function AdminScreen() {
         onRequestClose={() => setShowDashboard(false)}
       >
         <FinancialDashboardScreen onClose={() => setShowDashboard(false)} />
-      </Modal>
-
-      {/* Modal PDV (Novo Pedido / Delivery) */}
-      <Modal
-        visible={showPDVModal}
-        animationType="slide"
-        onRequestClose={() => setShowPDVModal(false)}
-        statusBarTranslucent={true}
-        hardwareAccelerated={true}
-      >
-        <View style={{ flex: 1, backgroundColor: '#F5F1E8' }}>
-          {showPDVModal && <NovoPedidoModal onClose={() => setShowPDVModal(false)} />}
-        </View>
       </Modal>
 
       <StatusBar style="light" />
