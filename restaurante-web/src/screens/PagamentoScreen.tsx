@@ -344,6 +344,21 @@ export default function PagamentoScreen({ route, navigation }: any) {
               <Text key={i} style={styles.itemTextSimple}>• {itemStr}</Text>
             ))
           )}
+          
+          {/* Exibir Taxa de Entrega, se aplicável */}
+          {(Number(order.delivery_fee) || 0) > 0 && (
+            <View style={[styles.itemRow, { marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#EEE' }]}>
+              <View style={{flexDirection: 'row', alignItems: 'center', flex: 1}}>
+                  <Ionicons name="bicycle-outline" size={16} color="#8B2F2F" style={{marginRight: 6}} />
+                  <Text style={[styles.itemText, {fontWeight: 'bold', color: '#8B2F2F'}]}>
+                    MOTO-BOY (Taxa de Entrega)
+                  </Text>
+              </View>
+              <Text style={[styles.itemPrice, {fontWeight: 'bold', color: '#8B2F2F'}]}>
+                {formatarMoeda(order.delivery_fee)}
+              </Text>
+            </View>
+          )}
         </View>
       ))}
       {orders.length === 0 && (

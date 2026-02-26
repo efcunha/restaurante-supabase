@@ -212,7 +212,11 @@ class OrderService {
     categoryMap: any = null,
     priceMap: Record<string, number> | undefined = undefined,
     tableId: string = '',
-    waiterId: string = ''
+    waiterId: string = '',
+    orderType: string = 'local',
+    customerPhone: string = '',
+    deliveryAddress: string = '',
+    deliveryFee: number = 0
   ): Order {
     const now = new Date();
     const nowISO = now.toISOString();
@@ -266,6 +270,10 @@ class OrderService {
       priceMap: priceMap || undefined,
       tableId,
       waiterId,
+      orderType,
+      customerPhone,
+      deliveryAddress,
+      deliveryFee,
     };
     return order;
   }

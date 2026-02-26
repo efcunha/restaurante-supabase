@@ -509,8 +509,9 @@ interface HeaderComponentProps {
   waiters: Funcionario[];
 }
 
-const HeaderComponent = memo(({ clientName, setClientName, mesa, setMesa, waiterId, setWaiterId, waiters }: HeaderComponentProps) => {
-
+const HeaderComponent = memo(({ 
+  clientName, setClientName, mesa, setMesa, waiterId, setWaiterId, waiters
+}: HeaderComponentProps) => {
 
   return (
     <View style={styles.headerForm}>
@@ -520,16 +521,16 @@ const HeaderComponent = memo(({ clientName, setClientName, mesa, setMesa, waiter
           <Text style={styles.label}>Nome do Cliente:</Text>
           <TextInput
             style={styles.input}
-            placeholder="Digite o nome"
+            placeholder="Digite o nome (opcional)"
             value={clientName}
             onChangeText={setClientName}
             placeholderTextColor="#999"
           />
         </View>
 
-        {/* Campo Mesa (Opcional) */}
+        {/* Campo Mesa */}
         <View style={{ width: 80 }}>
-          <Text style={styles.label}>Mesa:</Text>
+          <Text style={styles.label}>Mesa/Comanda:</Text>
           <TextInput
             style={styles.input}
             placeholder="Nº"
@@ -540,7 +541,6 @@ const HeaderComponent = memo(({ clientName, setClientName, mesa, setMesa, waiter
           />
         </View>
       </View>
-
     </View>
   );
 });

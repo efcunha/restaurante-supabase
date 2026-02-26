@@ -41,6 +41,7 @@ import OperationalSettingsScreen from './OperationalSettingsScreen';
 import { confirmLogout } from '../utils/appUtils';
 import BiometricSetupModal from '../components/BiometricSetupModal';
 import MFASetupModal from '../components/MFASetupModal';
+import NovoPedidoModal from '../components/PDV/NovoPedidoModal';
 // import PerformanceService from '../services/PerformanceService'; // Removed - Firebase specific
 
 /**
@@ -90,6 +91,7 @@ export default function AdminScreen() {
   const [showDashboard, setShowDashboard] = useState(false);
   const [showBiometricSetup, setShowBiometricSetup] = useState(false);
   const [showMFASetup, setShowMFASetup] = useState(false);
+  const [showPDVModal, setShowPDVModal] = useState(false);
   const [loadingLimpar, setLoadingLimpar] = useState(false);
 
   // Estados para estatísticas
@@ -595,6 +597,22 @@ export default function AdminScreen() {
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }}>
+        
+        {/* PDV / Novo Pedido Button - Destaque */}
+        <TouchableOpacity 
+          style={styles.pdvFabCard}
+          onPress={() => setShowPDVModal(true)}
+        >
+          <View style={styles.pdvFabIconContainer}>
+            <Ionicons name="cart" size={32} color="#FFFFFF" />
+          </View>
+          <View style={styles.pdvFabTextContainer}>
+            <Text style={styles.pdvFabTitle}>NOVO PEDIDO (PDV/CAIXA)</Text>
+            <Text style={styles.pdvFabSubtitle}>Toque para criar Mesas, Balcão ou Delivery</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={24} color="#8B2F2F" />
+        </TouchableOpacity>
+
         {/* Stats Card */}
         <View style={styles.statsCard}>
           <View style={styles.statsHeader}>
@@ -1011,6 +1029,19 @@ export default function AdminScreen() {
         <FinancialDashboardScreen onClose={() => setShowDashboard(false)} />
       </Modal>
 
+      {/* Modal PDV (Novo Pedido / Delivery) */}
+      <Modal
+        visible={showPDVModal}
+        animationType="slide"
+        onRequestClose={() => setShowPDVModal(false)}
+        statusBarTranslucent={true}
+        hardwareAccelerated={true}
+      >
+        <View style={{ flex: 1, backgroundColor: '#F5F1E8' }}>
+          {showPDVModal && <NovoPedidoModal onClose={() => setShowPDVModal(false)} />}
+        </View>
+      </Modal>
+
       <StatusBar style="light" />
       <BiometricSetupModal
         visible={showBiometricSetup}
@@ -1393,11 +1424,49 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     alignItems: 'center',
-    justifyContent: 'center',
     backgroundColor: '#FFFFFF',
   },
   vendaTabActive: {
     backgroundColor: '#E5B84A',
+  },
+  // Estilos PDV FAB
+  pdvFabCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#8B2F2F',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 8,
+    borderWidth: 2,
+    borderColor: '#8B2F2F',
+  },
+  pdvFabIconContainer: {
+    backgroundColor: '#8B2F2F',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  pdvFabTextContainer: {
+    flex: 1,
+  },
+  pdvFabTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#8B2F2F',
+    marginBottom: 4,
+  },
+  pdvFabSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
   },
   vendaTabText: {
     fontSize: 14,
