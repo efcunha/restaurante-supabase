@@ -252,9 +252,17 @@ export default function PizzaBuilderModal({
                 <TouchableOpacity
                     style={[styles.confirmBtn, selectedFlavors.length === 0 && styles.disabledBtn]}
                     disabled={selectedFlavors.length === 0}
-                    onPress={() => setStep(3)}
+                    onPress={() => {
+                        if (selectedSize === 'Fatia') {
+                            handleConfirm();
+                        } else {
+                            setStep(3);
+                        }
+                    }}
                 >
-                    <Text style={styles.nextBtnText}>Próximo: Extras</Text>
+                    <Text style={styles.nextBtnText}>
+                        {selectedSize === 'Fatia' ? 'Adicionar ao Pedido' : 'Próximo: Extras'}
+                    </Text>
                 </TouchableOpacity>
             </View>
         </View>
