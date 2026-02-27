@@ -30,7 +30,8 @@ export default function PedidosProntosScreen() {
         .from('orders')
         .select('*')
         .eq('company_id', user.companyId)
-        .eq('date_key', today);
+        .eq('date_key', today)
+        .neq('order_type', 'delivery');
 
       if (!error && data) {
         // Map snake_case to camelCase

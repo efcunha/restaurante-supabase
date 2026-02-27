@@ -266,7 +266,15 @@ const VariationRow = memo(({ label, qty, color, onInc, onDec, itemKey, last, for
 });
 VariationRow.displayName = 'VariationRow';
 
-const HeaderDeliveryComponent = memo(({ clientName, setClientName, customerPhone, setCustomerPhone, deliveryAddress, setDeliveryAddress, deliveryFee, setDeliveryFee }: any) => (
+const HeaderDeliveryComponent = memo(({ 
+  clientName, setClientName, 
+  customerPhone, handlePhoneChange, 
+  deliveryCep, handleCepChange, isSearchingCep,
+  deliveryAddress, setDeliveryAddress, 
+  deliveryFee, setDeliveryFee,
+  paymentMethod, setPaymentMethod,
+  changeFor, setChangeFor
+}: any) => (
   <View style={styles.headerForm}>
     <View style={{ flexDirection: 'row', marginBottom: 10, gap: 10 }}>
       <View style={{ flex: 1 }}>
@@ -274,18 +282,65 @@ const HeaderDeliveryComponent = memo(({ clientName, setClientName, customerPhone
         <TextInput style={(styles as any).input} placeholder="Nome do Cliente" value={clientName} onChangeText={setClientName} placeholderTextColor="#999" />
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={styles.label}>Telefone:</Text>
-        <TextInput style={(styles as any).input} placeholder="Telefone ou WhatsApp" value={customerPhone} onChangeText={setCustomerPhone} placeholderTextColor="#999" keyboardType="phone-pad" />
+        <Text style={styles.label}>Telefone (só números):</Text>
+        <TextInput style={(styles as any).input} placeholder="(11) 99999-9999" value={customerPhone} onChangeText={handlePhoneChange} placeholderTextColor="#999" keyboardType="phone-pad" />
       </View>
     </View>
-    <View style={{ marginBottom: 10 }}>
-      <Text style={styles.label}>Endereço Completo *:</Text>
-      <TextInput style={[(styles as any).input, { height: 60 }]} placeholder="Rua, Número, Bairro, Referência..." value={deliveryAddress} onChangeText={setDeliveryAddress} placeholderTextColor="#999" multiline />
+
+    <View style={{ flexDirection: 'row', marginBottom: 10, gap: 10 }}>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.label}>CEP:</Text>
+        <View style={{flexDirection: 'row', alignItems: 'center'}}>
+           <TextInput style={[(styles as any).input, {flex: 1}]} placeholder="00000-000" value={deliveryCep} onChangeText={handleCepChange} placeholderTextColor="#999" keyboardType="numeric" />
+           {isSearchingCep && <ActivityIndicator style={{marginLeft: 10}} size="small" color={colors.primary} />}
+        </View>
+      </View>
+      <View style={{ flex: 2 }}>
+        <Text style={styles.label}>Endereço Completo *:</Text>
+        <TextInput style={(styles as any).input} placeholder="Rua, Número, Bairro, Referência..." value={deliveryAddress} onChangeText={setDeliveryAddress} placeholderTextColor="#999" />
+      </View>
     </View>
-    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+
+    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
       <Text style={[styles.label, { flex: 1, marginBottom: 0 }]}>Taxa de Entrega (R$):</Text>
       <TextInput style={(styles as any).feeInput} placeholder="0,00" value={deliveryFee} onChangeText={setDeliveryFee} placeholderTextColor="#999" keyboardType="numeric" />
     </View>
+
+    {/* PAYMENT METHOD SELECTOR */}
+    <View style={{ marginBottom: 10 }}>
+        <Text style={styles.label}>Forma de Pagamento (Entrega):</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 5 }}>
+            {['dinheiro', 'pix', 'cartao_debito', 'cartao_credito'].map((f) => {
+                const isSelected = paymentMethod === f;
+                return (
+                    <TouchableOpacity 
+                        key={f}
+                        style={{
+                            paddingHorizontal: 15, paddingVertical: 10, 
+                            borderRadius: 8, borderWidth: 1, 
+                            borderColor: isSelected ? colors.primary : '#DDD',
+                            backgroundColor: isSelected ? '#FDF5F5' : '#FFF'
+                        }}
+                        onPress={() => setPaymentMethod(f)}
+                    >
+                        <Text style={{ 
+                            color: isSelected ? colors.primary : '#666', 
+                            fontWeight: isSelected ? 'bold' : 'normal' 
+                        }}>
+                            {f.replace('_', ' ').toUpperCase()}
+                        </Text>
+                    </TouchableOpacity>
+                )
+            })}
+        </View>
+    </View>
+
+    {paymentMethod === 'dinheiro' && (
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10, marginTop: 5 }}>
+        <Text style={[styles.label, { marginRight: 10, marginBottom: 0 }]}>Troco para (R$):</Text>
+        <TextInput style={[(styles as any).input, { width: 100 }]} placeholder="Ex: 100,00" value={changeFor} onChangeText={setChangeFor} placeholderTextColor="#999" keyboardType="numeric" />
+      </View>
+    )}
   </View>
 ));
 HeaderDeliveryComponent.displayName = 'HeaderDeliveryComponent';
@@ -308,7 +363,11 @@ export default function DeliveryScreen() {
   // Delivery Custom Fields
   const [customerPhone, setCustomerPhone] = useState('');
   const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [deliveryCep, setDeliveryCep] = useState('');
   const [deliveryFee, setDeliveryFee] = useState<string>('0');
+  const [paymentMethod, setPaymentMethod] = useState<string>('dinheiro');
+  const [changeFor, setChangeFor] = useState('');
+  const [isSearchingCep, setIsSearchingCep] = useState(false);
   const [isSubmittingDelivery, setIsSubmittingDelivery] = useState(false);
 
   const { metrics, startMonitoring, stopMonitoring, logMetrics, isMonitoring } = usePerformanceMonitor();
@@ -325,6 +384,48 @@ export default function DeliveryScreen() {
       carregarCardapio();
     }, [carregarCardapio])
   );
+
+  const handleCepChange = async (text: string) => {
+    setDeliveryCep(text);
+    const cleanCep = text.replace(/\D/g, '');
+    if (cleanCep.length === 8) {
+      setIsSearchingCep(true);
+      try {
+        const res = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+        const data = await res.json();
+        if (!data.erro) {
+          setDeliveryAddress(`${data.logradouro}, Número, ${data.bairro}, ${data.localidade} - ${data.uf}`);
+        }
+      } catch (err) {
+        console.error('Erro ao buscar CEP:', err);
+      } finally {
+        setIsSearchingCep(false);
+      }
+    }
+  };
+
+  const handlePhoneChange = async (text: string) => {
+    setCustomerPhone(text);
+    const cleanPhone = text.replace(/\D/g, '');
+    if (cleanPhone.length >= 10 && user?.companyId) {
+      try {
+        const { data, error } = await supabaseOrderService.supabase
+          .from('clientes')
+          .select('nome, endereco, cep')
+          .eq('company_id', user.companyId)
+          .eq('telefone', cleanPhone)
+          .single();
+
+        if (data && !error) {
+          if (data.nome && !clientName) setClientName(data.nome);
+          if (data.endereco && !deliveryAddress) setDeliveryAddress(data.endereco);
+          if (data.cep && !deliveryCep) setDeliveryCep(data.cep);
+        }
+      } catch (err) {
+        console.log('Cliente não encontrado ou erro na busca:', err);
+      }
+    }
+  };
 
   const finalTotal = useMemo(() => {
     const fee = parseFloat(deliveryFee.replace(',', '.')) || 0;
@@ -366,6 +467,34 @@ export default function DeliveryScreen() {
       }, {} as Record<string, number>);
 
       const finalFee = parseFloat(deliveryFee.replace(',', '.')) || 0;
+      
+      const cleanPhone = customerPhone.replace(/\D/g, '');
+
+      // 1. SILENT BACKGROUND CUSTOMER AUTO-SAVE
+      if (cleanPhone.length >= 10) {
+          const { data: existing } = await supabaseOrderService.supabase
+            .from('clientes')
+            .select('id')
+            .eq('company_id', user.companyId)
+            .eq('telefone', cleanPhone)
+            .single();
+
+          if (!existing) {
+              await supabaseOrderService.supabase
+                .from('clientes')
+                .insert({
+                    company_id: user.companyId,
+                    telefone: cleanPhone,
+                    nome: clientName,
+                    endereco: deliveryAddress,
+                    cep: deliveryCep
+                });
+          }
+      }
+
+      const notes = (paymentMethod === 'dinheiro' && changeFor) 
+          ? `Troco para R$ ${changeFor}` 
+          : '';
 
       const newOrder = {
         client: clientName,
@@ -379,6 +508,8 @@ export default function DeliveryScreen() {
         customerPhone: customerPhone,
         deliveryAddress: deliveryAddress,
         deliveryFee: finalFee,
+        payment_method: paymentMethod,
+        notes: notes,
       };
 
       await supabaseOrderService.saveOrder(user.companyId, newOrder as any);
@@ -389,7 +520,10 @@ export default function DeliveryScreen() {
       resetForm();
       setCustomerPhone('');
       setDeliveryAddress('');
+      setDeliveryCep('');
       setDeliveryFee('0');
+      setPaymentMethod('dinheiro');
+      setChangeFor('');
       
     } catch (err) {
       console.error('Erro ao lançar delivery:', err);
@@ -554,9 +688,12 @@ export default function DeliveryScreen() {
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={<HeaderDeliveryComponent
           clientName={clientName} setClientName={setClientName}
-          customerPhone={customerPhone} setCustomerPhone={setCustomerPhone}
+          customerPhone={customerPhone} handlePhoneChange={handlePhoneChange}
+          deliveryCep={deliveryCep} handleCepChange={handleCepChange} isSearchingCep={isSearchingCep}
           deliveryAddress={deliveryAddress} setDeliveryAddress={setDeliveryAddress}
           deliveryFee={deliveryFee} setDeliveryFee={setDeliveryFee}
+          paymentMethod={paymentMethod} setPaymentMethod={setPaymentMethod}
+          changeFor={changeFor} setChangeFor={setChangeFor}
         />}
         ListFooterComponent={<FooterComponent selectedItems={selectedItems} onRemoveItem={handleRemoveItemAnimated} />}
         stickySectionHeadersEnabled={false}
