@@ -1,3 +1,4 @@
+import React, { useState, useEffect, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Modal, Alert, ActivityIndicator, AppState } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -40,6 +41,9 @@ import { confirmLogout } from '../utils/appUtils';
 import BiometricSetupModal from '../components/BiometricSetupModal';
 import MFASetupModal from '../components/MFASetupModal';
 // import PerformanceService from '../services/PerformanceService'; // Removed - Firebase specific
+
+// WhatsApp Integração
+import ConfiguracoesWhatsApp from './ConfiguracoesWhatsApp';
 
 /**
  * AdminScreen - Main Administrative Dashboard
@@ -89,6 +93,7 @@ export default function AdminScreen() {
   const [showDashboard, setShowDashboard] = useState(false);
   const [showBiometricSetup, setShowBiometricSetup] = useState(false);
   const [showMFASetup, setShowMFASetup] = useState(false);
+  const [showConfiguracoesWhatsApp, setShowConfiguracoesWhatsApp] = useState(false);
   const [loadingLimpar, setLoadingLimpar] = useState(false);
 
   // Estados para estatísticas
@@ -557,6 +562,7 @@ export default function AdminScreen() {
     { name: 'Gerenciar Cardápio', icon: '🍴', action: () => setShowGerenciarCardapio(true) },
     { name: 'Configurar Mesas e Ambientes', icon: '🪑', action: () => setShowConfiguracaoMesas(true) },
     { name: 'Configurações Operacionais', icon: '🕐', action: () => setShowOperationalSettings(true) },
+    { name: 'Configurações do WhatsApp', icon: '💬', action: () => setShowConfiguracoesWhatsApp(true) },
     { name: 'Configurar Extras de Pizza', icon: '🍕', action: () => setShowExtrasConfig(true) },
     { name: 'Configurar Impressora', icon: '🖨️', action: () => setShowPrinterConfig(true) },
     { name: 'Dados da Empresa', icon: '🏢', action: () => setShowEditarEmpresa(true) },
@@ -784,6 +790,17 @@ export default function AdminScreen() {
       >
         <View style={{ flex: 1 }}>
           <ConfiguracaoMesasScreen onClose={() => setShowConfiguracaoMesas(false)} />
+        </View>
+      </Modal>
+
+      {/* Modal Configuração do WhatsApp */}
+      <Modal
+        visible={showConfiguracoesWhatsApp}
+        animationType="slide"
+        onRequestClose={() => setShowConfiguracoesWhatsApp(false)}
+      >
+        <View style={{ flex: 1 }}>
+          <ConfiguracoesWhatsApp />
         </View>
       </Modal>
 
