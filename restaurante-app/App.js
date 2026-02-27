@@ -25,6 +25,7 @@ import AdminScreen from './src/screens/AdminScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import ComandaGerenciamentoScreen from './src/screens/ComandaGerenciamentoScreen';
 import MapaMesasScreen from './src/screens/MapaMesasScreen';
+import RotasDeliveryScreen from './src/screens/RotasDeliveryScreen';
 
 import RegisterCompanyScreen from './src/screens/RegisterCompanyScreen';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -70,6 +71,7 @@ function TabNavigator() {
           else if (route.name === 'Mapa') iconName = focused ? 'map' : 'map-outline';
           else if (route.name === 'Comandas') iconName = focused ? 'receipt' : 'receipt-outline';
           else if (route.name === 'Admin') iconName = focused ? 'stats-chart' : 'stats-chart-outline';
+          else if (route.name === 'RotasDelivery') iconName = focused ? 'bicycle' : 'bicycle-outline';
           return <Ionicons name={iconName} size={size} color={color} />;
         },
         tabBarActiveTintColor: '#8B2F2F',
@@ -89,7 +91,8 @@ function TabNavigator() {
       {canAccessScreen(user?.funcao, 'Comandas') && <Tab.Screen name="Comandas" component={ComandaStackScreen} />}
       {canAccessScreen(user?.funcao, 'Cozinha') && <Tab.Screen name="Cozinha" component={CozinhaScreen} />}
       {canAccessScreen(user?.funcao, 'Montagem') && <Tab.Screen name="Montagem" component={MontagemScreen} />}
-      {canAccessScreen(user?.funcao, 'Prontos') && <Tab.Screen name="Prontos" component={PedidosProntosScreen} options={{ tabBarLabel: 'Entrega' }} />}
+      {canAccessScreen(user?.funcao, 'Prontos') && <Tab.Screen name="Prontos" component={PedidosProntosScreen} options={{ tabBarLabel: 'Entrega Salao' }} />}
+      {canAccessScreen(user?.funcao, 'RotasDelivery') && <Tab.Screen name="RotasDelivery" component={RotasDeliveryScreen} options={{ tabBarLabel: 'Rotas Delivery' }} />}
       {canAccessScreen(user?.funcao, 'Admin') && <Tab.Screen name="Admin" component={AdminScreen} />}
     </Tab.Navigator>
   );

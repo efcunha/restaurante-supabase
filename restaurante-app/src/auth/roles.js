@@ -7,6 +7,7 @@ export const Roles = Object.freeze({
   GARCOM: 'garcom',
   COZINHEIRO: 'cozinheiro',
   MONTAGEM: 'montagem',
+  ENTREGADOR: 'entregador',
 });
 
 // Permissões de ações
@@ -45,15 +46,19 @@ export const RolePermissions = {
   [Roles.MONTAGEM]: new Set([
     Permissions.UPDATE_STATUS,
   ]),
+  [Roles.ENTREGADOR]: new Set([
+    Permissions.UPDATE_STATUS,
+  ]),
 };
 
 // Telas permitidas por papel
 export const RoleScreens = {
-  [Roles.ADMIN]: ['Novo Pedido', 'Cozinha', 'Montagem', 'Prontos', 'Comandas', 'Mapa', 'Admin'],
-  [Roles.GERENTE]: ['Novo Pedido', 'Cozinha', 'Montagem', 'Prontos', 'Comandas', 'Mapa', 'Admin'],
+  [Roles.ADMIN]: ['Novo Pedido', 'Cozinha', 'Montagem', 'Prontos', 'Comandas', 'Mapa', 'Admin', 'RotasDelivery'],
+  [Roles.GERENTE]: ['Novo Pedido', 'Cozinha', 'Montagem', 'Prontos', 'Comandas', 'Mapa', 'Admin', 'RotasDelivery'],
   [Roles.GARCOM]: ['Novo Pedido', 'Comandas', 'Mapa', 'Prontos'],
   [Roles.COZINHEIRO]: ['Cozinha'],
   [Roles.MONTAGEM]: ['Montagem', 'Prontos'],
+  [Roles.ENTREGADOR]: ['RotasDelivery'],
 };
 
 export function hasPermission(role, permission) {
@@ -73,6 +78,7 @@ export function normalizeRole(roleValue) {
   // Legacy aliases
   if (v === 'churrasqueiro') return Roles.COZINHEIRO;
   if (v === 'manager') return Roles.GERENTE;
+  if (v === 'motoboy' || v === 'motorista') return Roles.ENTREGADOR;
 
   if (Object.values(Roles).includes(v)) return v;
   return Roles.GARCOM; // padrão seguro

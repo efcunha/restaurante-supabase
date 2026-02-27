@@ -250,7 +250,6 @@ export default function FuncionariosScreen({ onClose }: Props) {
     return phone;
   };
 
-  // @ts-ignore
   const getFuncaoLabel = (func) => {
     const labels: any = {
       garcom: 'Garçom',
@@ -261,11 +260,11 @@ export default function FuncionariosScreen({ onClose }: Props) {
       manager: 'Administrador',
       waiter: 'Garçom',
       kitchen: 'Cozinha',
+      entregador: 'Entregador',
     };
     return labels[func] || func;
   };
 
-  // @ts-ignore
   const getFuncaoColor = (func) => {
     const colors: any = {
       garcom: '#4A90E2',
@@ -276,6 +275,7 @@ export default function FuncionariosScreen({ onClose }: Props) {
       manager: '#8B2F2F',
       waiter: '#4A90E2',
       kitchen: '#E5B84A',
+      entregador: '#E17055', // Cor distinta para entregador
     };
     return colors[func] || '#999';
   };
@@ -539,7 +539,7 @@ export default function FuncionariosScreen({ onClose }: Props) {
 
               <Text style={styles.label}>Função</Text>
               <View style={styles.funcaoButtons}>
-                {['garcom', 'cozinheiro', 'montagem', 'admin'].map((f) => (
+                {['garcom', 'cozinheiro', 'montagem', 'admin', 'entregador'].map((f) => (
                   <TouchableOpacity
                     key={f}
                     style={[

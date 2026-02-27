@@ -1,12 +1,10 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Modal, Alert, ActivityIndicator, AppState } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useRoute } from '@react-navigation/native';
+import { useRoute, useNavigation } from '@react-navigation/native';
 import { supabase } from '../config/SupabaseConfig';
 import { getTodayKey, getDateKeyRange, Period } from '../utils/dateUtils'; // Migrated from FirebaseOptimizations
-
 
 // @ts-ignore
 import FuncionariosScreen from './FuncionariosScreen';
@@ -56,6 +54,7 @@ export default function AdminScreen() {
   const { user, logout } = useAuth();
   const route = useRoute() as any;
   const params = route?.params;
+  const navigation = useNavigation() as any;
 
   useEffect(() => {
     if (params?.openConfigMesas) {
@@ -553,6 +552,7 @@ export default function AdminScreen() {
     { name: 'Gerenciar Funcionários', icon: '👥', action: () => setShowFuncionarios(true) },
     { name: 'Caixa', icon: '💰', action: () => setShowCaixaMenu(true) },
     { name: 'Estatísticas dos Garçons', icon: '📊', action: () => setShowComandasVisualizacao(true) },
+    { name: 'Gerenciar Entregas/Despacho', icon: '🛵', action: () => navigation.navigate('Entregas') },
     { name: 'Gerenciar Estoque', icon: '📦', action: () => setShowEstoque(true) },
     { name: 'Gerenciar Cardápio', icon: '🍴', action: () => setShowGerenciarCardapio(true) },
     { name: 'Configurar Mesas e Ambientes', icon: '🪑', action: () => setShowConfiguracaoMesas(true) },
