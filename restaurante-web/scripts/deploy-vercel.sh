@@ -15,8 +15,17 @@ then
     npm install -g vercel
 fi
 
+# Garante que o build mais recente seja gerado
+echo "Gerando build da aplicação (Expo Web)..."
+npm run build
+
+if [ $? -ne 0 ]; then
+    echo "❌ Erro: O processo de build falhou. Abortando o deploy."
+    exit 1
+fi
+
 # Executa o deploy para produção
-echo "Enviando projeto para produção..."
+echo "Enviando projeto para produção no Vercel..."
 npx vercel --prod
 
 if [ $? -eq 0 ]; then
