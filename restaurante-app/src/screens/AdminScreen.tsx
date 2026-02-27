@@ -56,6 +56,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export default function AdminScreen() {
   const { user, logout } = useAuth();
   const route = useRoute() as any;
+  const navigation = route?.params?.navigation || route?.navigation || (route as any).navigate ? route : require('@react-navigation/native').useNavigation();
   const params = route?.params;
 
   useEffect(() => {
@@ -712,6 +713,24 @@ export default function AdminScreen() {
             )}
           </View>
         </View>
+
+        <View style={styles.divider} />
+        {/* --- OPERAÇÃO DE DELIVERY --- */}
+        <Text style={styles.sectionHeader}>OPERAÇÃO DE DELIVERY</Text>
+
+        <TouchableOpacity
+          style={[styles.reportCard, { backgroundColor: '#F9F1E5', borderLeftColor: '#E5B84A', borderLeftWidth: 4 }]}
+          onPress={() => navigation.navigate('RotasDelivery')}
+        >
+          <View style={styles.reportLeft}>
+            <Text style={styles.reportIcon}>🛵</Text>
+            <View>
+              <Text style={[styles.reportName, { color: '#8B2F2F', fontWeight: 'bold' }]}>Painel de Rotas e Entregas</Text>
+              <Text style={{ fontSize: 12, color: '#666', marginTop: 2 }}>Despache motoboys e acompanhe entregas</Text>
+            </View>
+          </View>
+          <Text style={[styles.reportArrow, { color: '#8B2F2F' }]}>›</Text>
+        </TouchableOpacity>
 
         <View style={styles.divider} />
         {/* --- FINANCEIRO --- */}
