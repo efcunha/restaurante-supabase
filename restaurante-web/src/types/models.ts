@@ -115,7 +115,8 @@ export type UserRole =
   | 'admin'       // Administrador completo
   | 'manager'     // Gerente (pode modificar isPago)
   | 'waiter'      // Garçom (cria pedidos)
-  | 'kitchen';    // Cozinha (visualiza pedidos)
+  | 'kitchen'     // Cozinha (visualiza pedidos)
+  | 'entregador'; // Entregador (acesso restrito às entregas)
 
 export interface CustomClaims {
   companyId: string;

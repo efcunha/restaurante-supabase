@@ -29,6 +29,7 @@ import PedidosProntosScreen from './src/screens/PedidosProntosScreen';
 import AdminScreen from './src/screens/AdminScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import DeliveryScreen from './src/screens/DeliveryScreen';
+import RotasDeliveryScreen from './src/screens/RotasDeliveryScreen';
 import ComandaGerenciamentoScreen from './src/screens/ComandaGerenciamentoScreen';
 import MapaMesasScreen from './src/screens/MapaMesasScreen';
 
@@ -70,7 +71,8 @@ function TabNavigator() {
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
           if (route.name === 'Novo Pedido') iconName = focused ? 'add-circle' : 'add-circle-outline';
-          else if (route.name === 'Delivery') iconName = focused ? 'bicycle' : 'bicycle-outline';
+          else if (route.name === 'Delivery') iconName = focused ? 'fast-food' : 'fast-food-outline';
+          else if (route.name === 'Entregas') iconName = focused ? 'bicycle' : 'bicycle-outline';
           else if (route.name === 'Montagem') iconName = focused ? 'restaurant' : 'restaurant-outline';
           else if (route.name === 'Cozinha') iconName = focused ? 'restaurant' : 'restaurant-outline';
           else if (route.name === 'Prontos') iconName = focused ? 'checkmark-done-circle' : 'checkmark-done-circle-outline';
@@ -92,12 +94,13 @@ function TabNavigator() {
       })}
     >
       {canAccessScreen(user?.funcao, 'Novo Pedido') && <Tab.Screen name="Novo Pedido" component={NovoPedidoScreen} />}
-      {canAccessScreen(user?.funcao, 'Novo Pedido') && <Tab.Screen name="Delivery" component={DeliveryScreen} />}
+      {canAccessScreen(user?.funcao, 'Novo Pedido') && <Tab.Screen name="Delivery" component={DeliveryScreen} options={{ tabBarLabel: 'Pedido Delivery' }} />}
+      {canAccessScreen(user?.funcao, 'Entregas') && <Tab.Screen name="Entregas" component={RotasDeliveryScreen} />}
       {canAccessScreen(user?.funcao, 'Novo Pedido') && <Tab.Screen name="Mapa" component={MapaMesasScreen} />}
       {canAccessScreen(user?.funcao, 'Comandas') && <Tab.Screen name="Comandas" component={ComandaStackScreen} />}
       {canAccessScreen(user?.funcao, 'Cozinha') && <Tab.Screen name="Cozinha" component={CozinhaScreen} />}
       {canAccessScreen(user?.funcao, 'Montagem') && <Tab.Screen name="Montagem" component={MontagemScreen} />}
-      {canAccessScreen(user?.funcao, 'Prontos') && <Tab.Screen name="Prontos" component={PedidosProntosScreen} options={{ tabBarLabel: 'Entrega' }} />}
+      {canAccessScreen(user?.funcao, 'Prontos') && <Tab.Screen name="Prontos" component={PedidosProntosScreen} options={{ tabBarLabel: 'Despacho' }} />}
       {canAccessScreen(user?.funcao, 'Admin') && <Tab.Screen name="Admin" component={AdminScreen} />}
     </Tab.Navigator>
   );
