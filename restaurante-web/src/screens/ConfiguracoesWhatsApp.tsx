@@ -18,7 +18,7 @@ import { EvolutionApiService, ConnectionStateResponse } from '../services/Evolut
 
 const SAFE_AREA_TOP = 50;
 
-export default function ConfiguracoesWhatsApp() {
+export default function ConfiguracoesWhatsApp({ onClose }: { onClose?: () => void }) {
     const navigation = useNavigation();
     const { user } = useAuth();
 
@@ -164,7 +164,7 @@ export default function ConfiguracoesWhatsApp() {
 
     const renderHeader = () => (
         <View style={styles.header}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <TouchableOpacity onPress={() => onClose ? onClose() : navigation.goBack()} style={styles.backButton}>
                 <Ionicons name="arrow-back" size={24} color={colors.white} />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Integração WhatsApp</Text>
