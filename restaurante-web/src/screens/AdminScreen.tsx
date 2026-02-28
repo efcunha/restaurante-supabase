@@ -800,7 +800,7 @@ export default function AdminScreen() {
         onRequestClose={() => setShowConfiguracoesWhatsApp(false)}
       >
         <View style={{ flex: 1 }}>
-          <ConfiguracoesWhatsApp />
+          <ConfiguracoesWhatsApp onClose={() => setShowConfiguracoesWhatsApp(false)} />
         </View>
       </Modal>
 
