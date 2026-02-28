@@ -9,7 +9,8 @@ description: Kanban board for tasks
 - Mapear integrações ativas (WhatsApp, N8N)
 
 ## DOING
-- Inicialização manual do Squidy
 
 ## DONE
+- Inicialização manual do Squidy
+- Correção de geração do QRCode do WhatsApp (Evolution API)
 - Corrigir erro 404 no Vercel (restaurante-web)

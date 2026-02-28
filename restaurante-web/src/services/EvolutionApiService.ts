@@ -6,7 +6,8 @@
 // NOTA DE SEGURANÇA: Em produção, idealmente estas variáveis devem vir do .env (ex: import.meta.env.VITE_EVO_API_URL)
 // ou as chamadas roteadas por uma Edge Function do Supabase para não expor a API_KEY.
 const EVO_API_URL = 'https://evolution-api-production-9ac1.up.railway.app';
-const EVO_API_KEY = 'Lueed28@13546289b@P@ssw0rd';
+// A chave não deve ter espaços sobrando que causam 403 Forbidden
+const EVO_API_KEY = 'Lueed28@13546289b@P@ssw0rd'.trim();
 
 export interface ConnectionStateResponse {
   instance?: {
@@ -23,8 +24,7 @@ export interface ConnectionStateResponse {
 
 export const EvolutionApiService = {
   /**
-   * Cria uma nova instância na API para a empresa informada.
-   * Na V1.8.2, enviamos integration: 'WHATSAPP-BAILEYS' e qrcode: true
+   * Cria uma nova instância na API. 
    */
   async createInstance(companyId: string): Promise<any> {
     try {
@@ -33,6 +33,8 @@ export const EvolutionApiService = {
         headers: {
           'Content-Type': 'application/json',
           'apikey': EVO_API_KEY,
+          'globalApiKey': EVO_API_KEY, // Evolution v2 required for admin endpoints
+          'Authorization': `Bearer ${EVO_API_KEY}`,
         },
         body: JSON.stringify({
           instanceName: companyId,
@@ -44,7 +46,13 @@ export const EvolutionApiService = {
       const data = await response.json();
       
       if (!response.ok) {
-        throw new Error(data.message || 'Erro ao criar instância na Evolution API');
+        // Se der 403 (falta de global key para criar) ou 400 (já existe), 
+        // assumimos que a instância já está lá e tentamos apenas conectar/pegar o QR
+        if (response.status === 403 || response.status === 400 || data?.message?.includes('already exists')) {
+          console.log('[EvolutionApiService] Instância já existe ou criação bloqueada. Buscando QR code de conexão direta...');
+          return await this.connectInstance(companyId);
+        }
+        throw new Error(data.message || data.error || 'Erro ao criar instância na Evolution API');
       }
 
       return data;
@@ -59,8 +67,37 @@ export const EvolutionApiService = {
    */
   async getConnectionState(companyId: string): Promise<ConnectionStateResponse> {
     try {
-      // O parâmetro ?b64=true garante que se houver QRCode, a API retorna a string base64
-      const response = await fetch(`${EVO_API_URL}/instance/connectionState/${companyId}?b64=true`, {
+      const response = await fetch(`${EVO_API_URL}/instance/connectionState/${companyId}`, {
+        method: 'GET',
+        headers: {
+          'apikey': EVO_API_KEY,
+        },
+      });
+
+      if (response.status === 404) {
+        // Um 404 é perfeitamente normal: significa que o restaurante
+        // ainda não tem instância criada. Retornamos um estado customizado.
+        return { instance: { state: 'not_created' } } as any;
+      }
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || data.error || 'Erro ao buscar estado da conexão');
+      }
+
+      return data as ConnectionStateResponse;
+    } catch (error: any) {
+      console.error('[EvolutionApiService] getConnectionState error:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Conecta a instância e retorna o QR Code em base64 se estiver pendente
+   */
+  async connectInstance(companyId: string): Promise<any> {
+    try {
+      const response = await fetch(`${EVO_API_URL}/instance/connect/${companyId}`, {
         method: 'GET',
         headers: {
           'apikey': EVO_API_KEY,
@@ -68,9 +105,13 @@ export const EvolutionApiService = {
       });
 
       const data = await response.json();
-      return data as ConnectionStateResponse;
+      if (!response.ok) {
+        throw new Error(data.message || data.error || 'Erro ao conectar instância');
+      }
+
+      return data;
     } catch (error: any) {
-      console.error('[EvolutionApiService] getConnectionState error:', error);
+      console.error('[EvolutionApiService] connectInstance error:', error);
       throw error;
     }
   },
