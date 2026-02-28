@@ -12,3 +12,4 @@ description: Kanban board for tasks
 - Inicialização manual do Squidy
 
 ## DONE
+- Corrigir erro 404 no Vercel (restaurante-web)
