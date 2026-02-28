@@ -64,11 +64,18 @@ export default function ConfiguracoesWhatsApp() {
             const state = data.instance?.state || data.state || 'disconnected';
             setConnectionState(state);
 
-            if (state === 'connecting' && data.base64) {
-                // Remove prefix if Evolution API attaches data:image/png;base64,
-                const rawBase64 = data.base64.includes(',') ? data.base64.split(',')[1] : data.base64;
-                setQrCodeBase64(`data:image/png;base64,${rawBase64}`);
-                startPolling(); // Keep asking if it was scanned
+            if (state === 'connecting') {
+                // Se está conectando, busca o QR Code na rota connect
+                try {
+                    const connectData = await EvolutionApiService.connectInstance(user.companyId);
+                    if (connectData.base64) {
+                        const rawBase64 = connectData.base64.includes(',') ? connectData.base64.split(',')[1] : connectData.base64;
+                        setQrCodeBase64(`data:image/png;base64,${rawBase64}`);
+                    }
+                } catch (e) {
+                    console.log('Falha ao buscar QR via connect:', e);
+                }
+                startPolling(); // Continua polling até ser escaneado
             } else if (state === 'open') {
                 setQrCodeBase64(null);
                 stopPolling();
@@ -94,13 +101,26 @@ export default function ConfiguracoesWhatsApp() {
             setActionLoading(true);
             setErrorMsg(null);
             
-            await EvolutionApiService.createInstance(user.companyId);
+            const createData = await EvolutionApiService.createInstance(user.companyId);
             
             Alert.alert('Sucesso', 'Instância gerada. Buscando QR Code...');
-            // Agora que a instância existe, buscamos o status que trará o QR Code Base64
-            setTimeout(() => {
-                checkConnectionStatus(true);
-            }, 2000);
+            
+            // Tenta usar o QR Code que já vem no retorno da criação (v1.8.2 qrcode: true)
+            if (createData?.qrcode?.base64) {
+                const rawBase64 = createData.qrcode.base64.includes(',') ? createData.qrcode.base64.split(',')[1] : createData.qrcode.base64;
+                setQrCodeBase64(`data:image/png;base64,${rawBase64}`);
+                setConnectionState('connecting');
+                startPolling();
+            } else if (createData?.base64) {
+                const rawBase64 = createData.base64.includes(',') ? createData.base64.split(',')[1] : createData.base64;
+                setQrCodeBase64(`data:image/png;base64,${rawBase64}`);
+                setConnectionState('connecting');
+                startPolling();
+            } else {
+                setTimeout(() => {
+                    checkConnectionStatus(true);
+                }, 2000);
+            }
 
         } catch (error: any) {
             setErrorMsg(error.message || 'Falha ao conectar no WhatsApp');
