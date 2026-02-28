@@ -1,14 +1,15 @@
 {
+  "cleanUrls": true,
   "outputDirectory": "dist",
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "/index.html"
+      "destination": "/"
     }
   ],
   "headers": [
     {
-      "source": "/index.html",
+      "source": "/",
       "headers": [
         {
           "key": "Cache-Control",
@@ -17,7 +18,7 @@
       ]
     },
     {
-      "source": "/(.*).(js|css|png|jpg|svg|woff2)",
+      "source": "/(.*)\\.(js|css|png|jpg|jpeg|svg|woff2|woff|ttf|json)",
       "headers": [
         {
           "key": "Cache-Control",
