@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
 
 interface Props {
   children: React.ReactNode;
@@ -23,6 +23,19 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: any) {
     console.error("ErrorBoundary caught an error", error, errorInfo);
+    
+    // Tratamento para erro de carregamento de chunk (ChunkLoadError) que acontece no web
+    // quando uma nova versão é publicada na Vercel e o usuário tenta navegar
+    const isChunkError = 
+      error.name === 'ChunkLoadError' || 
+      (error.message && error.message.toLowerCase().includes('loading chunk'));
+
+    if (isChunkError && Platform.OS === 'web') {
+      console.log('ChunkLoadError detectado. Recarregando a página para buscar a versão mais recente...');
+      window.location.reload();
+      return;
+    }
+
     this.setState({ errorInfo });
   }
 
