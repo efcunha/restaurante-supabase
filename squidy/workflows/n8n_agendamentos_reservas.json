@@ -1,232 +1,338 @@
 {
-  "name": "Automação: Status de Agendamentos/Reservas (Web & App)",
+  "name": "Automação Master: Pedidos & Reservas (Web & App) - Evolution MultiTenant",
   "nodes": [
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "novo-agendamento",
+        "path": "0d65548d-5254-441e-ba4b-d5d699a99de0",
         "options": {}
       },
-      "id": "1",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [-1264, 816],
+      "id": "df679d04-c697-4e30-9d53-611400fabb35",
+      "name": "Webhook Entregas",
+      "webhookId": "0d65548d-5254-441e-ba4b-d5d699a99de0"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.body.order_type }}",
+              "value2": "local"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7bc8f956-27e7-48c1-8bf7-c479be04cfa1",
+      "name": "É Pedido do Salão/Mesa?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.1,
+      "position": [-1008, 816]
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json.body.status_novo }}",
+        "rules": {
+          "rules": [
+            { "value2": "preparing" },
+            { "value2": "delivered" }
+          ]
+        }
+      },
+      "id": "093d2b62-7459-4586-b136-c4c1415d441e",
+      "name": "Status do Pedido Local",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 2,
+      "position": [-768, 672]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://evolution-api-production-9ac1.up.railway.app/message/sendText/{{$json.body.company_id}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "Lueed28@13546289b@P@ssw0rd"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"55{{$json.body.customer_phone.replace(/\\D/g, '')}}\",\n  \"textMessage\": {\n    \"text\": \"Olá {{$json.body.cliente_nome}}! Seu pedido da comanda {{$json.body.comanda_numero}} está EM PREPARO e logo irá para a sua mesa/entrega! 🍕\"\n  }\n}",
+        "options": {}
+      },
+      "id": "bc60be15-54e1-4dc8-b03b-fca9f5765591",
+      "name": "WhatsApp Preparando (Local)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [-512, 560]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://evolution-api-production-9ac1.up.railway.app/message/sendText/{{$json.body.company_id}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "Lueed28@13546289b@P@ssw0rd"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"55{{$json.body.customer_phone.replace(/\\D/g, '')}}\",\n  \"textMessage\": {\n    \"text\": \"Opa {{$json.body.cliente_nome}} 🎉. Seu pedido da comanda {{$json.body.comanda_numero}} está PRONTO / FOI ENTREGUE! Bom apetite!\"\n  }\n}",
+        "options": {}
+      },
+      "id": "4cccc261-ab36-4937-a6d1-db1f9b7904a5",
+      "name": "WhatsApp Entregue (Local)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [-512, 768]
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json.body.status_novo }}",
+        "rules": {
+          "rules": [
+            { "value2": "dispatched" },
+            { "value2": "delivered" }
+          ]
+        }
+      },
+      "id": "37d852db-28cc-4d56-bd81-dbece36c43e7",
+      "name": "Status do Pedido Delivery",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 2,
+      "position": [-768, 1072]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://evolution-api-production-9ac1.up.railway.app/message/sendText/{{$json.body.company_id}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "Lueed28@13546289b@P@ssw0rd"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"55{{$json.body.customer_phone.replace(/\\D/g, '')}}\",\n  \"textMessage\": {\n    \"text\": \"Olá {{$json.body.cliente_nome}}! 🛵 O motoboy acabou de sair com sua entrega na comanda {{$json.body.comanda_number}}!\\n\\nO valor total é *R$ {{$json.body.total_amount}}*.\\nVocê escolheu pagar via *{{$json.body.payment_method}}*.\\n\\nFique de olho no portão! 👀\"\n  }\n}",
+        "options": {}
+      },
+      "id": "a293b94f-b44a-44e3-ba35-a212db728458",
+      "name": "WhatsApp Dispatched (Delivery)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [-512, 960]
+    },
+    {
+      "parameters": {
+        "operation": "insert"
+      },
+      "id": "a0c0e814-8c1c-4e0b-93e9-e96a04b0acb2",
+      "name": "Supabase - Inserir Pagamento Automático",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [-512, 1168]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "supa-agendamentos",
+        "options": {}
+      },
+      "id": "252fd62b-40f9-4e3d-8cb7-b31b8351219d",
       "name": "Webhook Supabase (Reservas)",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
-      "position": [250, 300],
-      "webhookId": "agendamento-webhook-5983719"
+      "position": [-1264, 1520],
+      "webhookId": "agendamentos-restaurante"
     },
     {
       "parameters": {
         "conditions": {
           "string": [
             {
-              "value1": "={{ $json.body.type }}",
-              "value2": "INSERT"
+              "value1": "={{ $json.body.record.telefone_cliente }}",
+              "operation": "isNotEmpty"
             }
           ]
         }
       },
-      "id": "2",
-      "name": "Se Nova Reserva",
+      "id": "673398be-8c84-4b69-a89c-293cfe9130ac",
+      "name": "Tem Telefone na Reserva?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [450, 200]
+      "position": [-1008, 1520]
     },
     {
       "parameters": {
-        "conditions": {
-          "string": [
-            {
-              "value1": "={{ $json.body.type }}",
-              "value2": "UPDATE"
-            },
-            {
-              "value1": "={{ $json.body.record.status }}",
-              "value2": "confirmada"
-            }
+        "dataType": "string",
+        "value1": "={{ $json.body.record.status }}",
+        "rules": {
+          "rules": [
+            { "value2": "pendente" },
+            { "value2": "confirmada" },
+            { "value2": "cancelada" }
           ]
         }
       },
-      "id": "3",
-      "name": "Se Confirmada",
-      "type": "n8n-nodes-base.if",
+      "id": "42c0c8ca-8a47-423a-8797-d8cc7b8729b1",
+      "name": "Status da Reserva",
+      "type": "n8n-nodes-base.switch",
       "typeVersion": 1,
-      "position": [450, 400]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "string": [
-            {
-              "value1": "={{ $json.body.type }}",
-              "value2": "UPDATE"
-            },
-            {
-              "value1": "={{ $json.body.record.status }}",
-              "value2": "cancelada"
-            }
-          ]
-        }
-      },
-      "id": "4",
-      "name": "Se Cancelada",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 1,
-      "position": [450, 600]
+      "position": [-768, 1488]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.EVOLUTION_API_URL }}/message/sendText/{{ $json.body.record.company_id }}",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "url": "=https://evolution-api-production-9ac1.up.railway.app/message/sendText/{{$json.body.record.company_id}}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "apikey",
-              "value": "={{ $env.EVOLUTION_API_KEY }}"
+              "value": "Lueed28@13546289b@P@ssw0rd"
             }
           ]
         },
         "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "number",
-              "value": "55{{ $json.body.record.telefone_cliente.replace(/\\D/g, '') }}"
-            },
-            {
-              "name": "options",
-              "value": "{\"delay\":1200,\"presence\":\"composing\"}"
-            },
-            {
-              "name": "text",
-              "value": "Olá {{ $json.body.record.nome_cliente }}! Restaurante informando: *Sua solicitação de reserva para {{ $json.body.record.quantidade_pessoas }} pessoas está em análise.* Avisaremos assim que for confirmada! 🕒"
-            }
-          ]
-        },
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"55{{$json.body.record.telefone_cliente.replace(/\\D/g, '')}}\",\n  \"textMessage\": {\n    \"text\": \"Olá {{$json.body.record.nome_cliente}}! Restaurante informando: *Sua solicitação de mesa para {{$json.body.record.quantidade_pessoas}} pessoas está em análise.* Avisaremos assim que for confirmada! 🕒\"\n  }\n}",
         "options": {}
       },
-      "id": "5",
-      "name": "WhatsApp: Nova",
+      "id": "nova-reserva-id-1234",
+      "name": "WhatsApp Reserva (Nova)",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4,
-      "position": [700, 200]
+      "typeVersion": 4.1,
+      "position": [-512, 1280]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.EVOLUTION_API_URL }}/message/sendText/{{ $json.body.record.company_id }}",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "url": "=https://evolution-api-production-9ac1.up.railway.app/message/sendText/{{$json.body.record.company_id}}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "apikey",
-              "value": "={{ $env.EVOLUTION_API_KEY }}"
+              "value": "Lueed28@13546289b@P@ssw0rd"
             }
           ]
         },
         "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "number",
-              "value": "55{{ $json.body.record.telefone_cliente.replace(/\\D/g, '') }}"
-            },
-            {
-              "name": "options",
-              "value": "{\"delay\":1200,\"presence\":\"composing\"}"
-            },
-            {
-              "name": "text",
-              "value": "✅ Olá {{ $json.body.record.nome_cliente }}! Sua reserva foi *confirmada!* Esperamos você em breve. 🍽️"
-            }
-          ]
-        },
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"55{{$json.body.record.telefone_cliente.replace(/\\D/g, '')}}\",\n  \"textMessage\": {\n    \"text\": \"Olá {{$json.body.record.nome_cliente}}! ✅ Sua mesa para {{$json.body.record.quantidade_pessoas}} pessoas no dia {{new Date($json.body.record.data_hora_reserva).toLocaleString('pt-BR')}} foi confirmada! Te esperamos.\"\n  }\n}",
         "options": {}
       },
-      "id": "6",
-      "name": "WhatsApp: Confirmada",
+      "id": "51e37a31-d059-4c39-9de4-7d09a4356d65",
+      "name": "WhatsApp Reserva (Confirmada)",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4,
-      "position": [700, 400]
+      "typeVersion": 4.1,
+      "position": [-512, 1450]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.EVOLUTION_API_URL }}/message/sendText/{{ $json.body.record.company_id }}",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "url": "=https://evolution-api-production-9ac1.up.railway.app/message/sendText/{{$json.body.record.company_id}}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "apikey",
-              "value": "={{ $env.EVOLUTION_API_KEY }}"
+              "value": "Lueed28@13546289b@P@ssw0rd"
             }
           ]
         },
         "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "number",
-              "value": "55{{ $json.body.record.telefone_cliente.replace(/\\D/g, '') }}"
-            },
-            {
-              "name": "options",
-              "value": "{\"delay\":1200,\"presence\":\"composing\"}"
-            },
-            {
-              "name": "text",
-              "value": "❌ Olá {{ $json.body.record.nome_cliente }}. Infelizmente, sua reserva precisou ser *cancelada*. Pedimos desculpas pelo transtorno e esperamos recebê-lo em outra oportunidade."
-            }
-          ]
-        },
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"55{{$json.body.record.telefone_cliente.replace(/\\D/g, '')}}\",\n  \"textMessage\": {\n    \"text\": \"Olá {{$json.body.record.nome_cliente}}, infelizmente sua reserva precisou ser cancelada. 😔 Entre em contato para mais detalhes.\"\n  }\n}",
         "options": {}
       },
-      "id": "7",
-      "name": "WhatsApp: Cancelada",
+      "id": "a80c1f5b-27f4-445a-9297-542adfaa2e1f",
+      "name": "WhatsApp Reserva (Cancelada)",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4,
-      "position": [700, 600]
+      "typeVersion": 4.1,
+      "position": [-512, 1620]
     }
   ],
   "connections": {
+    "Webhook Entregas": {
+      "main": [
+        [
+          { "node": "É Pedido do Salão/Mesa?", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "É Pedido do Salão/Mesa?": {
+      "main": [
+        [
+          { "node": "Status do Pedido Local", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Status do Pedido Delivery", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Status do Pedido Local": {
+      "main": [
+        [
+          { "node": "WhatsApp Preparando (Local)", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "WhatsApp Entregue (Local)", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Status do Pedido Delivery": {
+      "main": [
+        [
+          { "node": "WhatsApp Dispatched (Delivery)", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Supabase - Inserir Pagamento Automático", "type": "main", "index": 0 }
+        ]
+      ]
+    },
     "Webhook Supabase (Reservas)": {
       "main": [
         [
-          { "node": "Se Nova Reserva", "type": "main", "index": 0 },
-          { "node": "Se Confirmada", "type": "main", "index": 0 },
-          { "node": "Se Cancelada", "type": "main", "index": 0 }
+          { "node": "Tem Telefone na Reserva?", "type": "main", "index": 0 }
         ]
       ]
     },
-    "Se Nova Reserva": {
+    "Tem Telefone na Reserva?": {
       "main": [
         [
-          { "node": "WhatsApp: Nova", "type": "main", "index": 0 }
+          { "node": "Status da Reserva", "type": "main", "index": 0 }
         ]
       ]
     },
-    "Se Confirmada": {
+    "Status da Reserva": {
       "main": [
         [
-          { "node": "WhatsApp: Confirmada", "type": "main", "index": 0 }
-        ]
-      ]
-    },
-    "Se Cancelada": {
-      "main": [
+          { "node": "WhatsApp Reserva (Nova)", "type": "main", "index": 0 }
+        ],
         [
-          { "node": "WhatsApp: Cancelada", "type": "main", "index": 0 }
+          { "node": "WhatsApp Reserva (Confirmada)", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "WhatsApp Reserva (Cancelada)", "type": "main", "index": 0 }
         ]
       ]
     }
-  },
-  "settings": {
-    "executionOrder": "v1"
   }
 }
