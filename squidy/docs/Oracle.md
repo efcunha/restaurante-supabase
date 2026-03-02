@@ -11,6 +11,11 @@ Este repositório/ecossistema serve como base para a gestão de restaurantes, co
 
 1. **restaurante-web (React/Vite):**
    Focado na gestão gerencial e operacional. Inclui o módulo PDV (recém-migrado) para delivery e pedidos locais, Dashboard Financeiro e gerenciamento geral do salão. Deploy primário no Railway (SPA migrada da Vercel para evitar erros 404 dinâmicos).
+   **Padrão de Interface / Dashboards Web:**
+   Todas as telas web administrativas (como AdminScreen, ReservasScreen, MontagemScreen, DeliveryScreen) DEVEM compartilhar o seguinte padrão de estilização visual e UX para evitar quebra de design:
+   - **Background Principal:** Cor areia/bege, código hexadecimal `#F5F5DC` em um View/SafeAreaView flexível base `{flex: 1}`.
+   - **Cabeçalho (Header):** Topo trilateral estruturado horizontalmente (`flexDirection: 'row'`). Requer backgroundColor `#8B2F2F` (cor vinho do aplicativo), sombras multiplataforma (`boxShadow` no Web e `elevation`/`shadowColor` da API Shadow no Android/iOS) e contornos arredondados da base `borderBottomLeftRadius`/`borderBottomRightRadius: 20`.
+   - **Composição do Header:** Esquerda exibindo Nome do Usuário (via provedor de auth); Centro trazendo Título da tela + Ícone visual; Direita posicionando o botão "Sair" / Logout.
 
 2. **restaurante-app (Mobile - React Native/Expo):**
    Focado mais no uso do cliente ou operação simplificada (antes geria o delivery, que agora foi movido para web, mas suas responsabilidades como app em si são vitais). O ecossistema precisa garantir que o app nunca quebre quando o dashboard web for atualizado, pois ambos consomem a mesma base.
