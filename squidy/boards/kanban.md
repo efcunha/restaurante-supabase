@@ -10,6 +10,7 @@ description: Kanban board for tasks
 ## DOING
 
 ## DONE
+- Completar estrutura do Squidy manualmente (readme-agent, AGENT, poliíticas e contexto da sessão)
 - Configurar ambiente de desenvolvimento
 - Inicialização manual do Squidy
 - Correção de geração do QRCode do WhatsApp (Evolution API)
