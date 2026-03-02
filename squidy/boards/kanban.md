@@ -13,6 +13,7 @@ description: Kanban board for tasks
 
 ## DONE
 
+- **[Deploy] Migração completa do `restaurante-web` da Vercel para o Railway (incluída configuração nativa para SPA previnindo erro 404)**.
 - Completar estrutura do Squidy manualmente (readme-agent, AGENT, poliíticas e contexto da sessão)
 - Configurar ambiente de desenvolvimento
 - Inicialização manual do Squidy
