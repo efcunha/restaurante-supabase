@@ -6,7 +6,7 @@ import { supabase } from '../config/SupabaseConfig';
 import { useAuth } from '../context/AuthContext';
 
 export default function ReservasScreen({ navigation }: any) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [reservas, setReservas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
@@ -212,7 +212,25 @@ export default function ReservasScreen({ navigation }: any) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Agendamentos & Reservas</Text>
+        <View style={styles.headerLeft}>
+          {user && (
+            <View>
+              <Text style={styles.userInfoLabel}>Olá,</Text>
+              <Text style={styles.userInfo}>{user.nome || user.email}</Text>
+            </View>
+          )}
+        </View>
+        <View style={styles.headerCenter}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Ionicons name="calendar-outline" size={24} color="#FFF" style={{ marginRight: 8 }} />
+            <Text style={styles.headerTitle}>Agendamentos & Reservas</Text>
+          </View>
+        </View>
+        <View style={styles.headerRight}>
+          <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
+            <Ionicons name="log-out-outline" size={24} color="#FFF" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {renderFiltros()}
@@ -285,18 +303,44 @@ export default function ReservasScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F9FA' },
+  container: { flex: 1, backgroundColor: '#F5F5DC' },
   header: {
     paddingTop: Platform.OS === 'ios' ? 50 : 20, 
     paddingHorizontal: 20, 
     paddingBottom: 15,
-    backgroundColor: '#FFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEE',
-    elevation: 2,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 3,
+    backgroundColor: '#8B2F2F',
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    zIndex: 10,
+    ...Platform.select({
+      web: { boxShadow: '0px 4px 15px rgba(0, 0, 0, 0.2)' as any },
+      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 15, elevation: 8 }
+    }),
   },
-  headerTitle: { fontSize: 24, fontWeight: 'bold', color: colors.primary },
+  headerLeft: {
+    flex: 1,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  headerCenter: {
+    flex: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerRight: {
+     flex: 1,
+     alignItems: 'flex-end',
+     justifyContent: 'center',
+  },
+  logoutBtn: {
+    padding: 5,
+  },
+  headerTitle: { color: '#FFFFFF', fontSize: 20, fontWeight: 'bold', textAlign: 'center' },
+  userInfoLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 10 },
+  userInfo: { color: '#E5B84A', fontSize: 12, fontWeight: '600' },
   // Filtros
   filtroContainer: { backgroundColor: '#FFF', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#EEE' },
   filtroScroll: { paddingHorizontal: 15, gap: 10 },
