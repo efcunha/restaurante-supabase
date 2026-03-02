@@ -10,7 +10,7 @@ Este repositório/ecossistema serve como base para a gestão de restaurantes, co
 ## Nossos Dois Projetos Frontend
 
 1. **restaurante-web (React/Vite):**
-   Focado na gestão gerencial e operacional. Inclui o módulo PDV (recém-migrado) para delivery e pedidos locais, Dashboard Financeiro e gerenciamento geral do salão. Deploy primário na Vercel.
+   Focado na gestão gerencial e operacional. Inclui o módulo PDV (recém-migrado) para delivery e pedidos locais, Dashboard Financeiro e gerenciamento geral do salão. Deploy primário no Railway (SPA migrada da Vercel para evitar erros 404 dinâmicos).
 
 2. **restaurante-app (Mobile - React Native/Expo):**
    Focado mais no uso do cliente ou operação simplificada (antes geria o delivery, que agora foi movido para web, mas suas responsabilidades como app em si são vitais). O ecossistema precisa garantir que o app nunca quebre quando o dashboard web for atualizado, pois ambos consomem a mesma base.
@@ -32,4 +32,5 @@ PostgreSQL gerenciado pelo Supabase. Qualquer mudança de esquema ou função (R
 - Refatoração de pedidos de delivery saindo do `restaurante-app` exclusivamente para o `restaurante-web` (criando módulo PDV).
 - Unificação do fluxo de pedidos locais/delivery no n8n com evolução multi-inquilino.
 - Configuração de Vercel e correções de layout/charts no `restaurante-web`.
+- Migração do `restaurante-web` da Vercel para o Railway via Nixpacks + serve (garantindo roteamento SPA consistente sem 404).
 - Introdução do fluxo manual de *Agendamento de Mesas*, compartilhando a tela `ReservasScreen` com suporte ao `company_id` nos apps Web/Mobile e envio dinâmico do nome da instância na integração com Evolution API.
