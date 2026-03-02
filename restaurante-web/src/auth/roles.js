@@ -51,11 +51,10 @@ export const RolePermissions = {
   ]),
 };
 
-// Telas permitidas por papel
 export const RoleScreens = {
-  [Roles.ADMIN]: ['Novo Pedido', 'Cozinha', 'Montagem', 'Prontos', 'Comandas', 'Mapa', 'Admin', 'Entregas'],
-  [Roles.GERENTE]: ['Novo Pedido', 'Cozinha', 'Montagem', 'Prontos', 'Comandas', 'Mapa', 'Admin', 'Entregas'],
-  [Roles.GARCOM]: ['Novo Pedido', 'Comandas', 'Mapa', 'Prontos'],
+  [Roles.ADMIN]: ['Novo Pedido', 'Cozinha', 'Montagem', 'Prontos', 'Comandas', 'Mapa', 'Admin', 'Entregas', 'Reservas'],
+  [Roles.GERENTE]: ['Novo Pedido', 'Cozinha', 'Montagem', 'Prontos', 'Comandas', 'Mapa', 'Admin', 'Entregas', 'Reservas'],
+  [Roles.GARCOM]: ['Novo Pedido', 'Comandas', 'Mapa', 'Prontos', 'Reservas'],
   [Roles.COZINHEIRO]: ['Cozinha'],
   [Roles.MONTAGEM]: ['Montagem', 'Prontos'],
   [Roles.ENTREGADOR]: ['Entregas'],
