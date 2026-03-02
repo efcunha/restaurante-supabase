@@ -87,8 +87,8 @@
   "description": "",
   "devDependencies": {
     "@eslint/js": "^9.39.2",
-    "@eslint/mcp": "^0.3.0",
-    "@react-native-community/cli": "^14.0.1",
+    "@eslint/mcp": "^0.2.0",
+    "@react-native-community/cli": "^20.1.2",
     "@react-native/metro-config": "latest",
     "@supabase/mcp-server-supabase": "^0.6.3",
     "@testing-library/jest-native": "^5.4.3",
