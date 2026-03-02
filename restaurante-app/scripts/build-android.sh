@@ -5,14 +5,29 @@
 
 echo "🚀 Iniciando build Android RELEASE..."
 
-# Configurar variáveis de ambiente
-export NODE_ENV=production
-export ANDROID_HOME=$HOME/Android/Sdk
+# Detectar Android SDK automaticamente dependendo do S.O.
+if [ -z "$ANDROID_HOME" ]; then
+    if [ -d "$LOCALAPPDATA/Android/Sdk" ]; then
+        export ANDROID_HOME="$LOCALAPPDATA/Android/Sdk"
+    elif [ -d "$HOME/AppData/Local/Android/Sdk" ]; then
+        export ANDROID_HOME="$HOME/AppData/Local/Android/Sdk"
+    elif [ -d "/c/Users/$USER/AppData/Local/Android/Sdk" ]; then
+        export ANDROID_HOME="/c/Users/$USER/AppData/Local/Android/Sdk"
+    elif [ -d "$HOME/Android/Sdk" ]; then
+        export ANDROID_HOME="$HOME/Android/Sdk"
+    elif [ -d "/d/Android" ]; then
+        export ANDROID_HOME="/d/Android"
+    elif [ -d "D:/Android" ]; then
+        export ANDROID_HOME="D:/Android"
+    fi
+fi
+
 export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools
 
 # Verificar se Android SDK está configurado
-if [ ! -d "$ANDROID_HOME" ]; then
-    echo "❌ Android SDK não encontrado em $ANDROID_HOME"
+if [ -z "$ANDROID_HOME" ] || [ ! -d "$ANDROID_HOME" ]; then
+    echo "❌ Android SDK não encontrado. Por favor, verifique se o Android Studio está instalado"
+    echo "   e defina a variável de ambiente ANDROID_HOME."
     exit 1
 fi
 
