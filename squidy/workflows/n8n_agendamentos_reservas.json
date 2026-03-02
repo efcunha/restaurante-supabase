@@ -1,0 +1,232 @@
+{
+  "name": "Automação: Status de Agendamentos/Reservas (Web & App)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "novo-agendamento",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook Supabase (Reservas)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "agendamento-webhook-5983719"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.body.type }}",
+              "value2": "INSERT"
+            }
+          ]
+        }
+      },
+      "id": "2",
+      "name": "Se Nova Reserva",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [450, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.body.type }}",
+              "value2": "UPDATE"
+            },
+            {
+              "value1": "={{ $json.body.record.status }}",
+              "value2": "confirmada"
+            }
+          ]
+        }
+      },
+      "id": "3",
+      "name": "Se Confirmada",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [450, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.body.type }}",
+              "value2": "UPDATE"
+            },
+            {
+              "value1": "={{ $json.body.record.status }}",
+              "value2": "cancelada"
+            }
+          ]
+        }
+      },
+      "id": "4",
+      "name": "Se Cancelada",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [450, 600]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.EVOLUTION_API_URL }}/message/sendText/{{ $json.body.record.company_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.EVOLUTION_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "55{{ $json.body.record.telefone_cliente.replace(/\\D/g, '') }}"
+            },
+            {
+              "name": "options",
+              "value": "{\"delay\":1200,\"presence\":\"composing\"}"
+            },
+            {
+              "name": "text",
+              "value": "Olá {{ $json.body.record.nome_cliente }}! Restaurante informando: *Sua solicitação de reserva para {{ $json.body.record.quantidade_pessoas }} pessoas está em análise.* Avisaremos assim que for confirmada! 🕒"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5",
+      "name": "WhatsApp: Nova",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [700, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.EVOLUTION_API_URL }}/message/sendText/{{ $json.body.record.company_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.EVOLUTION_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "55{{ $json.body.record.telefone_cliente.replace(/\\D/g, '') }}"
+            },
+            {
+              "name": "options",
+              "value": "{\"delay\":1200,\"presence\":\"composing\"}"
+            },
+            {
+              "name": "text",
+              "value": "✅ Olá {{ $json.body.record.nome_cliente }}! Sua reserva foi *confirmada!* Esperamos você em breve. 🍽️"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6",
+      "name": "WhatsApp: Confirmada",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [700, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.EVOLUTION_API_URL }}/message/sendText/{{ $json.body.record.company_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.EVOLUTION_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "55{{ $json.body.record.telefone_cliente.replace(/\\D/g, '') }}"
+            },
+            {
+              "name": "options",
+              "value": "{\"delay\":1200,\"presence\":\"composing\"}"
+            },
+            {
+              "name": "text",
+              "value": "❌ Olá {{ $json.body.record.nome_cliente }}. Infelizmente, sua reserva precisou ser *cancelada*. Pedimos desculpas pelo transtorno e esperamos recebê-lo em outra oportunidade."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7",
+      "name": "WhatsApp: Cancelada",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [700, 600]
+    }
+  ],
+  "connections": {
+    "Webhook Supabase (Reservas)": {
+      "main": [
+        [
+          { "node": "Se Nova Reserva", "type": "main", "index": 0 },
+          { "node": "Se Confirmada", "type": "main", "index": 0 },
+          { "node": "Se Cancelada", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Se Nova Reserva": {
+      "main": [
+        [
+          { "node": "WhatsApp: Nova", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Se Confirmada": {
+      "main": [
+        [
+          { "node": "WhatsApp: Confirmada", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Se Cancelada": {
+      "main": [
+        [
+          { "node": "WhatsApp: Cancelada", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

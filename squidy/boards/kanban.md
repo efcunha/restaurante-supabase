@@ -9,7 +9,7 @@ description: Kanban board for tasks
 
 ## DOING
 
-- **(Vazio)**
+- **[Feature] Implementação do Módulo de Agendamento Manual de Reservas**: Gerenciamento no painel web, painel mobile, e notificação no n8n.
 
 ## DONE
 
