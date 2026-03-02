@@ -9,10 +9,11 @@ description: Kanban board for tasks
 
 ## DOING
 
-- **[Feature] Implementação do Módulo de Agendamento Manual de Reservas**: Gerenciamento no painel web, painel mobile, e notificação no n8n.
+- **(Vazio)**
 
 ## DONE
 
+- **[Feature] Implementação do Módulo de Agendamento Manual de Reservas**: Gerenciamento no painel web, painel mobile, e notificação no n8n.
 - **[Deploy] Migração completa do `restaurante-web` da Vercel para o Railway (incluída configuração nativa para SPA previnindo erro 404)**.
 - Completar estrutura do Squidy manualmente (readme-agent, AGENT, poliíticas e contexto da sessão)
 - Configurar ambiente de desenvolvimento
