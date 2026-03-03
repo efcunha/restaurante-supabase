@@ -59,13 +59,7 @@ const PizzaRow = memo(({ item, onPress }: PizzaRowProps) => {
   const ingredientsText = item.ingredients ? item.ingredients.join(', ') : item.description || '';
   const customIngredientsText = item.customIngredients || '';
 
-  // Cycle colors to look like the example (Orange, Green, Gray, Blue...)
-  const rowColors = [colors.warning, colors.success, colors.disabled, '#4a90e2', '#9013fe'];
-  // FIX: Ensure hash is safe for strings
-  const hash = item.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const colorIndex = hash % rowColors.length;
-  const cardColor = rowColors[colorIndex] || colors.primary; // Fallback
-  // Em vez de usar a cor como fundo inteiro, usaremos como destaque (border/tag)
+  const cardColor = colors.primary;
   const bgColor = colors.white;
 
   const handlePress = useCallback(() => {
@@ -74,16 +68,16 @@ const PizzaRow = memo(({ item, onPress }: PizzaRowProps) => {
 
   return (
     <TouchableOpacity
-      style={[styles.stackedInfoCard, { backgroundColor: bgColor, borderLeftColor: cardColor, borderLeftWidth: 6, marginBottom: 12, elevation: 2 }]}
+      style={[styles.stackedInfoCard, { backgroundColor: bgColor, borderLeftColor: cardColor, borderLeftWidth: 4, marginBottom: 12, elevation: 2 }]}
       onPress={handlePress}
       activeOpacity={0.8}
     >
       <View style={{ alignItems: 'flex-start' }}>
-        <Text style={[styles.stackedNameText, { color: colors.text }]}>{item.name}</Text>
+        <Text style={styles.stackedNameText}>{item.name}</Text>
         {!!ingredientsText && <Text style={{ color: colors.textSecondary, fontSize: 13, textAlign: 'left', marginBottom: 4, fontStyle: 'italic' }}>{ingredientsText}</Text>}
         {!!customIngredientsText && <Text style={{ color: colors.textLight, fontSize: 12, textAlign: 'left', marginBottom: 4, fontStyle: 'italic' }}>({customIngredientsText})</Text>}
         <View style={{ backgroundColor: '#F5F5F5', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, marginTop: 4 }}>
-          <Text style={[styles.stackedPriceText, { color: '#2C2C2C', fontSize: 15 }]}>{priceDisplay}</Text>
+          <Text style={{ color: '#2C2C2C', fontSize: 15, fontWeight: 'bold' }}>{priceDisplay}</Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -435,7 +429,7 @@ const StackedVariationRow = memo(({ name, price, qty, color, onInc, onDec, itemK
     <View style={[styles.stackedRowContainer, last && { marginBottom: 12 }]}>
       {/* Left Side: Info Card (Name + Price) */}
       <TouchableOpacity
-        style={[styles.stackedInfoCard, { backgroundColor: color }]}
+        style={[styles.stackedInfoCard, { backgroundColor: '#F5F5F5', borderLeftWidth: 4, borderLeftColor: color }]}
         onPress={handleInc}
         activeOpacity={0.8}
       >
@@ -449,7 +443,7 @@ const StackedVariationRow = memo(({ name, price, qty, color, onInc, onDec, itemK
           <Text style={styles.roundBtnText}>−</Text>
         </TouchableOpacity>
         <Text style={styles.qtyText}>{qty}</Text>
-        <TouchableOpacity style={[styles.roundBtn, { backgroundColor: color }]} onPress={handleInc}>
+        <TouchableOpacity style={[styles.roundBtn, { backgroundColor: colors.success }]} onPress={handleInc}>
           <Text style={styles.roundBtnText}>+</Text>
         </TouchableOpacity>
       </View>
@@ -475,7 +469,7 @@ const VariationRow = memo(({ label, qty, color, onInc, onDec, itemKey, last, for
 
   return (
     <View style={[styles.variationRow, last && { marginBottom: 12 }]}>
-      <TouchableOpacity style={[styles.variationLabelBtn, { backgroundColor: color }]} onPress={handleInc}>
+      <TouchableOpacity style={[styles.variationLabelBtn, { backgroundColor: '#F5F5F5', borderLeftWidth: 4, borderLeftColor: color }]} onPress={handleInc}>
         <Text
           style={styles.variationLabelText}
           numberOfLines={forceOneLine ? 1 : undefined}
@@ -490,7 +484,7 @@ const VariationRow = memo(({ label, qty, color, onInc, onDec, itemKey, last, for
           <Text style={styles.roundBtnText}>−</Text>
         </TouchableOpacity>
         <Text style={styles.qtyText}>{qty}</Text>
-        <TouchableOpacity style={[styles.roundBtn, { backgroundColor: color }]} onPress={handleInc}>
+        <TouchableOpacity style={[styles.roundBtn, { backgroundColor: colors.success }]} onPress={handleInc}>
           <Text style={styles.roundBtnText}>+</Text>
         </TouchableOpacity>
       </View>
@@ -1207,7 +1201,7 @@ const styles = StyleSheet.create({
   // Variation Rows
   variationRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, backgroundColor: '#F9F9F9', borderRadius: 8, padding: 8 },
   variationLabelBtn: { flex: 1, padding: 8, borderRadius: 8, marginRight: 8, justifyContent: 'center' },
-  variationLabelText: { color: colors.shadow, fontSize: 16, fontWeight: '700', textAlign: 'left' },
+  variationLabelText: { color: colors.text, fontSize: 16, fontWeight: '700', textAlign: 'left' },
 
   // NEW STYLES FOR STACKED VARIATION
   stackedRowContainer: {
@@ -1223,7 +1217,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'flex-start',
     marginRight: 12,
-    // Background color applied inline to this card
   },
   variationControlsOutside: {
     flexDirection: 'row',
@@ -1231,24 +1224,14 @@ const styles = StyleSheet.create({
   },
 
   stackedNameText: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 18,
     fontWeight: 'bold',
     textAlign: 'left',
     marginBottom: 4,
-    ...Platform.select({
-      web: {
-        textShadow: '1px 1px 2px rgba(0,0,0,0.3)',
-      },
-      default: {
-        textShadowColor: 'rgba(0,0,0,0.3)',
-        textShadowOffset: { width: 1, height: 1 },
-        textShadowRadius: 2,
-      },
-    }),
   },
   stackedPriceText: {
-    color: colors.white,
+    color: colors.primary,
     fontSize: 17,
     fontWeight: 'bold',
     textAlign: 'left',
