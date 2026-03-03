@@ -204,14 +204,19 @@ export function useComandaManagement() {
                 if (comanda.pedidos) {
                     comanda.pedidos.forEach(pedido => {
                         const dbPrice = Number(pedido.totalPrice || pedido.total_amount) || 0;
-                        const totalPedidoRecalculado = calcularTotalPedido(pedido, cardapioList);
-                        const totalPagoRecalculado = calcularPagoPedido(pedido, cardapioList);
                         
-                        // Priorizar o recalculado se tiver itens (mais preciso após correção de preços)
-                        // Senão usar o valor do banco
-                        const valor = (pedido.items && pedido.items.length > 0 && totalPedidoRecalculado > 0) 
-                            ? totalPedidoRecalculado 
-                            : dbPrice;
+                        // 🔒 CORREÇÃO CRÍTICA (Bug Discrepância de Preço):
+                        // Assim como no web, o valor do dbPrice NÃO pode ser sobreposto pelo valor do cardapioList,
+                        // para não corromper preços de composição e extras (Pizzas).
+                        const totalPedidoRecalculado = calcularTotalPedido(pedido, cardapioList);
+                        const valor = dbPrice > 0 ? dbPrice : totalPedidoRecalculado;
+                        
+                        let totalPagoRecalculado = 0;
+                        if (pedido.is_paid === true || pedido.is_paid === 'true' || pedido.is_paid === 1 || pedido.isPago === true) {
+                            totalPagoRecalculado = valor;
+                        } else {
+                            totalPagoRecalculado = calcularPagoPedido(pedido, cardapioList);
+                        }
                         
                         totalConsumidoPedidos += valor;
                         totalPagoPedidos += totalPagoRecalculado;
