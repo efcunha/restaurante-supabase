@@ -11,6 +11,7 @@ import PizzaBuilderModal from '../components/PizzaBuilderModal';
 import { Product } from '../types';
 import { KeyboardAvoidingView } from 'react-native';
 import supabaseOrderService from '../services/supabase/SupabaseOrderService';
+import { supabase } from '../config/SupabaseConfig';
 
 if (Platform.OS === 'android') {
   if (UIManager.setLayoutAnimationEnabledExperimental) {
@@ -47,18 +48,25 @@ const PizzaRow = memo(({ item, onPress }: { item: Product, onPress: (item: Produ
   const hash = item.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
   const colorIndex = hash % rowColors.length;
   const cardColor = rowColors[colorIndex] || colors.primary;
+  const bgColor = colors.white;
 
   const handlePress = useCallback(() => {
     onPress(item);
   }, [onPress, item]);
 
   return (
-    <TouchableOpacity style={[styles.stackedInfoCard, { backgroundColor: cardColor, marginBottom: 12, elevation: 2 }]} onPress={handlePress} activeOpacity={0.8}>
-      <View style={{ alignItems: 'center' }}>
-        <Text style={styles.stackedNameText}>{item.name}</Text>
-        {!!ingredientsText && <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 13, textAlign: 'center', marginBottom: 4, fontStyle: 'italic' }}>{ingredientsText}</Text>}
-        {!!customIngredientsText && <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12, textAlign: 'center', marginBottom: 4, fontStyle: 'italic' }}>({customIngredientsText})</Text>}
-        <Text style={styles.stackedPriceText}>{priceDisplay}</Text>
+    <TouchableOpacity 
+      style={[styles.stackedInfoCard, { backgroundColor: bgColor, borderLeftColor: cardColor, borderLeftWidth: 6, marginBottom: 12, elevation: 2 }]} 
+      onPress={handlePress} 
+      activeOpacity={0.8}
+    >
+      <View style={{ alignItems: 'flex-start' }}>
+        <Text style={[styles.stackedNameText, { color: colors.text }]}>{item.name}</Text>
+        {!!ingredientsText && <Text style={{ color: colors.textSecondary, fontSize: 13, textAlign: 'left', marginBottom: 4, fontStyle: 'italic' }}>{ingredientsText}</Text>}
+        {!!customIngredientsText && <Text style={{ color: colors.textSecondary, fontSize: 12, textAlign: 'left', marginBottom: 4, fontStyle: 'italic' }}>({customIngredientsText})</Text>}
+        <View style={{ backgroundColor: '#F5F5F5', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, marginTop: 4 }}>
+          <Text style={[styles.stackedPriceText, { color: '#2C2C2C', fontSize: 15 }]}>{priceDisplay}</Text>
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -409,7 +417,7 @@ export default function DeliveryScreen() {
     const cleanPhone = text.replace(/\D/g, '');
     if (cleanPhone.length >= 10 && user?.companyId) {
       try {
-        const { data, error } = await supabaseOrderService.supabase
+        const { data, error } = await supabase
           .from('clientes')
           .select('nome, endereco, cep')
           .eq('company_id', user.companyId)
@@ -472,7 +480,7 @@ export default function DeliveryScreen() {
 
       // 1. SILENT BACKGROUND CUSTOMER AUTO-SAVE
       if (cleanPhone.length >= 10) {
-          const { data: existing } = await supabaseOrderService.supabase
+          const { data: existing } = await supabase
             .from('clientes')
             .select('id')
             .eq('company_id', user.companyId)
@@ -480,7 +488,7 @@ export default function DeliveryScreen() {
             .single();
 
           if (!existing) {
-              await supabaseOrderService.supabase
+              await supabase
                 .from('clientes')
                 .insert({
                     company_id: user.companyId,
@@ -560,7 +568,7 @@ export default function DeliveryScreen() {
       sectionsData.push({ title: '🍲 Caldos', data: caldosUnicos, type: 'caldos', original: activeCaldos });
     }
 
-    if (cardapio.espetinhosSimples?.length > 0) {
+    if (cardapio.espetinhosSimples && cardapio.espetinhosSimples.length > 0) {
       const activeEspetinhos = cardapio.espetinhosSimples.filter(isActive);
       const baseNames = [...new Set(activeEspetinhos.map(p => {
         let name = p.name;
@@ -570,7 +578,7 @@ export default function DeliveryScreen() {
       sectionsData.push({ title: '🔥 Espetinhos Simples', data: baseNames, type: 'espetinhos-simples', original: activeEspetinhos });
     }
 
-    if (cardapio.espetinhosEspeciais?.length > 0) {
+    if (cardapio.espetinhosEspeciais && cardapio.espetinhosEspeciais.length > 0) {
       const activeEspetinhos = cardapio.espetinhosEspeciais.filter(isActive);
       const baseNames = [...new Set(activeEspetinhos.map(p => {
         let name = p.name;
@@ -585,9 +593,9 @@ export default function DeliveryScreen() {
       if (filteredComidas.length > 0) sectionsData.push({ title: '🍽️ Comidas', data: filteredComidas, type: 'comidas' });
     }
 
-    if (cardapio.porcoes?.length > 0) sectionsData.push({ title: '🍟 Porções', data: cardapio.porcoes.filter(isActive), type: 'porcoes' });
-    if (cardapio.outros?.length > 0) sectionsData.push({ title: '📦 Outros', data: cardapio.outros.filter(isActive), type: 'outros' });
-    if (cardapio.bebidas?.length > 0) sectionsData.push({ title: '🥤 Bebidas', data: cardapio.bebidas.filter(isActive), type: 'bebidas' });
+    if (cardapio.porcoes && cardapio.porcoes.length > 0) sectionsData.push({ title: '🍟 Porções', data: cardapio.porcoes.filter(isActive), type: 'porcoes' });
+    if (cardapio.outros && cardapio.outros.length > 0) sectionsData.push({ title: '📦 Outros', data: cardapio.outros.filter(isActive), type: 'outros' });
+    if (cardapio.bebidas && cardapio.bebidas.length > 0) sectionsData.push({ title: '🥤 Bebidas', data: cardapio.bebidas.filter(isActive), type: 'bebidas' });
 
     return sectionsData;
   }, [cardapio, variacoesEspetinho]);
@@ -748,34 +756,34 @@ const styles = StyleSheet.create({
   listContent: { padding: 20, paddingBottom: 120 },
   headerForm: { marginBottom: 20, backgroundColor: '#fff', padding: 15, borderRadius: 10, elevation: 1 },
   label: { fontSize: 14, color: colors.text, marginBottom: 4, fontWeight: 'bold' },
-  input: { backgroundColor: colors.white, borderRadius: 8, padding: 10, fontSize: 15, borderWidth: 1, borderColor: colors.border, outlineStyle: 'none' },
-  feeInput: { backgroundColor: colors.white, borderRadius: 8, padding: 10, fontSize: 15, borderWidth: 1, borderColor: colors.border, width: 80, textAlign: 'right', outlineStyle: 'none' },
+  input: { backgroundColor: colors.white, borderRadius: 8, padding: 10, fontSize: 15, borderWidth: 1, borderColor: colors.border, outlineStyle: 'none' as any },
+  feeInput: { backgroundColor: colors.white, borderRadius: 8, padding: 10, fontSize: 15, borderWidth: 1, borderColor: colors.border, width: 80, textAlign: 'right', outlineStyle: 'none' as any },
   sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#8B2F2F', marginTop: 20, marginBottom: 12 },
   quantityBtn: { backgroundColor: '#8B2F2F', width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
   quantityBtnText: { color: colors.white, fontSize: 18, fontWeight: 'bold' },
-  caldoCard: { backgroundColor: colors.white, borderRadius: 12, padding: 12, marginBottom: 12, elevation: 1 },
-  standardCard: { backgroundColor: colors.white, borderRadius: 12, padding: 12, marginBottom: 12, elevation: 1 },
-  verticalCard: { flexDirection: 'column', marginBottom: 12, backgroundColor: colors.white, padding: 12, borderRadius: 8, elevation: 1 },
-  produtoName: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 4, textAlign: 'center' },
-  sizeTitle: { fontSize: 17, fontWeight: '700', color: '#8B2F2F', marginTop: 8, marginBottom: 4, textAlign: 'center' },
-  verticalName: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 8, textAlign: 'center' },
-  verticalControlsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 10 },
+  caldoCard: { backgroundColor: colors.white, borderRadius: 12, padding: 16, marginBottom: 12, elevation: 1 },
+  standardCard: { backgroundColor: colors.white, borderRadius: 12, padding: 16, marginBottom: 12, elevation: 1 },
+  verticalCard: { flexDirection: 'column', marginBottom: 12, backgroundColor: colors.white, padding: 16, borderRadius: 8, elevation: 1 },
+  produtoName: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 4, textAlign: 'left' },
+  sizeTitle: { fontSize: 17, fontWeight: '700', color: '#8B2F2F', marginTop: 8, marginBottom: 4, textAlign: 'left' },
+  verticalName: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 8, textAlign: 'left' },
+  verticalControlsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   verticalPrice: { fontSize: 17, fontWeight: '700', color: '#8B2F2F' },
-  variationRow: { flexDirection: 'row', alignItems: 'center', marginTop: 6 },
-  variationLabelBtn: { flex: 1, padding: 10, borderRadius: 8, marginHorizontal: 4 },
-  variationLabelText: { color: colors.shadow, fontSize: 16, fontWeight: '700', textAlign: 'center' },
-  stackedRowContainer: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
-  stackedInfoCard: { flex: 1, padding: 12, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  variationRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, backgroundColor: '#F9F9F9', borderRadius: 8, padding: 8 },
+  variationLabelBtn: { flex: 1, padding: 8, borderRadius: 8, marginRight: 8, justifyContent: 'center' },
+  variationLabelText: { color: colors.shadow, fontSize: 16, fontWeight: '700', textAlign: 'left' },
+  stackedRowContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
+  stackedInfoCard: { flex: 1, padding: 12, borderRadius: 10, justifyContent: 'center', alignItems: 'flex-start', marginRight: 12 },
   variationControlsOutside: { flexDirection: 'row', alignItems: 'center' },
-  stackedNameText: { color: colors.white, fontSize: 18, fontWeight: 'bold', textAlign: 'center', marginBottom: 4 },
-  stackedPriceText: { color: colors.white, fontSize: 17, fontWeight: 'bold', textAlign: 'center' },
+  stackedNameText: { color: colors.white, fontSize: 18, fontWeight: 'bold', textAlign: 'left', marginBottom: 4 },
+  stackedPriceText: { color: colors.white, fontSize: 17, fontWeight: 'bold', textAlign: 'left' },
   variationControls: { flexDirection: 'row', alignItems: 'center' },
   roundBtn: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginHorizontal: 4 },
   roundBtnText: { color: colors.white, fontSize: 18, fontWeight: 'bold' },
   qtyText: { fontSize: 16, fontWeight: 'bold', minWidth: 24, textAlign: 'center' },
-  produtoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  produtoInfo: { flex: 1 },
-  produtoPrice: { fontSize: 17, fontWeight: '700', color: '#8B2F2F', textAlign: 'center' },
+  produtoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  produtoInfo: { flex: 1, marginRight: 12 },
+  produtoPrice: { fontSize: 17, fontWeight: '700', color: '#8B2F2F', textAlign: 'left', marginTop: 4 },
   quantityControl: { flexDirection: 'row', alignItems: 'center' },
   listFooter: { marginTop: 20 },
   selectedItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.white, borderRadius: 8, padding: 12, marginBottom: 8 },
@@ -796,6 +804,6 @@ const styles = StyleSheet.create({
   totalSpace: { height: 100 },
   searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', paddingHorizontal: 15, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border },
   searchIcon: { marginRight: 8 },
-  searchInput: { flex: 1, fontSize: 16, color: colors.text, paddingVertical: 8, outlineStyle: 'none' },
+  searchInput: { flex: 1, fontSize: 16, color: colors.text, paddingVertical: 8, outlineStyle: 'none' as any },
   searchClearBtn: { padding: 4 }
 });
