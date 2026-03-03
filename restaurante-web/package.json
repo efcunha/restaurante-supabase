@@ -24,6 +24,8 @@
     "test:performance": "jest --config jest.config.performance.js --runInBand",
     "test:performance:watch": "jest --config jest.config.performance.js --watch",
     "test:performance:coverage": "jest --config jest.config.performance.js --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "type-check": "tsc --noEmit",
     "type-check:watch": "tsc --noEmit --watch",
     "validate:translations": "ts-node scripts/validate-translations.ts",
@@ -92,6 +94,7 @@
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "@eslint/mcp": "^0.2.0",
+    "@playwright/test": "^1.58.2",
     "@react-native-community/cli": "^11.4.1",
     "@react-native/metro-config": "^0.84.0",
     "@supabase/mcp-server-supabase": "^0.6.3",
