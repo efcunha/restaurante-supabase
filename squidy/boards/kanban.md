@@ -11,6 +11,7 @@ description: Kanban board for tasks
 - [UI/UX] Implementar tela de Reserva no Web com Status de abas.
 
 ### ✅ DONE (Concluído)
+- [Bugfix] Descoberta e correção da discrepância de valores em comandas (Web e App): o hook `useComandaManagement.js` recalculava incorretamente totais usando apenas itens simples do cardápio e apagava o valor de Pizzas compostas do banco. Códigos fortificados e comanda afetada corrigida via SQL.
 - [UI/UX] Padronizar layout de cores dos itens no Pedido Delivery do Web para refletir a nova interface do Novo Pedido.
 - [UI/UX] Analisar e padronizar layout de cores na tela de Novo Pedido (Web e App) para melhorar a experiência do usuário.
 - [UI/UX] Implementar tela de Reserva no Web.
