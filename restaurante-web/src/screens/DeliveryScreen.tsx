@@ -44,10 +44,7 @@ const PizzaRow = memo(({ item, onPress }: { item: Product, onPress: (item: Produ
   const ingredientsText = item.ingredients ? item.ingredients.join(', ') : item.description || '';
   const customIngredientsText = item.customIngredients || '';
 
-  const rowColors = [colors.warning, colors.success, colors.disabled, '#4a90e2', '#9013fe'];
-  const hash = item.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const colorIndex = hash % rowColors.length;
-  const cardColor = rowColors[colorIndex] || colors.primary;
+  const cardColor = colors.primary;
   const bgColor = colors.white;
 
   const handlePress = useCallback(() => {
@@ -55,17 +52,17 @@ const PizzaRow = memo(({ item, onPress }: { item: Product, onPress: (item: Produ
   }, [onPress, item]);
 
   return (
-    <TouchableOpacity 
-      style={[styles.stackedInfoCard, { backgroundColor: bgColor, borderLeftColor: cardColor, borderLeftWidth: 6, marginBottom: 12, elevation: 2 }]} 
-      onPress={handlePress} 
+    <TouchableOpacity
+      style={[styles.stackedInfoCard, { backgroundColor: bgColor, borderLeftColor: cardColor, borderLeftWidth: 4, marginBottom: 12, elevation: 2 }]}
+      onPress={handlePress}
       activeOpacity={0.8}
     >
       <View style={{ alignItems: 'flex-start' }}>
-        <Text style={[styles.stackedNameText, { color: colors.text }]}>{item.name}</Text>
+        <Text style={styles.stackedNameText}>{item.name}</Text>
         {!!ingredientsText && <Text style={{ color: colors.textSecondary, fontSize: 13, textAlign: 'left', marginBottom: 4, fontStyle: 'italic' }}>{ingredientsText}</Text>}
         {!!customIngredientsText && <Text style={{ color: colors.textSecondary, fontSize: 12, textAlign: 'left', marginBottom: 4, fontStyle: 'italic' }}>({customIngredientsText})</Text>}
         <View style={{ backgroundColor: '#F5F5F5', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, marginTop: 4 }}>
-          <Text style={[styles.stackedPriceText, { color: '#2C2C2C', fontSize: 15 }]}>{priceDisplay}</Text>
+          <Text style={{ color: '#2C2C2C', fontSize: 15, fontWeight: 'bold' }}>{priceDisplay}</Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -242,14 +239,14 @@ const StackedVariationRow = memo(({ name, price, qty, color, onInc, onDec, itemK
   const handleDec = useCallback(() => onDec(itemKey), [onDec, itemKey]);
   return (
     <View style={[styles.stackedRowContainer, last && { marginBottom: 12 }]}>
-      <TouchableOpacity style={[styles.stackedInfoCard, { backgroundColor: color }]} onPress={handleInc} activeOpacity={0.8}>
+      <TouchableOpacity style={[styles.stackedInfoCard, { backgroundColor: '#F5F5F5', borderLeftWidth: 4, borderLeftColor: color }]} onPress={handleInc} activeOpacity={0.8}>
         <Text style={styles.stackedNameText}>{name}</Text>
         <Text style={styles.stackedPriceText}>R$ {price.toFixed(2)}</Text>
       </TouchableOpacity>
       <View style={styles.variationControlsOutside}>
         <TouchableOpacity style={[styles.roundBtn, { backgroundColor: colors.danger }]} onPress={handleDec}><Text style={styles.roundBtnText}>−</Text></TouchableOpacity>
         <Text style={styles.qtyText}>{qty}</Text>
-        <TouchableOpacity style={[styles.roundBtn, { backgroundColor: color }]} onPress={handleInc}><Text style={styles.roundBtnText}>+</Text></TouchableOpacity>
+        <TouchableOpacity style={[styles.roundBtn, { backgroundColor: colors.success }]} onPress={handleInc}><Text style={styles.roundBtnText}>+</Text></TouchableOpacity>
       </View>
     </View>
   );
@@ -261,13 +258,13 @@ const VariationRow = memo(({ label, qty, color, onInc, onDec, itemKey, last, for
   const handleDec = useCallback(() => onDec(itemKey), [onDec, itemKey]);
   return (
     <View style={[styles.variationRow, last && { marginBottom: 12 }]}>
-      <TouchableOpacity style={[styles.variationLabelBtn, { backgroundColor: color }]} onPress={handleInc}>
+      <TouchableOpacity style={[styles.variationLabelBtn, { backgroundColor: '#F5F5F5', borderLeftWidth: 4, borderLeftColor: color }]} onPress={handleInc}>
         <Text style={styles.variationLabelText} numberOfLines={forceOneLine ? 1 : undefined} adjustsFontSizeToFit={forceOneLine} minimumFontScale={0.6}>{label}</Text>
       </TouchableOpacity>
       <View style={styles.variationControls}>
         <TouchableOpacity style={[styles.roundBtn, { backgroundColor: colors.danger }]} onPress={handleDec}><Text style={styles.roundBtnText}>−</Text></TouchableOpacity>
         <Text style={styles.qtyText}>{qty}</Text>
-        <TouchableOpacity style={[styles.roundBtn, { backgroundColor: color }]} onPress={handleInc}><Text style={styles.roundBtnText}>+</Text></TouchableOpacity>
+        <TouchableOpacity style={[styles.roundBtn, { backgroundColor: colors.success }]} onPress={handleInc}><Text style={styles.roundBtnText}>+</Text></TouchableOpacity>
       </View>
     </View>
   );
@@ -771,12 +768,12 @@ const styles = StyleSheet.create({
   verticalPrice: { fontSize: 17, fontWeight: '700', color: '#8B2F2F' },
   variationRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, backgroundColor: '#F9F9F9', borderRadius: 8, padding: 8 },
   variationLabelBtn: { flex: 1, padding: 8, borderRadius: 8, marginRight: 8, justifyContent: 'center' },
-  variationLabelText: { color: colors.shadow, fontSize: 16, fontWeight: '700', textAlign: 'left' },
+  variationLabelText: { color: colors.text, fontSize: 16, fontWeight: '700', textAlign: 'left' },
   stackedRowContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
   stackedInfoCard: { flex: 1, padding: 12, borderRadius: 10, justifyContent: 'center', alignItems: 'flex-start', marginRight: 12 },
   variationControlsOutside: { flexDirection: 'row', alignItems: 'center' },
-  stackedNameText: { color: colors.white, fontSize: 18, fontWeight: 'bold', textAlign: 'left', marginBottom: 4 },
-  stackedPriceText: { color: colors.white, fontSize: 17, fontWeight: 'bold', textAlign: 'left' },
+  stackedNameText: { color: colors.text, fontSize: 18, fontWeight: 'bold', textAlign: 'left', marginBottom: 4 },
+  stackedPriceText: { color: colors.primary, fontSize: 17, fontWeight: 'bold', textAlign: 'left' },
   variationControls: { flexDirection: 'row', alignItems: 'center' },
   roundBtn: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginHorizontal: 4 },
   roundBtnText: { color: colors.white, fontSize: 18, fontWeight: 'bold' },
