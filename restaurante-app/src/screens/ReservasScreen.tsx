@@ -1,15 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, TextInput, Alert, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, TextInput, Alert, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { supabase } from '../config/SupabaseConfig';
 import { useAuth } from '../context/AuthContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { confirmLogout } from '../utils/appUtils';
 
 export default function ReservasScreen() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [reservas, setReservas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const insets = useSafeAreaInsets();
   const [modalVisible, setModalVisible] = useState(false);
+  const [filtro, setFiltro] = useState('Todos');
+  
+  const STATUS_OPTIONS = ['Todos', 'Pendente', 'Confirmada', 'Concluida', 'Cancelada'];
   
   // Form State
   const [nome, setNome] = useState('');
@@ -158,21 +164,63 @@ export default function ReservasScreen() {
     </View>
   );
 
+  const reservasFiltradas = reservas.filter(
+    (r) => filtro === 'Todos' || (r.status || '').toLowerCase() === filtro.toLowerCase()
+  );
+
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Reservas</Text>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
+        <View style={styles.headerLeft}>
+          {user && (
+            <View>
+              <Text style={styles.userInfoLabel}>Olá,</Text>
+              <Text style={styles.userInfo}>{user.nome || user.email}</Text>
+            </View>
+          )}
+        </View>
+        <View style={styles.headerCenter}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Ionicons name="calendar-outline" size={24} color="#FFF" style={{ marginRight: 8 }} />
+            <Text style={styles.headerTitle}>Reservas</Text>
+          </View>
+        </View>
+        <TouchableOpacity style={styles.logoutBtn} onPress={() => confirmLogout(logout)}>
+          <Ionicons name="log-out-outline" size={24} color="#FFF" />
+        </TouchableOpacity>
+      </View>
+
+      <View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterContainer}>
+          {STATUS_OPTIONS.map((status) => (
+            <TouchableOpacity 
+              key={status} 
+              style={[styles.filterButton, filtro === status && styles.filterButtonActive]}
+              onPress={() => setFiltro(status)}
+            >
+              <Text style={[styles.filterText, filtro === status && styles.filterTextActive]}>
+                {status}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </View>
 
       {loading ? (
         <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 50 }} />
       ) : (
         <FlatList
-          data={reservas}
+          data={reservasFiltradas}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           contentContainerStyle={{ padding: 20, paddingBottom: 100 }}
-          ListEmptyComponent={<Text style={styles.empty}>Nenhuma reserva encontrada.</Text>}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyIcon}>📅</Text>
+              <Text style={styles.emptyText}>Nenhuma reserva</Text>
+              <Text style={styles.emptySubtext}>As reservas aparecerão aqui automaticamente</Text>
+            </View>
+          }
         />
       )}
 
@@ -181,35 +229,40 @@ export default function ReservasScreen() {
       </TouchableOpacity>
 
       <Modal visible={modalVisible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <ScrollView contentContainerStyle={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Nova Reserva</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#333" />
-              </TouchableOpacity>
-            </View>
-            
-            <Text style={styles.label}>Nome do Cliente *</Text>
-            <TextInput style={styles.input} value={nome} onChangeText={setNome} placeholder="Ex: João Silva" />
-            
-            <Text style={styles.label}>Telefone (WhatsApp)</Text>
-            <TextInput style={styles.input} value={telefone} onChangeText={setTelefone} placeholder="Ex: 5511999999999" keyboardType="phone-pad" />
-            
-            <Text style={styles.label}>Data e Hora * (Ex: 2026-05-20T20:00)</Text>
-            <TextInput style={styles.input} value={dataHora} onChangeText={setDataHora} placeholder="AAAA-MM-DDTHH:MM" />
-            
-            <Text style={styles.label}>Quantidade de Pessoas *</Text>
-            <TextInput style={styles.input} value={pessoas} onChangeText={setPessoas} keyboardType="numeric" />
-            
-            <Text style={styles.label}>Observações</Text>
-            <TextInput style={[styles.input, { height: 80 }]} value={observacoes} onChangeText={setObservacoes} multiline placeholder="Cadeira de bebê, aniversário, etc." />
+        <KeyboardAvoidingView 
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={styles.modalContainer}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Nova Reserva</Text>
+                <TouchableOpacity onPress={() => setModalVisible(false)}>
+                  <Ionicons name="close" size={24} color="#333" />
+                </TouchableOpacity>
+              </View>
+              
+              <Text style={styles.label}>Nome do Cliente *</Text>
+              <TextInput style={styles.input} value={nome} onChangeText={setNome} placeholder="Ex: João Silva" />
+              
+              <Text style={styles.label}>Telefone (WhatsApp)</Text>
+              <TextInput style={styles.input} value={telefone} onChangeText={setTelefone} placeholder="Ex: 5511999999999" keyboardType="phone-pad" />
+              
+              <Text style={styles.label}>Data e Hora * (Ex: 2026-05-20T20:00)</Text>
+              <TextInput style={styles.input} value={dataHora} onChangeText={setDataHora} placeholder="AAAA-MM-DDTHH:MM" />
+              
+              <Text style={styles.label}>Quantidade de Pessoas *</Text>
+              <TextInput style={styles.input} value={pessoas} onChangeText={setPessoas} keyboardType="numeric" />
+              
+              <Text style={styles.label}>Observações</Text>
+              <TextInput style={[styles.input, { height: 80 }]} value={observacoes} onChangeText={setObservacoes} multiline placeholder="Cadeira de bebê, aniversário, etc." />
 
-            <TouchableOpacity style={styles.btnSave} onPress={salvarReserva}>
-              <Text style={styles.btnSaveText}>Salvar Reserva</Text>
-            </TouchableOpacity>
-          </ScrollView>
-        </View>
+              <TouchableOpacity style={styles.btnSave} onPress={salvarReserva}>
+                <Text style={styles.btnSaveText}>Salvar Reserva</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -218,10 +271,80 @@ export default function ReservasScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5DC' },
   header: {
-    paddingTop: 50, paddingHorizontal: 20, paddingBottom: 15,
-    backgroundColor: colors.primary,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 15,
+    backgroundColor: '#8B2F2F',
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.65,
+    zIndex: 10,
   },
-  headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#FFF' },
+  headerLeft: {
+    flex: 1,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  headerCenter: {
+    flex: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FFF',
+    textAlign: 'center',
+  },
+  userInfoLabel: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 10,
+  },
+  userInfo: {
+    fontSize: 12,
+    color: '#E5B84A', // Using the gold color found in other files or just keeping similar tone
+    fontWeight: '600',
+  },
+  logoutBtn: {
+    flex: 1,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    padding: 5,
+  },
+  filterContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    backgroundColor: '#FFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0'
+  },
+  filterButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#F5F5F5',
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: '#E0E0E0'
+  },
+  filterButtonActive: {
+    backgroundColor: '#8B2F2F',
+    borderColor: '#8B2F2F'
+  },
+  filterText: {
+    color: '#666',
+    fontWeight: '600'
+  },
+  filterTextActive: {
+    color: '#FFF'
+  },
   card: {
     backgroundColor: '#FFF', borderRadius: 8, padding: 15, marginBottom: 15,
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2,
@@ -234,14 +357,32 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', marginTop: 15, gap: 10 },
   btnAction: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 6, flex: 1, alignItems: 'center' },
   btnActionText: { color: '#FFF', fontWeight: 'bold' },
-  empty: { textAlign: 'center', marginTop: 50, color: '#999' },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 80,
+  },
+  emptyIcon: {
+    fontSize: 80,
+    marginBottom: 20,
+  },
+  emptyText: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#8B2F2F',
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#999',
+  },
   fab: {
     position: 'absolute', bottom: 30, right: 30, width: 56, height: 56,
     borderRadius: 28, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 8,
   },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
-  modalContent: { backgroundColor: '#FFF', borderRadius: 12, padding: 20, maxHeight: '80%' },
+  modalContainer: { backgroundColor: '#FFF', borderRadius: 12, padding: 20, maxHeight: '80%', width: '100%' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   modalTitle: { fontSize: 18, fontWeight: 'bold' },
   label: { fontSize: 14, fontWeight: '600', color: '#444', marginBottom: 5 },

@@ -13,6 +13,7 @@ description: Kanban board for tasks
 
 ## DONE
 
+- **[UI/UX] Sincronização Visual e Melhorias In-App/Web**: Correção do modal, padronização do Header e adição de filtros de Status na tela de *Reservas* (`restaurante-app`). Atualização dos cards na tela *Novo Pedido* (`restaurante-web`) espelhando detalhes visuais premium do App.
 - **[Feature] Implementação do Módulo de Agendamento Manual de Reservas**: Gerenciamento no painel web, painel mobile, e notificação no n8n.
 - **[Deploy] Migração completa do `restaurante-web` da Vercel para o Railway (incluída configuração nativa para SPA previnindo erro 404)**.
 - Completar estrutura do Squidy manualmente (readme-agent, AGENT, poliíticas e contexto da sessão)
