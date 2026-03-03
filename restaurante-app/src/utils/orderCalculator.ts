@@ -202,7 +202,16 @@ export const calcularTotalPedido = (pedido: Order, cardapioDin?: MenuItem[]): nu
   }
 
   let total = 0;
-  pedido.items.forEach(itemText => {
+
+  // 1. Tentar usar items_with_status se existir (contém unitPrice e quantity exatos)
+  const itemsWithStatus = pedido.items_with_status || pedido.itemsWithStatus;
+  if (itemsWithStatus && Array.isArray(itemsWithStatus) && itemsWithStatus.length > 0 && itemsWithStatus.every((i: any) => typeof i.unitPrice === 'number')) {
+    total = itemsWithStatus.reduce((acc: number, item: any) => acc + (item.unitPrice * (item.quantity || 1)), 0);
+    return fixDecimal(total);
+  }
+
+  // Fallback para o cálculo antigo
+  pedido.items.forEach((itemText: string) => {
     let itemPrice = 0;
     let found = false;
 
@@ -250,11 +259,17 @@ export const calcularPagoPedido = (pedido: any, cardapioDin?: MenuItem[]): numbe
             const paidQty = item.paid_quantity || (item.paid ? qty : 0);
             
             if (paidQty > 0) {
-                // Tenta obter preço do priceMap primeiro para consistência
+                // Tenta obter unitPrice salvo diretamente do item_with_status
                 let unitPrice = 0;
                 let found = false;
 
-                if (pedido.priceMap) {
+                if (typeof item.unitPrice === 'number') {
+                    unitPrice = item.unitPrice;
+                    found = true;
+                }
+
+                // Fallback legado para priceMap
+                if (!found && pedido.priceMap) {
                     const cleanName = item.name.replace(/^\d+x?\s*/, '').replace(/\s*\(.*\)$/, '').trim().toLowerCase();
                     if (pedido.priceMap[item.name] !== undefined) {
                       unitPrice = pedido.priceMap[item.name] / qty;
@@ -265,6 +280,7 @@ export const calcularPagoPedido = (pedido: any, cardapioDin?: MenuItem[]): numbe
                     }
                 }
 
+                // Fallback para cálculo base
                 if (!found) {
                     const calc = calcularPrecoItem(item.name, cardapioDin);
                     unitPrice = calc.precoUnitario;
