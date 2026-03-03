@@ -1188,31 +1188,32 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
-  caldoCard: { backgroundColor: colors.white, borderRadius: 12, padding: 12, marginBottom: 12, elevation: 1 },
-  standardCard: { backgroundColor: colors.white, borderRadius: 12, padding: 12, marginBottom: 12, elevation: 1 },
-  simpleCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, backgroundColor: colors.white, padding: 12, borderRadius: 8, elevation: 1 },
-  verticalCard: { flexDirection: 'column', marginBottom: 12, backgroundColor: colors.white, padding: 12, borderRadius: 8, elevation: 1 },
+  caldoCard: { backgroundColor: colors.white, borderRadius: 12, padding: 16, marginBottom: 12, elevation: 1 },
+  standardCard: { backgroundColor: colors.white, borderRadius: 12, padding: 16, marginBottom: 12, elevation: 1 },
+  simpleCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, backgroundColor: colors.white, padding: 16, borderRadius: 8, elevation: 1 },
+  verticalCard: { flexDirection: 'column', marginBottom: 12, backgroundColor: colors.white, padding: 16, borderRadius: 8, elevation: 1 },
 
-  produtoName: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 4, textAlign: 'center' },
-  sizeTitle: { fontSize: 17, fontWeight: '700', color: colors.primary, marginTop: 8, marginBottom: 4, textAlign: 'center' },
+  produtoName: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 4, textAlign: 'left' },
+  sizeTitle: { fontSize: 17, fontWeight: '700', color: colors.primary, marginTop: 8, marginBottom: 4, textAlign: 'left' },
 
-  simpleName: { fontSize: 18, fontWeight: '700', color: colors.text, flex: 1 },
-  verticalName: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 8, textAlign: 'center' },
+  simpleName: { fontSize: 18, fontWeight: '700', color: colors.text, flex: 1, textAlign: 'left' },
+  verticalName: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 8, textAlign: 'left' },
 
-  verticalControlsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 10 },
+  verticalControlsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
 
   simplePrice: { fontSize: 17, fontWeight: '700', color: colors.primary, marginHorizontal: 12 },
   verticalPrice: { fontSize: 17, fontWeight: '700', color: colors.primary },
 
   // Variation Rows
-  variationRow: { flexDirection: 'row', alignItems: 'center', marginTop: 6 },
-  variationLabelBtn: { flex: 1, padding: 10, borderRadius: 8, marginHorizontal: 4 },
-  variationLabelText: { color: colors.shadow, fontSize: 16, fontWeight: '700', textAlign: 'center' },
+  variationRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, backgroundColor: '#F9F9F9', borderRadius: 8, padding: 8 },
+  variationLabelBtn: { flex: 1, padding: 8, borderRadius: 8, marginRight: 8, justifyContent: 'center' },
+  variationLabelText: { color: colors.shadow, fontSize: 16, fontWeight: '700', textAlign: 'left' },
 
   // NEW STYLES FOR STACKED VARIATION
   stackedRowContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginTop: 8,
   },
   stackedInfoCard: {
@@ -1220,7 +1221,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 10,
     justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginRight: 12,
     // Background color applied inline to this card
   },
@@ -1233,7 +1234,7 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 18,
     fontWeight: 'bold',
-    textAlign: 'center',
+    textAlign: 'left',
     marginBottom: 4,
     ...Platform.select({
       web: {
@@ -1250,7 +1251,7 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 17,
     fontWeight: 'bold',
-    textAlign: 'center',
+    textAlign: 'left',
   },
 
   variationControls: { flexDirection: 'row', alignItems: 'center' },
@@ -1258,9 +1259,9 @@ const styles = StyleSheet.create({
   roundBtnText: { color: colors.white, fontSize: 18, fontWeight: 'bold' },
   qtyText: { fontSize: 16, fontWeight: 'bold', minWidth: 24, textAlign: 'center' },
 
-  produtoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  produtoInfo: { flex: 1 },
-  produtoPrice: { fontSize: 17, fontWeight: '700', color: colors.primary, textAlign: 'center' },
+  produtoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  produtoInfo: { flex: 1, marginRight: 12 },
+  produtoPrice: { fontSize: 17, fontWeight: '700', color: colors.primary, textAlign: 'left', marginTop: 4 },
 
   quantityControl: { flexDirection: 'row', alignItems: 'center' },
 
