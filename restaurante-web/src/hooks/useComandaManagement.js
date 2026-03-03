@@ -204,14 +204,21 @@ export function useComandaManagement() {
                 if (comanda.pedidos) {
                     comanda.pedidos.forEach(pedido => {
                         const dbPrice = Number(pedido.totalPrice || pedido.total_amount) || 0;
-                        const totalPedidoRecalculado = calcularTotalPedido(pedido, cardapioList);
-                        const totalPagoRecalculado = calcularPagoPedido(pedido, cardapioList);
                         
-                        // Priorizar o recalculado se tiver itens (mais preciso após correção de preços)
-                        // Senão usar o valor do banco
-                        const valor = (pedido.items && pedido.items.length > 0 && totalPedidoRecalculado > 0) 
-                            ? totalPedidoRecalculado 
-                            : dbPrice;
+                        // 🔒 CORREÇÃO CRÍTICA (Bug Discrepância de Preço):
+                        // Anteriormente, o cálculo com cardapioList ignorava os preços salvos no order
+                        // (em especial Pizzas) o que abaixava silenciosamente o valor dbPrice e
+                        // sobrescrevia o banco usando sincronizarTotalComanda.
+                        // AGORA: respeitamos o DB rigidamente, permitindo recálculo APENAS se dbPrice 0.
+                        const totalPedidoRecalculado = calcularTotalPedido(pedido, cardapioList);
+                        const valor = dbPrice > 0 ? dbPrice : totalPedidoRecalculado;
+                        
+                        let totalPagoRecalculado = 0;
+                        if (pedido.is_paid === true || pedido.is_paid === 'true' || pedido.is_paid === 1 || pedido.isPago === true) {
+                            totalPagoRecalculado = valor;
+                        } else {
+                            totalPagoRecalculado = calcularPagoPedido(pedido, cardapioList);
+                        }
                         
                         totalConsumidoPedidos += valor;
                         totalPagoPedidos += totalPagoRecalculado;
@@ -231,6 +238,7 @@ export function useComandaManagement() {
 
                 // 🔄 Auto-sync metadata if different from items sum
                 // We only do this if we have orders, to avoid overwriting metadata with 0 if orders didn't load
+                // (Isso agora será raro, já que confiamos no próprio valor gravado nas ordens)
                 if (totalConsumidoPedidos > 0 && Math.abs(totalConsumidoPedidos - metadataTotal) > 0.01) {
                     console.log(`[useComandaManagement] 🔄 Syncing Comanda ${comanda.comandaNumber} total: ${metadataTotal} -> ${totalConsumidoPedidos}`);
                     ComandasService.sincronizarTotalComanda(user.companyId, comanda.comandaNumber, totalConsumidoPedidos);
