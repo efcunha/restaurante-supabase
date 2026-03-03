@@ -19,6 +19,7 @@ Este repositório/ecossistema serve como base para a gestão de restaurantes, co
 
 2. **restaurante-app (Mobile - React Native/Expo):**
    Focado mais no uso do cliente ou operação simplificada (antes geria o delivery, que agora foi movido para web, mas suas responsabilidades como app em si são vitais). O ecossistema precisa garantir que o app nunca quebre quando o dashboard web for atualizado, pois ambos consomem a mesma base.
+   **Sincronização de UX/UI:** Elementos de navegação cruzada e de layout de pedidos (ex: cards de produtos em "Novo Pedido", Modais e filtros de "Reservas") DEVEM espelhar as mesmas diretrizes de sombreamento, cores identitárias (`colors.primary`, backgrounds) e espaçamentos (padding/borda esquerda) tanto no App quanto na Web, garantindo uma transição fluida para quem opera ambas as plataformas.
 
 ## Componentes Compartilhados (Backend / Integrações)
 

@@ -65,6 +65,8 @@ const PizzaRow = memo(({ item, onPress }: PizzaRowProps) => {
   const hash = item.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
   const colorIndex = hash % rowColors.length;
   const cardColor = rowColors[colorIndex] || colors.primary; // Fallback
+  // Em vez de usar a cor como fundo inteiro, usaremos como destaque (border/tag)
+  const bgColor = colors.white;
 
   const handlePress = useCallback(() => {
     onPress(item);
@@ -72,15 +74,17 @@ const PizzaRow = memo(({ item, onPress }: PizzaRowProps) => {
 
   return (
     <TouchableOpacity
-      style={[styles.stackedInfoCard, { backgroundColor: cardColor, marginBottom: 12, elevation: 2 }]}
+      style={[styles.stackedInfoCard, { backgroundColor: bgColor, borderLeftColor: cardColor, borderLeftWidth: 6, marginBottom: 12, elevation: 2 }]}
       onPress={handlePress}
       activeOpacity={0.8}
     >
-      <View style={{ alignItems: 'center' }}>
-        <Text style={styles.stackedNameText}>{item.name}</Text>
-        {!!ingredientsText && <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 13, textAlign: 'center', marginBottom: 4, fontStyle: 'italic' }}>{ingredientsText}</Text>}
-        {!!customIngredientsText && <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12, textAlign: 'center', marginBottom: 4, fontStyle: 'italic' }}>({customIngredientsText})</Text>}
-        <Text style={styles.stackedPriceText}>{priceDisplay}</Text>
+      <View style={{ alignItems: 'flex-start' }}>
+        <Text style={[styles.stackedNameText, { color: colors.text, textShadowColor: 'transparent' }]}>{item.name}</Text>
+        {!!ingredientsText && <Text style={{ color: colors.textSecondary, fontSize: 13, textAlign: 'left', marginBottom: 4, fontStyle: 'italic' }}>{ingredientsText}</Text>}
+        {!!customIngredientsText && <Text style={{ color: colors.textLight, fontSize: 12, textAlign: 'left', marginBottom: 4, fontStyle: 'italic' }}>({customIngredientsText})</Text>}
+        <View style={{ backgroundColor: '#F5F5F5', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, marginTop: 4 }}>
+          <Text style={[styles.stackedPriceText, { color: '#2C2C2C', fontSize: 15, textShadowColor: 'transparent' }]}>{priceDisplay}</Text>
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -1292,7 +1296,10 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: colors.text,
-    paddingVertical: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
   },
   searchClearBtn: {
     padding: 4,
