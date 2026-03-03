@@ -11,6 +11,7 @@ description: Kanban board for tasks
 - [UI/UX] Implementar tela de Reserva no Web com Status de abas.
 
 ### ✅ DONE (Concluído)
+- [UI/UX] Analisar e padronizar layout de cores na tela de Novo Pedido (Web e App) para melhorar a experiência do usuário.
 - [UI/UX] Implementar tela de Reserva no Web.
 - [UI/UX] Correção de Alinhamento na Tela Novo Pedido: Centralização e espaçamento condizente em `NovoPedidoScreen.tsx` e componentes relacionados.
 - [UI/UX] Padronização do layout de cores dos itens no Pedido Delivery do Web para refletir a nova interface do Novo Pedido.
