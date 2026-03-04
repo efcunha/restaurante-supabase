@@ -142,7 +142,7 @@ export default function NovoPedidoModal({ onClose }: NovoPedidoModalProps) {
         id: item.id,
         name: item.name,
         quantity: item.quantity,
-        status: 'pending',
+        status: 'preparing',
         price: item.price
       }));
 
@@ -159,7 +159,7 @@ export default function NovoPedidoModal({ onClose }: NovoPedidoModalProps) {
         itemsWithStatus: itemsWithStatus,
         priceMap: priceMap,
         totalPrice: total,
-        status: 'pending',
+        status: 'preparing',
         createdBy: user?.id,
         // Delivery Specifics Trava
         orderType: 'delivery',
