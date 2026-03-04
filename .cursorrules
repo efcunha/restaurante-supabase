@@ -26,3 +26,10 @@ Antes de iniciar QUALQUER MUDANÇA (bugfix, nova feature arquitetural, ajuste de
 * **Railway (Uso EXCLUSIVO de CLI):** Devido a problemas de autenticação com o servidor MCP no Windows, SEMPRE utilize os comandos nativos da CLI (ex: `railway up`, `railway variables set`, `railway status`) diretamente via terminal para deploys e variáveis. NUNCA tente usar os comandos `mcp_railway_*`.
 * **Master Workflow n8n:** Toda criação ou mudança de fluxo no n8n DEVE SER MESCLADA (merged) e combinada com o arquivo/fluxo mestre existente na pasta `squidy/workflows/`. NUNCA sobrescreva de forma destrutiva as automações vigentes (ex: delivery ao lado de reservas). O fluxo é único e centralizado.
 * **Comunicação Enxuta (APIs):** Ferramentas como n8n, Evolution API e Supabase exigem exatidão. Sempre que alterar um Webhook, função Postgres RPC ou roteamento, cite essa alteração rapidamente na resposta e realize a atualização no `Oracle.md`.
+
+## th0th (Busca Semântica no Código)
+* Para explorar o repositório por significado ("onde está X?", "como funciona Y?", "configuração de Z"), **PRIORIZE** as ferramentas MCP do th0th: `th0th_search`, `th0th_index`, `th0th_index_status`.
+* Parâmetros padrão: `projectId`: `restaurante-supabase`, `projectPath`: `D:\restaurante-supabase`.
+* Se o índice estiver desatualizado ou a tarefa exigir, rode `th0th_index` e use `th0th_index_status` (jobId retornado) até concluir; em seguida use `th0th_search`.
+* **Pré-requisito:** Tools API do th0th em `http://localhost:3333`. Subir em `D:\th0th` com `bun run start:api` (ou use o script do repo: `scripts/th0th/start-tools-api.ps1`). Ollama ativo para embeddings (ex.: `nomic-embed-text:latest`).
+* Se as chamadas th0th falharem, sugira ao usuário verificar: API ligada, Ollama rodando.
