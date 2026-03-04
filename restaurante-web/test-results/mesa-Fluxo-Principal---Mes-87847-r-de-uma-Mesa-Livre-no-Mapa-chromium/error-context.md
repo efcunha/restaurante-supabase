@@ -1,0 +1,361 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e5]:
+  - generic [ref=e10]:
+    - generic [ref=e11]:
+      - generic [ref=e13]:
+        - generic [ref=e14]: Olá,
+        - generic [ref=e15]: Luciana de Souza Machado
+      - generic [ref=e17]:
+        - generic [ref=e18]: 
+        - generic [ref=e19]: Novo Pedido
+      - generic [ref=e21] [cursor=pointer]: 
+    - generic [ref=e22]:
+      - generic [ref=e23]: 
+      - textbox "Buscar item do cardápio..." [ref=e24]
+    - generic [ref=e26]:
+      - generic [ref=e29]:
+        - generic [ref=e30]:
+          - generic [ref=e31]: "Nome do Cliente:"
+          - textbox "Digite o nome" [ref=e32]: Comprador da Mesa Mock (Playwright)
+        - generic [ref=e33]:
+          - generic [ref=e34]: "Mesa:"
+          - textbox "Nº" [ref=e35]: "6"
+      - generic [ref=e37]: 🍕 PIZZAS TRADICIONAL
+      - generic [ref=e40] [cursor=pointer]:
+        - generic [ref=e41]: Calabresa
+        - generic [ref=e42]: Calabresa fatiada, Cebola roxa, Muçarela, Orégano
+        - generic [ref=e44]: R$ 7,00 - R$ 53,00
+      - generic [ref=e47] [cursor=pointer]:
+        - generic [ref=e48]: Margherita
+        - generic [ref=e49]: Molho de tomate artesanal, Muçarela, Rodelas de tomate, Manjericão fresco
+        - generic [ref=e51]: R$ 6,24 - R$ 49,90
+      - generic [ref=e54] [cursor=pointer]:
+        - generic [ref=e55]: Portuguesa
+        - generic [ref=e56]: Presunto, Ovos, Cebola, Pimentão, Ervilha, Muçarela, Azeitonas
+        - generic [ref=e58]: R$ 6,86 - R$ 54,90
+      - generic [ref=e60]: 🍕 PIZZAS ESPECIAIS
+      - generic [ref=e63] [cursor=pointer]:
+        - generic [ref=e64]: Frango com Catupiry
+        - generic [ref=e65]: Frango desfiado, Catupiry, Cremoso, Orégano
+        - generic [ref=e67]: R$ 6,99 - R$ 55,90
+      - generic [ref=e70] [cursor=pointer]:
+        - generic [ref=e71]: Pepperoni Lovers
+        - generic [ref=e72]: Pepperoni crocante, Muçarela, Toque de parmesão
+        - generic [ref=e74]: R$ 7,49 - R$ 59,90
+      - generic [ref=e77] [cursor=pointer]:
+        - generic [ref=e78]: Quatro Queijos
+        - generic [ref=e79]: Muçarela, Provolone, Gorgonzola, Catupiry
+        - generic [ref=e81]: R$ 7,11 - R$ 56,90
+      - generic [ref=e83]: 🍕 PIZZAS DOCES
+      - generic [ref=e86] [cursor=pointer]:
+        - generic [ref=e87]: Chocolate com Morango
+        - generic [ref=e88]: Chocolate ao leite derretido, Morangos frescos, Leite condensado
+        - generic [ref=e90]: R$ 6,86 - R$ 54,90
+      - generic [ref=e93] [cursor=pointer]:
+        - generic [ref=e94]: Romeu e Julieta
+        - generic [ref=e95]: Muçarela, Goiabada cremosa, Raspas de parmesão
+        - generic [ref=e97]: R$ 6,61 - R$ 52,90
+      - generic [ref=e99]: 🍲 Caldos
+      - generic [ref=e101]:
+        - generic [ref=e102]: Caldo de Camarão
+        - generic [ref=e103]: 📏 300ml - R$ 15.00
+        - generic [ref=e104]:
+          - generic [ref=e106] [cursor=pointer]: 🌿 Cebolinha e Coentro
+          - generic [ref=e107]:
+            - generic [ref=e109] [cursor=pointer]: −
+            - generic [ref=e110]: "1"
+            - generic [ref=e112] [cursor=pointer]: +
+        - generic [ref=e113]:
+          - generic [ref=e115] [cursor=pointer]: 🧅 Cebolinha
+          - generic [ref=e116]:
+            - generic [ref=e118] [cursor=pointer]: −
+            - generic [ref=e119]: "0"
+            - generic [ref=e121] [cursor=pointer]: +
+        - generic [ref=e122]:
+          - generic [ref=e124] [cursor=pointer]: ⚪ Sem Nada
+          - generic [ref=e125]:
+            - generic [ref=e127] [cursor=pointer]: −
+            - generic [ref=e128]: "0"
+            - generic [ref=e130] [cursor=pointer]: +
+        - generic [ref=e131]: 📏 180ml - R$ 10.00
+        - generic [ref=e132]:
+          - generic [ref=e134] [cursor=pointer]: 🌿 Cebolinha e Coentro
+          - generic [ref=e135]:
+            - generic [ref=e137] [cursor=pointer]: −
+            - generic [ref=e138]: "0"
+            - generic [ref=e140] [cursor=pointer]: +
+        - generic [ref=e141]:
+          - generic [ref=e143] [cursor=pointer]: 🧅 Cebolinha
+          - generic [ref=e144]:
+            - generic [ref=e146] [cursor=pointer]: −
+            - generic [ref=e147]: "0"
+            - generic [ref=e149] [cursor=pointer]: +
+        - generic [ref=e150]:
+          - generic [ref=e152] [cursor=pointer]: ⚪ Sem Nada
+          - generic [ref=e153]:
+            - generic [ref=e155] [cursor=pointer]: −
+            - generic [ref=e156]: "0"
+            - generic [ref=e158] [cursor=pointer]: +
+      - generic [ref=e160]:
+        - generic [ref=e161]: Caldo de Fava
+        - generic [ref=e162]: 📏 300ml - R$ 15.00
+        - generic [ref=e163]:
+          - generic [ref=e165] [cursor=pointer]: 🌿 Cebolinha e Coentro
+          - generic [ref=e166]:
+            - generic [ref=e168] [cursor=pointer]: −
+            - generic [ref=e169]: "0"
+            - generic [ref=e171] [cursor=pointer]: +
+        - generic [ref=e172]:
+          - generic [ref=e174] [cursor=pointer]: 🧅 Cebolinha
+          - generic [ref=e175]:
+            - generic [ref=e177] [cursor=pointer]: −
+            - generic [ref=e178]: "0"
+            - generic [ref=e180] [cursor=pointer]: +
+        - generic [ref=e181]:
+          - generic [ref=e183] [cursor=pointer]: ⚪ Sem Nada
+          - generic [ref=e184]:
+            - generic [ref=e186] [cursor=pointer]: −
+            - generic [ref=e187]: "0"
+            - generic [ref=e189] [cursor=pointer]: +
+        - generic [ref=e190]: 📏 180ml - R$ 10.00
+        - generic [ref=e191]:
+          - generic [ref=e193] [cursor=pointer]: 🌿 Cebolinha e Coentro
+          - generic [ref=e194]:
+            - generic [ref=e196] [cursor=pointer]: −
+            - generic [ref=e197]: "0"
+            - generic [ref=e199] [cursor=pointer]: +
+        - generic [ref=e200]:
+          - generic [ref=e202] [cursor=pointer]: 🧅 Cebolinha
+          - generic [ref=e203]:
+            - generic [ref=e205] [cursor=pointer]: −
+            - generic [ref=e206]: "0"
+            - generic [ref=e208] [cursor=pointer]: +
+        - generic [ref=e209]:
+          - generic [ref=e211] [cursor=pointer]: ⚪ Sem Nada
+          - generic [ref=e212]:
+            - generic [ref=e214] [cursor=pointer]: −
+            - generic [ref=e215]: "0"
+            - generic [ref=e217] [cursor=pointer]: +
+      - generic [ref=e219]:
+        - generic [ref=e220]: Caldo de Kenga
+        - generic [ref=e221]: 📏 300ml - R$ 15.00
+        - generic [ref=e222]:
+          - generic [ref=e224] [cursor=pointer]: 🌿 Cebolinha e Coentro
+          - generic [ref=e225]:
+            - generic [ref=e227] [cursor=pointer]: −
+            - generic [ref=e228]: "0"
+            - generic [ref=e230] [cursor=pointer]: +
+        - generic [ref=e231]:
+          - generic [ref=e233] [cursor=pointer]: 🧅 Cebolinha
+          - generic [ref=e234]:
+            - generic [ref=e236] [cursor=pointer]: −
+            - generic [ref=e237]: "0"
+            - generic [ref=e239] [cursor=pointer]: +
+        - generic [ref=e240]:
+          - generic [ref=e242] [cursor=pointer]: ⚪ Sem Nada
+          - generic [ref=e243]:
+            - generic [ref=e245] [cursor=pointer]: −
+            - generic [ref=e246]: "0"
+            - generic [ref=e248] [cursor=pointer]: +
+        - generic [ref=e249]: 📏 180ml - R$ 10.00
+        - generic [ref=e250]:
+          - generic [ref=e252] [cursor=pointer]: 🌿 Cebolinha e Coentro
+          - generic [ref=e253]:
+            - generic [ref=e255] [cursor=pointer]: −
+            - generic [ref=e256]: "0"
+            - generic [ref=e258] [cursor=pointer]: +
+        - generic [ref=e259]:
+          - generic [ref=e261] [cursor=pointer]: 🧅 Cebolinha
+          - generic [ref=e262]:
+            - generic [ref=e264] [cursor=pointer]: −
+            - generic [ref=e265]: "0"
+            - generic [ref=e267] [cursor=pointer]: +
+        - generic [ref=e268]:
+          - generic [ref=e270] [cursor=pointer]: ⚪ Sem Nada
+          - generic [ref=e271]:
+            - generic [ref=e273] [cursor=pointer]: −
+            - generic [ref=e274]: "0"
+            - generic [ref=e276] [cursor=pointer]: +
+      - generic [ref=e278]:
+        - generic [ref=e279]: Caldo de Macaxeira
+        - generic [ref=e280]: 📏 300ml - R$ 15.00
+        - generic [ref=e281]:
+          - generic [ref=e283] [cursor=pointer]: 🌿 Cebolinha e Coentro
+          - generic [ref=e284]:
+            - generic [ref=e286] [cursor=pointer]: −
+            - generic [ref=e287]: "0"
+            - generic [ref=e289] [cursor=pointer]: +
+        - generic [ref=e290]:
+          - generic [ref=e292] [cursor=pointer]: 🧅 Cebolinha
+          - generic [ref=e293]:
+            - generic [ref=e295] [cursor=pointer]: −
+            - generic [ref=e296]: "0"
+            - generic [ref=e298] [cursor=pointer]: +
+        - generic [ref=e299]:
+          - generic [ref=e301] [cursor=pointer]: ⚪ Sem Nada
+          - generic [ref=e302]:
+            - generic [ref=e304] [cursor=pointer]: −
+            - generic [ref=e305]: "0"
+            - generic [ref=e307] [cursor=pointer]: +
+        - generic [ref=e308]: 📏 180ml - R$ 10.00
+        - generic [ref=e309]:
+          - generic [ref=e311] [cursor=pointer]: 🌿 Cebolinha e Coentro
+          - generic [ref=e312]:
+            - generic [ref=e314] [cursor=pointer]: −
+            - generic [ref=e315]: "0"
+            - generic [ref=e317] [cursor=pointer]: +
+        - generic [ref=e318]:
+          - generic [ref=e320] [cursor=pointer]: 🧅 Cebolinha
+          - generic [ref=e321]:
+            - generic [ref=e323] [cursor=pointer]: −
+            - generic [ref=e324]: "0"
+            - generic [ref=e326] [cursor=pointer]: +
+        - generic [ref=e327]:
+          - generic [ref=e329] [cursor=pointer]: ⚪ Sem Nada
+          - generic [ref=e330]:
+            - generic [ref=e332] [cursor=pointer]: −
+            - generic [ref=e333]: "0"
+            - generic [ref=e335] [cursor=pointer]: +
+      - generic [ref=e337]: 🔥 Espetinhos Simples
+      - generic [ref=e339]:
+        - generic [ref=e340]: Asinha
+        - generic [ref=e341]:
+          - generic [ref=e342] [cursor=pointer]:
+            - generic [ref=e343]: Simples
+            - generic [ref=e344]: R$ 12.00
+          - generic [ref=e345]:
+            - generic [ref=e347] [cursor=pointer]: −
+            - generic [ref=e348]: "0"
+            - generic [ref=e350] [cursor=pointer]: +
+        - generic [ref=e351]:
+          - generic [ref=e352] [cursor=pointer]:
+            - generic [ref=e353]: com Arroz
+            - generic [ref=e354]: R$ 20.00
+          - generic [ref=e355]:
+            - generic [ref=e357] [cursor=pointer]: −
+            - generic [ref=e358]: "0"
+            - generic [ref=e360] [cursor=pointer]: +
+        - generic [ref=e361]:
+          - generic [ref=e362] [cursor=pointer]:
+            - generic [ref=e363]: com Macaxeira
+            - generic [ref=e364]: R$ 20.00
+          - generic [ref=e365]:
+            - generic [ref=e367] [cursor=pointer]: −
+            - generic [ref=e368]: "0"
+            - generic [ref=e370] [cursor=pointer]: +
+        - generic [ref=e371]:
+          - generic [ref=e372] [cursor=pointer]:
+            - generic [ref=e373]: Completo
+            - generic [ref=e374]: R$ 24.00
+          - generic [ref=e375]:
+            - generic [ref=e377] [cursor=pointer]: −
+            - generic [ref=e378]: "0"
+            - generic [ref=e380] [cursor=pointer]: +
+      - generic [ref=e382]:
+        - generic [ref=e383]: Calabresa
+        - generic [ref=e384]:
+          - generic [ref=e385] [cursor=pointer]:
+            - generic [ref=e386]: Simples
+            - generic [ref=e387]: R$ 12.00
+          - generic [ref=e388]:
+            - generic [ref=e390] [cursor=pointer]: −
+            - generic [ref=e391]: "0"
+            - generic [ref=e393] [cursor=pointer]: +
+        - generic [ref=e394]:
+          - generic [ref=e395] [cursor=pointer]:
+            - generic [ref=e396]: com Arroz
+            - generic [ref=e397]: R$ 20.00
+          - generic [ref=e398]:
+            - generic [ref=e400] [cursor=pointer]: −
+            - generic [ref=e401]: "0"
+            - generic [ref=e403] [cursor=pointer]: +
+        - generic [ref=e404]:
+          - generic [ref=e405] [cursor=pointer]:
+            - generic [ref=e406]: com Macaxeira
+            - generic [ref=e407]: R$ 20.00
+          - generic [ref=e408]:
+            - generic [ref=e410] [cursor=pointer]: −
+            - generic [ref=e411]: "0"
+            - generic [ref=e413] [cursor=pointer]: +
+        - generic [ref=e414]:
+          - generic [ref=e415] [cursor=pointer]:
+            - generic [ref=e416]: Completo
+            - generic [ref=e417]: R$ 24.00
+          - generic [ref=e418]:
+            - generic [ref=e420] [cursor=pointer]: −
+            - generic [ref=e421]: "0"
+            - generic [ref=e423] [cursor=pointer]: +
+      - generic [ref=e427]:
+        - generic [ref=e428]:
+          - generic [ref=e429]: 1x Caldo de Camarão 300ml (Cebolinha e Coentro)
+          - generic [ref=e430]: R$ 15.00
+        - generic [ref=e432] [cursor=pointer]: ×
+    - generic [ref=e434]:
+      - generic [ref=e435]:
+        - generic [ref=e436]: "Total:"
+        - generic [ref=e437]: R$ 15.00
+      - generic [ref=e439] [cursor=pointer]: Criar Pedido
+  - tablist [ref=e441]:
+    - link "  Novo Pedido" [ref=e442] [cursor=pointer]:
+      - /url: /Novo%20Pedido?mesaParam=6&tableId=33095fb3-ed8a-4bf1-86b7-02ef1047d398
+      - generic:
+        - generic [ref=e444]: 
+        - generic [ref=e446]: 
+      - generic [ref=e447]: Novo Pedido
+    - link "  Pedido Delivery" [ref=e448] [cursor=pointer]:
+      - /url: /Delivery
+      - generic:
+        - generic [ref=e450]: 
+        - generic [ref=e452]: 
+      - generic [ref=e453]: Pedido Delivery
+    - link "  Entregas" [ref=e454] [cursor=pointer]:
+      - /url: /Entregas
+      - generic:
+        - generic [ref=e456]: 
+        - generic [ref=e458]: 
+      - generic [ref=e459]: Entregas
+    - link "  Reservas" [ref=e460] [cursor=pointer]:
+      - /url: /Reservas
+      - generic:
+        - generic [ref=e462]: 
+        - generic [ref=e464]: 
+      - generic [ref=e465]: Reservas
+    - link "  Mapa" [ref=e466] [cursor=pointer]:
+      - /url: /Mapa
+      - generic:
+        - generic [ref=e468]: 
+        - generic [ref=e470]: 
+      - generic [ref=e471]: Mapa
+    - link "  Comandas" [ref=e472] [cursor=pointer]:
+      - /url: /Comandas
+      - generic:
+        - generic [ref=e474]: 
+        - generic [ref=e476]: 
+      - generic [ref=e477]: Comandas
+    - link "  Cozinha" [ref=e478] [cursor=pointer]:
+      - /url: /Cozinha
+      - generic:
+        - generic [ref=e480]: 
+        - generic [ref=e482]: 
+      - generic [ref=e483]: Cozinha
+    - link "  Montagem" [ref=e484] [cursor=pointer]:
+      - /url: /Montagem
+      - generic:
+        - generic [ref=e486]: 
+        - generic [ref=e488]: 
+      - generic [ref=e489]: Montagem
+    - link "  Despacho" [ref=e490] [cursor=pointer]:
+      - /url: /Prontos
+      - generic:
+        - generic [ref=e492]: 
+        - generic [ref=e494]: 
+      - generic [ref=e495]: Despacho
+    - link "  Admin" [ref=e496] [cursor=pointer]:
+      - /url: /Admin
+      - generic:
+        - generic [ref=e498]: 
+        - generic [ref=e500]: 
+      - generic [ref=e501]: Admin
+```
