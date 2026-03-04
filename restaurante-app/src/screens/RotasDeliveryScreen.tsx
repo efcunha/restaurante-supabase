@@ -89,8 +89,11 @@ export default function RotasDeliveryScreen() {
           filter: `company_id=eq.${user.companyId}`
         },
         (payload) => {
-           // Checa se a mudança afeta a visualização
-           if (payload.new && (payload.new as any).order_type === 'delivery') {
+           // Verifica payload.new E payload.old — mudanças de status não trocam order_type
+           const isDelivery =
+             (payload.new && (payload.new as any).order_type === 'delivery') ||
+             (payload.old && (payload.old as any).order_type === 'delivery');
+           if (isDelivery || !payload.old) {
               fetchDeliveryOrders();
            }
         }

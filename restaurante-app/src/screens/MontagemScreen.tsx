@@ -159,35 +159,42 @@ export default function MontagemScreen() {
   const { user, hasPermission, Permissions } = useAuth();
   const [allOrders, setAllOrders] = useState<any[]>([]);
   const insets = useSafeAreaInsets();
+  const locallyMarkedReady = useRef(new Set<string>()); // ✅ Novo ref para controle local
 
-  // ✅ TEMPO REAL: Listener para multi-usuários
-  useEffect(() => {
+  // Initial fetch — busca APENAS pedidos em 'preparing' para evitar race conditions
+  const fetchOrders = useCallback(async () => {
     // @ts-ignore
     if (!user?.companyId) return;
     const today = getLocalDateKey();
 
-    // Initial fetch
-    const fetchOrders = async () => {
-      const { data, error } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('company_id', user.companyId)
-        .eq('date_key', today);
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('company_id', user.companyId)
+      .eq('date_key', today)
+      .eq('status', 'preparing'); // ✅ CRITICAL FIX: filtrar no banco, não só no cliente
 
-      if (!error && data) {
-        // Map snake_case to camelCase
-        const mappedOrders = data.map(order => ({
-          ...order,
-          itemsWithStatus: order.items_with_status || [],
-          comandaNumber: order.comanda_number,
-          mesa: (order.table_number && order.table_number !== 0) ? order.table_number.toString() : '',
-          comandaStatus: order.comanda_status // ✅ Mapear comanda_status
+    if (!error && data) {
+      // Map snake_case to camelCase, ignorando IDs já marcados localmente como prontos
+      const mappedOrders = data
+        .filter(order => !locallyMarkedReady.current.has(order.id)) // ✅ proteção anti-race
+        .map(order => ({
+            ...order,
+            itemsWithStatus: order.items_with_status || [],
+            comandaNumber: order.comanda_number,
+            mesa: (order.table_number && order.table_number !== 0) ? order.table_number.toString() : '',
+            comandaStatus: order.comanda_status
         }));
-        setAllOrders(mappedOrders);
-      }
-    };
+      setAllOrders(mappedOrders);
+    }
+  }, [user]);
 
+  // ✅ TEMPO REAL: Listener para multi-usuários
+  useEffect(() => {
     fetchOrders();
+
+    // @ts-ignore
+    if (!user?.companyId) return;
 
     // Subscribe to real-time changes
     const channel = supabase
@@ -209,7 +216,7 @@ export default function MontagemScreen() {
     return () => {
       channel.unsubscribe();
     };
-  }, [user]);
+  }, [user, fetchOrders]);
 
   // ✅ FILTRO SEGURO: Excluir pedidos de comandas canceladas usando comandaStatus do pedido
   const ordersRaw = allOrders.filter(order => {
@@ -352,20 +359,30 @@ export default function MontagemScreen() {
 
     try {
       const orderIds = order.allOrderIds || [order.id];
+      console.log('[Montagem] Marcando como pronto (No App):', orderIds);
 
-      // Optimistic update
+      // Registrar IDs no ref ANTES da mutação para proteger o próximo fetchOrders do Realtime
+      orderIds.forEach((id: string) => locallyMarkedReady.current.add(id));
+
+      // Desabilitar visualmente o card removendo da lista local (otimista)
       setAllOrders(prev => prev.filter(o => !orderIds.includes(o.id)));
 
-      for (const orderId of orderIds) {
-        await moveToProntos(orderId);
-      }
-      
-      console.log('[Montagem] Pedidos marcados como prontos:', orderIds);
-    } catch (error) {
+      // Gravação DIRETA no Supabase para garantir persistência
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: 'ready', updated_at: new Date().toISOString() })
+        .in('id', orderIds)
+        .eq('company_id', user?.companyId);
+
+      if (error) throw error;
+
+      console.log('[Montagem] Pedido movido para prontos com sucesso!');
+    } catch (error: any) {
       console.error('Erro ao mover para prontos:', error);
-      Alert.alert('Erro', 'Não foi possível mover para prontos');
+      Alert.alert('Erro', 'Não foi possível mover para prontos: ' + error.message);
+      fetchOrders(); // Reverte o estado local buscando do banco
     }
-  }, [hasPermission, Permissions, moveToProntos]);
+  }, [hasPermission, Permissions, user, supabase, fetchOrders]);
 
   const handleOpenDetails = useCallback((orderId: string) => {
     setSelectedOrderId(orderId);
