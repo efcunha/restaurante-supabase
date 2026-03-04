@@ -40,3 +40,4 @@ PostgreSQL gerenciado pelo Supabase. Qualquer mudança de esquema ou função (R
 - Configuração de Vercel e correções de layout/charts no `restaurante-web`.
 - Migração do `restaurante-web` da Vercel para o Railway via Nixpacks + serve (garantindo roteamento SPA consistente sem 404).
 - Introdução do fluxo manual de *Agendamento de Mesas*, compartilhando a tela `ReservasScreen` com suporte ao `company_id` nos apps Web/Mobile e envio dinâmico do nome da instância na integração com Evolution API.
+- Implantação de **Unique Index Parcial** na tabela `comandas` no Supabase e código defensivo (`catch 23505`) no `restaurante-web` e `restaurante-app` eliminando definitivamente falhas catastróficas de concorrência (Race Conditions) ao abrir comandas com o mesmo número simultaneamente.
