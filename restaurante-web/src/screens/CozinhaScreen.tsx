@@ -157,13 +157,49 @@ export default function CozinhaScreen() {
         };
       }
       grupos[caldo.nome].total += caldo.quantidade;
-      grupos[caldo.nome].comandas.push({
-        numero: caldo.comanda,
-        mesa: caldo.mesa,
-        quantidade: caldo.quantidade,
-        observacoes: caldo.observations // ✅ Agrupar observações
-      });
+      
+      // Agrupar tags por Mesa (se houver), senão por Número da Comanda
+      const groupKey = caldo.mesa && caldo.mesa.trim() !== '' ? caldo.mesa : caldo.comanda;
+      
+      const existingEntry = grupos[caldo.nome].comandas.find((c: any) => 
+        (caldo.mesa && caldo.mesa.trim() !== '' ? c.mesa === caldo.mesa : c.numero === caldo.comanda)
+      );
+
+      if (existingEntry) {
+        existingEntry.quantidade += caldo.quantidade;
+        if (caldo.observations && !existingEntry.observacoes?.includes(caldo.observations)) {
+           existingEntry.observacoes = existingEntry.observacoes 
+              ? `${existingEntry.observacoes} | ${caldo.observations}`
+              : caldo.observations;
+        }
+        // Se entrou um novo número de comanda para a mesma mesa, registrar para referência
+        const comandaStr = String(caldo.comanda);
+        if (caldo.comanda && !String(existingEntry.allComandas || '').includes(comandaStr)) {
+          existingEntry.allComandas = existingEntry.allComandas 
+            ? `${existingEntry.allComandas}, ${comandaStr}` 
+            : comandaStr;
+        }
+      } else {
+        grupos[caldo.nome].comandas.push({
+          id: `${caldo.nome}-${groupKey}`,
+          numero: caldo.comanda,
+          mesa: caldo.mesa,
+          quantidade: caldo.quantidade,
+          observacoes: caldo.observations,
+          allComandas: String(caldo.comanda || '') // Sempre string para garantir .includes funcionará
+        });
+      }
     });
+
+    // Option to sort comandas numerically inside each group
+    Object.values(grupos).forEach((g: any) => {
+       g.comandas.sort((a: any, b: any) => {
+          const numA = parseInt(a.numero) || 0;
+          const numB = parseInt(b.numero) || 0;
+          return numA - numB;
+       });
+    });
+
     return Object.values(grupos).sort((a: any, b: any) => a.nome.localeCompare(b.nome));
   };
 
@@ -192,18 +228,31 @@ export default function CozinhaScreen() {
           </View>
         </View>
         <View style={styles.comandasList}>
-          {grupo.comandas.map((cmd: any, i: number) => (
-            <View key={i} style={styles.comandaItem}>
-              <Text style={styles.comandaNumero}>#{cmd.numero}</Text>
-              {!!cmd.mesa && <Text style={styles.comandaNumero}> (Mesa {cmd.mesa})</Text>}
-              {!!cmd.observacoes && (
-                <Text style={styles.comandaObs}>
-                   📝 {cmd.observacoes}
+          {grupo.comandas.map((cmd: any, i: number) => {
+            const hasMesa = !!cmd.mesa && cmd.mesa.trim() !== '';
+            const isMultiComanda = cmd.allComandas && String(cmd.allComandas).includes(',');
+            
+            return (
+              <View key={i} style={styles.comandaItem}>
+                <Text style={styles.comandaNumero}>
+                  {hasMesa ? `Mesa ${cmd.mesa}` : `#${cmd.numero}`}
                 </Text>
-              )}
-              <Text style={styles.comandaQtd}>{cmd.quantidade}x</Text>
-            </View>
-          ))}
+                
+                {hasMesa && (
+                  <Text style={[styles.comandaNumero, { fontSize: 12, opacity: 0.7 }]}>
+                    {isMultiComanda ? ` (C: ${cmd.allComandas})` : ` (#${cmd.numero})`}
+                  </Text>
+                )}
+
+                {!!cmd.observacoes && (
+                  <Text style={styles.comandaObs}>
+                    📝 {cmd.observacoes}
+                  </Text>
+                )}
+                <Text style={styles.comandaQtd}>{cmd.quantidade}x</Text>
+              </View>
+            );
+          })}
         </View>
       </View>
     );
