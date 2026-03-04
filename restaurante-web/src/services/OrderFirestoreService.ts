@@ -44,6 +44,7 @@ class OrderFirestoreService {
       timeInMontagem: row.time_in_montagem,
       timeInProntos: row.time_in_prontos,
       comandaStatus: row.comanda_status,
+      updatedAt: row.updated_at,
     } as Order;
   }
 
@@ -128,7 +129,8 @@ class OrderFirestoreService {
         is_paid: false,
         created_by: order.createdBy,
         date_key: getTodayKey(),
-        items_with_status: order.itemsWithStatus || []
+        items_with_status: order.itemsWithStatus || [],
+        updated_at: new Date().toISOString()
       })
       .select()
       .single();
@@ -174,7 +176,11 @@ class OrderFirestoreService {
     const isOnline = offlineQueueService.getIsOnline();
 
     const operation = async () => {
-      const payload = { status, ...this._mapUpdatesToPayload(additionalUpdates || {}) };
+      const payload = { 
+        status, 
+        ...this._mapUpdatesToPayload(additionalUpdates || {}),
+        updated_at: new Date().toISOString()
+      };
       const { error } = await supabase
         .from('orders')
         .update(payload)
@@ -205,7 +211,7 @@ class OrderFirestoreService {
     const operation = async () => {
       const { error } = await supabase
         .from('orders')
-        .update(payload)
+        .update({ ...payload, updated_at: new Date().toISOString() })
         .eq('id', orderId)
         .eq('company_id', companyId);
       if (error) throw error;
@@ -280,7 +286,8 @@ class OrderFirestoreService {
         total_amount: order.totalPrice,
         is_paid: order.isPago || false,
         created_by: order.createdBy,
-        date_key: getTodayKey()
+        date_key: getTodayKey(),
+        updated_at: new Date().toISOString()
       })
       .select()
       .single();
