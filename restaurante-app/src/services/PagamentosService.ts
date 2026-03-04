@@ -124,6 +124,7 @@ class PagamentosService {
       .eq('company_id', companyId)
       .eq('date_key', dateKey)
       .eq('comanda_number', comandaNumber)
+      .order('created_at', { ascending: false })
       .limit(1)
       .single();
 
