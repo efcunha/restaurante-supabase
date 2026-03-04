@@ -38,7 +38,7 @@ export default function RotasDeliveryScreen() {
         .eq('company_id', user.companyId)
         .eq('date_key', today)
         .eq('order_type', 'delivery')
-        .in('status', ['preparing', 'dispatched']);
+        .in('status', ['pronto', 'dispatched']);
 
       if (error) throw error;
 
@@ -179,12 +179,12 @@ export default function RotasDeliveryScreen() {
 
   const handleAction = (order: any) => {
       // Regra de Negócio Delivery:
-      // Se status for 'preparing' (Cozinha OK, empacotando), ele muda para 'dispatched' (Saiu p/ entrega).
+      // Se status for 'pronto' (Cozinha e Montagem OK), ele muda para 'dispatched' (Saiu p/ entrega).
       // Se status for 'dispatched', ele muda para 'delivered' (Acabou).
       
       const currentStatus = order.status;
 
-      if (currentStatus === 'preparing') {
+      if (currentStatus === 'pronto') {
           updateOrderStatus(order.id, 'dispatched');
       } else if (currentStatus === 'dispatched') {
           Alert.alert(
