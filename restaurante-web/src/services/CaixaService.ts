@@ -4,6 +4,7 @@
 import { supabase } from '../config/SupabaseConfig';
 import { Caixa } from '../types';
 import { Alert } from 'react-native';
+import { getLocalDateKey } from '../utils/dateUtils';
 
 const TABLE_CAIXA = 'cash_registers';
 const TABLE_MOVIMENTOS = 'cash_movements';
@@ -34,7 +35,7 @@ class CaixaService {
     if (!cid) return null;
 
     const now = Date.now();
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const today = getLocalDateKey();
     
     // Verificar cache: válido se dentro do TTL E do mesmo dia
     if (caixaCache.data && (now - caixaCache.timestamp) < CACHE_TTL) {
@@ -88,6 +89,7 @@ class CaixaService {
       .from(TABLE_CAIXA)
       .insert({
         company_id: companyId,
+        date_key: getLocalDateKey(),
         opened_by: usuarioId,
         opened_by_name: usuarioNome,
         initial_value: valor,
