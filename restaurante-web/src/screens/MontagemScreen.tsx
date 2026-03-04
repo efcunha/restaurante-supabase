@@ -1,7 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, FlatList, TouchableOpacity, Alert, Platform } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useState, useEffect, useCallback, memo } from 'react';
+import { useState, useEffect, useCallback, memo, useRef } from 'react';
 import { useOrders } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
 import PedidoDetalhesModal from './PedidoDetalhesModal';
@@ -160,29 +160,35 @@ export default function MontagemScreen() {
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
 
+  // ✅ Guarda IDs marcados como prontos nesta sessão para proteger contra race condition do Realtime
+  const locallyMarkedReady = useRef<Set<string>>(new Set());
+
   // ✅ TEMPO REAL: Listener para multi-usuários
   useEffect(() => {
     // @ts-ignore
     if (!user?.companyId) return;
     const today = getLocalDateKey();
 
-    // Initial fetch
+    // Initial fetch — busca APENAS pedidos em 'preparing' para evitar race conditions
     const fetchOrders = async () => {
       const { data, error } = await supabase
         .from('orders')
         .select('*')
         .eq('company_id', user.companyId)
-        .eq('date_key', today);
+        .eq('date_key', today)
+        .eq('status', 'preparing'); // ✅ CRITICAL FIX: filtrar no banco, não só no cliente
 
       if (!error && data) {
-        // Map snake_case to camelCase
-        const mappedOrders = data.map(order => ({
-          ...order,
-          itemsWithStatus: order.items_with_status || [],
-          comandaNumber: order.comanda_number,
-          mesa: (order.table_number && order.table_number !== 0) ? order.table_number.toString() : '',
-          comandaStatus: order.comanda_status // ✅ Mapear comanda_status
-        }));
+        // Map snake_case to camelCase, ignorando IDs já marcados localmente como prontos
+        const mappedOrders = data
+          .filter(order => !locallyMarkedReady.current.has(order.id)) // ✅ proteção anti-race
+          .map(order => ({
+            ...order,
+            itemsWithStatus: order.items_with_status || [],
+            comandaNumber: order.comanda_number,
+            mesa: (order.table_number && order.table_number !== 0) ? order.table_number.toString() : '',
+            comandaStatus: order.comanda_status
+          }));
         setAllOrders(mappedOrders);
       }
     };
@@ -342,8 +348,11 @@ export default function MontagemScreen() {
       const orderIds = order.allOrderIds || [order.id];
       console.log('[Montagem] Marcando como pronto:', orderIds);
 
+      // ✅ Registrar IDs no ref ANTES da mutação para proteger o próximo fetchOrders do Realtime
+      orderIds.forEach((id: string) => locallyMarkedReady.current.add(id));
+
       // Desabilitar visualmente o card removendo da lista local (otimista)
-      setAllOrders(prev => prev.map(o => orderIds.includes(o.id) ? { ...o, status: 'ready' } : o));
+      setAllOrders(prev => prev.filter(o => !orderIds.includes(o.id)));
 
       for (const orderId of orderIds) {
         await moveToProntos(orderId);
