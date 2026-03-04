@@ -65,6 +65,8 @@ class ComandasService {
       .eq('company_id', companyId)
       .eq('date_key', dateK)
       .eq('comanda_number', numStr)
+      .order('created_at', { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     if (existing) {
@@ -143,6 +145,8 @@ class ComandasService {
       .eq('company_id', companyId)
       .eq('date_key', dateK)
       .eq('comanda_number', numStr)
+      .order('created_at', { ascending: false })
+      .limit(1)
       .single();
 
     if (!comanda) throw new Error('Comanda não encontrada');
@@ -168,6 +172,8 @@ class ComandasService {
       .eq('company_id', companyId)
       .eq('date_key', dateK)
       .eq('comanda_number', numStr)
+      .order('created_at', { ascending: false })
+      .limit(1)
       .single();
 
     if (!comanda) throw new Error('Comanda não encontrada');
@@ -210,6 +216,8 @@ class ComandasService {
       .eq('company_id', companyId)
       .eq('date_key', dateK)
       .eq('comanda_number', numStr)
+      .order('created_at', { ascending: false })
+      .limit(1)
       .maybeSingle(); // Use maybeSingle just in case
 
     if (!comanda) return;
