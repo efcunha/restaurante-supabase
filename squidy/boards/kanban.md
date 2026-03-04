@@ -11,6 +11,7 @@ description: Kanban board for tasks
 - [UI/UX] Implementar tela de Reserva no Web com Status de abas.
 
 ### ✅ DONE (Concluído)
+- [Arquitetura/Segurança] Implementada trava definitiva com Unique Index Parcial no banco do Supabase para impedir Race Conditions durante a criação simultânea de comandas (Erro 406 de single limit), apoiada por fallback defensivo (Código de constraint 23505) direto nos arquivos `ComandasService` do `restaurante-web` e `restaurante-app`.
 - [Bugfix] Removido o campo `price_map` do payload de inserção/atualização na tabela `orders` no serviço SupabaseOrderService.ts, prevenindo que o app lance o erro 400 (PGRST204) na API do Supabase durante a listagem e finalização de Pedido Delivery.
 - [QA] Criar testes E2E com Playwright para as telas de Mapa de Mesas e Novo Pedido Delivery.
 - [QA] Criar testes E2E com Playwright para a tela de Novo Pedido (itens simples e fluxo de Pizza).
