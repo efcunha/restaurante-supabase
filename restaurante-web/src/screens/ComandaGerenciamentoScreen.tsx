@@ -159,10 +159,12 @@ export default function ComandaGerenciamentoScreen(props: any) {
 
       const isDelivery = comanda.pedidos?.some((p: any) => p.order_type === 'delivery' || p.orderType === 'delivery') || String(comanda.comandaNumber) === '0';
       if (isDelivery) {
-        Alert.alert(
-          'Aviso de Delivery',
-          'Esta é uma ordem de delivery.\n\nO recebimento financeiro e baixa de pedidos de entrega devem ser concluídos na tela do Motoboy (Rotas/Entrega), onde a confirmação de recebimento é feita junto com a entrega física.'
-        );
+        const msg = 'Aviso de Delivery: Esta é uma ordem de delivery.\n\nO recebimento financeiro e baixa de pedidos de entrega devem ser concluídos na tela do Motoboy (Rotas/Entrega), onde a confirmação de recebimento é feita junto com a entrega física.';
+        if (Platform.OS === 'web') {
+          window.alert(msg);
+        } else {
+          Alert.alert('Aviso de Delivery', msg);
+        }
         return;
       }
 
@@ -389,10 +391,12 @@ export default function ComandaGerenciamentoScreen(props: any) {
             const isDelivery = selectedComanda.pedidos?.some((p: any) => p.order_type === 'delivery' || p.orderType === 'delivery') || String(comandaNum) === '0';
             
             if (isDelivery) {
-              Alert.alert(
-                'Aviso de Delivery',
-                'Esta comanda agrupa pedidos de delivery.\n\nO recebimento financeiro e baixa não podem ser feitos por aqui. Acesse a tela de Rotas Delivery, envie o motoboy, e ao confirmar a entrega o sistema pedirá a confirmação do pagamento.'
-              );
+              const msg = 'Aviso de Delivery: Esta comanda agrupa pedidos de delivery.\n\nO recebimento financeiro e baixa não podem ser feitos por aqui. Acesse a tela de Rotas Delivery, envie o motoboy, e ao confirmar a entrega o sistema pedirá a confirmação do pagamento.';
+              if (Platform.OS === 'web') {
+                window.alert(msg);
+              } else {
+                Alert.alert('Aviso de Delivery', msg);
+              }
               return;
             }
 
