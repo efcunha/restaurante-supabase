@@ -242,8 +242,8 @@ export default function MontagemScreen() {
     // Na tela de Montagem, mostrar itens que ainda não estão prontos (independente do status do item)
     const itemsParaMontar = order.itemsWithStatus
       .filter((item: any) => {
-        // Mostrar itens que não estão prontos (independente se é cozinha ou bebida)
-        return item.status !== 'pronto' && !item.checked && !seenItemIds.has(item.id);
+        // Mostrar todos os itens na montagem para que o usuário possa conferir (dar o check)
+        return !seenItemIds.has(item.id);
       })
       .map((item: any) => ({
         ...item,
