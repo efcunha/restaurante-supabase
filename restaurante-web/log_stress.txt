@@ -1,0 +1,119 @@
+
+Running 1 test using 1 worker
+
+[1A[2K[1/1] [chromium] › e2e\stress.spec.ts:125:7 › Teste de Estresse - Geração Massiva de Pedidos › Geração massiva de pedidos (Balcão, Delivery e Mesa)
+[1A[2K[chromium] › e2e\stress.spec.ts:125:7 › Teste de Estresse - Geração Massiva de Pedidos › Geração massiva de pedidos (Balcão, Delivery e Mesa)
+
+=== CICLO 1/3 ===
+
+[1A[2K[BALCÃO] 1: navegando...
+
+[1A[2K[BALCÃO] 1: Tentando adicionar Batata...
+
+[1A[2K[BALCÃO] 1: Batata confirmado no carrinho.
+
+[1A[2K[BALCÃO] 1: Tentando adicionar PIZZA (Tamanho/Opção buscada: Média)...
+
+[1A[2K[BALCÃO] 1: Passando pelo modal de montar pizza...
+
+[1A[2K[BALCÃO] 1: PIZZA confirmada no carrinho.
+
+[1A[2K[BALCÃO] 1: criando pedido...
+
+[1A[2K[BALCÃO] 1: ✓ Pedido Balcão criado no BD!
+
+[1A[2K[DELIVERY] 1: navegando...
+
+[1A[2K[DELIVERY] 1: Tentando adicionar PIZZA (Tamanho/Opção buscada: Média)...
+
+[1A[2K[DELIVERY] 1: Não achou a tag de preço da pizza.
+
+[1A[2K[DELIVERY] 1: Tentando adicionar Batata...
+
+[1A[2K[DELIVERY] 1: Não conseguiu ler o preço no rodapé, prosseguindo mesmo assim...
+
+[1A[2K[DELIVERY] 1: confirmando pedido...
+
+[1A[2K[DELIVERY] 1: ⚠️ Pedido criado mas falta toast de confirmação.
+
+[1A[2K[MESA] 1: navegando para Mapa...
+
+[1A[2K[MESA] 1: sem mesa livre, pulando.
+
+[1A[2K
+=== CICLO 2/3 ===
+
+[1A[2K[BALCÃO] 2: navegando...
+
+[1A[2K[BALCÃO] 2: Tentando adicionar PIZZA (Tamanho/Opção buscada: Grande)...
+
+[1A[2K[BALCÃO] 2: Passando pelo modal de montar pizza...
+
+[1A[2K[BALCÃO] 2: PIZZA confirmada no carrinho.
+
+[1A[2K[BALCÃO] 2: Tentando adicionar Caldinho...
+
+[1A[2K[BALCÃO] 2: Caldinho confirmado no carrinho.
+
+[1A[2K[BALCÃO] 2: criando pedido...
+
+[1A[2K[BALCÃO] 2: ✓ Pedido Balcão criado no BD!
+
+[1A[2K[DELIVERY] 2: navegando...
+
+[1A[2K[DELIVERY] 2: Tentando adicionar PIZZA (Tamanho/Opção buscada: Grande)...
+
+[1A[2K[DELIVERY] 2: Não achou a tag de preço da pizza.
+
+[1A[2K[DELIVERY] 2: Tentando adicionar Caldinho...
+
+[1A[2K[DELIVERY] 2: Não achou nenhum botão + clicável para Caldinho.
+
+[1A[2K[DELIVERY] 2: ⚠️ Não conseguiu adicionar item, pulando...
+
+[1A[2K
+=== CICLO 3/3 ===
+
+[1A[2K[BALCÃO] 3: navegando...
+
+[1A[2K[BALCÃO] 3: Tentando adicionar Chopp...
+
+[1A[2K[BALCÃO] 3: Chopp confirmado no carrinho.
+
+[1A[2K[BALCÃO] 3: Tentando adicionar PIZZA (Tamanho/Opção buscada: Gigante)...
+
+[1A[2K[BALCÃO] 3: Passando pelo modal de montar pizza...
+
+[1A[2K[BALCÃO] 3: PIZZA confirmada no carrinho.
+
+[1A[2K[BALCÃO] 3: criando pedido...
+
+[1A[2K[BALCÃO] 3: ⚠️ Pedido criado mas falta toast de confirmação.
+
+[1A[2K[DELIVERY] 3: navegando...
+
+[1A[2K[DELIVERY] 3: Tentando adicionar PIZZA (Tamanho/Opção buscada: Gigante)...
+
+[1A[2K[DELIVERY] 3: Não achou a tag de preço da pizza.
+
+[1A[2K[DELIVERY] 3: Tentando adicionar Picanha...
+
+[1A[2K[DELIVERY] 3: Não conseguiu ler o preço no rodapé, prosseguindo mesmo assim...
+
+[1A[2K[DELIVERY] 3: confirmando pedido...
+
+[1A[2K[DELIVERY] 3: ⚠️ Pedido criado mas falta toast de confirmação.
+
+[1A[2K[MESA] 3: navegando para Mapa...
+
+[1A[2K[MESA] 3: sem mesa livre, pulando.
+
+[1A[2K
+=== TESTE DE ESTRESSE FINALIZADO ===
+
+[1A[2K  1 passed (2.2m)
+
+To open last HTML report run:
+[36m[39m
+[36m  npx playwright show-report[39m
+[36m[39m
