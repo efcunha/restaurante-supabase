@@ -256,7 +256,16 @@ export default function MontagemScreen() {
 
     // Determinar chave de grupo: Mesa (se houver) ou Número da Comanda
     const hasMesa = !!order.mesa && order.mesa.trim() !== '';
-    const groupKey = hasMesa ? `mesa-${order.mesa}` : `comanda-${order.comandaNumber || 'temp'}`;
+    let groupKey = '';
+    
+    if (hasMesa) {
+      groupKey = `mesa-${order.mesa}`;
+    } else if (order.comandaNumber && order.comandaNumber !== 0 && order.comandaNumber !== '0') {
+      groupKey = `comanda-${order.comandaNumber}`;
+    } else {
+      // Se não tem mesa nem comanda (ex: Delivery, Balcão), usar o ID do pedido para não mesclar
+      groupKey = `order-${order.id}`;
+    }
 
     if (comandasMap.has(groupKey)) {
       const existing = comandasMap.get(groupKey);
@@ -398,11 +407,7 @@ export default function MontagemScreen() {
           .from('orders')
           .update({
             status: 'pronto',
-            time_in_prontos: now,
-            // @ts-ignore
-            movido_para_prontos_por: user?.id || null,
-            // @ts-ignore
-            movido_para_prontos_por_nome: user?.nome || null,
+            updated_at: now
           })
           .eq('company_id', user?.companyId)
           .eq('id', orderId);
