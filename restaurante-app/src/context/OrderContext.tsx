@@ -45,6 +45,7 @@ interface OrderContextType {
   getOrdersByStatus: (status: string) => Order[];
   getOrderById: (orderId: string) => Order | undefined;
   updateItemStatus: (orderId: string, itemId: string, newStatus: string) => Promise<void>;
+  updateItemChecked: (orderId: string, itemIds: string | string[], checked: boolean) => Promise<void>;
   markItemAsDelivered: (orderId: string, itemId: string) => Promise<void>;
   transferOrder: (orderId: string, targetTableNumber: string) => Promise<void>;
 
@@ -351,18 +352,39 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     const now = new Date().toISOString();
     const updatedItems = order.itemsWithStatus.map(item =>
-      item.id === itemId ? { ...item, status: newStatus, checked: newStatus === 'pronto', timestamp: now } : item
+      item.id === itemId ? { ...item, status: newStatus, timestamp: now } : item
     );
 
-    const allChecked = updatedItems.every(i => i.checked === true);
     const updatePayload: any = { itemsWithStatus: updatedItems };
-    if (allChecked && !order.timeInProntos) updatePayload.timeInProntos = now;
+    // SE todos os itens estão 'pronto' OU 'entregue', e não tem timestamp de pronto, marcar timeInProntos
+    const todosProntos = updatedItems.every(i => i.status === 'pronto' || i.status === 'delivered');
+    if (todosProntos && !order.timeInProntos) updatePayload.timeInProntos = now;
 
     setOrders(prev => prev.map(o => o.id === actualOrderId ? { ...o, ...updatePayload, updatedAt: now } : o));
 
     if (isOnline && user?.companyId) {
       if (firestoreDocId) await OrderFirestoreService.updateOrder(user.companyId, firestoreDocId, updatePayload);
-      // Fallbacks omitted for brevity but logic is robust enough
+    }
+  }, [orders, firestoreDocMap, isOnline, user]);
+
+  const updateItemChecked = useCallback(async (orderId: string, itemIds: string | string[], checked: boolean) => {
+    const idsToUpdate = Array.isArray(itemIds) ? itemIds : [itemIds];
+    const order = orders.find(o => o.itemsWithStatus?.some(i => idsToUpdate.includes(i.id))) || orders.find(o => o.id === orderId);
+    const actualOrderId = order?.id || orderId;
+    const firestoreDocId = firestoreDocMap[actualOrderId];
+
+    if (!order || !order.itemsWithStatus) throw new Error('Pedido/Items não encontrado');
+
+    const now = new Date().toISOString();
+    const updatedItems = order.itemsWithStatus.map(item =>
+      idsToUpdate.includes(item.id) ? { ...item, checked, timestamp: now } : item
+    );
+
+    const updatePayload: any = { itemsWithStatus: updatedItems };
+    setOrders(prev => prev.map(o => o.id === actualOrderId ? { ...o, ...updatePayload, updatedAt: now } : o));
+
+    if (isOnline && user?.companyId && firestoreDocId) {
+      await OrderFirestoreService.updateOrder(user.companyId, firestoreDocId, updatePayload);
     }
   }, [orders, firestoreDocMap, isOnline, user]);
 
@@ -483,7 +505,7 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   return (
     <OrderContext.Provider value={{
       orders, addOrder, editOrder, deleteOrder, moveToMontagem, moveToProntos, markAsDelivered,
-      getOrdersByStatus, getOrderById, updateItemStatus, markItemAsDelivered, transferOrder,
+      getOrdersByStatus, getOrderById, updateItemStatus, updateItemChecked, markItemAsDelivered, transferOrder,
       getEstatisticasGarcom, getEstatisticasTodosGarcons, getEstatisticasPagamentos, getEstatisticasComandas, getEstatisticasCompletas,
       addTestOrder
     }}>

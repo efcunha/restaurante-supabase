@@ -10,8 +10,6 @@ import { exitApp } from '../utils/appUtils';
 
 // @ts-ignore
 import { getLocalDateKey } from '../utils/dateUtils';
-// @ts-ignore
-import OrderService from '../services/OrderService';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Verificar se pedido é urgente (mais de 15 minutos)
@@ -157,9 +155,8 @@ const OrderCard = memo(({ order, onOpenDetails, onToggleItem, onMarkReady }: Ord
 OrderCard.displayName = 'OrderCard';
 
 export default function MontagemScreen() {
-  const { moveToProntos, updateItemStatus } = useOrders();
-  const { user, logout, hasPermission, Permissions } = useAuth();
-  const [processingItems, setProcessingItems] = useState(new Set()); // Loading state
+  const { moveToProntos, updateItemChecked } = useOrders();
+  const { user, hasPermission, Permissions } = useAuth();
   const [allOrders, setAllOrders] = useState<any[]>([]);
   const insets = useSafeAreaInsets();
 
@@ -299,29 +296,19 @@ export default function MontagemScreen() {
 
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
-  const [forceUpdate, setForceUpdate] = useState(0);
 
-  const handleToggleItem = async (orderId: string, itemIds: string[], currentStatus: string) => {
-    console.log('[Montagem] Toggling items:', orderId, itemIds, currentStatus);
+  const handleToggleItem = async (orderId: string, itemIds: string[], _currentStatus: string) => {
+    console.log('[Montagem] Toggling items checked state:', orderId, itemIds);
 
-    /* 
-    // PERMISSION CHECK DISABLED FOR DEBUGGING
-    if (!hasPermission || !hasPermission(Permissions.UPDATE_STATUS)) {
-      if (Platform.OS === 'web') window.alert('Sem permissão: Seu usuário não pode atualizar status.');
-      else Alert.alert('Sem permissão', 'Seu usuário não pode atualizar status dos pedidos.');
-      return;
-    }
-    */
-
-    // Validar se caixa está aberto
     try {
+      // Validar se caixa está aberto
       // @ts-ignore
-      const { default: CaixaService } = await import('../services/CaixaService');
+      const { default: CardService } = await import('../services/CaixaService');
       // @ts-ignore
-      const caixaAberto = await CaixaService.getCaixaAberto(user.companyId); // UPDATE: Pass companyId
+      const caixaAberto = await CardService.getCaixaAberto(user.companyId);
       if (!caixaAberto) {
         if (Platform.OS === 'web') window.alert('Caixa Fechado: É necessário abrir o caixa.');
-        else Alert.alert('Caixa Fechado', 'É necessário abrir o caixa antes de mover itens.');
+        else Alert.alert('Caixa Fechado', 'É necessário abrir o caixa antes de marcar itens.');
         return;
       }
     } catch (e) {
@@ -329,65 +316,30 @@ export default function MontagemScreen() {
     }
 
     try {
-      const newStatus = currentStatus === 'pronto' ? 'cozinha' : 'pronto';
-      const itemKeys = itemIds.map(id => `${orderId}-${id}`);
-      
-      // @ts-ignore
-      setProcessingItems(prev => new Set([...prev, ...itemKeys]));
-
-      // Buscar pedido atual do estado local
+      // Buscar o estado atual do check do primeiro item para alternar todos
       const order = allOrders.find(o => o.id === orderId);
-      if (!order || !order.itemsWithStatus) {
-        throw new Error('Pedido não encontrado na lista local');
-      }
+      const firstItem = order?.itemsWithStatus?.find((i: any) => itemIds.includes(i.id));
+      const newCheckedState = !(firstItem?.checked || false);
 
-      // Atualizar items
-      const updatedItems = order.itemsWithStatus.map((item: any) =>
-        itemIds.includes(item.id)
-          ? { ...item, status: newStatus, checked: newStatus === 'pronto' }
-          : item
-      );
-
-      // Atualizar no Supabase
-      // @ts-ignore
-      console.log('[Montagem] Updating doc:', user.companyId, orderId);
-      const { error: updateError } = await supabase
-        .from('orders')
-        .update({ items_with_status: updatedItems })
-        .eq('company_id', user?.companyId)
-        .eq('id', orderId);
-
-      if (updateError) throw updateError;
-      console.log('[Montagem] Update success!');
-
-      // Atualizar estado local imediatamente
+      await updateItemChecked(orderId, itemIds, newCheckedState);
+      
+      // Feedback visual imediato no estado local
       setAllOrders(prevOrders => 
         prevOrders.map(o => 
           o.id === orderId 
-            ? { ...o, itemsWithStatus: updatedItems }
+            ? { 
+                ...o, 
+                itemsWithStatus: o.itemsWithStatus.map((item: any) => 
+                  itemIds.includes(item.id) ? { ...item, checked: newCheckedState } : item
+                ) 
+              }
             : o
         )
       );
-
-      setProcessingItems(prev => {
-        // @ts-ignore
-        const newSet = new Set(prev);
-        itemKeys.forEach(k => newSet.delete(k));
-        return newSet;
-      });
-
     } catch (error: any) {
-      console.error('[Montagem] Erro update:', error);
+      console.error('[Montagem] Erro ao alternar check:', error);
       if (Platform.OS === 'web') window.alert('Erro: ' + error.message);
       else Alert.alert('Erro', 'Não foi possível atualizar o item: ' + error.message);
-
-      const itemKeys = itemIds.map(id => `${orderId}-${id}`);
-      setProcessingItems(prev => {
-        // @ts-ignore
-        const newSet = new Set(prev);
-        itemKeys.forEach(k => newSet.delete(k));
-        return newSet;
-      });
     }
   };
 
@@ -399,26 +351,21 @@ export default function MontagemScreen() {
     }
 
     try {
-      const now = new Date().toISOString();
       const orderIds = order.allOrderIds || [order.id];
 
-      for (const orderId of orderIds) {
-        const { error: updateError } = await supabase
-          .from('orders')
-          .update({
-            status: 'pronto',
-            updated_at: now
-          })
-          .eq('company_id', user?.companyId)
-          .eq('id', orderId);
+      // Optimistic update
+      setAllOrders(prev => prev.filter(o => !orderIds.includes(o.id)));
 
-        if (updateError) throw updateError;
+      for (const orderId of orderIds) {
+        await moveToProntos(orderId);
       }
+      
+      console.log('[Montagem] Pedidos marcados como prontos:', orderIds);
     } catch (error) {
       console.error('Erro ao mover para prontos:', error);
       Alert.alert('Erro', 'Não foi possível mover para prontos');
     }
-  }, [hasPermission, Permissions, user]);
+  }, [hasPermission, Permissions, moveToProntos]);
 
   const handleOpenDetails = useCallback((orderId: string) => {
     setSelectedOrderId(orderId);
