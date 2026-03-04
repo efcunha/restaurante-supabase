@@ -157,6 +157,15 @@ export default function ComandaGerenciamentoScreen(props: any) {
         return;
       }
 
+      const isDelivery = comanda.pedidos?.some((p: any) => p.order_type === 'delivery' || p.orderType === 'delivery') || String(comanda.comandaNumber) === '0';
+      if (isDelivery) {
+        Alert.alert(
+          'Aviso de Delivery',
+          'Esta é uma ordem de delivery.\n\nO recebimento financeiro e baixa de pedidos de entrega devem ser concluídos na tela do Motoboy (Rotas/Entrega), onde a confirmação de recebimento é feita junto com a entrega física.'
+        );
+        return;
+      }
+
       const caixaAberto = await CaixaService.getCaixaAberto(user?.companyId);
       if (!caixaAberto) {
         Alert.alert('Caixa Fechado', 'Abra o caixa antes de receber pagamentos.');
@@ -377,6 +386,16 @@ export default function ComandaGerenciamentoScreen(props: any) {
           onShare={() => handleShare(selectedComanda)}
           onFullPayment={() => {
             const comandaNum = selectedComanda.comandaNumber;
+            const isDelivery = selectedComanda.pedidos?.some((p: any) => p.order_type === 'delivery' || p.orderType === 'delivery') || String(comandaNum) === '0';
+            
+            if (isDelivery) {
+              Alert.alert(
+                'Aviso de Delivery',
+                'Esta comanda agrupa pedidos de delivery.\n\nO recebimento financeiro e baixa não podem ser feitos por aqui. Acesse a tela de Rotas Delivery, envie o motoboy, e ao confirmar a entrega o sistema pedirá a confirmação do pagamento.'
+              );
+              return;
+            }
+
             // Não limpar a comanda selecionada para permitir voltar para ela
             // setSelectedComanda(null);
             props.navigation.navigate('Pagamento', { 
