@@ -332,8 +332,9 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     // Update local state immediately for better UX
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'ready', ...payload } : o));
 
-    if (isOnline && firestoreDocId && user?.companyId) {
-      await OrderFirestoreService.updateOrderStatus(user.companyId, firestoreDocId, 'ready', payload);
+    if (isOnline && user?.companyId) {
+      const docIdToUse = firestoreDocId || orderId; // Use orderId as fallback
+      await OrderFirestoreService.updateOrderStatus(user.companyId, docIdToUse, 'ready', payload);
     }
   }, [firestoreDocMap, isOnline, user]);
 

@@ -163,37 +163,40 @@ export default function MontagemScreen() {
   // ✅ Guarda IDs marcados como prontos nesta sessão para proteger contra race condition do Realtime
   const locallyMarkedReady = useRef<Set<string>>(new Set());
 
-  // ✅ TEMPO REAL: Listener para multi-usuários
-  useEffect(() => {
+  // Initial fetch — busca APENAS pedidos em 'preparing' para evitar race conditions
+  const fetchOrders = useCallback(async () => {
     // @ts-ignore
     if (!user?.companyId) return;
     const today = getLocalDateKey();
 
-    // Initial fetch — busca APENAS pedidos em 'preparing' para evitar race conditions
-    const fetchOrders = async () => {
-      const { data, error } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('company_id', user.companyId)
-        .eq('date_key', today)
-        .eq('status', 'preparing'); // ✅ CRITICAL FIX: filtrar no banco, não só no cliente
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('company_id', user.companyId)
+      .eq('date_key', today)
+      .eq('status', 'preparing'); // ✅ CRITICAL FIX: filtrar no banco, não só no cliente
 
-      if (!error && data) {
-        // Map snake_case to camelCase, ignorando IDs já marcados localmente como prontos
-        const mappedOrders = data
-          .filter(order => !locallyMarkedReady.current.has(order.id)) // ✅ proteção anti-race
-          .map(order => ({
-            ...order,
-            itemsWithStatus: order.items_with_status || [],
-            comandaNumber: order.comanda_number,
-            mesa: (order.table_number && order.table_number !== 0) ? order.table_number.toString() : '',
-            comandaStatus: order.comanda_status
-          }));
-        setAllOrders(mappedOrders);
-      }
-    };
+    if (!error && data) {
+      // Map snake_case to camelCase, ignorando IDs já marcados localmente como prontos
+      const mappedOrders = data
+        .filter(order => !locallyMarkedReady.current.has(order.id)) // ✅ proteção anti-race
+        .map(order => ({
+          ...order,
+          itemsWithStatus: order.items_with_status || [],
+          comandaNumber: order.comanda_number,
+          mesa: (order.table_number && order.table_number !== 0) ? order.table_number.toString() : '',
+          comandaStatus: order.comanda_status
+        }));
+      setAllOrders(mappedOrders);
+    }
+  }, [user]);
 
+  // ✅ TEMPO REAL: Listener para multi-usuários
+  useEffect(() => {
     fetchOrders();
+
+    // @ts-ignore
+    if (!user?.companyId) return;
 
     // Subscribe to real-time changes
     const channel = supabase
@@ -346,24 +349,29 @@ export default function MontagemScreen() {
 
     try {
       const orderIds = order.allOrderIds || [order.id];
-      console.log('[Montagem] Marcando como pronto:', orderIds);
+      console.log('[Montagem] Marcando como pronto (Direto no DB):', orderIds);
 
-      // ✅ Registrar IDs no ref ANTES da mutação para proteger o próximo fetchOrders do Realtime
+      // Bloqueio otimista
       orderIds.forEach((id: string) => locallyMarkedReady.current.add(id));
-
-      // Desabilitar visualmente o card removendo da lista local (otimista)
       setAllOrders(prev => prev.filter(o => !orderIds.includes(o.id)));
 
-      for (const orderId of orderIds) {
-        await moveToProntos(orderId);
-      }
+      // Gravação direta no Supabase
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: 'ready', updated_at: new Date().toISOString() })
+        .in('id', orderIds)
+        .eq('company_id', user?.companyId);
 
-      console.log('[Montagem] Pedido movido para prontos com sucesso!');
-    } catch (error) {
+      if (error) throw error;
+
+      console.log('[Montagem] Status gravado no banco com sucesso!');
+    } catch (error: any) {
       console.error('Erro ao mover para prontos:', error);
-      Alert.alert('Erro', 'Não foi possível mover para prontos');
+      Alert.alert('Erro', 'Não foi possível salvar no banco: ' + error.message);
+      // Reverter estado local em caso de erro real
+      fetchOrders();
     }
-  }, [hasPermission, Permissions, user, moveToProntos]);
+  }, [hasPermission, Permissions, user, supabase, fetchOrders]);
 
   const handleOpenDetails = useCallback((orderId: string) => {
     setSelectedOrderId(orderId);
