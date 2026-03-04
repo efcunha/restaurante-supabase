@@ -156,7 +156,7 @@ class SupabaseOrderService {
         comanda_number: parseInt(order.comandaNumber || '0'),
         items: order.items,
         observations: order.observations,
-        status: 'pending',
+        status: 'preparing',
         total_amount: order.totalPrice,
         is_paid: false,
         created_by: order.createdBy,

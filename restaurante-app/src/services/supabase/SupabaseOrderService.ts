@@ -157,13 +157,12 @@ class SupabaseOrderService {
         comanda_number: parseInt(order.comandaNumber || '0'),
         items: order.items,
         observations: order.observations,
-        status: 'pending',
+        status: 'preparing',
         total_amount: order.totalPrice,
         is_paid: false,
         created_by: order.createdBy,
         date_key: getTodayKey(),
         comanda_status: 'aberta',
-        price_map: order.priceMap || {},
         items_with_status: order.itemsWithStatus || []
       })
       .select()
@@ -246,7 +245,6 @@ class SupabaseOrderService {
     if (updates.client) payload.client_name = updates.client;
     if (updates.items) payload.items = updates.items;
     if (updates.totalPrice) payload.total_amount = updates.totalPrice;
-    if (updates.priceMap) payload.price_map = updates.priceMap;
     if (updates.itemsWithStatus) payload.items_with_status = updates.itemsWithStatus;
     if (updates.orderType) payload.order_type = updates.orderType;
     if (updates.customerPhone !== undefined) payload.customer_phone = updates.customerPhone;
@@ -314,7 +312,6 @@ class SupabaseOrderService {
         created_by: order.createdBy,
         date_key: getTodayKey(),
         comanda_status: 'aberta',
-        price_map: order.priceMap || {},
         items_with_status: order.itemsWithStatus || [],
         order_type: order.orderType || 'local',
         customer_phone: order.customerPhone || null,

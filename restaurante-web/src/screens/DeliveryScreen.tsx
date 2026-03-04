@@ -507,7 +507,7 @@ export default function DeliveryScreen() {
         itemsWithStatus: itemsWithStatus,
         priceMap: priceMap,
         totalPrice: finalTotal,
-        status: 'pending',
+        status: 'preparing',
         createdBy: user?.id,
         orderType: 'delivery',
         customerPhone: customerPhone,
