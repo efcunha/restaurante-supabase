@@ -11,6 +11,8 @@ description: Kanban board for tasks
 - [UI/UX] Implementar tela de Reserva no Web com Status de abas.
 
 ### ✅ DONE (Concluído)
+- [Bugfix] Removido o campo `price_map` do payload de inserção/atualização na tabela `orders` no serviço SupabaseOrderService.ts, prevenindo que o app lance o erro 400 (PGRST204) na API do Supabase durante a listagem e finalização de Pedido Delivery.
+- [QA] Criar testes E2E com Playwright para as telas de Mapa de Mesas e Novo Pedido Delivery.
 - [QA] Criar testes E2E com Playwright para a tela de Novo Pedido (itens simples e fluxo de Pizza).
 - [QA] Implementar configuração e primeiro teste E2E usando Playwright no projeto restaurante-web.
 - [Bugfix] Descoberta e correção da discrepância de valores em comandas (Web e App): o hook `useComandaManagement.js` recalculava incorretamente totais usando apenas itens simples do cardápio e apagava o valor de Pizzas compostas do banco. Códigos fortificados e comanda afetada corrigida via SQL.
