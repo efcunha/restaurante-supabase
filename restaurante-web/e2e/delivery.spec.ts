@@ -27,8 +27,12 @@ test.describe('Fluxo Principal - Delivery Web', () => {
   test('Deve conseguir lançar um Pedido de Delivery com endereço e taxa', async ({ page }) => {
     // Escuta e loga dialogos para não travar (ex: "Caixa Fechado", validações)
     page.on('dialog', async dialog => {
-      console.log(`[ALERT/DIALOG INTERCEPTADO] ${dialog.type()} -> Mensagem: "${dialog.message()}"`);
+      const msg = dialog.message();
+      console.log(`[ALERT/DIALOG INTERCEPTADO] ${dialog.type()} -> Mensagem: "${msg}"`);
       await dialog.accept();
+      if (msg.toLowerCase().includes('erro') || msg.toLowerCase().includes('não foi possível')) {
+        throw new Error(`[ERRO DETECTADO] App alertou: ${msg}`);
+      }
     });
 
     console.log('1. Clicando na aba "Pedido Delivery" na Bottom Bar');
