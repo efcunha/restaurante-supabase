@@ -38,7 +38,7 @@ export default function RotasDeliveryScreen() {
         .eq('company_id', user.companyId)
         .eq('date_key', today)
         .eq('order_type', 'delivery')
-        .in('status', ['pronto', 'dispatched']);
+        .in('status', ['pronto', 'ready', 'dispatched']);
 
       if (error) throw error;
 
@@ -90,7 +90,7 @@ export default function RotasDeliveryScreen() {
         },
         (payload) => {
            // Checa se a mudança afeta a visualização
-           if (payload.new && payload.new.order_type === 'delivery') {
+           if (payload.new && (payload.new as any).order_type === 'delivery') {
               fetchDeliveryOrders();
            }
         }

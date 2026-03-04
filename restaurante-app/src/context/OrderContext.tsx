@@ -140,7 +140,7 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             
             if (firestoreOrder.status !== localOrder.status) {
               // If Firestore has a more "advanced" status, trust it if times are close
-              const statusPriority: Record<string, number> = { 'pending': 0, 'preparing': 1, 'pronto': 2, 'dispatched': 2.5, 'delivered': 3, 'cancelled': 4 };
+              const statusPriority: Record<string, number> = { 'pending': 0, 'preparing': 1, 'pronto': 2, 'ready': 2, 'dispatched': 2.5, 'delivered': 3, 'cancelled': 4 };
               if ((statusPriority[firestoreOrder.status] || 0) > (statusPriority[localOrder.status] || 0)) {
                 return firestoreOrder;
               }
@@ -335,10 +335,10 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
 
     // Update local state immediately for better UX
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'pronto', ...payload } : o));
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'ready', ...payload } : o));
 
     if (isOnline && firestoreDocId && user?.companyId) {
-      await OrderFirestoreService.updateOrderStatus(user.companyId, firestoreDocId, 'pronto', payload);
+      await OrderFirestoreService.updateOrderStatus(user.companyId, firestoreDocId, 'ready', payload);
     }
   }, [firestoreDocMap, isOnline, user]);
 
