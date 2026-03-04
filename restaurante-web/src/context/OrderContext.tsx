@@ -121,13 +121,29 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             const localOrder = prevOrders.find(o => o.id === firestoreOrder.id);
             if (!localOrder) return firestoreOrder;
 
-            // Merge logic based on timestamps ( > 1000ms diff)
+            // Merge logic based on timestamps (updatedAt)
             const firestoreTime = new Date(firestoreOrder.updatedAt || firestoreOrder.timestamp || '1970-01-01').getTime();
             const localTime = new Date(localOrder.updatedAt || localOrder.timestamp || '1970-01-01').getTime();
 
-            if (firestoreTime - localTime > 1000) return firestoreOrder;
+            // If firestore is newer, take it (with some priority for definitive statuses)
+            if (firestoreTime > localTime) {
+              return firestoreOrder;
+            }
 
-            // Merge itemsWithStatus
+            // If local is newer or same, we might want to keep some local state (like checked items)
+            // but ONLY if the status is the same. If status changed in Firestore to 'ready' or 'delivered', 
+            // and it's newer, we already handled it above.
+            
+            if (firestoreOrder.status !== localOrder.status) {
+              // If Firestore has a more "advanced" status, trust it if times are close
+              const statusPriority: Record<string, number> = { 'pending': 0, 'preparing': 1, 'pronto': 2, 'dispatched': 2.5, 'delivered': 3, 'cancelled': 4 };
+              if ((statusPriority[firestoreOrder.status] || 0) > (statusPriority[localOrder.status] || 0)) {
+                return firestoreOrder;
+              }
+              return localOrder;
+            }
+
+            // Same status, merge items (checked state)
             if (localOrder.itemsWithStatus && firestoreOrder.itemsWithStatus) {
               const mergedItems = firestoreOrder.itemsWithStatus.map(firestoreItem => {
                 const localItem = localOrder.itemsWithStatus?.find(li => li.id === firestoreItem.id);
@@ -136,8 +152,9 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 const fTime = new Date(firestoreItem.timestamp || '1970-01-01').getTime();
                 const lTime = new Date(localItem.timestamp || '1970-01-01').getTime();
 
-                if (fTime - lTime > 1000) return firestoreItem;
-                return localItem;
+                // Trust local checked state if it's newer or same and status is the same
+                if (lTime >= fTime) return localItem;
+                return firestoreItem;
               });
 
               return {
@@ -146,7 +163,7 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 timeInMontagem: localOrder.timeInMontagem || firestoreOrder.timeInMontagem,
                 timeInProntos: localOrder.timeInProntos || firestoreOrder.timeInProntos,
                 deliveredAt: localOrder.deliveredAt || firestoreOrder.deliveredAt,
-                status: localOrder.status || firestoreOrder.status
+                updatedAt: localOrder.updatedAt || firestoreOrder.updatedAt
               };
             }
 
@@ -305,12 +322,18 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const moveToProntos = useCallback(async (orderId: string) => {
     const firestoreDocId = firestoreDocMap[orderId];
     const now = new Date().toISOString();
-    const payload = { timeInProntos: now, movidoParaProntoPor: user?.id || null, movidoParaProntoPorNome: user?.nome || null };
+    const payload = { 
+      timeInProntos: now, 
+      movidoParaProntoPor: user?.id || null, 
+      movidoParaProntoPorNome: user?.nome || null,
+      updatedAt: now 
+    };
+
+    // Update local state immediately for better UX
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'pronto', ...payload } : o));
 
     if (isOnline && firestoreDocId && user?.companyId) {
       await OrderFirestoreService.updateOrderStatus(user.companyId, firestoreDocId, 'pronto', payload);
-    } else {
-      setOrders(prev => prev.map(o => o.id === orderId ? OrderService.updateOrderStatus(o, 'pronto', user?.id, user?.nome) as Order : o));
     }
   }, [firestoreDocMap, isOnline, user]);
 
