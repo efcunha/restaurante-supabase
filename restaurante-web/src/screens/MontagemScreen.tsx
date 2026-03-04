@@ -153,10 +153,12 @@ const OrderCard = memo(({ order, onOpenDetails, onToggleItem, onMarkReady }: Ord
 OrderCard.displayName = 'OrderCard';
 
 export default function MontagemScreen() {
-  const { moveToProntos, updateItemStatus } = useOrders();
+  const { moveToProntos, updateItemStatus, updateItemChecked } = useOrders();
   const { user, logout, hasPermission, Permissions } = useAuth();
   const [processingItems, setProcessingItems] = useState(new Set()); // Loading state
   const [allOrders, setAllOrders] = useState<any[]>([]);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
 
   // ✅ TEMPO REAL: Listener para multi-usuários
   useEffect(() => {
@@ -291,32 +293,18 @@ export default function MontagemScreen() {
       return numA - numB;
     });
 
-  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [forceUpdate, setForceUpdate] = useState(0);
-
-  const handleToggleItem = async (orderId: string, itemIds: string | string[], currentStatus: string) => {
+  const handleToggleItem = async (orderId: string, itemIds: string | string[], _currentStatus: string) => {
     const idsToUpdate = Array.isArray(itemIds) ? itemIds : [itemIds];
-    console.log('[Montagem] Toggling items:', orderId, idsToUpdate, currentStatus);
-
-    /* 
-    // PERMISSION CHECK DISABLED FOR DEBUGGING
-    if (!hasPermission || !hasPermission(Permissions.UPDATE_STATUS)) {
-      if (Platform.OS === 'web') window.alert('Sem permissão: Seu usuário não pode atualizar status.');
-      else Alert.alert('Sem permissão', 'Seu usuário não pode atualizar status dos pedidos.');
-      return;
-    }
-    */
-
+    
     // Validar se caixa está aberto
     try {
       // @ts-ignore
       const { default: CaixaService } = await import('../services/CaixaService');
       // @ts-ignore
-      const caixaAberto = await CaixaService.getCaixaAberto(user.companyId); // UPDATE: Pass companyId
+      const caixaAberto = await CaixaService.getCaixaAberto(user.companyId);
       if (!caixaAberto) {
         if (Platform.OS === 'web') window.alert('Caixa Fechado: É necessário abrir o caixa.');
-        else Alert.alert('Caixa Fechado', 'É necessário abrir o caixa antes de mover itens.');
+        else Alert.alert('Caixa Fechado', 'É necessário abrir o caixa antes de marcar itens.');
         return;
       }
     } catch (e) {
@@ -324,64 +312,22 @@ export default function MontagemScreen() {
     }
 
     try {
-      const newStatus = currentStatus === 'pronto' ? 'cozinha' : 'pronto';
-      const itemKeys = idsToUpdate.map(id => `${orderId}-${id}`);
-      // @ts-ignore
-      setProcessingItems(prev => new Set([...prev, ...itemKeys]));
-
-      // Buscar pedido atual do estado local
+      // Buscar pedido atual do estado local para saber o status atual do check
       const order = allOrders.find(o => o.id === orderId);
-      if (!order || !order.itemsWithStatus) {
-        throw new Error('Pedido não encontrado na lista local');
-      }
+      if (!order || !order.itemsWithStatus) throw new Error('Pedido não encontrado');
 
-      // Atualizar item
-      const updatedItems = order.itemsWithStatus.map((item: any) =>
-        idsToUpdate.includes(item.id)
-          ? { ...item, status: newStatus, checked: newStatus === 'pronto' }
-          : item
-      );
+      const firstItem = order.itemsWithStatus.find((i: any) => idsToUpdate.includes(i.id));
+      const newChecked = !firstItem?.checked;
 
-      // Atualizar no Supabase
-      // @ts-ignore
-      console.log('[Montagem] Updating doc:', user.companyId, orderId);
-      const { error: updateError } = await supabase
-        .from('orders')
-        .update({ items_with_status: updatedItems })
-        .eq('company_id', user?.companyId)
-        .eq('id', orderId);
+      console.log('[Montagem] Toggling check:', orderId, idsToUpdate, newChecked);
 
-      if (updateError) throw updateError;
-      console.log('[Montagem] Update success!');
-
-      // Atualizar estado local imediatamente
-      setAllOrders(prevOrders => 
-        prevOrders.map(o => 
-          o.id === orderId 
-            ? { ...o, itemsWithStatus: updatedItems }
-            : o
-        )
-      );
-
-      setProcessingItems(prev => {
-        // @ts-ignore
-        const newSet = new Set(prev);
-        itemKeys.forEach(k => newSet.delete(k));
-        return newSet;
-      });
+      // Chamar contexto para atualizar
+      await updateItemChecked(orderId, idsToUpdate, newChecked);
 
     } catch (error: any) {
-      console.error('[Montagem] Erro update:', error);
+      console.error('[Montagem] Erro check toggle:', error);
       if (Platform.OS === 'web') window.alert('Erro: ' + error.message);
       else Alert.alert('Erro', 'Não foi possível atualizar o item: ' + error.message);
-
-      const itemKeys = idsToUpdate.map(id => `${orderId}-${id}`);
-      setProcessingItems(prev => {
-        // @ts-ignore
-        const newSet = new Set(prev);
-        itemKeys.forEach(k => newSet.delete(k));
-        return newSet;
-      });
     }
   };
 
@@ -393,26 +339,22 @@ export default function MontagemScreen() {
     }
 
     try {
-      const now = new Date().toISOString();
       const orderIds = order.allOrderIds || [order.id];
+      console.log('[Montagem] Marcando como pronto:', orderIds);
+
+      // Desabilitar visualmente o card removendo da lista local (otimista)
+      setAllOrders(prev => prev.map(o => orderIds.includes(o.id) ? { ...o, status: 'ready' } : o));
 
       for (const orderId of orderIds) {
-        const { error: updateError } = await supabase
-          .from('orders')
-          .update({
-            status: 'pronto',
-            updated_at: now
-          })
-          .eq('company_id', user?.companyId)
-          .eq('id', orderId);
-
-        if (updateError) throw updateError;
+        await moveToProntos(orderId);
       }
+
+      console.log('[Montagem] Pedido movido para prontos com sucesso!');
     } catch (error) {
       console.error('Erro ao mover para prontos:', error);
       Alert.alert('Erro', 'Não foi possível mover para prontos');
     }
-  }, [hasPermission, Permissions, user]);
+  }, [hasPermission, Permissions, user, moveToProntos]);
 
   const handleOpenDetails = useCallback((orderId: string) => {
     setSelectedOrderId(orderId);

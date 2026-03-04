@@ -316,7 +316,6 @@ class OrderService {
         ? {
           ...item,
           status: newStatus,
-          checked: newStatus === 'pronto',
           timestamp: new Date().toISOString()
         }
         : item
