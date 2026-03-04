@@ -45,6 +45,7 @@ class OrderFirestoreService {
       timeInProntos: row.time_in_prontos,
       comandaStatus: row.comanda_status,
       updatedAt: row.updated_at,
+      orderType: row.order_type || 'local', // Adicionado orderType crucial para o RotasDeliveryScreen e tracking
     } as Order;
   }
 
@@ -130,6 +131,7 @@ class OrderFirestoreService {
         created_by: order.createdBy,
         date_key: getTodayKey(),
         items_with_status: order.itemsWithStatus || [],
+        order_type: order.orderType || 'local',
         updated_at: new Date().toISOString()
       })
       .select()
@@ -259,7 +261,9 @@ class OrderFirestoreService {
     if (updates.timeInProntos) payload.time_in_prontos = updates.timeInProntos;
     if (updates.deliveredAt) payload.delivered_at = updates.deliveredAt;
     if (updates.itemsWithStatus) payload.items_with_status = updates.itemsWithStatus;
-    
+    if (updates.orderType) payload.order_type = updates.orderType;
+    if (updates.updatedAt) payload.updated_at = updates.updatedAt; // Garante que updates manuais do updatedAt via OrderContext entrem
+
     // Helper fields regarding who moved the order
     if ((updates as any).movidoParaMontagemPor) payload.movido_para_montagem_por = (updates as any).movidoParaMontagemPor;
     if ((updates as any).movidoParaProntoPor) payload.movido_para_pronto_por = (updates as any).movidoParaProntoPor;
