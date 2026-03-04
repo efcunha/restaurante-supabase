@@ -31,6 +31,7 @@ export default function PedidosProntosScreen() {
         .select('*')
         .eq('company_id', user.companyId)
         .eq('date_key', today)
+        .in('status', ['preparing', 'ready'])
         .neq('order_type', 'delivery');
 
       if (!error && data) {
@@ -70,8 +71,8 @@ export default function PedidosProntosScreen() {
     };
   }, [user]);
 
-  // Buscar pedidos com status preparing que têm itens marcados como prontos
-  const churrasqueiraOrders = allOrders.filter(o => o.status === 'preparing');
+  // Buscar pedidos com status preparing ou ready
+  const churrasqueiraOrders = allOrders.filter(o => o.status === 'preparing' || o.status === 'ready');
 
   // Extrair itens prontos individuais (que ainda NÃO foram entregues)
   const readyItems: any[] = [];
@@ -80,7 +81,10 @@ export default function PedidosProntosScreen() {
   churrasqueiraOrders.forEach(order => {
     if (order.itemsWithStatus && order.itemsWithStatus.length > 0) {
       order.itemsWithStatus.forEach((item: any) => {
-        if (item.status === 'pronto' && item.checked && !item.delivered) {
+        // Item é considerado pronto se: Status 'pronto' OU item checado OU pedido todo pronto
+        const isItemReady = item.status === 'pronto' || item.checked === true || order.status === 'ready';
+
+        if (isItemReady && !item.delivered) {
           // Criar chave única para evitar duplicatas
           const itemKey = `${order.id}-${item.id}`;
 
