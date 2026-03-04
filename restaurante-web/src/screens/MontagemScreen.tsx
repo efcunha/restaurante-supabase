@@ -178,7 +178,7 @@ export default function MontagemScreen() {
           ...order,
           itemsWithStatus: order.items_with_status || [],
           comandaNumber: order.comanda_number,
-          mesa: order.table_number?.toString() || '',
+          mesa: (order.table_number && order.table_number !== 0) ? order.table_number.toString() : '',
           comandaStatus: order.comanda_status // ✅ Mapear comanda_status
         }));
         setAllOrders(mappedOrders);
