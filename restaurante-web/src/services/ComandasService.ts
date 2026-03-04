@@ -120,6 +120,12 @@ class ComandasService {
       .single();
 
     if (error) {
+      if (error.code === '23505') { 
+        // 23505 = Unique violation. Meaning another instance concurrently created this 'aberta' comanda just milliseconds ago!
+        console.warn('[ComandasService] Empate (Race condition) identificado! Comanda foi criada milisegundos antes por outro usuário. Recuperando a existente...');
+        // Refaz a chamada que agora vai cair no bloco de (existing) com segurança
+        return this.ensureComandaAberta(companyId, comandaNumber, usuarioId, usuarioNome, mesa, cliente);
+      }
       console.error("Erro ao criar comanda:", error.message);
       throw error;
     }
