@@ -25,7 +25,7 @@ const isUrgent = (timestamp: string) => {
 interface OrderCardProps {
   order: any;
   onOpenDetails: (orderId: string) => void;
-  onToggleItem: (orderId: string, itemId: string, status: string) => void;
+  onToggleItem: (orderId: string, itemIds: string | string[], status: string) => void;
   onMarkReady: (order: any) => void;
 }
 
@@ -52,8 +52,12 @@ const OrderCard = memo(({ order, onOpenDetails, onToggleItem, onMarkReady }: Ord
     >
       <View style={styles.orderHeader}>
         <Text style={styles.orderNumber}>
-          Comanda {order.comandaNumber || order.numeroComanda || '?'}
-          {order.mesa ? ` - Mesa ${order.mesa}` : ''}
+          {order.isMesaGroup ? `Mesa ${order.mesa}` : `Comanda ${order.comandaNumber || '?'}`}
+          {order.isMesaGroup && order.allComandas && order.allComandas.length > 0 && (
+            <Text style={{ fontSize: 12, fontWeight: 'normal', opacity: 0.8 }}>
+              {` (C: ${order.allComandas.join(', ')})`}
+            </Text>
+          )}
         </Text>
         <Text style={styles.orderTime}>
           {order.horarioCriacao || (order.timestamp ? new Date(order.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '--:--')}
@@ -70,18 +74,31 @@ const OrderCard = memo(({ order, onOpenDetails, onToggleItem, onMarkReady }: Ord
         <Text style={styles.orderObs}>📝 Obs: {order.observations}</Text>
       )}
       <View style={styles.orderItems}>
-        {order.itemsWithStatus && order.itemsWithStatus.length > 0 ? (
-          order.itemsWithStatus.map((item: any) => {
+        {order.itemsWithStatus && order.itemsWithStatus.length > 0 ? (() => {
+          // Agrupar itens com mesmo nome e status
+          const groupedItems: any[] = [];
+          order.itemsWithStatus.forEach((item: any) => {
+             const existing = groupedItems.find(g => g.name === item.name && g.checked === item.checked);
+             if (existing) {
+                existing.groupedCount = (existing.groupedCount || 1) + 1;
+                existing.groupedIds = [...(existing.groupedIds || [existing.id]), item.id];
+             } else {
+                groupedItems.push({ ...item, groupedCount: 1, groupedIds: [item.id] });
+             }
+          });
+
+          return groupedItems.map((item: any) => {
             // Parse Extras
             const parts = item.name.split(' + ');
             const mainName = parts[0];
             const extras = parts.length > 1 ? parts.slice(1).join(' + ') : null;
+            const qtdStr = item.groupedCount > 1 ? `${item.groupedCount}x ` : '';
 
             return (
               <TouchableOpacity
                 key={item.id}
                 style={styles.orderItem}
-                onPress={() => onToggleItem(item.originalOrderId || order.id, item.id, item.status)}
+                onPress={() => onToggleItem(item.originalOrderId || order.id, item.groupedIds || [item.id], item.status)}
                 activeOpacity={0.7}
               >
                 <View style={[
@@ -95,7 +112,7 @@ const OrderCard = memo(({ order, onOpenDetails, onToggleItem, onMarkReady }: Ord
                     styles.itemText,
                     item.checked && styles.itemTextDone
                   ]}>
-                    {mainName}
+                    {qtdStr}{mainName}
                   </Text>
                   {extras && (
                     <Text style={[
@@ -108,8 +125,8 @@ const OrderCard = memo(({ order, onOpenDetails, onToggleItem, onMarkReady }: Ord
                 </View>
               </TouchableOpacity>
             );
-          })
-        ) : (
+          });
+        })() : (
           order.items?.map((item: string, idx: number) => (
             <View key={idx} style={styles.orderItem}>
               <View style={[styles.itemDot, idx % 2 === 1 && styles.itemDotSecondary]} />
@@ -221,38 +238,40 @@ export default function MontagemScreen() {
     const itemsParaMontar = order.itemsWithStatus
       .filter((item: any) => {
         // Mostrar itens que não estão prontos (independente se é cozinha ou bebida)
-        // User solicitou que bebidas apareçam na Montagem
         return item.status !== 'pronto' && !item.checked && !seenItemIds.has(item.id);
       })
-      // ✅ CORREÇÃO: Guardar o orderId original em cada item para atualização correta
       .map((item: any) => ({
         ...item,
-        originalOrderId: order.id // Guardar referência ao pedido original
+        originalOrderId: order.id
       }));
 
     if (itemsParaMontar.length === 0) return;
 
-    // Marcar itens como processados
     itemsParaMontar.forEach((item: any) => seenItemIds.add(item.id));
 
-    const comandaNum = order.comandaNumber || order.numeroComanda || `temp-${order.id.slice(-4)}`;
+    // Determinar chave de grupo: Mesa (se houver) ou Número da Comanda
+    const hasMesa = !!order.mesa && order.mesa.trim() !== '';
+    const groupKey = hasMesa ? `mesa-${order.mesa}` : `comanda-${order.comandaNumber || 'temp'}`;
 
-    // Se já existe essa comanda, adicionar itens e registrar orderIds únicos
-    if (comandasMap.has(comandaNum)) {
-      const existing = comandasMap.get(comandaNum);
+    if (comandasMap.has(groupKey)) {
+      const existing = comandasMap.get(groupKey);
       existing.itemsWithStatus.push(...itemsParaMontar);
       existing.items.push(...itemsParaMontar.map((i: any) => i.name));
-      // ✅ CORREÇÃO: Guardar todos os orderIds únicos da comanda
       if (!existing.allOrderIds.includes(order.id)) {
         existing.allOrderIds.push(order.id);
       }
+      // Se tiver mesa, garantir que o número da comanda seja concatenado se for diferente
+      if (order.comandaNumber && !existing.allComandas.includes(order.comandaNumber)) {
+        existing.allComandas.push(order.comandaNumber);
+      }
     } else {
-      // Primeira vez vendo essa comanda
-      comandasMap.set(comandaNum, {
+      comandasMap.set(groupKey, {
         ...order,
+        isMesaGroup: hasMesa,
         itemsWithStatus: [...itemsParaMontar],
         items: itemsParaMontar.map((i: any) => i.name),
-        allOrderIds: [order.id] // ✅ Array com todos os orderIds desta comanda
+        allOrderIds: [order.id],
+        allComandas: [order.comandaNumber].filter(Boolean)
       });
     }
   });
@@ -268,8 +287,9 @@ export default function MontagemScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [forceUpdate, setForceUpdate] = useState(0);
 
-  const handleToggleItem = async (orderId: string, itemId: string, currentStatus: string) => {
-    console.log('[Montagem] Toggling item:', orderId, itemId, currentStatus);
+  const handleToggleItem = async (orderId: string, itemIds: string | string[], currentStatus: string) => {
+    const idsToUpdate = Array.isArray(itemIds) ? itemIds : [itemIds];
+    console.log('[Montagem] Toggling items:', orderId, idsToUpdate, currentStatus);
 
     /* 
     // PERMISSION CHECK DISABLED FOR DEBUGGING
@@ -297,9 +317,9 @@ export default function MontagemScreen() {
 
     try {
       const newStatus = currentStatus === 'pronto' ? 'cozinha' : 'pronto';
-      const itemKey = `${orderId}-${itemId}`;
+      const itemKeys = idsToUpdate.map(id => `${orderId}-${id}`);
       // @ts-ignore
-      setProcessingItems(prev => new Set([...prev, itemKey]));
+      setProcessingItems(prev => new Set([...prev, ...itemKeys]));
 
       // Buscar pedido atual do estado local
       const order = allOrders.find(o => o.id === orderId);
@@ -309,7 +329,7 @@ export default function MontagemScreen() {
 
       // Atualizar item
       const updatedItems = order.itemsWithStatus.map((item: any) =>
-        item.id === itemId
+        idsToUpdate.includes(item.id)
           ? { ...item, status: newStatus, checked: newStatus === 'pronto' }
           : item
       );
@@ -338,7 +358,7 @@ export default function MontagemScreen() {
       setProcessingItems(prev => {
         // @ts-ignore
         const newSet = new Set(prev);
-        newSet.delete(itemKey);
+        itemKeys.forEach(k => newSet.delete(k));
         return newSet;
       });
 
@@ -347,11 +367,11 @@ export default function MontagemScreen() {
       if (Platform.OS === 'web') window.alert('Erro: ' + error.message);
       else Alert.alert('Erro', 'Não foi possível atualizar o item: ' + error.message);
 
-      const itemKey = `${orderId}-${itemId}`;
+      const itemKeys = idsToUpdate.map(id => `${orderId}-${id}`);
       setProcessingItems(prev => {
         // @ts-ignore
         const newSet = new Set(prev);
-        newSet.delete(itemKey);
+        itemKeys.forEach(k => newSet.delete(k));
         return newSet;
       });
     }

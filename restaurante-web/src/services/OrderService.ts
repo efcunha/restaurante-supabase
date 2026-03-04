@@ -178,7 +178,7 @@ class OrderService {
 
       for (let i = 0; i < info.qty; i++) {
         result.push({
-          id: `${orderId}-comanda-${comanda || 'temp'}-item-${absoluteIndex}`,
+          id: `${orderId}-item-${absoluteIndex}-${Math.random().toString(36).substr(2, 5)}`,
           name: info.itemNameWithoutQty, // REMOVIDO "1x " prefixo para evitar duplicidade visual
           status: 'preparing',
           checked: false,
