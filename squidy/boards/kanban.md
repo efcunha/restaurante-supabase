@@ -11,6 +11,7 @@ description: Kanban board for tasks
 - [UI/UX] Implementar tela de Reserva no Web com Status de abas.
 
 ### ✅ DONE (Concluído)
+- [Bugfix] Pedidos de Delivery marcados como "Montados" não aparecem na tela de Entrega.
 - [Bugfix] Correção na exibição de quantidades nos testes e fluxo de Caixa/Cozinha (Web e App): Os itens repetidos agora são agrupados visualmente nas telas `CozinhaScreen` e `MontagemScreen` para evitar múltiplas linhas de "1x" em ambos os apps. O erro de *timeout* nos testes E2E do web foi resolvido excluindo o script obsoleto e o fluxo foi normalizado.
 - [Arquitetura/Segurança] Implementada trava definitiva com Unique Index Parcial no banco do Supabase para impedir Race Conditions durante a criação simultânea de comandas (Erro 406 de single limit), apoiada por fallback defensivo (Código de constraint 23505) direto nos arquivos `ComandasService` do `restaurante-web` e `restaurante-app`.
 - [Bugfix] Removido o campo `price_map` do payload de inserção/atualização na tabela `orders` no serviço SupabaseOrderService.ts, prevenindo que o app lance o erro 400 (PGRST204) na API do Supabase durante a listagem e finalização de Pedido Delivery.
