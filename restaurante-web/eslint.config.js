@@ -42,16 +42,11 @@ export default [
             "react/no-unescaped-entities": "off",
             "react/display-name": "off",
             "no-console": "off",
-            "no-undef": "off", // TypeScript handles this usually, helps with Jest globals if not configured
+            "no-undef": "off",
         },
     },
     {
-        files: ["**/*.test.js", "**/*.test.ts", "**/*.spec.js", "**/*.spec.ts", "**/__tests__/**", "jest.setup.js"],
-        languageOptions: {
-            globals: {
-                ...globals.jest,
-            }
-        },
+        files: ["e2e/**/*.spec.ts"],
         rules: {
              "react/no-unknown-property": ["error", { "ignore": ["testID"] }]
         }
