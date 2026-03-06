@@ -458,18 +458,20 @@ export default function DeliveryScreen() {
     setIsSubmittingDelivery(true);
     try {
       const parsedItems = selectedItems.map(i => `${produtos[i.name] || 1}x ${i.name}`).join('\n');
-      const itemsWithStatus = selectedItems.map(item => ({
-        id: item.name, 
-        name: item.name,
-        quantity: produtos[item.name] || 1,
-        status: 'pending',
-        price: item.price
-      }));
+      const priceMap: Record<string, number> = {};
+      selectedItems.forEach(item => {
+        priceMap[item.name] = item.price;
+        // Se for pizza e tiver priceMap custom, usar (já está em selectedItems.price no unitário? No, priceMap precisa de chaves lowercase conforme OrderService)
+        priceMap[item.name.toLowerCase()] = item.price;
+      });
 
-      const priceMap = selectedItems.reduce((acc, item) => {
-        acc[item.name] = item.price;
-        return acc;
-      }, {} as Record<string, number>);
+      const itemsWithStatus = OrderService.generateItemsWithStatus(
+        selectedItems.map(i => i.text),
+        `delivery-${Date.now()}`,
+        '0',
+        null, // categoryMap será inferido pelo OrderService se não passado, mas melhor passar se possível
+        priceMap
+      );
 
       const finalFee = parseFloat(deliveryFee.replace(',', '.')) || 0;
       
@@ -508,7 +510,7 @@ export default function DeliveryScreen() {
         priceMap: priceMap,
         totalPrice: finalTotal,
         status: 'preparing',
-        createdBy: user?.id,
+        createdBy: user?.uid,
         orderType: 'delivery',
         customerPhone: customerPhone,
         deliveryAddress: deliveryAddress,

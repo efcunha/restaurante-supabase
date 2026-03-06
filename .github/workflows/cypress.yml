@@ -1,0 +1,41 @@
+name: Cypress Cloud
+on: 
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  cypress-run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: restaurante-web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: restaurante-web
+
+      - name: Cypress run
+        uses: cypress-io/github-action@v6
+        with:
+          working-directory: restaurante-web
+          start: npm run start:web
+          wait-on: 'http://localhost:8081'
+          wait-on-timeout: 120
+          record: true
+          parallel: false
+        env:
+          # Você deve adicionar este secret no seu repo do GitHub:
+          # Settings > Secrets and variables > Actions > New repository secret
+          # Name: CYPRESS_RECORD_KEY
+          # Value: 2307fdcd-23d7-4c19-a247-6a1e8106bb66
+          CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
