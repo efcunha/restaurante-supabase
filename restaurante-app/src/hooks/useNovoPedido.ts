@@ -14,11 +14,12 @@ import { confirmLogout } from '../utils/appUtils';
 // @ts-ignore
 // @ts-ignore
 import InventoryService from '../services/InventoryService';
+import OrderService from '../services/OrderService';
 import CaixaService from '../services/CaixaService';
 import { listarFuncionarios } from '../services/FuncionariosService';
 import { Product, Cardapio, PizzaConfig, PizzaSize, Ingredient, Funcionario } from '../types';
 
-const CARDAPIO_CACHE_KEY = '@cardapio_cache';
+const CARDAPIO_CACHE_KEY = '@cardapio_cache_v2';
 const CARDAPIO_CACHE_EXPIRY = 5 * 60 * 1000;
 
 export const fixDecimal = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
@@ -70,8 +71,6 @@ export function useNovoPedido(): UseNovoPedidoReturn {
     const [observations, setObservations] = useState('');
     const [produtos, setProdutos] = useState<Record<string, number>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
-    
-    // Estados base do cardápio
     const [cardapio, setCardapio] = useState<Cardapio>({ caldos: [], comidas: [], bebidas: [], porcoes: [], outros: [], espetinhos: [], espetinhosSimples: [], espetinhosEspeciais: [], pizzas: [] });
     const [temperosCaldos, setTemperosCaldos] = useState(['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada']);
     const [temperosComidas, setTemperosComidas] = useState(['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada']);
@@ -248,12 +247,10 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                 setPizzaConfig(newPizzaConfig);
             }
 
-            // Fetch Pizza Extras (already fetched in parallel)
             const { data: extrasData, error: extrasError } = extrasResult;
-            
-            let extrasFormatted: any[] = [];
+            let currentExtras: any[] = [];
             if (!extrasError && extrasData) {
-                extrasFormatted = extrasData.map((e: any) => ({
+                currentExtras = extrasData.map((e: any) => ({
                     id: e.id,
                     companyId: e.company_id,
                     type: e.type,
@@ -263,7 +260,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                     createdAt: new Date(e.created_at),
                     updatedAt: e.updated_at ? new Date(e.updated_at) : undefined
                 }));
-                setExtras(extrasFormatted);
+                setExtras(currentExtras);
             } else {
                 setExtras([]);
             }
@@ -272,31 +269,18 @@ export function useNovoPedido(): UseNovoPedidoReturn {
             cardapioLoadedRef.current = true;
             lastLoadTimeRef.current = Date.now();
 
-            setCardapio(novoCardapio);
-            cardapioLoadedRef.current = true;
-            lastLoadTimeRef.current = Date.now();
-
-            // Find the latest update time from the fetched products and extras
-            const maxUpdatedAtProducts = productsData?.reduce((max: number, p: any) => {
-                const pTimeStr = p.updated_at || p.created_at;
-                const pTime = pTimeStr ? new Date(pTimeStr).getTime() : 0;
+            // Find the latest update time from the fetched products
+            const maxUpdatedAt = productsData?.reduce((max: number, p: any) => {
+                const pTime = p.updated_at ? new Date(p.updated_at).getTime() : 0;
                 return pTime > max ? pTime : max;
-            }, 0) || 0;
-
-            const maxUpdatedAtExtras = extrasData?.reduce((max: number, e: any) => {
-                const eTimeStr = e.updated_at || e.created_at;
-                const eTime = eTimeStr ? new Date(eTimeStr).getTime() : 0;
-                return eTime > max ? eTime : max;
-            }, 0) || 0;
-
-            const maxUpdatedAt = Math.max(maxUpdatedAtProducts, maxUpdatedAtExtras) || Date.now();
+            }, 0) || Date.now();
 
             await AsyncStorage.setItem(CARDAPIO_CACHE_KEY, JSON.stringify({
                 data: novoCardapio,
-                pizzaConfig: newPizzaConfig, // Cache config too (utilizando a variável local correta)
-                extras: extrasFormatted,         // Cache extras too
-                timestamp: Date.now(),   // When we fetched
-                lastUpdated: maxUpdatedAt // The max server timestamp
+                pizzaConfig: newPizzaConfig, // Cache config too
+                extras: currentExtras,       // FIX: Use the loaded array instead of the stale state component `extras` variable
+                timestamp: Date.now(),       // When we fetched
+                lastUpdated: maxUpdatedAt    // The max server timestamp
             }));
         } catch (error) {
             console.error('❌ Erro ao carregar cardápio do Supabase:', error);
@@ -315,23 +299,20 @@ export function useNovoPedido(): UseNovoPedidoReturn {
             const [productsUpdate, extrasUpdate] = await Promise.all([
                 supabase
                     .from('products')
-                    .select('created_at, updated_at')
+                    .select('updated_at')
                     .eq('company_id', user.companyId)
                     .order('updated_at', { ascending: false })
                     .limit(1),
                 supabase
                     .from('pizza_extras')
-                    .select('created_at, updated_at')
+                    .select('updated_at')
                     .eq('company_id', user.companyId)
                     .order('updated_at', { ascending: false })
                     .limit(1)
             ]);
 
-            const lastProductUpdateStr = productsUpdate.data?.[0]?.updated_at || productsUpdate.data?.[0]?.created_at;
-            const lastProductUpdate = lastProductUpdateStr ? new Date(lastProductUpdateStr).getTime() : 0;
-
-            const lastExtraUpdateStr = extrasUpdate.data?.[0]?.updated_at || extrasUpdate.data?.[0]?.created_at;
-            const lastExtraUpdate = lastExtraUpdateStr ? new Date(lastExtraUpdateStr).getTime() : 0;
+            const lastProductUpdate = productsUpdate.data?.[0]?.updated_at ? new Date(productsUpdate.data[0].updated_at).getTime() : 0;
+            const lastExtraUpdate = extrasUpdate.data?.[0]?.updated_at ? new Date(extrasUpdate.data[0].updated_at).getTime() : 0;
 
             const latestServerUpdate = Math.max(lastProductUpdate, lastExtraUpdate);
 
@@ -676,11 +657,8 @@ export function useNovoPedido(): UseNovoPedidoReturn {
             console.log('🍕 [NovoPedido] Adicionando customPrices ao priceMap:', customPrices);
             Object.entries(customPrices).forEach(([name, price]) => {
                 const lowerName = name.toLowerCase();
-                // Custom prices geralmente são unitários no state, mas se for 1x ok. 
-                // Se tiver 2x Pizza, o selectedItems loop acima já deve ter pego o total.
-                // Mas vamos garantir que o nome base esteja lá.
                 priceMap[lowerName] = price;
-                categoryMap[lowerName] = 'pizza';
+                categoryMap[lowerName] = 'pizza'; // ✅ CRÍTICO: Pizzas customizadas precisam da categoria
             });
 
             console.log('📦 [NovoPedido] Items a serem enviados:', items);
@@ -700,11 +678,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                 priceMap, // ✅ Passar mapa de preços cached
                 categoryMap, // ✅ Passar mapa de categorias
                 tableId,
-                waiterId,
-                'local', // ✅ orderType hardcoded como local
-                '', // customerPhone
-                '', // deliveryAddress
-                0 // deliveryFee
+                waiterId
             );
 
             // 🔒 VALIDAÇÃO: Alertar se o pedido foi criado com total zerado
