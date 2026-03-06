@@ -11,6 +11,7 @@ import PizzaBuilderModal from '../components/PizzaBuilderModal';
 import { Product } from '../types';
 import { KeyboardAvoidingView } from 'react-native';
 import supabaseOrderService from '../services/supabase/SupabaseOrderService';
+import OrderService from '../services/OrderService';
 import { supabase } from '../config/SupabaseConfig';
 
 if (Platform.OS === 'android') {

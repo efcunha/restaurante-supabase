@@ -276,6 +276,7 @@ class OrderFirestoreService {
    * Salva um pedido completo
    */
   async saveOrder(companyId: string, order: Order): Promise<string> {
+    console.log('🔵 [OrderFirestoreService] saveOrder chamado:', { companyId, client: order.client, itemsWithStatusLength: order.itemsWithStatus?.length });
     const { data, error } = await supabase
       .from('orders')
       .insert({
@@ -295,7 +296,9 @@ class OrderFirestoreService {
       })
       .select()
       .single();
+    if (error) console.error('🔴 [OrderFirestoreService] Erro ao salvar:', error);
 
+    console.log('✅ [OrderFirestoreService] Pedido salvo com sucesso:', data?.id);
     if (error) throw error;
     return data.id;
   }

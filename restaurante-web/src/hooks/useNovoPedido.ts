@@ -14,6 +14,7 @@ import { confirmLogout } from '../utils/appUtils';
 // @ts-ignore
 // @ts-ignore
 import InventoryService from '../services/InventoryService';
+import OrderService from '../services/OrderService';
 import CaixaService from '../services/CaixaService';
 import { listarFuncionarios } from '../services/FuncionariosService';
 import { Product, Cardapio, PizzaConfig, PizzaSize, Ingredient, Funcionario } from '../types';
@@ -656,11 +657,8 @@ export function useNovoPedido(): UseNovoPedidoReturn {
             console.log('🍕 [NovoPedido] Adicionando customPrices ao priceMap:', customPrices);
             Object.entries(customPrices).forEach(([name, price]) => {
                 const lowerName = name.toLowerCase();
-                // Custom prices geralmente são unitários no state, mas se for 1x ok. 
-                // Se tiver 2x Pizza, o selectedItems loop acima já deve ter pego o total.
-                // Mas vamos garantir que o nome base esteja lá.
                 priceMap[lowerName] = price;
-                categoryMap[lowerName] = 'pizza';
+                categoryMap[lowerName] = 'pizza'; // ✅ CRÍTICO: Pizzas customizadas precisam da categoria
             });
 
             console.log('📦 [NovoPedido] Items a serem enviados:', items);
