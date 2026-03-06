@@ -1,0 +1,58 @@
+
+Running 2 tests using 1 worker
+
+Navegando para o App / Login
+Preenchendo credenciais...
+1. Clicando na aba "Pedido Delivery" na Bottom Bar
+2. Aguardando a tela do Delivery carregar
+3. Preenchendo dados do Cliente e Endereço
+4. Escolhendo Forma de Pagamento (PIX)
+5. Adicionando múltiplos itens ao pedido (Comida, Pizza e Caldo)
+Buscando por: caldo
+- Item 'caldo' adicionado pelo '+'
+Buscando por: porção
+- Sem '+', tentando clicar no card do item 'porção'
+  ✘  1 [chromium] › e2e\delivery.spec.ts:25:7 › Fluxo Principal - Delivery Web › Deve conseguir lançar um Pedido de Delivery com endereço e taxa (22.0s)
+Navegando para o App / Login
+Preenchendo credenciais...
+1. Acessando Aba Mapa de Mesas
+2. Aguardando mesas carregarem do Supabase
+3. Identificando e clicando na primeira mesa disponível
+4. Mesa selecionada. Deve ter sido redirecionado para Novo Pedido
+5. Preenchendo Nome do Cliente
+6. Adicionando múltiplos itens ao pedido (Comida, Pizza e Caldo)
+Buscando por: caldo
+- Item 'caldo' adicionado pelo '+'
+Buscando por: porção
+- Sem '+', tentando clicar no card do item 'porção'
+Buscando por: pizza
+- Sem '+', tentando clicar no card do item 'pizza'
+7. Lançando Comanda / Pedido
+8. Validando persistência
+  ✓  2 [chromium] › e2e\mesa.spec.ts:25:7 › Fluxo Principal - Mesa (Mapa) › Deve conseguir abrir uma comanda a partir de uma Mesa Livre no Mapa (22.6s)
+
+
+  1) [chromium] › e2e\delivery.spec.ts:25:7 › Fluxo Principal - Delivery Web › Deve conseguir lançar um Pedido de Delivery com endereço e taxa 
+
+    Error: locator.click: Element is not visible
+    Call log:
+    [2m  - waiting for locator('div[dir="auto"]').filter({ hasText: /R\$ / }).first()[22m
+    [2m    - locator resolved to <div dir="auto" class="css-text-146c3p1">R$ 7,00 - R$ 53,00</div>[22m
+    [2m  - attempting click action[22m
+    [2m    - scrolling into view if needed[22m
+
+
+      83 |             console.log(`- Sem '+', tentando clicar no card do item '${term}'`);
+      84 |             const itemCard = page.locator('div[dir="auto"]').filter({ hasText: /R\$ / }).first();
+    > 85 |             await itemCard.click({ force: true });
+         |                            ^
+      86 |
+      87 |             // Trata modal de Pizza
+      88 |             const pizzaModal = page.getByText('Escolha o Tamanho').first();
+        at D:\restaurante-supabase\restaurante-web\e2e\delivery.spec.ts:85:28
+
+    Error Context: test-results\delivery-Fluxo-Principal---02dc9-elivery-com-endereço-e-taxa-chromium\error-context.md
+
+  1 failed
+    [chromium] › e2e\delivery.spec.ts:25:7 › Fluxo Principal - Delivery Web › Deve conseguir lançar um Pedido de Delivery com endereço e taxa 
+  1 passed (48.8s)

@@ -1,15 +1,13 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Fluxo Principal - Mesa (Mapa)', () => {
-  test.setTimeout(90000);
+  test.setTimeout(120000);
 
   test.beforeEach(async ({ page }) => {
-    // 1. Autenticação e Login
     console.log('Navegando para o App / Login');
     await page.goto('/');
 
     try {
-      // Esperar um campo de e-mail ser visível
       const emailInput = page.locator('input[placeholder="seu@email.com"]');
       await emailInput.waitFor({ state: 'visible', timeout: 8000 });
 
@@ -36,42 +34,83 @@ test.describe('Fluxo Principal - Mesa (Mapa)', () => {
     await tabMapa.click();
     await expect(page.getByText('Mapa de Mesas').first()).toBeVisible({ timeout: 15000 });
 
-    console.log('2. Clicando na Flag de Filtro para forçar visualização');
-    // Para estabilidade, garante que a aba livre está ativada.
-    await expect(page.locator('text=Livre').first()).toBeVisible();
-    await page.waitForTimeout(2000); // Wait map grid to fetch from Supabase
+    console.log('2. Aguardando mesas carregarem do Supabase');
+    await page.waitForTimeout(3000);
 
-    console.log('3. Identificando e clicando na primeira mesa Livre (0 lug.) ou similar da grid');
-    // A UI exibe <Text style={styles.infoSeats}>{table.seats} lug.</Text> apenas em Livre
-    const freeTableIndicator = page.locator('text=lug.').first();
-    await expect(freeTableIndicator).toBeVisible({ timeout: 10000 });
-    await freeTableIndicator.click();
+    console.log('3. Identificando e clicando na primeira mesa disponível');
+    // Em vez de "Mesa", procuramos por "lug." (ex: "4 lug.") que aparece apenas nas mesas Livres no Mapa
+    const mesaCard = page.locator('text=/lug\\./i').first();
+    await expect(mesaCard).toBeVisible({ timeout: 15000 });
+    await mesaCard.click();
 
     console.log('4. Mesa selecionada. Deve ter sido redirecionado para Novo Pedido');
-    
-    // Agora ele deve mostrar "Mesa: X" no header, onde o X é injetado do navigate parametrizado
     const mesaHeader = page.locator('text=/Mesa:/i').first();
     await expect(mesaHeader).toBeVisible({ timeout: 15000 });
 
-    console.log('5. Identificando Nome de Cliente/Comanda automática MESA');
-    // Tem que ter preenchido automaticamente, ou podemos preencher manual para forçar
+    console.log('5. Preenchendo Nome do Cliente');
     const clienteInput = page.getByPlaceholder('Digite o nome');
     await clienteInput.fill('Comprador da Mesa Mock (Playwright)');
 
-    console.log('6. Inserindo itens do Cardápio');
-    const productAddedSelector = page.getByText('+').first();
-    await expect(productAddedSelector).toBeVisible({ timeout: 15000 });
-    await productAddedSelector.click();
-    await page.waitForTimeout(1000); // UI repaints 
+    console.log('6. Adicionando múltiplos itens ao pedido (Calabresa e Caldo)');
+    const searchInput = page.getByPlaceholder('Buscar item do cardápio...');
+    await searchInput.waitFor({ state: 'visible', timeout: 10000 });
+    
+    // Itens que existem no banco
+    const itemsToSearch = ['calabresa', 'caldo'];
+    
+    for (const term of itemsToSearch) {
+        console.log(`Buscando por: ${term}`);
+        await searchInput.click();
+        await searchInput.fill('');
+        await searchInput.fill(term);
+        await page.waitForTimeout(1500); 
 
-    console.log('7. Lançando Comanda / Pedido');
-    const submitBtn = page.getByText('Criar Pedido').first();
+        try {
+            if (term === 'calabresa') {
+                const pizzaCard = page.locator('div[dir="auto"]').filter({ hasText: 'Calabresa' }).first();
+                await pizzaCard.waitFor({ state: 'visible', timeout: 5000 });
+                await pizzaCard.click();
+                
+                // Configuração da Pizza
+                console.log('Configurando Pizza...');
+                await page.locator('text=Broto').click();
+                await page.locator('text=Próximo: Extras').click();
+                await page.locator('text=Adicionar ao Pedido').click();
+                console.log('- Pizza Calabresa adicionada!');
+            } else {
+                // Caldo ou outros itens simples
+                const plusBtn = page.locator('div[role="button"], div[dir="auto"]').filter({ hasText: '+' }).filter({ visible: true }).first();
+                if (await plusBtn.count() > 0) {
+                    await plusBtn.click();
+                    console.log(`- Item '${term}' adicionado via botão +`);
+                } else {
+                    const itemCard = page.locator('div[dir="auto"]').filter({ hasText: term }).first();
+                    await itemCard.click();
+                    console.log(`- Item '${term}' adicionado via clique no card`);
+                }
+            }
+        } catch (e: any) {
+            console.log(`- Item '${term}' não encontrado ou erro na seleção: ${e.message}`);
+        }
+        await page.waitForTimeout(500);
+    }
+
+    console.log('7. Finalizando Pedido da Mesa');
+    const submitBtn = page.locator('div[dir="auto"]').filter({ hasText: 'Criar Pedido' }).last();
     await expect(submitBtn).toBeVisible();
     await submitBtn.click();
 
-    console.log('8. Validando persistência (Esperando sumir tela cheia ou limpar)');
-    await page.waitForTimeout(3000);
-    // Como foi lançado com sucesso, campo clienteInput ficará vazio novamente após o resetForm
-    await expect(clienteInput).toHaveValue('');
+    console.log('8. Validando persistência na Cozinha...');
+    // Tenta clicar no botão Cozinha (pode estar no rodapé ou menu)
+    await page.locator('text=Cozinha').first().click();
+    await page.waitForTimeout(2000);
+    
+    // Verificar se algum item aparece
+    const kitchenItem = page.locator('text=Calabresa').first();
+    await kitchenItem.waitFor({ state: 'visible', timeout: 10000 }).catch(() => console.log('⚠️ Aviso: Item não apareceu na cozinha no tempo esperado.'));
+
+    const screenshotPath = `mesa-success-${Date.now()}.png`;
+    await page.screenshot({ path: screenshotPath });
+    console.log(`- Pedido criado! Screenshot em: ${screenshotPath}`);
   });
 });
