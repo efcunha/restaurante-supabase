@@ -1,0 +1,164 @@
+{
+  "config": {
+    "configFile": "D:\\restaurante-supabase\\restaurante-web\\playwright.config.ts",
+    "rootDir": "D:/restaurante-supabase/restaurante-web/e2e",
+    "forbidOnly": false,
+    "fullyParallel": true,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "D:/restaurante-supabase/restaurante-web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "D:/restaurante-supabase/restaurante-web/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "runAgents": "none",
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.58.2",
+    "workers": 11,
+    "webServer": {
+      "command": "npm run web",
+      "url": "http://localhost:8081",
+      "reuseExistingServer": true,
+      "timeout": 120000
+    }
+  },
+  "suites": [
+    {
+      "title": "delivery.spec.ts",
+      "file": "delivery.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Fluxo de Pedido Delivery",
+          "file": "delivery.spec.ts",
+          "line": 3,
+          "column": 6,
+          "specs": [
+            {
+              "title": "Deve realizar um pedido completo de delivery",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 11659,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByPlaceholder('0,00')\nExpected: visible\nError: strict mode violation: getByPlaceholder('0,00') resolved to 2 elements:\n    1) <input rows=\"1\" value=\"0\" dir=\"auto\" autocorrect=\"on\" autocomplete=\"on\" spellcheck=\"true\" placeholder=\"0,00\" inputmode=\"numeric\" autocapitalize=\"sentences\" virtualkeyboardpolicy=\"auto\" class=\"css-textinput-11aywtz r-placeholderTextColor-6taxm2 r-backgroundColor-14lw9ot r-borderColor-1dlpocr r-borderRadius-1xfd6ze r-borderWidth-rs99b7 r-fontSize-a023e6 r-outlineStyle-1ny4l3l r-padding-1sp51qo r-textAlign-1ff274t r-width-1glkqn6\"/> aka getByRole('textbox', { name: '0,00', exact: true })\n    2) <input rows=\"1\" value=\"\" dir=\"auto\" autocorrect=\"on\" autocomplete=\"on\" spellcheck=\"true\" inputmode=\"numeric\" placeholder=\"Ex: 100,00\" autocapitalize=\"sentences\" virtualkeyboardpolicy=\"auto\" class=\"css-textinput-11aywtz r-placeholderTextColor-6taxm2 r-backgroundColor-14lw9ot r-borderColor-1dlpocr r-borderRadius-1xfd6ze r-borderWidth-rs99b7 r-fontSize-a023e6 r-outlineStyle-1ny4l3l r-padding-1sp51qo\"/> aka getByRole('textbox', { name: 'Ex:' })\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for getByPlaceholder('0,00')\u001b[22m\n",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByPlaceholder('0,00')\nExpected: visible\nError: strict mode violation: getByPlaceholder('0,00') resolved to 2 elements:\n    1) <input rows=\"1\" value=\"0\" dir=\"auto\" autocorrect=\"on\" autocomplete=\"on\" spellcheck=\"true\" placeholder=\"0,00\" inputmode=\"numeric\" autocapitalize=\"sentences\" virtualkeyboardpolicy=\"auto\" class=\"css-textinput-11aywtz r-placeholderTextColor-6taxm2 r-backgroundColor-14lw9ot r-borderColor-1dlpocr r-borderRadius-1xfd6ze r-borderWidth-rs99b7 r-fontSize-a023e6 r-outlineStyle-1ny4l3l r-padding-1sp51qo r-textAlign-1ff274t r-width-1glkqn6\"/> aka getByRole('textbox', { name: '0,00', exact: true })\n    2) <input rows=\"1\" value=\"\" dir=\"auto\" autocorrect=\"on\" autocomplete=\"on\" spellcheck=\"true\" inputmode=\"numeric\" placeholder=\"Ex: 100,00\" autocapitalize=\"sentences\" virtualkeyboardpolicy=\"auto\" class=\"css-textinput-11aywtz r-placeholderTextColor-6taxm2 r-backgroundColor-14lw9ot r-borderColor-1dlpocr r-borderRadius-1xfd6ze r-borderWidth-rs99b7 r-fontSize-a023e6 r-outlineStyle-1ny4l3l r-padding-1sp51qo\"/> aka getByRole('textbox', { name: 'Ex:' })\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for getByPlaceholder('0,00')\u001b[22m\n\n    at D:\\restaurante-supabase\\restaurante-web\\e2e\\delivery.spec.ts:43:29",
+                        "location": {
+                          "file": "D:\\restaurante-supabase\\restaurante-web\\e2e\\delivery.spec.ts",
+                          "column": 29,
+                          "line": 43
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 41 |\u001b[39m     console\u001b[33m.\u001b[39mlog(\u001b[32m'STEP 4: fill taxa'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 42 |\u001b[39m     \u001b[36mconst\u001b[39m taxaInput \u001b[33m=\u001b[39m page\u001b[33m.\u001b[39mgetByPlaceholder(\u001b[32m'0,00'\u001b[39m)\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 43 |\u001b[39m     \u001b[36mawait\u001b[39m expect(taxaInput)\u001b[33m.\u001b[39mtoBeVisible({ timeout\u001b[33m:\u001b[39m \u001b[35m10000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                             \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 44 |\u001b[39m     \u001b[36mawait\u001b[39m taxaInput\u001b[33m.\u001b[39mfill(\u001b[32m'10'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 45 |\u001b[39m\n \u001b[90m 46 |\u001b[39m     \u001b[90m// 5. PIX\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "D:\\restaurante-supabase\\restaurante-web\\e2e\\delivery.spec.ts",
+                            "column": 29,
+                            "line": 43
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByPlaceholder('0,00')\nExpected: visible\nError: strict mode violation: getByPlaceholder('0,00') resolved to 2 elements:\n    1) <input rows=\"1\" value=\"0\" dir=\"auto\" autocorrect=\"on\" autocomplete=\"on\" spellcheck=\"true\" placeholder=\"0,00\" inputmode=\"numeric\" autocapitalize=\"sentences\" virtualkeyboardpolicy=\"auto\" class=\"css-textinput-11aywtz r-placeholderTextColor-6taxm2 r-backgroundColor-14lw9ot r-borderColor-1dlpocr r-borderRadius-1xfd6ze r-borderWidth-rs99b7 r-fontSize-a023e6 r-outlineStyle-1ny4l3l r-padding-1sp51qo r-textAlign-1ff274t r-width-1glkqn6\"/> aka getByRole('textbox', { name: '0,00', exact: true })\n    2) <input rows=\"1\" value=\"\" dir=\"auto\" autocorrect=\"on\" autocomplete=\"on\" spellcheck=\"true\" inputmode=\"numeric\" placeholder=\"Ex: 100,00\" autocapitalize=\"sentences\" virtualkeyboardpolicy=\"auto\" class=\"css-textinput-11aywtz r-placeholderTextColor-6taxm2 r-backgroundColor-14lw9ot r-borderColor-1dlpocr r-borderRadius-1xfd6ze r-borderWidth-rs99b7 r-fontSize-a023e6 r-outlineStyle-1ny4l3l r-padding-1sp51qo\"/> aka getByRole('textbox', { name: 'Ex:' })\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for getByPlaceholder('0,00')\u001b[22m\n\n\n  41 |     console.log('STEP 4: fill taxa');\n  42 |     const taxaInput = page.getByPlaceholder('0,00');\n> 43 |     await expect(taxaInput).toBeVisible({ timeout: 10000 });\n     |                             ^\n  44 |     await taxaInput.fill('10');\n  45 |\n  46 |     // 5. PIX\n    at D:\\restaurante-supabase\\restaurante-web\\e2e\\delivery.spec.ts:43:29"
+                        }
+                      ],
+                      "stdout": [
+                        {
+                          "text": "STEP 1: click Pedido Delivery\n"
+                        },
+                        {
+                          "text": "STEP 2: wait form\n"
+                        },
+                        {
+                          "text": "STEP 3: fill form fields\n"
+                        },
+                        {
+                          "text": "STEP 4: fill taxa\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-06T11:34:12.826Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "D:\\restaurante-supabase\\restaurante-web\\test-results\\delivery-Fluxo-de-Pedido-D-63eb2-pedido-completo-de-delivery-chromium\\error-context.md"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "D:\\restaurante-supabase\\restaurante-web\\e2e\\delivery.spec.ts",
+                        "column": 29,
+                        "line": 43
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "6be646c84a0e17f5bcd7-bc726e190499e845dfbb",
+              "file": "delivery.spec.ts",
+              "line": 25,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-03-06T11:34:09.860Z",
+    "duration": 15072.621,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 1,
+    "flaky": 0
+  }
+}
