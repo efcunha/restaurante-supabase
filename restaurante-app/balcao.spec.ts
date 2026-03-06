@@ -86,7 +86,7 @@ test.describe('Fluxo Principal - Balcão (Novo Pedido Direto)', () => {
 
     // Aguarda a confirmação (Toast de sucesso do useNovoPedido)
     console.log('5. Aguardando confirmação...');
-    const toast = page.locator('text=/Pedido criado! Comanda/i');
+    const toast = page.locator('text=Pedido criado com sucesso');
     await expect(toast).toBeVisible({ timeout: 15000 });
 
     const screenshotPath = `balcao-success-${Date.now()}.png`;
