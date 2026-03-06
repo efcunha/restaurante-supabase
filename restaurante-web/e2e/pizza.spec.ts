@@ -14,9 +14,13 @@ test('Pedido de Pizza - Estável Final', async ({ page }) => {
   console.log('Aguardando Dashboard...');
   await expect(page.getByText('Novo Pedido').first()).toBeVisible({ timeout: 15000 });
 
+  // Adiciona um pequeno delay aleatório para evitar race condition na geração de número da comanda
+  // quando executado em terminais rodando exata e perfeitamente ao mesmo tempo.
+  await page.waitForTimeout(Math.random() * 3000);
+
   console.log('Preenchendo identificação...');
-  await page.getByPlaceholder('Digite o nome').fill('PEDIDO PIZZA PLAYWRIGHT');
-  await page.getByPlaceholder('Nº').fill('10');
+  const uniqueId = Date.now() + Math.round(Math.random() * 1000);
+  await page.getByPlaceholder('Digite o nome').fill(`PEDIDO PIZZA ${uniqueId}`);
 
   // 3. Seleção da Pizza (Principal)
   console.log('Selecionando Pizza Calabresa...');

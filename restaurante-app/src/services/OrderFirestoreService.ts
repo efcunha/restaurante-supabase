@@ -45,7 +45,7 @@ class OrderFirestoreService {
       timeInProntos: row.time_in_prontos,
       comandaStatus: row.comanda_status,
       updatedAt: row.updated_at,
-      orderType: row.order_type || 'local',
+      orderType: row.order_type || 'local', // Adicionado orderType crucial para o RotasDeliveryScreen e tracking
     } as Order;
   }
 
@@ -92,7 +92,7 @@ class OrderFirestoreService {
     };
   }
 
-  async fetchActiveOrders(companyId: string, _dateKey: string): Promise<Order[]> {
+  async fetchActiveOrders(companyId: string, dateKey: string): Promise<Order[]> {
     const { data, error } = await supabase
       .from('orders')
       .select('*')
@@ -125,7 +125,7 @@ class OrderFirestoreService {
         comanda_number: parseInt(order.comandaNumber || '0'),
         items: order.items,
         observations: order.observations,
-        status: 'pending',
+        status: 'preparing',
         total_amount: order.totalPrice,
         is_paid: false,
         created_by: order.createdBy,
@@ -262,7 +262,7 @@ class OrderFirestoreService {
     if (updates.deliveredAt) payload.delivered_at = updates.deliveredAt;
     if (updates.itemsWithStatus) payload.items_with_status = updates.itemsWithStatus;
     if (updates.orderType) payload.order_type = updates.orderType;
-    if (updates.updatedAt) payload.updated_at = updates.updatedAt;
+    if (updates.updatedAt) payload.updated_at = updates.updatedAt; // Garante que updates manuais do updatedAt via OrderContext entrem
 
     // Helper fields regarding who moved the order
     if ((updates as any).movidoParaMontagemPor) payload.movido_para_montagem_por = (updates as any).movidoParaMontagemPor;
@@ -276,6 +276,7 @@ class OrderFirestoreService {
    * Salva um pedido completo
    */
   async saveOrder(companyId: string, order: Order): Promise<string> {
+    console.log('🔵 [OrderFirestoreService] saveOrder chamado:', { companyId, client: order.client, itemsWithStatusLength: order.itemsWithStatus?.length });
     const { data, error } = await supabase
       .from('orders')
       .insert({
@@ -286,7 +287,7 @@ class OrderFirestoreService {
         items: order.items,
         items_with_status: order.itemsWithStatus || [],
         observations: order.observations,
-        status: order.status || 'pending',
+        status: order.status || 'preparing',
         total_amount: order.totalPrice,
         is_paid: order.isPago || false,
         created_by: order.createdBy,
@@ -295,7 +296,9 @@ class OrderFirestoreService {
       })
       .select()
       .single();
+    if (error) console.error('🔴 [OrderFirestoreService] Erro ao salvar:', error);
 
+    console.log('✅ [OrderFirestoreService] Pedido salvo com sucesso:', data?.id);
     if (error) throw error;
     return data.id;
   }
@@ -520,8 +523,7 @@ class OrderFirestoreService {
         totalPago: comandas.reduce((acc, c) => acc + (c.total_paid || 0), 0),
         saldoAberto: comandas.reduce((acc, c) => acc + (c.open_balance || 0), 0)
       };
-    } catch (err) {
-      console.error('[OrderContext] Erro em getEstatisticasComandas:', err);
+    } catch (e) {
       return { total: 0, abertas: 0, fechadas: 0, totalConsumido: 0, totalPago: 0, saldoAberto: 0 };
     }
   }
@@ -618,7 +620,7 @@ class OrderFirestoreService {
     };
   }
 
-  private _calcularEstatisticas(pedidos: Order[], _pagamentos: any[]) {
+  private _calcularEstatisticas(pedidos: Order[], pagamentos: any[]) {
     const totalPedidos = pedidos.length;
     const pedidosPagos = pedidos.filter(p => p.isPago);
     const pedidosAbertos = pedidos.filter(p => !p.isPago);
@@ -640,7 +642,7 @@ class OrderFirestoreService {
   }
 
   // Compatibility methods
-  findOrdersByComanda(_comanda: string) { return []; }
+  findOrdersByComanda(comanda: string) { return []; }
   findDocIdByOrderId() { return null; }
 }
 
