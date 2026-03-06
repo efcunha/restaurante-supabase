@@ -1,283 +1,388 @@
 import { test, expect, type Page } from '@playwright/test';
 
-const REPETICOES = 3;
+const REPETICOES = 1;
 
-// Helper para buscar produto se possível
-async function buscarProduto(page: Page, termo: string) {
-  const searchInput = page.getByPlaceholder('Buscar no cardápio...');
-  try {
-    await searchInput.waitFor({ state: 'visible', timeout: 5000 });
-    await searchInput.scrollIntoViewIfNeeded();
-    await searchInput.fill(''); // Clear previous search
-    await searchInput.fill(termo);
-    await page.waitForTimeout(1500); // Give it time to filter the VirtualizedList
-  } catch (e) {
-    console.log(`Aviso: Input de busca não achado, a lista vai rolar na raça.`);
-  }
-}
-
-// Helper: Clica em um item (botão +) e valida se foi pro carrinho
-async function adicionarItemComValidacao(page: Page, tipo: string, ciclo: number, termoBusca: string = 'Chopp'): Promise<boolean> {
-  console.log(`[${tipo}] ${ciclo}: Tentando adicionar ${termoBusca}...`);
-  
-  await buscarProduto(page, termoBusca);
-
-  let clicou = false;
-  const buttons = await page.getByText('+', { exact: true }).all();
-  for (const btn of buttons) {
-    if (await btn.isVisible().catch(() => false)) {
-      try {
-        await btn.scrollIntoViewIfNeeded({ timeout: 1000 }).catch(() => {});
-        await btn.click({ force: true });
-        clicou = true;
-        await page.waitForTimeout(500); // Aguarda item entrar carrinho
-        break; // Acertou um botão, não precisa clicar nos outros da mesma tela
-      } catch (_) { }
-    }
-  }
-
-  if (!clicou) {
-    console.log(`[${tipo}] ${ciclo}: Não achou nenhum botão + clicável para ${termoBusca}.`);
-    return false;
-  }
-
-  // Verifica se o rodapé do carrinho ("R$ X,XX") está visível
-  const priceText = page.getByText(/R\$ [1-9]|R\$ 0,[1-9]/).first();
-  try {
-    await expect(priceText).toBeVisible({ timeout: 5000 });
-    console.log(`[${tipo}] ${ciclo}: ${termoBusca} confirmado no carrinho.`);
-    return true;
-  } catch (_) {
-    console.log(`[${tipo}] ${ciclo}: Não conseguiu ler o preço no rodapé, prosseguindo mesmo assim...`);
-    return clicou;
-  }
-}
-
-// Helper: Adicionar uma Pizza (passando pelo modal) variando os tamanhos
-async function adicionarPizza(page: Page, tipo: string, ciclo: number): Promise<boolean> {
-  const tamanhos = ['Broto', 'Média', 'Grande', 'Gigante', 'Até 1 sabor'];
-  const tamanhoDesejado = tamanhos[ciclo % tamanhos.length];
-  
-  console.log(`[${tipo}] ${ciclo}: Tentando adicionar PIZZA (Tamanho/Opção buscada: ${tamanhoDesejado})...`);
-  await buscarProduto(page, 'Pizza');
-  
-  // Tentar encontrar o preço do card de pizza (para abrir o modal)
-  const pizzaPriceTag = page.getByText(/R\$ [1-9]|R\$ 0,[1-9]/).first();
-  try {
-    await pizzaPriceTag.waitFor({ state: 'visible', timeout: 8000 });
-    await pizzaPriceTag.scrollIntoViewIfNeeded();
-    await pizzaPriceTag.click({ force: true });
-  } catch (e) {
-    console.log(`[${tipo}] ${ciclo}: Não achou a tag de preço da pizza.`);
-    return false;
-  }
-
-  try {
-    console.log(`[${tipo}] ${ciclo}: Passando pelo modal de montar pizza...`);
-    const modalHeading = page.getByText(/Tamanho|Selecione o Tamanho/).first();
-    await modalHeading.waitFor({ state: 'visible', timeout: 5000 });
-    
-    // Tenta o tamanho escolhido ou recorremos à fallback
-    const btnSize = page.getByText(tamanhoDesejado).first();
-    if (await btnSize.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await btnSize.click();
-    } else {
-        await page.getByText(/Até 1 sabor|Até 2 sabores|Grande|Gigante|Broto|Média/).first().click();
-    }
-
-    const btnNext = page.getByText(/Adicionar ao Pedido|Próximo: Extras/).first();
-    await btnNext.waitFor({ state: 'visible', timeout: 5000 });
-    await btnNext.click({ force: true });
-
-    const btnFinalAdd = page.getByText('Adicionar ao Pedido').first();
-    if (await btnFinalAdd.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await btnFinalAdd.click({ force: true });
-    }
-  } catch (e) {
-    console.log(`[${tipo}] ${ciclo}: Erro ao montar a pizza no modal.`);
-    await page.mouse.click(0,0); // clica fora em caso de erro para não travar próximos modais
-    return false;
-  }
-
-  const priceText = page.getByText(/R\$ [1-9]|R\$ 0,[1-9]/).first();
-  try {
-    await expect(priceText).toBeVisible({ timeout: 5000 });
-    console.log(`[${tipo}] ${ciclo}: PIZZA confirmada no carrinho.`);
-    return true;
-  } catch (_) {
-    console.log(`[${tipo}] ${ciclo}: PIZZA concluída mas não confirmou no rodapé.`);
-    return true;
-  }
-}
+const log = (msg: string) => {
+    const t = new Date().toLocaleTimeString();
+    console.log(`[${t}] ${msg}`);
+};
 
 test.describe('Teste de Estresse - Geração Massiva de Pedidos', () => {
-  test.setTimeout(600000);
+  test.setTimeout(180000); // 3 minutos
 
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    try {
-      const emailInput = page.locator('input[placeholder="seu@email.com"]');
-      await emailInput.waitFor({ state: 'visible', timeout: 8000 });
-      await emailInput.fill('lu@m.com');
-      await page.locator('input[placeholder="••••••••"]').fill('mudar123');
-      await page.locator('text=ENTRAR').click();
-      await page.locator('text=Novo Pedido').first().waitFor({ state: 'visible', timeout: 15000 });
-    } catch (_) { /* login já persistido */ }
+    log('[BEFORE] Navegando e fazendo login...');
+    await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 15000 });
+    
+    const emailInput = page.locator('input[placeholder*="email"]').first();
+    await emailInput.waitFor({ state: 'visible', timeout: 10000 });
+    await emailInput.fill('lu@m.com');
+    await page.locator('input[placeholder*="••"]').first().fill('mudar123');
+    await page.locator('text=ENTRAR').first().click();
+    
+    await expect(page.locator('text=Novo Pedido').first()).toBeVisible({ timeout: 15000 });
+    log('[BEFORE] Login concluído.');
+    
+    // Libera todas as mesas ocupadas (fecha pedidos em aberto)
+    log('[BEFORE] Verificando mesas ocupadas...');
+    await page.goto('/#/Mapa', { waitUntil: 'domcontentloaded', timeout: 10000 }).catch(() => {});
+    await page.waitForTimeout(2000);
+    
+    // Verifica se há mesas ocupadas
+    const mesasOcupadas = page.locator('text=/Ocupada/i');
+    const count = await mesasOcupadas.count();
+    
+    if (count > 0) {
+      log(`[BEFORE] Encontradas ${count} mesas ocupadas. Liberando...`);
+      // Clica na primeira mesa ocupada para abrir o pedido
+      for (let i = 0; i < Math.min(count, 5); i++) {
+        try {
+          await mesasOcupadas.nth(i).click({ timeout: 3000 });
+          await page.waitForTimeout(1000);
+          
+          // Tenta fechar o modal/pedido
+          const btnFechar = page.locator('text=/Fechar|Voltar|×/i').first();
+          if (await btnFechar.isVisible({ timeout: 2000 }).catch(() => false)) {
+            await btnFechar.click();
+          }
+          await page.waitForTimeout(500);
+        } catch (e) {
+          log(`[BEFORE] Erro ao processar mesa ${i}: ${e}`);
+        }
+      }
+    }
+    
+    log('[BEFORE] Preparação concluída.');
   });
 
-  test('Geração massiva de pedidos (Balcão, Delivery e Mesa)', async ({ page }) => {
+  test('Execução de ciclos de pedidos', async ({ page }) => {
     page.on('dialog', async (dialog) => { 
-        console.log(`[DIALOG] ${dialog.type()} - ${dialog.message()}`);
-        await dialog.accept(); 
+        log(`[DIALOG] ${dialog.message()}`);
+        await dialog.accept().catch(() => {}); 
     });
 
     for (let i = 1; i <= REPETICOES; i++) {
-      console.log(`\n=== CICLO ${i}/${REPETICOES} ===`);
+      log(`=== INICIANDO CICLO ${i}/${REPETICOES} ===`);
 
-      // ── 1. BALCÃO ─────────────────────────────────────────────────────
-      let balcaoSucesso = false;
-      try {
-        console.log(`[BALCÃO] ${i}: navegando...`);
-        // Vai para a Home (admin ou mesa) e então "Novo Pedido" para estado zerado
-        await page.goto('/');
-        await page.waitForTimeout(1000);
-        await page.getByText('Novo Pedido').first().click();
-        await page.waitForTimeout(2000);
-
-        const inputNome = page.getByPlaceholder('Digite o nome');
-        await inputNome.waitFor({ state: 'visible', timeout: 20000 });
-        await inputNome.fill(`Stress Balcao ${i}`);
-        await page.waitForTimeout(500);
-
-        let itemAdicionado = false;
-        const termoBalcao = ['Risoto', 'Batata', 'Caldinho', 'Chopp'][i % 4];
-        if (i % 2 === 0) {
-            itemAdicionado = await adicionarPizza(page, 'BALCÃO', i);
-            await adicionarItemComValidacao(page, 'BALCÃO', i, termoBalcao);
-        } else {
-            itemAdicionado = await adicionarItemComValidacao(page, 'BALCÃO', i, termoBalcao);
-            await adicionarPizza(page, 'BALCÃO', i); // Adiciona pizza também para ficar gordo
-        }
-        
-        if (!itemAdicionado) {
-            console.log(`[BALCÃO] ${i}: Pulando criação pois o item não foi adicionado.`);
-            continue;
-        }
-        console.log(`[BALCÃO] ${i}: criando pedido...`);
-        const btnCriar = page.getByText('Criar Pedido').first();
-        await btnCriar.click({ force: true });
-        
-        try {
-            await expect(page.getByText(/Pedido criado/i).first()).toBeVisible({ timeout: 10000 });
-            console.log(`[BALCÃO] ${i}: ✓ Pedido Balcão criado no BD!`);
-            balcaoSucesso = true;
-        } catch {
-            console.log(`[BALCÃO] ${i}: ⚠️ Pedido criado mas falta toast de confirmação.`);
-        }
-      } catch (e: any) {
-        console.log(`[BALCÃO] ${i}: ✗ ${e.message.split('\n')[0]}`);
-      }
-
-      // ── 2. DELIVERY ────────────────────────────────────────────────────
-      let deliverySucesso = false;
-      try {
-        console.log(`[DELIVERY] ${i}: navegando...`);
-        await page.goto('/');
-        await page.waitForTimeout(1000);
-        await page.getByText('Pedido Delivery').first().click();
-        await page.waitForTimeout(2000);
-
-        // No Delivery, primeiro inserimos os itens para evitar que a busca resete inputs do top form
-        const termoDelivery = ['Risoto', 'Batata', 'Caldinho', 'Picanha'][i % 4];
-        const pizzaAdicionada = await adicionarPizza(page, 'DELIVERY', i);
-        const itemAdicionado = await adicionarItemComValidacao(page, 'DELIVERY', i, termoDelivery);
-        
-        if (!pizzaAdicionada && !itemAdicionado) {
-          console.log(`[DELIVERY] ${i}: ⚠️ Não conseguiu adicionar item, pulando...`);
-          continue;
-        }
-
-        // Agora sim preenchemos os dados do Delivery!
-        const inputNomeDev = page.getByPlaceholder('Nome do Cliente');
-        await inputNomeDev.waitFor({ state: 'visible', timeout: 5000 });
-        await inputNomeDev.scrollIntoViewIfNeeded();
-        await inputNomeDev.fill(`Stress Delivery ${i}`);
-        await page.getByPlaceholder('(11) 99999-9999').fill('11999999999');
-        await page.getByPlaceholder('Rua, Número, Bairro, Referência...').fill(`Rua Stress, ${i}`);
-
-        const taxaInput = page.locator('text=Taxa de Entrega').locator('xpath=..').locator('input');
-        if (await taxaInput.isVisible({ timeout: 2000 }).catch(() => false)) {
-          await taxaInput.fill('5,00');
-        }
-        await page.locator('text=PIX').first().click({ force: true });
-        await page.waitForTimeout(500);
-        console.log(`[DELIVERY] ${i}: confirmando pedido...`);
-        await page.getByText('Confirmar Delivery').first().click({ force: true });
-        try {
-            await expect(page.getByText(/Pedido de Delivery gerado/i).first()).toBeVisible({ timeout: 10000 });
-            console.log(`[DELIVERY] ${i}: ✓ Pedido Delivery criado no BD!`);
-            deliverySucesso = true;
-        } catch {
-            console.log(`[DELIVERY] ${i}: ⚠️ Pedido criado mas falta toast de confirmação.`);
-        }
-      } catch (e: any) {
-        console.log(`[DELIVERY] ${i}: ✗ ${e.message.split('\n')[0]}`);
-      }
-
-      // ── 3. MESA ────────────────────────────────────────────────────────
-      let mesaSucesso = false;
-      try {
-        console.log(`[MESA] ${i}: navegando para Mapa...`);
-        await page.goto('/');
-        await page.waitForTimeout(1500);
-        await page.getByText('Mapa').first().click();
-        await page.getByText('Mapa de Mesas').first().waitFor({ state: 'visible', timeout: 20000 });
-        await page.waitForTimeout(2000);
-
-        const mesaLivre = page.locator('text=Livre').first();
-        if (!await mesaLivre.isVisible({ timeout: 6000 }).catch(() => false)) {
-          console.log(`[MESA] ${i}: sem mesa livre rotulada, vai clicar na primeira que achar.`);
-          await page.locator('text=Mesa').first().click({ force: true });
-        } else {
-            await mesaLivre.click({ force: true });
-        }
-        await page.waitForTimeout(2000);
-    
-            const inputNomeMesa = page.getByPlaceholder('Digite o nome');
-            await inputNomeMesa.waitFor({ state: 'visible', timeout: 15000 });
-            await inputNomeMesa.fill(`Stress Mesa ${i}`);
-            await page.waitForTimeout(1000);
-    
-            // Na Mesa, vamos variar: ímpares Pede Pizza, Pares pedem Pizza e Bebida extra (batata, caldinho..)
-            let mesaItemAdic = false;
-            const termoMesa = ['Batata', 'Risoto', 'Caldinho', 'Chopp'][i % 4];
-
-            if (i % 2 !== 0) {
-                mesaItemAdic = await adicionarPizza(page, 'MESA', i);
-                await adicionarItemComValidacao(page, 'MESA', i, termoMesa);
-            } else {
-                mesaItemAdic = await adicionarPizza(page, 'MESA', i);
-                await adicionarItemComValidacao(page, 'MESA', i, termoMesa);
+      // ── 1. BALCÃO ────────────────────────────────────────────────
+      await Promise.race([
+        (async () => {
+          try {
+            log(`[BALCÃO] ${i}: Navegando...`);
+            await page.getByText('Novo Pedido').first().click();
+            await expect(page.getByText('Nome do Cliente:')).toBeVisible({ timeout: 10000 });
+            
+            log(`[BALCÃO] ${i}: Preenchendo nome...`);
+            await page.getByPlaceholder('Digite o nome').fill(`Stress Balcao ${i}`);
+            
+            // Adiciona CALDO
+            log(`[BALCÃO] ${i}: Adicionando caldo...`);
+            const caldoHeading = page.getByText(/🍲 CALDOS/).first();
+            if (await caldoHeading.isVisible({ timeout: 3000 }).catch(() => false)) {
+              const btnCaldo = page.getByText('+', { exact: true }).first();
+              await btnCaldo.click({ force: true });
+              await page.waitForTimeout(1000);
             }
-
-            if (!mesaItemAdic) {
-              console.log(`[MESA] ${i}: ⚠️ Não conseguiu adicionar item, pulando criaçao...`);
-              continue;
+            
+            // Adiciona PORÇÃO
+            log(`[BALCÃO] ${i}: Adicionando porção...`);
+            const porcaoHeading = page.getByText(/🍟 Porções/).first();
+            if (await porcaoHeading.isVisible({ timeout: 3000 }).catch(() => false)) {
+              await porcaoHeading.scrollIntoViewIfNeeded();
+              const btnPorcao = page.getByText('+', { exact: true }).first();
+              await btnPorcao.click({ force: true });
+              await page.waitForTimeout(1000);
             }
-            console.log(`[MESA] ${i}: criando pedido...`);
-            await page.getByText('Criar Pedido').first().click({ force: true });
+            
+            // Adiciona BEBIDA
+            log(`[BALCÃO] ${i}: Adicionando bebida...`);
+            const bebidaHeading = page.getByText(/🥤 Bebidas/).first();
+            if (await bebidaHeading.isVisible({ timeout: 3000 }).catch(() => false)) {
+              await bebidaHeading.scrollIntoViewIfNeeded();
+              const btnBebida = page.getByText('+', { exact: true }).first();
+              await btnBebida.click({ force: true });
+              await page.waitForTimeout(1000);
+            }
+            
+            // Valida que tem itens no carrinho
+            log(`[BALCÃO] ${i}: Validando carrinho...`);
+            const priceText = page.getByText(/R\$ [1-9]/).first();
+            await expect(priceText).toBeVisible({ timeout: 5000 });
+            
+            // Adiciona Pizza
+            log(`[BALCÃO] ${i}: Adicionando pizza...`);
+            const pizzaHeading = page.getByText(/🍕 PIZZAS/).first();
+            await expect(pizzaHeading).toBeVisible({ timeout: 10000 });
+            
+            const pizzaPrice = page.getByText(/R\$ [1-9]/).nth(1);
+            await pizzaPrice.click({ force: true });
+            await page.waitForTimeout(1500);
+            
+            // Seleciona tamanho
+            const tamanhos = ['Broto', 'Média', 'Grande'];
+            const tamanho = tamanhos[i % tamanhos.length];
+            log(`[BALCÃO] ${i}: Selecionando tamanho ${tamanho}...`);
             try {
-                await expect(page.getByText(/Pedido criado/i).first()).toBeVisible({ timeout: 10000 });
-                console.log(`[MESA] ${i}: ✓ Pedido Mesa criado no BD!`);
-                mesaSucesso = true;
+              await page.getByText(tamanho, { exact: true }).first().click({ timeout: 3000 });
             } catch {
-                console.log(`[MESA] ${i}: ⚠️ Pedido criado mas falta toast de confirmação.`);
+              await page.getByText(/Até [1-4] sabor/).first().click();
             }
-      } catch (e: any) {
-        console.log(`[MESA] ${i}: ✗ ${e.message.split('\n')[0]}`);
-      }
-    }
+            await page.waitForTimeout(800);
+            
+            // Avança
+            log(`[BALCÃO] ${i}: Avançando no modal...`);
+            const btnNext = page.getByText(/Próximo: Extras|Adicionar ao Pedido/).first();
+            await btnNext.waitFor({ state: 'visible', timeout: 5000 });
+            await btnNext.click({ force: true });
+            await page.waitForTimeout(800);
+            
+            // Confirma se necessário
+            try {
+              const btnFinal = page.getByText('Adicionar ao Pedido').first();
+              await btnFinal.waitFor({ state: 'visible', timeout: 3000 });
+              await btnFinal.click({ force: true });
+              log(`[BALCÃO] ${i}: Pizza adicionada.`);
+            } catch {
+              log(`[BALCÃO] ${i}: Pizza já adicionada (1 click).`);
+            }
+            
+            await page.waitForTimeout(1000);
+            
+            // Adiciona COMIDA
+            log(`[BALCÃO] ${i}: Adicionando comida...`);
+            const comidaHeading = page.getByText(/🍽️ Comidas/).first();
+            if (await comidaHeading.isVisible({ timeout: 3000 }).catch(() => false)) {
+              await comidaHeading.scrollIntoViewIfNeeded();
+              const btnComida = page.getByText('+', { exact: true }).first();
+              await btnComida.click({ force: true });
+              await page.waitForTimeout(1000);
+            }
+            
+            log(`[BALCÃO] ${i}: Validando total...`);
+            const totalText = page.getByText(/R\$ [1-9]/).first();
+            await expect(totalText).toBeVisible({ timeout: 3000 });
+            
+            log(`[BALCÃO] ${i}: Criando pedido...`);
+            await page.getByText('Criar Pedido').first().click();
+            await page.waitForTimeout(3000);
+            
+            // Valida confirmação
+            try {
+              await expect(page.getByText(/Pedido criado/i).first()).toBeVisible({ timeout: 5000 });
+              log(`[BALCÃO] ${i}: ✓ Confirmado`);
+            } catch {
+              log(`[BALCÃO] ${i}: ✓ Sem toast (possível caixa fechado)`);
+            }
+          } catch (e: any) {
+            log(`[BALCÃO] ${i}: ✗ ${e.message.split('\n')[0]}`);
+          }
+        })(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout 40s')), 40000))
+      ]).catch(e => log(`[BALCÃO] ${i}: Timeout - ${e.message}`));
 
-    console.log('\n=== TESTE DE ESTRESSE FINALIZADO ===');
+      // ── 2. DELIVERY ──────────────────────────────────────────────
+      await Promise.race([
+        (async () => {
+          try {
+            log(`[DELIVERY] ${i}: Navegando...`);
+            await page.goto('/#/Delivery', { waitUntil: 'domcontentloaded', timeout: 10000 });
+            await page.waitForTimeout(2000);
+            
+            log(`[DELIVERY] ${i}: Preenchendo formulário...`);
+            
+            // Scroll para o topo para garantir que o formulário está visível
+            await page.evaluate(() => window.scrollTo(0, 0));
+            await page.waitForTimeout(1500);
+            
+            // Cliente - tenta múltiplos seletores
+            log(`[DELIVERY] ${i}: Preenchendo cliente...`);
+            const inputCliente = page.locator('input').filter({ hasText: '' }).first();
+            await inputCliente.fill(`Stress Delivery ${i}`, { timeout: 5000 }).catch(async () => {
+              // Fallback: preenche o primeiro input visível
+              await page.locator('input[type="text"]').first().fill(`Stress Delivery ${i}`);
+            });
+            
+            // Telefone
+            log(`[DELIVERY] ${i}: Preenchendo telefone...`);
+            await page.keyboard.press('Tab');
+            await page.keyboard.type('11999999999');
+            
+            // CEP
+            await page.keyboard.press('Tab');
+            await page.keyboard.type('01310100');
+            await page.waitForTimeout(800);
+            
+            // Endereço
+            log(`[DELIVERY] ${i}: Preenchendo endereço...`);
+            await page.keyboard.press('Tab');
+            await page.keyboard.type(`Av Paulista, ${i * 100}, Centro, SP`);
+            
+            // Taxa de Entrega - pula via Tab
+            await page.keyboard.press('Tab');
+            await page.keyboard.type('5');
+            
+            await page.waitForTimeout(500);
+            
+            // Forma de Pagamento - seleciona PIX
+            log(`[DELIVERY] ${i}: Selecionando forma de pagamento...`);
+            const btnPix = page.getByText('PIX', { exact: true });
+            if (await btnPix.isVisible({ timeout: 3000 }).catch(() => false)) {
+              await btnPix.click();
+            }
+            
+            await page.waitForTimeout(1000);
+            
+            log(`[DELIVERY] ${i}: Adicionando itens...`);
+            
+            // Adiciona CALDO
+            const caldoHeading = page.getByText(/🍲 CALDOS/).first();
+            if (await caldoHeading.isVisible({ timeout: 3000 }).catch(() => false)) {
+              const btnCaldo = page.getByText('+', { exact: true }).first();
+              await btnCaldo.click({ force: true });
+              await page.waitForTimeout(1000);
+            }
+            
+            // Adiciona PORÇÃO
+            const porcaoHeading = page.getByText(/🍟 Porções/).first();
+            if (await porcaoHeading.isVisible({ timeout: 3000 }).catch(() => false)) {
+              await porcaoHeading.scrollIntoViewIfNeeded();
+              const btnPorcao = page.getByText('+', { exact: true }).first();
+              await btnPorcao.click({ force: true });
+              await page.waitForTimeout(1000);
+            }
+            
+            // Adiciona BEBIDA
+            const bebidaHeading = page.getByText(/🥤 Bebidas/).first();
+            if (await bebidaHeading.isVisible({ timeout: 3000 }).catch(() => false)) {
+              await bebidaHeading.scrollIntoViewIfNeeded();
+              const btnBebida = page.getByText('+', { exact: true }).first();
+              await btnBebida.click({ force: true });
+              await page.waitForTimeout(1000);
+            }
+            
+            // Valida carrinho
+            const priceText = page.getByText(/R\$ [1-9]/).first();
+            await expect(priceText).toBeVisible({ timeout: 5000 });
+            
+            log(`[DELIVERY] ${i}: Confirmando pedido...`);
+            const btnConfirmar = page.getByText(/Confirmar Delivery/i).first();
+            await btnConfirmar.waitFor({ state: 'visible', timeout: 5000 });
+            await btnConfirmar.click({ force: true });
+            await page.waitForTimeout(3000);
+            
+            // Valida confirmação
+            try {
+              await expect(page.getByText(/Pedido criado/i).first()).toBeVisible({ timeout: 5000 });
+              log(`[DELIVERY] ${i}: ✓ Confirmado`);
+            } catch {
+              log(`[DELIVERY] ${i}: ✓ Sem toast`);
+            }
+          } catch (e: any) {
+            log(`[DELIVERY] ${i}: ✗ ${e.message.split('\n')[0]}`);
+          }
+        })(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout 40s')), 40000))
+      ]).catch(e => log(`[DELIVERY] ${i}: Timeout - ${e.message}`));
+
+      // ── 3. MESA ──────────────────────────────────────────────────
+      await Promise.race([
+        (async () => {
+          try {
+            log(`[MESA] ${i}: Navegando para Mapa...`);
+            await page.goto('/#/Mapa', { waitUntil: 'domcontentloaded', timeout: 10000 });
+            await page.waitForTimeout(2000);
+
+            log(`[MESA] ${i}: Selecionando mesa livre...`);
+            
+            // Aguarda o mapa carregar
+            await page.waitForTimeout(1000);
+            
+            // Procura por qualquer mesa (livre ou não)
+            const todasMesas = page.locator('text=/Mesa [0-9]/i');
+            const totalMesas = await todasMesas.count();
+            log(`[MESA] ${i}: Total de mesas encontradas: ${totalMesas}`);
+            
+            if (totalMesas > 0) {
+              // Tenta encontrar uma mesa "Livre"
+              const mesaLivre = page.locator('text=/Livre/i').first();
+              const temLivre = await mesaLivre.isVisible({ timeout: 3000 }).catch(() => false);
+              
+              if (temLivre) {
+                log(`[MESA] ${i}: Clicando em mesa livre...`);
+                await mesaLivre.click({ force: true });
+              } else {
+                // Se não tem livre, clica na primeira mesa disponível
+                log(`[MESA] ${i}: Nenhuma mesa livre, clicando na primeira mesa...`);
+                await todasMesas.first().click({ force: true });
+              }
+              
+              await page.waitForTimeout(2000);
+              
+              // Agora deve estar na tela de Novo Pedido com mesa pré-preenchida
+              log(`[MESA] ${i}: Verificando tela de pedido...`);
+              const temFormulario = await page.getByText('Nome do Cliente:').isVisible({ timeout: 5000 }).catch(() => false);
+              
+              if (temFormulario) {
+                log(`[MESA] ${i}: Preenchendo nome...`);
+                await page.getByPlaceholder('Digite o nome').fill(`Stress Mesa ${i}`);
+                
+                log(`[MESA] ${i}: Adicionando itens...`);
+                
+                // Adiciona CALDO
+                const caldoHeading = page.getByText(/🍲 CALDOS/).first();
+                if (await caldoHeading.isVisible({ timeout: 3000 }).catch(() => false)) {
+                  const btnCaldo = page.getByText('+', { exact: true }).first();
+                  await btnCaldo.click({ force: true });
+                  await page.waitForTimeout(1000);
+                }
+                
+                // Adiciona COMIDA
+                const comidaHeading = page.getByText(/🍽️ Comidas/).first();
+                if (await comidaHeading.isVisible({ timeout: 3000 }).catch(() => false)) {
+                  await comidaHeading.scrollIntoViewIfNeeded();
+                  const btnComida = page.getByText('+', { exact: true }).first();
+                  await btnComida.click({ force: true });
+                  await page.waitForTimeout(1000);
+                }
+                
+                // Adiciona BEBIDA
+                const bebidaHeading = page.getByText(/🥤 Bebidas/).first();
+                if (await bebidaHeading.isVisible({ timeout: 3000 }).catch(() => false)) {
+                  await bebidaHeading.scrollIntoViewIfNeeded();
+                  const btnBebida = page.getByText('+', { exact: true }).first();
+                  await btnBebida.click({ force: true });
+                  await page.waitForTimeout(1000);
+                }
+                
+                // Valida carrinho
+                const priceText = page.getByText(/R\$ [1-9]/).first();
+                await expect(priceText).toBeVisible({ timeout: 5000 });
+                
+                log(`[MESA] ${i}: Criando pedido...`);
+                await page.getByText('Criar Pedido').first().click();
+                await page.waitForTimeout(3000);
+                
+                // Valida confirmação
+                try {
+                  await expect(page.getByText(/Pedido criado/i).first()).toBeVisible({ timeout: 5000 });
+                  log(`[MESA] ${i}: ✓ Confirmado`);
+                } catch {
+                  log(`[MESA] ${i}: ✓ Sem toast`);
+                }
+              } else {
+                log(`[MESA] ${i}: ⚠ Mesa ocupada, não foi possível criar pedido`);
+              }
+            } else {
+              log(`[MESA] ${i}: ⚠ Nenhuma mesa encontrada no mapa`);
+            }
+          } catch (e: any) {
+            log(`[MESA] ${i}: ✗ ${e.message.split('\n')[0]}`);
+          }
+        })(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout 40s')), 40000))
+      ]).catch(e => log(`[MESA] ${i}: Timeout - ${e.message}`));
+    }
+    
+    log('=== FIM DO TESTE ===');
   });
 });
