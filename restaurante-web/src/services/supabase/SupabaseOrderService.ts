@@ -7,16 +7,7 @@ import { optimizedSupabaseClient } from '../optimization/OptimizedSupabaseClient
 import { realTimeListenerManager } from '../optimization/RealTimeListenerManager';
 import type { Subscription } from '../optimization/RealTimeListenerManager';
 import { CompanySettingsService } from '../CompanySettingsService';
-import { getBusinessDayStart } from '../../utils/dateUtils';
-
-// Helper to get today's date key YYYY-MM-DD
-const getTodayKey = (): string => {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
+import { getBusinessDayStart, getTodayKey } from '../../utils/dateUtils';
 
 class SupabaseOrderService {
   private _subscription: Subscription | null = null;
