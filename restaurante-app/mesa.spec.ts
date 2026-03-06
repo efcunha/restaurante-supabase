@@ -115,7 +115,7 @@ test.describe('Fluxo Principal - Mesa (Mapa)', () => {
     await submitBtn.click();
 
     console.log('8. Aguardando confirmação (Toast de sucesso)...');
-    const toast = page.locator('text=/Pedido criado! Comanda/i');
+    const toast = page.locator('text=Pedido criado com sucesso');
     await expect(toast).toBeVisible({ timeout: 15000 });
 
     console.log('9. Validando persistência na Cozinha...');
