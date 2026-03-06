@@ -247,6 +247,7 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         const order = OrderService.createOrder(orderId, clientName, items, observations, comandaNumber, createdBy, createdByName, calculatedTotal, false, mesa, categoryMap, priceMap, tableId, waiterId);
         const valorPedido = order.totalPrice || 0;
 
+        console.log('🟢 [OrderContext] Chamando saveOrder com:', { companyId: user.companyId, orderId, itemsWithStatus: order.itemsWithStatus?.length });
         const [firestoreDocId] = await Promise.all([
           OrderFirestoreService.saveOrder(user.companyId, order),
           ComandasService.adicionarConsumo(user.companyId, comandaNumber, valorPedido)
