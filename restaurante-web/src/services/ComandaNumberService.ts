@@ -74,7 +74,7 @@ export const getNextComandaNumber = async (): Promise<number> => {
 
     const { data: profile } = await supabase
       .from('profiles')
-      .select('company_id')
+      .select('company_id, full_name')
       .eq('id', user.id)
       .single();
 
@@ -82,27 +82,59 @@ export const getNextComandaNumber = async (): Promise<number> => {
 
     const dateKey = getDateKey();
 
-    // FALLBACK: Manualmente buscar o maior número de comanda para hoje
-    // Originalmente usava RPC 'get_next_comanda_number', mas estava dando erro de ambiguidade (PGRST203)
-    const { data, error } = await supabase
-      .from('comandas')
-      .select('comanda_number')
-      .eq('company_id', profile.company_id)
-      .eq('date_key', dateKey)
-      .order('comanda_number', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    // Implementação de reserva atômica via frontend (Retry Loop) mitigando Race Condition.
+    let attempts = 0;
+    while (attempts < 10) {
+      attempts++;
 
-    if (error) {
-      console.error('[ComandaNumber] Erro ao consultar último número:', error);
-      throw error;
+      // 1. Obter o maior número atual
+      const { data: maxData } = await supabase
+        .from('comandas')
+        .select('comanda_number')
+        .eq('company_id', profile.company_id)
+        .eq('date_key', dateKey)
+        .order('comanda_number', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const nextNum = (maxData?.comanda_number || 0) + 1;
+
+      // 2. Tentar INSERIR um registro fantasma (reservar)
+      const { error: insertError } = await supabase
+        .from('comandas')
+        .insert({
+          company_id: profile.company_id,
+          date_key: dateKey,
+          comanda_number: String(nextNum), // ou número se for int, o banco lida bem
+          status: 'aberta',
+          table_number: '',
+          client_name: 'Reservando...', // ComandasService.ensureComandaAberta entende e sobrescreve
+          total_consumed: 0,
+          total_paid: 0,
+          open_balance: 0,
+          opened_by: user.id,
+          opened_by_name: profile.full_name || 'Sistema',
+          received_by: []
+        });
+
+      // 3. Se inseriu sem conflito, fechou! Retorna e "ComandasService.ensure" reusará.
+      if (!insertError) {
+        return nextNum;
+      }
+
+      // 4. Se deu conflito único (outro terminal preencheu o nextNum milissegundos antes)
+      if (insertError.code === '23505') {
+        console.warn(`[ComandaNumber] Colisão no número ${nextNum}. Retentando... (Tentativa ${attempts})`);
+        // O loop var girar para tentar de novo pegando o NOVO max
+        continue;
+      }
+
+      // Se for outro erro gravíssimo, paramos
+      console.error('[ComandaNumber] Erro ao reservar comanda:', insertError);
+      throw insertError;
     }
 
-    // Se não há comandas hoje, próximo é 1
-    if (!data) return 1;
-
-    // Próximo número é o maior + 1
-    return (data.comanda_number || 0) + 1;
+    throw new Error('Falha ao gerar número único de comanda após muitas tentativas (Race Condition extrema).');
 
   } catch (error) {
     console.error('[ComandaNumber] Erro em getNextComandaNumber:', error);

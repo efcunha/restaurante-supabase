@@ -7,17 +7,7 @@ import { optimizedSupabaseClient } from '../optimization/OptimizedSupabaseClient
 import { realTimeListenerManager } from '../optimization/RealTimeListenerManager';
 import type { Subscription } from '../optimization/RealTimeListenerManager';
 import { CompanySettingsService } from '../CompanySettingsService';
-import { getBusinessDayStart } from '../../utils/dateUtils';
-import { cacheLayerService } from '../CacheLayerService';
-
-// Helper to get today's date key YYYY-MM-DD
-const getTodayKey = (): string => {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
+import { getBusinessDayStart, getTodayKey } from '../../utils/dateUtils';
 
 class SupabaseOrderService {
   private _subscription: Subscription | null = null;
@@ -163,7 +153,11 @@ class SupabaseOrderService {
         created_by: order.createdBy,
         date_key: getTodayKey(),
         comanda_status: 'aberta',
-        items_with_status: order.itemsWithStatus || []
+        items_with_status: order.itemsWithStatus || [],
+        order_type: order.orderType || 'local',
+        customer_phone: order.customerPhone || null,
+        delivery_address: order.deliveryAddress || null,
+        delivery_fee: order.deliveryFee || 0
       })
       .select()
       .single();
@@ -174,6 +168,7 @@ class SupabaseOrderService {
     }
 
     // Invalidate cache for orders
+    const { cacheLayerService } = await import('../CacheLayerService');
     await cacheLayerService.invalidateByTags([`orders:${companyId}`, `orders:date:${getTodayKey()}`]);
 
     return data.id;
@@ -221,6 +216,7 @@ class SupabaseOrderService {
       if (error) throw error;
 
       // Invalidate cache after update
+      const { cacheLayerService } = await import('../CacheLayerService');
       await cacheLayerService.invalidatePattern('orders:');
     };
 
@@ -259,6 +255,7 @@ class SupabaseOrderService {
       if (error) throw error;
 
       // Invalidate cache after update
+      const { cacheLayerService } = await import('../CacheLayerService');
       await cacheLayerService.invalidatePattern('orders:');
     };
 
@@ -381,6 +378,7 @@ class SupabaseOrderService {
       }
 
       // 4. Invalidate cache
+      const { cacheLayerService } = await import('../CacheLayerService');
       await cacheLayerService.invalidatePattern('orders:');
     };
 
