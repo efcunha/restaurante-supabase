@@ -12,12 +12,10 @@ import { supabase } from '../config/SupabaseConfig';
 import { getLocalDateKey } from '../utils/dateUtils';
 import { confirmLogout } from '../utils/appUtils';
 import OptimizedFlatList from '../components/OptimizedFlatList';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function CozinhaScreen() {
   const { user, logout } = useAuth();
   const [allOrders, setAllOrders] = useState<any[]>([]);
-  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     // @ts-ignore
@@ -193,6 +191,15 @@ export default function CozinhaScreen() {
       }
     });
 
+    // Option to sort comandas numerically inside each group
+    Object.values(grupos).forEach((g: any) => {
+       g.comandas.sort((a: any, b: any) => {
+          const numA = parseInt(a.numero) || 0;
+          const numB = parseInt(b.numero) || 0;
+          return numA - numB;
+       });
+    });
+
     return Object.values(grupos).sort((a: any, b: any) => a.nome.localeCompare(b.nome));
   };
 
@@ -269,7 +276,7 @@ export default function CozinhaScreen() {
     <View style={styles.container}>
 
 
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
+      <View style={styles.header}>
         <View style={styles.headerLeft}>
           {user && (
             <View>
@@ -317,15 +324,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
+    paddingTop: 50,
     paddingBottom: 15,
     backgroundColor: '#8B2F2F',
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
     elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4.65,
     zIndex: 10,
   },
   headerLeft: {
