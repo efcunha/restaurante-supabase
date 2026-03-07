@@ -109,7 +109,7 @@ export default function CozinhaScreen() {
       // 1. Se tiver categoria, checa se é de cozinha
       // 2. Fallback: Se não tiver categoria (legacy), checa nome usando OrderService
       const isKitchenItem = item.category
-        ? OrderService.isKitchenCategory(item.category)
+        ? OrderService.isKitchenCategory(item.category, item.name)
         : OrderService.extractBebidas([item.name]).length === 0;
 
       // ✅ CORREÇÃO: Verificar AMBOS status e checked
