@@ -47,13 +47,15 @@ test.describe('Fluxo Principal - Mesa (Mapa)', () => {
       throw new Error('Nenhuma mesa livre encontrada!');
     }
 
-    // Escolhe uma mesa aleatória das disponíveis
-    const randomIndex = Math.floor(Math.random() * count);
-    const selectedMesa = mesaCards.nth(randomIndex);
+    // Usa o workerIndex para garantir que instâncias paralelas escolham mesas diferentes
+    // Se houver mais workers do que mesas, usa o módulo (resto da divisão) para ciclar
+    const workerIndex = test.info().workerIndex;
+    const targetIndex = workerIndex % count;
+    const selectedMesa = mesaCards.nth(targetIndex);
 
     // Tenta pegar o texto da mesa para logar
     const mesaText = await selectedMesa.innerText().catch(() => 'Desconhecida');
-    console.log(`- Clicando na mesa: ${mesaText.split('\n')[0]} (Índice: ${randomIndex})`);
+    console.log(`- Clicando na mesa: ${mesaText.split('\n')[0]} (Índice reservado ao worker: ${targetIndex})`);
 
     await selectedMesa.click();
 

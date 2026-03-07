@@ -9,6 +9,7 @@ import { getNextComandaNumber, formatComandaNumber } from '../services/ComandaNu
 import { supabase } from '../config/SupabaseConfig'; // Switched to Supabase
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
+import { getLocalDateKey } from '../utils/dateUtils';
 // @ts-ignore
 import { confirmLogout } from '../utils/appUtils';
 // @ts-ignore
@@ -228,7 +229,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
 
             // Load Pizza Config from company settings (already fetched in parallel)
             const { data: companyData, error: companyError } = companyResult;
-            
+
             let newPizzaConfig = null;
             if (!companyError && companyData?.settings?.pizzaConfig?.sizes?.length > 0) {
                 newPizzaConfig = companyData.settings.pizzaConfig;
@@ -332,7 +333,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
             // 3. Compare: If server is newer (> 1s diff to be safe), reload
             // Also reload if cache is older than 24h (force refresh just in case)
             const isCacheExpired = (Date.now() - parsedCache.timestamp) > (24 * 60 * 60 * 1000);
-            
+
             if (latestServerUpdate > localTimestamp || isCacheExpired) {
                 console.log('🔄 New data available or cache expired. Reloading...', { server: latestServerUpdate, local: localTimestamp });
                 return true; // Need reload
@@ -353,10 +354,10 @@ export function useNovoPedido(): UseNovoPedidoReturn {
     const carregarCardapio = useCallback(async () => {
         try {
             setLoadingCardapio(true);
-            
+
             // Smart Cache Check
             const needsReload = await checkMenuUpdates();
-            
+
             if (needsReload) {
                 console.log('🔄 Reloading cardápio from database (Smart Cache trigger)...');
                 await carregarCardapioSupabase(false);
@@ -618,6 +619,31 @@ export function useNovoPedido(): UseNovoPedidoReturn {
 
         try {
             setIsSubmitting(true);
+
+            // ✅ CRÍTICO: Prevenção de Concorrência em Mesas Livres
+            if (user && mesa && mesa.trim() !== '') {
+                // Verifica rapidamente se já não há uma comanda aberta para essa mesa hoje.
+                const { data: ocupadas } = await supabase
+                    .from('comandas')
+                    .select('id')
+                    .eq('company_id', user.companyId)
+                    .eq('date_key', getLocalDateKey())
+                    .eq('table_number', mesa)
+                    .eq('status', 'aberta')
+                    .limit(1)
+                    .maybeSingle();
+
+                if (ocupadas) {
+                    setIsSubmitting(false);
+                    showToast(`A Mesa ${mesa} já foi ocupada!`, 'error');
+                    Alert.alert(
+                        'Mesa já ocupada',
+                        `Alguém já abriu um pedido para a Mesa ${mesa} agora pouco. Por favor, volte ao Mapa de Mesas.`
+                    );
+                    return;
+                }
+            }
+
             const nextNumber = await getNextComandaNumber();
             const novoNumeroComanda = formatComandaNumber(nextNumber);
 
