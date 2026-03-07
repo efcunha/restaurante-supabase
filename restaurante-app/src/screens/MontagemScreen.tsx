@@ -1,7 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, FlatList, TouchableOpacity, Alert, Platform } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useState, useEffect, useCallback, memo } from 'react';
+import { useState, useEffect, useCallback, memo, useRef } from 'react';
 import { useOrders } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
 import PedidoDetalhesModal from './PedidoDetalhesModal';
@@ -10,7 +10,8 @@ import { exitApp } from '../utils/appUtils';
 
 // @ts-ignore
 import { getLocalDateKey } from '../utils/dateUtils';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+// @ts-ignore
+import OrderService from '../services/OrderService';
 
 // Verificar se pedido é urgente (mais de 15 minutos)
 const isUrgent = (timestamp: string) => {
@@ -24,7 +25,7 @@ const isUrgent = (timestamp: string) => {
 interface OrderCardProps {
   order: any;
   onOpenDetails: (orderId: string) => void;
-  onToggleItem: (orderId: string, itemIds: string[], status: string) => void;
+  onToggleItem: (orderId: string, itemIds: string | string[], status: string) => void;
   onMarkReady: (order: any) => void;
 }
 
@@ -53,7 +54,7 @@ const OrderCard = memo(({ order, onOpenDetails, onToggleItem, onMarkReady }: Ord
         <Text style={styles.orderNumber}>
           {order.isMesaGroup ? `Mesa ${order.mesa}` : `Comanda ${order.comandaNumber || '?'}`}
           {order.isMesaGroup && order.allComandas && order.allComandas.length > 0 && (
-            <Text style={{ fontSize: 11, fontWeight: 'normal', opacity: 0.6 }}>
+            <Text style={{ fontSize: 12, fontWeight: 'normal', opacity: 0.8 }}>
               {` (C: ${order.allComandas.join(', ')})`}
             </Text>
           )}
@@ -73,62 +74,59 @@ const OrderCard = memo(({ order, onOpenDetails, onToggleItem, onMarkReady }: Ord
         <Text style={styles.orderObs}>📝 Obs: {order.observations}</Text>
       )}
       <View style={styles.orderItems}>
-        {order.itemsWithStatus && order.itemsWithStatus.length > 0 ? (
-          (()=>{
-             const grouped: any = {};
-             order.itemsWithStatus.forEach((item: any) => {
-                if (!grouped[item.name]) {
-                   grouped[item.name] = {
-                      name: item.name,
-                      status: item.status,
-                      checked: item.checked,
-                      ids: [],
-                      originalOrderId: item.originalOrderId || order.id
-                   };
-                }
-                grouped[item.name].ids.push(item.id);
-             });
-             
-             return Object.values(grouped).map((group: any, index: number) => {
-               const parts = group.name.split(' + ');
-               const mainName = parts[0];
-               const extras = parts.length > 1 ? parts.slice(1).join(' + ') : null;
-               const quantity = group.ids.length;
+        {order.itemsWithStatus && order.itemsWithStatus.length > 0 ? (() => {
+          // Agrupar itens com mesmo nome e status
+          const groupedItems: any[] = [];
+          order.itemsWithStatus.forEach((item: any) => {
+             const existing = groupedItems.find(g => g.name === item.name && g.checked === item.checked);
+             if (existing) {
+                existing.groupedCount = (existing.groupedCount || 1) + 1;
+                existing.groupedIds = [...(existing.groupedIds || [existing.id]), item.id];
+             } else {
+                groupedItems.push({ ...item, groupedCount: 1, groupedIds: [item.id] });
+             }
+          });
 
-               return (
-                 <TouchableOpacity
-                   key={`grouped-${index}`}
-                   style={styles.orderItem}
-                   onPress={() => onToggleItem(group.originalOrderId, group.ids, group.status)}
-                   activeOpacity={0.7}
-                 >
-                   <View style={[
-                     styles.checkbox,
-                     group.checked && styles.checkboxChecked
-                   ]}>
-                     {group.checked && <Text style={styles.checkmark}>✓</Text>}
-                   </View>
-                   <View style={{ flex: 1 }}>
-                     <Text style={[
-                       styles.itemText,
-                       group.checked && styles.itemTextDone
-                     ]}>
-                       {quantity > 1 ? `${quantity}x ` : ''}{mainName}
-                     </Text>
-                     {extras && (
-                       <Text style={[
-                         styles.itemExtras,
-                         group.checked && styles.itemTextDone
-                       ]}>
-                         + {extras}
-                       </Text>
-                     )}
-                   </View>
-                 </TouchableOpacity>
-               );
-             });
-          })()
-        ) : (
+          return groupedItems.map((item: any) => {
+            // Parse Extras
+            const parts = item.name.split(' + ');
+            const mainName = parts[0];
+            const extras = parts.length > 1 ? parts.slice(1).join(' + ') : null;
+            const qtdStr = item.groupedCount > 1 ? `${item.groupedCount}x ` : '';
+
+            return (
+              <TouchableOpacity
+                key={item.id}
+                style={styles.orderItem}
+                onPress={() => onToggleItem(item.originalOrderId || order.id, item.groupedIds || [item.id], item.status)}
+                activeOpacity={0.7}
+              >
+                <View style={[
+                  styles.checkbox,
+                  item.checked && styles.checkboxChecked
+                ]}>
+                  {item.checked && <Text style={styles.checkmark}>✓</Text>}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[
+                    styles.itemText,
+                    item.checked && styles.itemTextDone
+                  ]}>
+                    {qtdStr}{mainName}
+                  </Text>
+                  {extras && (
+                    <Text style={[
+                      styles.itemExtras,
+                      item.checked && styles.itemTextDone
+                    ]}>
+                      + {extras}
+                    </Text>
+                  )}
+                </View>
+              </TouchableOpacity>
+            );
+          });
+        })() : (
           order.items?.map((item: string, idx: number) => (
             <View key={idx} style={styles.orderItem}>
               <View style={[styles.itemDot, idx % 2 === 1 && styles.itemDotSecondary]} />
@@ -155,11 +153,15 @@ const OrderCard = memo(({ order, onOpenDetails, onToggleItem, onMarkReady }: Ord
 OrderCard.displayName = 'OrderCard';
 
 export default function MontagemScreen() {
-  const { moveToProntos, updateItemChecked } = useOrders();
-  const { user, hasPermission, Permissions } = useAuth();
+  const { moveToProntos, updateItemStatus, updateItemChecked } = useOrders();
+  const { user, logout, hasPermission, Permissions } = useAuth();
+  const [processingItems, setProcessingItems] = useState(new Set()); // Loading state
   const [allOrders, setAllOrders] = useState<any[]>([]);
-  const insets = useSafeAreaInsets();
-  const locallyMarkedReady = useRef(new Set<string>()); // ✅ Novo ref para controle local
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+
+  // ✅ Guarda IDs marcados como prontos nesta sessão para proteger contra race condition do Realtime
+  const locallyMarkedReady = useRef<Set<string>>(new Set());
 
   // Initial fetch — busca APENAS pedidos em 'preparing' para evitar race conditions
   const fetchOrders = useCallback(async () => {
@@ -179,11 +181,11 @@ export default function MontagemScreen() {
       const mappedOrders = data
         .filter(order => !locallyMarkedReady.current.has(order.id)) // ✅ proteção anti-race
         .map(order => ({
-            ...order,
-            itemsWithStatus: order.items_with_status || [],
-            comandaNumber: order.comanda_number,
-            mesa: (order.table_number && order.table_number !== 0) ? order.table_number.toString() : '',
-            comandaStatus: order.comanda_status
+          ...order,
+          itemsWithStatus: order.items_with_status || [],
+          comandaNumber: order.comanda_number,
+          mesa: (order.table_number && order.table_number !== 0) ? order.table_number.toString() : '',
+          comandaStatus: order.comanda_status
         }));
       setAllOrders(mappedOrders);
     }
@@ -216,7 +218,7 @@ export default function MontagemScreen() {
     return () => {
       channel.unsubscribe();
     };
-  }, [user, fetchOrders]);
+  }, [user]);
 
   // ✅ FILTRO SEGURO: Excluir pedidos de comandas canceladas usando comandaStatus do pedido
   const ordersRaw = allOrders.filter(order => {
@@ -260,14 +262,13 @@ export default function MontagemScreen() {
 
     // Determinar chave de grupo: Mesa (se houver) ou Número da Comanda
     const hasMesa = !!order.mesa && order.mesa.trim() !== '';
-    let groupKey = '';
-    
+    let groupKey;
     if (hasMesa) {
       groupKey = `mesa-${order.mesa}`;
-    } else if (order.comandaNumber && order.comandaNumber !== 0 && order.comandaNumber !== '0') {
+    } else if (order.comandaNumber && order.comandaNumber !== 0) {
       groupKey = `comanda-${order.comandaNumber}`;
     } else {
-      // Se não tem mesa nem comanda (ex: Delivery, Balcão), usar o ID do pedido para não mesclar
+      // Para Delivery e Balcão sem comanda/mesa (comandaNumber == 0 ou null), não agrupar
       groupKey = `order-${order.id}`;
     }
 
@@ -279,7 +280,7 @@ export default function MontagemScreen() {
         existing.allOrderIds.push(order.id);
       }
       // Se tiver mesa, garantir que o número da comanda seja concatenado se for diferente
-      if (order.comandaNumber && !existing.allComandas.includes(order.comandaNumber)) {
+      if (order.comandaNumber && order.comandaNumber !== 0 && !existing.allComandas.includes(order.comandaNumber)) {
         existing.allComandas.push(order.comandaNumber);
       }
     } else {
@@ -289,7 +290,7 @@ export default function MontagemScreen() {
         itemsWithStatus: [...itemsParaMontar],
         items: itemsParaMontar.map((i: any) => i.name),
         allOrderIds: [order.id],
-        allComandas: [order.comandaNumber].filter(Boolean)
+        allComandas: (order.comandaNumber && order.comandaNumber !== 0) ? [order.comandaNumber] : []
       });
     }
   });
@@ -301,18 +302,15 @@ export default function MontagemScreen() {
       return numA - numB;
     });
 
-  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
-  const [modalVisible, setModalVisible] = useState(false);
-
-  const handleToggleItem = async (orderId: string, itemIds: string[], _currentStatus: string) => {
-    console.log('[Montagem] Toggling items checked state:', orderId, itemIds);
-
+  const handleToggleItem = async (orderId: string, itemIds: string | string[], _currentStatus: string) => {
+    const idsToUpdate = Array.isArray(itemIds) ? itemIds : [itemIds];
+    
+    // Validar se caixa está aberto
     try {
-      // Validar se caixa está aberto
       // @ts-ignore
-      const { default: CardService } = await import('../services/CaixaService');
+      const { default: CaixaService } = await import('../services/CaixaService');
       // @ts-ignore
-      const caixaAberto = await CardService.getCaixaAberto(user.companyId);
+      const caixaAberto = await CaixaService.getCaixaAberto(user.companyId);
       if (!caixaAberto) {
         if (Platform.OS === 'web') window.alert('Caixa Fechado: É necessário abrir o caixa.');
         else Alert.alert('Caixa Fechado', 'É necessário abrir o caixa antes de marcar itens.');
@@ -323,28 +321,20 @@ export default function MontagemScreen() {
     }
 
     try {
-      // Buscar o estado atual do check do primeiro item para alternar todos
+      // Buscar pedido atual do estado local para saber o status atual do check
       const order = allOrders.find(o => o.id === orderId);
-      const firstItem = order?.itemsWithStatus?.find((i: any) => itemIds.includes(i.id));
-      const newCheckedState = !(firstItem?.checked || false);
+      if (!order || !order.itemsWithStatus) throw new Error('Pedido não encontrado');
 
-      await updateItemChecked(orderId, itemIds, newCheckedState);
-      
-      // Feedback visual imediato no estado local
-      setAllOrders(prevOrders => 
-        prevOrders.map(o => 
-          o.id === orderId 
-            ? { 
-                ...o, 
-                itemsWithStatus: o.itemsWithStatus.map((item: any) => 
-                  itemIds.includes(item.id) ? { ...item, checked: newCheckedState } : item
-                ) 
-              }
-            : o
-        )
-      );
+      const firstItem = order.itemsWithStatus.find((i: any) => idsToUpdate.includes(i.id));
+      const newChecked = !firstItem?.checked;
+
+      console.log('[Montagem] Toggling check:', orderId, idsToUpdate, newChecked);
+
+      // Chamar contexto para atualizar
+      await updateItemChecked(orderId, idsToUpdate, newChecked);
+
     } catch (error: any) {
-      console.error('[Montagem] Erro ao alternar check:', error);
+      console.error('[Montagem] Erro check toggle:', error);
       if (Platform.OS === 'web') window.alert('Erro: ' + error.message);
       else Alert.alert('Erro', 'Não foi possível atualizar o item: ' + error.message);
     }
@@ -359,15 +349,13 @@ export default function MontagemScreen() {
 
     try {
       const orderIds = order.allOrderIds || [order.id];
-      console.log('[Montagem] Marcando como pronto (No App):', orderIds);
+      console.log('[Montagem] Marcando como pronto (Direto no DB):', orderIds);
 
-      // Registrar IDs no ref ANTES da mutação para proteger o próximo fetchOrders do Realtime
+      // Bloqueio otimista
       orderIds.forEach((id: string) => locallyMarkedReady.current.add(id));
-
-      // Desabilitar visualmente o card removendo da lista local (otimista)
       setAllOrders(prev => prev.filter(o => !orderIds.includes(o.id)));
 
-      // Gravação DIRETA no Supabase para garantir persistência
+      // Gravação direta no Supabase
       const { error } = await supabase
         .from('orders')
         .update({ status: 'ready', updated_at: new Date().toISOString() })
@@ -376,11 +364,12 @@ export default function MontagemScreen() {
 
       if (error) throw error;
 
-      console.log('[Montagem] Pedido movido para prontos com sucesso!');
+      console.log('[Montagem] Status gravado no banco com sucesso!');
     } catch (error: any) {
       console.error('Erro ao mover para prontos:', error);
-      Alert.alert('Erro', 'Não foi possível mover para prontos: ' + error.message);
-      fetchOrders(); // Reverte o estado local buscando do banco
+      Alert.alert('Erro', 'Não foi possível salvar no banco: ' + error.message);
+      // Reverter estado local em caso de erro real
+      fetchOrders();
     }
   }, [hasPermission, Permissions, user, supabase, fetchOrders]);
 
@@ -428,7 +417,7 @@ export default function MontagemScreen() {
 
 
       {/* Header */}
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
+      <View style={styles.header}>
         <View style={styles.headerLeft}>
           {user && (
             <View>
@@ -482,6 +471,7 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: '#8B2F2F',
+    paddingTop: 50,
     paddingBottom: 15,
     paddingHorizontal: 20,
     flexDirection: 'row',
