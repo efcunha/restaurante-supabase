@@ -355,7 +355,9 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const updateItemStatus = useCallback(async (orderId: string, itemId: string, newStatus: string) => {
     // Logic from original file (Passo 1..6)
-    let order = orders.find(o => o.itemsWithStatus?.some(i => i.id === itemId)) || orders.find(o => o.id === orderId);
+    // ✅ PRIORIDADE TOTAL: Localizar pelo orderId (UUID único)
+    // Evita colisão em delivery onde múltiplos itens podem ter o mesmo ID de produto.
+    let order = orders.find(o => o.id === orderId) || orders.find(o => o.itemsWithStatus?.some(i => i.id === itemId));
     let actualOrderId = order?.id || orderId;
     let firestoreDocId = firestoreDocMap[actualOrderId];
 
@@ -393,7 +395,8 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const updateItemChecked = useCallback(async (orderId: string, itemIds: string | string[], checked: boolean) => {
     const idsToUpdate = Array.isArray(itemIds) ? itemIds : [itemIds];
-    let order = orders.find(o => o.itemsWithStatus?.some(i => idsToUpdate.includes(i.id))) || orders.find(o => o.id === orderId);
+    // ✅ PRIORIDADE TOTAL: Localizar pelo orderId (UUID único)
+    let order = orders.find(o => o.id === orderId) || orders.find(o => o.itemsWithStatus?.some(i => idsToUpdate.includes(i.id)));
     let actualOrderId = order?.id || orderId;
     let firestoreDocId = firestoreDocMap[actualOrderId];
 
@@ -404,11 +407,18 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       idsToUpdate.includes(item.id) ? { ...item, checked, timestamp: now } : item
     );
 
+    // ✅ PARA SALVAR NO DB: restaurar IDs originais (remover o prefixo orderId:: adicionado para unicidade local)
+    const itemsForDB = updatedItems.map(item => ({
+      ...item,
+      id: (item as any)._originalItemId || item.id.split('::').pop() || item.id,
+      _originalItemId: undefined
+    }));
+
     const updatePayload: any = { itemsWithStatus: updatedItems };
     setOrders(prev => prev.map(o => o.id === actualOrderId ? { ...o, ...updatePayload, updatedAt: now } : o));
 
     if (isOnline && user?.companyId && firestoreDocId) {
-      await OrderFirestoreService.updateOrder(user.companyId, firestoreDocId, updatePayload);
+      await OrderFirestoreService.updateOrder(user.companyId, firestoreDocId, { itemsWithStatus: itemsForDB });
     }
   }, [orders, firestoreDocMap, isOnline, user]);
 
