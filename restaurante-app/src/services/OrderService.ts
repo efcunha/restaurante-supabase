@@ -110,18 +110,26 @@ class OrderService {
    * Categorias que devem aparecer na cozinha/montagem
    * Permite filtrar bebidas fora da visualização de produção
    */
-  isKitchenCategory(category?: string): boolean {
+  isKitchenCategory(category?: string, itemName?: string): boolean {
     const KITCHEN_CATEGORIES = [
       'caldo',
       'espetinho-simples',
       'espetinho-especial',
       'porcao',
       'comida',
-      'pizza', // ✅ Adicionado para aparecer na cozinha/montagem
-      'outro' // 'outro' geralmente é algo genérico que precisa ser feito
+      'pizza'
     ];
-    // Se não tiver categoria, assume que é produçã (fallback seguro)
+    // Se não tiver categoria, assume que é produção (fallback seguro)
     if (!category) return true;
+
+    // Se for 'outro', verifica se o nome sugere ser uma bebida
+    if (category === 'outro' && itemName) {
+      return this.extractBebidas([itemName]).length === 0;
+    }
+
+    // Se explicitamente 'bebida', retorna false
+    if (category === 'bebida') return false;
+
     return KITCHEN_CATEGORIES.includes(category);
   }
 
@@ -168,7 +176,14 @@ class OrderService {
       if (category === 'outro') {
         if (lowerName.includes('espetinho')) category = 'espetinho';
         else if (lowerName.includes('caldo') || lowerName.includes('caldinho')) category = 'caldo';
-        else if (lowerName.includes('cerveja') || lowerName.includes('refrigerante') || lowerName.includes('suco')) category = 'bebida';
+        else if (
+          lowerName.includes('cerveja') || lowerName.includes('refrigerante') || lowerName.includes('suco') ||
+          lowerName.includes('chopp') || lowerName.includes('água') || lowerName.includes('agua') ||
+          lowerName.includes('vinho') || lowerName.includes('dose') || lowerName.includes('caipirinha') ||
+          lowerName.includes('bebida') || lowerName.includes('coca') || lowerName.includes('pepsi') ||
+          lowerName.includes('fanta') || lowerName.includes('guaraná') || lowerName.includes('guarana') ||
+          lowerName.includes('sprite') || lowerName.includes('h2o') || lowerName.includes('schweppes')
+        ) category = 'bebida';
         else if (lowerName.includes('pizza')) category = 'pizza';
       }
 
@@ -236,7 +251,7 @@ class OrderService {
     });
 
     const itemsWithStatus = this.generateItemsWithStatus(items, orderId, comanda, categoryMap, priceMap);
-    
+
     // ATUALIZAÇÃO: Sincronizar order.items com a lista expandida para consistência visual/persistência
     const itemsFinal = itemsWithStatus.map(i => i.name);
 
@@ -394,14 +409,14 @@ class OrderService {
     const counts: Record<string, number> = {};
     items.forEach(item => {
       const base = item.split(/\s+/)[0]; // simplificação
-      if (/Refri|Água|Agua|Suco|Cerveja|Refrigerante/i.test(item)) return; // ignorar bebidas
+      if (/Refri|Refrigerante|Água|Agua|Suco|Cerveja|Chopp|Vinho|Dose|Caipirinha|Bebida|H2O|Coca|Pepsi|Guaraná|Guarana|Fanta|Sprite|Schweppes|Sukita|Kuat|Antarctica/i.test(item)) return; // ignorar bebidas
       counts[base] = (counts[base] || 0) + (this.extractQuantity(item));
     });
     return counts;
   }
 
   extractBebidas(items: string[]): string[] {
-    return items.filter(i => /Refri|Refrigerante|Água|Agua|Suco|Cerveja/i.test(i));
+    return items.filter(i => /Refri|Refrigerante|Água|Agua|Suco|Cerveja|Chopp|Vinho|Dose|Caipirinha|Bebida|H2O|Coca|Pepsi|Guaraná|Guarana|Fanta|Sprite|Schweppes|Sukita|Kuat|Antarctica/i.test(i));
   }
 
   classifyAcompanhamento(items: string[]): string {
