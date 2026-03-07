@@ -8,10 +8,8 @@ import PedidoDetalhesModal from './PedidoDetalhesModal';
 import { supabase } from '../config/SupabaseConfig';
 import { exitApp } from '../utils/appUtils';
 
-// @ts-ignore
 import { getLocalDateKey } from '../utils/dateUtils';
-// @ts-ignore
-import OrderService from '../services/OrderService';
+import CaixaService from '../services/CaixaService';
 
 // Verificar se pedido é urgente (mais de 15 minutos)
 const isUrgent = (timestamp: string) => {
@@ -52,7 +50,12 @@ const OrderCard = memo(({ order, onOpenDetails, onToggleItem, onMarkReady }: Ord
     >
       <View style={styles.orderHeader}>
         <Text style={styles.orderNumber}>
-          {order.isMesaGroup ? `Mesa ${order.mesa}` : `Comanda ${order.comandaNumber || '?'}`}
+          {order.orderType === 'delivery'
+            ? 'Delivery'
+            : order.isMesaGroup 
+              ? `Mesa ${order.mesa}` 
+              : `Comanda ${order.comandaNumber || '?'}`
+          }
           {order.isMesaGroup && order.allComandas && order.allComandas.length > 0 && (
             <Text style={{ fontSize: 12, fontWeight: 'normal', opacity: 0.8 }}>
               {` (C: ${order.allComandas.join(', ')})`}
@@ -98,7 +101,7 @@ const OrderCard = memo(({ order, onOpenDetails, onToggleItem, onMarkReady }: Ord
               <TouchableOpacity
                 key={item.id}
                 style={styles.orderItem}
-                onPress={() => onToggleItem(item.originalOrderId || order.id, item.groupedIds || [item.id], item.status)}
+                onPress={() => onToggleItem(item.originalOrderId || order.id, [item.id], item.status)}
                 activeOpacity={0.7}
               >
                 <View style={[
@@ -153,9 +156,8 @@ const OrderCard = memo(({ order, onOpenDetails, onToggleItem, onMarkReady }: Ord
 OrderCard.displayName = 'OrderCard';
 
 export default function MontagemScreen() {
-  const { moveToProntos, updateItemStatus, updateItemChecked } = useOrders();
-  const { user, logout, hasPermission, Permissions } = useAuth();
-  const [processingItems, setProcessingItems] = useState(new Set()); // Loading state
+  const { updateItemChecked } = useOrders();
+  const { user, hasPermission, Permissions } = useAuth();
   const [allOrders, setAllOrders] = useState<any[]>([]);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
@@ -177,12 +179,16 @@ export default function MontagemScreen() {
       .eq('status', 'preparing'); // ✅ CRITICAL FIX: filtrar no banco, não só no cliente
 
     if (!error && data) {
-      // Map snake_case to camelCase, ignorando IDs já marcados localmente como prontos
       const mappedOrders = data
-        .filter(order => !locallyMarkedReady.current.has(order.id)) // ✅ proteção anti-race
+        .filter(order => !locallyMarkedReady.current.has(order.id))
         .map(order => ({
           ...order,
-          itemsWithStatus: order.items_with_status || [],
+          // ✅ ID COMPOSTO: garante unicidade por pedido, evitando colisão em delivery
+          itemsWithStatus: (order.items_with_status || []).map((item: any) => ({
+            ...item,
+            id: `${order.id}::${item.id}`,
+            _originalItemId: item.id
+          })),
           comandaNumber: order.comanda_number,
           mesa: (order.table_number && order.table_number !== 0) ? order.table_number.toString() : '',
           comandaStatus: order.comanda_status
@@ -307,10 +313,7 @@ export default function MontagemScreen() {
     
     // Validar se caixa está aberto
     try {
-      // @ts-ignore
-      const { default: CaixaService } = await import('../services/CaixaService');
-      // @ts-ignore
-      const caixaAberto = await CaixaService.getCaixaAberto(user.companyId);
+      const caixaAberto = await CaixaService.getCaixaAberto(user?.companyId);
       if (!caixaAberto) {
         if (Platform.OS === 'web') window.alert('Caixa Fechado: É necessário abrir o caixa.');
         else Alert.alert('Caixa Fechado', 'É necessário abrir o caixa antes de marcar itens.');
@@ -321,20 +324,39 @@ export default function MontagemScreen() {
     }
 
     try {
-      // Buscar pedido atual do estado local para saber o status atual do check
-      const order = allOrders.find(o => o.id === orderId);
-      if (!order || !order.itemsWithStatus) throw new Error('Pedido não encontrado');
+      // 1. Buscar pedido e item atual para determinar novo estado do check
+      const order = allOrders.find(o => o.id === orderId || (o.itemsWithStatus && o.itemsWithStatus.some((i: any) => idsToUpdate.includes(i.id))));
+      if (!order) {
+        console.warn('[Montagem] Pedido não encontrado para os IDs:', idsToUpdate);
+        return;
+      }
 
-      const firstItem = order.itemsWithStatus.find((i: any) => idsToUpdate.includes(i.id));
+      const items = order.itemsWithStatus || [];
+      const firstItem = items.find((i: any) => idsToUpdate.includes(i.id));
       const newChecked = !firstItem?.checked;
 
-      console.log('[Montagem] Toggling check:', orderId, idsToUpdate, newChecked);
+      console.log('[Montagem] Toggling check (Optimistic):', orderId, idsToUpdate, newChecked);
 
-      // Chamar contexto para atualizar
-      await updateItemChecked(orderId, idsToUpdate, newChecked);
+      // 2. ATUALIZAÇÃO OTIMISTA LOCAL (Imediata)
+      // Restringir estritamente ao pedido correto (orderId) para evitar marcação cruzada
+      setAllOrders(prevOrders => prevOrders.map(o => {
+        if (o.id !== orderId) return o;
+
+        return {
+          ...o,
+          itemsWithStatus: o.itemsWithStatus.map((i: any) => 
+            idsToUpdate.includes(i.id) ? { ...i, checked: newChecked, timestamp: new Date().toISOString() } : i
+          )
+        };
+      }));
+
+      // 3. Chamar contexto para persistir no DB (assíncrono)
+      updateItemChecked(orderId, idsToUpdate, newChecked).catch(err => {
+        console.error('[Montagem] Erro ao persistir check:', err);
+      });
 
     } catch (error: any) {
-      console.error('[Montagem] Erro check toggle:', error);
+      console.error('[Montagem] Erro inesperado no toggle:', error);
       if (Platform.OS === 'web') window.alert('Erro: ' + error.message);
       else Alert.alert('Erro', 'Não foi possível atualizar o item: ' + error.message);
     }
