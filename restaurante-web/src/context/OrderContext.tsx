@@ -354,73 +354,78 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, [firestoreDocMap, isOnline, user]);
 
   const updateItemStatus = useCallback(async (orderId: string, itemId: string, newStatus: string) => {
-    // Logic from original file (Passo 1..6)
     // ✅ PRIORIDADE TOTAL: Localizar pelo orderId (UUID único)
-    // Evita colisão em delivery onde múltiplos itens podem ter o mesmo ID de produto.
-    let order = orders.find(o => o.id === orderId) || orders.find(o => o.itemsWithStatus?.some(i => i.id === itemId));
-    let actualOrderId = order?.id || orderId;
-    let firestoreDocId = firestoreDocMap[actualOrderId];
+    const order = orders.find(o => o.id === orderId);
+    const firestoreDocId = order?.id || orderId;
 
-    if (!firestoreDocId && isOnline && user?.companyId) {
-      const res = await OrderFirestoreService.findDocByItemId(user.companyId, itemId);
-      if (res) {
-        firestoreDocId = res.docId;
-        actualOrderId = res.orderId;
-        setFirestoreDocMap(prev => ({ ...prev, [actualOrderId]: firestoreDocId }));
-        if (!order) order = orders.find(o => o.id === actualOrderId);
-      }
-    }
-
-    if (!order || !order.itemsWithStatus) throw new Error('Pedido/Items não encontrado');
-
+    let itemsForDB: any[] = [];
     const now = new Date().toISOString();
-    const updatedItems = order.itemsWithStatus.map(item =>
-      item.id === itemId 
-        ? { ...item, status: newStatus, timestamp: now } 
-        : item
-    );
 
-    const updatePayload: any = { itemsWithStatus: updatedItems };
-    // SE todos os itens estão 'pronto' OU 'entregue', e não tem timestamp de pronto, marcar timeInProntos
-    const todosProntos = updatedItems.every(i => i.status === 'pronto' || i.status === 'delivered');
-    if (todosProntos && !order.timeInProntos) updatePayload.timeInProntos = now;
+    if (order && order.itemsWithStatus) {
+      const updatedItems = order.itemsWithStatus.map(item =>
+        item.id === itemId ? { ...item, status: newStatus, timestamp: now } : item
+      );
 
-    setOrders(prev => prev.map(o => o.id === actualOrderId ? { ...o, ...updatePayload, updatedAt: now } : o));
+      itemsForDB = updatedItems.map(item => ({
+        ...item,
+        id: (item as any)._originalItemId || item.id.split('::').pop() || item.id,
+        _originalItemId: undefined
+      }));
 
-    if (isOnline && user?.companyId) {
-      if (firestoreDocId) await OrderFirestoreService.updateOrder(user.companyId, firestoreDocId, updatePayload);
-      // Fallbacks omitted for brevity but logic is robust enough
+      const updatePayload: any = { itemsWithStatus: updatedItems };
+      setOrders(prev => prev.map(o => o.id === firestoreDocId ? { ...o, ...updatePayload, updatedAt: now } : o));
+    } else {
+      console.warn(`[OrderContext] Pedido ${orderId} ausente localmente. Buscando no Supabase...`);
+      const { data: remoteOrder } = await supabase.from('orders').select('items_with_status').eq('id', orderId).single();
+      if (!remoteOrder || !remoteOrder.items_with_status) throw new Error('Pedido/Items não encontrado');
+
+      itemsForDB = remoteOrder.items_with_status.map((item: any) =>
+        item.id === itemId ? { ...item, status: newStatus, timestamp: now } : item
+      );
     }
-  }, [orders, firestoreDocMap, isOnline, user]);
-
-  const updateItemChecked = useCallback(async (orderId: string, itemIds: string | string[], checked: boolean) => {
-    const idsToUpdate = Array.isArray(itemIds) ? itemIds : [itemIds];
-    // ✅ PRIORIDADE TOTAL: Localizar pelo orderId (UUID único)
-    let order = orders.find(o => o.id === orderId) || orders.find(o => o.itemsWithStatus?.some(i => idsToUpdate.includes(i.id)));
-    let actualOrderId = order?.id || orderId;
-    let firestoreDocId = firestoreDocMap[actualOrderId];
-
-    if (!order || !order.itemsWithStatus) throw new Error('Pedido/Items não encontrado');
-
-    const now = new Date().toISOString();
-    const updatedItems = order.itemsWithStatus.map(item =>
-      idsToUpdate.includes(item.id) ? { ...item, checked, timestamp: now } : item
-    );
-
-    // ✅ PARA SALVAR NO DB: restaurar IDs originais (remover o prefixo orderId:: adicionado para unicidade local)
-    const itemsForDB = updatedItems.map(item => ({
-      ...item,
-      id: (item as any)._originalItemId || item.id.split('::').pop() || item.id,
-      _originalItemId: undefined
-    }));
-
-    const updatePayload: any = { itemsWithStatus: updatedItems };
-    setOrders(prev => prev.map(o => o.id === actualOrderId ? { ...o, ...updatePayload, updatedAt: now } : o));
 
     if (isOnline && user?.companyId && firestoreDocId) {
       await OrderFirestoreService.updateOrder(user.companyId, firestoreDocId, { itemsWithStatus: itemsForDB });
     }
-  }, [orders, firestoreDocMap, isOnline, user]);
+  }, [orders, isOnline, user]);
+
+  const updateItemChecked = useCallback(async (orderId: string, itemIds: string | string[], checked: boolean) => {
+    const idsToUpdate = Array.isArray(itemIds) ? itemIds : [itemIds];
+    
+    // ✅ PRIORIDADE TOTAL: Localizar estritamente pelo orderId.
+    const order = orders.find(o => o.id === orderId);
+    const firestoreDocId = order?.id || orderId;
+
+    let itemsForDB: any[] = [];
+    const now = new Date().toISOString();
+
+    if (order && order.itemsWithStatus) {
+      const updatedItems = order.itemsWithStatus.map(item =>
+        idsToUpdate.includes(item.id) ? { ...item, checked, timestamp: now } : item
+      );
+
+      itemsForDB = updatedItems.map(item => ({
+        ...item,
+        id: (item as any)._originalItemId || item.id.split('::').pop() || item.id,
+        _originalItemId: undefined
+      }));
+
+      const updatePayload: any = { itemsWithStatus: updatedItems };
+      setOrders(prev => prev.map(o => o.id === firestoreDocId ? { ...o, ...updatePayload, updatedAt: now } : o));
+    } else {
+      console.warn(`[OrderContext] Pedido ${orderId} ausente localmente. Buscando no Supabase...`);
+      const { data: remoteOrder } = await supabase.from('orders').select('items_with_status').eq('id', orderId).single();
+      if (!remoteOrder || !remoteOrder.items_with_status) throw new Error('Pedido/Items não encontrado');
+
+      itemsForDB = remoteOrder.items_with_status.map((item: any) =>
+        idsToUpdate.includes(item.id) ? { ...item, checked, timestamp: now } : item
+      );
+    }
+
+    if (isOnline && user?.companyId && firestoreDocId) {
+      await OrderFirestoreService.updateOrder(user.companyId, firestoreDocId, { itemsWithStatus: itemsForDB });
+    }
+  }, [orders, isOnline, user]);
 
   const markItemAsDelivered = useCallback(async (orderId: string, itemId: string) => {
     const order = OrderService.findOrderById(orders, orderId);
