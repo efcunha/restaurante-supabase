@@ -106,3 +106,5 @@ __tests__*
 .expo/
 *.bak
 .vercel
+test-results*
+e2e/*
