@@ -356,7 +356,10 @@ export default function MontagemScreen() {
       }));
 
       // 3. Chamar contexto para persistir no DB (assíncrono)
-      updateItemChecked(orderId, idsToUpdate, newChecked).catch(err => {
+      // PRECISA remover o prefixo 'orderId::' para que o OrderContext encontre os itens corretos no seu estado original
+      const pureItemIds = idsToUpdate.map(id => id.split('::').pop() || id);
+      
+      updateItemChecked(orderId, pureItemIds, newChecked).catch(err => {
         console.error('[Montagem] Erro ao persistir check:', err);
       });
 
