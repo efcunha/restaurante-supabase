@@ -156,7 +156,7 @@ const OrderCard = memo(({ order, onOpenDetails, onToggleItem, onMarkReady }: Ord
 OrderCard.displayName = 'OrderCard';
 
 export default function MontagemScreen() {
-  const { updateItemChecked } = useOrders();
+  useOrders(); // mantido para não quebrar contexto
   const { user, hasPermission, Permissions } = useAuth();
   const [allOrders, setAllOrders] = useState<any[]>([]);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
@@ -273,10 +273,10 @@ export default function MontagemScreen() {
     let groupKey;
     if (hasMesa) {
       groupKey = `mesa-${order.mesa}`;
-    } else if (order.comandaNumber && order.comandaNumber !== 0) {
+    } else if (order.comandaNumber && String(order.comandaNumber) !== '0') {
       groupKey = `comanda-${order.comandaNumber}`;
     } else {
-      // Para Delivery e Balcão sem comanda/mesa (comandaNumber == 0 ou null), não agrupar
+      // Para Delivery e Balcão sem comanda/mesa (comandaNumber == 0, '0' ou null), não agrupar
       groupKey = `order-${order.id}`;
     }
 
@@ -310,7 +310,7 @@ export default function MontagemScreen() {
       return numA - numB;
     });
 
-  const handleToggleItem = async (orderId: string, itemIds: string | string[], _currentStatus: string) => {
+  const handleToggleItem = async (_orderId: string, itemIds: string | string[], _currentStatus: string) => {
     const idsToUpdate = Array.isArray(itemIds) ? itemIds : [itemIds];
     
     // Validar se caixa está aberto
@@ -326,62 +326,96 @@ export default function MontagemScreen() {
     }
 
     try {
-      // 1. Descobrir qual o NOVO ESTADO baseado no estado atual do primeiro item clicado
-      let newChecked = false;
-      const firstFoundOrder = allOrders.find(o => 
-        o.itemsWithStatus && o.itemsWithStatus.some((i: any) => idsToUpdate.includes(i.id))
-      );
-      
-      if (firstFoundOrder) {
-        const firstItem = firstFoundOrder.itemsWithStatus.find((i: any) => idsToUpdate.includes(i.id));
-        newChecked = !firstItem?.checked;
-      } else {
-        console.warn('[Montagem] Nenhum item encontrado em allOrders para reverter estado');
-        return;
-      }
-
-      console.log('[Montagem] Toggling check (Optimistic ->', newChecked, ') ids:', idsToUpdate);
-
-      // 2. Extrair Pedido Real + Item Real de dentro do "Composto" (orderId::itemId)
-      const updatesByRealOrder: Record<string, string[]> = {};
+      // 1. Extrair Pedido Real + Item Real de dentro do "Composto" (orderId::itemId)
+      //    Os idsToUpdate são SEMPRE compostos: "<UUID_pedido>::<id_item_banco>"
+      const updatesByRealOrder: Record<string, { realItemIds: string[], compoundIds: string[] }> = {};
       
       idsToUpdate.forEach(compoundId => {
-        const parts = compoundId.split('::');
-        if (parts.length === 2) {
-          const rOrderId = parts[0];
-          const rItemId = parts[1];
-          if (!updatesByRealOrder[rOrderId]) updatesByRealOrder[rOrderId] = [];
-          updatesByRealOrder[rOrderId].push(rItemId);
-        } else {
-          // Fallback caso não seja composto por algum motivo legado
-          if (!updatesByRealOrder[orderId]) updatesByRealOrder[orderId] = [];
-          updatesByRealOrder[orderId].push(compoundId);
+        const sepIdx = compoundId.indexOf('::');
+        if (sepIdx > 0) {
+          const rOrderId = compoundId.substring(0, sepIdx);
+          const rItemId = compoundId.substring(sepIdx + 2);
+          if (!updatesByRealOrder[rOrderId]) updatesByRealOrder[rOrderId] = { realItemIds: [], compoundIds: [] };
+          updatesByRealOrder[rOrderId].realItemIds.push(rItemId);
+          updatesByRealOrder[rOrderId].compoundIds.push(compoundId);
         }
       });
 
-      // 3. ATUALIZAÇÃO OTIMISTA LOCAL (Imediata)
-      setAllOrders(prevOrders => prevOrders.map(o => {
-        if (!updatesByRealOrder[o.id]) return o; // Só mexe nos pedidos que tem item pra atualizar
+      if (Object.keys(updatesByRealOrder).length === 0) {
+        console.warn('[Montagem] Nenhum ID composto válido (orderId::itemId) encontrado:', idsToUpdate);
+        return;
+      }
 
-        return {
-          ...o,
-          itemsWithStatus: o.itemsWithStatus.map((i: any) => 
-            idsToUpdate.includes(i.id) ? { ...i, checked: newChecked, timestamp: new Date().toISOString() } : i
-          )
-        };
-      }));
+      // ✅ FIX: Use functional setState to access current state instead of stale closure
+      // This ensures we always work with the most up-to-date order data
+      let newChecked = false;
+      let itemsToSaveByOrder: Record<string, any[]> = {};
 
-      // 4. Chamar contexto persistente DB para CADA Pedido Real mapeado
-      Object.entries(updatesByRealOrder).forEach(([realOrderId, pureItemIds]) => {
-         updateItemChecked(realOrderId, pureItemIds, newChecked).catch(err => {
-           console.error(`[Montagem] Erro persistir ped: ${realOrderId}`, err);
-         });
+      setAllOrders(prevOrders => {
+        // 2. Descobrir qual o NOVO ESTADO baseado no estado atual do primeiro item em prevOrders
+        const firstRealOrderId = Object.keys(updatesByRealOrder)[0];
+        const firstCompoundId = updatesByRealOrder[firstRealOrderId].compoundIds[0];
+        const sourceOrder = prevOrders.find(o => o.id === firstRealOrderId);
+        if (sourceOrder) {
+          const sourceItem = sourceOrder.itemsWithStatus.find((i: any) => i.id === firstCompoundId);
+          newChecked = !sourceItem?.checked;
+        }
+
+        console.log('[Montagem] ✅ Toggle direto ->', newChecked, 'por pedido:', updatesByRealOrder);
+
+        // 3. ATUALIZAÇÃO OTIMISTA LOCAL — usa os IDs COMPOSTOS para identificar os itens no estado
+        const now = new Date().toISOString();
+        const updatedOrders = prevOrders.map(o => {
+          const entry = updatesByRealOrder[o.id];
+          if (!entry) return o;
+          
+          const updatedOrder = {
+            ...o,
+            itemsWithStatus: o.itemsWithStatus.map((i: any) => 
+              entry.compoundIds.includes(i.id) ? { ...i, checked: newChecked, timestamp: now } : i
+            )
+          };
+
+          // Preparar dados para persistência no Supabase
+          itemsToSaveByOrder[o.id] = updatedOrder.itemsWithStatus.map((i: any) => {
+            const isTarget = entry.realItemIds.includes(i._originalItemId || i.id.split('::').pop() || i.id);
+            return {
+              // Salvar com o ID ORIGINAL do banco (sem o prefixo UUID::)
+              ...i,
+              id: i._originalItemId || i.id.split('::').pop() || i.id,
+              _originalItemId: undefined, // Limpar campo auxiliar
+              originalOrderId: undefined, // Limpar campo auxiliar
+              checked: isTarget ? newChecked : i.checked,
+              timestamp: isTarget ? now : i.timestamp
+            };
+          });
+
+          return updatedOrder;
+        });
+
+        return updatedOrders;
       });
+
+      // 4. PERSISTIR NO SUPABASE DIRETAMENTE — sem passar pelo OrderContext
+      //    Usa os dados preparados durante a atualização do estado
+      const now = new Date().toISOString();
+      const persistPromises = Object.entries(itemsToSaveByOrder).map(async ([realOrderId, itemsToSave]) => {
+        const { error } = await supabase
+          .from('orders')
+          .update({ items_with_status: itemsToSave, updated_at: now })
+          .eq('id', realOrderId)
+          .eq('company_id', user?.companyId);
+
+        if (error) throw new Error(`Supabase erro: ${error.message}`);
+      });
+
+      await Promise.all(persistPromises);
 
     } catch (error: any) {
       console.error('[Montagem] Erro inesperado no toggle:', error);
       if (Platform.OS === 'web') window.alert('Erro: ' + error.message);
       else Alert.alert('Erro', 'Não foi possível atualizar o item: ' + error.message);
+      fetchOrders();
     }
   };
 

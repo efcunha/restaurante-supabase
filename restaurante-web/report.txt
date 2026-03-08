@@ -1,0 +1,37 @@
+
+Running 1 test using 1 worker
+
+  ✘  1 [chromium] › e2e\bug_montagem.spec.ts:17:9 › Bug Marcação Cruzada Delivery Montagem › Deve criar 3 pedidos delivery iguais e verificar se marcam cruzado (30.0s)
+
+
+  1) [chromium] › e2e\bug_montagem.spec.ts:17:9 › Bug Marcação Cruzada Delivery Montagem › Deve criar 3 pedidos delivery iguais e verificar se marcam cruzado 
+
+    [31mTest timeout of 30000ms exceeded while running "beforeEach" hook.[39m
+
+       5 |     const testCompanyCode = 'TEST_DELIVERY_BUG';
+       6 |
+    >  7 |     test.beforeEach(async ({ page }) => {
+         |          ^
+       8 |         // 1. Fazer o Login
+       9 |         await page.goto('http://localhost:8081');
+      10 |         await page.fill('input[placeholder="Código da Empresa"]', testCompanyCode);
+        at D:\restaurante-supabase\restaurante-web\e2e\bug_montagem.spec.ts:7:10
+
+    Error: page.fill: Test timeout of 30000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('input[placeholder="Código da Empresa"]')[22m
+
+
+       8 |         // 1. Fazer o Login
+       9 |         await page.goto('http://localhost:8081');
+    > 10 |         await page.fill('input[placeholder="Código da Empresa"]', testCompanyCode);
+         |                    ^
+      11 |         await page.fill('input[placeholder="Usuário"]', 'admin');
+      12 |         await page.fill('input[placeholder="Senha"]', 'admin');
+      13 |         await page.click('text=Entrar');
+        at D:\restaurante-supabase\restaurante-web\e2e\bug_montagem.spec.ts:10:20
+
+    Error Context: test-results\bug_montagem-Bug-Marcação--0adfb-verificar-se-marcam-cruzado-chromium\error-context.md
+
+  1 failed
+    [chromium] › e2e\bug_montagem.spec.ts:17:9 › Bug Marcação Cruzada Delivery Montagem › Deve criar 3 pedidos delivery iguais e verificar se marcam cruzado 

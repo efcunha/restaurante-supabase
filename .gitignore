@@ -17,6 +17,7 @@ android/local.properties
 !android/app/debug.keystore
 
 # iOS
+test-results*
 ios/Pods/
 ios/build/
 ios/.xcode.env.local
@@ -123,7 +124,7 @@ snyk-mcp.log
 .trae/
 .cursor/
 .windsurf/
-
+e2e/*
 
 # Sensitive files (added by cleanup script)
 *-adminsdk-*.json
