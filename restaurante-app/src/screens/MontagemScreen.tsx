@@ -191,7 +191,8 @@ export default function MontagemScreen() {
           })),
           comandaNumber: order.comanda_number,
           mesa: (order.table_number && order.table_number !== 0) ? order.table_number.toString() : '',
-          comandaStatus: order.comanda_status
+          comandaStatus: order.comanda_status,
+          orderType: order.order_type || order.orderType || 'local'
         }));
       setAllOrders(mappedOrders);
     }
