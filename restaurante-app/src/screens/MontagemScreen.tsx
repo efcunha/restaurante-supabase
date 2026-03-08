@@ -101,7 +101,7 @@ const OrderCard = memo(({ order, onOpenDetails, onToggleItem, onMarkReady }: Ord
               <TouchableOpacity
                 key={item.id}
                 style={styles.orderItem}
-                onPress={() => onToggleItem(item.originalOrderId || order.id, [item.id], item.status)}
+                onPress={() => onToggleItem(item.originalOrderId || order.id, item.groupedIds || [item.id], item.status)}
                 activeOpacity={0.7}
               >
                 <View style={[
@@ -187,7 +187,8 @@ export default function MontagemScreen() {
           itemsWithStatus: (order.items_with_status || []).map((item: any) => ({
             ...item,
             id: `${order.id}::${item.id}`,
-            _originalItemId: item.id
+            _originalItemId: item.id,
+            originalOrderId: order.id
           })),
           comandaNumber: order.comanda_number,
           mesa: (order.table_number && order.table_number !== 0) ? order.table_number.toString() : '',
@@ -325,23 +326,42 @@ export default function MontagemScreen() {
     }
 
     try {
-      // 1. Buscar pedido e item atual para determinar novo estado do check
-      const order = allOrders.find(o => o.id === orderId || (o.itemsWithStatus && o.itemsWithStatus.some((i: any) => idsToUpdate.includes(i.id))));
-      if (!order) {
-        console.warn('[Montagem] Pedido não encontrado para os IDs:', idsToUpdate);
+      // 1. Descobrir qual o NOVO ESTADO baseado no estado atual do primeiro item clicado
+      let newChecked = false;
+      const firstFoundOrder = allOrders.find(o => 
+        o.itemsWithStatus && o.itemsWithStatus.some((i: any) => idsToUpdate.includes(i.id))
+      );
+      
+      if (firstFoundOrder) {
+        const firstItem = firstFoundOrder.itemsWithStatus.find((i: any) => idsToUpdate.includes(i.id));
+        newChecked = !firstItem?.checked;
+      } else {
+        console.warn('[Montagem] Nenhum item encontrado em allOrders para reverter estado');
         return;
       }
 
-      const items = order.itemsWithStatus || [];
-      const firstItem = items.find((i: any) => idsToUpdate.includes(i.id));
-      const newChecked = !firstItem?.checked;
+      console.log('[Montagem] Toggling check (Optimistic ->', newChecked, ') ids:', idsToUpdate);
 
-      console.log('[Montagem] Toggling check (Optimistic):', orderId, idsToUpdate, newChecked);
+      // 2. Extrair Pedido Real + Item Real de dentro do "Composto" (orderId::itemId)
+      const updatesByRealOrder: Record<string, string[]> = {};
+      
+      idsToUpdate.forEach(compoundId => {
+        const parts = compoundId.split('::');
+        if (parts.length === 2) {
+          const rOrderId = parts[0];
+          const rItemId = parts[1];
+          if (!updatesByRealOrder[rOrderId]) updatesByRealOrder[rOrderId] = [];
+          updatesByRealOrder[rOrderId].push(rItemId);
+        } else {
+          // Fallback caso não seja composto por algum motivo legado
+          if (!updatesByRealOrder[orderId]) updatesByRealOrder[orderId] = [];
+          updatesByRealOrder[orderId].push(compoundId);
+        }
+      });
 
-      // 2. ATUALIZAÇÃO OTIMISTA LOCAL (Imediata)
-      // Restringir estritamente ao pedido correto (orderId) para evitar marcação cruzada
+      // 3. ATUALIZAÇÃO OTIMISTA LOCAL (Imediata)
       setAllOrders(prevOrders => prevOrders.map(o => {
-        if (o.id !== orderId) return o;
+        if (!updatesByRealOrder[o.id]) return o; // Só mexe nos pedidos que tem item pra atualizar
 
         return {
           ...o,
@@ -351,12 +371,11 @@ export default function MontagemScreen() {
         };
       }));
 
-      // 3. Chamar contexto para persistir no DB (assíncrono)
-      // PRECISA remover o prefixo 'orderId::' para que o OrderContext encontre os itens corretos
-      const pureItemIds = idsToUpdate.map(id => id.split('::').pop() || id);
-
-      updateItemChecked(orderId, pureItemIds, newChecked).catch(err => {
-        console.error('[Montagem] Erro ao persistir check:', err);
+      // 4. Chamar contexto persistente DB para CADA Pedido Real mapeado
+      Object.entries(updatesByRealOrder).forEach(([realOrderId, pureItemIds]) => {
+         updateItemChecked(realOrderId, pureItemIds, newChecked).catch(err => {
+           console.error(`[Montagem] Erro persistir ped: ${realOrderId}`, err);
+         });
       });
 
     } catch (error: any) {
