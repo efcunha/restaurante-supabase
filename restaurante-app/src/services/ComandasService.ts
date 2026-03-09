@@ -58,13 +58,22 @@ class ComandasService {
     const numStr = String(comandaNumber);
 
     // 1. Check if exists
-    // We search by (company, date, number) - assuming unique per day
-    const { data: existing } = await supabase
+    // ✅ FIX: Include table_number in query to ensure isolation per table
+    // This prevents Worker A (Mesa 1) from finding comanda created by Worker B (Mesa 2)
+    let query = supabase
       .from(TABLE_COMANDAS)
       .select('*')
       .eq('company_id', companyId)
       .eq('date_key', dateK)
-      .eq('comanda_number', numStr)
+      .eq('comanda_number', numStr);
+    
+    // ✅ FIX: Filter by table_number if provided (for local orders)
+    // Delivery orders (mesa='') will still work as before
+    if (mesa && mesa.trim() !== '') {
+      query = query.eq('table_number', mesa);
+    }
+    
+    const { data: existing } = await query
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();

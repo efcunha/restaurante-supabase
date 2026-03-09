@@ -294,13 +294,47 @@ class SupabaseOrderService {
    * Salva um pedido completo
    */
   async saveOrder(companyId: string, order: Order): Promise<string> {
+    // ✅ AUTO-GENERATE DELIVERY COMANDA NUMBER WITH TRANSACTION LOCK
+    // Se for pedido delivery sem comanda_number, gerar automaticamente (D1, D2, D3...)
+    let comandaNumber = parseInt(order.comandaNumber || '0');
+    
+    if (order.orderType === 'delivery' && (!order.comandaNumber || order.comandaNumber === '0')) {
+      // ✅ CRITICAL: Use RPC function with transaction lock to prevent race conditions
+      // This ensures two simultaneous delivery orders get different numbers
+      const { data: rpcResult, error: rpcError } = await supabase
+        .rpc('get_next_delivery_comanda_number', {
+          p_company_id: companyId,
+          p_date_key: getTodayKey()
+        });
+      
+      if (rpcError) {
+        console.error('[SupabaseOrderService] ❌ Erro ao gerar comanda_number:', rpcError);
+        // Fallback: buscar manualmente (pode ter race condition, mas melhor que falhar)
+        const { data: maxComanda } = await supabase
+          .from('orders')
+          .select('comanda_number')
+          .eq('company_id', companyId)
+          .eq('date_key', getTodayKey())
+          .eq('order_type', 'delivery')
+          .order('comanda_number', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        comandaNumber = (maxComanda?.comanda_number || 0) + 1;
+      } else {
+        comandaNumber = rpcResult;
+      }
+      
+      console.log(`[SupabaseOrderService] 🚚 Gerado comanda_number para delivery: ${comandaNumber}`);
+    }
+    
     const { data, error } = await supabase
       .from('orders')
       .insert({
         company_id: companyId,
         client_name: order.client,
         table_number: parseInt(order.mesa?.toString().replace(/\D/g, '') || '0'),
-        comanda_number: parseInt(order.comandaNumber || '0'),
+        comanda_number: comandaNumber,
         items: order.items,
         observations: order.observations,
         status: order.status || 'pending',
