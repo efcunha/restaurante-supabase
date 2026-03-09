@@ -1,7 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, SectionList, TouchableOpacity, TextInput, ActivityIndicator, LayoutAnimation, Platform, UIManager, SectionListRenderItem, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import React, { memo, useCallback, useState, useMemo, useEffect } from 'react';
+import React, { memo, useCallback, useState, useMemo, useEffect, useRef } from 'react';
 
 import { useNovoPedido } from '../hooks/useNovoPedido';
 import { usePerformanceMonitor } from '../hooks/usePerformanceMonitor';
@@ -432,6 +432,7 @@ export default function DeliveryScreen() {
       }
     }
   };
+  const isSubmittingDeliveryRef = useRef(false);
 
   const finalTotal = useMemo(() => {
     const fee = parseFloat(deliveryFee.replace(',', '.')) || 0;
@@ -439,6 +440,8 @@ export default function DeliveryScreen() {
   }, [total, deliveryFee]);
 
   const handleDeliverySubmit = async () => {
+    if (isSubmittingDeliveryRef.current) return;
+    
     if (selectedItems.length === 0) {
       Alert.alert('Atenção', 'Adicione itens ao pedido.');
       return;
@@ -456,6 +459,7 @@ export default function DeliveryScreen() {
       return;
     }
 
+    isSubmittingDeliveryRef.current = true;
     setIsSubmittingDelivery(true);
     try {
       const parsedItems = selectedItems.map(i => `${produtos[i.name] || 1}x ${i.name}`).join('\n');
@@ -532,12 +536,12 @@ export default function DeliveryScreen() {
       setDeliveryFee('0');
       setPaymentMethod('dinheiro');
       setChangeFor('');
-      
     } catch (err) {
       console.error('Erro ao lançar delivery:', err);
       Alert.alert('Erro', 'Não foi possível lançar o pedido.');
     } finally {
       setIsSubmittingDelivery(false);
+      isSubmittingDeliveryRef.current = false;
     }
   };
 

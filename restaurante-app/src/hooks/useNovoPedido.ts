@@ -611,13 +611,18 @@ export function useNovoPedido(): UseNovoPedidoReturn {
         setCustomPrices({});
     }, []);
 
+    const isSubmittingRef = useRef(false);
+
     const handleSubmit = async () => {
+        if (isSubmittingRef.current) return;
+
         if (selectedItems.length === 0) {
             showToast('Adicione pelo menos um item ao pedido', 'warning');
             return;
         }
 
         try {
+            isSubmittingRef.current = true;
             setIsSubmitting(true);
 
             // ✅ CRÍTICO: Prevenção de Concorrência em Mesas Livres
@@ -784,6 +789,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
             }
         } finally {
             setIsSubmitting(false);
+            isSubmittingRef.current = false;
         }
     };
 
