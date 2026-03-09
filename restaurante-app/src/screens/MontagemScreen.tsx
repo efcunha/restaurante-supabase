@@ -51,7 +51,7 @@ const OrderCard = memo(({ order, onOpenDetails, onToggleItem, onMarkReady }: Ord
       <View style={styles.orderHeader}>
         <Text style={styles.orderNumber}>
           {order.orderType === 'delivery'
-            ? 'Delivery'
+            ? `Delivery ${order.comandaNumber || '?'}`
             : order.isMesaGroup 
               ? `Mesa ${order.mesa}` 
               : `Comanda ${order.comandaNumber || '?'}`
@@ -78,10 +78,17 @@ const OrderCard = memo(({ order, onOpenDetails, onToggleItem, onMarkReady }: Ord
       )}
       <View style={styles.orderItems}>
         {order.itemsWithStatus && order.itemsWithStatus.length > 0 ? (() => {
-          // Agrupar itens com mesmo nome e status
+          // ✅ FIX: Agrupar itens com mesmo nome e status APENAS dentro do mesmo pedido
+          // Não agrupar itens de pedidos diferentes mesmo que tenham o mesmo nome
           const groupedItems: any[] = [];
           order.itemsWithStatus.forEach((item: any) => {
-             const existing = groupedItems.find(g => g.name === item.name && g.checked === item.checked);
+             // ✅ CRÍTICO: Incluir originalOrderId na chave de agrupamento
+             // Isso garante que itens de pedidos diferentes não sejam agrupados
+             const existing = groupedItems.find(g => 
+               g.name === item.name && 
+               g.checked === item.checked &&
+               g.originalOrderId === item.originalOrderId
+             );
              if (existing) {
                 existing.groupedCount = (existing.groupedCount || 1) + 1;
                 existing.groupedIds = [...(existing.groupedIds || [existing.id]), item.id];
@@ -193,8 +200,21 @@ export default function MontagemScreen() {
           comandaNumber: order.comanda_number,
           mesa: (order.table_number && order.table_number !== 0) ? order.table_number.toString() : '',
           comandaStatus: order.comanda_status,
-          orderType: order.order_type || order.orderType || 'local'
+          orderType: order.order_type || order.orderType || 'local',
+          client: order.client_name || order.client || 'Cliente'
         }));
+      
+      // DEBUG: Log delivery orders to check comanda_number
+      const deliveryOrders = mappedOrders.filter(o => o.orderType === 'delivery');
+      if (deliveryOrders.length > 0) {
+        console.log('[Montagem] 🚚 Pedidos delivery:', deliveryOrders.map(o => ({
+          id: o.id.substring(0, 8),
+          client: o.client,
+          comandaNumber: o.comandaNumber,
+          orderType: o.orderType
+        })));
+      }
+      
       setAllOrders(mappedOrders);
     }
   }, [user]);
@@ -244,39 +264,42 @@ export default function MontagemScreen() {
 
   // Agrupar por comandaNumber para unificar pedidos da mesma comanda
   const comandasMap = new Map();
-  const seenItemIds = new Set();
-
 
   ordersRaw.forEach(order => {
     if (!order.itemsWithStatus || order.itemsWithStatus.length === 0) {
       return;
     }
 
-    // Filtrar itens não marcados como prontos, únicos e que não sejam bebidas
-    // Na tela de Montagem, mostrar itens que ainda não estão prontos (independente do status do item)
-    const itemsParaMontar = order.itemsWithStatus
-      .filter((item: any) => {
-        // Mostrar todos os itens na montagem para que o usuário possa conferir (dar o check)
-        return !seenItemIds.has(item.id);
-      })
-      .map((item: any) => ({
-        ...item,
-        originalOrderId: order.id
-      }));
+    // ✅ FIX: Não filtrar itens duplicados entre pedidos diferentes
+    // Cada pedido delivery deve ter seus próprios itens, mesmo que sejam iguais
+    const itemsParaMontar = order.itemsWithStatus.map((item: any) => ({
+      ...item,
+      originalOrderId: order.id
+    }));
 
     if (itemsParaMontar.length === 0) return;
 
-    itemsParaMontar.forEach((item: any) => seenItemIds.add(item.id));
-
-    // Determinar chave de grupo: Mesa (se houver) ou Número da Comanda
+    // ✅ LÓGICA DE AGRUPAMENTO:
+    // 1. MESA: Agrupar todos os pedidos da mesma mesa (vários pedidos → 1 card)
+    // 2. BALCÃO COM COMANDA: Agrupar pedidos da mesma comanda (vários pedidos → 1 card)
+    // 3. DELIVERY: Cada pedido é um card separado (1 pedido → 1 card) - NUNCA agrupar
+    
     const hasMesa = !!order.mesa && order.mesa.trim() !== '';
+    const hasComanda = order.comandaNumber && String(order.comandaNumber) !== '0';
+    const isDelivery = order.orderType === 'delivery';
+    
     let groupKey;
-    if (hasMesa) {
+    if (isDelivery) {
+      // DELIVERY: Sempre separado, um card por pedido
+      groupKey = `order-${order.id}`;
+    } else if (hasMesa) {
+      // MESA: Agrupar por número da mesa
       groupKey = `mesa-${order.mesa}`;
-    } else if (order.comandaNumber && String(order.comandaNumber) !== '0') {
+    } else if (hasComanda) {
+      // BALCÃO COM COMANDA: Agrupar por número da comanda
       groupKey = `comanda-${order.comandaNumber}`;
     } else {
-      // Para Delivery e Balcão sem comanda/mesa (comandaNumber == 0, '0' ou null), não agrupar
+      // BALCÃO SEM COMANDA: Cada pedido é separado
       groupKey = `order-${order.id}`;
     }
 
@@ -346,6 +369,14 @@ export default function MontagemScreen() {
         return;
       }
 
+      // ✅ FIX: Validate that all compound IDs belong to the same order
+      // This prevents cross-marking if groupedIds somehow got mixed
+      const orderIds = Object.keys(updatesByRealOrder);
+      if (orderIds.length > 1) {
+        console.error('[Montagem] ❌ ERRO: Tentativa de marcar itens de múltiplos pedidos simultaneamente:', orderIds);
+        return;
+      }
+
       // ✅ FIX: Use functional setState to access current state instead of stale closure
       // This ensures we always work with the most up-to-date order data
       let newChecked = false;
@@ -356,12 +387,21 @@ export default function MontagemScreen() {
         const firstRealOrderId = Object.keys(updatesByRealOrder)[0];
         const firstCompoundId = updatesByRealOrder[firstRealOrderId].compoundIds[0];
         const sourceOrder = prevOrders.find(o => o.id === firstRealOrderId);
-        if (sourceOrder) {
-          const sourceItem = sourceOrder.itemsWithStatus.find((i: any) => i.id === firstCompoundId);
-          newChecked = !sourceItem?.checked;
+        
+        if (!sourceOrder) {
+          console.error('[Montagem] ❌ ERRO: Pedido não encontrado no estado:', firstRealOrderId);
+          return prevOrders; // Abort update
         }
+        
+        const sourceItem = sourceOrder.itemsWithStatus.find((i: any) => i.id === firstCompoundId);
+        if (!sourceItem) {
+          console.error('[Montagem] ❌ ERRO: Item não encontrado no pedido:', firstCompoundId);
+          return prevOrders; // Abort update
+        }
+        
+        newChecked = !sourceItem?.checked;
 
-        console.log('[Montagem] ✅ Toggle direto ->', newChecked, 'por pedido:', updatesByRealOrder);
+        console.log('[Montagem] ✅ Toggle direto ->', newChecked, 'pedido:', firstRealOrderId, 'item:', firstCompoundId);
 
         // 3. ATUALIZAÇÃO OTIMISTA LOCAL — usa os IDs COMPOSTOS para identificar os itens no estado
         const now = new Date().toISOString();
@@ -396,10 +436,18 @@ export default function MontagemScreen() {
         return updatedOrders;
       });
 
+      // ✅ FIX: Validate that itemsToSaveByOrder was populated before persisting
+      if (Object.keys(itemsToSaveByOrder).length === 0) {
+        console.error('[Montagem] ❌ ERRO: Nenhum item preparado para salvar. Abortando persistência.');
+        return;
+      }
+
       // 4. PERSISTIR NO SUPABASE DIRETAMENTE — sem passar pelo OrderContext
       //    Usa os dados preparados durante a atualização do estado
       const now = new Date().toISOString();
       const persistPromises = Object.entries(itemsToSaveByOrder).map(async ([realOrderId, itemsToSave]) => {
+        console.log('[Montagem] 💾 Salvando pedido:', realOrderId, 'itens:', itemsToSave.length);
+        
         const { error } = await supabase
           .from('orders')
           .update({ items_with_status: itemsToSave, updated_at: now })
@@ -410,6 +458,7 @@ export default function MontagemScreen() {
       });
 
       await Promise.all(persistPromises);
+      console.log('[Montagem] ✅ Persistência concluída com sucesso');
 
     } catch (error: any) {
       console.error('[Montagem] Erro inesperado no toggle:', error);
