@@ -1,143 +1,218 @@
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 import { test, expect } from '@playwright/test';
 
+const LOCK_DIR = path.join(os.tmpdir(), 'playwright-mesa-locks');
+
+const SUPABASE_URL = 'https://ykalocfhnetxenvmtlcn.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_sUAhOXyPkUhEb4tpbVU8wQ_71qyFI3x';
+
+async function cancelOpenComanda(mesaNumber: string, accessToken: string) {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/comandas?status=eq.aberta&table_number=eq.${mesaNumber}&select=id`, {
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${accessToken}`, // Bypasses RLS para o usuario logado!
+      }
+    });
+
+    if (res.ok) {
+      const comandas = await res.json();
+      if (comandas.length > 0) {
+        await fetch(`${SUPABASE_URL}/rest/v1/comandas?table_number=eq.${mesaNumber}&status=eq.aberta`, {
+          method: 'PATCH',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ status: 'cancelada' }),
+        });
+        console.log(`[DB] Comanda aberta encontrada na mesa ${mesaNumber} foi cancelada para o novo teste.`);
+      }
+    }
+  } catch (e) {
+    console.warn(`[DB] Falha não crítica ao limpar comanda da mesa ${mesaNumber}:`, e);
+  }
+}
+
 /**
- * Testes de Mesa — serializado para evitar race condition.
- *
- * Mesas cadastradas: 1–10.
- * Com mode:'serial', apenas 1 worker executa por vez →
- * não há risco de dois workers concorrerem pela mesma mesa.
+ * Pega a próxima mesa disponível de 1 a 10 sincronizando terminais
+ * pelo sistema de arquivos. 'wx' é atômico no Windows/Linux/Mac e 
+ * não tem falha de concorrência.
  */
-test.describe.configure({ mode: 'serial' });
+async function lockMesa(): Promise<string> {
+  if (!fs.existsSync(LOCK_DIR)) {
+    fs.mkdirSync(LOCK_DIR, { recursive: true });
+  }
+
+  const maxRetries = 30; // 30 tentativas = ~30s esperando
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    for (let i = 1; i <= 10; i++) {
+      const lockFile = path.join(LOCK_DIR, `mesa-${i}.lock`);
+      try {
+        // Se a trava for de um terminal que crachou (mais antiga que 2 minutos), apagamos.
+        if (fs.existsSync(lockFile)) {
+          const stats = fs.statSync(lockFile);
+          if (Date.now() - stats.mtimeMs > 1000 * 60 * 2) {
+            fs.unlinkSync(lockFile);
+          }
+        }
+
+        const fd = fs.openSync(lockFile, 'wx'); // Atômico
+        fs.closeSync(fd);
+        return String(i);
+      } catch (e: any) {
+        if (e.code === 'EEXIST') continue; // Mesa em uso
+        throw e;
+      }
+    }
+    // Se não achou mesa livre, dorme 1s e tenta de novo
+    console.log(`[LOCK] Sem mesas livres. Aguardando... (tentativa ${attempt + 1}/${maxRetries})`);
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+
+  throw new Error('Timeout: Nenhuma mesa de 1 a 10 ficou livre a tempo. Garanta que o reset do db está limpo.');
+}
+
+function unlockMesa(mesa: string) {
+  const lockFile = path.join(LOCK_DIR, `mesa-${mesa}.lock`);
+  if (fs.existsSync(lockFile)) {
+    fs.unlinkSync(lockFile);
+  }
+}
 
 test.describe('Fluxo Principal - Mesa (Mapa)', () => {
+  let mesaId: string;
+
   test.setTimeout(120000);
 
   test.beforeEach(async ({ page }) => {
-    console.log('Navegando para o App / Login');
     await page.goto('/');
-
     try {
       const emailInput = page.locator('input[placeholder="seu@email.com"]');
       await emailInput.waitFor({ state: 'visible', timeout: 8000 });
-
-      console.log('Preenchendo credenciais...');
       await emailInput.fill('lu@m.com');
       await page.locator('input[placeholder="••••••••"]').fill('mudar123');
       await page.locator('text=ENTRAR').click();
-
       await expect(page.locator('text=Novo Pedido').first()).toBeVisible({ timeout: 15000 });
-    } catch (e) {
-      console.log('Login já persistido ou tela de login ignorada. Prosseguindo.');
+    } catch {
+      console.log('Login já persistido. Prosseguindo.');
     }
   });
 
-  test('Deve criar uma comanda individual a partir de uma Mesa Livre no Mapa', async ({ page }) => {
-    page.on('dialog', async dialog => {
-      console.log(`[DIALOG] ${dialog.type()} → "${dialog.message()}"`);
-      await dialog.accept();
-    });
+  test.afterEach(() => {
+    // Libera a mesa pra o próximo teste assim que terminar
+    if (mesaId) unlockMesa(mesaId);
+  });
 
-    // ── 1. Abrir Mapa de Mesas ────────────────────────────────────────────────
-    console.log('1. Acessando Aba Mapa de Mesas');
-    await page.getByText('Mapa').first().click();
-    await expect(page.getByText('Mapa de Mesas').first()).toBeVisible({ timeout: 15000 });
+  test('Deve criar uma comanda individual por mesa (sem agrupamento)', async ({ page }, testInfo) => {
+    // Escolhe uma mesa real 1 a 10 usando trava no sistema para não colidir terminais
+    mesaId = await lockMesa();
 
-    console.log('2. Aguardando mesas carregarem do Supabase');
-    await page.waitForTimeout(3000);
+    // Extrai o token do localStorage após ter logado
+    const authDataRaw = await page.evaluate(() => localStorage.getItem('sb-ykalocfhnetxenvmtlcn-auth-token'));
+    const accessToken = authDataRaw ? JSON.parse(authDataRaw).access_token : '';
 
-    // ── 2. Identificar UMA mesa livre ("X lug." só aparece em mesas Livres) ───
-    console.log('3. Identificando a primeira mesa disponível');
-    const mesaCards = page.locator('div[dir="auto"]').filter({ hasText: /\d+ lug\./i });
-    const count = await mesaCards.count();
-    console.log(`- Encontradas ${count} mesas livres.`);
-
-    if (count === 0) {
-      throw new Error('Nenhuma mesa livre encontrada! Feche comandas abertas antes de rodar o teste.');
+    // Cancela comandas fantasmas garantindo que RLS será validado (user logado)
+    if (accessToken) {
+      await cancelOpenComanda(mesaId, accessToken);
     }
 
-    // Sempre usa a primeira mesa livre (execução serial → sem concorrência)
-    const selectedMesa = mesaCards.first();
-    const mesaText = await selectedMesa.innerText().catch(() => 'Desconhecida');
-    console.log(`- Clicando na mesa: ${mesaText.split('\n')[0]}`);
+    const orderName = `Playwright W${testInfo.parallelIndex}R${testInfo.repeatEachIndex}`;
+    console.log(`[MESA] Instância usando Mesa ${mesaId}`);
 
-    await selectedMesa.click();
+    page.on('dialog', async d => { await d.accept(); });
 
-    // ── 3. Formulário de Novo Pedido deve abrir ───────────────────────────────
-    console.log('4. Verificando redirecionamento para Novo Pedido');
-    const mesaHeader = page.locator('text=/Mesa:/i').first();
-    await expect(mesaHeader).toBeVisible({ timeout: 15000 });
+    // ── 1. Navega diretamente para Novo Pedido (evita race no Mapa) ───────────
+    //    O Mapa é apenas visual; a criação do pedido acontece no formulário.
+    //    Ir pelo Mapa causa corrida: dois workers veem a mesma mesa "Livre"
+    //    ao mesmo tempo e ambos criam comanda na mesma mesa.
+    console.log('1. Abrindo Novo Pedido diretamente');
+    await page.getByText('Novo Pedido').first().click();
 
-    // Ler o número da mesa pré-preenchido para logar
-    const mesaField = page.locator('input[placeholder="Nº"]');
-    const mesaNumero = await mesaField.inputValue().catch(() => '?');
-    console.log(`- Mesa pré-preenchida no formulário: ${mesaNumero}`);
-
-    // ── 4. Preencher dados da comanda ─────────────────────────────────────────
-    console.log('5. Preenchendo Nome do Cliente');
     const clienteInput = page.getByPlaceholder('Digite o nome');
-    await clienteInput.fill(`Playwright Mesa ${mesaNumero}`);
+    await clienteInput.waitFor({ state: 'visible', timeout: 15000 });
 
-    // ── 5. Adicionar itens ────────────────────────────────────────────────────
-    console.log('6. Adicionando itens (Calabresa e Caldo)');
+    // ── 2. Preencher nome e mesa ──────────────────────────────────────────────
+    await clienteInput.fill(`Playwright W${testInfo.workerIndex}R${testInfo.repeatEachIndex}`);
+    console.log(`[W${testInfo.workerIndex}/R${testInfo.repeatEachIndex}] Digitou nome cliente`);
+
+    // Digita o número dinâmico e reservado da Mesa (1 a 10)
+    await page.locator('input[placeholder="Nº"]').waitFor({ state: 'visible' });
+    await page.locator('input[placeholder="Nº"]').fill(mesaId);
+
+    const inputMesaValue = await page.locator('input[placeholder="Nº"]').inputValue();
+    console.log(`input mesa valor retornado: `, inputMesaValue);
+    expect(inputMesaValue).toBe(mesaId);
+
+    console.log(`2. Mesa ${mesaId} preenchida`);
+
+    // ── 3. Adicionar itens ────────────────────────────────────────────────────
     const searchInput = page.getByPlaceholder('Buscar item do cardápio...');
     await searchInput.waitFor({ state: 'visible', timeout: 10000 });
 
-    for (const term of ['calabresa', 'caldo']) {
-      console.log(`   Buscando: ${term}`);
-      await searchInput.click();
-      await searchInput.fill('');
-      await searchInput.fill(term);
-      await page.waitForTimeout(1500);
-
-      try {
-        if (term === 'calabresa') {
-          const pizzaCard = page.locator('div[dir="auto"]').filter({ hasText: 'Calabresa' }).first();
-          await pizzaCard.waitFor({ state: 'visible', timeout: 5000 });
-          await pizzaCard.click();
-
-          await page.locator('text=Broto').click();
-          await page.locator('text=Próximo: Extras').click();
-          await page.locator('text=Adicionar ao Pedido').click();
-          console.log('   ✓ Pizza Calabresa adicionada');
-        } else {
-          const caldoCard = page.locator('div[dir="auto"]').filter({ hasText: /caldo/i }).first();
-          await caldoCard.waitFor({ state: 'visible', timeout: 5000 });
-          await caldoCard.click();
-          console.log('   ✓ Caldo adicionado');
-        }
-      } catch (e: any) {
-        console.log(`   ⚠️ Item '${term}' não encontrado: ${e.message}`);
-      }
-      await page.waitForTimeout(500);
+    // Pizza Calabresa
+    await searchInput.fill('calabresa');
+    await page.waitForTimeout(1500);
+    try {
+      const pizzaCard = page.locator('div[dir="auto"]').filter({ hasText: 'Calabresa' }).first();
+      await pizzaCard.waitFor({ state: 'visible', timeout: 5000 });
+      await pizzaCard.click();
+      await page.locator('text=Broto').click();
+      await page.locator('text=Próximo: Extras').click();
+      await page.locator('text=Adicionar ao Pedido').click();
+      console.log('   ✓ Pizza Calabresa adicionada');
+    } catch (e: any) {
+      console.log(`   ⚠️ Calabresa: ${e.message}`);
     }
 
-    // ── 6. Criar pedido ───────────────────────────────────────────────────────
-    console.log('7. Clicando em Criar Pedido');
+    await page.waitForTimeout(500);
+
+    // Caldo
+    await searchInput.fill('caldo');
+    await page.waitForTimeout(1500);
+    try {
+      const caldoCard = page.locator('div[dir="auto"]').filter({ hasText: /caldo/i }).first();
+      await caldoCard.waitFor({ state: 'visible', timeout: 5000 });
+      await caldoCard.click();
+      console.log('   ✓ Caldo adicionado');
+    } catch (e: any) {
+      console.log(`   ⚠️ Caldo: ${e.message}`);
+    }
+
+    // ── 4. Submeter pedido ────────────────────────────────────────────────────
+    console.log('3. Criando pedido...');
     const submitBtn = page.locator('div[dir="auto"]').filter({ hasText: 'Criar Pedido' }).last();
     await expect(submitBtn).toBeVisible();
     await submitBtn.click();
 
-    // ── 7. Validar Toast com número de comanda (1 comanda por pedido) ─────────
-    console.log('8. Aguardando Toast de sucesso...');
-    const toastComanda = page.locator('text=/Pedido criado! Comanda/i');
-    await expect(toastComanda).toBeVisible({ timeout: 20000 });
+    // ── 5. Validar toast — 1 comanda por pedido ───────────────────────────────
+    //    Se o check de concorrência do backend bloquear (mesa já ocupada hoje),
+    //    o toast de erro vai aparecer em vez do de sucesso → teste falha com
+    //    mensagem clara em vez de passar silenciosamente com dados errados.
+    const toastSucesso = page.locator('text=/Pedido criado! Comanda/i');
+    const toastErroMesa = page.locator('text=/Mesa.*já foi ocupada/i');
 
-    const toastText = await toastComanda.innerText().catch(() => '');
-    console.log(`✅ Comanda criada: "${toastText}"`);
+    await Promise.race([
+      toastSucesso.waitFor({ state: 'visible', timeout: 20000 }),
+      toastErroMesa.waitFor({ state: 'visible', timeout: 20000 })
+        .then(() => { throw new Error(`Mesa ${mesaId} já estava ocupada — use --repeat-each menor ou feche as comandas abertas.`); })
+    ]);
 
-    // Garantia: o toast deve conter "Comanda" (número único, não agrupado)
+    const toastText = await toastSucesso.innerText();
+    console.log(`✅ [Mesa ${mesaId}] ${toastText}`);
     expect(toastText).toMatch(/Comanda\s+\S+/i);
 
-    // ── 8. Verificar item na Cozinha ──────────────────────────────────────────
-    console.log('9. Verificando item na Cozinha...');
+    // ── 6. Cozinha ────────────────────────────────────────────────────────────
     await page.locator('text=Cozinha').first().click();
     await page.waitForTimeout(2000);
-
     await page.locator('text=Calabresa').first()
       .waitFor({ state: 'visible', timeout: 10000 })
-      .catch(() => console.log('⚠️ Item não apareceu na cozinha no tempo esperado.'));
+      .catch(() => console.log('⚠️ Item não apareceu na cozinha.'));
 
-    await page.screenshot({ path: `mesa-${mesaNumero}-${Date.now()}.png` });
-    console.log('✅ Teste concluído com sucesso.');
+    await page.screenshot({ path: `pizza-success-${Date.now()}.png` });
+    console.log(`[W${testInfo.workerIndex}/R${testInfo.repeatEachIndex}] Sucesso ao gerar comanda na mesa ${mesaId}`);
   });
 });

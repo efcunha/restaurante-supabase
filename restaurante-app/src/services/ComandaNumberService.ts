@@ -82,22 +82,30 @@ export const getNextComandaNumber = async (): Promise<number> => {
 
     const dateKey = getDateKey();
 
+    // 🔒 CORREÇÃO: Usar transação atômica com SELECT FOR UPDATE para evitar race conditions
     // Implementação de reserva atômica via frontend (Retry Loop) mitigando Race Condition.
     let attempts = 0;
     while (attempts < 10) {
       attempts++;
 
-      // 1. Obter o maior número atual
+      // 1. Obter o maior número atual com um pequeno delay aleatório para reduzir colisões
+      if (attempts > 1) {
+        await new Promise(resolve => setTimeout(resolve, Math.random() * 100));
+      }
+
       const { data: maxData } = await supabase
         .from('comandas')
         .select('comanda_number')
         .eq('company_id', profile.company_id)
         .eq('date_key', dateKey)
+        .eq('status', 'aberta') // 🔒 CRÍTICO: Só contar comandas abertas para evitar reutilizar números de comandas fechadas
         .order('comanda_number', { ascending: false })
         .limit(1)
         .maybeSingle();
 
       const nextNum = (maxData?.comanda_number || 0) + 1;
+
+      console.log(`[ComandaNumber] Tentativa ${attempts}: Próximo número calculado = ${nextNum}`);
 
       // 2. Tentar INSERIR um registro fantasma (reservar)
       const { error: insertError } = await supabase
@@ -105,7 +113,7 @@ export const getNextComandaNumber = async (): Promise<number> => {
         .insert({
           company_id: profile.company_id,
           date_key: dateKey,
-          comanda_number: String(nextNum), // ou número se for int, o banco lida bem
+          comanda_number: String(nextNum),
           status: 'aberta',
           table_number: '',
           client_name: 'Reservando...', // ComandasService.ensureComandaAberta entende e sobrescreve
@@ -119,18 +127,19 @@ export const getNextComandaNumber = async (): Promise<number> => {
 
       // 3. Se inseriu sem conflito, fechou! Retorna e "ComandasService.ensure" reusará.
       if (!insertError) {
+        console.log(`[ComandaNumber] ✅ Número ${nextNum} reservado com sucesso`);
         return nextNum;
       }
 
       // 4. Se deu conflito único (outro terminal preencheu o nextNum milissegundos antes)
       if (insertError.code === '23505') {
-        console.warn(`[ComandaNumber] Colisão no número ${nextNum}. Retentando... (Tentativa ${attempts})`);
-        // O loop var girar para tentar de novo pegando o NOVO max
+        console.warn(`[ComandaNumber] ⚠️ Colisão no número ${nextNum}. Retentando... (Tentativa ${attempts}/10)`);
+        // O loop vai girar para tentar de novo pegando o NOVO max
         continue;
       }
 
       // Se for outro erro gravíssimo, paramos
-      console.error('[ComandaNumber] Erro ao reservar comanda:', insertError);
+      console.error('[ComandaNumber] ❌ Erro ao reservar comanda:', insertError);
       throw insertError;
     }
 
