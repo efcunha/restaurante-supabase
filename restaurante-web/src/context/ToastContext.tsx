@@ -37,13 +37,19 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
   });
 
   const showToast = useCallback((message: string, type: ToastType = 'success') => {
-    // Haptic Feedback
-    if (type === 'success') HapticsService.success();
-    else if (type === 'error') HapticsService.error();
-    else if (type === 'warning') HapticsService.warning();
-    else HapticsService.light();
+    console.log('[ToastContext] showToast called:', message, 'type:', type);
+    try {
+      // Haptic Feedback
+      if (type === 'success') HapticsService.success();
+      else if (type === 'error') HapticsService.error();
+      else if (type === 'warning') HapticsService.warning();
+      else HapticsService.light();
+    } catch (error) {
+      console.warn('[ToastContext] Haptics error (ignoring):', error);
+    }
 
     setToast({ visible: true, message, type });
+    console.log('[ToastContext] setToast called with visible=true');
   }, []);
 
   const hideToast = useCallback(() => {

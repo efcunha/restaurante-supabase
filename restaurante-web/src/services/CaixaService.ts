@@ -22,32 +22,71 @@ class CaixaService {
 
   // Helper: Get user's company ID
   private async _getCompanyId(): Promise<string | null> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
+    console.log('[CaixaService] _getCompanyId START');
+    
+    // ✅ Add timeout to auth.getUser()
+    const getUserPromise = supabase.auth.getUser();
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Timeout: auth.getUser() exceeded 3s')), 3000);
+    });
 
-    // Check if we have company_id in metadata (if added there) or fetch profile
-    const { data } = await supabase.from('profiles').select('company_id').eq('id', user.id).single();
-    return data?.company_id || null;
+    let user;
+    try {
+      const result = await Promise.race([getUserPromise, timeoutPromise]);
+      user = result.data.user;
+      console.log('[CaixaService] User fetched:', user?.id);
+    } catch (timeoutError: any) {
+      console.error('[CaixaService] auth.getUser() timeout:', timeoutError.message);
+      throw timeoutError;
+    }
+
+    if (!user) {
+      console.log('[CaixaService] No user found');
+      return null;
+    }
+
+    // ✅ Add timeout to profiles query
+    console.log('[CaixaService] Querying profiles for company_id...');
+    const profileQueryPromise = supabase.from('profiles').select('company_id').eq('id', user.id).single();
+    const profileTimeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Timeout: profiles query exceeded 3s')), 3000);
+    });
+
+    try {
+      const result = await Promise.race([profileQueryPromise, profileTimeoutPromise]);
+      console.log('[CaixaService] Profile company_id:', result.data?.company_id);
+      return result.data?.company_id || null;
+    } catch (timeoutError: any) {
+      console.error('[CaixaService] profiles query timeout:', timeoutError.message);
+      throw timeoutError;
+    }
   }
 
   async getCaixaAberto(companyId?: string): Promise<Caixa | null> {
+    console.log('[CaixaService] getCaixaAberto START [VERSION 4 - WITH ABORT]', companyId);
     const cid = companyId || await this._getCompanyId();
+    console.log('[CaixaService] Company ID resolved:', cid);
     if (!cid) return null;
 
     const now = Date.now();
     const today = getLocalDateKey();
+    console.log('[CaixaService] Today key:', today);
     
     // Verificar cache: válido se dentro do TTL E do mesmo dia
     if (caixaCache.data && (now - caixaCache.timestamp) < CACHE_TTL) {
       // Validar se o cache é do dia atual
       if (caixaCache.data.data === today) {
+        console.log('[CaixaService] Returning from cache');
         return caixaCache.data;
       }
       // Cache é de outro dia, invalidar
       caixaCache = { data: null, timestamp: 0 };
     }
 
-    const { data, error } = await supabase
+    console.log('[CaixaService] Querying Supabase for caixa aberto... [v4-with-abort]');
+    
+    // ✅ Add timeout to prevent hanging
+    const queryPromise = supabase
       .from(TABLE_CAIXA)
       .select('*')
       .eq('company_id', cid)
@@ -55,6 +94,28 @@ class CaixaService {
       .eq('date_key', today) // ✅ CRÍTICO: Buscar apenas caixa do dia atual
       .limit(1)
       .maybeSingle();
+
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        console.error('[CaixaService] Timeout reached after 3s');
+        reject(new Error('Timeout: getCaixaAberto query exceeded 3s'));
+      }, 3000);
+    });
+
+    let data, error;
+    try {
+      console.log('[CaixaService] Starting Promise.race...');
+      const result = await Promise.race([queryPromise, timeoutPromise]);
+      data = result.data;
+      error = result.error;
+      console.log('[CaixaService] Promise.race completed successfully');
+    } catch (timeoutError: any) {
+      console.error('[CaixaService] Query timeout or error:', timeoutError.message);
+      // Return null instead of throwing to allow order creation to proceed
+      return null;
+    }
+
+    console.log('[CaixaService] Query result:', { hasData: !!data, hasError: !!error });
 
     if (error) {
       console.error('Erro ao buscar caixa aberto:', error.message);
@@ -64,10 +125,12 @@ class CaixaService {
     if (data) {
       const mappedCaixa: Caixa = this._mapCaixaToType(data);
       caixaCache = { data: mappedCaixa, timestamp: now };
+      console.log('[CaixaService] Caixa found and cached:', mappedCaixa.id);
       return mappedCaixa;
     }
 
     caixaCache = { data: null, timestamp: now };
+    console.log('[CaixaService] No caixa aberto found');
     return null;
   }
 
