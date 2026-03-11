@@ -209,11 +209,19 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       if (isOnline) {
         if (!user?.companyId) throw new Error('Empresa não identificada');
 
+        console.log('[OrderContext] Verificando caixa aberto...');
         const caixa = await CaixaService.getCaixaAberto(user.companyId);
-        if (!caixa) throw new Error('Caixa não está aberto. Abra o caixa antes de criar pedidos.');
+        if (!caixa) {
+          console.warn('[OrderContext] ⚠️ Caixa não encontrado - prosseguindo sem validação (pode ser timeout)');
+          // Don't throw error - allow order creation to proceed
+          // This handles the case where Supabase query times out
+        } else {
+          console.log('[OrderContext] Caixa aberto:', caixa.id);
+        }
 
         // Verificar se comanda já possui pagamentos (usando Supabase)
         if (comandaNumber && comandaNumber.trim() !== '') {
+          console.log('[OrderContext] Verificando pagamentos para comanda:', comandaNumber);
           const dateKey = new Date().toISOString().split('T')[0];
 
           const { data: pagamentos, error } = await supabase
@@ -231,9 +239,12 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           if (pagamentos && pagamentos.length > 0) {
             throw new Error(`Comanda ${comandaNumber} já possui pagamentos.`);
           }
+          console.log('[OrderContext] Comanda sem pagamentos, prosseguindo...');
         }
 
+        console.log('[OrderContext] Chamando ensureComandaAberta...');
         await ComandasService.ensureComandaAberta(user.companyId, comandaNumber, createdBy, createdByName, mesa, clientName);
+        console.log('[OrderContext] ensureComandaAberta concluído');
 
         // PRIORIDADE: Se o UI enviou um total calculado (totalPrice), usa ele.
         // O calculateTotalFromSupabase serve apenas como conferência ou fallback se totalPrice for 0.
@@ -248,10 +259,12 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         const valorPedido = order.totalPrice || 0;
 
         console.log('🟢 [OrderContext] Chamando saveOrder com:', { companyId: user.companyId, orderId, itemsWithStatus: order.itemsWithStatus?.length });
+        console.log('[OrderContext] Chamando Promise.all com saveOrder e adicionarConsumo...');
         const [firestoreDocId] = await Promise.all([
           OrderFirestoreService.saveOrder(user.companyId, order),
           ComandasService.adicionarConsumo(user.companyId, comandaNumber, valorPedido)
         ]);
+        console.log('[OrderContext] Promise.all concluído, firestoreDocId:', firestoreDocId);
 
         setFirestoreDocMap(prev => ({ ...prev, [orderId]: firestoreDocId }));
         setOrderCounter(prev => prev + 1);

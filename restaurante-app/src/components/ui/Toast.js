@@ -21,22 +21,32 @@ export default function Toast({ visible, message, type = 'success', onHide }) {
 
   useEffect(() => {
     if (visible) {
-      // In
-      Animated.parallel([
-        Animated.timing(translateY, {
-          toValue: 50, // Top offset
-          duration: 300,
-          useNativeDriver: Platform.OS !== 'web',
-        }),
-        Animated.timing(opacity, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: Platform.OS !== 'web',
-        })
-      ]).start();
+      console.log('[Toast] Showing toast:', message, 'type:', type);
+      
+      // No web, mostrar imediatamente sem animação para compatibilidade com testes
+      if (Platform.OS === 'web') {
+        translateY.setValue(50);
+        opacity.setValue(1);
+        console.log('[Toast] Web: Showing immediately without animation');
+      } else {
+        // Mobile: usar animação
+        Animated.parallel([
+          Animated.timing(translateY, {
+            toValue: 50,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.timing(opacity, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+          })
+        ]).start();
+      }
 
       // Auto hide
       const timer = setTimeout(() => {
+        console.log('[Toast] Auto-hiding after 3s');
         hide();
       }, 3000);
 
@@ -65,8 +75,11 @@ export default function Toast({ visible, message, type = 'success', onHide }) {
 
   if (!visible) return null;
 
-  return (
-    <Animated.View style={[
+  const ToastContent = (
+    <Animated.View 
+      accessibilityRole="alert"
+      testID="toast-container"
+      style={[
       styles.container, 
       { backgroundColor: currentConfig.bg, transform: [{ translateY }], opacity }
     ]}>
@@ -77,6 +90,15 @@ export default function Toast({ visible, message, type = 'success', onHide }) {
       </TouchableOpacity>
     </Animated.View>
   );
+
+  if (Platform.OS === 'web') {
+    return React.createElement('div', 
+      { role: 'status', style: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 9999, pointerEvents: 'none' } },
+      ToastContent
+    );
+  }
+
+  return ToastContent;
 }
 
 const styles = StyleSheet.create({
@@ -104,3 +126,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   }
 });
+
