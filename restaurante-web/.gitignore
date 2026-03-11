@@ -60,10 +60,11 @@ yarn-error.log*
 dist/
 *.tsbuildinfo
 # Build outputs (if any in root)
-build/
-dist/
-coverage/
-dataconnect/
+build/*
+dist/*
+coverage/*
+dataconnect/*
+playwright-report/*
 
 # Temporary
 *.tmp

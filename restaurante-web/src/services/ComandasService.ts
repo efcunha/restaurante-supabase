@@ -51,32 +51,35 @@ class ComandasService {
     usuarioId: string,
     usuarioNome: string,
     mesa: string = '',
-    cliente: string = ''
+    cliente: string = '',
+    attemptCount: number = 0
   ): Promise<{ id: string; dateKey: string }> {
+    console.log(`[ComandasService] ensureComandaAberta START - attempt ${attemptCount}, comanda ${comandaNumber}, mesa ${mesa}, cliente ${cliente}`);
+    
+    // ✅ FIX: Bounded retry logic - prevent infinite recursion
+    if (attemptCount >= 2) {
+      console.error('[ComandasService] Max attempts reached (2)');
+      throw new Error('Failed to ensure comanda after 2 attempts');
+    }
+
     if (!companyId) throw new Error("Company ID required");
     const dateK = todayKey();
     const numStr = String(comandaNumber);
 
-    // 1. Check if exists
-    // ✅ FIX: Include table_number in query to ensure isolation per table
-    // This prevents Worker A (Mesa 1) from finding comanda created by Worker B (Mesa 2)
-    let query = supabase
+    // 1. Check if exists — busca APENAS por company_id + date_key + comanda_number.
+    // Nunca filtrar por table_number aqui: o ComandaNumberService reserva com table_number=''
+    // e filtrar por mesa impediria encontrar essa reserva, causando INSERT duplicado (23505).
+    const { data: existing } = await supabase
       .from(TABLE_COMANDAS)
       .select('*')
       .eq('company_id', companyId)
       .eq('date_key', dateK)
-      .eq('comanda_number', numStr);
-    
-    // ✅ FIX: Filter by table_number if provided (for local orders)
-    // Delivery orders (mesa='') will still work as before
-    if (mesa && mesa.trim() !== '') {
-      query = query.eq('table_number', mesa);
-    }
-    
-    const { data: existing } = await query
+      .eq('comanda_number', numStr)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
+
+    console.log(`[ComandasService] SELECT result: ${existing ? `found id ${existing.id}, table_number=${existing.table_number}, client=${existing.client_name}` : 'not found'}`);
 
     if (existing) {
       // Update if needed
@@ -94,17 +97,26 @@ class ComandasService {
         needsUpdate = true;
       }
 
-      const invalidos = ['Não informado', 'Cliente Balcão', 'Cliente', '', null, undefined];
+      // ✅ FIX: Recognize and update "Reservando..." placeholder from ComandaNumberService
+      const invalidos = ['Não informado', 'Cliente Balcão', 'Cliente', 'Reservando...', '', null, undefined];
       const novoClienteValido = cliente && !invalidos.includes(cliente);
       if (novoClienteValido && existing.client_name !== cliente) {
         updates.client_name = cliente;
         needsUpdate = true;
       }
 
+      // ✅ FIX: Also update if existing is "Reservando..." placeholder
+      if (existing.client_name === 'Reservando...' && novoClienteValido) {
+        updates.client_name = cliente;
+        needsUpdate = true;
+      }
+
       if (needsUpdate) {
+        console.log(`[ComandasService] Updating existing comanda ${existing.id} with:`, updates);
         await supabase.from(TABLE_COMANDAS).update(updates).eq('id', existing.id);
       }
 
+      console.log(`[ComandasService] ensureComandaAberta SUCCESS - found existing comanda id: ${existing.id}`);
       return { id: existing.id, dateKey: dateK };
     }
 
@@ -132,13 +144,22 @@ class ComandasService {
       if (error.code === '23505') { 
         // 23505 = Unique violation. Meaning another instance concurrently created this 'aberta' comanda just milliseconds ago!
         console.warn('[ComandasService] Empate (Race condition) identificado! Comanda foi criada milisegundos antes por outro usuário. Recuperando a existente...');
-        // Refaz a chamada que agora vai cair no bloco de (existing) com segurança
-        return this.ensureComandaAberta(companyId, comandaNumber, usuarioId, usuarioNome, mesa, cliente);
+        
+        // ✅ FIX: Bounded retry - only retry once
+        if (attemptCount < 1) {
+          console.log('[ComandasService] Retry SELECT with params:', { companyId, dateK, numStr, mesa });
+          // Add small delay to handle race condition timing
+          await new Promise(resolve => setTimeout(resolve, 100));
+          return this.ensureComandaAberta(companyId, comandaNumber, usuarioId, usuarioNome, mesa, cliente, attemptCount + 1);
+        } else {
+          throw new Error('Failed to ensure comanda after 2 attempts');
+        }
       }
       console.error("Erro ao criar comanda:", error.message);
       throw error;
     }
 
+    console.log(`[ComandasService] ensureComandaAberta SUCCESS - comanda id: ${novo.id}`);
     return { id: novo.id, dateKey: dateK };
   }
 
@@ -148,32 +169,41 @@ class ComandasService {
     const numStr = String(comandaNumber);
     const valor = typeof valorAcrescentar === 'string' ? parseFloat(valorAcrescentar) : valorAcrescentar;
 
-    if (isNaN(valor)) return;
+    if (isNaN(valor) || valor <= 0) return;
 
-    // Supabase doesn't support atomic increment easily on 'update' without stored procedure or raw SQL.
-    // For simplicity/migration, we READ -> CALCULATE -> WRITE.
-    // Ideally use RPC for atomicity.
+    // 🔒 ATÔMICO: usa RPC para fazer o UPDATE direto no Postgres sem READ-MODIFY-WRITE.
+    // Evita race condition quando múltiplos garçons adicionam pedidos à mesma comanda simultaneamente.
+    const { error } = await supabase.rpc('adicionar_consumo_atomico', {
+      p_company_id:      companyId,
+      p_date_key:        dateK,
+      p_comanda_number:  numStr,
+      p_valor:           valor
+    });
 
-    const { data: comanda } = await supabase
-      .from(TABLE_COMANDAS)
-      .select('*')
-      .eq('company_id', companyId)
-      .eq('date_key', dateK)
-      .eq('comanda_number', numStr)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
+    if (error) {
+      // Fallback: READ → WRITE caso a RPC ainda não exista no banco
+      console.warn('[ComandasService] RPC adicionar_consumo_atomico falhou, usando fallback:', error.message);
+      const { data: comanda } = await supabase
+        .from(TABLE_COMANDAS)
+        .select('id, total_consumed, total_paid')
+        .eq('company_id', companyId)
+        .eq('date_key', dateK)
+        .eq('comanda_number', numStr)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
 
-    if (!comanda) throw new Error('Comanda não encontrada');
+      if (!comanda) throw new Error('Comanda não encontrada');
 
-    const novoTotal = Number(comanda.total_consumed || 0) + valor;
-    const novoSaldo = Math.max(0, novoTotal - Number(comanda.total_paid || 0));
+      const novoTotal = Number(comanda.total_consumed || 0) + valor;
+      const novoSaldo = Math.max(0, novoTotal - Number(comanda.total_paid || 0));
 
-    await supabase.from(TABLE_COMANDAS).update({
-      total_consumed: novoTotal,
-      open_balance: novoSaldo,
-      updated_at: new Date().toISOString()
-    }).eq('id', comanda.id);
+      await supabase.from(TABLE_COMANDAS).update({
+        total_consumed: novoTotal,
+        open_balance: novoSaldo,
+        updated_at: new Date().toISOString()
+      }).eq('id', comanda.id);
+    }
   }
 
   async fecharComanda(companyId: string, comandaNumber: string | number, usuarioId: string, usuarioNome: string) {
@@ -214,10 +244,16 @@ class ComandasService {
       .select('*')
       .eq('company_id', companyId)
       .eq('date_key', todayKey())
-      .eq('status', 'aberta')
-      .order('comanda_number', { ascending: true }); // String sort might be 1, 10, 2... but ok for now
+      .eq('status', 'aberta');
 
-    return (data || []).map(this._mapToComanda);
+    // Ordenação numérica no cliente para evitar bug lexicográfico (ex: 1, 10, 2 se TEXT)
+    const sorted = (data || []).sort((a, b) => {
+      const aNum = parseInt(String(a.comanda_number), 10);
+      const bNum = parseInt(String(b.comanda_number), 10);
+      return (isNaN(aNum) ? 0 : aNum) - (isNaN(bNum) ? 0 : bNum);
+    });
+
+    return sorted.map(this._mapToComanda);
   }
 
   async sincronizarTotalComanda(companyId: string, comandaNumber: string | number, totalReal: number) {

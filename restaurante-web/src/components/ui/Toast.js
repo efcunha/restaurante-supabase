@@ -5,11 +5,70 @@ import { colors } from '../../theme/colors';
 
 const { width } = Dimensions.get('window');
 
+// ─── Web: Componente HTML puro para compatibilidade total com Playwright ───────
+function ToastWeb({ visible, message, type = 'success', onHide }) {
+  const config = {
+    success: { bg: colors.success },
+    error: { bg: colors.danger },
+    info: { bg: colors.primary },
+    warning: { bg: colors.warning },
+  };
+  const bg = (config[type] || config.info).bg;
+
+  useEffect(() => {
+    if (visible) {
+      console.log('[Toast][Web] Showing toast:', message);
+      const timer = setTimeout(() => {
+        console.log('[Toast][Web] Auto-hiding');
+        if (onHide) onHide();
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [visible]);
+
+  if (!visible) return null;
+
+  // Renderiza div nativo - sem Animated, sem opacity=0, visível imediatamente
+  return React.createElement(
+    'div',
+    {
+      role: 'status',
+      'data-testid': 'toast-container',
+      style: {
+        position: 'fixed',
+        top: 20,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        zIndex: 9999,
+        backgroundColor: bg,
+        color: '#FFF',
+        padding: '16px 24px',
+        borderRadius: 12,
+        fontSize: 16,
+        fontWeight: '600',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        minWidth: 200,
+        maxWidth: 500,
+        pointerEvents: 'all',
+      },
+    },
+    React.createElement('span', null, message)
+  );
+}
+
+// ─── Mobile: Componente animado original ──────────────────────────────────────
 export default function Toast({ visible, message, type = 'success', onHide }) {
+  // No web, usa componente HTML puro
+  if (Platform.OS === 'web') {
+    return React.createElement(ToastWeb, { visible, message, type, onHide });
+  }
+
   const translateY = useRef(new Animated.Value(-100)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
-  // Colors config
   const config = {
     success: { bg: colors.success, icon: 'checkmark-circle' },
     error: { bg: colors.danger, icon: 'alert-circle' },
@@ -21,21 +80,19 @@ export default function Toast({ visible, message, type = 'success', onHide }) {
 
   useEffect(() => {
     if (visible) {
-      // In
       Animated.parallel([
         Animated.timing(translateY, {
-          toValue: 50, // Top offset
+          toValue: 50,
           duration: 300,
-          useNativeDriver: Platform.OS !== 'web',
+          useNativeDriver: true,
         }),
         Animated.timing(opacity, {
           toValue: 1,
           duration: 300,
-          useNativeDriver: Platform.OS !== 'web',
+          useNativeDriver: true,
         })
       ]).start();
 
-      // Auto hide
       const timer = setTimeout(() => {
         hide();
       }, 3000);
@@ -51,12 +108,12 @@ export default function Toast({ visible, message, type = 'success', onHide }) {
       Animated.timing(translateY, {
         toValue: -100,
         duration: 300,
-        useNativeDriver: Platform.OS !== 'web',
+        useNativeDriver: true,
       }),
       Animated.timing(opacity, {
         toValue: 0,
         duration: 300,
-        useNativeDriver: Platform.OS !== 'web',
+        useNativeDriver: true,
       })
     ]).start(() => {
       if (onHide && visible) onHide();
@@ -66,10 +123,14 @@ export default function Toast({ visible, message, type = 'success', onHide }) {
   if (!visible) return null;
 
   return (
-    <Animated.View style={[
-      styles.container, 
-      { backgroundColor: currentConfig.bg, transform: [{ translateY }], opacity }
-    ]}>
+    <Animated.View
+      accessibilityRole="alert"
+      testID="toast-container"
+      style={[
+        styles.container,
+        { backgroundColor: currentConfig.bg, transform: [{ translateY }], opacity }
+      ]}
+    >
       <Ionicons name={currentConfig.icon} size={24} color="#FFF" />
       <Text style={styles.message}>{message}</Text>
       <TouchableOpacity onPress={hide}>
