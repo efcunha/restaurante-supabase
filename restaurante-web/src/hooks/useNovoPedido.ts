@@ -612,16 +612,20 @@ export function useNovoPedido(): UseNovoPedidoReturn {
     }, []);
 
     const handleSubmit = async () => {
+        console.log('[useNovoPedido] handleSubmit START');
+        
         if (selectedItems.length === 0) {
             showToast('Adicione pelo menos um item ao pedido', 'warning');
             return;
         }
 
         try {
+            console.log('[useNovoPedido] Setting isSubmitting=true');
             setIsSubmitting(true);
 
             // ✅ CRÍTICO: Prevenção de Concorrência em Mesas Livres
             if (user && mesa && mesa.trim() !== '') {
+                console.log('[useNovoPedido] Verificando se mesa já está ocupada:', mesa);
                 // Verifica rapidamente se já não há uma comanda aberta para essa mesa hoje.
                 const { data: ocupadas } = await supabase
                     .from('comandas')
@@ -634,6 +638,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                     .maybeSingle();
 
                 if (ocupadas) {
+                    console.log('[useNovoPedido] Mesa já ocupada!');
                     setIsSubmitting(false);
                     showToast(`A Mesa ${mesa} já foi ocupada!`, 'error');
                     Alert.alert(
@@ -642,10 +647,13 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                     );
                     return;
                 }
+                console.log('[useNovoPedido] Mesa livre, prosseguindo...');
             }
 
+            console.log('[useNovoPedido] Gerando número de comanda...');
             const nextNumber = await getNextComandaNumber();
             const novoNumeroComanda = formatComandaNumber(nextNumber);
+            console.log('[useNovoPedido] Número de comanda gerado:', novoNumeroComanda);
 
             const items = selectedItems.map(item => item.text);
 
@@ -689,8 +697,17 @@ export function useNovoPedido(): UseNovoPedidoReturn {
 
             console.log('📦 [NovoPedido] Items a serem enviados:', items);
             console.log('💰 [NovoPedido] Total calculado:', total);
-            console.log('🗺️ [NovoPedido] PriceMap final (primeiras 20 chaves):', Object.keys(priceMap).slice(0, 20));
+            console.log('🗺️ [NovoPedido] PriceMap size:', Object.keys(priceMap).length);
 
+            console.log('[useNovoPedido] CHECKPOINT 1 - Antes de addOrder');
+            console.log('[useNovoPedido] Chamando addOrder com params:', {
+                clientName: clientName.trim() || 'Cliente',
+                itemsCount: items.length,
+                comandaNumber: novoNumeroComanda,
+                mesa,
+                total: parseFloat(total.toString())
+            });
+            
             const createdOrderId = await addOrder(
                 clientName.trim() || 'Cliente',
                 items,
@@ -706,7 +723,9 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                 tableId,
                 waiterId
             );
+            console.log('[useNovoPedido] addOrder concluído, orderId:', createdOrderId);
 
+            console.log('[useNovoPedido] Verificando total zerado...');
             // 🔒 VALIDAÇÃO: Alertar se o pedido foi criado com total zerado
             if (parseFloat(total.toString()) === 0) {
                 console.error('⚠️ [NovoPedido] PEDIDO CRIADO COM TOTAL ZERADO!', {
@@ -722,8 +741,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                 );
             }
 
-            showToast(`Pedido criado! Comanda ${novoNumeroComanda}`, 'success');
-
+            console.log('[useNovoPedido] Chamando showToast...');
             showToast(`Pedido criado! Comanda ${novoNumeroComanda}`, 'success');
 
             resetForm();

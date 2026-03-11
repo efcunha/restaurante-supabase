@@ -35,26 +35,27 @@ export const peekNextComandaNumber = async (): Promise<number | null> => {
 
     const dateKey = getDateKey();
 
-    // Buscar o maior número de comanda para hoje
-    const { data, error } = await supabase
+    // Buscar todos os números e calcular max numericamente (evita bug lexicográfico se TEXT)
+    const { data: allNums, error } = await supabase
       .from('comandas')
       .select('comanda_number')
       .eq('company_id', profile.company_id)
-      .eq('date_key', dateKey)
-      .order('comanda_number', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .eq('date_key', dateKey);
 
     if (error) {
       console.error('[ComandaNumber] Erro ao buscar próximo número:', error);
       return null;
     }
 
-    // Se não há comandas hoje, próximo é 1
-    if (!data) return 1;
+    if (!allNums || allNums.length === 0) return 1;
 
-    // Próximo número é o maior + 1
-    return (data.comanda_number || 0) + 1;
+    const maxNum = allNums.reduce((acc, row) => {
+      const n = parseInt(String(row.comanda_number), 10);
+      return isNaN(n) ? acc : Math.max(acc, n);
+    }, 0);
+
+    return maxNum + 1;
+
   } catch (error) {
     console.error('[ComandaNumber] Erro em peekNextComandaNumber:', error);
     return null;
@@ -93,17 +94,22 @@ export const getNextComandaNumber = async (): Promise<number> => {
         await new Promise(resolve => setTimeout(resolve, Math.random() * 100));
       }
 
-      const { data: maxData } = await supabase
+      // Buscar TODOS os números do dia e calcular max numericamente no cliente.
+      // Evita bug de ordenação lexicográfica (ex: "9" > "10" se campo for TEXT).
+      const { data: allNumbers } = await supabase
         .from('comandas')
         .select('comanda_number')
         .eq('company_id', profile.company_id)
-        .eq('date_key', dateKey)
-        .eq('status', 'aberta') // 🔒 CRÍTICO: Só contar comandas abertas para evitar reutilizar números de comandas fechadas
-        .order('comanda_number', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .eq('date_key', dateKey);
 
-      const nextNum = (maxData?.comanda_number || 0) + 1;
+      const maxNum = allNumbers?.reduce((acc, row) => {
+        const n = parseInt(String(row.comanda_number), 10);
+        return isNaN(n) ? acc : Math.max(acc, n);
+      }, 0) ?? 0;
+
+
+      const nextNum = maxNum + 1;
+
 
       console.log(`[ComandaNumber] Tentativa ${attempts}: Próximo número calculado = ${nextNum}`);
 
