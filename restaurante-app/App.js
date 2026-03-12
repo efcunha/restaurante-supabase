@@ -66,8 +66,8 @@ function TabNavigator() {
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
           if (route.name === 'Novo Pedido') iconName = focused ? 'add-circle' : 'add-circle-outline';
-          else if (route.name === 'Montagem') iconName = focused ? 'restaurant' : 'restaurant-outline';
-          else if (route.name === 'Cozinha') iconName = focused ? 'restaurant' : 'restaurant-outline';
+          else if (route.name === 'Montagem') iconName = focused ? 'layers' : 'layers-outline';
+          else if (route.name === 'Cozinha') iconName = focused ? 'flame' : 'flame-outline';
           else if (route.name === 'Prontos') iconName = focused ? 'checkmark-done-circle' : 'checkmark-done-circle-outline';
           else if (route.name === 'Mapa') iconName = focused ? 'map' : 'map-outline';
           else if (route.name === 'Reservas') iconName = focused ? 'calendar' : 'calendar-outline';
