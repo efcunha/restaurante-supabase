@@ -18,6 +18,12 @@ interface Props {
 export default function LoginScreen({ navigation }: Props) {
   const { login, loginWithBiometric, biometricAvailable, biometricType, mfaResolver, setMfaResolver } = useAuth();
   const { showToast } = useToast();
+  const windowWidth = Dimensions.get('window').width;
+  const WIDE_BREAKPOINT = 720;
+  const isWideLayout = windowWidth >= WIDE_BREAKPOINT;
+  const logoSize = isWideLayout
+    ? Math.min(Math.max(windowWidth * 0.16, 220), 280)
+    : Math.min(Math.max(windowWidth * 0.42, 220), 300);
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [loading, setLoading] = useState(false);
@@ -79,22 +85,22 @@ export default function LoginScreen({ navigation }: Props) {
       </TouchableOpacity>
 
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, isWideLayout && styles.scrollContentWide]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.content}>
+        <View style={[styles.content, isWideLayout && styles.contentWide]}>
             {/* Logo/Título */}
             <View style={styles.header}>
               <Image
                 source={require('../../imagem/icone.png')}
-                style={styles.logo}
+                style={[styles.logo, { width: logoSize, height: logoSize }]}
                 resizeMode="contain"
               />
             </View>
 
             {/* Formulário */}
-            <View style={styles.form}>
+            <View style={[styles.form, isWideLayout && styles.formWide]}>
               <Text style={styles.label}>Email</Text>
               <TextInput
                 style={styles.input}
@@ -249,10 +255,18 @@ const styles = StyleSheet.create({
     paddingTop: 5,
     width: '100%',
   },
+  contentWide: {
+    width: '92%',
+    maxWidth: 560,
+    alignSelf: 'center',
+  },
 
   scrollContent: {
     paddingTop: 60,
     paddingBottom: 20,
+  },
+  scrollContentWide: {
+    alignItems: 'center',
   },
   exitButton: {
     position: 'absolute',
@@ -268,13 +282,13 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 16,
     marginTop: 0,
     width: '100%',
   },
   logo: {
-    width: 200,
-    height: 200,
+    width: 240,
+    height: 240,
   },
   form: {
     backgroundColor: '#FFFFFF',
@@ -283,6 +297,9 @@ const styles = StyleSheet.create({
     // @ts-ignore
     boxShadow: '0px 10px 20px rgba(0, 0, 0, 0.3)',
     elevation: 10,
+  },
+  formWide: {
+    width: '100%',
   },
   label: {
     fontSize: 12,

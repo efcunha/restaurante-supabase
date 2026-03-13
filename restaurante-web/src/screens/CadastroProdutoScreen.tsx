@@ -77,11 +77,11 @@ const styles = StyleSheet.create({
   formContainer: {},
   label: { color: '#8B2F2F', fontWeight: '600', marginBottom: 8, marginTop: 10 },
   input: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#E0D8C8', borderRadius: 12, padding: 14, marginBottom: 12 },
-  btn: { backgroundColor: '#E5B84A', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 20 },
+  btn: { backgroundColor: '#B45309', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 20 },
   btnText: { color: '#2C2C2C', fontWeight: '700' },
   row: { flexDirection: 'row', gap: 12, marginBottom: 20 },
   catChip: { flex: 1, borderWidth: 1, borderColor: '#E0D8C8', borderRadius: 10, paddingVertical: 12, alignItems: 'center', backgroundColor: '#fff' },
-  catChipActive: { backgroundColor: '#E5B84A', borderColor: '#E5B84A' },
+  catChipActive: { backgroundColor: '#B45309', borderColor: '#B45309' },
   catText: { color: '#5C5C5C', fontWeight: '700' },
   catTextActive: { color: '#2C2C2C' },
 });

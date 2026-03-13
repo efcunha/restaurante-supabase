@@ -517,7 +517,7 @@ export default function MontagemScreen() {
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
         <MaterialCommunityIcons name="silverware-fork-knife" size={40} color="#8B2F2F" style={{ marginRight: -10, transform: [{ rotate: '-15deg' }] }} />
         <View style={{ alignItems: 'center', zIndex: 1 }}>
-          <MaterialCommunityIcons name="chef-hat" size={80} color="#E5B84A" />
+          <MaterialCommunityIcons name="chef-hat" size={80} color="#B45309" />
           <MaterialCommunityIcons name="food-variant" size={50} color="#2C2C2C" style={{ marginTop: -15 }} />
         </View>
         <MaterialCommunityIcons name="food-turkey" size={45} color="#D84315" style={{ marginLeft: -15, marginTop: 20 }} />
@@ -595,10 +595,10 @@ export default function MontagemScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5DC',
+    backgroundColor: colors.background,
   },
   header: {
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
     paddingTop: 50,
     paddingBottom: 15,
     paddingHorizontal: 20,
@@ -612,7 +612,7 @@ const styles = StyleSheet.create({
     ...Platform.select({
       web: { boxShadow: '0px 4px 15px rgba(0, 0, 0, 0.2)' },
       // @ts-ignore
-      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 15 }
+      default: { shadowColor: colors.shadow, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 15 }
     }),
   },
   headerLeft: {
@@ -626,7 +626,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 20,
     fontWeight: 'bold',
     textAlign: 'center',
@@ -636,7 +636,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
   userInfo: {
-    color: '#E5B84A',
+    color: colors.secondary,
     fontSize: 12,
     fontWeight: '600',
   },
@@ -657,14 +657,14 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   orderCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     borderRadius: 15,
     padding: 18,
     marginBottom: 15,
     ...Platform.select({
       web: { boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.06)' },
       default: {
-        shadowColor: '#000',
+        shadowColor: colors.shadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.06,
         shadowRadius: 8,
@@ -672,12 +672,12 @@ const styles = StyleSheet.create({
       }
     }),
     borderWidth: 1,
-    borderColor: '#F0EBE0',
+    borderColor: '#E9EEF5',
   },
   orderCardUrgent: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     borderWidth: 2,
-    borderColor: '#E5B84A',
+    borderColor: colors.secondary,
   },
   orderHeader: {
     flexDirection: 'row',
@@ -688,12 +688,12 @@ const styles = StyleSheet.create({
   orderNumber: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#8B2F2F',
+    color: colors.primary,
   },
   orderTime: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#000000',
+    color: colors.white,
     backgroundColor: '#FF8C42',
     paddingHorizontal: 10,
     paddingVertical: 5,
@@ -702,25 +702,25 @@ const styles = StyleSheet.create({
   orderClient: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#2C2C2C',
+    color: colors.text,
     marginBottom: 12,
   },
   garcomText: {
     fontSize: 13,
-    color: '#2196F3',
+    color: colors.primary,
     fontWeight: '600',
     marginBottom: 6,
   },
   movimentadoPorText: {
     fontSize: 13,
-    color: '#FF9800',
+    color: colors.warning,
     fontStyle: 'italic',
     marginBottom: 8,
   },
   orderObs: {
     fontSize: 14,
     fontStyle: 'italic',
-    color: '#E65100', // Orange highlighting
+    color: colors.warningText,
     fontWeight: 'bold',
     marginBottom: 10,
     paddingLeft: 10,
@@ -741,18 +741,18 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 6,
     borderWidth: 2,
-    borderColor: '#8B2F2F',
+    borderColor: colors.primary,
     marginRight: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
   },
   checkboxChecked: {
-    backgroundColor: '#8B2F2F',
-    borderColor: '#8B2F2F',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   checkmark: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -760,27 +760,27 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
     marginRight: 10,
   },
   itemDotSecondary: {
-    backgroundColor: '#E5B84A',
+    backgroundColor: colors.secondary,
   },
   itemText: {
     fontSize: 16, // Increased size
-    color: '#2C2C2C', // Darker for readability
+    color: colors.text,
     fontWeight: '600',
   },
   itemExtras: {
     fontSize: 14,
-    color: '#D32F2F',
+    color: colors.danger,
     fontWeight: 'bold',
     marginTop: 2,
     fontStyle: 'italic',
   },
   itemTextReady: {
     fontSize: 14,
-    color: '#2C2C2C',
+    color: colors.text,
     flex: 1,
     fontWeight: '600',
   },
@@ -789,14 +789,14 @@ const styles = StyleSheet.create({
     textDecorationLine: 'line-through',
   },
   readyBtn: {
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
     padding: 14,
     borderRadius: 12,
     alignItems: 'center',
     ...Platform.select({
       web: { boxShadow: '0px 3px 10px rgba(139, 47, 47, 0.2)' },
       default: {
-        shadowColor: '#8B2F2F',
+        shadowColor: colors.primary,
         shadowOffset: { width: 0, height: 3 },
         shadowOpacity: 0.2,
         shadowRadius: 10,
@@ -805,12 +805,12 @@ const styles = StyleSheet.create({
     }),
   },
   readyBtnDisabled: {
-    backgroundColor: '#CCC',
+    backgroundColor: '#9AA4B2',
     shadowOpacity: 0,
     elevation: 0,
   },
   readyBtnText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 15,
     fontWeight: '600',
     letterSpacing: 0.5,
@@ -824,12 +824,12 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#8B2F2F',
+    color: colors.primary,
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#999',
+    color: colors.textSecondary,
     textAlign: 'center',
     paddingHorizontal: 40,
   },

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { colors } from '../theme/colors';
 
 /**
  * OrderCard - Card otimizado para exibir pedido
@@ -19,12 +20,12 @@ const OrderCard = React.memo(({
       onPress={() => onPress(order.id)}
       activeOpacity={0.7}
     >
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+      <View style={styles.headerRow}>
         <Text style={styles.orderNumber}>{order.id}</Text>
         {order.orderType === 'delivery' && (
-          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FDECEC', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
-            <Ionicons name="bicycle" size={16} color="#8B2F2F" />
-            <Text style={{ marginLeft: 4, fontSize: 13, fontWeight: 'bold', color: '#8B2F2F' }}>Delivery</Text>
+          <View style={styles.deliveryChip}>
+            <Ionicons name="bicycle" size={16} color={colors.primary} />
+            <Text style={styles.deliveryChipText}>Delivery</Text>
           </View>
         )}
       </View>
@@ -71,39 +72,59 @@ OrderCard.displayName = 'OrderCard';
 
 const styles = StyleSheet.create({
   orderCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     borderRadius: 16,
     padding: 18,
     marginBottom: 15,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
     borderWidth: 1,
-    borderColor: '#F0F0F0',
+    borderColor: '#E9EEF5',
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  deliveryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EAF6F9',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  deliveryChipText: {
+    marginLeft: 4,
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: colors.primary,
   },
   orderCardUrgent: {
-    backgroundColor: '#FFF9E6',
+    backgroundColor: '#FFF6EB',
     borderWidth: 1,
-    borderColor: '#E5B84A',
+    borderColor: colors.secondary,
   },
   orderNumber: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#8B2F2F',
+    color: colors.primary,
     marginBottom: 8,
   },
   orderClient: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#2C2C2C',
+    color: colors.text,
     marginBottom: 12,
   },
   orderObs: {
     fontSize: 13,
     fontStyle: 'italic',
-    color: '#8B2F2F',
+    color: colors.primary,
     marginBottom: 10,
     paddingLeft: 10,
   },
@@ -119,45 +140,45 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
     marginRight: 10,
   },
   itemDotSecondary: {
-    backgroundColor: '#E5B84A',
+    backgroundColor: colors.secondary,
   },
   itemText: {
     fontSize: 14,
-    color: '#5C5C5C',
+    color: colors.textSecondary,
   },
   orderAddress: {
     fontSize: 13,
-    color: '#444',
+    color: colors.textSecondary,
     marginBottom: 6,
     paddingHorizontal: 4,
   },
   orderFee: {
     fontSize: 13,
     fontWeight: 'bold',
-    color: '#E5B84A',
+    color: colors.secondary,
     marginBottom: 10,
     paddingHorizontal: 4,
   },
   actionBtn: {
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
     paddingVertical: 14,
     paddingHorizontal: 20,
     minHeight: 48,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#8B2F2F',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 6,
     elevation: 4,
   },
   actionBtnText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 15,
     fontWeight: '600',
     letterSpacing: 0.5,

@@ -149,7 +149,7 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'preparing': return '#E5B84A';
+      case 'preparing': return '#B45309';
       case 'ready': return '#7ED321';
       case 'delivered': return '#4CAF50';
       case 'cancelled': return '#F44336';

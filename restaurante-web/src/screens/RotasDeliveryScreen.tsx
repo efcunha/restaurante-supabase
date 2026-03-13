@@ -244,7 +244,7 @@ export default function RotasDeliveryScreen() {
 
         <View style={styles.infoBlock}>
             <View style={styles.infoRow}>
-               <Ionicons name="wallet" size={20} color="#E5B84A" />
+               <Ionicons name="wallet" size={20} color="#B45309" />
                <Text style={styles.infoTextBold}>{item.paymentMethod || 'A Confirmar na Entrega'}</Text>
             </View>
             
@@ -394,7 +394,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
   userInfo: {
-    color: '#E5B84A',
+    color: '#B45309',
     fontSize: 12,
     fontWeight: '600',
   },
@@ -412,7 +412,7 @@ const styles = StyleSheet.create({
     padding: 18,
     marginBottom: 20,
     borderLeftWidth: 6,
-    borderLeftColor: '#E5B84A', // Padrão: Preparando (Amarelo/Warning)
+    borderLeftColor: '#B45309', // Padrão: Preparando (Amarelo/Warning)
     ...Platform.select({
        // @ts-ignore
        default: { elevation: 4, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 8, shadowOffset:{width:0, height:2} }
@@ -528,7 +528,7 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   btnWarning: {
-    backgroundColor: '#E5B84A',
+    backgroundColor: '#B45309',
   },
   btnSuccess: {
     backgroundColor: '#4CAF50',

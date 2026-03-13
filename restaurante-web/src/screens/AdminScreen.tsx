@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Modal, Alert, ActivityIndicator, AppState } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, Alert, ActivityIndicator, AppState } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useRoute, useNavigation } from '@react-navigation/native';
@@ -40,6 +40,11 @@ import OperationalSettingsScreen from './OperationalSettingsScreen';
 import { confirmLogout } from '../utils/appUtils';
 import BiometricSetupModal from '../components/BiometricSetupModal';
 import MFASetupModal from '../components/MFASetupModal';
+import AdminHeader from '../components/AdminHeader';
+import AdminStatsCards from '../components/AdminStatsCards';
+import CaixaMenuModal from '../components/CaixaMenuModal';
+import { colors } from '../theme/colors';
+import { AdminActionCard, AdminBareModal, AdminCaixaModal, AdminSection, AdminSlideModal } from '../features/admin';
 // import PerformanceService from '../services/PerformanceService'; // Removed - Firebase specific
 
 // WhatsApp Integração
@@ -570,464 +575,183 @@ export default function AdminScreen() {
     // { name: 'Configurar MFA (2FA)', icon: '🛡️', action: () => setShowMFASetup(true) }, // Desabilitado para futura implementação
   ];
 
+  const financialReports = [
+    { name: 'Dashboard Financeiro', icon: '📊', action: () => setShowDashboard(true) },
+    { name: 'Histórico de Caixas', icon: '📜', action: () => setShowCaixaHistorico(true) },
+    { name: 'Config. Financeira', icon: '⚙️', action: () => setShowFinancialConfig(true) },
+  ];
+
+  const renderReportList = (
+    items: Array<{ name: string; icon: string; action: () => void; danger?: boolean }>,
+    options?: { keyPrefix?: string; disabled?: boolean }
+  ) =>
+    items.map((report, index) =>
+      <AdminActionCard
+        key={`${options?.keyPrefix || 'rep'}-${index}`}
+        name={report.name}
+        icon={report.icon}
+        onPress={report.action}
+        danger={report.danger}
+        disabled={options?.disabled}
+      />
+    );
+
   return (
     <View style={styles.container}>
 
 
       {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          {user && (
-            <View>
-              <Text style={styles.userInfoLabel}>Olá,</Text>
-              <Text style={styles.userInfo}>{user.name || user.email}</Text>
-            </View>
-          )}
-        </View>
-        <View style={styles.headerCenter}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Ionicons name="shield-checkmark-outline" size={24} color="#FFF" style={{ marginRight: 8 }} />
-            <Text style={styles.headerTitle}>Admin</Text>
-          </View>
-        </View>
-        <View style={styles.headerRight}>
-          <TouchableOpacity
-            style={styles.logoutBtn}
-            onPress={() => confirmLogout(logout)}
-          >
-            <Ionicons name="log-out-outline" size={24} color="#FFF" />
-          </TouchableOpacity>
-        </View>
-      </View>
+      <AdminHeader
+        userName={user?.name || user?.email || undefined}
+        onLogout={() => confirmLogout(logout)}
+      />
 
       <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }}>
-        
-        {/* Stats Card */}
-        <View style={styles.statsCard}>
-          <View style={styles.statsHeader}>
-            <Text style={styles.statsTitle}>Estatísticas Operacionais</Text>
-            <TouchableOpacity onPress={() => {
-              carregarEstatisticas();
-            }}>
-              <Text style={styles.refreshButton}>🔄</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.statsContentWrapper}>
-            <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{loadingStats ? '...' : stats.totalPedidos}</Text>
-                <Text style={styles.statLabel}>Pedidos</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{loadingStats ? '...' : `${stats.totalItens}x`}</Text>
-                <Text style={styles.statLabel}>Itens{'\n'}vendidos</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{loadingStats ? '...' : `${stats.tempoMedio}m`}</Text>
-                <Text style={styles.statLabel}>Tempo{('\n')}médio</Text>
-              </View>
+        <AdminStatsCards
+          loadingStats={loadingStats}
+          stats={stats}
+          onRefreshStats={carregarEstatisticas}
+          loadingVendas={loadingVendas}
+          vendasStats={vendasStats}
+          periodoSelecionado={periodoSelecionado}
+          onSelectPeriodo={setPeriodoSelecionado}
+          onRefreshVendas={carregarEstatisticasVendas}
+          formatarMoeda={formatarMoeda}
+        />
+
+        <AdminSection title="FINANCEIRO">
+          {renderReportList(financialReports, { keyPrefix: 'fin' })}
+        </AdminSection>
+
+        <AdminSection title="SISTEMA">
+          {loadingLimpar && (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={styles.loadingText}>Apagando todos os dados...</Text>
             </View>
+          )}
 
-          </View>
-        </View>
-
-        {/* Card de Vendas com Períodos */}
-        <View style={styles.vendasCard}>
-          <View style={styles.statsHeader}>
-            <Text style={styles.vendasCardTitle}>Estatísticas de Venda</Text>
-            <TouchableOpacity onPress={() => {
-              carregarEstatisticasVendas();
-            }}>
-              <Text style={styles.refreshButton}>🔄</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.vendasTabs}>
-            <TouchableOpacity
-              style={[styles.vendaTab, periodoSelecionado === 'hoje' && styles.vendaTabActive]}
-              onPress={() => setPeriodoSelecionado('hoje')}
-            >
-              <Text style={[styles.vendaTabText, periodoSelecionado === 'hoje' && styles.vendaTabTextActive]}>
-                Hoje
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.vendaTab, periodoSelecionado === 'semana' && styles.vendaTabActive]}
-              onPress={() => setPeriodoSelecionado('semana')}
-            >
-              <Text style={[styles.vendaTabText, periodoSelecionado === 'semana' && styles.vendaTabTextActive]}>
-                Semana
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.vendaTab, periodoSelecionado === 'mes' && styles.vendaTabActive]}
-              onPress={() => setPeriodoSelecionado('mes')}
-            >
-              <Text style={[styles.vendaTabText, periodoSelecionado === 'mes' && styles.vendaTabTextActive]}>
-                Mês
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.vendasContent}>
-            <View style={styles.vendasRowStats}>
-              <View style={styles.vendaStatItem}>
-                <Text style={styles.vendaStatValue}>
-                  {loadingVendas ? '...' : formatarMoeda(vendasStats.totalVendido)}
-                </Text>
-                <Text style={styles.vendaStatLabel}>Total Vendido</Text>
-              </View>
-              <View style={styles.vendaStatItem}>
-                <Text style={styles.vendaStatValue}>
-                  {loadingVendas ? '...' : vendasStats.totalPedidos}
-                </Text>
-                <Text style={styles.vendaStatLabel}>Pedidos</Text>
-              </View>
-              <View style={styles.vendaStatItem}>
-                <Text style={styles.vendaStatValue}>
-                  {loadingVendas ? '...' : formatarMoeda(vendasStats.ticketMedio)}
-                </Text>
-                <Text style={styles.vendaStatLabel}>Ticket Médio</Text>
-              </View>
-            </View>
-
-            {/* ✅ NOVO: Estatísticas de Cancelamento */}
-            {vendasStats.qtdCanceladas > 0 && (
-              <View style={[styles.vendasRowStats, { marginTop: 15, backgroundColor: '#FFF3E0', borderRadius: 8, padding: 10 }]}>
-                <View style={styles.vendaStatItem}>
-                  <Text style={[styles.vendaStatValue, { color: '#E65100' }]}>
-                    {loadingVendas ? '...' : formatarMoeda(vendasStats.totalCancelado)}
-                  </Text>
-                  <Text style={[styles.vendaStatLabel, { color: '#E65100' }]}>Total Cancelado</Text>
-                </View>
-                <View style={styles.vendaStatItem}>
-                  <Text style={[styles.vendaStatValue, { color: '#E65100' }]}>
-                    {loadingVendas ? '...' : vendasStats.qtdCanceladas}
-                  </Text>
-                  <Text style={[styles.vendaStatLabel, { color: '#E65100' }]}>Comandas Canceladas</Text>
-                </View>
-                <View style={styles.vendaStatItem}>
-                  <Text style={[styles.vendaStatValue, { color: '#E65100', fontSize: 16 }]}>
-                    {loadingVendas ? '...' : `${((vendasStats.qtdCanceladas / (vendasStats.totalPedidos + vendasStats.qtdCanceladas)) * 100).toFixed(1)}%`}
-                  </Text>
-                  <Text style={[styles.vendaStatLabel, { color: '#E65100' }]}>Taxa Cancelamento</Text>
-                </View>
-              </View>
-            )}
-          </View>
-        </View>
-
-        <View style={styles.divider} />
-        {/* --- FINANCEIRO --- */}
-        <Text style={styles.sectionHeader}>FINANCEIRO</Text>
-
-        {[
-          { name: 'Dashboard Financeiro', icon: '📊', action: () => setShowDashboard(true) },
-          { name: 'Histórico de Caixas', icon: '📜', action: () => setShowCaixaHistorico(true) },
-          { name: 'Config. Financeira', icon: '⚙️', action: () => setShowFinancialConfig(true) },
-        ].map((report, index) => (
-          <TouchableOpacity
-            key={`fin-${index}`}
-            style={[styles.reportCard]}
-            onPress={report.action}
-          >
-            <View style={styles.reportLeft}>
-              <Text style={styles.reportIcon}>{report.icon}</Text>
-              <Text style={styles.reportName}>{report.name}</Text>
-            </View>
-            <Text style={styles.reportArrow}>›</Text>
-          </TouchableOpacity>
-        ))}
-
-        <View style={styles.divider} />
-        {/* --- SISTEMA --- */}
-        <Text style={styles.sectionHeader}>SISTEMA</Text>
-
-        {loadingLimpar && (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#8B2F2F" />
-            <Text style={styles.loadingText}>Apagando todos os dados...</Text>
-          </View>
-        )}
-
-        {reports.map((report, index) => (
-          <TouchableOpacity
-            key={index}
-            // @ts-ignore
-            style={[styles.reportCard, report.danger && styles.reportCardDanger]}
-            onPress={report.action}
-            disabled={loadingLimpar}
-          >
-            <View style={styles.reportLeft}>
-              <Text style={styles.reportIcon}>{report.icon}</Text>
-              {/* @ts-ignore */}
-              <Text style={[styles.reportName, report.danger && styles.reportNameDanger]}>{report.name}</Text>
-            </View>
-            {/* @ts-ignore */}
-            <Text style={[styles.reportArrow, report.danger && styles.reportArrowDanger]}>›</Text>
-          </TouchableOpacity>
-        ))}
-
-
+          {renderReportList(reports, { keyPrefix: 'sys', disabled: loadingLimpar })}
+        </AdminSection>
       </ScrollView>
 
       {/* Modal de Funcionários */}
-      <Modal
-        visible={showFuncionarios}
-        animationType="slide"
-        onRequestClose={() => setShowFuncionarios(false)}
-      >
-        <View style={{ flex: 1, backgroundColor: '#F5F5DC' }}>
-          <FuncionariosScreen onClose={() => setShowFuncionarios(false)} />
-        </View>
-      </Modal>
+      <AdminSlideModal visible={showFuncionarios} onClose={() => setShowFuncionarios(false)}>
+        <FuncionariosScreen onClose={() => setShowFuncionarios(false)} />
+      </AdminSlideModal>
 
       {/* Modal Configuração de Mesas */}
-      <Modal
-        visible={showConfiguracaoMesas}
-        animationType="slide"
-        onRequestClose={() => setShowConfiguracaoMesas(false)}
-      >
-        <View style={{ flex: 1 }}>
-          <ConfiguracaoMesasScreen onClose={() => setShowConfiguracaoMesas(false)} />
-        </View>
-      </Modal>
+      <AdminSlideModal visible={showConfiguracaoMesas} onClose={() => setShowConfiguracaoMesas(false)}>
+        <ConfiguracaoMesasScreen onClose={() => setShowConfiguracaoMesas(false)} />
+      </AdminSlideModal>
 
-      {/* Modal Configuração do WhatsApp */}
-      <Modal
-        visible={showConfiguracoesWhatsApp}
-        animationType="slide"
-        onRequestClose={() => setShowConfiguracoesWhatsApp(false)}
-      >
-        <View style={{ flex: 1 }}>
-          <ConfiguracoesWhatsApp onClose={() => setShowConfiguracoesWhatsApp(false)} />
-        </View>
-      </Modal>
+      {/* Modal Configurações WhatsApp */}
+      <AdminSlideModal visible={showConfiguracoesWhatsApp} onClose={() => setShowConfiguracoesWhatsApp(false)}>
+        <ConfiguracoesWhatsApp onClose={() => setShowConfiguracoesWhatsApp(false)} />
+      </AdminSlideModal>
 
       {/* Modal Menu Caixa */}
-      <Modal visible={showCaixaMenu} animationType="slide" transparent={true}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.caixaMenuContainer}>
-            <View style={styles.caixaMenuHeader}>
-              <Text style={styles.caixaMenuTitle}>💰 Caixa</Text>
-              <TouchableOpacity onPress={() => setShowCaixaMenu(false)}>
-                <Text style={styles.caixaMenuClose}>✕</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.caixaMenuContent}>
-              <TouchableOpacity
-                style={styles.caixaMenuItem}
-                onPress={() => {
-                  setShowCaixaMenu(false);
-                  setShowCaixaAbertura(true);
-                }}
-              >
-                <Text style={styles.caixaMenuIcon}>💼</Text>
-                <Text style={styles.caixaMenuText}>Abrir Caixa</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.caixaMenuItem}
-                onPress={() => {
-                  setShowCaixaMenu(false);
-                  setShowCaixaOperacoes(true);
-                }}
-              >
-                <Text style={styles.caixaMenuIcon}>💵</Text>
-                <Text style={styles.caixaMenuText}>Sangria / Reforço</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.caixaMenuItem}
-                onPress={() => {
-                  setShowCaixaMenu(false);
-                  setShowCaixaFechamento(true);
-                }}
-              >
-                <Text style={styles.caixaMenuIcon}>🔒</Text>
-                <Text style={styles.caixaMenuText}>Fechar Caixa</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.caixaMenuItem}
-                onPress={() => {
-                  setShowCaixaMenu(false);
-                  setShowCaixaHistorico(true);
-                }}
-              >
-                <Text style={styles.caixaMenuIcon}>📊</Text>
-                <Text style={styles.caixaMenuText}>Histórico</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <CaixaMenuModal
+        visible={showCaixaMenu}
+        onClose={() => setShowCaixaMenu(false)}
+        onOpenAbertura={() => setShowCaixaAbertura(true)}
+        onOpenOperacoes={() => setShowCaixaOperacoes(true)}
+        onOpenFechamento={() => setShowCaixaFechamento(true)}
+        onOpenHistorico={() => setShowCaixaHistorico(true)}
+      />
 
       {/* Modal Abrir Caixa */}
-      <Modal
+      <AdminCaixaModal
         visible={showCaixaAbertura}
-        animationType="slide"
-        onRequestClose={() => setShowCaixaAbertura(false)}
-        statusBarTranslucent={true}
-        hardwareAccelerated={true}
+        onClose={() => setShowCaixaAbertura(false)}
+        title="Abertura de Caixa"
+        headerStyle={styles.modalHeader}
+        closeButtonStyle={styles.closeButton}
+        titleStyle={styles.modalHeaderTitle}
       >
-        <View style={{ flex: 1, backgroundColor: '#F5F1E8' }}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowCaixaAbertura(false)}>
-              <Text style={styles.closeButton}>← Voltar</Text>
-            </TouchableOpacity>
-            <Text style={styles.modalHeaderTitle}>Abertura de Caixa</Text>
-          </View>
-          {showCaixaAbertura && <CaixaAberturaScreen onSuccess={() => setShowCaixaAbertura(false)} />}
-        </View>
-      </Modal>
+        {showCaixaAbertura && <CaixaAberturaScreen onSuccess={() => setShowCaixaAbertura(false)} />}
+      </AdminCaixaModal>
 
       {/* Modal Sangria/Reforço */}
-      <Modal
+      <AdminCaixaModal
         visible={showCaixaOperacoes}
-        animationType="slide"
-        onRequestClose={() => setShowCaixaOperacoes(false)}
-        statusBarTranslucent={true}
-        hardwareAccelerated={true}
+        onClose={() => setShowCaixaOperacoes(false)}
+        title="Sangria / Reforço"
+        headerStyle={styles.modalHeader}
+        closeButtonStyle={styles.closeButton}
+        titleStyle={styles.modalHeaderTitle}
       >
-        <View style={{ flex: 1, backgroundColor: '#F5F1E8' }}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowCaixaOperacoes(false)}>
-              <Text style={styles.closeButton}>← Voltar</Text>
-            </TouchableOpacity>
-            <Text style={styles.modalHeaderTitle}>Sangria / Reforço</Text>
-          </View>
-          {showCaixaOperacoes && <CaixaOperacoesScreen />}
-        </View>
-      </Modal>
+        {showCaixaOperacoes && <CaixaOperacoesScreen />}
+      </AdminCaixaModal>
 
       {/* Modal Fechar Caixa */}
-      <Modal
+      <AdminCaixaModal
         visible={showCaixaFechamento}
-        animationType="slide"
-        onRequestClose={() => setShowCaixaFechamento(false)}
-        statusBarTranslucent={true}
-        hardwareAccelerated={true}
+        onClose={() => setShowCaixaFechamento(false)}
+        title="Fechamento de Caixa"
+        headerStyle={styles.modalHeader}
+        closeButtonStyle={styles.closeButton}
+        titleStyle={styles.modalHeaderTitle}
       >
-        <View style={{ flex: 1, backgroundColor: '#F5F1E8' }}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowCaixaFechamento(false)}>
-              <Text style={styles.closeButton}>← Voltar</Text>
-            </TouchableOpacity>
-            <Text style={styles.modalHeaderTitle}>Fechamento de Caixa</Text>
-          </View>
-          {showCaixaFechamento && <CaixaFechamentoScreen />}
-        </View>
-      </Modal>
+        {showCaixaFechamento && <CaixaFechamentoScreen />}
+      </AdminCaixaModal>
 
       {/* Modal Histórico Caixas */}
-      <Modal
+      <AdminSlideModal
         visible={showCaixaHistorico}
-        animationType="slide"
-        onRequestClose={() => setShowCaixaHistorico(false)}
-        statusBarTranslucent={true}
-        hardwareAccelerated={true}
+        onClose={() => setShowCaixaHistorico(false)}
+        statusBarTranslucent
+        hardwareAccelerated
       >
-        <View style={{ flex: 1, backgroundColor: '#F5F1E8' }}>
-          {showCaixaHistorico && (
-            <CaixaHistoricoScreen onClose={() => setShowCaixaHistorico(false)} />
-          )}
-        </View>
-      </Modal>
+        {showCaixaHistorico && <CaixaHistoricoScreen onClose={() => setShowCaixaHistorico(false)} />}
+      </AdminSlideModal>
 
       {/* Modal Visualização de Comandas */}
-      <Modal
-        visible={showComandasVisualizacao}
-        animationType="slide"
-        onRequestClose={() => setShowComandasVisualizacao(false)}
-      >
-        <View style={{ flex: 1, backgroundColor: '#F5F1E8' }}>
-          <ComandaVisualizacaoAdminScreen onClose={() => setShowComandasVisualizacao(false)} />
-        </View>
-      </Modal>
+      <AdminSlideModal visible={showComandasVisualizacao} onClose={() => setShowComandasVisualizacao(false)}>
+        <ComandaVisualizacaoAdminScreen onClose={() => setShowComandasVisualizacao(false)} />
+      </AdminSlideModal>
 
       {/* Modal Gerenciar Cardápio */}
-      <Modal
-        visible={showGerenciarCardapio}
-        animationType="slide"
-        onRequestClose={() => setShowGerenciarCardapio(false)}
-      >
-        <View style={{ flex: 1, backgroundColor: '#F5F1E8' }}>
-          <GerenciarCardapioScreen onClose={() => setShowGerenciarCardapio(false)} />
-        </View>
-      </Modal>
+      <AdminSlideModal visible={showGerenciarCardapio} onClose={() => setShowGerenciarCardapio(false)}>
+        <GerenciarCardapioScreen onClose={() => setShowGerenciarCardapio(false)} />
+      </AdminSlideModal>
 
       {/* Modal Gerenciar Estoque */}
-      <Modal
-        visible={showEstoque}
-        animationType="slide"
-        onRequestClose={() => setShowEstoque(false)}
-      >
-        <View style={{ flex: 1, backgroundColor: '#F5F1E8' }}>
-          <EstoqueScreen onClose={() => setShowEstoque(false)} />
-        </View>
-      </Modal>
+      <AdminSlideModal visible={showEstoque} onClose={() => setShowEstoque(false)}>
+        <EstoqueScreen onClose={() => setShowEstoque(false)} />
+      </AdminSlideModal>
 
       {/* Modal Configurar Extras de Pizza */}
-      <Modal
-        visible={showExtrasConfig}
-        animationType="slide"
-        onRequestClose={() => setShowExtrasConfig(false)}
-      >
-        <View style={{ flex: 1, backgroundColor: '#F5F1E8' }}>
-          <ExtrasConfigScreen onClose={() => setShowExtrasConfig(false)} />
-        </View>
-      </Modal>
+      <AdminSlideModal visible={showExtrasConfig} onClose={() => setShowExtrasConfig(false)}>
+        <ExtrasConfigScreen onClose={() => setShowExtrasConfig(false)} />
+      </AdminSlideModal>
 
       {/* Modal Configurar Impressora */}
-      <Modal
-        visible={showPrinterConfig}
-        animationType="slide"
-        onRequestClose={() => setShowPrinterConfig(false)}
-      >
-        <View style={{ flex: 1, backgroundColor: '#F5F1E8' }}>
-          <PrinterConfigScreen navigation={{ goBack: () => setShowPrinterConfig(false) }} />
-        </View>
-      </Modal>
+      <AdminSlideModal visible={showPrinterConfig} onClose={() => setShowPrinterConfig(false)}>
+        <PrinterConfigScreen navigation={{ goBack: () => setShowPrinterConfig(false) }} />
+      </AdminSlideModal>
 
       {/* Modal Configurações Operacionais */}
-      <Modal
-        visible={showOperationalSettings}
-        animationType="slide"
-        onRequestClose={() => setShowOperationalSettings(false)}
-      >
+      <AdminBareModal visible={showOperationalSettings} onClose={() => setShowOperationalSettings(false)}>
         <View style={{ flex: 1 }}>
           <OperationalSettingsScreen onClose={() => setShowOperationalSettings(false)} />
         </View>
-      </Modal>
+      </AdminBareModal>
 
       {/* Modal Editar Empresa */}
-      <Modal
-        visible={showEditarEmpresa}
-        animationType="slide"
-        onRequestClose={() => setShowEditarEmpresa(false)}
-      >
+      <AdminBareModal visible={showEditarEmpresa} onClose={() => setShowEditarEmpresa(false)}>
         <EditarEmpresaScreen onBack={() => setShowEditarEmpresa(false)} />
-      </Modal>
+      </AdminBareModal>
 
       {/* Modal Configuração Financeira */}
-      <Modal
-        visible={showFinancialConfig}
-        animationType="slide"
-        onRequestClose={() => setShowFinancialConfig(false)}
-      >
+      <AdminBareModal visible={showFinancialConfig} onClose={() => setShowFinancialConfig(false)}>
         <FinancialConfigScreen onClose={() => setShowFinancialConfig(false)} />
-      </Modal>
+      </AdminBareModal>
 
       {/* Modal Dashboard Financeiro */}
-      <Modal
-        visible={showDashboard}
-        animationType="slide"
-        onRequestClose={() => setShowDashboard(false)}
-      >
+      <AdminBareModal visible={showDashboard} onClose={() => setShowDashboard(false)}>
         <FinancialDashboardScreen onClose={() => setShowDashboard(false)} />
-      </Modal>
+      </AdminBareModal>
 
       <StatusBar style="light" />
       <BiometricSetupModal
@@ -1054,23 +778,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 15,
     paddingHorizontal: 15,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: colors.border,
   },
   menuButtonText: {
     flex: 1,
     fontSize: 16,
-    color: '#2C2C2C',
+    color: colors.text,
     marginLeft: 15,
   },
 
   container: {
     flex: 1,
-    backgroundColor: '#F5F5DC',
+    backgroundColor: colors.background,
   },
   header: {
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
     paddingTop: 50,
     paddingBottom: 15,
     paddingHorizontal: 20,
@@ -1098,17 +822,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 20,
     fontWeight: 'bold',
     textAlign: 'center',
   },
   userInfoLabel: {
-    color: 'rgba(255,255,255,0.7)',
+    color: colors.primaryContrastMuted,
     fontSize: 10,
   },
   userInfo: {
-    color: '#E5B84A',
+    color: colors.secondary,
     fontSize: 12,
     fontWeight: '600',
   },
@@ -1120,11 +844,11 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   statsCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     borderRadius: 15,
     marginBottom: 20,
     overflow: 'hidden',
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 15,
@@ -1133,12 +857,12 @@ const styles = StyleSheet.create({
   statsTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.white,
     textAlign: 'center',
     paddingVertical: 12,
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
     borderBottomWidth: 2,
-    borderBottomColor: '#7A2828',
+    borderBottomColor: colors.primaryDivider,
   },
   statsHeader: {
     flexDirection: 'row',
@@ -1146,16 +870,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     paddingHorizontal: 15,
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
     borderBottomWidth: 2,
-    borderBottomColor: '#7A2828',
+    borderBottomColor: colors.primaryDivider,
   },
   refreshButton: {
     fontSize: 20,
-    color: '#FFFFFF',
+    color: colors.white,
   },
   statsContentWrapper: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     padding: 15,
   },
   statsRow: {
@@ -1169,11 +893,11 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#8B2F2F',
+    color: colors.primary,
   },
   statLabel: {
     fontSize: 11,
-    color: '#666',
+    color: colors.textSecondary,
     marginTop: 4,
     fontWeight: '500',
     textAlign: 'center',
@@ -1181,18 +905,18 @@ const styles = StyleSheet.create({
   reportsTitle: {
     fontSize: 22,
     fontWeight: '600',
-    color: '#8B2F2F',
+    color: colors.primary,
     marginBottom: 15,
   },
   reportCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     borderRadius: 15,
     padding: 18,
     marginBottom: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.08,
     shadowRadius: 10,
@@ -1209,88 +933,88 @@ const styles = StyleSheet.create({
   reportName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#2C2C2C',
+    color: colors.text,
   },
   reportArrow: {
     fontSize: 28,
-    color: '#8B2F2F',
+    color: colors.primary,
     fontWeight: '300',
   },
   reportCardDanger: {
-    backgroundColor: '#FFF3F3',
+    backgroundColor: colors.dangerSurface,
     borderWidth: 2,
-    borderColor: '#DC3545',
+    borderColor: colors.danger,
   },
   reportNameDanger: {
-    color: '#DC3545',
+    color: colors.danger,
     fontWeight: '700',
   },
   reportArrowDanger: {
-    color: '#DC3545',
+    color: colors.danger,
   },
   loadingContainer: {
-    backgroundColor: '#FFF9E6',
+    backgroundColor: colors.warningSurface,
     borderRadius: 12,
     padding: 20,
     marginBottom: 15,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E5B84A',
+    borderColor: colors.secondary,
   },
   loadingText: {
     marginTop: 10,
     fontSize: 14,
-    color: '#8B2F2F',
+    color: colors.primary,
     fontWeight: '600',
   },
   sectionTitle: {
     fontSize: 22,
     fontWeight: '600',
-    color: '#8B2F2F',
+    color: colors.primary,
     marginTop: 20,
     marginBottom: 15,
   },
   productForm: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     borderRadius: 15,
     padding: 20,
     marginBottom: 30,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.08,
     shadowRadius: 10,
     elevation: 3,
   },
   input: {
-    backgroundColor: '#F5F1E8',
+    backgroundColor: colors.warningSurface,
     borderRadius: 10,
     padding: 15,
     fontSize: 16,
-    color: '#2C2C2C',
+    color: colors.text,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#E5B84A',
+    borderColor: colors.secondary,
   },
   addBtn: {
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
     padding: 15,
     borderRadius: 12,
     alignItems: 'center',
     marginTop: 8,
-    shadowColor: '#8B2F2F',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 15,
     elevation: 5,
   },
   addBtnText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 1,
   },
   modalHeader: {
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
     paddingTop: 50,
     paddingBottom: 15,
     paddingHorizontal: 20,
@@ -1299,14 +1023,14 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
     elevation: 8,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
     zIndex: 10,
   },
   modalHeaderTitle: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 20,
     fontWeight: 'bold',
     flex: 1,
@@ -1314,78 +1038,17 @@ const styles = StyleSheet.create({
     marginRight: 60, // Balance the back button width
   },
   closeButton: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 18,
     fontWeight: '600',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  caixaMenuContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    width: '100%',
-    maxWidth: 400,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  caixaMenuHeader: {
-    backgroundColor: '#8B2F2F',
-    padding: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  caixaMenuTitle: {
-    color: '#FFFFFF',
-    fontSize: 24,
-    fontWeight: '700',
-  },
-  caixaMenuClose: {
-    color: '#FFFFFF',
-    fontSize: 28,
-    fontWeight: '300',
-  },
-  caixaMenuContent: {
-    padding: 10,
-  },
-  caixaMenuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 20,
-    marginVertical: 5,
-    backgroundColor: '#F5F1E8',
-    borderRadius: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 2,
-  },
-  caixaMenuIcon: {
-    fontSize: 32,
-    marginRight: 15,
-  },
-  caixaMenuText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#2C2C2C',
   },
   // Estilos para o card de vendas
   vendasCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     borderRadius: 15,
     marginBottom: 20,
     overflow: 'hidden',
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 15,
@@ -1394,46 +1057,46 @@ const styles = StyleSheet.create({
   vendasCardTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.white,
     textAlign: 'center',
     paddingVertical: 12,
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
     borderBottomWidth: 2,
-    borderBottomColor: '#7A2828',
+    borderBottomColor: colors.primary,
   },
   vendasTabs: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
+    borderBottomColor: colors.border,
   },
   vendaTab: {
     flex: 1,
     paddingVertical: 12,
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
   },
   vendaTabActive: {
-    backgroundColor: '#E5B84A',
+    backgroundColor: colors.secondary,
   },
   // Estilos PDV FAB
   pdvFabCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     borderRadius: 16,
     padding: 16,
     marginBottom: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#8B2F2F',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.2,
     shadowRadius: 10,
     elevation: 8,
     borderWidth: 2,
-    borderColor: '#8B2F2F',
+    borderColor: colors.primary,
   },
   pdvFabIconContainer: {
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
     width: 60,
     height: 60,
     borderRadius: 30,
@@ -1447,21 +1110,21 @@ const styles = StyleSheet.create({
   pdvFabTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#8B2F2F',
+    color: colors.primary,
     marginBottom: 4,
   },
   pdvFabSubtitle: {
     fontSize: 14,
-    color: '#666',
+    color: colors.textSecondary,
     fontWeight: '500',
   },
   vendaTabText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#666',
+    color: colors.textSecondary,
   },
   vendaTabTextActive: {
-    color: '#2C2C2C',
+    color: colors.text,
   },
   vendasContent: {
     padding: 15,
@@ -1477,22 +1140,22 @@ const styles = StyleSheet.create({
   vendaStatValue: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#8B2F2F',
+    color: colors.primary,
     marginBottom: 4,
   },
   vendaStatLabel: {
     fontSize: 11,
-    color: '#666',
+    color: colors.textSecondary,
     fontWeight: '500',
   },
   // Estilos para alertas de estoque
   alertasContainer: {
-    backgroundColor: '#FFF3CD',
+    backgroundColor: colors.warningSurface,
     borderRadius: 15,
     padding: 15,
     marginBottom: 20,
     borderWidth: 2,
-    borderColor: '#FFD700',
+    borderColor: colors.secondary,
   },
   alertasHeader: {
     flexDirection: 'row',
@@ -1503,28 +1166,28 @@ const styles = StyleSheet.create({
   alertasTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#8B2F2F',
+    color: colors.primary,
   },
   alertasRefresh: {
     fontSize: 20,
   },
   alertaCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     borderRadius: 12,
     padding: 15,
     marginRight: 12,
     width: 150,
     borderWidth: 2,
-    borderColor: '#FFA500',
-    shadowColor: '#000',
+    borderColor: colors.secondary,
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 5,
     elevation: 3,
   },
   alertaCardCritico: {
-    borderColor: '#FF0000',
-    backgroundColor: '#FFE5E5',
+    borderColor: colors.danger,
+    backgroundColor: colors.dangerSurface,
   },
   alertaIcon: {
     fontSize: 32,
@@ -1534,38 +1197,38 @@ const styles = StyleSheet.create({
   alertaNome: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#2C2C2C',
+    color: colors.text,
     marginBottom: 4,
     textAlign: 'center',
   },
   alertaQuantidade: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#FF0000',
+    color: colors.danger,
     textAlign: 'center',
     marginBottom: 2,
   },
   alertaMinimo: {
     fontSize: 11,
-    color: '#666',
+    color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: 4,
   },
   alertaCategoria: {
     fontSize: 10,
-    color: '#999',
+    color: colors.textSecondary,
     textAlign: 'center',
     fontStyle: 'italic',
   },
   divider: {
     height: 1,
-    backgroundColor: '#E5E5E5',
+    backgroundColor: colors.border,
     marginVertical: 20,
   },
   sectionHeader: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#999',
+    color: colors.textSecondary,
     marginBottom: 10,
     letterSpacing: 1,
   },

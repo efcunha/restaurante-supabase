@@ -6,10 +6,12 @@ import React, { memo, useCallback, useState, useMemo, useRef, useEffect } from '
 import { useNovoPedido } from '../hooks/useNovoPedido';
 import { usePerformanceMonitor } from '../hooks/usePerformanceMonitor';
 import { colors } from '../theme/colors';
+import { Button, Navbar } from '../ui';
 import { useFocusEffect } from '@react-navigation/native';
 // @ts-ignore
 import PizzaBuilderModal from '../components/PizzaBuilderModal';
-import { Product, PizzaSize, PizzaConfig, Funcionario } from '../types';
+import { Product, PizzaSize, PizzaConfig } from '../types';
+import { NewOrderCartFooter, NewOrderHeaderForm, NewOrderListFooter, PizzaProductCard } from '../features/new-order';
 import { Modal, FlatList } from 'react-native';
 // KeyboardWrapper removed to prevent touch stealing
 import { KeyboardAvoidingView, Keyboard, TouchableWithoutFeedback } from 'react-native';
@@ -38,71 +40,13 @@ interface PizzaRowProps {
 }
 
 const PizzaRow = memo(({ item, onPress }: PizzaRowProps) => {
-  // Render Pizza Item Row with Espetinho-like Styling
-  // FIX: Tratar preços com vírgula (comum no Brasil) e converter para float
-  const validPrices = item.prices ? Object.values(item.prices).map(p => {
-    if (typeof p === 'string') return Number((p as string).replace(',', '.'));
-    return Number(p);
-  }).filter(p => !isNaN(p) && p > 0) : [];
-  const minPrice = validPrices.length > 0 ? Math.min(...validPrices) : 0;
-  const maxPrice = validPrices.length > 0 ? Math.max(...validPrices) : 0;
-
-  // Format price range
-  const formatPriceRange = (min: number, max: number): string => {
-    if (min === max || validPrices.length === 1) {
-      return `R$ ${min.toFixed(2).replace('.', ',')}`;
-    }
-    return `R$ ${min.toFixed(2).replace('.', ',')} - R$ ${max.toFixed(2).replace('.', ',')}`;
-  };
-  const priceDisplay = formatPriceRange(minPrice, maxPrice);
-
-  const ingredientsText = item.ingredients ? item.ingredients.join(', ') : item.description || '';
-  const customIngredientsText = item.customIngredients || '';
-
-  const cardColor = colors.primary;
-  const bgColor = colors.white;
-
-  const handlePress = useCallback(() => {
-    onPress(item);
-  }, [onPress, item]);
-
   return (
-    <TouchableOpacity
-      style={[styles.stackedInfoCard, { backgroundColor: bgColor, borderLeftColor: cardColor, borderLeftWidth: 4, marginBottom: 12, elevation: 2 }]}
-      onPress={handlePress}
-      activeOpacity={0.8}
-    >
-      <View style={{ alignItems: 'flex-start' }}>
-        <Text style={styles.stackedNameText}>{item.name}</Text>
-        {!!ingredientsText && <Text style={{ color: colors.textSecondary, fontSize: 13, textAlign: 'left', marginBottom: 4, fontStyle: 'italic' }}>{ingredientsText}</Text>}
-        {!!customIngredientsText && <Text style={{ color: colors.textLight, fontSize: 12, textAlign: 'left', marginBottom: 4, fontStyle: 'italic' }}>({customIngredientsText})</Text>}
-        <View style={{ backgroundColor: '#F5F5F5', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, marginTop: 4 }}>
-          <Text style={{ color: '#2C2C2C', fontSize: 15, fontWeight: 'bold' }}>{priceDisplay}</Text>
-        </View>
-      </View>
-    </TouchableOpacity>
+    <View style={styles.productCardWrapper}>
+      <PizzaProductCard item={item} onPress={onPress} />
+    </View>
   );
 });
 PizzaRow.displayName = 'PizzaRow';
-
-interface SelectedItemProps {
-  item: string;
-  price: number;
-  onRemove: () => void;
-}
-
-const SelectedItem = memo(({ item, price, onRemove }: SelectedItemProps) => (
-  <View style={styles.selectedItem}>
-    <View style={styles.selectedItemInfo}>
-      <Text style={styles.selectedItemName}>{item}</Text>
-      <Text style={styles.selectedItemPrice}>R$ {price.toFixed(2)}</Text>
-    </View>
-    <TouchableOpacity style={styles.removeBtn} onPress={onRemove}>
-      <Text style={styles.removeBtnText}>×</Text>
-    </TouchableOpacity>
-  </View>
-));
-SelectedItem.displayName = 'SelectedItem';
 
 interface CaldoRowProps {
   caldoBase: string; // Base name derived from string[] in section data
@@ -429,7 +373,7 @@ const StackedVariationRow = memo(({ name, price, qty, color, onInc, onDec, itemK
     <View style={[styles.stackedRowContainer, last && { marginBottom: 12 }]}>
       {/* Left Side: Info Card (Name + Price) */}
       <TouchableOpacity
-        style={[styles.stackedInfoCard, { backgroundColor: '#F5F5F5', borderLeftWidth: 4, borderLeftColor: color }]}
+        style={[styles.stackedInfoCard, { backgroundColor: colors.surfaceMuted, borderLeftWidth: 4, borderLeftColor: color }]}
         onPress={handleInc}
         activeOpacity={0.8}
       >
@@ -469,7 +413,7 @@ const VariationRow = memo(({ label, qty, color, onInc, onDec, itemKey, last, for
 
   return (
     <View style={[styles.variationRow, last && { marginBottom: 12 }]}>
-      <TouchableOpacity style={[styles.variationLabelBtn, { backgroundColor: '#F5F5F5', borderLeftWidth: 4, borderLeftColor: color }]} onPress={handleInc}>
+      <TouchableOpacity style={[styles.variationLabelBtn, { backgroundColor: colors.surfaceMuted, borderLeftWidth: 4, borderLeftColor: color }]} onPress={handleInc}>
         <Text
           style={styles.variationLabelText}
           numberOfLines={forceOneLine ? 1 : undefined}
@@ -492,73 +436,6 @@ const VariationRow = memo(({ label, qty, color, onInc, onDec, itemKey, last, for
   );
 });
 VariationRow.displayName = 'VariationRow';
-
-interface HeaderComponentProps {
-  clientName: string;
-  setClientName: (name: string) => void;
-  mesa: string;
-  setMesa: (mesa: string) => void;
-  waiterId: string;
-  setWaiterId: (id: string) => void;
-  waiters: Funcionario[];
-}
-
-const HeaderComponent = memo(({ clientName, setClientName, mesa, setMesa, waiterId, setWaiterId, waiters }: HeaderComponentProps) => {
-
-
-  return (
-    <View style={styles.headerForm}>
-      <View style={{ flexDirection: 'row', marginBottom: 10 }}>
-        {/* Campo Nome do Cliente */}
-        <View style={{ flex: 1, marginRight: 10 }}>
-          <Text style={styles.label}>Nome do Cliente:</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Digite o nome"
-            value={clientName}
-            onChangeText={setClientName}
-            placeholderTextColor="#999"
-          />
-        </View>
-
-        {/* Campo Mesa (Opcional) */}
-        <View style={{ width: 80 }}>
-          <Text style={styles.label}>Mesa:</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Nº"
-            value={mesa}
-            onChangeText={setMesa}
-            placeholderTextColor="#999"
-            keyboardType="numeric"
-          />
-        </View>
-      </View>
-
-    </View>
-  );
-});
-HeaderComponent.displayName = 'HeaderComponent';
-
-interface FooterComponentProps {
-  selectedItems: { text: string; price: number; name: string }[];
-  onRemoveItem: (item: string) => void;
-}
-
-const FooterComponent = memo(({ selectedItems, onRemoveItem }: FooterComponentProps) => (
-  <View style={styles.listFooter}>
-    {selectedItems.map((item, index) => (
-      <SelectedItem
-        key={index}
-        item={item.text}
-        price={item.price}
-        onRemove={() => onRemoveItem(item.name)}
-      />
-    ))}
-    <View style={styles.totalSpace} />
-  </View>
-));
-FooterComponent.displayName = 'FooterComponent';
 
 // Union type for sections
 type SectionItem = Product | string;
@@ -904,27 +781,11 @@ export default function NovoPedidoScreen({ route }: any) {
     >
 
 
-      {/* Header e Conteúdo mantidos dentro do Wrapper */}
-      <View style={styles.header}>
-        {/* ... (código do header) */}
-        <View style={styles.headerLeft}>
-          {user && (
-            <View>
-              <Text style={styles.userInfoLabel}>Olá,</Text>
-              <Text style={styles.userInfo}>{user.nome || user.email}</Text>
-            </View>
-          )}
-        </View>
-        <View style={styles.headerCenter}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Ionicons name="add-circle-outline" size={26} color={colors.white} style={{ marginRight: 8 }} />
-            <Text style={styles.headerTitle}>Novo Pedido</Text>
-          </View>
-        </View>
-        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={24} color={colors.white} />
-        </TouchableOpacity>
-      </View>
+      <Navbar
+        title="Novo Pedido"
+        subtitle={user ? `Operador: ${user.nome || user.email}` : undefined}
+        rightSlot={<Button label="Sair" onPress={handleLogout} variant="ghost" size="sm" />}
+      />
 
       {/* Search Bar */}
       <View style={styles.searchContainer}>
@@ -946,22 +807,19 @@ export default function NovoPedidoScreen({ route }: any) {
       </View>
 
       <SectionList
-        style={{ flex: 1 }}
+        style={styles.sectionList}
         sections={filteredSections}
         renderItem={renderItem}
         renderSectionHeader={renderSectionHeader}
         keyExtractor={keyExtractor}
         contentContainerStyle={styles.listContent}
-        ListHeaderComponent={<HeaderComponent
+        ListHeaderComponent={<NewOrderHeaderForm
           clientName={clientName}
-          setClientName={setClientName}
+          onClientNameChange={setClientName}
           mesa={mesa}
-          setMesa={setMesa}
-          waiters={waiters}
-          waiterId={waiterId}
-          setWaiterId={setWaiterId}
+          onMesaChange={setMesa}
         />}
-        ListFooterComponent={<FooterComponent selectedItems={selectedItems} onRemoveItem={handleRemoveItemAnimated} />}
+        ListFooterComponent={<NewOrderListFooter selectedItems={selectedItems} onRemoveItem={handleRemoveItemAnimated} />}
         stickySectionHeadersEnabled={false}
         initialNumToRender={10}
         maxToRenderPerBatch={10}
@@ -978,24 +836,7 @@ export default function NovoPedidoScreen({ route }: any) {
         decelerationRate="normal"
       />
 
-      <View style={styles.stickyFooter}>
-        <View style={styles.totalContainer}>
-          <Text style={styles.totalLabel}>Total:</Text>
-          <Text style={styles.totalValue}>R$ {total.toFixed(2)}</Text>
-        </View>
-
-        <TouchableOpacity
-          style={[styles.submitBtn, isSubmitting && styles.submitBtnDisabled]}
-          onPress={handleSubmit}
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? (
-            <ActivityIndicator size="small" color={colors.white} />
-          ) : (
-            <Text style={styles.submitBtnText}>Criar Pedido</Text>
-          )}
-        </TouchableOpacity>
-      </View>
+      <NewOrderCartFooter total={total} onSubmit={handleSubmit} isSubmitting={isSubmitting} />
 
       <PizzaBuilderModal
         visible={showPizzaModal}
@@ -1014,7 +855,7 @@ export default function NovoPedidoScreen({ route }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F5DC' },
+  container: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1038,6 +879,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerTitleIcon: {
+    marginRight: 8,
+  },
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
@@ -1045,12 +893,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   userInfoLabel: {
-    color: 'rgba(255,255,255,0.7)',
+    color: colors.primaryContrastMuted,
     fontSize: 10,
   },
   userInfo: {
     fontSize: 12,
-    color: colors.userInfo, // or '#E5B84A' if colors.userInfo is not suitable
+    color: colors.userInfo, // or '#B45309' if colors.userInfo is not suitable
     fontWeight: '600',
   },
   logoutBtn: {
@@ -1102,7 +950,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: colors.border,
   },
   modalTitle: {
     fontSize: 18,
@@ -1117,24 +965,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyText: {
-    color: '#999',
+    color: colors.textLight,
     fontSize: 16,
   },
   waiterItem: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 15,
-    backgroundColor: '#fff',
+    backgroundColor: colors.white,
   },
   waiterItemActive: {
-    backgroundColor: '#f0f9ff',
+    backgroundColor: colors.primaryTint,
   },
   waiterInfo: {
     flex: 1,
   },
   waiterName: {
     fontSize: 16,
-    color: '#333',
+    color: colors.text,
     marginBottom: 4,
   },
   waiterNameActive: {
@@ -1143,11 +991,11 @@ const styles = StyleSheet.create({
   },
   waiterRole: {
     fontSize: 12,
-    color: '#999',
+    color: colors.textLight,
   },
   separator: {
     height: 1,
-    backgroundColor: '#eee',
+    backgroundColor: colors.border,
     marginLeft: 15,
   },
 
@@ -1184,7 +1032,7 @@ const styles = StyleSheet.create({
   verticalPrice: { fontSize: 17, fontWeight: '700', color: colors.primary },
 
   // Variation Rows
-  variationRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, backgroundColor: '#F9F9F9', borderRadius: 8, padding: 8 },
+  variationRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, backgroundColor: colors.surfaceMuted, borderRadius: 8, padding: 8 },
   variationLabelBtn: { flex: 1, padding: 8, borderRadius: 8, marginRight: 8, justifyContent: 'center' },
   variationLabelText: { color: colors.text, fontSize: 16, fontWeight: '700', textAlign: 'left' },
 
@@ -1215,6 +1063,38 @@ const styles = StyleSheet.create({
     textAlign: 'left',
     marginBottom: 4,
   },
+  stackedInfoContent: {
+    alignItems: 'flex-start',
+  },
+  productCardWrapper: {
+    marginBottom: 12,
+  },
+  pizzaIngredientsText: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    textAlign: 'left',
+    marginBottom: 4,
+    fontStyle: 'italic',
+  },
+  pizzaCustomIngredientsText: {
+    color: colors.textLight,
+    fontSize: 12,
+    textAlign: 'left',
+    marginBottom: 4,
+    fontStyle: 'italic',
+  },
+  pizzaPriceChip: {
+    backgroundColor: colors.surfaceMuted,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginTop: 4,
+  },
+  pizzaPriceChipText: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: 'bold',
+  },
   stackedPriceText: {
     color: colors.primary,
     fontSize: 17,
@@ -1233,26 +1113,20 @@ const styles = StyleSheet.create({
 
   quantityControl: { flexDirection: 'row', alignItems: 'center' },
 
-  // List Footer
-  listFooter: { marginTop: 20 },
-  selectedItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.white, borderRadius: 8, padding: 12, marginBottom: 8 },
-  selectedItemInfo: { flex: 1 },
-  selectedItemName: { fontSize: 16, color: colors.text },
-  selectedItemPrice: { fontSize: 14, color: colors.primary, marginTop: 2 },
-  removeBtn: { backgroundColor: colors.dangerLight, width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
-  removeBtnText: { color: colors.white, fontSize: 20, fontWeight: 'bold' },
-
-  stickyFooter: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
-    backgroundColor: colors.white,
-    borderTopWidth: 1, borderTopColor: colors.border,
-    padding: 20,
-    elevation: 20,
+  headerFieldsRow: {
+    flexDirection: 'row',
+    marginBottom: 10,
   },
-  totalContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  totalLabel: { fontSize: 20, fontWeight: 'bold', color: colors.text },
-  totalValue: { fontSize: 24, fontWeight: 'bold', color: colors.primary },
-
+  clientFieldColumn: {
+    flex: 1,
+    marginRight: 10,
+  },
+  mesaFieldColumn: {
+    width: 80,
+  },
+  sectionList: {
+    flex: 1,
+  },
   submitBtn: { backgroundColor: colors.primary, borderRadius: 12, padding: 16, alignItems: 'center' },
   submitBtnDisabled: { opacity: 0.5 },
   submitBtnText: { color: colors.white, fontSize: 18, fontWeight: 'bold' },
@@ -1261,7 +1135,6 @@ const styles = StyleSheet.create({
   loadingText: { marginTop: 12, fontSize: 16, color: colors.primary },
 
   priceLegend: { fontSize: 13, color: colors.textSecondary, textAlign: 'center', marginBottom: 12 },
-  totalSpace: { height: 100 },
 
   // Search Bar
   searchContainer: {
@@ -1282,7 +1155,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     paddingVertical: 12,
     paddingHorizontal: 12,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: colors.surfaceMuted,
     borderRadius: 12,
   },
   searchClearBtn: {

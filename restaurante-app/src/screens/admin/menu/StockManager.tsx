@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
     itemRowActive: { backgroundColor: '#FFE4B5' },
     emptyText: { color: '#999', fontStyle: 'italic', padding: 10 },
     inputRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
-    input: { backgroundColor: '#F5F1E8', borderRadius: 12, padding: 15, fontSize: 16, color: '#333', borderColor: '#E5B84A', borderWidth: 1 },
+    input: { backgroundColor: '#F5F1E8', borderRadius: 12, padding: 15, fontSize: 16, color: '#333', borderColor: '#B45309', borderWidth: 1 },
     tabs: { flexDirection: 'row', marginBottom: 5 },
     tab: { flex: 1, alignItems: 'center', padding: 5, borderBottomWidth: 2, borderColor: 'transparent' },
     tabActive: { borderColor: '#8B2F2F' },

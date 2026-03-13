@@ -625,7 +625,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   addBtn: {
-    backgroundColor: '#E5B84A',
+    backgroundColor: '#B45309',
     paddingVertical: 15,
     borderRadius: 12,
     alignItems: 'center',
@@ -656,7 +656,7 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#E5B84A',
+    borderColor: '#B45309',
     marginBottom: 10
   },
   row: {
@@ -703,7 +703,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginRight: 8,
     borderWidth: 1,
-    borderColor: '#E5B84A',
+    borderColor: '#B45309',
     minWidth: 45,
     alignItems: 'center'
   },
@@ -735,7 +735,7 @@ const styles = StyleSheet.create({
     borderColor: '#DDD'
   },
   chipActive: {
-    backgroundColor: '#E5B84A',
+    backgroundColor: '#B45309',
     borderColor: '#DAA520'
   },
   chipText: { color: '#666' },
@@ -833,7 +833,7 @@ const styles = StyleSheet.create({
   },
   btnEditar: {
     flex: 1,
-    backgroundColor: '#E5B84A',
+    backgroundColor: '#B45309',
     padding: 10,
     borderRadius: 8,
     alignItems: 'center',

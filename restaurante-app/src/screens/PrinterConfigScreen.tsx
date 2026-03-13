@@ -323,7 +323,7 @@ const styles = StyleSheet.create({
     padding: 20,
     marginBottom: 15,
     borderWidth: 2,
-    borderColor: '#E5B84A',
+    borderColor: '#B45309',
   },
   card: {
     backgroundColor: '#FFFFFF',
@@ -384,7 +384,7 @@ const styles = StyleSheet.create({
   },
   widthButtonActive: {
     backgroundColor: '#FFF3E0',
-    borderColor: '#E5B84A',
+    borderColor: '#B45309',
   },
   widthButtonText: {
     fontSize: 18,
@@ -400,7 +400,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   scanButton: {
-    backgroundColor: '#E5B84A',
+    backgroundColor: '#B45309',
     padding: 18,
     borderRadius: 12,
     alignItems: 'center',

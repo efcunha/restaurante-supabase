@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { Table } from './ui-next/Table';
 
 /**
  * Componente: Card de Dados do Garçom
@@ -41,6 +42,10 @@ const safeNumber = (value) => {
   return isNaN(num) ? 0 : num;
 };
 
+const formatCurrency = (value) => `R$ ${safeNumber(value).toFixed(2)}`;
+
+const formatPaymentCell = (entry) => `${formatCurrency(entry?.total)} • ${safeNumber(entry?.quantidade)}x`;
+
 /**
  * Componente: Card de Vendas (Hoje/Semana/Mês)
  */
@@ -50,76 +55,41 @@ export const CardVendas = ({ vendas }) => {
   const semana = vendas?.semana || EMPTY_STATS;
   const mes = vendas?.mes || EMPTY_STATS;
 
+  const salesRows = [
+    {
+      periodo: 'Hoje',
+      totalVendido: formatCurrency(hoje.totalVendido),
+      comandas: String(safeNumber(hoje.quantidadeComandas)),
+      ticketMedio: formatCurrency(hoje.ticketMedio),
+    },
+    {
+      periodo: 'Semana',
+      totalVendido: formatCurrency(semana.totalVendido),
+      comandas: String(safeNumber(semana.quantidadeComandas)),
+      ticketMedio: formatCurrency(semana.ticketMedio),
+    },
+    {
+      periodo: 'Mês',
+      totalVendido: formatCurrency(mes.totalVendido),
+      comandas: String(safeNumber(mes.quantidadeComandas)),
+      ticketMedio: formatCurrency(mes.ticketMedio),
+    },
+  ];
+
   return (
     <View style={styles.card}>
       <Text style={styles.cardTitle}>💰 Vendas por Período</Text>
       <View style={styles.cardContent}>
-        {/* Hoje */}
-        <View style={styles.periodoSection}>
-          <View style={styles.periodoHeader}>
-            <Text style={styles.periodoTitle}>🔹 Hoje</Text>
-          </View>
-          <View style={styles.periodoStats}>
-            <View style={styles.periodoStatItem}>
-              <Text style={styles.periodoStatLabel}>Total Vendido</Text>
-              <Text style={styles.periodoStatValue}>R$ {safeNumber(hoje.totalVendido).toFixed(2)}</Text>
-            </View>
-            <View style={styles.periodoStatItem}>
-              <Text style={styles.periodoStatLabel}>Comandas</Text>
-              <Text style={styles.periodoStatValue}>{safeNumber(hoje.quantidadeComandas)}</Text>
-            </View>
-            <View style={styles.periodoStatItem}>
-              <Text style={styles.periodoStatLabel}>Ticket Médio</Text>
-              <Text style={styles.periodoStatValue}>R$ {safeNumber(hoje.ticketMedio).toFixed(2)}</Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.divider} />
-
-        {/* Semana */}
-        <View style={styles.periodoSection}>
-          <View style={styles.periodoHeader}>
-            <Text style={styles.periodoTitle}>🔹 Semana</Text>
-          </View>
-          <View style={styles.periodoStats}>
-            <View style={styles.periodoStatItem}>
-              <Text style={styles.periodoStatLabel}>Total Vendido</Text>
-              <Text style={styles.periodoStatValue}>R$ {safeNumber(semana.totalVendido).toFixed(2)}</Text>
-            </View>
-            <View style={styles.periodoStatItem}>
-              <Text style={styles.periodoStatLabel}>Comandas</Text>
-              <Text style={styles.periodoStatValue}>{safeNumber(semana.quantidadeComandas)}</Text>
-            </View>
-            <View style={styles.periodoStatItem}>
-              <Text style={styles.periodoStatLabel}>Ticket Médio</Text>
-              <Text style={styles.periodoStatValue}>R$ {safeNumber(semana.ticketMedio).toFixed(2)}</Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.divider} />
-
-        {/* Mês */}
-        <View style={styles.periodoSection}>
-          <View style={styles.periodoHeader}>
-            <Text style={styles.periodoTitle}>🔹 Mês</Text>
-          </View>
-          <View style={styles.periodoStats}>
-            <View style={styles.periodoStatItem}>
-              <Text style={styles.periodoStatLabel}>Total Vendido</Text>
-              <Text style={styles.periodoStatValue}>R$ {safeNumber(mes.totalVendido).toFixed(2)}</Text>
-            </View>
-            <View style={styles.periodoStatItem}>
-              <Text style={styles.periodoStatLabel}>Comandas</Text>
-              <Text style={styles.periodoStatValue}>{safeNumber(mes.quantidadeComandas)}</Text>
-            </View>
-            <View style={styles.periodoStatItem}>
-              <Text style={styles.periodoStatLabel}>Ticket Médio</Text>
-              <Text style={styles.periodoStatValue}>R$ {safeNumber(mes.ticketMedio).toFixed(2)}</Text>
-            </View>
-          </View>
-        </View>
+        <Table
+          columns={[
+            { key: 'periodo', title: 'Período', width: 120 },
+            { key: 'totalVendido', title: 'Total Vendido', width: 180 },
+            { key: 'comandas', title: 'Comandas', width: 130 },
+            { key: 'ticketMedio', title: 'Ticket Médio', width: 160 },
+          ]}
+          rows={salesRows}
+          rowKey={(row) => row.periodo}
+        />
       </View>
     </View>
   );
@@ -134,64 +104,47 @@ export const CardPagamentos = ({ pagamentos }) => {
   const semana = pagamentos?.semana || EMPTY_PAGAMENTOS;
   const mes = pagamentos?.mes || EMPTY_PAGAMENTOS;
 
-  const renderMetodo = (icone, titulo, data) => (
-    <View style={styles.metodoSection}>
-      <View style={styles.metodoHeader}>
-        <Text style={styles.metodoTitulo}>{icone} {titulo}</Text>
-      </View>
-      <View style={styles.metodoGrid}>
-        <View style={styles.metodoItem}>
-          <Text style={styles.metodoLabel}>Hoje</Text>
-          <Text style={styles.metodoValor}>R$ {safeNumber(data.hoje?.total).toFixed(2)}</Text>
-          <Text style={styles.metodoQtd}>{safeNumber(data.hoje?.quantidade)}x</Text>
-        </View>
-        <View style={styles.metodoItem}>
-          <Text style={styles.metodoLabel}>Semana</Text>
-          <Text style={styles.metodoValor}>R$ {safeNumber(data.semana?.total).toFixed(2)}</Text>
-          <Text style={styles.metodoQtd}>{safeNumber(data.semana?.quantidade)}x</Text>
-        </View>
-        <View style={styles.metodoItem}>
-          <Text style={styles.metodoLabel}>Mês</Text>
-          <Text style={styles.metodoValor}>R$ {safeNumber(data.mes?.total).toFixed(2)}</Text>
-          <Text style={styles.metodoQtd}>{safeNumber(data.mes?.quantidade)}x</Text>
-        </View>
-      </View>
-    </View>
-  );
+  const paymentRows = [
+    {
+      metodo: 'Dinheiro',
+      hoje: formatPaymentCell(hoje.dinheiro),
+      semana: formatPaymentCell(semana.dinheiro),
+      mes: formatPaymentCell(mes.dinheiro),
+    },
+    {
+      metodo: 'Pix',
+      hoje: formatPaymentCell(hoje.pix),
+      semana: formatPaymentCell(semana.pix),
+      mes: formatPaymentCell(mes.pix),
+    },
+    {
+      metodo: 'Cartão Débito',
+      hoje: formatPaymentCell(hoje.debito),
+      semana: formatPaymentCell(semana.debito),
+      mes: formatPaymentCell(mes.debito),
+    },
+    {
+      metodo: 'Cartão Crédito',
+      hoje: formatPaymentCell(hoje.credito),
+      semana: formatPaymentCell(semana.credito),
+      mes: formatPaymentCell(mes.credito),
+    },
+  ];
 
   return (
     <View style={styles.card}>
       <Text style={styles.cardTitle}>💳 Pagamentos Recebidos</Text>
       <View style={styles.cardContent}>
-        {renderMetodo('💵', 'Dinheiro', {
-          hoje: hoje.dinheiro || { total: 0, quantidade: 0 },
-          semana: semana.dinheiro || { total: 0, quantidade: 0 },
-          mes: mes.dinheiro || { total: 0, quantidade: 0 },
-        })}
-
-        <View style={styles.divider} />
-
-        {renderMetodo('📱', 'Pix', {
-          hoje: hoje.pix || { total: 0, quantidade: 0 },
-          semana: semana.pix || { total: 0, quantidade: 0 },
-          mes: mes.pix || { total: 0, quantidade: 0 },
-        })}
-
-        <View style={styles.divider} />
-
-        {renderMetodo('💳', 'Cartão Débito', {
-          hoje: hoje.debito || { total: 0, quantidade: 0 },
-          semana: semana.debito || { total: 0, quantidade: 0 },
-          mes: mes.debito || { total: 0, quantidade: 0 },
-        })}
-
-        <View style={styles.divider} />
-
-        {renderMetodo('💳', 'Cartão Crédito', {
-          hoje: hoje.credito || { total: 0, quantidade: 0 },
-          semana: semana.credito || { total: 0, quantidade: 0 },
-          mes: mes.credito || { total: 0, quantidade: 0 },
-        })}
+        <Table
+          columns={[
+            { key: 'metodo', title: 'Método', width: 170 },
+            { key: 'hoje', title: 'Hoje', width: 170 },
+            { key: 'semana', title: 'Semana', width: 170 },
+            { key: 'mes', title: 'Mês', width: 170 },
+          ]}
+          rows={paymentRows}
+          rowKey={(row) => row.metodo}
+        />
       </View>
     </View>
   );
