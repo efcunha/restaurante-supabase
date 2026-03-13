@@ -340,7 +340,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: { color: '#FFFFFF', fontSize: 20, fontWeight: 'bold', textAlign: 'center' },
   userInfoLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 10 },
-  userInfo: { color: '#E5B84A', fontSize: 12, fontWeight: '600' },
+  userInfo: { color: '#B45309', fontSize: 12, fontWeight: '600' },
   // Filtros
   filtroContainer: { backgroundColor: '#FFF', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#EEE' },
   filtroScroll: { paddingHorizontal: 15, gap: 10 },

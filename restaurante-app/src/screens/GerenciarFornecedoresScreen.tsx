@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 // @ts-ignore
 
 import { Ionicons } from '@expo/vector-icons';
+import { ScreenScaffold } from '../layouts/ScreenScaffold';
 
 // --- VALIDATION & MASKING HELPERS ---
 const maskCNPJ = (value: string) => {
@@ -241,17 +242,10 @@ export default function GerenciarFornecedoresScreen({ onClose }: Props) {
     };
 
     return (
-        <View style={styles.container}>
-
-
-            <View style={styles.header}>
-                <TouchableOpacity onPress={onClose} style={styles.backBtn}>
-                    <Ionicons name="arrow-back" size={24} color="#FFF" />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>Fornecedores</Text>
-                <View style={{ width: 40 }} />
-            </View>
-
+        <ScreenScaffold
+            title="Fornecedores"
+            leftAction={{ label: 'Voltar', onPress: onClose ?? (() => {}) }}
+        >
             <View style={styles.content}>
                 <TouchableOpacity style={styles.addBtn} onPress={() => abrirModal()}>
                     <Text style={styles.addBtnText}>+ Novo Fornecedor</Text>
@@ -274,7 +268,7 @@ export default function GerenciarFornecedoresScreen({ onClose }: Props) {
                                     </View>
                                     <View style={styles.cardActions}>
                                         <TouchableOpacity onPress={() => abrirModal(item)} style={styles.actionBtn}>
-                                            <Ionicons name="pencil" size={20} color="#E5B84A" />
+                                            <Ionicons name="pencil" size={20} color="#B45309" />
                                         </TouchableOpacity>
                                         <TouchableOpacity onPress={() => deletarFornecedor(item)} style={styles.actionBtn}>
                                             <Ionicons name="trash" size={20} color="#FF6B6B" />
@@ -350,27 +344,14 @@ export default function GerenciarFornecedoresScreen({ onClose }: Props) {
                     </View>
                 </View>
             </Modal>
-        </View>
+        </ScreenScaffold>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F5F5DC' },
-    header: {
-        backgroundColor: '#8B2F2F',
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingTop: 50,
-        paddingBottom: 15,
-        paddingHorizontal: 20,
-        elevation: 5
-    },
-    headerTitle: { color: '#FFF', fontSize: 20, fontWeight: 'bold' },
-    backBtn: { padding: 5 },
     content: { flex: 1, padding: 20 },
     addBtn: {
-        backgroundColor: '#E5B84A',
+        backgroundColor: '#B45309',
         padding: 15,
         borderRadius: 10,
         alignItems: 'center',
@@ -416,7 +397,7 @@ const styles = StyleSheet.create({
         padding: 12,
         marginBottom: 12,
         borderWidth: 1,
-        borderColor: '#E5B84A'
+        borderColor: '#B45309'
     },
     modalButtons: { flexDirection: 'row', gap: 10, marginTop: 10 },
     modalBtn: { flex: 1, padding: 12, borderRadius: 8, alignItems: 'center' },

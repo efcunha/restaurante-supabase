@@ -6,6 +6,7 @@
 
 import React from 'react';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { colors } from '../theme/colors';
 
 /**
  * Card para pedidos em Montagem
@@ -133,39 +134,39 @@ EspetoCard.displayName = 'EspetoCard';
 const styles = StyleSheet.create({
   // Styles comuns aos cards de pedidos
   orderCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     borderRadius: 15,
     padding: 18,
     marginBottom: 15,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 2,
     borderWidth: 1,
-    borderColor: '#F0EBE0',
+    borderColor: '#E9EEF5',
   },
   orderCardUrgent: {
-    backgroundColor: '#FFF9E6',
+    backgroundColor: '#FFF6EB',
     borderWidth: 1,
-    borderColor: '#E5B84A',
+    borderColor: colors.secondary,
   },
   orderNumber: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#8B2F2F',
+    color: colors.primary,
     marginBottom: 8,
   },
   orderClient: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#2C2C2C',
+    color: colors.text,
     marginBottom: 12,
   },
   orderObs: {
     fontSize: 13,
     fontStyle: 'italic',
-    color: '#8B2F2F',
+    color: colors.primary,
     marginBottom: 10,
     paddingLeft: 10,
   },
@@ -181,32 +182,32 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
     marginRight: 10,
   },
   itemDotSecondary: {
-    backgroundColor: '#E5B84A',
+    backgroundColor: colors.secondary,
   },
   itemText: {
     fontSize: 14,
-    color: '#5C5C5C',
+    color: colors.textSecondary,
     paddingVertical: 3,
   },
   
   // Botão "PEDIDO MONTADO"
   readyBtn: {
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
     padding: 14,
     borderRadius: 12,
     alignItems: 'center',
-    shadowColor: '#8B2F2F',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.2,
     shadowRadius: 10,
     elevation: 3,
   },
   readyBtnText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 15,
     fontWeight: '600',
     letterSpacing: 0.5,
@@ -214,18 +215,18 @@ const styles = StyleSheet.create({
   
   // Botão "ENTREGUE"
   deliverBtn: {
-    backgroundColor: '#E5B84A',
+    backgroundColor: colors.secondary,
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
-    shadowColor: '#E5B84A',
+    shadowColor: colors.secondary,
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.3,
     shadowRadius: 20,
     elevation: 5,
   },
   deliverBtnText: {
-    color: '#2C2C2C',
+    color: colors.white,
     fontSize: 15,
     fontWeight: '700',
     letterSpacing: 0.5,
@@ -233,20 +234,20 @@ const styles = StyleSheet.create({
 
   // Styles para cards de espetos
   espetoCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     borderRadius: 15,
     padding: 20,
     marginBottom: 15,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.08,
     shadowRadius: 10,
     elevation: 3,
     borderLeftWidth: 4,
-    borderLeftColor: '#E5B84A',
+    borderLeftColor: colors.secondary,
   },
   espetoLeft: {
     flexDirection: 'row',
@@ -260,10 +261,10 @@ const styles = StyleSheet.create({
   espetoTipo: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#2C2C2C',
+    color: colors.text,
   },
   quantityBadge: {
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 12,
@@ -273,11 +274,11 @@ const styles = StyleSheet.create({
   quantityText: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.white,
   },
   quantityLabel: {
     fontSize: 11,
-    color: '#FFFFFF',
+    color: colors.white,
     marginTop: 2,
     fontWeight: '500',
   },

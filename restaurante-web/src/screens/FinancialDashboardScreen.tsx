@@ -20,7 +20,7 @@ interface KPICardProps {
 // Métricas KPI
 const KPICard: React.FC<KPICardProps> = ({ title, value, subtext, icon, color }) => (
     <View style={styles.kpiCard}>
-        <View style={[styles.kpiIconContainer, { backgroundColor: color || '#E5B84A' }]}>
+        <View style={[styles.kpiIconContainer, { backgroundColor: color || '#B45309' }]}>
             <Ionicons name={icon || 'stats-chart'} size={24} color="#FFF" />
         </View>
         <View style={styles.kpiContent}>

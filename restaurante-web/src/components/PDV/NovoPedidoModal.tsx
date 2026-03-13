@@ -367,7 +367,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     marginRight: '2%',
     borderWidth: 1,
-    borderColor: '#E5B84A',
+    borderColor: '#B45309',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,

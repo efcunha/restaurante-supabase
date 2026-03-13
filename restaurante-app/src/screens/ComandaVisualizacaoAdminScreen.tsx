@@ -6,6 +6,7 @@ import { useOrders } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
 // @ts-ignore
 import { EstatisticasGarcomContainer } from '../components/EstatisticasGarcom';
+import { colors } from '../theme/colors';
 
 // Função auxiliar para gerar lista de meses disponíveis (últimos 12 meses)
 const gerarMesesDisponiveis = () => {
@@ -168,7 +169,7 @@ export default function ComandaVisualizacaoAdminScreen({ onClose }: Props) {
                 <View style={styles.headerLeft}>
                     {onClose && (
                         <TouchableOpacity onPress={onClose} style={styles.backButton}>
-                            <Ionicons name="arrow-back" size={24} color="#FFF" />
+                            <Ionicons name="arrow-back" size={24} color={colors.white} />
                         </TouchableOpacity>
                     )}
                 </View>
@@ -330,10 +331,10 @@ export default function ComandaVisualizacaoAdminScreen({ onClose }: Props) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F5F5DC',
+        backgroundColor: colors.background,
     },
     header: {
-        backgroundColor: '#8B2F2F',
+        backgroundColor: colors.primary,
         paddingTop: 50,
         paddingBottom: 15,
         paddingHorizontal: 15,
@@ -368,7 +369,7 @@ const styles = StyleSheet.create({
         padding: 5,
     },
     headerTitle: {
-        color: '#FFFFFF',
+        color: colors.white,
         fontSize: 20, // Slightly smaller to fit
         fontWeight: 'bold',
         textAlign: 'center',
@@ -381,7 +382,7 @@ const styles = StyleSheet.create({
         marginRight: 8,
     },
     filterText: {
-        color: '#FFFFFF',
+        color: colors.white,
         fontSize: 14,
         fontWeight: '600',
     },
@@ -392,7 +393,7 @@ const styles = StyleSheet.create({
         borderRadius: 8,
     },
     refreshText: {
-        color: '#FFFFFF',
+        color: colors.white,
         fontSize: 14,
         fontWeight: '600',
     },
@@ -409,33 +410,33 @@ const styles = StyleSheet.create({
     accessDeniedTitle: {
         fontSize: 24,
         fontWeight: '700',
-        color: '#8B2F2F',
+        color: colors.primary,
         marginBottom: 15,
     },
     accessDeniedText: {
         fontSize: 16,
-        color: '#666',
+        color: colors.textSecondary,
         textAlign: 'center',
         marginBottom: 10,
         lineHeight: 24,
     },
     accessDeniedSubtext: {
         fontSize: 14,
-        color: '#999',
+        color: colors.textSecondary,
         textAlign: 'center',
         lineHeight: 20,
     },
     garcomSelectorContainer: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: colors.white,
         paddingVertical: 12,
         borderBottomWidth: 1,
-        borderBottomColor: '#E0D8C8',
+        borderBottomColor: colors.border,
     },
     garcomScroll: {
         paddingHorizontal: 15,
     },
     garcomChip: {
-        backgroundColor: '#F5F1E8',
+        backgroundColor: '#FFF7ED',
         paddingHorizontal: 16,
         paddingVertical: 10,
         borderRadius: 20,
@@ -446,28 +447,28 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     garcomChipActive: {
-        backgroundColor: '#8B2F2F',
-        borderColor: '#8B2F2F',
+        backgroundColor: colors.primary,
+        borderColor: colors.primary,
     },
     garcomChipText: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#666',
+        color: colors.textSecondary,
     },
     garcomChipTextActive: {
-        color: '#FFFFFF',
+        color: colors.white,
     },
     garcomChipSubtext: {
         fontSize: 11,
         fontWeight: '500',
-        color: '#999',
+        color: colors.textSecondary,
         marginTop: 2,
     },
     garcomChipSubtextActive: {
         color: 'rgba(255,255,255,0.85)',
     },
     noGarconsContainer: {
-        backgroundColor: '#FFF',
+        backgroundColor: colors.white,
         padding: 20,
         margin: 15,
         borderRadius: 10,
@@ -475,33 +476,33 @@ const styles = StyleSheet.create({
     },
     noGarconsText: {
         fontSize: 14,
-        color: '#666',
+        color: colors.textSecondary,
         textAlign: 'center',
         marginBottom: 8,
     },
     noGarconsSubtext: {
         fontSize: 12,
-        color: '#999',
+        color: colors.textSecondary,
         textAlign: 'center',
     },
     // Estilos para indicador de mês
     mesIndicadorContainer: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: colors.white,
         paddingVertical: 10,
         paddingHorizontal: 15,
         borderBottomWidth: 1,
-        borderBottomColor: '#E0D8C8',
+        borderBottomColor: colors.border,
     },
     mesIndicador: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#F5F1E8',
+        backgroundColor: '#FFF7ED',
         paddingVertical: 10,
         paddingHorizontal: 16,
         borderRadius: 8,
         borderWidth: 1,
-        borderColor: '#D4C4A8',
+        borderColor: colors.border,
     },
     mesIndicadorIcon: {
         fontSize: 16,
@@ -510,12 +511,12 @@ const styles = StyleSheet.create({
     mesIndicadorText: {
         fontSize: 15,
         fontWeight: '600',
-        color: '#8B2F2F',
+        color: colors.primary,
     },
     mesIndicadorSeta: {
         fontSize: 12,
         marginLeft: 8,
-        color: '#8B2F2F',
+        color: colors.primary,
     },
     // Estilos para modal de seleção de mês
     modalOverlay: {
@@ -524,7 +525,7 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-end',
     },
     modalContent: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: colors.white,
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
         maxHeight: '70%',
@@ -536,16 +537,16 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         paddingVertical: 16,
         borderBottomWidth: 1,
-        borderBottomColor: '#E0D8C8',
+        borderBottomColor: colors.border,
     },
     modalTitle: {
         fontSize: 18,
         fontWeight: '700',
-        color: '#333',
+        color: colors.text,
     },
     modalCloseBtn: {
         fontSize: 20,
-        color: '#666',
+        color: colors.textSecondary,
         padding: 4,
     },
     mesesLista: {
@@ -560,19 +561,19 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         marginVertical: 3,
         borderRadius: 10,
-        backgroundColor: '#F5F1E8',
+        backgroundColor: '#FFF7ED',
     },
     mesItemAtivo: {
-        backgroundColor: '#8B2F2F',
+        backgroundColor: colors.primary,
     },
     mesItemText: {
         fontSize: 15,
         fontWeight: '500',
-        color: '#333',
+        color: colors.text,
         flex: 1,
     },
     mesItemTextAtivo: {
-        color: '#FFFFFF',
+        color: colors.white,
         fontWeight: '600',
     },
     mesAtualBadge: {
@@ -585,11 +586,11 @@ const styles = StyleSheet.create({
     mesAtualText: {
         fontSize: 10,
         fontWeight: '700',
-        color: '#FFFFFF',
+        color: colors.white,
     },
     mesItemCheck: {
         fontSize: 18,
-        color: '#FFFFFF',
+        color: colors.white,
         fontWeight: '700',
     },
 });

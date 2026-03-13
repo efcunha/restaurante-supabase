@@ -208,7 +208,7 @@ export default function ConfiguracaoEstoqueScreen({ onClose }: Props) {
                                 </View>
                                 <View style={{ flexDirection: 'row', gap: 15 }}>
                                     <TouchableOpacity onPress={() => iniciarEdicao(index)}>
-                                        <Ionicons name="pencil-outline" size={22} color="#E5B84A" />
+                                        <Ionicons name="pencil-outline" size={22} color="#B45309" />
                                     </TouchableOpacity>
                                     <TouchableOpacity onPress={() => removerCategoria(index)}>
                                         <Ionicons name="trash-outline" size={22} color="#FF6B6B" />
@@ -254,11 +254,11 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         padding: 10,
         borderWidth: 1,
-        borderColor: '#E5B84A'
+        borderColor: '#B45309'
     },
     iconScroll: { maxHeight: 50 },
     iconBtn: { padding: 8, borderRadius: 8, marginRight: 5 },
-    iconBtnActive: { backgroundColor: '#E5B84A' },
+    iconBtnActive: { backgroundColor: '#B45309' },
     iconText: { fontSize: 20 },
     plusBtn: {
         backgroundColor: '#8B2F2F',

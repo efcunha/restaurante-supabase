@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
   flame: {
     width: 40,
     height: 60,
-    backgroundColor: '#E5B84A',
+    backgroundColor: '#B45309',
     borderRadius: 20,
     position: 'absolute',
   },

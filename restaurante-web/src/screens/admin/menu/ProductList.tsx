@@ -130,8 +130,8 @@ export default function ProductList({
 const styles = StyleSheet.create({
     container: { marginBottom: 20 },
     filters: { flexDirection: 'row', marginBottom: 15 },
-    filterBtn: { backgroundColor: '#FFF', paddingVertical: 8, paddingHorizontal: 15, borderRadius: 20, marginRight: 10, borderWidth: 2, borderColor: '#E5B84A' },
-    filterBtnActive: { backgroundColor: '#E5B84A', borderColor: '#8B2F2F' },
+    filterBtn: { backgroundColor: '#FFF', paddingVertical: 8, paddingHorizontal: 15, borderRadius: 20, marginRight: 10, borderWidth: 2, borderColor: '#B45309' },
+    filterBtnActive: { backgroundColor: '#B45309', borderColor: '#8B2F2F' },
     filterBtnText: { color: '#666', fontWeight: '600', fontSize: 14 },
     filterBtnTextActive: { color: '#2C2C2C' },
     
@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
     btnSuccess: { backgroundColor: '#7ED321' },
     btnDanger: { backgroundColor: '#DC3545' },
     btnStock: { backgroundColor: '#D2691E' },
-    btnEdit: { backgroundColor: '#E5B84A' },
+    btnEdit: { backgroundColor: '#B45309' },
     btnDelete: { backgroundColor: '#DC3545' },
     btnText: { color: '#FFF', fontSize: 11, fontWeight: '700' }
 });

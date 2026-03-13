@@ -1,11 +1,12 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, SectionList, TouchableOpacity, TextInput, ActivityIndicator, LayoutAnimation, Platform, UIManager, SectionListRenderItem, Alert } from 'react-native';
+﻿import { StatusBar } from 'expo-status-bar';
+import { StyleSheet, Text, View, SectionList, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, LayoutAnimation, Platform, UIManager, SectionListRenderItem, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import React, { memo, useCallback, useState, useMemo, useEffect, useRef } from 'react';
 
 import { useNovoPedido } from '../hooks/useNovoPedido';
 import { usePerformanceMonitor } from '../hooks/usePerformanceMonitor';
 import { colors } from '../theme/colors';
+import { Button } from '../ui';
 import { useFocusEffect } from '@react-navigation/native';
 import PizzaBuilderModal from '../components/PizzaBuilderModal';
 import { Product } from '../types';
@@ -13,6 +14,9 @@ import { KeyboardAvoidingView } from 'react-native';
 import supabaseOrderService from '../services/supabase/SupabaseOrderService';
 import OrderService from '../services/OrderService';
 import { supabase } from '../config/SupabaseConfig';
+import { ScreenScaffold } from '../layouts/ScreenScaffold';
+import { NewOrderListFooter, PizzaProductCard } from '../features/new-order';
+import { DeliveryOrderForm, DeliverySubmitFooter } from '../features/delivery';
 
 if (Platform.OS === 'android') {
   if (UIManager.setLayoutAnimationEnabledExperimental) {
@@ -28,61 +32,13 @@ const QuantityButton = memo(({ onPress, text }: { onPress: () => void, text: str
 QuantityButton.displayName = 'QuantityButton';
 
 const PizzaRow = memo(({ item, onPress }: { item: Product, onPress: (item: Product) => void }) => {
-  const validPrices = item.prices ? Object.values(item.prices).map(p => {
-    if (typeof p === 'string') return Number((p as string).replace(',', '.'));
-    return Number(p);
-  }).filter(p => !isNaN(p) && p > 0) : [];
-  const minPrice = validPrices.length > 0 ? Math.min(...validPrices) : 0;
-  const maxPrice = validPrices.length > 0 ? Math.max(...validPrices) : 0;
-
-  const formatPriceRange = (min: number, max: number): string => {
-    if (min === max || validPrices.length === 1) {
-      return `R$ ${min.toFixed(2).replace('.', ',')}`;
-    }
-    return `R$ ${min.toFixed(2).replace('.', ',')} - R$ ${max.toFixed(2).replace('.', ',')}`;
-  };
-  const priceDisplay = formatPriceRange(minPrice, maxPrice);
-  const ingredientsText = item.ingredients ? item.ingredients.join(', ') : item.description || '';
-  const customIngredientsText = item.customIngredients || '';
-
-  const cardColor = colors.primary;
-  const bgColor = colors.white;
-
-  const handlePress = useCallback(() => {
-    onPress(item);
-  }, [onPress, item]);
-
   return (
-    <TouchableOpacity
-      style={[styles.stackedInfoCard, { backgroundColor: bgColor, borderLeftColor: cardColor, borderLeftWidth: 4, marginBottom: 12, elevation: 2 }]}
-      onPress={handlePress}
-      activeOpacity={0.8}
-    >
-      <View style={{ alignItems: 'flex-start' }}>
-        <Text style={styles.stackedNameText}>{item.name}</Text>
-        {!!ingredientsText && <Text style={{ color: colors.textSecondary, fontSize: 13, textAlign: 'left', marginBottom: 4, fontStyle: 'italic' }}>{ingredientsText}</Text>}
-        {!!customIngredientsText && <Text style={{ color: colors.textSecondary, fontSize: 12, textAlign: 'left', marginBottom: 4, fontStyle: 'italic' }}>({customIngredientsText})</Text>}
-        <View style={{ backgroundColor: '#F5F5F5', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, marginTop: 4 }}>
-          <Text style={{ color: '#2C2C2C', fontSize: 15, fontWeight: 'bold' }}>{priceDisplay}</Text>
-        </View>
-      </View>
-    </TouchableOpacity>
+    <View style={styles.productCardWrapper}>
+      <PizzaProductCard item={item} onPress={onPress} />
+    </View>
   );
 });
 PizzaRow.displayName = 'PizzaRow';
-
-const SelectedItem = memo(({ item, price, onRemove }: { item: string, price: number, onRemove: () => void }) => (
-  <View style={styles.selectedItem}>
-    <View style={styles.selectedItemInfo}>
-      <Text style={styles.selectedItemName}>{item}</Text>
-      <Text style={styles.selectedItemPrice}>R$ {price.toFixed(2)}</Text>
-    </View>
-    <TouchableOpacity style={styles.removeBtn} onPress={onRemove}>
-      <Text style={styles.removeBtnText}>×</Text>
-    </TouchableOpacity>
-  </View>
-));
-SelectedItem.displayName = 'SelectedItem';
 
 const areCaldoPropsEqual = (prev: any, next: any) => {
   if (prev.caldoBase !== next.caldoBase) return false;
@@ -272,94 +228,6 @@ const VariationRow = memo(({ label, qty, color, onInc, onDec, itemKey, last, for
 });
 VariationRow.displayName = 'VariationRow';
 
-const HeaderDeliveryComponent = memo(({ 
-  clientName, setClientName, 
-  customerPhone, handlePhoneChange, 
-  deliveryCep, handleCepChange, isSearchingCep,
-  deliveryAddress, setDeliveryAddress, 
-  deliveryFee, setDeliveryFee,
-  paymentMethod, setPaymentMethod,
-  changeFor, setChangeFor
-}: any) => (
-  <View style={styles.headerForm}>
-    <View style={{ flexDirection: 'row', marginBottom: 10, gap: 10 }}>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.label}>Cliente *:</Text>
-        <TextInput style={(styles as any).input} placeholder="Nome do Cliente" value={clientName} onChangeText={setClientName} placeholderTextColor="#999" />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.label}>Telefone (só números):</Text>
-        <TextInput style={(styles as any).input} placeholder="(11) 99999-9999" value={customerPhone} onChangeText={handlePhoneChange} placeholderTextColor="#999" keyboardType="phone-pad" />
-      </View>
-    </View>
-
-    <View style={{ flexDirection: 'row', marginBottom: 10, gap: 10 }}>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.label}>CEP:</Text>
-        <View style={{flexDirection: 'row', alignItems: 'center'}}>
-           <TextInput style={[(styles as any).input, {flex: 1}]} placeholder="00000-000" value={deliveryCep} onChangeText={handleCepChange} placeholderTextColor="#999" keyboardType="numeric" />
-           {isSearchingCep && <ActivityIndicator style={{marginLeft: 10}} size="small" color={colors.primary} />}
-        </View>
-      </View>
-      <View style={{ flex: 2 }}>
-        <Text style={styles.label}>Endereço Completo *:</Text>
-        <TextInput style={(styles as any).input} placeholder="Rua, Número, Bairro, Referência..." value={deliveryAddress} onChangeText={setDeliveryAddress} placeholderTextColor="#999" />
-      </View>
-    </View>
-
-    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
-      <Text style={[styles.label, { flex: 1, marginBottom: 0 }]}>Taxa de Entrega (R$):</Text>
-      <TextInput style={(styles as any).feeInput} placeholder="0,00" value={deliveryFee} onChangeText={setDeliveryFee} placeholderTextColor="#999" keyboardType="numeric" />
-    </View>
-
-    {/* PAYMENT METHOD SELECTOR */}
-    <View style={{ marginBottom: 10 }}>
-        <Text style={styles.label}>Forma de Pagamento (Entrega):</Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 5 }}>
-            {['dinheiro', 'pix', 'cartao_debito', 'cartao_credito'].map((f) => {
-                const isSelected = paymentMethod === f;
-                return (
-                    <TouchableOpacity 
-                        key={f}
-                        style={{
-                            paddingHorizontal: 15, paddingVertical: 10, 
-                            borderRadius: 8, borderWidth: 1, 
-                            borderColor: isSelected ? colors.primary : '#DDD',
-                            backgroundColor: isSelected ? '#FDF5F5' : '#FFF'
-                        }}
-                        onPress={() => setPaymentMethod(f)}
-                    >
-                        <Text style={{ 
-                            color: isSelected ? colors.primary : '#666', 
-                            fontWeight: isSelected ? 'bold' : 'normal' 
-                        }}>
-                            {f.replace('_', ' ').toUpperCase()}
-                        </Text>
-                    </TouchableOpacity>
-                )
-            })}
-        </View>
-    </View>
-
-    {paymentMethod === 'dinheiro' && (
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10, marginTop: 5 }}>
-        <Text style={[styles.label, { marginRight: 10, marginBottom: 0 }]}>Troco para (R$):</Text>
-        <TextInput style={[(styles as any).input, { width: 100 }]} placeholder="Ex: 100,00" value={changeFor} onChangeText={setChangeFor} placeholderTextColor="#999" keyboardType="numeric" />
-      </View>
-    )}
-  </View>
-));
-HeaderDeliveryComponent.displayName = 'HeaderDeliveryComponent';
-
-const FooterComponent = memo(({ selectedItems, onRemoveItem }: any) => (
-  <View style={styles.listFooter}>
-    {selectedItems.map((item: any, index: number) => (
-      <SelectedItem key={index} item={item.text} price={item.price} onRemove={() => onRemoveItem(item.name)} />
-    ))}
-    <View style={styles.totalSpace} />
-  </View>
-));
-FooterComponent.displayName = 'FooterComponent';
 
 export default function DeliveryScreen() {
   const [showPizzaModal, setShowPizzaModal] = useState(false);
@@ -642,7 +510,7 @@ export default function DeliveryScreen() {
     return (
       <View style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#8B2F2F" />
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Carregando cardápio Delivery...</Text>
         </View>
       </View>
@@ -653,85 +521,76 @@ export default function DeliveryScreen() {
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          {user && (
-            <View>
-              <Text style={styles.userInfoLabel}>Entregas</Text>
-              <Text style={styles.userInfo}>{user.nome || user.email}</Text>
+      <ScreenScaffold
+        title="Delivery Express"
+        subtitle={user ? `Operador: ${user.nome || user.email}` : 'Entregas'}
+        rightSlot={<Button label="Sair" onPress={handleLogout} variant="ghost" size="sm" />}
+        bodyStyle={styles.scaffoldBody}
+        footer={
+          <DeliverySubmitFooter
+            finalTotal={finalTotal}
+            onSubmit={handleDeliverySubmit}
+            isSubmitting={isSubmittingDelivery}
+            disabled={isSubmittingDelivery || selectedItems.length === 0}
+          />
+        }
+      >
+        <View style={styles.twoColLayout}>
+          <ScrollView style={styles.leftPanel} contentContainerStyle={styles.leftPanelContent} keyboardShouldPersistTaps="handled">
+            <DeliveryOrderForm
+              clientName={clientName}
+              onChangeClientName={setClientName}
+              customerPhone={customerPhone}
+              onChangeCustomerPhone={handlePhoneChange}
+              deliveryCep={deliveryCep}
+              onChangeDeliveryCep={handleCepChange}
+              isSearchingCep={isSearchingCep}
+              deliveryAddress={deliveryAddress}
+              onChangeDeliveryAddress={setDeliveryAddress}
+              deliveryFee={deliveryFee}
+              onChangeDeliveryFee={setDeliveryFee}
+              paymentMethod={paymentMethod}
+              onChangePaymentMethod={setPaymentMethod}
+              changeFor={changeFor}
+              onChangeChangeFor={setChangeFor}
+            />
+            <NewOrderListFooter selectedItems={selectedItems} onRemoveItem={handleRemoveItemAnimated} />
+          </ScrollView>
+
+          <View style={styles.rightPanel}>
+            <View style={styles.searchContainer}>
+              <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.searchIcon} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Buscar no cardapio..."
+                placeholderTextColor={colors.textSecondary}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.searchClearBtn}>
+                  <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
+                </TouchableOpacity>
+              )}
             </View>
-          )}
-        </View>
-        <View style={styles.headerCenter}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Ionicons name="bicycle" size={26} color={colors.white} style={{ marginRight: 8 }} />
-            <Text style={styles.headerTitle}>Delivery Express</Text>
+            <SectionList
+              style={styles.rightPanelList}
+              sections={filteredSections}
+              renderItem={renderItem}
+              renderSectionHeader={renderSectionHeader}
+              keyExtractor={keyExtractor}
+              contentContainerStyle={styles.listContent}
+              stickySectionHeadersEnabled={false}
+              initialNumToRender={10} maxToRenderPerBatch={10} windowSize={11}
+              updateCellsBatchingPeriod={50} removeClippedSubviews={Platform.OS === 'android'}
+              onScrollBeginDrag={handleScrollBeginDrag} onScrollEndDrag={handleScrollEndDrag} onMomentumScrollEnd={handleScrollEndDrag}
+              onScrollToIndexFailed={() => {}} legacyImplementation={false} scrollEventThrottle={16}
+            />
           </View>
         </View>
-        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={24} color={colors.white} />
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.searchIcon} />
-        <TextInput
-          style={(styles as any).searchInput}
-          placeholder="Buscar no cardápio..."
-          placeholderTextColor={colors.textSecondary}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-        {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.searchClearBtn}>
-            <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
-        )}
-      </View>
-
-      <SectionList
-        style={{ flex: 1 }}
-        sections={filteredSections}
-        renderItem={renderItem}
-        renderSectionHeader={renderSectionHeader}
-        keyExtractor={keyExtractor}
-        contentContainerStyle={styles.listContent}
-        ListHeaderComponent={<HeaderDeliveryComponent
-          clientName={clientName} setClientName={setClientName}
-          customerPhone={customerPhone} handlePhoneChange={handlePhoneChange}
-          deliveryCep={deliveryCep} handleCepChange={handleCepChange} isSearchingCep={isSearchingCep}
-          deliveryAddress={deliveryAddress} setDeliveryAddress={setDeliveryAddress}
-          deliveryFee={deliveryFee} setDeliveryFee={setDeliveryFee}
-          paymentMethod={paymentMethod} setPaymentMethod={setPaymentMethod}
-          changeFor={changeFor} setChangeFor={setChangeFor}
-        />}
-        ListFooterComponent={<FooterComponent selectedItems={selectedItems} onRemoveItem={handleRemoveItemAnimated} />}
-        stickySectionHeadersEnabled={false}
-        initialNumToRender={10} maxToRenderPerBatch={10} windowSize={11}
-        updateCellsBatchingPeriod={50} removeClippedSubviews={Platform.OS === 'android'}
-        onScrollBeginDrag={handleScrollBeginDrag} onScrollEndDrag={handleScrollEndDrag} onMomentumScrollEnd={handleScrollEndDrag}
-        onScrollToIndexFailed={() => {}} legacyImplementation={false} scrollEventThrottle={16}
-      />
-
-      <View style={styles.stickyFooter}>
-        <View style={styles.totalContainer}>
-          <Text style={styles.totalLabel}>Total Final:</Text>
-          <Text style={styles.totalValue}>R$ {finalTotal.toFixed(2)}</Text>
-        </View>
-        <TouchableOpacity
-          style={[styles.submitBtn, (isSubmittingDelivery || selectedItems.length === 0) && styles.submitBtnDisabled]}
-          onPress={handleDeliverySubmit}
-          disabled={isSubmittingDelivery || selectedItems.length === 0}
-        >
-          {isSubmittingDelivery ? (
-            <ActivityIndicator size="small" color={colors.white} />
-          ) : (
-            <Text style={styles.submitBtnText}>Confirmar Delivery</Text>
-          )}
-        </TouchableOpacity>
-      </View>
+      </ScreenScaffold>
 
       <PizzaBuilderModal
         visible={showPizzaModal} onClose={() => { setShowPizzaModal(false); setSelectedPizza(null); }}
@@ -745,34 +604,24 @@ export default function DeliveryScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F5DC' },
-  header: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 20, paddingTop: 50, paddingBottom: 15, backgroundColor: '#8B2F2F', 
-    borderBottomLeftRadius: 20, borderBottomRightRadius: 20, zIndex: 10, elevation: 8,
-  },
-  headerLeft: { flex: 1, alignItems: 'flex-start', justifyContent: 'center' },
-  headerCenter: { flex: 2, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 20, fontWeight: 'bold', color: colors.white, textAlign: 'center' },
-  userInfoLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 10 },
-  userInfo: { fontSize: 12, color: colors.userInfo, fontWeight: '600' },
-  logoutBtn: { flex: 1, alignItems: 'flex-end', justifyContent: 'center', padding: 5 },
+  container: { flex: 1, backgroundColor: colors.background },
+  scaffoldBody: { flex: 1 },
+  twoColLayout: { flex: 1, flexDirection: 'row' as const },
+  leftPanel: { width: 380, borderRightWidth: 1, borderRightColor: '#D7DEEA', backgroundColor: '#FFFFFF' },
+  leftPanelContent: { padding: 16, gap: 0 },
+  rightPanel: { flex: 1, flexDirection: 'column' as const },
   listContent: { padding: 20, paddingBottom: 120 },
-  headerForm: { marginBottom: 20, backgroundColor: '#fff', padding: 15, borderRadius: 10, elevation: 1 },
-  label: { fontSize: 14, color: colors.text, marginBottom: 4, fontWeight: 'bold' },
-  input: { backgroundColor: colors.white, borderRadius: 8, padding: 10, fontSize: 15, borderWidth: 1, borderColor: colors.border, outlineStyle: 'none' as any },
-  feeInput: { backgroundColor: colors.white, borderRadius: 8, padding: 10, fontSize: 15, borderWidth: 1, borderColor: colors.border, width: 80, textAlign: 'right', outlineStyle: 'none' as any },
-  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#8B2F2F', marginTop: 20, marginBottom: 12 },
-  quantityBtn: { backgroundColor: '#8B2F2F', width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: colors.primary, marginTop: 20, marginBottom: 12 },
+  quantityBtn: { backgroundColor: colors.primary, width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
   quantityBtnText: { color: colors.white, fontSize: 18, fontWeight: 'bold' },
   caldoCard: { backgroundColor: colors.white, borderRadius: 12, padding: 16, marginBottom: 12, elevation: 1 },
   standardCard: { backgroundColor: colors.white, borderRadius: 12, padding: 16, marginBottom: 12, elevation: 1 },
   verticalCard: { flexDirection: 'column', marginBottom: 12, backgroundColor: colors.white, padding: 16, borderRadius: 8, elevation: 1 },
   produtoName: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 4, textAlign: 'left' },
-  sizeTitle: { fontSize: 17, fontWeight: '700', color: '#8B2F2F', marginTop: 8, marginBottom: 4, textAlign: 'left' },
+  sizeTitle: { fontSize: 17, fontWeight: '700', color: colors.primary, marginTop: 8, marginBottom: 4, textAlign: 'left' },
   verticalName: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 8, textAlign: 'left' },
   verticalControlsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  verticalPrice: { fontSize: 17, fontWeight: '700', color: '#8B2F2F' },
+  verticalPrice: { fontSize: 17, fontWeight: '700', color: colors.primary },
   variationRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, backgroundColor: '#F9F9F9', borderRadius: 8, padding: 8 },
   variationLabelBtn: { flex: 1, padding: 8, borderRadius: 8, marginRight: 8, justifyContent: 'center' },
   variationLabelText: { color: colors.text, fontSize: 16, fontWeight: '700', textAlign: 'left' },
@@ -780,6 +629,7 @@ const styles = StyleSheet.create({
   stackedInfoCard: { flex: 1, padding: 12, borderRadius: 10, justifyContent: 'center', alignItems: 'flex-start', marginRight: 12 },
   variationControlsOutside: { flexDirection: 'row', alignItems: 'center' },
   stackedNameText: { color: colors.text, fontSize: 18, fontWeight: 'bold', textAlign: 'left', marginBottom: 4 },
+  productCardWrapper: { marginBottom: 12 },
   stackedPriceText: { color: colors.primary, fontSize: 17, fontWeight: 'bold', textAlign: 'left' },
   variationControls: { flexDirection: 'row', alignItems: 'center' },
   roundBtn: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginHorizontal: 4 },
@@ -787,27 +637,14 @@ const styles = StyleSheet.create({
   qtyText: { fontSize: 16, fontWeight: 'bold', minWidth: 24, textAlign: 'center' },
   produtoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   produtoInfo: { flex: 1, marginRight: 12 },
-  produtoPrice: { fontSize: 17, fontWeight: '700', color: '#8B2F2F', textAlign: 'left', marginTop: 4 },
+  produtoPrice: { fontSize: 17, fontWeight: '700', color: colors.primary, textAlign: 'left', marginTop: 4 },
   quantityControl: { flexDirection: 'row', alignItems: 'center' },
-  listFooter: { marginTop: 20 },
-  selectedItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.white, borderRadius: 8, padding: 12, marginBottom: 8 },
-  selectedItemInfo: { flex: 1 },
-  selectedItemName: { fontSize: 16, color: colors.text },
-  selectedItemPrice: { fontSize: 14, color: '#8B2F2F', marginTop: 2 },
-  removeBtn: { backgroundColor: colors.dangerLight, width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
-  removeBtnText: { color: colors.white, fontSize: 20, fontWeight: 'bold' },
-  stickyFooter: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: colors.white, borderTopWidth: 1, borderTopColor: colors.border, padding: 20, elevation: 20 },
-  totalContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  totalLabel: { fontSize: 20, fontWeight: 'bold', color: colors.text },
-  totalValue: { fontSize: 24, fontWeight: 'bold', color: '#8B2F2F' },
-  submitBtn: { backgroundColor: '#2e7d32', borderRadius: 12, padding: 16, alignItems: 'center' },
-  submitBtnDisabled: { opacity: 0.5 },
-  submitBtnText: { color: colors.white, fontSize: 18, fontWeight: 'bold' },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loadingText: { marginTop: 12, fontSize: 16, color: '#8B2F2F' },
-  totalSpace: { height: 100 },
+  loadingText: { marginTop: 12, fontSize: 16, color: colors.primary },
   searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', paddingHorizontal: 15, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border },
   searchIcon: { marginRight: 8 },
   searchInput: { flex: 1, fontSize: 16, color: colors.text, paddingVertical: 8, outlineStyle: 'none' as any },
   searchClearBtn: { padding: 4 }
+  ,
+  rightPanelList: { flex: 1 },
 });
