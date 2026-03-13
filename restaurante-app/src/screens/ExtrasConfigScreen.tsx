@@ -25,6 +25,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../config/SupabaseConfig';
 import { Extra, ExtraType } from '../types/models';
+import { ScreenScaffold } from '../layouts/ScreenScaffold';
 
 
 interface ExtrasConfigScreenProps {
@@ -221,16 +222,10 @@ export default function ExtrasConfigScreen({ onClose }: ExtrasConfigScreenProps)
   );
 
   return (
-    <View style={styles.container}>
-
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, 16) }]}>
-        <TouchableOpacity onPress={onClose} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#FFF" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Configurar Extras</Text>
-        <View style={styles.headerRight} />
-      </View>
+    <ScreenScaffold
+      title="Configurar Extras"
+      leftAction={{ label: 'Voltar', onPress: onClose }}
+    >
 
       {/* Tabs */}
       <View style={styles.tabs}>
@@ -362,39 +357,11 @@ export default function ExtrasConfigScreen({ onClose }: ExtrasConfigScreenProps)
           </View>
         </View>
       </Modal>
-    </View>
+    </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F5DC',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#8B2F2F',
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-  },
-  backButton: {
-    padding: 8,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFF',
-  },
-  headerRight: {
-    width: 40,
-  },
   tabs: {
     flexDirection: 'row',
     backgroundColor: '#FFF',

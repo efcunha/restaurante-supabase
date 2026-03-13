@@ -1,4 +1,4 @@
-import 'react-native-gesture-handler';
+﻿import 'react-native-gesture-handler';
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -27,6 +27,7 @@ import ComandaGerenciamentoScreen from './src/screens/ComandaGerenciamentoScreen
 import MapaMesasScreen from './src/screens/MapaMesasScreen';
 import RotasDeliveryScreen from './src/screens/RotasDeliveryScreen';
 import ReservasScreen from './src/screens/ReservasScreen';
+import OverflowMenuScreen from './src/screens/OverflowMenuScreen';
 
 import RegisterCompanyScreen from './src/screens/RegisterCompanyScreen';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -37,11 +38,13 @@ import { canAccessScreen } from './src/auth/roles';
 import OfflineNotice from './src/components/OfflineNotice';
 import OfflineQueueManager from './src/components/OfflineQueueManager';
 import PrinterService from './src/services/PrinterService';
-import { useEffect } from 'react'; // Ensure useEffect is imported if not already
+import { colorSystem } from './src/design-system';
+import { useEffect } from 'react';
 
 // @ts-ignore
 import PagamentoScreen from './src/screens/PagamentoScreen';
 
+// Stack para Comandas (lista -> pagamento)
 const ComandaStack = createNativeStackNavigator();
 
 function ComandaStackScreen() {
@@ -50,6 +53,22 @@ function ComandaStackScreen() {
       <ComandaStack.Screen name="ComandaList" component={ComandaGerenciamentoScreen} />
       <ComandaStack.Screen name="Pagamento" component={PagamentoScreen} />
     </ComandaStack.Navigator>
+  );
+}
+
+// Stack para a aba "Mais" — lista de destinos secundarios + cada destino
+const MaisStack = createNativeStackNavigator();
+
+function MaisStackScreen() {
+  return (
+    <MaisStack.Navigator screenOptions={{ headerShown: false }}>
+      <MaisStack.Screen name="OverflowMenu" component={OverflowMenuScreen} />
+      <MaisStack.Screen name="Montagem"     component={MontagemScreen} />
+      <MaisStack.Screen name="Prontos"      component={PedidosProntosScreen} />
+      <MaisStack.Screen name="RotasDelivery" component={RotasDeliveryScreen} />
+      <MaisStack.Screen name="Reservas"     component={ReservasScreen} />
+      <MaisStack.Screen name="Admin"        component={AdminScreen} />
+    </MaisStack.Navigator>
   );
 }
 
@@ -65,38 +84,68 @@ function TabNavigator() {
         headerShown: false,
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
-          if (route.name === 'Novo Pedido') iconName = focused ? 'add-circle' : 'add-circle-outline';
-          else if (route.name === 'Montagem') iconName = focused ? 'layers' : 'layers-outline';
-          else if (route.name === 'Cozinha') iconName = focused ? 'flame' : 'flame-outline';
-          else if (route.name === 'Prontos') iconName = focused ? 'checkmark-done-circle' : 'checkmark-done-circle-outline';
-          else if (route.name === 'Mapa') iconName = focused ? 'map' : 'map-outline';
-          else if (route.name === 'Reservas') iconName = focused ? 'calendar' : 'calendar-outline';
-          else if (route.name === 'Comandas') iconName = focused ? 'receipt' : 'receipt-outline';
-          else if (route.name === 'Admin') iconName = focused ? 'stats-chart' : 'stats-chart-outline';
-          else if (route.name === 'RotasDelivery') iconName = focused ? 'bicycle' : 'bicycle-outline';
+          if      (route.name === 'Novo Pedido')   iconName = focused ? 'add-circle'              : 'add-circle-outline';
+          else if (route.name === 'Mapa')           iconName = focused ? 'map'                     : 'map-outline';
+          else if (route.name === 'Comandas')       iconName = focused ? 'receipt'                 : 'receipt-outline';
+          else if (route.name === 'Cozinha')        iconName = focused ? 'flame'                   : 'flame-outline';
+          else if (route.name === 'Montagem')       iconName = focused ? 'layers'                  : 'layers-outline';
+          else if (route.name === 'Prontos')        iconName = focused ? 'checkmark-done-circle'   : 'checkmark-done-circle-outline';
+          else if (route.name === 'RotasDelivery')  iconName = focused ? 'bicycle'                 : 'bicycle-outline';
+          else if (route.name === 'Mais')           iconName = focused ? 'apps'                    : 'apps-outline';
+          else                                      iconName = 'ellipsis-horizontal';
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: '#8B2F2F',
-        tabBarInactiveTintColor: '#999',
+        tabBarActiveTintColor: colorSystem.primary,
+        tabBarInactiveTintColor: colorSystem.textMuted,
         tabBarStyle: {
-          backgroundColor: '#FFFFFF',
+          backgroundColor: colorSystem.surface,
           borderTopWidth: 1,
-          borderTopColor: '#E0D8C8',
+          borderTopColor: colorSystem.border,
           height: Platform.OS === 'ios' ? 85 : 65,
           paddingBottom: Platform.OS === 'ios' ? 25 : 8,
           paddingTop: 8,
         },
       })}
     >
-      {canAccessScreen(user?.funcao, 'Novo Pedido') && <Tab.Screen name="Novo Pedido" component={NovoPedidoScreen} />}
-      {canAccessScreen(user?.funcao, 'Novo Pedido') && <Tab.Screen name="Mapa" component={MapaMesasScreen} />}
-      {canAccessScreen(user?.funcao, 'Reservas') && <Tab.Screen name="Reservas" component={ReservasScreen} />}
-      {canAccessScreen(user?.funcao, 'Comandas') && <Tab.Screen name="Comandas" component={ComandaStackScreen} />}
-      {canAccessScreen(user?.funcao, 'Cozinha') && <Tab.Screen name="Cozinha" component={CozinhaScreen} />}
-      {canAccessScreen(user?.funcao, 'Montagem') && <Tab.Screen name="Montagem" component={MontagemScreen} />}
-      {canAccessScreen(user?.funcao, 'Prontos') && <Tab.Screen name="Prontos" component={PedidosProntosScreen} options={{ tabBarLabel: 'Entrega Salao' }} />}
-      {canAccessScreen(user?.funcao, 'RotasDelivery') && <Tab.Screen name="RotasDelivery" component={RotasDeliveryScreen} options={{ tabBarLabel: 'Rotas Delivery' }} />}
-      {canAccessScreen(user?.funcao, 'Admin') && <Tab.Screen name="Admin" component={AdminScreen} />}
+      {/* Abas primarias — max 5 destinos por papel */}
+      {canAccessScreen(user?.funcao, 'Novo Pedido') && (
+        <Tab.Screen name="Novo Pedido" component={NovoPedidoScreen} />
+      )}
+      {canAccessScreen(user?.funcao, 'Mapa') && (
+        <Tab.Screen name="Mapa" component={MapaMesasScreen} />
+      )}
+      {canAccessScreen(user?.funcao, 'Comandas') && (
+        <Tab.Screen name="Comandas" component={ComandaStackScreen} />
+      )}
+      {canAccessScreen(user?.funcao, 'Cozinha') && (
+        <Tab.Screen name="Cozinha" component={CozinhaScreen} />
+      )}
+      {/* Abas single-role: permanecem primarias para seus respectivos papeis */}
+      {canAccessScreen(user?.funcao, 'Montagem') && (
+        <Tab.Screen name="Montagem" component={MontagemScreen} />
+      )}
+      {canAccessScreen(user?.funcao, 'Prontos') && (
+        <Tab.Screen
+          name="Prontos"
+          component={PedidosProntosScreen}
+          options={{ tabBarLabel: 'Entrega Salao' }}
+        />
+      )}
+      {canAccessScreen(user?.funcao, 'RotasDelivery') && (
+        <Tab.Screen
+          name="RotasDelivery"
+          component={RotasDeliveryScreen}
+          options={{ tabBarLabel: 'Rotas Delivery' }}
+        />
+      )}
+      {/* Aba "Mais" — overflow com destinos secundarios (admin/gerente/garcom) */}
+      {canAccessScreen(user?.funcao, 'Mais') && (
+        <Tab.Screen
+          name="Mais"
+          component={MaisStackScreen}
+          options={{ tabBarLabel: 'Mais' }}
+        />
+      )}
     </Tab.Navigator>
   );
 }
@@ -126,7 +175,7 @@ function AuthStack() {
 function AppContent() {
   const { user, loading, sessionKey } = useAuth();
 
-  // Tentar reconexão com impressora ao iniciar
+  // Tentar reconexao com impressora ao iniciar
   useEffect(() => {
     PrinterService.autoConnect();
   }, []);
@@ -135,10 +184,10 @@ function AppContent() {
   if (loading) {
     return (
       <SafeAreaProvider>
-        <StatusBar barStyle="dark-content" backgroundColor="#F5F1E8" translucent={false} />
+        <StatusBar barStyle="dark-content" backgroundColor={colorSystem.background} translucent={false} />
         <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#8B2F2F" />
+            <ActivityIndicator size="large" color={colorSystem.primary} />
             <Text style={styles.loadingText}>Verificando acesso...</Text>
           </View>
         </SafeAreaView>
@@ -146,11 +195,11 @@ function AppContent() {
     );
   }
 
-  // SEM USUÁRIO = AUTH STACK (Login/Register)
+  // SEM USUARIO = AUTH STACK (Login/Register)
   if (!user) {
     return (
       <SafeAreaProvider key={`auth-${sessionKey}-${Date.now()}`}>
-        <StatusBar barStyle="dark-content" backgroundColor="#F5F1E8" translucent={false} />
+        <StatusBar barStyle="dark-content" backgroundColor={colorSystem.background} translucent={false} />
         <NavigationContainer>
           <AuthStack />
         </NavigationContainer>
@@ -158,12 +207,10 @@ function AppContent() {
     );
   }
 
-
-
-  // COM USUÁRIO = APP (com key única para forçar re-render)
+  // COM USUARIO = APP (com key unica para forcar re-render)
   return (
     <SafeAreaProvider key={`app-${sessionKey}-${Date.now()}`}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F5F1E8" translucent={false} />
+      <StatusBar barStyle="dark-content" backgroundColor={colorSystem.background} translucent={false} />
       <OfflineNotice />
       <OfflineQueueManager />
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -176,17 +223,17 @@ function AppContent() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F1E8',
+    backgroundColor: colorSystem.background,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F5F1E8',
+    backgroundColor: colorSystem.background,
   },
   loadingText: {
     marginTop: 10,
-    color: '#8B2F2F',
+    color: colorSystem.primary,
     fontSize: 16,
   },
 });

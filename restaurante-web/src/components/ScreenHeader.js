@@ -1,6 +1,8 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
+import { colorSystem, spacing, typography, shadows } from '../design-system';
 
 /**
  * Header compartilhado para todas as telas
@@ -8,9 +10,10 @@ import { useAuth } from '../context/AuthContext';
  */
 export default function ScreenHeader({ title, onBack = null }) {
   const { user, logout } = useAuth();
+  const insets = useSafeAreaInsets();
 
   return (
-    <View style={styles.header}>
+    <View style={[styles.header, { paddingTop: Math.max(insets.top, spacing.s16) }]}>
       {onBack && (
         <TouchableOpacity onPress={onBack} style={styles.backBtn}>
           <Text style={styles.backBtnText}>← Voltar</Text>
@@ -33,48 +36,49 @@ export default function ScreenHeader({ title, onBack = null }) {
 
 const styles = StyleSheet.create({
   header: {
-    backgroundColor: '#8B2F2F',
-    paddingTop: 40,
-    paddingBottom: 15,
-    paddingHorizontal: 20,
+    backgroundColor: colorSystem.primary,
+    paddingBottom: spacing.s12,
+    paddingHorizontal: spacing.s16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    elevation: 5,
-    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.25)',
+    ...shadows.medium,
   },
   backBtn: {
-    padding: 5,
+    paddingVertical: spacing.s8,
+    paddingRight: spacing.s8,
   },
   backBtnText: {
-    color: '#FFF',
-    fontSize: 16,
+    ...typography.body,
+    color: colorSystem.onPrimary,
     fontWeight: '600',
   },
   headerCenter: {
     flex: 1,
     alignItems: 'center',
+    paddingHorizontal: spacing.s8,
   },
   headerTitle: {
-    color: '#FFFFFF',
-    fontSize: 20,
+    ...typography.headingM,
+    color: colorSystem.onPrimary,
     fontWeight: 'bold',
   },
   userInfo: {
-    color: '#E5B84A',
-    fontSize: 12,
-    marginTop: 2,
+    ...typography.small,
+    color: colorSystem.onPrimary,
+    marginTop: spacing.s4,
     fontWeight: '600',
+    opacity: 0.9,
   },
   sairBtn: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    paddingHorizontal: spacing.s12,
+    paddingVertical: spacing.s8,
     borderRadius: 8,
   },
   sairBtnText: {
-    color: '#FFFFFF',
-    fontSize: 14,
+    ...typography.small,
+    color: colorSystem.onPrimary,
     fontWeight: '600',
   },
 });

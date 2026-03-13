@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Switch, TouchableOpacity, ActivityIndicator, Alert, ScrollView } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-import { Ionicons } from '@expo/vector-icons';
 // @ts-ignore
 import BackgroundPattern from '../components/BackgroundPattern';
 import { supabase } from '../config/SupabaseConfig';
+import { ScreenScaffold } from '../layouts/ScreenScaffold';
 
 interface Props {
     onClose?: () => void;
@@ -80,16 +80,11 @@ export default function FinancialConfigScreen({ onClose }: Props) {
     };
 
     return (
-        <View style={styles.container}>
+        <ScreenScaffold
+            title="⚙️ Configurações Financeiras"
+            leftAction={{ label: 'Voltar', onPress: onClose ?? (() => {}) }}
+        >
             <BackgroundPattern />
-
-            <View style={styles.header}>
-                <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-                    <Ionicons name="arrow-back" size={24} color="#FFF" />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>⚙️ Configurações Financeiras</Text>
-                <View style={{ width: 40 }} />
-            </View>
 
             {loading ? (
                 <View style={styles.center}>
@@ -110,7 +105,7 @@ export default function FinancialConfigScreen({ onClose }: Props) {
                             <Switch
                                 value={blindClosing}
                                 onValueChange={setBlindClosing}
-                                trackColor={{ false: "#767577", true: "#E5B84A" }}
+                                trackColor={{ false: "#767577", true: "#B45309" }}
                                 thumbColor={blindClosing ? "#8B2F2F" : "#f4f3f4"}
                             />
                         </View>
@@ -129,35 +124,11 @@ export default function FinancialConfigScreen({ onClose }: Props) {
                     </TouchableOpacity>
                 </ScrollView>
             )}
-        </View>
+        </ScreenScaffold>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#F5F1E8',
-    },
-    header: {
-        backgroundColor: '#8B2F2F',
-        paddingTop: 50,
-        paddingBottom: 20,
-        paddingHorizontal: 20,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        elevation: 5,
-        // @ts-ignore
-        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.25)',
-    },
-    closeBtn: {
-        padding: 5
-    },
-    headerTitle: {
-        color: '#FFF',
-        fontSize: 20,
-        fontWeight: 'bold',
-    },
     content: {
         flex: 1,
         padding: 20,

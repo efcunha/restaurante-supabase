@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
     fontSize: 16
   },
   btn: {
-    backgroundColor: '#E5B84A',
+    backgroundColor: '#B45309',
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',

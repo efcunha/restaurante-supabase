@@ -51,15 +51,29 @@ export const RolePermissions = {
   ]),
 };
 
-// Telas permitidas por papel
+// Abas primárias exibidas na barra de navegação inferior (máx. 5)
 export const RoleScreens = {
-  [Roles.ADMIN]: ['Novo Pedido', 'Cozinha', 'Montagem', 'Prontos', 'Comandas', 'Mapa', 'Admin', 'RotasDelivery', 'Reservas'],
-  [Roles.GERENTE]: ['Novo Pedido', 'Cozinha', 'Montagem', 'Prontos', 'Comandas', 'Mapa', 'Admin', 'RotasDelivery', 'Reservas'],
-  [Roles.GARCOM]: ['Novo Pedido', 'Comandas', 'Mapa', 'Prontos', 'Reservas'],
+  [Roles.ADMIN]:      ['Novo Pedido', 'Mapa', 'Comandas', 'Cozinha', 'Mais'],
+  [Roles.GERENTE]:    ['Novo Pedido', 'Mapa', 'Comandas', 'Cozinha', 'Mais'],
+  [Roles.GARCOM]:     ['Novo Pedido', 'Mapa', 'Comandas', 'Mais'],
   [Roles.COZINHEIRO]: ['Cozinha'],
-  [Roles.MONTAGEM]: ['Montagem', 'Prontos'],
+  [Roles.MONTAGEM]:   ['Montagem', 'Prontos'],
   [Roles.ENTREGADOR]: ['RotasDelivery'],
 };
+
+// Destinos secundários acessíveis via aba "Mais" (overflow)
+export const RoleOverflowScreens = {
+  [Roles.ADMIN]:      ['Montagem', 'Prontos', 'RotasDelivery', 'Reservas', 'Admin'],
+  [Roles.GERENTE]:    ['Montagem', 'Prontos', 'RotasDelivery', 'Reservas', 'Admin'],
+  [Roles.GARCOM]:     ['Prontos', 'Reservas'],
+  [Roles.COZINHEIRO]: [],
+  [Roles.MONTAGEM]:   [],
+  [Roles.ENTREGADOR]: [],
+};
+
+export function getRoleOverflowScreens(role) {
+  return RoleOverflowScreens[role] || [];
+}
 
 export function hasPermission(role, permission) {
   const set = RolePermissions[role] || new Set();

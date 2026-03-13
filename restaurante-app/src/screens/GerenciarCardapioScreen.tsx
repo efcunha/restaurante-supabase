@@ -51,7 +51,7 @@ function VariacaoItem({ variacao, onSalvar, onEditarCompleto }: VariacaoItemProp
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.variacaoSalvarBtn, { backgroundColor: '#E5B84A', marginLeft: 8 }]}
+            style={[styles.variacaoSalvarBtn, { backgroundColor: '#B45309', marginLeft: 8 }]}
             onPress={() => onEditarCompleto(variacao)}
           >
             <Text style={[styles.variacaoSalvarText, { color: '#000' }]}>✏️</Text>
@@ -1526,7 +1526,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                       {/* Show Variações button for pizzas and espetinhos with multiple variations */}
                       {(isPizzaProduct(primeiraVariacao) || variacoes.length > 1) && (
                         <TouchableOpacity
-                          style={[styles.editBtn, { backgroundColor: '#E5B84A' }]}
+                          style={[styles.editBtn, { backgroundColor: '#B45309' }]}
                           onPress={() => abrirVariacoes(variacoes)}
                         >
                           <Text style={[styles.editBtnText, { color: '#000' }]}>Variações</Text>
@@ -2058,12 +2058,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: '#E5B84A',
+    borderColor: '#B45309',
     marginRight: 10,
     marginBottom: 10,
   },
   categoriaBtnActive: {
-    backgroundColor: '#E5B84A',
+    backgroundColor: '#B45309',
     borderColor: '#8B2F2F',
   },
   categoriaBtnText: {
@@ -2125,7 +2125,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#2C2C2C',
     borderWidth: 1,
-    borderColor: '#E5B84A',
+    borderColor: '#B45309',
     textAlign: 'center',
   },
   cadastrarBtn: {
@@ -2160,10 +2160,10 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginRight: 10,
     borderWidth: 2,
-    borderColor: '#E5B84A',
+    borderColor: '#B45309',
   },
   filtroBtnActive: {
-    backgroundColor: '#E5B84A',
+    backgroundColor: '#B45309',
     borderColor: '#8B2F2F',
   },
   filtroBtnText: {
@@ -2262,7 +2262,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   editBtn: {
-    backgroundColor: '#E5B84A',
+    backgroundColor: '#B45309',
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 8,
@@ -2411,7 +2411,7 @@ const styles = StyleSheet.create({
     padding: 8,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#E5B84A',
+    borderColor: '#B45309',
     minWidth: 80,
     textAlign: 'center',
   },
@@ -2512,7 +2512,7 @@ const styles = StyleSheet.create({
   ingredienteChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E5B84A',
+    backgroundColor: '#B45309',
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 20,

@@ -308,7 +308,7 @@ const styles = StyleSheet.create({
   },
   userInfo: {
     fontSize: 12,
-    color: '#E5B84A', // Using the gold color found in other files or just keeping similar tone
+    color: '#B45309', // Using the gold color found in other files or just keeping similar tone
     fontWeight: '600',
   },
   logoutBtn: {

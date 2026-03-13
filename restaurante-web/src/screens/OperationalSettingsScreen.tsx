@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Switch, TextInput, Alert, ActivityIndicator } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { CompanySettingsService } from '../services/CompanySettingsService';
+import { ScreenScaffold } from '../layouts/ScreenScaffold';
 
 interface Props {
   onClose: () => void;
@@ -60,22 +60,22 @@ export default function OperationalSettingsScreen({ onClose }: Props) {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#8B2F2F" />
-      </View>
+      <ScreenScaffold
+        title="Configurações Operacionais"
+        leftAction={{ label: 'Voltar', onPress: onClose }}
+      >
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#8B2F2F" />
+        </View>
+      </ScreenScaffold>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={onClose} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#FFF" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Configurações Operacionais</Text>
-        <View style={{ width: 40 }} />
-      </View>
-
+    <ScreenScaffold
+      title="Configurações Operacionais"
+      leftAction={{ label: 'Voltar', onPress: onClose }}
+    >
       <View style={styles.content}>
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Turno de Trabalho</Text>
@@ -113,38 +113,16 @@ export default function OperationalSettingsScreen({ onClose }: Props) {
           )}
         </TouchableOpacity>
       </View>
-    </View>
+    </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F5DC',
-  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#F5F5DC',
-  },
-  header: {
-    backgroundColor: '#8B2F2F',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 50,
-    paddingBottom: 15,
-    paddingHorizontal: 20,
-    elevation: 4,
-  },
-  headerTitle: {
-    color: '#FFF',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  backButton: {
-    padding: 5,
   },
   content: {
     padding: 20,

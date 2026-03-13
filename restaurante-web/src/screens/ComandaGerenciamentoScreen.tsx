@@ -509,7 +509,7 @@ export default function ComandaGerenciamentoScreen(props: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F5DC' },
+  container: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -555,7 +555,16 @@ const styles = StyleSheet.create({
     padding: 5,
   },
   tabs: { flexDirection: 'row', padding: 10 },
-  tab: { flex: 1, padding: 10, alignItems: 'center', borderRadius: 8, backgroundColor: '#E0E0E0', marginHorizontal: 5 },
+  tab: {
+    flex: 1,
+    padding: 10,
+    alignItems: 'center',
+    borderRadius: 8,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginHorizontal: 5,
+  },
   activeTab: { backgroundColor: colors.primary },
   tabText: { fontWeight: 'bold', color: colors.textSecondary },
   activeTabText: { color: colors.white },

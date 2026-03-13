@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
   content: {},
   label: { color: '#8B2F2F', fontWeight: '600', marginBottom: 8, fontSize: 16 },
   input: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#E0D8C8', borderRadius: 12, padding: 14, marginBottom: 16, fontSize: 18 },
-  btn: { backgroundColor: '#E5B84A', padding: 16, borderRadius: 12, alignItems: 'center' },
+  btn: { backgroundColor: '#B45309', padding: 16, borderRadius: 12, alignItems: 'center' },
   btnText: { color: '#2C2C2C', fontWeight: '700', fontSize: 16 },
   btnDisabled: { backgroundColor: '#D0D0D0' },
 });
