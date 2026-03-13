@@ -268,13 +268,13 @@ export default function FuncionariosScreen({ onClose }: Props) {
   const getFuncaoColor = (func) => {
     const colors: any = {
       garcom: '#4A90E2',
-      churrasqueiro: '#E5B84A', // Legacy
-      cozinheiro: '#E5B84A',
+      churrasqueiro: '#B45309', // Legacy
+      cozinheiro: '#B45309',
       montagem: '#7ED321',
       admin: '#8B2F2F',
       manager: '#8B2F2F',
       waiter: '#4A90E2',
-      kitchen: '#E5B84A',
+      kitchen: '#B45309',
       entregador: '#E17055', // Cor distinta para entregador
     };
     return colors[func] || '#999';
@@ -705,7 +705,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   headerSubtitle: {
-    color: '#E5B84A',
+    color: '#B45309',
     fontSize: 12,
     marginTop: 4,
   },

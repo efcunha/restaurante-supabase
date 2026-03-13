@@ -11,6 +11,7 @@ import PagamentosService from '../services/PagamentosService';
 
 import { exitApp } from '../utils/appUtils';
 import { supabase } from '../config/SupabaseConfig';
+import { colors } from '../theme/colors';
 
 export default function ComandaAbertaScreen() {
   const { user } = useAuth();
@@ -121,7 +122,7 @@ export default function ComandaAbertaScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Comandas Abertas</Text>
         <TouchableOpacity onPress={onRefresh}>
-          <Ionicons name="refresh" size={24} color="#FFF" />
+          <Ionicons name="refresh" size={24} color={colors.white} />
         </TouchableOpacity>
       </View>
 
@@ -150,7 +151,7 @@ export default function ComandaAbertaScreen() {
                     </Text>
                   </View>
                   <Text style={styles.cardClient}>{item.cliente || 'Consumidor'}</Text>
-                  <Text style={[styles.cardTotal, (item.saldoAberto || 0) > 0 ? { color: '#8B2F2F' } : { color: '#4CAF50' }]}>
+                  <Text style={[styles.cardTotal, (item.saldoAberto || 0) > 0 ? { color: colors.primary } : { color: colors.success }]}> 
                     Saldo: R$ {(item.saldoAberto || 0).toFixed(2)}
                   </Text>
                 </TouchableOpacity>
@@ -202,19 +203,19 @@ export default function ComandaAbertaScreen() {
 
               <View style={styles.totalContainer}>
                 <Text style={styles.totalLabel}>Saldo a Pagar:</Text>
-                <Text style={[styles.totalValue, (selected.saldoAberto || 0) > 0 ? { color: '#8B2F2F' } : { color: '#4CAF50' }]}>
+                <Text style={[styles.totalValue, (selected.saldoAberto || 0) > 0 ? { color: colors.primary } : { color: colors.success }]}>
                   R$ {(selected.saldoAberto || 0).toFixed(2)}
                 </Text>
               </View>
               <View style={[styles.totalContainer, { marginTop: 5 }]}>
-                <Text style={[styles.totalLabel, { fontSize: 14, color: '#666' }]}>Total Consumido:</Text>
-                <Text style={[styles.totalValue, { fontSize: 16, color: '#666' }]}>R$ {(selected.totalConsumido || 0).toFixed(2)}</Text>
+                <Text style={[styles.totalLabel, { fontSize: 14, color: colors.textSecondary }]}>Total Consumido:</Text>
+                <Text style={[styles.totalValue, { fontSize: 16, color: colors.textSecondary }]}>R$ {(selected.totalConsumido || 0).toFixed(2)}</Text>
               </View>
 
             </ScrollView>
           ) : (
             <View style={styles.emptyState}>
-              <Ionicons name="receipt-outline" size={64} color="#ccc" />
+              <Ionicons name="receipt-outline" size={64} color={colors.disabled} />
               <Text style={styles.emptyStateText}>Selecione uma comanda para ver detalhes</Text>
             </View>
           )}
@@ -226,9 +227,9 @@ export default function ComandaAbertaScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F5DC' },
+  container: { flex: 1, backgroundColor: colors.background },
   header: {
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
     paddingTop: 50,
     paddingBottom: 15,
     paddingHorizontal: 20,
@@ -237,44 +238,44 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     elevation: 5
   },
-  title: { color: '#FFF', fontSize: 20, fontWeight: 'bold' },
-  listContainer: { width: '35%', borderRightWidth: 1, borderColor: '#DDD', backgroundColor: '#FFF' },
+  title: { color: colors.white, fontSize: 20, fontWeight: 'bold' },
+  listContainer: { width: '35%', borderRightWidth: 1, borderColor: colors.border, backgroundColor: colors.white },
   detailsContainer: { flex: 1, padding: 20 },
   card: {
     padding: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#EEE',
-    backgroundColor: '#fff'
+    borderBottomColor: colors.border,
+    backgroundColor: colors.white
   },
   cardSelected: {
-    backgroundColor: '#FFF8E1',
+    backgroundColor: '#FFF7ED',
     borderLeftWidth: 4,
-    borderLeftColor: '#E5B84A'
+    borderLeftColor: colors.secondary
   },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
-  cardTitle: { fontWeight: 'bold', fontSize: 16, color: '#333' },
-  cardTime: { fontSize: 12, color: '#888' },
-  cardClient: { fontSize: 14, color: '#666', marginBottom: 5 },
-  cardTotal: { fontSize: 16, fontWeight: 'bold', color: '#8B2F2F' },
-  emptyText: { textAlign: 'center', marginTop: 30, color: '#999' },
+  cardTitle: { fontWeight: 'bold', fontSize: 16, color: colors.text },
+  cardTime: { fontSize: 12, color: colors.textSecondary },
+  cardClient: { fontSize: 14, color: colors.textSecondary, marginBottom: 5 },
+  cardTotal: { fontSize: 16, fontWeight: 'bold', color: colors.primary },
+  emptyText: { textAlign: 'center', marginTop: 30, color: colors.textSecondary },
   detailHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  detailTitle: { fontSize: 22, fontWeight: 'bold', color: '#2C2C2C' },
-  statusBadge: { backgroundColor: '#4CAF50', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  statusText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
-  sectionTitle: { fontSize: 16, fontWeight: 'bold', marginTop: 15, marginBottom: 10, color: '#555', borderBottomWidth: 1, borderBottomColor: '#EEE', paddingBottom: 5 },
-  orderItem: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
-  itemText: { fontSize: 15, color: '#333' },
-  itemPrice: { fontSize: 15, fontWeight: 'bold', color: '#333' },
-  itemStatus: { fontSize: 12, color: '#888', textAlign: 'right' },
-  divider: { height: 1, backgroundColor: '#DDD', marginVertical: 20 },
+  detailTitle: { fontSize: 22, fontWeight: 'bold', color: colors.text },
+  statusBadge: { backgroundColor: colors.success, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+  statusText: { color: colors.white, fontSize: 12, fontWeight: 'bold' },
+  sectionTitle: { fontSize: 16, fontWeight: 'bold', marginTop: 15, marginBottom: 10, color: colors.textSecondary, borderBottomWidth: 1, borderBottomColor: colors.border, paddingBottom: 5 },
+  orderItem: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border },
+  itemText: { fontSize: 15, color: colors.text },
+  itemPrice: { fontSize: 15, fontWeight: 'bold', color: colors.text },
+  itemStatus: { fontSize: 12, color: colors.textSecondary, textAlign: 'right' },
+  divider: { height: 1, backgroundColor: colors.border, marginVertical: 20 },
   paymentItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  paymentMethod: { fontSize: 14, color: '#333' },
-  paymentValue: { fontSize: 14, fontWeight: 'bold', color: '#8B2F2F' },
-  paymentUser: { fontSize: 12, color: '#888', marginLeft: 5 },
+  paymentMethod: { fontSize: 14, color: colors.text },
+  paymentValue: { fontSize: 14, fontWeight: 'bold', color: colors.primary },
+  paymentUser: { fontSize: 12, color: colors.textSecondary, marginLeft: 5 },
   totalContainer: { marginTop: 30, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' },
   totalLabel: { fontSize: 18, fontWeight: 'bold', marginRight: 10 },
-  totalValue: { fontSize: 24, fontWeight: 'bold', color: '#8B2F2F' },
-  emptySmall: { fontStyle: 'italic', color: '#999', fontSize: 12 },
+  totalValue: { fontSize: 24, fontWeight: 'bold', color: colors.primary },
+  emptySmall: { fontStyle: 'italic', color: colors.textSecondary, fontSize: 12 },
   emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  emptyStateText: { marginTop: 15, fontSize: 16, color: '#999' }
+  emptyStateText: { marginTop: 15, fontSize: 16, color: colors.textSecondary }
 });

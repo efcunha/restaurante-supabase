@@ -369,7 +369,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
   userInfo: {
-    color: '#E5B84A',
+    color: '#B45309',
     fontSize: 12,
     fontWeight: '600',
   },
@@ -497,11 +497,11 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   deliverBtn: {
-    backgroundColor: '#E5B84A',
+    backgroundColor: '#B45309',
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
-    shadowColor: '#E5B84A',
+    shadowColor: '#B45309',
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.3,
     shadowRadius: 20,

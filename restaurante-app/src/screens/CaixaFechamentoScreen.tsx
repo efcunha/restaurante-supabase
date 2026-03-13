@@ -230,7 +230,7 @@ export default function CaixaFechamentoScreen() {
     return (
       <View style={styles.container}>
         <View style={styles.header}><Text style={styles.headerTitle}>Carregando...</Text></View>
-        <ActivityIndicator size="large" color="#E5B84A" style={{ marginTop: 50 }} />
+        <ActivityIndicator size="large" color="#B45309" style={{ marginTop: 50 }} />
       </View>
     );
   }
@@ -402,7 +402,7 @@ const styles = StyleSheet.create({
   backLink: { marginBottom: 15, padding: 5 },
   label: { color: '#8B2F2F', fontWeight: '600', marginBottom: 8, marginTop: 16 },
   input: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#E0D8C8', borderRadius: 12, padding: 14, marginBottom: 20 },
-  btn: { backgroundColor: '#E5B84A', padding: 16, borderRadius: 12, alignItems: 'center' },
+  btn: { backgroundColor: '#B45309', padding: 16, borderRadius: 12, alignItems: 'center' },
   btnDisabled: { opacity: 0.6 },
   btnText: { color: '#2C2C2C', fontWeight: '700' },
   resumoCard: { backgroundColor: '#fff', borderRadius: 12, padding: 16, borderColor: '#F0EBE0', borderWidth: 1, marginBottom: 10 },

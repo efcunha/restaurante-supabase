@@ -436,7 +436,7 @@ import TableGraphic from '../components/TableGraphic';
 // ... (keep existing imports, but remove unused if any)
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F5F5DC' },
+    container: { flex: 1, backgroundColor: colors.background },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     header: {
         flexDirection: 'row',
@@ -450,15 +450,15 @@ const styles = StyleSheet.create({
     headerTitle: { fontSize: 20, fontWeight: 'bold', color: colors.white },
     backButton: { padding: 5 },
 
-    tabsContainer: { height: 60, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee' },
+    tabsContainer: { height: 60, backgroundColor: colors.white, borderBottomWidth: 1, borderBottomColor: colors.border },
     tabsScroll: { paddingHorizontal: 15, alignItems: 'center' },
     tab: {
         paddingVertical: 8, paddingHorizontal: 16, marginRight: 10, borderRadius: 20,
-        backgroundColor: '#f0f0f0', borderWidth: 1, borderColor: '#e0e0e0',
+        backgroundColor: '#F7FAFD', borderWidth: 1, borderColor: colors.border,
     },
     tabActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-    tabText: { color: '#666', fontWeight: '600' },
-    tabTextActive: { color: '#fff' },
+    tabText: { color: colors.textSecondary, fontWeight: '600' },
+    tabTextActive: { color: colors.white },
 
     content: { padding: 20, paddingBottom: 100 },
     grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 30 },
@@ -470,11 +470,11 @@ const styles = StyleSheet.create({
     },
     infoTag: {
         marginBottom: 6, // Changed from marginTop since tag is now above table
-        backgroundColor: '#fff',
+        backgroundColor: colors.white,
         paddingHorizontal: 8,
         paddingVertical: 4,
         borderRadius: 12,
-        shadowColor: '#000',
+        shadowColor: colors.shadow,
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.2,
         shadowRadius: 1.41,
@@ -483,13 +483,13 @@ const styles = StyleSheet.create({
         alignItems: 'center'
     },
     infoPrice: { fontSize: 12, fontWeight: 'bold', color: colors.danger },
-    infoTime: { fontSize: 10, color: '#666' },
-    infoSeats: { fontSize: 12, color: '#666' },
+    infoTime: { fontSize: 10, color: colors.textSecondary },
+    infoSeats: { fontSize: 12, color: colors.textSecondary },
 
     emptyState: { padding: 40, alignItems: 'center' },
     emptyStateContainer: { width: '100%', alignItems: 'center', padding: 40 },
-    emptyText: { color: '#999', fontSize: 16, marginTop: 10, fontWeight: 'bold' },
-    emptySubText: { color: '#ccc', fontSize: 14, marginTop: 5 },
+    emptyText: { color: colors.textSecondary, fontSize: 16, marginTop: 10, fontWeight: 'bold' },
+    emptySubText: { color: '#9AA4B2', fontSize: 14, marginTop: 5 },
 
     // Filter Chips
     filterContainer: {
@@ -497,9 +497,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 15,
         paddingVertical: 12,
-        backgroundColor: '#fff',
+        backgroundColor: colors.white,
         borderBottomWidth: 1,
-        borderBottomColor: '#eee',
+        borderBottomColor: colors.border,
     },
     filterChip: {
         flexDirection: 'row',
@@ -509,8 +509,8 @@ const styles = StyleSheet.create({
         marginRight: 8,
         borderRadius: 16,
         borderWidth: 1,
-        borderColor: '#ddd',
-        backgroundColor: '#f5f5f5',
+        borderColor: colors.border,
+        backgroundColor: '#F7FAFD',
         gap: 4,
     },
     filterChipActive: {
@@ -536,7 +536,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         elevation: 8,
-        shadowColor: '#000',
+        shadowColor: colors.shadow,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 4,
