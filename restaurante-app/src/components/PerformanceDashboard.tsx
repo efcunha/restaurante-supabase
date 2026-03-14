@@ -15,6 +15,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { colors } from '../theme/colors';
 import { performanceMonitorService } from '../services/optimization/PerformanceMonitorService';
 import { usePerformanceDashboard, useResourceMetrics } from '../hooks/usePerformanceDashboard';
 
@@ -61,22 +62,22 @@ export default function PerformanceDashboard() {
   const { summary, queryMetrics, cacheMetrics, connectionMetrics, realtimeMetrics } = dashboardData;
 
   const getLatencyColor = (latency: number) => {
-    if (latency < 100) return '#2E7D32'; // Green - excellent
-    if (latency < 200) return '#4CAF50'; // Light green - good
-    if (latency < 500) return '#F57C00'; // Orange - warning
-    return '#D32F2F'; // Red - critical
+    if (latency < 100) return colors.success; // Green - excellent
+    if (latency < 200) return colors.success; // Light green - good
+    if (latency < 500) return colors.warning; // Orange - warning
+    return colors.danger; // Red - critical
   };
 
   const getSuccessRateColor = (rate: number) => {
-    if (rate >= 95) return '#2E7D32'; // Green
-    if (rate >= 80) return '#F57C00'; // Orange
-    return '#D32F2F'; // Red
+    if (rate >= 95) return colors.success; // Green
+    if (rate >= 80) return colors.warning; // Orange
+    return colors.danger; // Red
   };
 
   const getUtilizationColor = (utilization: number) => {
-    if (utilization < 60) return '#2E7D32'; // Green - healthy
-    if (utilization < 80) return '#F57C00'; // Orange - warning
-    return '#D32F2F'; // Red - critical
+    if (utilization < 60) return colors.success; // Green - healthy
+    if (utilization < 80) return colors.warning; // Orange - warning
+    return colors.danger; // Red - critical
   };
 
   return (
@@ -90,10 +91,10 @@ export default function PerformanceDashboard() {
         <Text style={styles.headerTitle}>📊 Performance Dashboard</Text>
         <View style={styles.headerButtons}>
           <TouchableOpacity style={styles.headerButton} onPress={handleExport}>
-            <Ionicons name="download-outline" size={20} color="#8B2F2F" />
+            <Ionicons name="download-outline" size={20} color={colors.primary} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.headerButton} onPress={handleClear}>
-            <Ionicons name="trash-outline" size={20} color="#8B2F2F" />
+            <Ionicons name="trash-outline" size={20} color={colors.primary} />
           </TouchableOpacity>
         </View>
       </View>
@@ -111,7 +112,7 @@ export default function PerformanceDashboard() {
             <Text
               style={[
                 styles.summaryValue,
-                { color: summary.slowQueries > 10 ? '#D32F2F' : '#2E7D32' },
+                { color: summary.slowQueries > 10 ? colors.danger : colors.success },
               ]}
             >
               {summary.slowQueries}
@@ -232,11 +233,11 @@ export default function PerformanceDashboard() {
               </View>
               <View style={styles.cacheStats}>
                 <View style={styles.cacheStat}>
-                  <Ionicons name="checkmark-circle" size={16} color="#2E7D32" />
+                  <Ionicons name="checkmark-circle" size={16} color={colors.success} />
                   <Text style={styles.cacheStatText}>Hits: {metric.hits}</Text>
                 </View>
                 <View style={styles.cacheStat}>
-                  <Ionicons name="close-circle" size={16} color="#D32F2F" />
+                  <Ionicons name="close-circle" size={16} color={colors.danger} />
                   <Text style={styles.cacheStatText}>Misses: {metric.misses}</Text>
                 </View>
               </View>
@@ -268,15 +269,15 @@ export default function PerformanceDashboard() {
               </View>
               <View style={styles.connectionStats}>
                 <View style={styles.connectionStat}>
-                  <View style={[styles.connectionDot, { backgroundColor: '#2E7D32' }]} />
+                  <View style={[styles.connectionDot, { backgroundColor: colors.success }]} />
                   <Text style={styles.connectionStatText}>Active: {metric.active}</Text>
                 </View>
                 <View style={styles.connectionStat}>
-                  <View style={[styles.connectionDot, { backgroundColor: '#FFC107' }]} />
+                  <View style={[styles.connectionDot, { backgroundColor: colors.warning }]} />
                   <Text style={styles.connectionStatText}>Idle: {metric.idle}</Text>
                 </View>
                 <View style={styles.connectionStat}>
-                  <View style={[styles.connectionDot, { backgroundColor: '#D32F2F' }]} />
+                  <View style={[styles.connectionDot, { backgroundColor: colors.danger }]} />
                   <Text style={styles.connectionStatText}>Waiting: {metric.waiting}</Text>
                 </View>
               </View>
@@ -324,19 +325,19 @@ export default function PerformanceDashboard() {
         <Text style={styles.legendTitle}>Legenda de Cores:</Text>
         <View style={styles.legendItems}>
           <View style={styles.legendItem}>
-            <View style={[styles.legendColor, { backgroundColor: '#2E7D32' }]} />
+            <View style={[styles.legendColor, { backgroundColor: colors.success }]} />
             <Text style={styles.legendText}>Excelente (&lt;100ms / &gt;95%)</Text>
           </View>
           <View style={styles.legendItem}>
-            <View style={[styles.legendColor, { backgroundColor: '#4CAF50' }]} />
+            <View style={[styles.legendColor, { backgroundColor: colors.success }]} />
             <Text style={styles.legendText}>Bom (100-200ms)</Text>
           </View>
           <View style={styles.legendItem}>
-            <View style={[styles.legendColor, { backgroundColor: '#F57C00' }]} />
+            <View style={[styles.legendColor, { backgroundColor: colors.warning }]} />
             <Text style={styles.legendText}>Atenção (200-500ms / 80-95%)</Text>
           </View>
           <View style={styles.legendItem}>
-            <View style={[styles.legendColor, { backgroundColor: '#D32F2F' }]} />
+            <View style={[styles.legendColor, { backgroundColor: colors.danger }]} />
             <Text style={styles.legendText}>Crítico (&gt;500ms / &lt;80%)</Text>
           </View>
         </View>
@@ -348,25 +349,25 @@ export default function PerformanceDashboard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F1E8',
+    backgroundColor: colors.background,
   },
   loadingText: {
     textAlign: 'center',
     marginTop: 50,
     fontSize: 16,
-    color: '#666',
+    color: colors.textSecondary,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#FFF',
+    color: colors.white,
   },
   headerButtons: {
     flexDirection: 'row',
@@ -374,15 +375,15 @@ const styles = StyleSheet.create({
   headerButton: {
     marginLeft: 15,
     padding: 5,
-    backgroundColor: '#FFF',
+    backgroundColor: colors.white,
     borderRadius: 5,
   },
   card: {
-    backgroundColor: '#FFF',
+    backgroundColor: colors.white,
     margin: 15,
     padding: 20,
     borderRadius: 10,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -391,7 +392,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#333',
+    color: colors.text,
     marginBottom: 15,
   },
   summaryGrid: {
@@ -405,19 +406,19 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: 12,
-    color: '#999',
+    color: colors.textSecondary,
     marginBottom: 5,
   },
   summaryValue: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#333',
+    color: colors.text,
   },
   queryItem: {
     marginBottom: 15,
     paddingBottom: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0D8C8',
+    borderBottomColor: colors.border,
   },
   queryHeader: {
     flexDirection: 'row',
@@ -428,7 +429,7 @@ const styles = StyleSheet.create({
   queryName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
     flex: 1,
     marginRight: 10,
   },
@@ -443,17 +444,17 @@ const styles = StyleSheet.create({
   },
   queryDetail: {
     fontSize: 11,
-    color: '#999',
+    color: colors.textSecondary,
   },
   queryTimestamp: {
     fontSize: 11,
-    color: '#999',
+    color: colors.textSecondary,
   },
   cacheItem: {
     marginBottom: 15,
     paddingBottom: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0D8C8',
+    borderBottomColor: colors.border,
   },
   cacheHeader: {
     flexDirection: 'row',
@@ -464,7 +465,7 @@ const styles = StyleSheet.create({
   cacheName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
     flex: 1,
     marginRight: 10,
   },
@@ -484,13 +485,13 @@ const styles = StyleSheet.create({
   },
   cacheStatText: {
     fontSize: 12,
-    color: '#666',
+    color: colors.textSecondary,
   },
   connectionItem: {
     marginBottom: 15,
     paddingBottom: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0D8C8',
+    borderBottomColor: colors.border,
   },
   connectionHeader: {
     flexDirection: 'row',
@@ -500,7 +501,7 @@ const styles = StyleSheet.create({
   },
   connectionTime: {
     fontSize: 12,
-    color: '#999',
+    color: colors.textSecondary,
   },
   connectionUtilization: {
     fontSize: 18,
@@ -523,13 +524,13 @@ const styles = StyleSheet.create({
   },
   connectionStatText: {
     fontSize: 12,
-    color: '#666',
+    color: colors.textSecondary,
   },
   realtimeItem: {
     marginBottom: 15,
     paddingBottom: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0D8C8',
+    borderBottomColor: colors.border,
   },
   realtimeHeader: {
     flexDirection: 'row',
@@ -540,7 +541,7 @@ const styles = StyleSheet.create({
   realtimeName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
     flex: 1,
     marginRight: 10,
   },
@@ -555,29 +556,29 @@ const styles = StyleSheet.create({
   },
   realtimeDetail: {
     fontSize: 11,
-    color: '#999',
+    color: colors.textSecondary,
   },
   realtimeTimestamp: {
     fontSize: 11,
-    color: '#999',
+    color: colors.textSecondary,
   },
   emptyText: {
     textAlign: 'center',
-    color: '#999',
+    color: colors.textSecondary,
     fontSize: 14,
     paddingVertical: 20,
   },
   legend: {
     margin: 15,
     padding: 15,
-    backgroundColor: '#FFF',
+    backgroundColor: colors.white,
     borderRadius: 10,
     marginBottom: 30,
   },
   legendTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
     marginBottom: 10,
   },
   legendItems: {
@@ -596,6 +597,6 @@ const styles = StyleSheet.create({
   },
   legendText: {
     fontSize: 12,
-    color: '#666',
+    color: colors.textSecondary,
   },
 });

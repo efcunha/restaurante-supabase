@@ -7,6 +7,7 @@ import * as Print from 'expo-print';
 import { getUserFriendlyMessage } from '../utils/errors';
 import { Caixa, Comanda } from '../types';
 import { supabase } from '../config/SupabaseConfig';
+import { colors } from '../theme/colors';
 
 interface FechamentoResult {
   saldoEsperado: number;
@@ -236,7 +237,7 @@ export default function CaixaFechamentoScreen() {
     return (
       <View style={styles.container}>
         <View style={styles.header}><Text style={styles.headerTitle}>Carregando...</Text></View>
-        <ActivityIndicator size="large" color="#B45309" style={{ marginTop: 50 }} />
+        <ActivityIndicator size="large" color={colors.secondary} style={{ marginTop: 50 }} />
       </View>
     );
   }
@@ -250,7 +251,7 @@ export default function CaixaFechamentoScreen() {
           <View>
             <Text style={styles.sectionTitle}>Caixas Pendentes de Fechamento</Text>
             {caixasAbertos.length === 0 ? (
-              <Text style={{ color: '#666', fontStyle: 'italic', marginTop: 10 }}>Nenhum caixa aberto encontrado.</Text>
+              <Text style={{ color: colors.textSecondary, fontStyle: 'italic', marginTop: 10 }}>Nenhum caixa aberto encontrado.</Text>
             ) : (
               caixasAbertos.map((c) => (
                 <TouchableOpacity key={c.id} style={styles.cardItem} onPress={() => handleSelectCaixa(c)}>
@@ -260,7 +261,7 @@ export default function CaixaFechamentoScreen() {
                   </View>
                   <View style={{ alignItems: 'flex-end' }}>
                     {blindClosing ? (
-                      <Text style={[styles.cardValue, { color: '#999', fontSize: 14 }]}>🔒 Oculto</Text>
+                      <Text style={[styles.cardValue, { color: colors.textSecondary, fontSize: 14 }]}>🔒 Oculto</Text>
                     ) : (
                       <>
                         <Text style={styles.cardValue}>R$ {Number(c.vendasTotal || 0).toFixed(2)}</Text>
@@ -278,7 +279,7 @@ export default function CaixaFechamentoScreen() {
         {selectedCaixa && (
           <View>
             <TouchableOpacity onPress={() => setSelectedCaixa(null)} style={styles.backLink}>
-              <Text style={{ color: '#8B2F2F', fontWeight: 'bold' }}>← Voltar para lista</Text>
+              <Text style={{ color: colors.primary, fontWeight: 'bold' }}>← Voltar para lista</Text>
             </TouchableOpacity>
 
             <View style={styles.resumoCard}>
@@ -291,7 +292,7 @@ export default function CaixaFechamentoScreen() {
               <View style={styles.resumoRow}>
                 <Text style={styles.resumoLabel}>Vendas:</Text>
                 {blindClosing ? (
-                  <Text style={[styles.resumoValue, { color: '#999', fontSize: 14 }]}>🔒 Oculto</Text>
+                  <Text style={[styles.resumoValue, { color: colors.textSecondary, fontSize: 14 }]}>🔒 Oculto</Text>
                 ) : (
                   <Text style={styles.resumoValue}>R$ {selectedCaixa.vendasTotal?.toFixed(2)}</Text>
                 )}
@@ -316,7 +317,7 @@ export default function CaixaFechamentoScreen() {
               <View style={styles.resumoRow}>
                 <Text style={[styles.resumoLabel, styles.totalLabel]}>Saldo Esperado:</Text>
                 {blindClosing ? (
-                  <Text style={[styles.resumoValue, styles.totalValue, { color: '#999', fontSize: 16 }]}>🔒 (Fechamento Cego)</Text>
+                  <Text style={[styles.resumoValue, styles.totalValue, { color: colors.textSecondary, fontSize: 16 }]}>🔒 (Fechamento Cego)</Text>
                 ) : (
                   <Text style={[styles.resumoValue, styles.totalValue]}>
                     R$ {(
@@ -354,7 +355,7 @@ export default function CaixaFechamentoScreen() {
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator color="#2C2C2C" />
+                <ActivityIndicator color={colors.text} />
               ) : (
                 <Text style={styles.btnText}>CONCLUIR FECHAMENTO</Text>
               )}
@@ -384,7 +385,7 @@ export default function CaixaFechamentoScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity onPress={() => setFechamentoResult(null)} style={{ padding: 15 }}>
-              <Text style={{ color: '#666' }}>Fechar e Sair</Text>
+              <Text style={{ color: colors.textSecondary }}>Fechar e Sair</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -396,31 +397,31 @@ export default function CaixaFechamentoScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F1E8' },
+  container: { flex: 1, backgroundColor: colors.background },
   header: { alignItems: 'center', justifyContent: 'center' }, // Adicionado para fallback do header se loading
-  headerTitle: { fontSize: 20, color: '#2C2C2C' },
-  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#8B2F2F', marginBottom: 15 },
-  cardItem: { backgroundColor: '#fff', padding: 15, borderRadius: 10, marginBottom: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderColor: '#E0D8C8', borderWidth: 1 },
-  cardDate: { fontSize: 16, fontWeight: 'bold', color: '#333' },
-  cardStatus: { fontSize: 12, color: '#666' },
-  cardValue: { fontSize: 16, fontWeight: 'bold', color: '#2C2C2C' },
-  cardLabel: { fontSize: 12, color: '#8B2F2F' },
+  headerTitle: { fontSize: 20, color: colors.text },
+  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: colors.primary, marginBottom: 15 },
+  cardItem: { backgroundColor: colors.white, padding: 15, borderRadius: 10, marginBottom: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderColor: colors.border, borderWidth: 1 },
+  cardDate: { fontSize: 16, fontWeight: 'bold', color: colors.text },
+  cardStatus: { fontSize: 12, color: colors.textSecondary },
+  cardValue: { fontSize: 16, fontWeight: 'bold', color: colors.text },
+  cardLabel: { fontSize: 12, color: colors.primary },
   backLink: { marginBottom: 15, padding: 5 },
-  label: { color: '#8B2F2F', fontWeight: '600', marginBottom: 8, marginTop: 16 },
-  input: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#E0D8C8', borderRadius: 12, padding: 14, marginBottom: 20 },
-  btn: { backgroundColor: '#B45309', padding: 16, borderRadius: 12, alignItems: 'center' },
+  label: { color: colors.primary, fontWeight: '600', marginBottom: 8, marginTop: 16 },
+  input: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14, marginBottom: 20 },
+  btn: { backgroundColor: colors.secondary, padding: 16, borderRadius: 12, alignItems: 'center' },
   btnDisabled: { opacity: 0.6 },
-  btnText: { color: '#2C2C2C', fontWeight: '700' },
-  resumoCard: { backgroundColor: '#fff', borderRadius: 12, padding: 16, borderColor: '#F0EBE0', borderWidth: 1, marginBottom: 10 },
+  btnText: { color: colors.text, fontWeight: '700' },
+  resumoCard: { backgroundColor: colors.white, borderRadius: 12, padding: 16, borderColor: colors.border, borderWidth: 1, marginBottom: 10 },
   resumoRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  resumoLabel: { fontSize: 14, color: '#555' },
-  resumoValue: { fontSize: 14, fontWeight: 'bold', color: '#333' },
-  resumoLabelBold: { fontSize: 16, fontWeight: 'bold', color: '#333' },
-  resumoValueBold: { fontSize: 16, fontWeight: 'bold', color: '#2C2C2C' },
+  resumoLabel: { fontSize: 14, color: colors.textSecondary },
+  resumoValue: { fontSize: 14, fontWeight: 'bold', color: colors.text },
+  resumoLabelBold: { fontSize: 16, fontWeight: 'bold', color: colors.text },
+  resumoValueBold: { fontSize: 16, fontWeight: 'bold', color: colors.text },
   totalLabel: { marginTop: 5 },
-  totalValue: { marginTop: 5, fontSize: 18, color: '#27AE60' }, // Highlight esperado
-  divider: { height: 1, backgroundColor: '#E0D8C8', marginVertical: 8 },
+  totalValue: { marginTop: 5, fontSize: 18, color: colors.success }, // Highlight esperado
+  divider: { height: 1, backgroundColor: colors.border, marginVertical: 8 },
   modalBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  modalCard: { backgroundColor: '#fff', width: '85%', padding: 25, borderRadius: 15, alignItems: 'center' },
-  modalTitle: { fontSize: 22, fontWeight: 'bold', color: '#2C2C2C' },
+  modalCard: { backgroundColor: colors.white, width: '85%', padding: 25, borderRadius: 15, alignItems: 'center' },
+  modalTitle: { fontSize: 22, fontWeight: 'bold', color: colors.text },
 });

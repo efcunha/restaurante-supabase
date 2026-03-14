@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, StyleSheet, Alert } from 'react-native';
+import { colors } from '../../../theme/colors';
 import { Product } from '../../../types';
 
 import { StockItem } from './types';
@@ -58,7 +59,7 @@ export default function StockManager({
                        style={[styles.itemRow, selectedStockId === item.id && styles.itemRowActive]}
                        onPress={() => setSelectedStockId(item.id)}
                    >
-                       <Text style={{color: selectedStockId === item.id ? '#8B2F2F' : '#333'}}>
+                    <Text style={{color: selectedStockId === item.id ? colors.primary : colors.text}}>
                            {item.nome} ({item.unidadeOriginal})
                        </Text>
                    </TouchableOpacity>
@@ -96,7 +97,7 @@ export default function StockManager({
                                style={[styles.unitBtn, unit === u && styles.unitBtnActive]}
                                onPress={() => setUnit(u)}
                            >
-                               <Text style={{color: unit === u ? '#FFF' : '#333', fontWeight: 'bold'}}>{u}</Text>
+                            <Text style={{color: unit === u ? colors.white : colors.text, fontWeight: 'bold'}}>{u}</Text>
                            </TouchableOpacity>
                        ))}
                    </ScrollView>
@@ -117,7 +118,7 @@ export default function StockManager({
                         <View key={idx} style={styles.linkedRow}>
                             <Text style={{ flex: 1 }}>{ing.nome} - {ing.qt} {ing.un}</Text>
                             <TouchableOpacity onPress={() => onRemoveIngredient(ing.id)}>
-                                <Text style={{ color: '#F44336' }}>🗑️</Text>
+                                <Text style={{ color: colors.danger }}>🗑️</Text>
                             </TouchableOpacity>
                         </View>
                     ))
@@ -131,27 +132,27 @@ export default function StockManager({
 }
 
 const styles = StyleSheet.create({
-    overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-    content: { backgroundColor: '#FFF', width: '100%', maxWidth: 500, borderRadius: 20, padding: 20, maxHeight: '90%' },
+    overlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', alignItems: 'center', padding: 20 },
+    content: { backgroundColor: colors.white, width: '100%', maxWidth: 500, borderRadius: 20, padding: 20, maxHeight: '90%' },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
-    title: { fontSize: 20, fontWeight: 'bold', color: '#8B2F2F' },
-    close: { fontSize: 24, color: '#999', padding: 5 },
+    title: { fontSize: 20, fontWeight: 'bold', color: colors.primary },
+    close: { fontSize: 24, color: colors.textSecondary, padding: 5 },
     subtitle: { fontSize: 16, marginBottom: 15 },
-    label: { fontSize: 14, fontWeight: '600', color: '#666', marginBottom: 8 },
-    listContainer: { maxHeight: 150, borderWidth: 1, borderColor: '#eee', borderRadius: 8, marginBottom: 10 },
-    itemRow: { padding: 10, borderBottomWidth: 1, borderColor: '#eee' },
-    itemRowActive: { backgroundColor: '#FFE4B5' },
-    emptyText: { color: '#999', fontStyle: 'italic', padding: 10 },
+    label: { fontSize: 14, fontWeight: '600', color: colors.textSecondary, marginBottom: 8 },
+    listContainer: { maxHeight: 150, borderWidth: 1, borderColor: colors.border, borderRadius: 8, marginBottom: 10 },
+    itemRow: { padding: 10, borderBottomWidth: 1, borderColor: colors.border },
+    itemRowActive: { backgroundColor: colors.warningSurface },
+    emptyText: { color: colors.textSecondary, fontStyle: 'italic', padding: 10 },
     inputRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
-    input: { backgroundColor: '#F5F1E8', borderRadius: 12, padding: 15, fontSize: 16, color: '#333', borderColor: '#B45309', borderWidth: 1 },
+    input: { backgroundColor: colors.background, borderRadius: 12, padding: 15, fontSize: 16, color: colors.text, borderColor: colors.secondary, borderWidth: 1 },
     tabs: { flexDirection: 'row', marginBottom: 5 },
     tab: { flex: 1, alignItems: 'center', padding: 5, borderBottomWidth: 2, borderColor: 'transparent' },
-    tabActive: { borderColor: '#8B2F2F' },
-    tabText: { fontSize: 12, color: '#999' },
-    tabTextActive: { color: '#8B2F2F', fontWeight: 'bold' },
-    unitBtn: { padding: 8, backgroundColor: '#eee', borderRadius: 8, marginRight: 5, minWidth: 40, alignItems: 'center' },
-    unitBtnActive: { backgroundColor: '#8B2F2F' },
-    addBtn: { backgroundColor: '#8B2F2F', padding: 12, borderRadius: 10, alignItems: 'center' },
-    addBtnText: { color: '#FFF', fontWeight: 'bold' },
-    linkedRow: { flexDirection: 'row', justifyContent: 'space-between', padding: 10, borderBottomWidth: 1, borderColor: '#eee', alignItems: 'center' }
+    tabActive: { borderColor: colors.primary },
+    tabText: { fontSize: 12, color: colors.textSecondary },
+    tabTextActive: { color: colors.primary, fontWeight: 'bold' },
+    unitBtn: { padding: 8, backgroundColor: colors.surfaceMuted, borderRadius: 8, marginRight: 5, minWidth: 40, alignItems: 'center' },
+    unitBtnActive: { backgroundColor: colors.primary },
+    addBtn: { backgroundColor: colors.primary, padding: 12, borderRadius: 10, alignItems: 'center' },
+    addBtnText: { color: colors.white, fontWeight: 'bold' },
+    linkedRow: { flexDirection: 'row', justifyContent: 'space-between', padding: 10, borderBottomWidth: 1, borderColor: colors.border, alignItems: 'center' }
 });

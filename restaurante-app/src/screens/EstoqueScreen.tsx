@@ -301,10 +301,10 @@ export default function EstoqueScreen({ onClose }: Props) {
       rightSlot={(
         <View style={styles.headerActions}>
           <TouchableOpacity onPress={() => setShowConfig(true)} style={styles.iconBtn}>
-            <Ionicons name="settings-outline" size={24} color="#FFF" />
+            <Ionicons name="settings-outline" size={24} color={colors.white} />
           </TouchableOpacity>
           <TouchableOpacity onPress={() => setShowFornecedores(true)} style={styles.iconBtn}>
-            <Ionicons name="people-outline" size={24} color="#FFF" />
+            <Ionicons name="people-outline" size={24} color={colors.white} />
           </TouchableOpacity>
         </View>
       )}
@@ -314,7 +314,7 @@ export default function EstoqueScreen({ onClose }: Props) {
       <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Categorias */}
         {categorias.length === 0 ? (
-          <ActivityIndicator color="#8B2F2F" />
+          <ActivityIndicator color={colors.primary} />
         ) : (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriasScroll}>
             {categorias.map(cat => (
@@ -357,7 +357,7 @@ export default function EstoqueScreen({ onClose }: Props) {
               placeholder="Nome do item *"
               value={nomeItem}
               onChangeText={setNomeItem}
-              placeholderTextColor="#999"
+              placeholderTextColor={colors.textSecondary}
             />
 
             <View style={styles.row}>
@@ -367,7 +367,7 @@ export default function EstoqueScreen({ onClose }: Props) {
                 keyboardType="numeric"
                 value={quantidade}
                 onChangeText={setQuantidade}
-                placeholderTextColor="#999"
+                placeholderTextColor={colors.textSecondary}
               />
 
               <View style={styles.unidadeContainer}>
@@ -407,7 +407,7 @@ export default function EstoqueScreen({ onClose }: Props) {
               keyboardType="numeric"
               value={precoCusto}
               onChangeText={setPrecoCusto}
-              placeholderTextColor="#999"
+              placeholderTextColor={colors.textSecondary}
             />
 
             <Text style={styles.label}>Fornecedor:</Text>
@@ -437,7 +437,7 @@ export default function EstoqueScreen({ onClose }: Props) {
               keyboardType="numeric"
               value={quantidadeMinima}
               onChangeText={setQuantidadeMinima}
-              placeholderTextColor="#999"
+              placeholderTextColor={colors.textSecondary}
             />
 
             <TextInput
@@ -447,7 +447,7 @@ export default function EstoqueScreen({ onClose }: Props) {
               onChangeText={setObservacoes}
               multiline
               numberOfLines={3}
-              placeholderTextColor="#999"
+              placeholderTextColor={colors.textSecondary}
             />
 
             <TouchableOpacity
@@ -468,7 +468,7 @@ export default function EstoqueScreen({ onClose }: Props) {
         </Text>
 
         {loading ? (
-          <ActivityIndicator size="large" color="#8B2F2F" style={styles.loader} />
+          <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
         ) : itensEstoque.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>📭 Nenhum item nesta categoria</Text>
@@ -564,7 +564,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   categoriaBtn: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 25,
@@ -574,7 +574,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   categoriaBtnActive: {
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
   },
   categoriaIcon: {
     fontSize: 20,
@@ -583,13 +583,13 @@ const styles = StyleSheet.create({
   categoriaText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#8B2F2F',
+    color: colors.primary,
   },
   categoriaTextActive: {
-    color: '#FFFFFF',
+    color: colors.white,
   },
   addBtn: {
-    backgroundColor: '#B45309',
+    backgroundColor: colors.secondary,
     paddingVertical: 15,
     borderRadius: 12,
     alignItems: 'center',
@@ -597,12 +597,12 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   addBtnText: {
-    color: '#2C2C2C',
+    color: colors.text,
     fontSize: 16,
     fontWeight: '700',
   },
   formContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     borderRadius: 15,
     padding: 20,
     marginBottom: 20,
@@ -611,16 +611,16 @@ const styles = StyleSheet.create({
   formTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#8B2F2F',
+    color: colors.primary,
     marginBottom: 15,
   },
   input: {
-    backgroundColor: '#F5F1E8',
+    backgroundColor: colors.surfaceMuted,
     borderRadius: 10,
     padding: 12,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#B45309',
+    borderColor: colors.secondary,
     marginBottom: 10
   },
   row: {
@@ -638,7 +638,7 @@ const styles = StyleSheet.create({
   unitTabs: {
     flexDirection: 'row',
     marginBottom: 8,
-    backgroundColor: '#F5F1E8',
+    backgroundColor: colors.surfaceMuted,
     borderRadius: 8,
     padding: 2
   },
@@ -649,81 +649,81 @@ const styles = StyleSheet.create({
     borderRadius: 6
   },
   unitTabActive: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.white,
     elevation: 2
   },
   unitTabText: {
     fontSize: 10,
     fontWeight: 'bold',
-    color: '#999'
+    color: colors.textSecondary
   },
   unitTabTextActive: {
-    color: '#8B2F2F'
+    color: colors.primary
   },
   unidadeBtn: {
-    backgroundColor: '#F5F1E8',
+    backgroundColor: colors.surfaceMuted,
     paddingVertical: 10,
     paddingHorizontal: 15,
     borderRadius: 10,
     marginRight: 8,
     borderWidth: 1,
-    borderColor: '#B45309',
+    borderColor: colors.secondary,
     minWidth: 45,
     alignItems: 'center'
   },
   unidadeBtnActive: {
-    backgroundColor: '#8B2F2F',
-    borderColor: '#8B2F2F',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   unidadeText: {
     fontWeight: '600',
-    color: '#8B2F2F',
+    color: colors.primary,
   },
   unidadeTextActive: {
-    color: '#FFFFFF',
+    color: colors.white,
   },
   // Chips for suppliers
-  label: { fontSize: 14, fontWeight: 'bold', color: '#666', marginBottom: 5 },
+  label: { fontSize: 14, fontWeight: 'bold', color: colors.textSecondary, marginBottom: 5 },
   fornecedorScroll: {
     flexDirection: 'row',
     marginBottom: 10,
     maxHeight: 50
   },
   chip: {
-    backgroundColor: '#F0F0F0',
+    backgroundColor: colors.surfaceMuted,
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 20,
     marginRight: 8,
     borderWidth: 1,
-    borderColor: '#DDD'
+    borderColor: colors.border
   },
   chipActive: {
-    backgroundColor: '#B45309',
-    borderColor: '#DAA520'
+    backgroundColor: colors.secondary,
+    borderColor: colors.secondary
   },
-  chipText: { color: '#666' },
-  chipTextActive: { color: '#2C2C2C', fontWeight: 'bold' },
+  chipText: { color: colors.textSecondary },
+  chipTextActive: { color: colors.text, fontWeight: 'bold' },
 
   textArea: {
     height: 80,
     textAlignVertical: 'top',
   },
   saveBtn: {
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
     padding: 15,
     borderRadius: 12,
     alignItems: 'center',
     marginTop: 10,
   },
   saveBtnText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontWeight: '700',
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#8B2F2F',
+    color: colors.primary,
     marginBottom: 15,
   },
   loader: {
@@ -735,14 +735,14 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontWeight: '600',
-    color: '#999',
+    color: colors.textSecondary,
   },
   emptySubtext: {
-    color: '#999',
+    color: colors.textSecondary,
     marginTop: 5
   },
   itemCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     borderRadius: 15,
     padding: 15,
     marginBottom: 12,
@@ -750,7 +750,7 @@ const styles = StyleSheet.create({
   },
   itemCardAlerta: {
     borderWidth: 2,
-    borderColor: '#FF6B6B',
+    borderColor: colors.danger,
   },
   itemHeader: {
     flexDirection: 'row',
@@ -761,16 +761,16 @@ const styles = StyleSheet.create({
   itemNome: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#2C2C2C',
+    color: colors.text,
     flex: 1,
   },
   alertaBadge: {
-    backgroundColor: '#FF6B6B',
+    backgroundColor: colors.danger,
     borderRadius: 12,
     paddingVertical: 2,
     paddingHorizontal: 8
   },
-  alertaText: { color: '#FFF', fontSize: 10, fontWeight: 'bold' },
+  alertaText: { color: colors.white, fontSize: 10, fontWeight: 'bold' },
   itemInfo: { marginBottom: 15 },
   quantidadeContainer: {
     flexDirection: 'row',
@@ -780,34 +780,34 @@ const styles = StyleSheet.create({
     gap: 15,
   },
   btnAjuste: {
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
     width: 36,
     height: 36,
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  btnAjusteText: { color: '#FFF', fontSize: 20 },
-  quantidadeText: { fontSize: 22, fontWeight: 'bold', color: '#8B2F2F' },
-  infoText: { fontSize: 13, color: '#666' },
-  obsText: { fontSize: 13, color: '#999', fontStyle: 'italic', marginTop: 4 },
+  btnAjusteText: { color: colors.white, fontSize: 20 },
+  quantidadeText: { fontSize: 22, fontWeight: 'bold', color: colors.primary },
+  infoText: { fontSize: 13, color: colors.textSecondary },
+  obsText: { fontSize: 13, color: colors.textSecondary, fontStyle: 'italic', marginTop: 4 },
   itemActions: {
     flexDirection: 'row',
     gap: 10,
   },
   btnEditar: {
     flex: 1,
-    backgroundColor: '#B45309',
+    backgroundColor: colors.secondary,
     padding: 10,
     borderRadius: 8,
     alignItems: 'center',
   },
   btnDeletar: {
     flex: 1,
-    backgroundColor: '#FF6B6B',
+    backgroundColor: colors.danger,
     padding: 10,
     borderRadius: 8,
     alignItems: 'center',
   },
-  btnText: { color: '#FFF', fontWeight: 'bold' }
+  btnText: { color: colors.white, fontWeight: 'bold' }
 });
