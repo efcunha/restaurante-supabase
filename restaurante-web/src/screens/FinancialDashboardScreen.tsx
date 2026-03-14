@@ -9,7 +9,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../config/SupabaseConfig';
 import { ScreenScaffold } from '../layouts/ScreenScaffold';
 import { colors } from '../theme/colors';
-
 // Tipos para as props dos componentes internos
 interface KPICardProps {
     title: string;
@@ -22,7 +21,7 @@ interface KPICardProps {
 // Métricas KPI
 const KPICard: React.FC<KPICardProps> = ({ title, value, subtext, icon, color }) => (
     <View style={styles.kpiCard}>
-        <View style={[styles.kpiIconContainer, { backgroundColor: color || '#B45309' }]}>
+        <View style={[styles.kpiIconContainer, { backgroundColor: color || colors.secondary }]}>
             <Ionicons name={icon || 'stats-chart'} size={24} color={colors.white} />
         </View>
         <View style={styles.kpiContent}>
@@ -243,11 +242,11 @@ export default function FinancialDashboardScreen({ onClose }: FinancialDashboard
 
             // 6. Preparar dados para Gráfico de Pizza (Pagamentos)
             const pieData = [
-                { name: 'Dinheiro', population: Math.round(formasPagamento.dinheiro * 100) / 100, color: colors.success, legendFontColor: '#7F7F7F', legendFontSize: 12 },
-                { name: 'Pix', population: Math.round(formasPagamento.pix * 100) / 100, color: colors.secondary, legendFontColor: '#7F7F7F', legendFontSize: 12 },
-                { name: 'Débito', population: Math.round(formasPagamento.debito * 100) / 100, color: colors.warning, legendFontColor: '#7F7F7F', legendFontSize: 12 },
-                { name: 'Crédito', population: Math.round(formasPagamento.credito * 100) / 100, color: '#9C27B0', legendFontColor: '#7F7F7F', legendFontSize: 12 },
-                { name: 'Outros', population: Math.round(formasPagamento.outros * 100) / 100, color: '#607D8B', legendFontColor: '#7F7F7F', legendFontSize: 12 },
+                { name: 'Dinheiro', population: Math.round(formasPagamento.dinheiro * 100) / 100, color: colors.success, legendFontColor: colors.textSecondary, legendFontSize: 12 },
+                { name: 'Pix', population: Math.round(formasPagamento.pix * 100) / 100, color: colors.secondary, legendFontColor: colors.textSecondary, legendFontSize: 12 },
+                { name: 'Débito', population: Math.round(formasPagamento.debito * 100) / 100, color: colors.warning, legendFontColor: colors.textSecondary, legendFontSize: 12 },
+                { name: 'Crédito', population: Math.round(formasPagamento.credito * 100) / 100, color: colors.secondary, legendFontColor: colors.textSecondary, legendFontSize: 12 },
+                { name: 'Outros', population: Math.round(formasPagamento.outros * 100) / 100, color: colors.textSecondary, legendFontColor: colors.textSecondary, legendFontSize: 12 },
             ].filter(item => item.population > 0);
 
             // 7. Calcular taxa de cancelamento
@@ -329,7 +328,7 @@ export default function FinancialDashboardScreen({ onClose }: FinancialDashboard
                             value={kpis.topProduto.split('(')[0].trim()}
                             subtext={kpis.topProduto.includes('(') ? kpis.topProduto.split('(')[1].replace(')', ' unid.') : ''}
                             icon="star-outline"
-                            color="#9C27B0"
+                            color={colors.secondary}
                         />
                     </View>
 
@@ -339,21 +338,21 @@ export default function FinancialDashboardScreen({ onClose }: FinancialDashboard
                             <Text style={styles.cancelamentoTitle}>📊 Estatísticas de Cancelamento</Text>
                             <View style={styles.kpiRow}>
                                 <View style={[styles.kpiCard, styles.cancelamentoCard]}>
-                                    <View style={[styles.kpiIconContainer, { backgroundColor: '#E65100' }]}>
+                                    <View style={[styles.kpiIconContainer, { backgroundColor: colors.warning }]}>
                                         <Ionicons name="close-circle-outline" size={24} color={colors.white} />
                                     </View>
                                     <View style={styles.kpiContent}>
                                         <Text style={styles.kpiLabel}>Total Cancelado</Text>
-                                        <Text style={[styles.kpiValue, { color: '#E65100' }]}>{formatCurrency(kpis.totalCancelado)}</Text>
+                                        <Text style={[styles.kpiValue, { color: colors.warning }]}>{formatCurrency(kpis.totalCancelado)}</Text>
                                     </View>
                                 </View>
                                 <View style={[styles.kpiCard, styles.cancelamentoCard]}>
-                                    <View style={[styles.kpiIconContainer, { backgroundColor: '#E65100' }]}>
+                                    <View style={[styles.kpiIconContainer, { backgroundColor: colors.warning }]}>
                                         <Ionicons name="alert-circle-outline" size={24} color={colors.white} />
                                     </View>
                                     <View style={styles.kpiContent}>
                                         <Text style={styles.kpiLabel}>Comandas Canceladas</Text>
-                                        <Text style={[styles.kpiValue, { color: '#E65100' }]}>{kpis.qtdCanceladas}</Text>
+                                        <Text style={[styles.kpiValue, { color: colors.warning }]}>{kpis.qtdCanceladas}</Text>
                                         <Text style={styles.kpiSubtext}>Taxa: {kpis.taxaCancelamento.toFixed(1)}%</Text>
                                     </View>
                                 </View>
@@ -403,6 +402,6 @@ const styles = StyleSheet.create({
     emptyChart: { padding: 30, alignItems: 'center', backgroundColor: colors.white, borderRadius: 10 },
 
     cancelamentoSection: { marginTop: 15, marginBottom: 10 },
-    cancelamentoTitle: { fontSize: 16, fontWeight: 'bold', color: '#E65100', marginBottom: 10, marginLeft: 5 },
-    cancelamentoCard: { backgroundColor: '#FFF3E0' }
+    cancelamentoTitle: { fontSize: 16, fontWeight: 'bold', color: colors.warning, marginBottom: 10, marginLeft: 5 },
+    cancelamentoCard: { backgroundColor: colors.warningSurface }
 });

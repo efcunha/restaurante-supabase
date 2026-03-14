@@ -8,7 +8,6 @@ import { getUserFriendlyMessage } from '../utils/errors';
 import { Caixa, Comanda } from '../types';
 import { supabase } from '../config/SupabaseConfig';
 import { colors } from '../theme/colors';
-
 interface FechamentoResult {
   saldoEsperado: number;
   saldoReal: number;
@@ -164,15 +163,15 @@ export default function CaixaFechamentoScreen() {
         <head>
           <style>
             body { font-family: 'Helvetica', sans-serif; padding: 20px; }
-            h1 { text-align: center; color: #333; }
-            h2 { border-bottom: 2px solid #ddd; padding-bottom: 5px; margin-top: 20px; }
+            h1 { text-align: center; color: ${colors.text}; }
+            h2 { border-bottom: 2px solid ${colors.border}; padding-bottom: 5px; margin-top: 20px; }
             .info { margin-bottom: 20px; font-size: 14px; }
             table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            th { background-color: #f2f2f2; }
-            .total-row { font-weight: bold; background-color: #e8e8e8; }
-            .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #666; }
-            .cancelado-row { color: #C0392B; font-style: italic; }
+            th, td { border: 1px solid ${colors.border}; padding: 8px; text-align: left; }
+            th { background-color: ${colors.surfaceMuted}; }
+            .total-row { font-weight: bold; background-color: ${colors.background}; }
+            .footer { margin-top: 40px; text-align: center; font-size: 12px; color: ${colors.textSecondary}; }
+            .cancelado-row { color: ${colors.danger}; font-style: italic; }
           </style>
         </head>
         <body>
@@ -308,8 +307,8 @@ export default function CaixaFechamentoScreen() {
 
               {/* ✅ Exibir Total Cancelado (Informativo) */}
               <View style={[styles.resumoRow, { marginTop: 4 }]}>
-                <Text style={[styles.resumoLabel, { color: '#7F8C8D', fontStyle: 'italic' }]}>Cancelado (Info):</Text>
-                <Text style={[styles.resumoValue, { color: '#7F8C8D', fontStyle: 'italic' }]}>R$ {totalCancelado?.toFixed(2)}</Text>
+                <Text style={[styles.resumoLabel, { color: colors.textSecondary, fontStyle: 'italic' }]}>Cancelado (Info):</Text>
+                <Text style={[styles.resumoValue, { color: colors.textSecondary, fontStyle: 'italic' }]}>R$ {totalCancelado?.toFixed(2)}</Text>
               </View>
 
               <View style={styles.divider} />

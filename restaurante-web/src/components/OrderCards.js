@@ -7,7 +7,6 @@
 import React from 'react';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import { colors } from '../theme/colors';
-
 /**
  * Card para pedidos em Montagem
  */
@@ -144,10 +143,10 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
     borderWidth: 1,
-    borderColor: '#E9EEF5',
+    borderColor: colors.surfaceMuted,
   },
   orderCardUrgent: {
-    backgroundColor: '#FFF6EB',
+    backgroundColor: colors.warningSurface,
     borderWidth: 1,
     borderColor: colors.secondary,
   },

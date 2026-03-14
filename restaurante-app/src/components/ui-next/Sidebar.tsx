@@ -1,7 +1,6 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colorSystem, spacing, typography } from '../../design-system';
-
 type SidebarItem = {
   id: string;
   label: string;
@@ -61,7 +60,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.s12,
   },
   itemActive: {
-    backgroundColor: '#DCF4FA',
+    backgroundColor: colors.primaryTint,
   },
   itemPressed: {
     opacity: 0.85,

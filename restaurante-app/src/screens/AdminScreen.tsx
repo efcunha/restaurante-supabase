@@ -44,8 +44,8 @@ import AdminHeader from '../components/AdminHeader';
 import AdminStatsCards from '../components/AdminStatsCards';
 import CaixaMenuModal from '../components/CaixaMenuModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors } from '../theme/colors';
 import { AdminActionCard, AdminBareModal, AdminCaixaModal, AdminSection, AdminSlideModal } from '../features/admin';
+import { colors } from '../theme/colors';
 // import PerformanceService from '../services/PerformanceService'; // Removed - Firebase specific
 
 /**

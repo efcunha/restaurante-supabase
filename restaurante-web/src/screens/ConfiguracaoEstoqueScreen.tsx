@@ -6,7 +6,7 @@ import BackgroundPattern from '../components/BackgroundPattern';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../config/SupabaseConfig';
 import { ScreenScaffold } from '../layouts/ScreenScaffold';
-
+import { colors } from '../theme/colors';
 interface Props {
     onClose: () => void;
 }
@@ -175,12 +175,12 @@ export default function ConfiguracaoEstoqueScreen({ onClose }: Props) {
 
                         <View style={{ flexDirection: 'row' }}>
                             <TouchableOpacity style={styles.plusBtn} onPress={salvarCategoria}>
-                                <Ionicons name={editingIndex !== null ? "checkmark" : "add"} size={24} color="#FFF" />
+                                <Ionicons name={editingIndex !== null ? "checkmark" : "add"} size={24} color={colors.white} />
                             </TouchableOpacity>
 
                             {editingIndex !== null && (
-                                <TouchableOpacity style={[styles.plusBtn, { backgroundColor: '#999', marginLeft: 5 }]} onPress={limparForm}>
-                                    <Ionicons name="close" size={24} color="#FFF" />
+                                <TouchableOpacity style={[styles.plusBtn, { backgroundColor: colors.textSecondary, marginLeft: 5 }]} onPress={limparForm}>
+                                    <Ionicons name="close" size={24} color={colors.white} />
                                 </TouchableOpacity>
                             )}
                         </View>
@@ -190,7 +190,7 @@ export default function ConfiguracaoEstoqueScreen({ onClose }: Props) {
                 <Text style={styles.sectionTitle}>Categorias Ativas ({categorias.length})</Text>
 
                 {loading ? (
-                    <ActivityIndicator color="#8B2F2F" />
+                    <ActivityIndicator color={colors.primary} />
                 ) : (
                     <ScrollView contentContainerStyle={styles.list}>
                         {categorias.map((cat, index) => (
@@ -204,10 +204,10 @@ export default function ConfiguracaoEstoqueScreen({ onClose }: Props) {
                                 </View>
                                 <View style={{ flexDirection: 'row', gap: 15 }}>
                                     <TouchableOpacity onPress={() => iniciarEdicao(index)}>
-                                        <Ionicons name="pencil-outline" size={22} color="#B45309" />
+                                        <Ionicons name="pencil-outline" size={22} color={colors.secondary} />
                                     </TouchableOpacity>
                                     <TouchableOpacity onPress={() => removerCategoria(index)}>
-                                        <Ionicons name="trash-outline" size={22} color="#FF6B6B" />
+                                        <Ionicons name="trash-outline" size={22} color={colors.danger} />
                                     </TouchableOpacity>
                                 </View>
                             </View>
@@ -222,37 +222,37 @@ export default function ConfiguracaoEstoqueScreen({ onClose }: Props) {
 const styles = StyleSheet.create({
     content: { flex: 1, padding: 20 },
     addSection: {
-        backgroundColor: '#FFF',
+        backgroundColor: colors.white,
         padding: 15,
         borderRadius: 12,
         marginBottom: 20,
         elevation: 2
     },
-    label: { fontSize: 14, fontWeight: 'bold', color: '#666', marginBottom: 8 },
+    label: { fontSize: 14, fontWeight: 'bold', color: colors.textSecondary, marginBottom: 8 },
     row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     input: {
-        backgroundColor: '#F5F1E8',
+        backgroundColor: colors.background,
         borderRadius: 8,
         padding: 10,
         borderWidth: 1,
-        borderColor: '#B45309'
+        borderColor: colors.secondary
     },
     iconScroll: { maxHeight: 50 },
     iconBtn: { padding: 8, borderRadius: 8, marginRight: 5 },
-    iconBtnActive: { backgroundColor: '#B45309' },
+    iconBtnActive: { backgroundColor: colors.secondary },
     iconText: { fontSize: 20 },
     plusBtn: {
-        backgroundColor: '#8B2F2F',
+        backgroundColor: colors.primary,
         width: 44,
         height: 44,
         borderRadius: 8,
         alignItems: 'center',
         justifyContent: 'center'
     },
-    sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#8B2F2F', marginBottom: 10 },
+    sectionTitle: { fontSize: 18, fontWeight: 'bold', color: colors.primary, marginBottom: 10 },
     list: { paddingBottom: 50 },
     card: {
-        backgroundColor: '#FFF',
+        backgroundColor: colors.white,
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -263,6 +263,6 @@ const styles = StyleSheet.create({
     },
     cardLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     catIcon: { fontSize: 24 },
-    catName: { fontSize: 16, fontWeight: 'bold', color: '#333' },
-    catId: { fontSize: 12, color: '#999' }
+    catName: { fontSize: 16, fontWeight: 'bold', color: colors.text },
+    catId: { fontSize: 12, color: colors.textSecondary }
 });

@@ -27,8 +27,6 @@ import { supabase } from '../config/SupabaseConfig';
 import { Extra, ExtraType } from '../types/models';
 import { ScreenScaffold } from '../layouts/ScreenScaffold';
 import { colors } from '../theme/colors';
-
-
 interface ExtrasConfigScreenProps {
   onClose: () => void;
 }

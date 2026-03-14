@@ -1,7 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
 import { colorSystem, radius, spacing, typography } from '../../design-system';
-
 type TagProps = {
   label: string;
   active?: boolean;
@@ -34,7 +33,7 @@ const styles = StyleSheet.create({
   },
   active: {
     borderColor: colorSystem.primary,
-    backgroundColor: '#E2F4F8',
+    backgroundColor: colors.primaryTint,
   },
   label: {
     ...typography.small,

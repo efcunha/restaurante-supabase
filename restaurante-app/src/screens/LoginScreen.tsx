@@ -10,7 +10,7 @@ import { validateEmail } from '../utils/validation';
 import MFAVerificationModal from '../components/MFAVerificationModal';
 // @ts-ignore
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-
+import { colors } from '../theme/colors';
 interface Props {
   navigation: NativeStackNavigationProp<any>;
 }
@@ -81,7 +81,7 @@ export default function LoginScreen({ navigation }: Props) {
         style={styles.exitButton}
         onPress={handleSair}
       >
-        <Ionicons name="close" size={24} color="#FFFFFF" />
+        <Ionicons name="close" size={24} color={colors.white} />
       </TouchableOpacity>
 
       <ScrollView
@@ -105,7 +105,7 @@ export default function LoginScreen({ navigation }: Props) {
               <TextInput
                 style={styles.input}
                 placeholder="seu@email.com"
-                placeholderTextColor="#999"
+                placeholderTextColor={colors.textSecondary}
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
@@ -118,7 +118,7 @@ export default function LoginScreen({ navigation }: Props) {
                 <TextInput
                   style={styles.passwordInput}
                   placeholder="••••••••"
-                  placeholderTextColor="#999"
+                  placeholderTextColor={colors.textSecondary}
                   value={senha}
                   onChangeText={setSenha}
                   secureTextEntry={!mostrarSenha}
@@ -131,7 +131,7 @@ export default function LoginScreen({ navigation }: Props) {
                   <Ionicons
                     name={mostrarSenha ? 'eye-off' : 'eye'}
                     size={24}
-                    color="#8B2F2F"
+                    color={colors.primary}
                   />
                 </TouchableOpacity>
               </View>
@@ -161,7 +161,7 @@ export default function LoginScreen({ navigation }: Props) {
                   <Ionicons 
                     name={biometricType === 'Reconhecimento Facial' ? 'scan-outline' : 'finger-print-outline'} 
                     size={24} 
-                    color="#7f2821" 
+                    color={colors.primary} 
                     style={{ marginRight: 10 }}
                   />
                   <Text style={styles.biometricBtnText}>
@@ -247,7 +247,7 @@ export default function LoginScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#7f2821', // Updated to match the image background perfectly
+    backgroundColor: colors.primary, // Updated to match the image background perfectly
   },
   content: {
     padding: 10,
@@ -291,7 +291,7 @@ const styles = StyleSheet.create({
     height: 240,
   },
   form: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     borderRadius: 15,
     padding: 12,
     // @ts-ignore
@@ -304,26 +304,26 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#7f2821',
+    color: colors.primary,
     marginBottom: 4,
     marginTop: 6,
   },
   input: {
-    backgroundColor: '#F5F1E8',
+    backgroundColor: colors.background,
     borderWidth: 1,
-    borderColor: '#E0D8C8',
+    borderColor: colors.border,
     borderRadius: 12,
     padding: 10,
     fontSize: 15,
-    color: '#2C2C2C',
+    color: colors.text,
     minHeight: 48,
   },
   passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F5F1E8',
+    backgroundColor: colors.background,
     borderWidth: 1,
-    borderColor: '#E0D8C8',
+    borderColor: colors.border,
     borderRadius: 12,
     paddingRight: 10,
     minHeight: 48,
@@ -332,13 +332,13 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 10,
     fontSize: 15,
-    color: '#2C2C2C',
+    color: colors.text,
   },
   eyeButton: {
     padding: 10,
   },
   loginBtn: {
-    backgroundColor: '#7f2821', // Updated primary color
+    backgroundColor: colors.primary, // Updated primary color
     padding: 12,
     borderRadius: 12,
     alignItems: 'center',
@@ -351,14 +351,14 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   loginBtnText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 1,
   },
   footer: {
     textAlign: 'center',
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 10,
     marginTop: 10,
     opacity: 0.8,
@@ -370,14 +370,14 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   forgotPasswordText: {
-    color: '#7f2821', // Updated link color
+    color: colors.primary, // Updated link color
     fontSize: 14,
     textDecorationLine: 'underline',
     fontWeight: '600',
   },
   biometricBtn: {
-    backgroundColor: '#F5F1E8',
-    borderColor: '#7f2821',
+    backgroundColor: colors.background,
+    borderColor: colors.primary,
     borderWidth: 1,
     padding: 10,
     borderRadius: 12,
@@ -386,7 +386,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   biometricBtnText: {
-    color: '#7f2821',
+    color: colors.primary,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -396,7 +396,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   registerLinkText: {
-    color: '#FFF',
+    color: colors.white,
     fontSize: 11,
     textDecorationLine: 'underline',
     textAlign: 'center',

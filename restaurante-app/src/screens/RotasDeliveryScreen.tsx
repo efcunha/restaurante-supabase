@@ -10,7 +10,6 @@ import OptimizedFlatList from '../components/OptimizedFlatList';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '../theme/colors';
-
 export default function RotasDeliveryScreen() {
   const { user } = useAuth();
   const navigation = useNavigation();
@@ -347,7 +346,7 @@ export default function RotasDeliveryScreen() {
         />
       )}
 
-      <StatusBar style="light" backgroundColor="#8B2F2F" />
+      <StatusBar style="light" backgroundColor={colors.primary} />
     </View>
   );
 }
@@ -355,7 +354,7 @@ export default function RotasDeliveryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5DC',
+    backgroundColor: colors.background,
   },
   header: {
     backgroundColor: colors.primary,
@@ -439,7 +438,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   statusBadge: {
-    backgroundColor: '#F0F0F0',
+    backgroundColor: colors.surfaceMuted,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 12,
@@ -479,7 +478,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   whatsappButtonSmall: {
-    backgroundColor: '#25D366',
+    backgroundColor: colors.success,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 10,
@@ -499,7 +498,7 @@ const styles = StyleSheet.create({
   },
   itemsBlock: {
     marginBottom: 15,
-    backgroundColor: '#F9F9F9',
+    backgroundColor: colors.surfaceMuted,
     padding: 10,
     borderRadius: 8,
   },

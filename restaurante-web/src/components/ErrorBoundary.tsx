@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
-
+import { colors } from '../theme/colors';
 interface Props {
   children: React.ReactNode;
 }
@@ -76,7 +76,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#8B2F2F', // Red background to be obvious
+    backgroundColor: colors.primary, // Red background to be obvious
     paddingTop: 50,
     paddingHorizontal: 20,
   },
@@ -86,44 +86,44 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#FFF',
+    color: colors.white,
     marginBottom: 10,
   },
   subtitle: {
     fontSize: 16,
-    color: '#FFD7D7',
+    color: colors.dangerSurface,
     marginBottom: 20,
   },
   box: {
-    backgroundColor: '#FFF',
+    backgroundColor: colors.white,
     borderRadius: 8,
     padding: 15,
     marginBottom: 15,
   },
   errorType: {
     fontWeight: 'bold',
-    color: '#D32F2F',
+    color: colors.danger,
     marginBottom: 5,
   },
   errorMessage: {
-    color: '#333',
+    color: colors.text,
     fontSize: 16,
   },
   stackTrace: {
-    color: '#FFD7D7',
+    color: colors.dangerSurface,
     fontSize: 10,
     marginTop: 10,
     fontFamily: 'monospace'
   },
   button: {
-    backgroundColor: '#FFF',
+    backgroundColor: colors.white,
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 20,
   },
   buttonText: {
-    color: '#8B2F2F',
+    color: colors.primary,
     fontWeight: 'bold',
     fontSize: 16,
   }

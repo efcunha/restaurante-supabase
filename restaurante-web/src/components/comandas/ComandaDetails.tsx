@@ -1,12 +1,11 @@
 import React, { useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
-import { colors } from '../../theme/colors';
 import { fixDecimal, MenuItem } from '../../utils/orderCalculator';
 import { Comanda } from '../../types';
 
 // Declare módulo para avoid error se o arquivo não tiver tipos
 import { calcularPrecoItem } from '../../utils/orderCalculator';
-
+import { colors } from '../../theme/colors';
 interface ComandaDetailsProps {
     comanda: Comanda;
     cardapioDin?: MenuItem[];
@@ -365,7 +364,7 @@ export default function ComandaDetails({ comanda, cardapioDin, onClose, onPay, o
                         </>
                     )}
 
-                    <View style={[styles.totalRow, { marginTop: 15, borderTopWidth: 1, borderTopColor: '#ddd', paddingTop: 10 }]}>
+                    <View style={[styles.totalRow, { marginTop: 15, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 10 }]}>
                         <Text style={styles.totalLabel}>SALDO A PAGAR</Text>
                         <Text style={styles.totalValueLarge}>R$ {(Number(saldoDevedor) || 0).toFixed(2)}</Text>
                     </View>
@@ -381,7 +380,7 @@ export default function ComandaDetails({ comanda, cardapioDin, onClose, onPay, o
                         </TouchableOpacity>
 
                         <TouchableOpacity 
-                            style={[styles.addBtn, { backgroundColor: '#4CAF50', marginBottom: 20 }]} 
+                            style={[styles.addBtn, { backgroundColor: colors.success, marginBottom: 20 }]} 
                             onPress={onFullPayment}
                         >
                             <Text style={styles.addBtnIcon}>💰</Text>
@@ -394,9 +393,9 @@ export default function ComandaDetails({ comanda, cardapioDin, onClose, onPay, o
                                 const getButtonStyle = (m: string) => {
                                     switch (m) {
                                         case 'Dinheiro': return { backgroundColor: colors.success, borderColor: colors.success }; // Verde
-                                        case 'Pix': return { backgroundColor: '#32BCAD', borderColor: '#32BCAD' }; // Verde/Azul Pix
-                                        case 'Debito': return { backgroundColor: '#2196F3', borderColor: '#2196F3' }; // Azul
-                                        case 'Credito': return { backgroundColor: '#3F51B5', borderColor: '#3F51B5' }; // Roxo/Indigo
+                                        case 'Pix': return { backgroundColor: colors.secondary, borderColor: colors.secondary }; // Verde/Azul Pix
+                                        case 'Debito': return { backgroundColor: colors.secondary, borderColor: colors.secondary }; // Azul
+                                        case 'Credito': return { backgroundColor: colors.primary, borderColor: colors.primary }; // Roxo/Indigo
                                         default: return {};
                                     }
                                 };
@@ -409,7 +408,7 @@ export default function ComandaDetails({ comanda, cardapioDin, onClose, onPay, o
                                         style={[styles.payBtn, btnStyle]}
                                         onPress={() => handlePayment(method.toLowerCase())}
                                     >
-                                        <Text style={[styles.payBtnText, { color: '#FFF' }]}>{method}</Text>
+                                        <Text style={[styles.payBtnText, { color: colors.white }]}>{method}</Text>
                                     </TouchableOpacity>
                                 );
                             })}
@@ -434,7 +433,7 @@ export default function ComandaDetails({ comanda, cardapioDin, onClose, onPay, o
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F5F5F5',
+        backgroundColor: colors.surfaceMuted,
     },
     header: {
         flexDirection: 'row',
@@ -449,12 +448,12 @@ const styles = StyleSheet.create({
         marginRight: 10,
     },
     backBtnText: {
-        color: '#FFF',
+        color: colors.white,
         fontSize: 16,
         fontWeight: 'bold',
     },
     headerTitle: {
-        color: '#FFF',
+        color: colors.white,
         fontSize: 18,
         fontWeight: 'bold',
     },
@@ -466,7 +465,7 @@ const styles = StyleSheet.create({
         padding: 20,
     },
     paperReceipt: {
-        backgroundColor: '#FFF',
+        backgroundColor: colors.white,
         padding: 20,
         borderRadius: 5,
         elevation: 3,
@@ -475,22 +474,22 @@ const styles = StyleSheet.create({
         borderTopWidth: 5,
         borderTopColor: colors.primary,
         borderBottomWidth: 1,
-        borderBottomColor: '#ddd',
+        borderBottomColor: colors.border,
     },
     receiptTitle: {
         textAlign: 'center',
         fontWeight: 'bold',
         fontSize: 16,
-        color: '#333',
+        color: colors.text,
         marginBottom: 10,
     },
     divider: {
         height: 1,
-        backgroundColor: '#E0E0E0',
+        backgroundColor: colors.border,
         marginVertical: 10,
         borderStyle: 'dashed',
         borderWidth: 1,
-        borderColor: '#E0E0E0',
+        borderColor: colors.border,
         borderRadius: 1,
     },
     infoRow: {
@@ -499,11 +498,11 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
     label: {
-        color: '#666',
+        color: colors.textSecondary,
         fontSize: 14,
     },
     value: {
-        color: '#333',
+        color: colors.text,
         fontWeight: 'bold',
         fontSize: 14,
     },
@@ -513,21 +512,21 @@ const styles = StyleSheet.create({
         marginBottom: 8,
         paddingBottom: 8,
         borderBottomWidth: 0.5,
-        borderBottomColor: '#f0f0f0',
+        borderBottomColor: colors.surfaceMuted,
     },
     itemName: {
         fontSize: 14,
-        color: '#333',
+        color: colors.text,
         fontWeight: '600',
     },
     itemQty: {
         fontSize: 12,
-        color: '#888',
+        color: colors.textSecondary,
     },
     itemTotal: {
         fontSize: 14,
         fontWeight: 'bold',
-        color: '#333',
+        color: colors.text,
     },
     totalRow: {
         flexDirection: 'row',
@@ -538,7 +537,7 @@ const styles = StyleSheet.create({
     totalLabel: {
         fontWeight: 'bold',
         fontSize: 16,
-        color: '#333',
+        color: colors.text,
     },
     totalValueLarge: {
         fontWeight: 'bold',
@@ -546,7 +545,7 @@ const styles = StyleSheet.create({
         color: colors.primary,
     },
     actionsContainer: {
-        backgroundColor: '#FFF',
+        backgroundColor: colors.white,
         padding: 20,
         borderRadius: 10,
         elevation: 2,
@@ -554,7 +553,7 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 16,
         fontWeight: 'bold',
-        color: '#333',
+        color: colors.text,
         marginTop: 20,
         marginBottom: 10,
     },
@@ -568,12 +567,12 @@ const styles = StyleSheet.create({
         marginBottom: 10,
     },
     addBtnIcon: {
-        color: '#FFF',
+        color: colors.white,
         fontSize: 18,
         marginRight: 10,
     },
     addBtnText: {
-        color: '#FFF',
+        color: colors.white,
         fontWeight: 'bold',
         fontSize: 16,
     },
@@ -584,16 +583,16 @@ const styles = StyleSheet.create({
     },
     payBtn: {
         width: '48%',
-        backgroundColor: '#f0f0f0',
+        backgroundColor: colors.surfaceMuted,
         padding: 15,
         borderRadius: 8,
         alignItems: 'center',
         marginBottom: 10,
         borderWidth: 1,
-        borderColor: '#ddd',
+        borderColor: colors.border,
     },
     payBtnText: {
-        color: '#333',
+        color: colors.text,
         fontWeight: 'bold',
     },
     cancelBtn: {
@@ -604,7 +603,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     cancelBtnText: {
-        color: '#FFF',
+        color: colors.white,
         fontWeight: 'bold',
     },
 });

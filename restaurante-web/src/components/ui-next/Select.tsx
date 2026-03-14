@@ -1,7 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colorSystem, radius, spacing, typography } from '../../design-system';
-
 type SelectOption = {
   label: string;
   value: string;
@@ -64,7 +63,7 @@ const styles = StyleSheet.create({
   },
   optionActive: {
     borderColor: colorSystem.primary,
-    backgroundColor: '#E2F4F8',
+    backgroundColor: colors.primaryTint,
   },
   optionPressed: {
     opacity: 0.86,

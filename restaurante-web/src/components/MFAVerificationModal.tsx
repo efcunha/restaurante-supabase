@@ -17,7 +17,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import MFAService from '../services/MFAService';
 import { MultiFactorResolver } from 'firebase/auth';
-
+import { colors } from '../theme/colors';
 interface Props {
   visible: boolean;
   resolver: MultiFactorResolver | null;
@@ -81,7 +81,7 @@ export default function MFAVerificationModal({ visible, resolver, onSuccess, onC
         <View style={styles.container}>
           <View style={styles.header}>
             <View style={styles.iconContainer}>
-              <Ionicons name="shield-checkmark" size={48} color="#8B2F2F" />
+              <Ionicons name="shield-checkmark" size={48} color={colors.primary} />
             </View>
             <Text style={styles.title}>Verificação de Dois Fatores</Text>
             <Text style={styles.description}>
@@ -112,7 +112,7 @@ export default function MFAVerificationModal({ visible, resolver, onSuccess, onC
               disabled={verificationCode.length < 6 || loading}
             >
               {loading ? (
-                <ActivityIndicator color="#FFF" />
+                <ActivityIndicator color={colors.white} />
               ) : (
                 <Text style={styles.verifyButtonText}>Verificar</Text>
               )}
@@ -131,7 +131,7 @@ export default function MFAVerificationModal({ visible, resolver, onSuccess, onC
 
           <View style={styles.footer}>
             <View style={styles.infoBox}>
-              <Ionicons name="information-circle-outline" size={20} color="#666" />
+              <Ionicons name="information-circle-outline" size={20} color={colors.textSecondary} />
               <Text style={styles.infoText}>
                 {useBackupCode
                   ? 'Cada código de backup pode ser usado apenas uma vez'
@@ -154,11 +154,11 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   container: {
-    backgroundColor: '#FFF',
+    backgroundColor: colors.white,
     borderRadius: 20,
     width: '100%',
     maxWidth: 400,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 10,
@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 30,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0D8C8',
+    borderBottomColor: colors.border,
   },
   iconContainer: {
     marginBottom: 15,
@@ -176,13 +176,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#333',
+    color: colors.text,
     marginBottom: 10,
     textAlign: 'center',
   },
   description: {
     fontSize: 14,
-    color: '#666',
+    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
   },
@@ -190,9 +190,9 @@ const styles = StyleSheet.create({
     padding: 30,
   },
   codeInput: {
-    backgroundColor: '#F5F1E8',
+    backgroundColor: colors.background,
     borderWidth: 2,
-    borderColor: '#8B2F2F',
+    borderColor: colors.primary,
     borderRadius: 10,
     padding: 15,
     fontSize: 24,
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   verifyButton: {
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
     borderRadius: 10,
     padding: 15,
     alignItems: 'center',
@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
   verifyButtonText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#FFF',
+    color: colors.white,
   },
   toggleButton: {
     backgroundColor: 'transparent',
@@ -223,7 +223,7 @@ const styles = StyleSheet.create({
   toggleButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#8B2F2F',
+    color: colors.primary,
   },
   cancelButton: {
     backgroundColor: 'transparent',
@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#999',
+    color: colors.textSecondary,
   },
   buttonDisabled: {
     opacity: 0.5,
@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
   footer: {
     padding: 20,
     borderTopWidth: 1,
-    borderTopColor: '#E0D8C8',
+    borderTopColor: colors.border,
   },
   infoBox: {
     flexDirection: 'row',
@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
   },
   infoText: {
     fontSize: 12,
-    color: '#666',
+    color: colors.textSecondary,
     marginLeft: 8,
     flex: 1,
     lineHeight: 18,

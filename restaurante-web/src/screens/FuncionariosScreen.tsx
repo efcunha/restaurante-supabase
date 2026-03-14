@@ -1,6 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, FlatList, TouchableOpacity, TextInput, Alert, Modal, ScrollView } from 'react-native';
-import { colors } from '../theme/colors';
 // @ts-ignore
 import KeyboardWrapper from '../components/KeyboardWrapper';
 import { useState, useEffect, useCallback } from 'react';
@@ -10,7 +9,7 @@ import { useResponsive } from '../hooks/useResponsive';
 import { criarFuncionario, listarFuncionarios, deletarFuncionario, atualizarFuncionario } from '../services/FuncionariosService';
 import { supabase } from '../config/SupabaseConfig';
 import { ScreenScaffold } from '../layouts/ScreenScaffold';
-
+import { colors } from '../theme/colors';
 interface Props {
   onClose?: () => void;
 }

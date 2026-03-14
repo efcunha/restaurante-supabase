@@ -1,10 +1,9 @@
 
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, StyleSheet } from 'react-native';
-import { colors } from '../../../theme/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { PizzaSize, PizzaConfig } from '../../../types';
-
+import { colors } from '../../../theme/colors';
 interface MenuSettingsProps {
     visible: boolean;
     onClose: () => void;

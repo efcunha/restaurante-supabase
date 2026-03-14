@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, Text } from 'react-native';
-
+import { colors } from '../theme/colors';
 type TableShape = 'square' | 'round' | 'rect';
 type TableStatus = 'Livre' | 'Ocupada' | 'Reservada' | 'Pagando';
 
@@ -21,26 +21,26 @@ export default function TableGraphic({
 }: TableGraphicProps) {
 
     // Colors
-    const woodColor = '#8D6E63'; // Main table color (free)
-    const occupiedColor = '#E57373'; // Red lighten
-    const reservedColor = '#BDBDBD';
+    const woodColor = colors.textSecondary; // Main table color (free)
+    const occupiedColor = colors.danger;
+    const reservedColor = colors.border;
 
     // Status color (inner surface)
     const getStatusColor = () => {
         switch (status) {
             case 'Ocupada': return occupiedColor;
-            case 'Pagando': return '#FFD54F';
+            case 'Pagando': return colors.warning;
             case 'Reservada': return reservedColor;
-            default: return '#F5F5DC'; // Table cloth white/beige for free
+            default: return colors.background; // Table cloth white/beige for free
         }
     };
 
     // Border color (wood frame)
     const getBorderColor = () => {
         switch (status) {
-            case 'Ocupada': return '#D32F2F';
-            case 'Pagando': return '#FFA000';
-            case 'Reservada': return '#757575';
+            case 'Ocupada': return colors.danger;
+            case 'Pagando': return colors.warning;
+            case 'Reservada': return colors.textSecondary;
             default: return woodColor; // Wood border for free
         }
     };
@@ -62,7 +62,7 @@ export default function TableGraphic({
         borderWidth: 4,
         justifyContent: 'center' as const,
         alignItems: 'center' as const,
-        shadowColor: "#000",
+        shadowColor: colors.shadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.25,
         shadowRadius: 3.84,
@@ -228,7 +228,7 @@ export default function TableGraphic({
 
             {/* Table Top */}
             <View style={surfaceStyle}>
-                <Text style={[styles.tableNumber, { color: status === 'Ocupada' ? '#FFF' : '#3E2723' }]}>
+                <Text style={[styles.tableNumber, { color: status === 'Ocupada' ? colors.white : colors.text }]}>
                     {tableNumber}
                 </Text>
             </View>

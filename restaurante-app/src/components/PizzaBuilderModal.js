@@ -2,7 +2,6 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Modal, View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
-
 export default function PizzaBuilderModal({
     visible,
     onClose,
@@ -226,7 +225,7 @@ export default function PizzaBuilderModal({
                                 styles.flavorRow,
                                 isSelected && styles.flavorRowActive,
                                 isDisabled && styles.flavorRowDisabled,
-                                isLocked ? { borderColor: colors.success, backgroundColor: '#F1F8E9' } : null
+                                isLocked ? { borderColor: colors.success, backgroundColor: colors.successSurface } : null
                             ]}
                             onPress={() => !isDisabled && toggleFlavor(pizza)}
                             disabled={isDisabled || isLocked}
@@ -423,19 +422,19 @@ const styles = StyleSheet.create({
     sizeSubText: { fontSize: 13, color: colors.textSecondary, marginTop: 4 },
 
     headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 15, gap: 15 },
-    backBtn: { padding: 8, backgroundColor: '#f0f0f0', borderRadius: 50 },
-    search: { backgroundColor: '#F9F9F9', padding: 14, borderRadius: 12, marginBottom: 15, fontSize: 16, borderWidth: 1, borderColor: '#EAEAEA', minHeight: 48 },
+    backBtn: { padding: 8, backgroundColor: colors.surfaceMuted, borderRadius: 50 },
+    search: { backgroundColor: colors.surfaceMuted, padding: 14, borderRadius: 12, marginBottom: 15, fontSize: 16, borderWidth: 1, borderColor: colors.surfaceMuted, minHeight: 48 },
 
-    flavorRow: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: colors.white, borderRadius: 16, marginBottom: 10, borderWidth: 1, borderColor: '#F0F0F0', shadowColor: colors.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 },
-    flavorRowActive: { borderColor: colors.primary, backgroundColor: '#FFF9F9', borderWidth: 2 },
-    flavorRowDisabled: { opacity: 0.5, backgroundColor: '#F9F9F9' },
+    flavorRow: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: colors.white, borderRadius: 16, marginBottom: 10, borderWidth: 1, borderColor: colors.surfaceMuted, shadowColor: colors.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 },
+    flavorRowActive: { borderColor: colors.primary, backgroundColor: colors.dangerSurface, borderWidth: 2 },
+    flavorRowDisabled: { opacity: 0.5, backgroundColor: colors.surfaceMuted },
 
     flavorName: { fontSize: 16, fontWeight: '700', color: colors.text },
     flavorPrice: { fontSize: 15, color: colors.primary, fontWeight: 'bold', marginTop: 4 },
 
     checkbox: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: colors.border, justifyContent: 'center', alignItems: 'center' },
 
-    footer: { borderTopWidth: 1, borderTopColor: '#F0F0F0', paddingTop: 20, marginTop: 10, paddingBottom: 20 },
+    footer: { borderTopWidth: 1, borderTopColor: colors.surfaceMuted, paddingTop: 20, marginTop: 10, paddingBottom: 20 },
     totalText: { fontSize: 24, fontWeight: '800', color: colors.primary },
     confirmBtn: { backgroundColor: colors.success, padding: 16, borderRadius: 14, alignItems: 'center', minHeight: 56, justifyContent: 'center' },
     disabledBtn: { backgroundColor: colors.border },
@@ -443,8 +442,8 @@ const styles = StyleSheet.create({
 
     // Extras styles
     sectionTitle: { fontSize: 18, fontWeight: 'bold', color: colors.text, marginBottom: 14 },
-    extraRow: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: colors.white, borderRadius: 16, marginBottom: 10, borderWidth: 1, borderColor: '#F0F0F0', shadowColor: colors.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 },
-    extraRowActive: { borderColor: colors.primary, backgroundColor: '#FFF9F9', borderWidth: 2 },
+    extraRow: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: colors.white, borderRadius: 16, marginBottom: 10, borderWidth: 1, borderColor: colors.surfaceMuted, shadowColor: colors.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 },
+    extraRowActive: { borderColor: colors.primary, backgroundColor: colors.dangerSurface, borderWidth: 2 },
     extraName: { fontSize: 16, fontWeight: '700', color: colors.text },
     extraPrice: { fontSize: 15, color: colors.primary, fontWeight: 'bold', marginTop: 4 },
     radio: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: colors.border, justifyContent: 'center', alignItems: 'center' },

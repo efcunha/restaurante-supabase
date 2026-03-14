@@ -5,9 +5,8 @@ import { useOrders } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
 // @ts-ignore
 import { EstatisticasGarcomContainer } from '../components/EstatisticasGarcom';
-import { colors } from '../theme/colors';
 import { ScreenScaffold } from '../layouts/ScreenScaffold';
-
+import { colors } from '../theme/colors';
 // Função auxiliar para gerar lista de meses disponíveis (últimos 12 meses)
 const gerarMesesDisponiveis = () => {
     const meses = [];
@@ -375,7 +374,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 15,
     },
     garcomChip: {
-        backgroundColor: '#FFF7ED',
+        backgroundColor: colors.warningSurface,
         paddingHorizontal: 16,
         paddingVertical: 10,
         borderRadius: 20,
@@ -436,7 +435,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#FFF7ED',
+        backgroundColor: colors.warningSurface,
         paddingVertical: 10,
         paddingHorizontal: 16,
         borderRadius: 8,
@@ -500,7 +499,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         marginVertical: 3,
         borderRadius: 10,
-        backgroundColor: '#FFF7ED',
+        backgroundColor: colors.warningSurface,
     },
     mesItemAtivo: {
         backgroundColor: colors.primary,
@@ -516,7 +515,7 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     mesAtualBadge: {
-        backgroundColor: '#2E7D32',
+        backgroundColor: colors.success,
         paddingHorizontal: 8,
         paddingVertical: 3,
         borderRadius: 10,

@@ -21,7 +21,6 @@ import QRCode from 'react-native-qrcode-svg';
 import MFAService from '../services/MFAService';
 import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme/colors';
-
 interface Props {
   visible: boolean;
   onClose: () => void;
@@ -330,7 +329,7 @@ const styles = StyleSheet.create({
   },
   warningBox: {
     flexDirection: 'row',
-    backgroundColor: '#FFF3E0',
+    backgroundColor: colors.warningSurface,
     padding: 15,
     borderRadius: 10,
     marginBottom: 20,
@@ -339,7 +338,7 @@ const styles = StyleSheet.create({
   },
   warningText: {
     fontSize: 14,
-    color: '#E65100',
+    color: colors.warning,
     marginLeft: 10,
     flex: 1,
     lineHeight: 20,

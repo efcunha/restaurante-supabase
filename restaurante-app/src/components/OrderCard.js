@@ -2,7 +2,6 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
-
 /**
  * OrderCard - Card otimizado para exibir pedido
  * Usa React.memo para evitar re-renders desnecessários
@@ -82,7 +81,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
     borderWidth: 1,
-    borderColor: '#E9EEF5',
+    borderColor: colors.surfaceMuted,
   },
   headerRow: {
     flexDirection: 'row',
@@ -93,7 +92,7 @@ const styles = StyleSheet.create({
   deliveryChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#EAF6F9',
+    backgroundColor: colors.primaryTint,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
@@ -105,7 +104,7 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
   orderCardUrgent: {
-    backgroundColor: '#FFF6EB',
+    backgroundColor: colors.warningSurface,
     borderWidth: 1,
     borderColor: colors.secondary,
   },

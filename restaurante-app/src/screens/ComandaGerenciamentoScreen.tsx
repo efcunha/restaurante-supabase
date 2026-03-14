@@ -13,7 +13,6 @@ import ComandaList from '../components/comandas/ComandaList';
 import ComandaDetails from '../components/comandas/ComandaDetails';
 // @ts-ignore
 import AddItemsModal from '../components/comandas/AddItemsModal';
-import { colors } from '../theme/colors';
 import { getTodayKey } from '../utils/dateUtils'; // Migrated from FirebaseOptimizations
 import { calcularPrecoItem } from '../utils/orderCalculator';
 import CancelOrderModal from '../components/comandas/CancelOrderModal';
@@ -30,8 +29,7 @@ import { supabase } from '../config/SupabaseConfig';
 
 import { LayoutAnimation, Platform, UIManager } from 'react-native';
 import PDFService from '../services/PDFService';
-
-
+import { colors } from '../theme/colors';
 if (Platform.OS === 'android') {
   if (UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);

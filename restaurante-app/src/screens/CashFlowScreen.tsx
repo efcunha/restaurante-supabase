@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../config/SupabaseConfig';
 import { Ionicons } from '@expo/vector-icons';
 import { Caixa } from '../types';
-
+import { colors } from '../theme/colors';
 interface CashFlowScreenProps {
     caixa: Caixa | null;
     onClose: () => void;
@@ -141,12 +141,12 @@ export default function CashFlowScreen({ caixa, onClose }: CashFlowScreenProps) 
 
     const renderIcon = (tipo: Movimentacao['tipo']) => {
         switch (tipo) {
-            case 'venda': return <Ionicons name="arrow-up-circle" size={24} color="#4CAF50" />;
-            case 'reforco': return <Ionicons name="add-circle" size={24} color="#2196F3" />;
-            case 'abertura': return <Ionicons name="flag" size={24} color="#FFC107" />;
-            case 'sangria': return <Ionicons name="arrow-down-circle" size={24} color="#F44336" />;
-            case 'cancelamento': return <Ionicons name="trash" size={24} color="#9E9E9E" />;
-            default: return <Ionicons name="ellipse" size={24} color="#999" />;
+            case 'venda': return <Ionicons name="arrow-up-circle" size={24} color={colors.success} />;
+            case 'reforco': return <Ionicons name="add-circle" size={24} color={colors.secondary} />;
+            case 'abertura': return <Ionicons name="flag" size={24} color={colors.warning} />;
+            case 'sangria': return <Ionicons name="arrow-down-circle" size={24} color={colors.danger} />;
+            case 'cancelamento': return <Ionicons name="trash" size={24} color={colors.textSecondary} />;
+            default: return <Ionicons name="ellipse" size={24} color={colors.textSecondary} />;
         }
     };
 
@@ -168,14 +168,14 @@ export default function CashFlowScreen({ caixa, onClose }: CashFlowScreenProps) 
         <View style={styles.container}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-                    <Ionicons name="close" size={24} color="#FFF" />
+                    <Ionicons name="close" size={24} color={colors.white} />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Livro Caixa - {formatDate(caixa?.data)}</Text>
                 <View style={{ width: 40 }} />
             </View>
 
             {loading ? (
-                <ActivityIndicator style={{ marginTop: 50 }} size="large" color="#8B2F2F" />
+                <ActivityIndicator style={{ marginTop: 50 }} size="large" color={colors.primary} />
             ) : (
                 <ScrollView style={styles.content}>
                     {movimentacoes.length === 0 ? (
@@ -195,7 +195,7 @@ export default function CashFlowScreen({ caixa, onClose }: CashFlowScreenProps) 
                                             <Text style={styles.cardTitle}>{mov.descricao}</Text>
                                             <Text style={styles.cardUser}>{mov.usuario || 'Sistema'} • {mov.detalhe}</Text>
                                         </View>
-                                        <Text style={[styles.cardValue, mov.tipo === 'sangria' ? { color: '#F44336' } : { color: '#4CAF50' }]}>
+                                        <Text style={[styles.cardValue, mov.tipo === 'sangria' ? { color: colors.danger } : { color: colors.success }]}>
                                             {mov.tipo === 'sangria' ? '- ' : '+ '}
                                             R$ {Number(mov.valor).toFixed(2)}
                                         </Text>
@@ -212,9 +212,9 @@ export default function CashFlowScreen({ caixa, onClose }: CashFlowScreenProps) 
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#FFF' }, // Branco para modal
+    container: { flex: 1, backgroundColor: colors.white }, // Branco para modal
     header: {
-        backgroundColor: '#8B2F2F',
+        backgroundColor: colors.primary,
         paddingTop: 20, // Reduced top padding since it's a modal likely inside a safe area or centered
         paddingBottom: 20,
         paddingHorizontal: 20,
@@ -224,26 +224,26 @@ const styles = StyleSheet.create({
         borderBottomLeftRadius: 20,
         borderBottomRightRadius: 20,
         elevation: 8,
-        shadowColor: '#000',
+        shadowColor: colors.shadow,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 4,
     },
     closeBtn: { padding: 5 },
-    headerTitle: { color: '#FFF', fontSize: 18, fontWeight: 'bold' },
+    headerTitle: { color: colors.white, fontSize: 18, fontWeight: 'bold' },
     content: { padding: 20 },
-    emptyText: { textAlign: 'center', color: '#999', marginTop: 20 },
+    emptyText: { textAlign: 'center', color: colors.textSecondary, marginTop: 20 },
 
     row: { flexDirection: 'row' },
     timeContainer: { width: 50, alignItems: 'center' },
-    timeText: { fontSize: 12, color: '#666', marginBottom: 5 },
-    verticalLine: { flex: 1, width: 1, backgroundColor: '#E0E0E0' },
+    timeText: { fontSize: 12, color: colors.textSecondary, marginBottom: 5 },
+    verticalLine: { flex: 1, width: 1, backgroundColor: colors.border },
 
     card: { flex: 1, borderRadius: 10, padding: 12, marginBottom: 15, borderWidth: 1, elevation: 2 },
-    cardNormal: { backgroundColor: '#F9F9F9', borderColor: '#EEE' },
-    cardSangria: { backgroundColor: '#FFF0F0', borderColor: '#FFCDD2' },
+    cardNormal: { backgroundColor: colors.surfaceMuted, borderColor: colors.border },
+    cardSangria: { backgroundColor: colors.dangerSurface, borderColor: colors.danger },
     cardHeader: { flexDirection: 'row', alignItems: 'center' },
-    cardTitle: { fontWeight: 'bold', fontSize: 14, color: '#333' },
-    cardUser: { fontSize: 12, color: '#777', marginTop: 2 },
+    cardTitle: { fontWeight: 'bold', fontSize: 14, color: colors.text },
+    cardUser: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
     cardValue: { fontWeight: 'bold', fontSize: 14 },
 });

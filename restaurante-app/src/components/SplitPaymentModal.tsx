@@ -12,7 +12,6 @@ import { Order, OrderItem } from '../types/models';
 import { calcularPrecoItem, MenuItem } from '../utils/orderCalculator';
 import { useMenu } from '../hooks/useMenu';
 import { colors } from '../theme/colors';
-
 interface SplitPaymentModalProps {
   visible: boolean;
   onClose: () => void;
@@ -400,7 +399,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     alignItems: 'center',
-    backgroundColor: '#F9F9F9'
+    backgroundColor: colors.surfaceMuted
   },
   activeTab: {
     backgroundColor: colors.white,
@@ -491,10 +490,10 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border
   },
   selectedItemRow: {
-    backgroundColor: '#FFF3CD'
+    backgroundColor: colors.warningSurface
   },
   paidItemRow: {
-    backgroundColor: '#F0F0F0',
+    backgroundColor: colors.surfaceMuted,
     opacity: 0.6
   },
   checkbox: {

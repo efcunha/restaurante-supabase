@@ -1,7 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { colorSystem, spacing, typography } from '../../design-system';
-
 type BadgeVariant = 'success' | 'warning' | 'error' | 'info';
 
 type BadgeProps = {
@@ -24,10 +23,10 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.s4,
     alignSelf: 'flex-start',
   },
-  success: { backgroundColor: '#E8F7EE' },
-  warning: { backgroundColor: '#FFF1E8' },
-  error: { backgroundColor: '#FDEBEC' },
-  info: { backgroundColor: '#E2F4F8' },
+  success: { backgroundColor: colors.successSurface },
+  warning: { backgroundColor: colors.warningSurface },
+  error: { backgroundColor: colors.dangerSurface },
+  info: { backgroundColor: colors.primaryTint },
   label: {
     ...typography.small,
     fontWeight: '700',

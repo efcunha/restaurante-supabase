@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, Modal, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, ScrollView } from 'react-native';
-import { colors } from '../theme/colors';
 import { cleanAllZeroValues } from '../utils/cleanZeroValueOrders';
 import { diagnosticarComandasSuspeitas, corrigirComandasSuspeitas } from '../utils/diagnosticarComandas';
-
+import { colors } from '../theme/colors';
 export default function AdminToolsModal({ visible, onClose, companyId }) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
@@ -397,7 +396,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.danger,
   },
   btnWarning: {
-    backgroundColor: colors.warning || '#FF9800',
+    backgroundColor: colors.warning,
   },
   btnText: {
     color: colors.white,

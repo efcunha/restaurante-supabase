@@ -12,7 +12,6 @@ import { exitApp } from '../utils/appUtils';
 import OptimizedFlatList from '../components/OptimizedFlatList';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
-
 export default function PedidosProntosScreen() {
   const { user } = useAuth();
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);

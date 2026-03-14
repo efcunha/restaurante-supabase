@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Dimensions, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
+import { colors } from '../theme/colors';
 /**
  * Componente que garante redimensionamento correto em todas as orientações
  * Resolve problemas de layout em tablets e celulares
@@ -36,6 +36,6 @@ export default function ResponsiveContainer({ children, style }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F1E8',
+    backgroundColor: colors.background,
   },
 });

@@ -10,7 +10,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { usePerformanceMetrics, useCacheStats, useConnectionPoolStats } from '../hooks/usePerformanceMetrics';
-
+import { colors } from '../theme/colors';
 /**
  * Performance Monitor Component
  */
@@ -97,20 +97,20 @@ const MetricRow: React.FC<{ label: string; value: string }> = ({ label, value })
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.surfaceMuted,
   },
   loadingText: {
     textAlign: 'center',
     marginTop: 20,
     fontSize: 16,
-    color: '#666',
+    color: colors.textSecondary,
   },
   section: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.white,
     margin: 10,
     padding: 15,
     borderRadius: 8,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -120,23 +120,23 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 10,
-    color: '#333',
+    color: colors.text,
   },
   metricRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: colors.border,
   },
   metricLabel: {
     fontSize: 14,
-    color: '#666',
+    color: colors.textSecondary,
   },
   metricValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
   },
 });
 

@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { formatCurrency } from '../utils/formatCurrency';
 import { Caixa } from '../types';
 import { ScreenScaffold } from '../layouts/ScreenScaffold';
-
+import { colors } from '../theme/colors';
 interface CaixaHistoricoScreenProps {
   onClose: () => void;
 }
@@ -37,9 +37,9 @@ export default function CaixaHistoricoScreen({ onClose }: CaixaHistoricoScreenPr
 
   const getStatusColor = (status: string): string => {
     switch (status) {
-      case 'aberto': return '#4CAF50';
-      case 'fechado': return '#666';
-      default: return '#999';
+      case 'aberto': return colors.success;
+      case 'fechado': return colors.textSecondary;
+      default: return colors.textSecondary;
     }
   };
 
@@ -56,7 +56,7 @@ export default function CaixaHistoricoScreen({ onClose }: CaixaHistoricoScreenPr
             {/* Header do Card */}
             <View style={styles.cardHeader}>
               <View style={styles.dateContainer}>
-                <Ionicons name="calendar-outline" size={18} color="#8B2F2F" />
+                <Ionicons name="calendar-outline" size={18} color={colors.primary} />
                 <Text style={styles.dateText}>{formatDate(c.data)}</Text>
               </View>
               <View style={[styles.statusBadge, { backgroundColor: getStatusColor(c.status) }]}>
@@ -66,7 +66,7 @@ export default function CaixaHistoricoScreen({ onClose }: CaixaHistoricoScreenPr
 
             {/* Operador */}
             <Text style={styles.operatorText}>
-              <Ionicons name="person-circle-outline" size={14} color="#666" />
+              <Ionicons name="person-circle-outline" size={14} color={colors.textSecondary} />
               {' '}Operador: {c.abertoPorNome || c.fechadoPorNome || '-'}
             </Text>
 
@@ -76,19 +76,19 @@ export default function CaixaHistoricoScreen({ onClose }: CaixaHistoricoScreenPr
             <View style={styles.metricsGrid}>
               <View style={styles.metricItem}>
                 <Text style={styles.metricLabel}>Fundo Inicial</Text>
-                <Text style={[styles.metricValue, { color: '#2C3E50' }]}>{formatCurrency(c.valorInicial)}</Text>
+                <Text style={[styles.metricValue, { color: colors.text }]}>{formatCurrency(c.valorInicial)}</Text>
               </View>
               <View style={styles.metricItem}>
                 <Text style={styles.metricLabel}>Vendas Totais</Text>
-                <Text style={[styles.metricValue, { color: '#27AE60' }]}>{formatCurrency(c.vendasTotal)}</Text>
+                <Text style={[styles.metricValue, { color: colors.success }]}>{formatCurrency(c.vendasTotal)}</Text>
               </View>
               <View style={styles.metricItem}>
                 <Text style={styles.metricLabel}>Reforços</Text>
-                <Text style={[styles.metricValue, { color: '#2980B9' }]}>{formatCurrency(c.reforcosTotal)}</Text>
+                <Text style={[styles.metricValue, { color: colors.secondary }]}>{formatCurrency(c.reforcosTotal)}</Text>
               </View>
               <View style={styles.metricItem}>
                 <Text style={styles.metricLabel}>Sangrias</Text>
-                <Text style={[styles.metricValue, { color: '#C0392B' }]}>{formatCurrency(c.sangriasTotal)}</Text>
+                <Text style={[styles.metricValue, { color: colors.danger }]}>{formatCurrency(c.sangriasTotal)}</Text>
               </View>
             </View>
 
@@ -106,11 +106,11 @@ export default function CaixaHistoricoScreen({ onClose }: CaixaHistoricoScreenPr
               </View>
 
               {c.diferenca != null && (
-                <View style={[styles.footerRow, { marginTop: 8, backgroundColor: c.diferenca < 0 ? '#FDEDEC' : '#EAFAF1', padding: 6, borderRadius: 4 }]}>
-                  <Text style={[styles.footerLabel, { color: c.diferenca < 0 ? '#C0392B' : '#27AE60', fontWeight: 'bold' }]}>
+                <View style={[styles.footerRow, { marginTop: 8, backgroundColor: c.diferenca < 0 ? colors.dangerSurface : colors.successSurface, padding: 6, borderRadius: 4 }]}>
+                  <Text style={[styles.footerLabel, { color: c.diferenca < 0 ? colors.danger : colors.success, fontWeight: 'bold' }]}>
                     DIFERENÇA:
                   </Text>
-                  <Text style={[styles.footerValue, { fontWeight: '900', color: c.diferenca < 0 ? '#C0392B' : '#27AE60' }]}>
+                  <Text style={[styles.footerValue, { fontWeight: '900', color: c.diferenca < 0 ? colors.danger : colors.success }]}>
                     {formatCurrency(c.diferenca)}
                   </Text>
                 </View>
@@ -130,14 +130,14 @@ export default function CaixaHistoricoScreen({ onClose }: CaixaHistoricoScreenPr
 }
 
 const styles = StyleSheet.create({
-  hintText: { textAlign: 'center', color: '#7F8C8D', marginBottom: 15, fontSize: 13, fontStyle: 'italic' },
+  hintText: { textAlign: 'center', color: colors.textSecondary, marginBottom: 15, fontSize: 13, fontStyle: 'italic' },
 
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.white,
     borderRadius: 12,
     padding: 16,
     marginBottom: 15,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -145,20 +145,20 @@ const styles = StyleSheet.create({
   },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   dateContainer: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  dateText: { fontSize: 16, fontWeight: 'bold', color: '#2C3E50' },
+  dateText: { fontSize: 16, fontWeight: 'bold', color: colors.text },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  statusText: { color: '#FFF', fontSize: 10, fontWeight: 'bold' },
+  statusText: { color: colors.white, fontSize: 10, fontWeight: 'bold' },
 
-  operatorText: { fontSize: 13, color: '#7F8C8D', marginBottom: 10 },
-  divider: { height: 1, backgroundColor: '#ECF0F1', marginBottom: 10 },
+  operatorText: { fontSize: 13, color: colors.textSecondary, marginBottom: 10 },
+  divider: { height: 1, backgroundColor: colors.border, marginBottom: 10 },
 
   metricsGrid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 10 },
   metricItem: { width: '50%', marginBottom: 12 },
-  metricLabel: { fontSize: 12, color: '#95A5A6' },
+  metricLabel: { fontSize: 12, color: colors.textSecondary },
   metricValue: { fontSize: 15, fontWeight: '600' },
 
-  footerContainer: { backgroundColor: '#F8F9F9', padding: 10, borderRadius: 8 },
+  footerContainer: { backgroundColor: colors.surfaceMuted, padding: 10, borderRadius: 8 },
   footerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  footerLabel: { fontSize: 13, color: '#555' },
-  footerValue: { fontSize: 13, color: '#333' }
+  footerLabel: { fontSize: 13, color: colors.textSecondary },
+  footerValue: { fontSize: 13, color: colors.text }
 });

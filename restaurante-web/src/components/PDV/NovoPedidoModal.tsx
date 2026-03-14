@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, ActivityIndicator, Alert } from 'react-native';
-import { colors } from '../../theme/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../config/SupabaseConfig';
 import { useAuth } from '../../context/AuthContext';
 import supabaseOrderService from '../../services/supabase/SupabaseOrderService';
-
+import { colors } from '../../theme/colors';
 interface ItemCart {
   id: string;
   name: string;
