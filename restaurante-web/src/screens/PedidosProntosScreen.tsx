@@ -10,6 +10,7 @@ import { supabase } from '../config/SupabaseConfig';
 import { getLocalDateKey } from '../utils/dateUtils';
 import { exitApp } from '../utils/appUtils';
 import OptimizedFlatList from '../components/OptimizedFlatList';
+import { colors } from '../theme/colors';
 
 export default function PedidosProntosScreen() {
   const { user } = useAuth();
@@ -291,12 +292,12 @@ export default function PedidosProntosScreen() {
         </View>
         <View style={styles.headerCenter}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Ionicons name="checkmark-done-circle-outline" size={24} color="#FFF" style={{ marginRight: 8 }} />
+            <Ionicons name="checkmark-done-circle-outline" size={24} color={colors.white} style={{ marginRight: 8 }} />
             <Text style={styles.headerTitle}>Prontos para entrega</Text>
           </View>
         </View>
         <TouchableOpacity style={styles.logoutBtn} onPress={exitApp}>
-          <Ionicons name="log-out-outline" size={24} color="#FFF" />
+          <Ionicons name="log-out-outline" size={24} color={colors.white} />
         </TouchableOpacity>
       </View>
 
@@ -328,10 +329,10 @@ export default function PedidosProntosScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5DC',
+    backgroundColor: colors.background,
   },
   header: {
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
     paddingTop: 50,
     paddingBottom: 15,
     paddingHorizontal: 20,
@@ -345,7 +346,7 @@ const styles = StyleSheet.create({
     ...Platform.select({
       web: { boxShadow: '0px 4px 15px rgba(0, 0, 0, 0.2)' },
       // @ts-ignore
-      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 15 }
+      default: { shadowColor: colors.shadow, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 15 }
     }),
   },
   headerLeft: {
@@ -359,17 +360,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 20,
     fontWeight: 'bold',
     textAlign: 'center',
   },
   userInfoLabel: {
-    color: 'rgba(255,255,255,0.7)',
+    color: colors.primaryContrastMuted,
     fontSize: 10,
   },
   userInfo: {
-    color: '#B45309',
+    color: colors.userInfo,
     fontSize: 12,
     fontWeight: '600',
   },
@@ -383,28 +384,28 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   orderCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     borderRadius: 15,
     padding: 18,
     marginBottom: 15,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.08,
     shadowRadius: 10,
     elevation: 3,
   },
   itemCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     borderRadius: 15,
     padding: 18,
     marginBottom: 15,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.08,
     shadowRadius: 10,
     elevation: 3,
     borderLeftWidth: 5,
-    borderLeftColor: '#4CAF50',
+    borderLeftColor: colors.success,
   },
   itemHeader: {
     flexDirection: 'row',
@@ -415,11 +416,11 @@ const styles = StyleSheet.create({
   comandaNumber: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#8B2F2F',
+    color: colors.primary,
   },
   clientName: {
     fontSize: 14,
-    color: '#666',
+    color: colors.textSecondary,
     fontWeight: '600',
   },
   itemBody: {
@@ -431,60 +432,60 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: '#4CAF50',
+    backgroundColor: colors.success,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
   checkIconText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 18,
     fontWeight: '700',
   },
   itemName: {
     flex: 1,
     fontSize: 16,
-    color: '#333',
+    color: colors.text,
     fontWeight: '600',
   },
   orderNumber: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#8B2F2F',
+    color: colors.primary,
     marginBottom: 5,
   },
   orderClient: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#2C2C2C',
+    color: colors.text,
     marginBottom: 10,
   },
   orderObs: {
     fontSize: 14,
     fontStyle: 'italic',
-    color: '#E65100', // Orange highlighting
+    color: colors.warning,
     fontWeight: 'bold',
     marginBottom: 10,
-    backgroundColor: '#FFF3E0',
+    backgroundColor: colors.warningSurface,
     padding: 8,
     borderRadius: 8,
   },
   itemExtras: {
     fontSize: 14,
-    color: '#D32F2F',
+    color: colors.danger,
     fontWeight: 'bold',
     marginTop: 2,
     fontStyle: 'italic',
   },
   garcomText: {
     fontSize: 13,
-    color: '#2196F3',
+    color: colors.secondary,
     fontWeight: '600',
     marginBottom: 6,
   },
   finalizadoPorText: {
     fontSize: 13,
-    color: '#4CAF50',
+    color: colors.success,
     fontStyle: 'italic',
     marginBottom: 8,
   },
@@ -493,22 +494,22 @@ const styles = StyleSheet.create({
   },
   itemText: {
     fontSize: 14,
-    color: '#5C5C5C',
+    color: colors.textSecondary,
     paddingVertical: 3,
   },
   deliverBtn: {
-    backgroundColor: '#B45309',
+    backgroundColor: colors.secondary,
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
-    shadowColor: '#B45309',
+    shadowColor: colors.secondary,
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.3,
     shadowRadius: 20,
     elevation: 5,
   },
   deliverBtnText: {
-    color: '#2C2C2C',
+    color: colors.text,
     fontSize: 15,
     fontWeight: '700',
     letterSpacing: 0.5,
@@ -525,11 +526,11 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#8B2F2F',
+    color: colors.primary,
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#999',
+    color: colors.textSecondary,
   },
 });

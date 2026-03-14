@@ -212,9 +212,8 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         console.log('[OrderContext] Verificando caixa aberto...');
         const caixa = await CaixaService.getCaixaAberto(user.companyId);
         if (!caixa) {
-          console.warn('[OrderContext] ⚠️ Caixa não encontrado - prosseguindo sem validação (pode ser timeout)');
-          // Don't throw error - allow order creation to proceed
-          // This handles the case where Supabase query times out
+          console.warn('[OrderContext] ⚠️ Caixa não encontrado - bloqueando criação de pedido');
+          throw new Error('Caixa não está aberto');
         } else {
           console.log('[OrderContext] Caixa aberto:', caixa.id);
         }
