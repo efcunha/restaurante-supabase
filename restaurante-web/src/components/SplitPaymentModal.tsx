@@ -11,6 +11,7 @@ import {
 import { Order, OrderItem } from '../types/models';
 import { calcularPrecoItem, MenuItem } from '../utils/orderCalculator';
 import { useMenu } from '../hooks/useMenu';
+import { colors } from '../theme/colors';
 
 interface SplitPaymentModalProps {
   visible: boolean;
@@ -363,7 +364,7 @@ const styles = StyleSheet.create({
   container: {
     width: '100%',
     maxWidth: 450,
-    backgroundColor: '#FFF',
+    backgroundColor: colors.white,
     borderRadius: 16,
     overflow: 'hidden',
     maxHeight: '85%', // Reduced slightly to ensure it fits with padding
@@ -375,16 +376,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
     flexShrink: 0
   },
   title: {
-    color: '#FFF',
+    color: colors.white,
     fontSize: 18,
     fontWeight: 'bold'
   },
   closeBtn: {
-    color: '#FFF',
+    color: colors.white,
     fontSize: 20,
     fontWeight: 'bold',
     padding: 5
@@ -392,7 +393,7 @@ const styles = StyleSheet.create({
   tabs: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: '#EEE',
+    borderBottomColor: colors.border,
     flexShrink: 0
   },
   tab: {
@@ -402,16 +403,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9F9F9'
   },
   activeTab: {
-    backgroundColor: '#FFF',
+    backgroundColor: colors.white,
     borderBottomWidth: 2,
-    borderBottomColor: '#8B2F2F'
+    borderBottomColor: colors.primary
   },
   tabText: {
-    color: '#666',
+    color: colors.textSecondary,
     fontWeight: '600'
   },
   activeTabText: {
-    color: '#8B2F2F'
+    color: colors.primary
   },
   content: {
     padding: 20,
@@ -425,7 +426,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 16,
-    color: '#333',
+    color: colors.text,
     marginBottom: 15,
     fontWeight: '500'
   },
@@ -436,11 +437,11 @@ const styles = StyleSheet.create({
   },
   inputText: {
     fontSize: 18,
-    color: '#333'
+    color: colors.text
   },
   numberInput: {
     borderWidth: 1,
-    borderColor: '#CCC',
+    borderColor: colors.border,
     borderRadius: 8,
     padding: 10,
     width: 60,
@@ -450,7 +451,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 10
   },
   resultBox: {
-    backgroundColor: '#F5F1E8',
+    backgroundColor: colors.background,
     padding: 20,
     borderRadius: 12,
     width: '100%',
@@ -459,17 +460,17 @@ const styles = StyleSheet.create({
   },
   resultLabel: {
     fontSize: 14,
-    color: '#666',
+    color: colors.textSecondary,
     marginBottom: 5
   },
   resultValue: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#8B2F2F'
+    color: colors.primary
   },
   hint: {
     fontSize: 12,
-    color: '#888',
+    color: colors.textSecondary,
     textAlign: 'center'
   },
   itensContainer: {
@@ -487,7 +488,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#EEE'
+    borderBottomColor: colors.border
   },
   selectedItemRow: {
     backgroundColor: '#FFF3CD'
@@ -501,32 +502,32 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 4,
     borderWidth: 2,
-    borderColor: '#8B2F2F',
+    borderColor: colors.primary,
     marginRight: 12,
     justifyContent: 'center',
     alignItems: 'center'
   },
   checkmark: {
-    color: '#8B2F2F',
+    color: colors.primary,
     fontWeight: 'bold',
     fontSize: 16
   },
   itemName: {
     fontSize: 15,
-    color: '#333'
+    color: colors.text
   },
   itemPrice: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#333'
+    color: colors.text
   },
   paidText: {
     textDecorationLine: 'line-through',
-    color: '#999'
+    color: colors.textSecondary
   },
   emptyText: {
     textAlign: 'center',
-    color: '#999',
+    color: colors.textSecondary,
     marginTop: 20,
     fontStyle: 'italic'
   },
@@ -537,21 +538,21 @@ const styles = StyleSheet.create({
     marginTop: 15,
     paddingTop: 15,
     borderTopWidth: 1,
-    borderTopColor: '#EEE',
+    borderTopColor: colors.border,
     flexShrink: 0
   },
   footerLabel: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#333'
+    color: colors.text
   },
   footerValue: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#4CAF50'
+    color: colors.success
   },
   confirmBtn: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: colors.success,
     padding: 16,
     alignItems: 'center',
     margin: 20,
@@ -559,7 +560,7 @@ const styles = StyleSheet.create({
     flexShrink: 0
   },
   confirmBtnText: {
-    color: '#FFF',
+    color: colors.white,
     fontSize: 16,
     fontWeight: 'bold'
   }

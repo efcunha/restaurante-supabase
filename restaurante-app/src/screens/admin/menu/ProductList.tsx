@@ -1,6 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
+import { colors } from '../../../theme/colors';
 import { Product } from '../../../types';
 
 interface ProductListProps {
@@ -48,7 +49,7 @@ export default function ProductList({
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#8B2F2F" />
+        <ActivityIndicator size="large" color={colors.primary} />
         <Text style={styles.loadingText}>Carregando produtos...</Text>
       </View>
     );
@@ -130,27 +131,27 @@ export default function ProductList({
 const styles = StyleSheet.create({
     container: { marginBottom: 20 },
     filters: { flexDirection: 'row', marginBottom: 15 },
-    filterBtn: { backgroundColor: '#FFF', paddingVertical: 8, paddingHorizontal: 15, borderRadius: 20, marginRight: 10, borderWidth: 2, borderColor: '#B45309' },
-    filterBtnActive: { backgroundColor: '#B45309', borderColor: '#8B2F2F' },
-    filterBtnText: { color: '#666', fontWeight: '600', fontSize: 14 },
-    filterBtnTextActive: { color: '#2C2C2C' },
+    filterBtn: { backgroundColor: colors.white, paddingVertical: 8, paddingHorizontal: 15, borderRadius: 20, marginRight: 10, borderWidth: 2, borderColor: colors.secondary },
+    filterBtnActive: { backgroundColor: colors.secondary, borderColor: colors.primary },
+    filterBtnText: { color: colors.textSecondary, fontWeight: '600', fontSize: 14 },
+    filterBtnTextActive: { color: colors.text },
     
-    loadingContainer: { padding: 40, alignItems: 'center', backgroundColor: '#FFF', borderRadius: 15 },
-    loadingText: { color: '#999', marginTop: 15, fontSize: 14 },
+    loadingContainer: { padding: 40, alignItems: 'center', backgroundColor: colors.white, borderRadius: 15 },
+    loadingText: { color: colors.textSecondary, marginTop: 15, fontSize: 14 },
     
-    emptyContainer: { padding: 40, alignItems: 'center', backgroundColor: '#FFF', borderRadius: 15 },
-    emptyText: { color: '#999', fontSize: 16 },
+    emptyContainer: { padding: 40, alignItems: 'center', backgroundColor: colors.white, borderRadius: 15 },
+    emptyText: { color: colors.textSecondary, fontSize: 16 },
     
     // Original Card Style Restoration
     card: { 
-        backgroundColor: '#FFFFFF', 
+        backgroundColor: colors.white, 
         borderRadius: 15, 
         padding: 15, 
         marginBottom: 12, 
         flexDirection: 'row', // Side by Side
         justifyContent: 'space-between', 
         alignItems: 'center', 
-        shadowColor: '#000', 
+        shadowColor: colors.shadow, 
         shadowOffset: { width: 0, height: 2 }, 
         shadowOpacity: 0.08, 
         shadowRadius: 10, 
@@ -163,11 +164,11 @@ const styles = StyleSheet.create({
     cardTitle: { 
         fontSize: 16, 
         fontWeight: '700', 
-        color: '#2C2C2C', 
+        color: colors.text, 
         marginBottom: 4 
     },
     cardSubtitle: { 
-        color: '#999', 
+        color: colors.textSecondary, 
         fontSize: 12 
     },
     
@@ -191,10 +192,10 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         marginBottom: 5
     },
-    btnSuccess: { backgroundColor: '#7ED321' },
-    btnDanger: { backgroundColor: '#DC3545' },
-    btnStock: { backgroundColor: '#D2691E' },
-    btnEdit: { backgroundColor: '#B45309' },
-    btnDelete: { backgroundColor: '#DC3545' },
-    btnText: { color: '#FFF', fontSize: 11, fontWeight: '700' }
+    btnSuccess: { backgroundColor: colors.success },
+    btnDanger: { backgroundColor: colors.danger },
+    btnStock: { backgroundColor: colors.warning },
+    btnEdit: { backgroundColor: colors.secondary },
+    btnDelete: { backgroundColor: colors.danger },
+    btnText: { color: colors.white, fontSize: 11, fontWeight: '700' }
 });

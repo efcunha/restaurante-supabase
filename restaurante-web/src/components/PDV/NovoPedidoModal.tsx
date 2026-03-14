@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, ActivityIndicator, Alert } from 'react-native';
+import { colors } from '../../theme/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../config/SupabaseConfig';
 import { useAuth } from '../../context/AuthContext';
@@ -182,7 +183,7 @@ export default function NovoPedidoModal({ onClose }: NovoPedidoModalProps) {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-          <Ionicons name="close" size={28} color="#FFF" />
+          <Ionicons name="close" size={28} color={colors.white} />
         </TouchableOpacity>
         <Text style={styles.title}>Lançamento de Delivery</Text>
       </View>
@@ -191,7 +192,7 @@ export default function NovoPedidoModal({ onClose }: NovoPedidoModalProps) {
         {/* === LEFT PANEL: BROWSER === */}
         <View style={styles.leftPanel}>
           <View style={styles.searchBar}>
-            <Ionicons name="search" size={20} color="#666" style={{ marginRight: 10 }} />
+            <Ionicons name="search" size={20} color={colors.textSecondary} style={{ marginRight: 10 }} />
             <TextInput 
               style={styles.searchInput}
               placeholder="Buscar produtos pelo nome ou categoria..."
@@ -201,7 +202,7 @@ export default function NovoPedidoModal({ onClose }: NovoPedidoModalProps) {
           </View>
 
           {loadingProducts ? (
-            <ActivityIndicator size="large" color="#8B2F2F" style={{ marginTop: 50 }} />
+            <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 50 }} />
           ) : (
             <ScrollView contentContainerStyle={styles.productsGrid}>
               {filteredProducts.map(product => (
@@ -213,7 +214,7 @@ export default function NovoPedidoModal({ onClose }: NovoPedidoModalProps) {
                   <Text style={styles.productName} numberOfLines={2}>{product.name}</Text>
                   <Text style={styles.productPrice}>R$ {(product.price || 0).toFixed(2)}</Text>
                   <View style={styles.addButton}>
-                    <Ionicons name="add" size={20} color="#FFF" />
+                    <Ionicons name="add" size={20} color={colors.white} />
                   </View>
                 </TouchableOpacity>
               ))}
@@ -251,14 +252,14 @@ export default function NovoPedidoModal({ onClose }: NovoPedidoModalProps) {
                 </View>
                 <View style={styles.cartItemControls}>
                   <TouchableOpacity onPress={() => updateQuantity(item.id, -1)} style={styles.qtyBtn}>
-                    <Ionicons name="remove" size={16} color="#FFF" />
+                    <Ionicons name="remove" size={16} color={colors.white} />
                   </TouchableOpacity>
                   <Text style={styles.qtyText}>{item.quantity}</Text>
                   <TouchableOpacity onPress={() => updateQuantity(item.id, 1)} style={styles.qtyBtn}>
-                    <Ionicons name="add" size={16} color="#FFF" />
+                    <Ionicons name="add" size={16} color={colors.white} />
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={() => removeFromCart(item.id)} style={[styles.qtyBtn, { backgroundColor: '#DC3545', marginLeft: 15 }]}>
-                    <Ionicons name="trash" size={16} color="#FFF" />
+                  <TouchableOpacity onPress={() => removeFromCart(item.id)} style={[styles.qtyBtn, { backgroundColor: colors.danger, marginLeft: 15 }]}>
+                    <Ionicons name="trash" size={16} color={colors.white} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -285,7 +286,7 @@ export default function NovoPedidoModal({ onClose }: NovoPedidoModalProps) {
               disabled={isSubmitting || cart.length === 0}
             >
               {isSubmitting ? (
-                 <ActivityIndicator color="#FFF" />
+                 <ActivityIndicator color={colors.white} />
               ) : (
                 <Text style={styles.submitBtnText}>LANÇAR PEDIDO</Text>
               )}
@@ -300,21 +301,21 @@ export default function NovoPedidoModal({ onClose }: NovoPedidoModalProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F1E8',
+    backgroundColor: colors.background,
   },
   header: {
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
     flexDirection: 'row',
     alignItems: 'center',
     padding: 15,
     paddingTop: 45,
     elevation: 4,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
   },
   title: {
-    color: '#FFF',
+    color: colors.white,
     fontSize: 22,
     fontWeight: '700',
     marginLeft: 15,
@@ -331,19 +332,19 @@ const styles = StyleSheet.create({
     flex: 2,
     padding: 15,
     borderRightWidth: 1,
-    borderColor: '#E5E5E5',
-    backgroundColor: '#FFFFFF',
+    borderColor: colors.border,
+    backgroundColor: colors.white,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F5F5F5',
+    backgroundColor: colors.surfaceMuted,
     borderRadius: 10,
     paddingHorizontal: 15,
     paddingVertical: 12,
     marginBottom: 15,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: colors.border,
   },
   searchInput: {
     flex: 1,
@@ -359,14 +360,14 @@ const styles = StyleSheet.create({
   productCard: {
     width: '31%', // Fits 3 in a row
     minWidth: 150,
-    backgroundColor: '#FFF',
+    backgroundColor: colors.white,
     borderRadius: 12,
     padding: 15,
     marginBottom: 10,
     marginRight: '2%',
     borderWidth: 1,
-    borderColor: '#B45309',
-    shadowColor: '#000',
+    borderColor: colors.secondary,
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     elevation: 2,
@@ -375,18 +376,18 @@ const styles = StyleSheet.create({
   productName: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#333',
+    color: colors.text,
     marginBottom: 10,
     minHeight: 40,
   },
   productPrice: {
     fontSize: 16,
-    color: '#8B2F2F',
+    color: colors.primary,
     fontWeight: 'bold',
     marginBottom: 10,
   },
   addButton: {
-    backgroundColor: '#2e7d32',
+    backgroundColor: colors.success,
     alignSelf: 'flex-end',
     borderRadius: 20,
     width: 36,
@@ -396,7 +397,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: '#666',
+    color: colors.textSecondary,
     textAlign: 'center',
     width: '100%',
     marginTop: 40,
@@ -405,16 +406,16 @@ const styles = StyleSheet.create({
   rightPanel: {
     flex: 1,
     minWidth: 350,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: colors.background,
     display: 'flex',
     flexDirection: 'column',
   },
   typeSelector: {
     flexDirection: 'row',
     padding: 15,
-    backgroundColor: '#FFF',
+    backgroundColor: colors.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
+    borderBottomColor: colors.border,
   },
   typeBtn: {
     flex: 1,
@@ -422,20 +423,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#CCC',
+    borderColor: colors.border,
     marginHorizontal: 5,
   },
   typeBtnActive: {
-    backgroundColor: '#8B2F2F',
-    borderColor: '#8B2F2F',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   typeBtnText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#666',
+    color: colors.textSecondary,
   },
   typeBtnTextActive: {
-    color: '#FFF',
+    color: colors.white,
   },
   cartContainer: {
     flex: 1,
@@ -445,12 +446,12 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     paddingBottom: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    borderBottomColor: colors.border,
   },
   input: {
-    backgroundColor: '#FFF',
+    backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: '#CCC',
+    borderColor: colors.border,
     borderRadius: 8,
     padding: 12,
     marginBottom: 10,
@@ -468,12 +469,12 @@ const styles = StyleSheet.create({
   feeLabel: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
   },
   feeInput: {
-    backgroundColor: '#FFF',
+    backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: '#CCC',
+    borderColor: colors.border,
     borderRadius: 8,
     padding: 10,
     width: 100,
@@ -485,15 +486,15 @@ const styles = StyleSheet.create({
   cartItemsTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: colors.text,
   },
   cartItemRow: {
-    backgroundColor: '#FFF',
+    backgroundColor: colors.white,
     padding: 12,
     borderRadius: 8,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#E5E5E5',
+    borderColor: colors.border,
   },
   cartItemInfo: {
     flexDirection: 'row',
@@ -503,13 +504,13 @@ const styles = StyleSheet.create({
   cartItemName: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
     flex: 1,
   },
   cartItemPrice: {
     fontSize: 15,
     fontWeight: 'bold',
-    color: '#8B2F2F',
+    color: colors.primary,
   },
   cartItemControls: {
     flexDirection: 'row',
@@ -517,7 +518,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   qtyBtn: {
-    backgroundColor: '#666',
+    backgroundColor: colors.textSecondary,
     width: 30,
     height: 30,
     borderRadius: 15,
@@ -533,15 +534,15 @@ const styles = StyleSheet.create({
   },
   emptyCart: {
     textAlign: 'center',
-    color: '#999',
+    color: colors.textSecondary,
     marginTop: 20,
     fontStyle: 'italic',
   },
   checkoutFooter: {
-    backgroundColor: '#FFF',
+    backgroundColor: colors.white,
     padding: 20,
     borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
+    borderTopColor: colors.border,
     elevation: 10,
   },
   totalRow: {
@@ -552,7 +553,7 @@ const styles = StyleSheet.create({
   },
   totalLabel: {
     fontSize: 16,
-    color: '#666',
+    color: colors.textSecondary,
   },
   totalValue: {
     fontSize: 16,
@@ -561,25 +562,25 @@ const styles = StyleSheet.create({
   totalLabelBig: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: colors.text,
   },
   totalValueBig: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#8B2F2F',
+    color: colors.primary,
   },
   submitBtn: {
-    backgroundColor: '#2e7d32',
+    backgroundColor: colors.success,
     padding: 16,
     borderRadius: 10,
     alignItems: 'center',
     marginTop: 15,
   },
   submitBtnDisabled: {
-    backgroundColor: '#A5D6A7',
+    backgroundColor: colors.disabled,
   },
   submitBtnText: {
-    color: '#FFF',
+    color: colors.white,
     fontSize: 18,
     fontWeight: 'bold',
     letterSpacing: 1,

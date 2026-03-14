@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, StyleSheet } from 'react-native';
+import { colors } from '../../../theme/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { Product } from '../../../types';
 
@@ -42,7 +43,7 @@ function VariacaoItem({ variacao, onSalvar }: VariacaoItemProps) {
         <>
           <Text style={styles.itemText}>{variacao.name} - R$ {Number(variacao.price).toFixed(2)}</Text>
           <TouchableOpacity onPress={() => setEditando(true)}>
-            <Ionicons name="pencil" size={20} color="#444" />
+            <Ionicons name="pencil" size={20} color={colors.text} />
           </TouchableOpacity>
         </>
       )}
@@ -103,18 +104,18 @@ export default function VariationManager({
 }
 
 const styles = StyleSheet.create({
-    overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-    content: { backgroundColor: '#FFF', width: '100%', maxWidth: 500, borderRadius: 20, padding: 20, maxHeight: '80%' },
+    overlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', alignItems: 'center', padding: 20 },
+    content: { backgroundColor: colors.white, width: '100%', maxWidth: 500, borderRadius: 20, padding: 20, maxHeight: '80%' },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
-    title: { fontSize: 20, fontWeight: 'bold', color: '#8B2F2F' },
-    close: { fontSize: 24, color: '#999', padding: 5 },
+    title: { fontSize: 20, fontWeight: 'bold', color: colors.primary },
+    close: { fontSize: 24, color: colors.textSecondary, padding: 5 },
     list: { marginBottom: 15 },
-    variacaoContainer: { marginBottom: 15, borderBottomWidth: 1, borderColor: '#eee', paddingBottom: 10 },
+    variacaoContainer: { marginBottom: 15, borderBottomWidth: 1, borderColor: colors.border, paddingBottom: 10 },
     itemRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 },
-    itemText: { fontSize: 16, color: '#333' },
-    inputSmall: { borderWidth: 1, borderColor: '#ccc', borderRadius: 5, padding: 5, fontSize: 14 },
-    miniStockBtn: { backgroundColor: '#eee', padding: 8, borderRadius: 6, alignItems: 'center', alignSelf: 'flex-start' },
-    miniStockText: { fontSize: 12, color: '#555', fontWeight: 'bold' },
-    closeBtn: { backgroundColor: '#8B2F2F', padding: 12, borderRadius: 10, alignItems: 'center' },
-    closeBtnText: { color: '#FFF', fontWeight: 'bold' }
+    itemText: { fontSize: 16, color: colors.text },
+    inputSmall: { borderWidth: 1, borderColor: colors.border, borderRadius: 5, padding: 5, fontSize: 14, color: colors.text },
+    miniStockBtn: { backgroundColor: colors.surfaceMuted, padding: 8, borderRadius: 6, alignItems: 'center', alignSelf: 'flex-start' },
+    miniStockText: { fontSize: 12, color: colors.textSecondary, fontWeight: 'bold' },
+    closeBtn: { backgroundColor: colors.primary, padding: 12, borderRadius: 10, alignItems: 'center' },
+    closeBtnText: { color: colors.white, fontWeight: 'bold' }
 });

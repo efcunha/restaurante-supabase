@@ -8,6 +8,7 @@ import { SalesByDayChart, SalesByPaymentChart } from '../components/FinancialCha
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../config/SupabaseConfig';
 import { ScreenScaffold } from '../layouts/ScreenScaffold';
+import { colors } from '../theme/colors';
 
 // Tipos para as props dos componentes internos
 interface KPICardProps {
@@ -22,7 +23,7 @@ interface KPICardProps {
 const KPICard: React.FC<KPICardProps> = ({ title, value, subtext, icon, color }) => (
     <View style={styles.kpiCard}>
         <View style={[styles.kpiIconContainer, { backgroundColor: color || '#B45309' }]}>
-            <Ionicons name={icon || 'stats-chart'} size={24} color="#FFF" />
+            <Ionicons name={icon || 'stats-chart'} size={24} color={colors.white} />
         </View>
         <View style={styles.kpiContent}>
             <Text style={styles.kpiLabel}>{String(title)}</Text>
@@ -242,9 +243,9 @@ export default function FinancialDashboardScreen({ onClose }: FinancialDashboard
 
             // 6. Preparar dados para Gráfico de Pizza (Pagamentos)
             const pieData = [
-                { name: 'Dinheiro', population: Math.round(formasPagamento.dinheiro * 100) / 100, color: '#4CAF50', legendFontColor: '#7F7F7F', legendFontSize: 12 },
-                { name: 'Pix', population: Math.round(formasPagamento.pix * 100) / 100, color: '#2196F3', legendFontColor: '#7F7F7F', legendFontSize: 12 },
-                { name: 'Débito', population: Math.round(formasPagamento.debito * 100) / 100, color: '#FF9800', legendFontColor: '#7F7F7F', legendFontSize: 12 },
+                { name: 'Dinheiro', population: Math.round(formasPagamento.dinheiro * 100) / 100, color: colors.success, legendFontColor: '#7F7F7F', legendFontSize: 12 },
+                { name: 'Pix', population: Math.round(formasPagamento.pix * 100) / 100, color: colors.secondary, legendFontColor: '#7F7F7F', legendFontSize: 12 },
+                { name: 'Débito', population: Math.round(formasPagamento.debito * 100) / 100, color: colors.warning, legendFontColor: '#7F7F7F', legendFontSize: 12 },
                 { name: 'Crédito', population: Math.round(formasPagamento.credito * 100) / 100, color: '#9C27B0', legendFontColor: '#7F7F7F', legendFontSize: 12 },
                 { name: 'Outros', population: Math.round(formasPagamento.outros * 100) / 100, color: '#607D8B', legendFontColor: '#7F7F7F', legendFontSize: 12 },
             ].filter(item => item.population > 0);
@@ -297,7 +298,7 @@ export default function FinancialDashboardScreen({ onClose }: FinancialDashboard
 
             {loading ? (
                 <View style={styles.center}>
-                    <ActivityIndicator size="large" color="#8B2F2F" />
+                    <ActivityIndicator size="large" color={colors.primary} />
                 </View>
             ) : (
                 <ScrollView style={styles.content}>
@@ -307,13 +308,13 @@ export default function FinancialDashboardScreen({ onClose }: FinancialDashboard
                             title="Faturamento"
                             value={formatCurrency(kpis.faturamento)}
                             icon="cash-outline"
-                            color="#4CAF50"
+                            color={colors.success}
                         />
                         <KPICard
                             title="Ticket Médio"
                             value={formatCurrency(kpis.ticketMedio)}
                             icon="wallet-outline"
-                            color="#2196F3"
+                            color={colors.secondary}
                         />
                     </View>
                     <View style={styles.kpiRow}>
@@ -321,7 +322,7 @@ export default function FinancialDashboardScreen({ onClose }: FinancialDashboard
                             title="Pedidos"
                             value={kpis.pedidos}
                             icon="receipt-outline"
-                            color="#FF9800"
+                            color={colors.warning}
                         />
                         <KPICard
                             title="Top Produto"
@@ -339,7 +340,7 @@ export default function FinancialDashboardScreen({ onClose }: FinancialDashboard
                             <View style={styles.kpiRow}>
                                 <View style={[styles.kpiCard, styles.cancelamentoCard]}>
                                     <View style={[styles.kpiIconContainer, { backgroundColor: '#E65100' }]}>
-                                        <Ionicons name="close-circle-outline" size={24} color="#FFF" />
+                                        <Ionicons name="close-circle-outline" size={24} color={colors.white} />
                                     </View>
                                     <View style={styles.kpiContent}>
                                         <Text style={styles.kpiLabel}>Total Cancelado</Text>
@@ -348,7 +349,7 @@ export default function FinancialDashboardScreen({ onClose }: FinancialDashboard
                                 </View>
                                 <View style={[styles.kpiCard, styles.cancelamentoCard]}>
                                     <View style={[styles.kpiIconContainer, { backgroundColor: '#E65100' }]}>
-                                        <Ionicons name="alert-circle-outline" size={24} color="#FFF" />
+                                        <Ionicons name="alert-circle-outline" size={24} color={colors.white} />
                                     </View>
                                     <View style={styles.kpiContent}>
                                         <Text style={styles.kpiLabel}>Comandas Canceladas</Text>
@@ -385,21 +386,21 @@ const styles = StyleSheet.create({
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
     filterContainer: { flexDirection: 'row', justifyContent: 'center', marginVertical: 15, gap: 10 },
-    filterBtn: { paddingVertical: 8, paddingHorizontal: 20, borderRadius: 20, backgroundColor: '#E0D8C8' },
-    filterBtnActive: { backgroundColor: '#8B2F2F' },
-    filterText: { color: '#666', fontWeight: 'bold' },
-    filterTextActive: { color: '#FFF' },
+    filterBtn: { paddingVertical: 8, paddingHorizontal: 20, borderRadius: 20, backgroundColor: colors.border },
+    filterBtnActive: { backgroundColor: colors.primary },
+    filterText: { color: colors.textSecondary, fontWeight: 'bold' },
+    filterTextActive: { color: colors.white },
 
     kpiRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
-    kpiCard: { flex: 1, backgroundColor: '#FFF', borderRadius: 12, padding: 15, flexDirection: 'row', alignItems: 'center', elevation: 2 },
+    kpiCard: { flex: 1, backgroundColor: colors.white, borderRadius: 12, padding: 15, flexDirection: 'row', alignItems: 'center', elevation: 2 },
     kpiIconContainer: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
     kpiContent: { flex: 1 },
-    kpiLabel: { fontSize: 12, color: '#666', marginBottom: 2 },
-    kpiValue: { fontSize: 16, fontWeight: 'bold', color: '#333' },
-    kpiSubtext: { fontSize: 10, color: '#999' },
+    kpiLabel: { fontSize: 12, color: colors.textSecondary, marginBottom: 2 },
+    kpiValue: { fontSize: 16, fontWeight: 'bold', color: colors.text },
+    kpiSubtext: { fontSize: 10, color: colors.textSecondary },
 
-    sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#8B2F2F', marginTop: 20, marginBottom: 10, marginLeft: 5 },
-    emptyChart: { padding: 30, alignItems: 'center', backgroundColor: '#FFF', borderRadius: 10 },
+    sectionTitle: { fontSize: 18, fontWeight: 'bold', color: colors.primary, marginTop: 20, marginBottom: 10, marginLeft: 5 },
+    emptyChart: { padding: 30, alignItems: 'center', backgroundColor: colors.white, borderRadius: 10 },
 
     cancelamentoSection: { marginTop: 15, marginBottom: 10 },
     cancelamentoTitle: { fontSize: 16, fontWeight: 'bold', color: '#E65100', marginBottom: 10, marginLeft: 5 },

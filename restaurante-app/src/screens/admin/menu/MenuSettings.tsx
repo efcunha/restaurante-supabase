@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, StyleSheet } from 'react-native';
+import { colors } from '../../../theme/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { PizzaSize, PizzaConfig } from '../../../types';
 
@@ -132,7 +133,7 @@ export default function MenuSettings({
                                         onChangeText={setNewSizeFlavors}
                                     />
                                     <TouchableOpacity style={styles.addBtn} onPress={handleAddSize}>
-                                        <Ionicons name={editingSizeIdx >= 0 ? "checkmark" : "add"} size={24} color="#FFF" />
+                                        <Ionicons name={editingSizeIdx >= 0 ? "checkmark" : "add"} size={24} color={colors.white} />
                                     </TouchableOpacity>
                                 </View>
 
@@ -144,7 +145,7 @@ export default function MenuSettings({
                                                 <Ionicons name={size.active !== false ? "eye" : "eye-off"} size={20} color={size.active !== false ? "green" : "gray"} />
                                             </TouchableOpacity>
                                             <TouchableOpacity onPress={() => handleEditSize(idx)}>
-                                                <Ionicons name="pencil" size={20} color="#444" />
+                                                <Ionicons name="pencil" size={20} color={colors.text} />
                                             </TouchableOpacity>
                                             <TouchableOpacity onPress={() => handleRemoveSize(idx)}>
                                                 <Ionicons name="trash" size={20} color="red" />
@@ -163,7 +164,7 @@ export default function MenuSettings({
                                         onChangeText={setNewCaldo}
                                     />
                                     <TouchableOpacity style={styles.addBtn} onPress={handleAddCaldo}>
-                                        <Ionicons name={editingCaldoIdx >= 0 ? "checkmark" : "add"} size={24} color="#FFF" />
+                                        <Ionicons name={editingCaldoIdx >= 0 ? "checkmark" : "add"} size={24} color={colors.white} />
                                     </TouchableOpacity>
                                 </View>
                                 {localCaldos.map((item, idx) => (
@@ -171,7 +172,7 @@ export default function MenuSettings({
                                         <Text style={styles.rowText}>{item}</Text>
                                         <View style={styles.actions}>
                                             <TouchableOpacity onPress={() => { setNewCaldo(item); setEditingCaldoIdx(idx); }}>
-                                                <Ionicons name="pencil" size={20} color="#444" />
+                                                <Ionicons name="pencil" size={20} color={colors.text} />
                                             </TouchableOpacity>
                                             <TouchableOpacity onPress={() => {
                                                 const updated = localCaldos.filter((_, i) => i !== idx);
@@ -196,22 +197,22 @@ export default function MenuSettings({
 }
 
 const styles = StyleSheet.create({
-    overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-    content: { backgroundColor: '#FFF', width: '100%', maxWidth: 500, borderRadius: 20, padding: 20, maxHeight: '90%', height: 600 },
+    overlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', alignItems: 'center', padding: 20 },
+    content: { backgroundColor: colors.white, width: '100%', maxWidth: 500, borderRadius: 20, padding: 20, maxHeight: '90%', height: 600 },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-    title: { fontSize: 20, fontWeight: 'bold', color: '#8B2F2F' },
-    close: { fontSize: 24, color: '#999', padding: 5 },
-    tabs: { flexDirection: 'row', marginBottom: 15, borderBottomWidth: 1, borderColor: '#eee' },
+    title: { fontSize: 20, fontWeight: 'bold', color: colors.primary },
+    close: { fontSize: 24, color: colors.textSecondary, padding: 5 },
+    tabs: { flexDirection: 'row', marginBottom: 15, borderBottomWidth: 1, borderColor: colors.border },
     tab: { flex: 1, alignItems: 'center', paddingVertical: 10, borderBottomWidth: 2, borderColor: 'transparent' },
-    tabActive: { borderColor: '#8B2F2F' },
-    tabText: { color: '#999', fontWeight: 'bold' },
-    tabTextActive: { color: '#8B2F2F' },
+    tabActive: { borderColor: colors.primary },
+    tabText: { color: colors.textSecondary, fontWeight: 'bold' },
+    tabTextActive: { color: colors.primary },
     addRow: { flexDirection: 'row', gap: 10, marginBottom: 15 },
-    input: { backgroundColor: '#F5F1E8', borderRadius: 8, padding: 10, borderWidth: 1, borderColor: '#eee' },
-    addBtn: { backgroundColor: '#8B2F2F', padding: 10, borderRadius: 8, justifyContent: 'center' },
-    row: { flexDirection: 'row', justifyContent: 'space-between', padding: 10, borderBottomWidth: 1, borderColor: '#eee', alignItems: 'center' },
-    rowText: { fontSize: 16, color: '#333' },
+    input: { backgroundColor: colors.background, borderRadius: 8, padding: 10, borderWidth: 1, borderColor: colors.border },
+    addBtn: { backgroundColor: colors.primary, padding: 10, borderRadius: 8, justifyContent: 'center' },
+    row: { flexDirection: 'row', justifyContent: 'space-between', padding: 10, borderBottomWidth: 1, borderColor: colors.border, alignItems: 'center' },
+    rowText: { fontSize: 16, color: colors.text },
     actions: { flexDirection: 'row', gap: 10 },
-    saveBtn: { backgroundColor: '#8B2F2F', padding: 15, borderRadius: 12, alignItems: 'center', marginTop: 10 },
-    saveText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 }
+    saveBtn: { backgroundColor: colors.primary, padding: 15, borderRadius: 12, alignItems: 'center', marginTop: 10 },
+    saveText: { color: colors.white, fontWeight: 'bold', fontSize: 16 }
 });

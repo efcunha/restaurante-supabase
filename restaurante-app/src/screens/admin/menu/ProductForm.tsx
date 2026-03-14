@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, StyleSheet, Alert, ActivityIndicator, Switch } from 'react-native';
+import { colors } from '../../../theme/colors';
 import { ProductFormData, ProductFormProps } from './types';
 
 export default function ProductForm({
@@ -113,7 +114,7 @@ export default function ProductForm({
                 value={name} 
                 onChangeText={setName} 
                 placeholder="Nome do Produto" 
-                placeholderTextColor="#999"
+                placeholderTextColor={colors.textSecondary}
               />
 
               <Text style={styles.label}>Categoria:</Text>
@@ -124,7 +125,7 @@ export default function ProductForm({
                         style={[styles.catBtn, category === cat.value && styles.catBtnActive]}
                         onPress={() => setCategory(cat.value)}
                      >
-                        <Text style={[styles.catText, category === cat.value && styles.catTextActive]}>{cat.label}</Text>
+                                <Text style={[styles.catText, category === cat.value && styles.catTextActive]}>{cat.label}</Text>
                      </TouchableOpacity>
                  ))}
               </View>
@@ -142,7 +143,7 @@ export default function ProductForm({
                                   onChangeText={t => setPizzaPrices(prev => ({ ...prev, [size.name]: t }))}
                                   keyboardType="numeric"
                                   placeholder="0.00"
-                                  placeholderTextColor="#ccc"
+                                  placeholderTextColor={colors.textSecondary}
                                 />
                             </View>
                         ))}
@@ -156,7 +157,7 @@ export default function ProductForm({
                           <Switch 
                             value={createVariations} 
                             onValueChange={setCreateVariations}
-                            trackColor={{ false: "#767577", true: "#8B2F2F" }}
+                                                        trackColor={{ false: colors.disabled, true: colors.primary }}
                           />
                       </View>
 
@@ -184,7 +185,7 @@ export default function ProductForm({
                                 onChangeText={setPrice}
                                 keyboardType="numeric"
                                 placeholder="0.00"
-                                placeholderTextColor="#999"
+                                placeholderTextColor={colors.textSecondary}
                             />
                         </View>
                       )}
@@ -198,7 +199,7 @@ export default function ProductForm({
                         onChangeText={setPrice}
                         keyboardType="numeric"
                         placeholder="0.00"
-                        placeholderTextColor="#999"
+                        placeholderTextColor={colors.textSecondary}
                       />
                   </View>
               )}
@@ -210,7 +211,7 @@ export default function ProductForm({
                )}
 
                <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={isLoading}>
-                   {isLoading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.saveText}>SALVAR DADOS</Text>}
+                   {isLoading ? <ActivityIndicator color={colors.white} /> : <Text style={styles.saveText}>SALVAR DADOS</Text>}
                </TouchableOpacity>
            </ScrollView>
         </View>
@@ -220,25 +221,25 @@ export default function ProductForm({
 }
 
 const styles = StyleSheet.create({
-    overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-    content: { backgroundColor: '#FFF', width: '100%', maxWidth: 400, borderRadius: 20, padding: 20, maxHeight: '90%', shadowColor: '#000', elevation: 10 },
+    overlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', alignItems: 'center', padding: 20 },
+    content: { backgroundColor: colors.white, width: '100%', maxWidth: 400, borderRadius: 20, padding: 20, maxHeight: '90%', shadowColor: colors.shadow, elevation: 10 },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-    title: { fontSize: 20, fontWeight: 'bold', color: '#8B2F2F' },
-    close: { fontSize: 24, color: '#999', padding: 5 },
-    label: { fontSize: 14, fontWeight: '600', color: '#666', marginBottom: 8, marginLeft: 4 },
-    input: { backgroundColor: '#F5F1E8', borderRadius: 12, padding: 15, fontSize: 16, color: '#333', marginBottom: 15 },
+    title: { fontSize: 20, fontWeight: 'bold', color: colors.primary },
+    close: { fontSize: 24, color: colors.textSecondary, padding: 5 },
+    label: { fontSize: 14, fontWeight: '600', color: colors.textSecondary, marginBottom: 8, marginLeft: 4 },
+    input: { backgroundColor: colors.background, borderRadius: 12, padding: 15, fontSize: 16, color: colors.text, marginBottom: 15 },
     catContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 15 },
-    catBtn: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, backgroundColor: '#F5F1E8', borderWidth: 2, borderColor: '#B45309' },
-    catBtnActive: { backgroundColor: '#B45309', borderColor: '#8B2F2F' },
-    catText: { fontSize: 13, fontWeight: '600', color: '#666' },
-    catTextActive: { color: '#2C2C2C' },
+    catBtn: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, backgroundColor: colors.background, borderWidth: 2, borderColor: colors.secondary },
+    catBtnActive: { backgroundColor: colors.secondary, borderColor: colors.primary },
+    catText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
+    catTextActive: { color: colors.text },
     grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
     gridItem: { width: '47%', marginBottom: 10 },
-    smallLabel: { fontSize: 12, color: '#8B2F2F', marginBottom: 5, fontWeight: 'bold' },
-    inputCenter: { backgroundColor: '#F5F1E8', borderRadius: 8, padding: 12, fontSize: 16, textAlign: 'center', borderWidth: 1, borderColor: '#B45309' },
-    stockBtn: { backgroundColor: '#333', padding: 12, borderRadius: 10, alignItems: 'center', marginBottom: 15 },
-    stockText: { color: '#FFF', fontWeight: 'bold' },
-    saveBtn: { backgroundColor: '#8B2F2F', padding: 15, borderRadius: 12, alignItems: 'center', marginTop: 10 },
-    saveText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
+    smallLabel: { fontSize: 12, color: colors.primary, marginBottom: 5, fontWeight: 'bold' },
+    inputCenter: { backgroundColor: colors.background, borderRadius: 8, padding: 12, fontSize: 16, textAlign: 'center', borderWidth: 1, borderColor: colors.secondary },
+    stockBtn: { backgroundColor: colors.text, padding: 12, borderRadius: 10, alignItems: 'center', marginBottom: 15 },
+    stockText: { color: colors.white, fontWeight: 'bold' },
+    saveBtn: { backgroundColor: colors.primary, padding: 15, borderRadius: 12, alignItems: 'center', marginTop: 10 },
+    saveText: { color: colors.white, fontWeight: 'bold', fontSize: 16 },
     switchContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }
 });

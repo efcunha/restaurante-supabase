@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
 import MFAService from '../services/MFAService';
 import { useAuth } from '../context/AuthContext';
+import { colors } from '../theme/colors';
 
 interface Props {
   visible: boolean;
@@ -93,7 +94,7 @@ export default function MFASetupModal({ visible, onClose, onSuccess }: Props) {
   const renderIntro = () => (
     <View style={styles.stepContainer}>
       <View style={styles.iconContainer}>
-        <Ionicons name="shield-checkmark" size={64} color="#8B2F2F" />
+        <Ionicons name="shield-checkmark" size={64} color={colors.primary} />
       </View>
 
       <Text style={styles.title}>Autenticação de Dois Fatores</Text>
@@ -104,15 +105,15 @@ export default function MFASetupModal({ visible, onClose, onSuccess }: Props) {
 
       <View style={styles.benefitsList}>
         <View style={styles.benefitItem}>
-          <Ionicons name="checkmark-circle" size={24} color="#2E7D32" />
+          <Ionicons name="checkmark-circle" size={24} color={colors.success} />
           <Text style={styles.benefitText}>Proteção contra acesso não autorizado</Text>
         </View>
         <View style={styles.benefitItem}>
-          <Ionicons name="checkmark-circle" size={24} color="#2E7D32" />
+          <Ionicons name="checkmark-circle" size={24} color={colors.success} />
           <Text style={styles.benefitText}>Códigos de backup para emergências</Text>
         </View>
         <View style={styles.benefitItem}>
-          <Ionicons name="checkmark-circle" size={24} color="#2E7D32" />
+          <Ionicons name="checkmark-circle" size={24} color={colors.success} />
           <Text style={styles.benefitText}>Obrigatório para administradores</Text>
         </View>
       </View>
@@ -123,7 +124,7 @@ export default function MFASetupModal({ visible, onClose, onSuccess }: Props) {
         disabled={loading}
       >
         {loading ? (
-          <ActivityIndicator color="#FFF" />
+          <ActivityIndicator color={colors.white} />
         ) : (
           <Text style={styles.primaryButtonText}>Começar Configuração</Text>
         )}
@@ -166,7 +167,7 @@ export default function MFASetupModal({ visible, onClose, onSuccess }: Props) {
         disabled={loading || verificationCode.length !== 6}
       >
         {loading ? (
-          <ActivityIndicator color="#FFF" />
+          <ActivityIndicator color={colors.white} />
         ) : (
           <Text style={styles.primaryButtonText}>Verificar Código</Text>
         )}
@@ -181,7 +182,7 @@ export default function MFASetupModal({ visible, onClose, onSuccess }: Props) {
   const renderBackupCodes = () => (
     <ScrollView style={styles.stepContainer}>
       <View style={styles.iconContainer}>
-        <Ionicons name="key" size={64} color="#8B2F2F" />
+        <Ionicons name="key" size={64} color={colors.primary} />
       </View>
 
       <Text style={styles.title}>Códigos de Backup</Text>
@@ -191,7 +192,7 @@ export default function MFASetupModal({ visible, onClose, onSuccess }: Props) {
       </Text>
 
       <View style={styles.warningBox}>
-        <Ionicons name="warning" size={24} color="#F57C00" />
+        <Ionicons name="warning" size={24} color={colors.warning} />
         <Text style={styles.warningText}>
           Cada código pode ser usado apenas uma vez. Não compartilhe com ninguém.
         </Text>
@@ -207,7 +208,7 @@ export default function MFASetupModal({ visible, onClose, onSuccess }: Props) {
       </View>
 
       <TouchableOpacity style={styles.copyButton} onPress={handleCopyBackupCodes}>
-        <Ionicons name="copy-outline" size={20} color="#8B2F2F" />
+        <Ionicons name="copy-outline" size={20} color={colors.primary} />
         <Text style={styles.copyButtonText}>Copiar Códigos</Text>
       </TouchableOpacity>
 
@@ -223,7 +224,7 @@ export default function MFASetupModal({ visible, onClose, onSuccess }: Props) {
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Configurar MFA</Text>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Ionicons name="close" size={28} color="#333" />
+            <Ionicons name="close" size={28} color={colors.text} />
           </TouchableOpacity>
         </View>
 
@@ -240,10 +241,10 @@ export default function MFASetupModal({ visible, onClose, onSuccess }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F1E8',
+    backgroundColor: colors.background,
   },
   header: {
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
     paddingTop: 50,
     paddingBottom: 15,
     paddingHorizontal: 20,
@@ -254,7 +255,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#FFF',
+    color: colors.white,
   },
   closeButton: {
     padding: 5,
@@ -271,13 +272,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#333',
+    color: colors.text,
     marginBottom: 10,
     textAlign: 'center',
   },
   description: {
     fontSize: 16,
-    color: '#666',
+    color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: 20,
     lineHeight: 24,
@@ -293,16 +294,16 @@ const styles = StyleSheet.create({
   },
   benefitText: {
     fontSize: 16,
-    color: '#333',
+    color: colors.text,
     marginLeft: 10,
     flex: 1,
   },
   qrCodeContainer: {
-    backgroundColor: '#FFF',
+    backgroundColor: colors.white,
     padding: 20,
     borderRadius: 10,
     marginBottom: 20,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -310,14 +311,14 @@ const styles = StyleSheet.create({
   },
   instructionText: {
     fontSize: 14,
-    color: '#666',
+    color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: 15,
   },
   codeInput: {
-    backgroundColor: '#FFF',
+    backgroundColor: colors.white,
     borderWidth: 2,
-    borderColor: '#8B2F2F',
+    borderColor: colors.primary,
     borderRadius: 10,
     padding: 15,
     fontSize: 24,
@@ -334,7 +335,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginBottom: 20,
     borderLeftWidth: 4,
-    borderLeftColor: '#F57C00',
+    borderLeftColor: colors.warning,
   },
   warningText: {
     fontSize: 14,
@@ -344,7 +345,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   codesContainer: {
-    backgroundColor: '#FFF',
+    backgroundColor: colors.white,
     borderRadius: 10,
     padding: 15,
     marginBottom: 20,
@@ -355,18 +356,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0D8C8',
+    borderBottomColor: colors.border,
   },
   codeNumber: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#999',
+    color: colors.textSecondary,
     width: 30,
   },
   codeText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#333',
+    color: colors.text,
     fontFamily: 'monospace',
     letterSpacing: 2,
   },
@@ -374,9 +375,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFF',
+    backgroundColor: colors.white,
     borderWidth: 2,
-    borderColor: '#8B2F2F',
+    borderColor: colors.primary,
     borderRadius: 10,
     padding: 15,
     marginBottom: 20,
@@ -385,11 +386,11 @@ const styles = StyleSheet.create({
   copyButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#8B2F2F',
+    color: colors.primary,
     marginLeft: 8,
   },
   primaryButton: {
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
     borderRadius: 10,
     padding: 15,
     alignItems: 'center',
@@ -399,7 +400,7 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#FFF',
+    color: colors.white,
   },
   secondaryButton: {
     backgroundColor: 'transparent',
@@ -411,7 +412,7 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#8B2F2F',
+    color: colors.primary,
   },
   buttonDisabled: {
     opacity: 0.5,

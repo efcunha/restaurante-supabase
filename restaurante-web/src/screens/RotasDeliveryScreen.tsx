@@ -9,6 +9,7 @@ import { exitApp } from '../utils/appUtils';
 import OptimizedFlatList from '../components/OptimizedFlatList';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { colors } from '../theme/colors';
 
 export default function RotasDeliveryScreen() {
   const { user } = useAuth();
@@ -229,7 +230,7 @@ export default function RotasDeliveryScreen() {
         {/* INFORMAÇÕES DO CLIENTE */}
         <View style={styles.infoBlock}>
             <View style={styles.infoRow}>
-               <Ionicons name="location" size={20} color="#8B2F2F" />
+               <Ionicons name="location" size={20} color={colors.primary} />
                <Text style={styles.infoText} numberOfLines={2}>{item.deliveryAddress || 'Retirada/Endereço não informado'}</Text>
             </View>
             
@@ -244,13 +245,13 @@ export default function RotasDeliveryScreen() {
 
         <View style={styles.infoBlock}>
             <View style={styles.infoRow}>
-               <Ionicons name="wallet" size={20} color="#B45309" />
+               <Ionicons name="wallet" size={20} color={colors.secondary} />
                <Text style={styles.infoTextBold}>{item.paymentMethod || 'A Confirmar na Entrega'}</Text>
             </View>
             
             {!!item.customerPhone && (
                 <TouchableOpacity style={styles.whatsappButtonSmall} onPress={() => openWhatsApp(item.customerPhone, item.customerName)}>
-                   <Ionicons name="logo-whatsapp" size={16} color="#FFF" />
+                   <Ionicons name="logo-whatsapp" size={16} color={colors.white} />
                    <Text style={styles.whatsappTextSmall}>Message</Text>
                 </TouchableOpacity>
             )}
@@ -277,7 +278,7 @@ export default function RotasDeliveryScreen() {
         >
           {/* @ts-ignore */}
           {processingItems.has(item.id) ? (
-              <ActivityIndicator color="#FFF" />
+              <ActivityIndicator color={colors.white} />
           ) : (
               <Text style={styles.actionBtnText}>
                 {isDispatched ? '✅ ENTREGUE COM SUCESSO' : '🚚 SAIU PARA ENTREGA'}
@@ -305,7 +306,7 @@ export default function RotasDeliveryScreen() {
         <View style={styles.headerLeft}>
            {isFromAdmin ? (
                <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 5 }}>
-                   <Ionicons name="arrow-back" size={28} color="#FFF" />
+                   <Ionicons name="arrow-back" size={28} color={colors.white} />
                </TouchableOpacity>
            ) : (
              <View>
@@ -321,7 +322,7 @@ export default function RotasDeliveryScreen() {
         {/* Somente exibe logout se for o Entregador nativo na tab (Admin desloga na sua própria tela) */}
         {!isFromAdmin ? (
             <TouchableOpacity style={styles.logoutBtn} onPress={exitApp}>
-            <Ionicons name="log-out-outline" size={24} color="#FFF" />
+            <Ionicons name="log-out-outline" size={24} color={colors.white} />
             </TouchableOpacity>
         ) : (
             <View style={styles.logoutBtn} /> /* Spacer */
@@ -330,7 +331,7 @@ export default function RotasDeliveryScreen() {
 
       {loading ? (
           <View style={[styles.emptyState, { flex: 1 }]}>
-             <ActivityIndicator size="large" color="#8B2F2F" />
+             <ActivityIndicator size="large" color={colors.primary} />
              <Text style={styles.emptyText}>Buscando entregas...</Text>
           </View>
       ) : (
@@ -358,7 +359,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5DC',
   },
   header: {
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
     paddingBottom: 15,
     paddingHorizontal: 20,
     flexDirection: 'row',
@@ -370,7 +371,7 @@ const styles = StyleSheet.create({
     ...Platform.select({
       web: { boxShadow: '0px 4px 15px rgba(0, 0, 0, 0.2)' },
       // @ts-ignore
-      default: { elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 15 }
+      default: { elevation: 8, shadowColor: colors.shadow, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 15 }
     }),
   },
   headerLeft: {
@@ -384,7 +385,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    color: '#FFF',
+    color: colors.white,
     fontSize: 20,
     fontWeight: 'bold',
     textAlign: 'center',
@@ -394,7 +395,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
   userInfo: {
-    color: '#B45309',
+    color: colors.secondary,
     fontSize: 12,
     fontWeight: '600',
   },
@@ -407,19 +408,19 @@ const styles = StyleSheet.create({
     padding: 15,
   },
   orderCard: {
-    backgroundColor: '#FFF',
+    backgroundColor: colors.white,
     borderRadius: 15,
     padding: 18,
     marginBottom: 20,
     borderLeftWidth: 6,
-    borderLeftColor: '#B45309', // Padrão: Preparando (Amarelo/Warning)
+    borderLeftColor: colors.secondary, // Padrão: Preparando (Amarelo/Warning)
     ...Platform.select({
        // @ts-ignore
-       default: { elevation: 4, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 8, shadowOffset:{width:0, height:2} }
+       default: { elevation: 4, shadowColor: colors.shadow, shadowOpacity: 0.1, shadowRadius: 8, shadowOffset:{width:0, height:2} }
     })
   },
   dispatchedCard: {
-    borderLeftColor: '#2196F3', // Na rua (Azul)
+    borderLeftColor: colors.secondary, // Na rua (Azul)
   },
   cardHeader: {
     flexDirection: 'row',
@@ -430,11 +431,11 @@ const styles = StyleSheet.create({
   comandaTag: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#8B2F2F',
+    color: colors.primary,
   },
   clientName: {
     fontSize: 15,
-    color: '#555',
+    color: colors.textSecondary,
     fontWeight: '600',
     marginTop: 2,
   },
@@ -447,7 +448,7 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#333',
+    color: colors.text,
   },
   infoBlock: {
     flexDirection: 'row',
@@ -464,17 +465,17 @@ const styles = StyleSheet.create({
   infoText: {
     marginLeft: 8,
     fontSize: 14,
-    color: '#444',
+    color: colors.text,
     flexShrink: 1,
   },
   infoTextBold: {
     marginLeft: 8,
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#2C2C2C',
+    color: colors.text,
   },
   actionLinkText: {
-    color: '#2196F3',
+    color: colors.secondary,
     fontWeight: '600',
     fontSize: 13,
   },
@@ -487,14 +488,14 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   whatsappTextSmall: {
-    color: '#FFF',
+    color: colors.white,
     fontSize: 12,
     fontWeight: 'bold',
     marginLeft: 4,
   },
   divider: {
     height: 1,
-    backgroundColor: '#EEE',
+    backgroundColor: colors.border,
     marginVertical: 12,
   },
   itemsBlock: {
@@ -505,20 +506,20 @@ const styles = StyleSheet.create({
   },
   itemsBlockTitle: {
     fontSize: 12,
-    color: '#777',
+    color: colors.textSecondary,
     marginBottom: 4,
     fontWeight: '600',
   },
   itemsBlockText: {
     fontSize: 13,
-    color: '#333',
+    color: colors.text,
     lineHeight: 18,
   },
   orderObs: {
     marginTop: 8,
     fontSize: 13,
     fontStyle: 'italic',
-    color: '#D32F2F',
+    color: colors.danger,
     fontWeight: '600',
   },
   actionBtn: {
@@ -528,13 +529,13 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   btnWarning: {
-    backgroundColor: '#B45309',
+    backgroundColor: colors.secondary,
   },
   btnSuccess: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: colors.success,
   },
   actionBtnText: {
-    color: '#FFF',
+    color: colors.white,
     fontWeight: 'bold',
     fontSize: 16,
     letterSpacing: 0.5,
@@ -552,13 +553,13 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#8B2F2F',
+    color: colors.primary,
     textAlign: 'center',
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#777',
+    color: colors.textSecondary,
     textAlign: 'center',
   },
 });
