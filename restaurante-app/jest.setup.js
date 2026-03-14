@@ -110,6 +110,24 @@ jest.mock('expo-constants', () => ({
     },
 }));
 
+jest.mock('@expo/vector-icons', () => {
+    const React = require('react');
+    const { Text } = require('react-native');
+
+    const createIcon = (name) => ({ testID, children, ...props }) =>
+        React.createElement(Text, { testID: testID || `${name}-icon`, ...props }, children || name);
+
+    return {
+        Ionicons: createIcon('Ionicons'),
+        MaterialIcons: createIcon('MaterialIcons'),
+        MaterialCommunityIcons: createIcon('MaterialCommunityIcons'),
+        FontAwesome: createIcon('FontAwesome'),
+        Feather: createIcon('Feather'),
+        AntDesign: createIcon('AntDesign'),
+        Entypo: createIcon('Entypo'),
+    };
+});
+
 // Mock lz-string for cache compression tests
 jest.mock('lz-string', () => ({
     compress: jest.fn((str) => `compressed:${str}`),

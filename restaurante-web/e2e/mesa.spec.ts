@@ -197,36 +197,38 @@ test.describe('Fluxo Principal - Mesa (Mapa)', () => {
     await expect(submitBtn).toBeVisible();
     await submitBtn.click();
 
-    // ✅ FIX: Fail-fast mechanism - detect frozen state early
-    // Wait 10s to allow order creation to complete
-    await page.waitForTimeout(10000);
-    const isStillLoading = await submitBtn.locator('text=Criar Pedido').count() === 0;
-    if (isStillLoading) {
-      // Check if there's any network activity or if it's truly frozen
-      const hasToast = await page.locator('div[role="status"]').count() > 0;
-      if (!hasToast) {
-        throw new Error('Order submission appears frozen - no response after 10s and no toast displayed');
+    // ✅ FIX: poll immediately after submit so short-lived success toasts are not missed
+    // by timeout-driven locator races.
+    const toastLocator = page.locator('[data-testid="toast-container"], div[role="status"]').first();
+    let toastText = '';
+    const deadline = Date.now() + 20000;
+
+    while (Date.now() < deadline) {
+      toastText = (await toastLocator.textContent().catch(() => ''))?.trim() || '';
+
+      if (/Pedido criado!/i.test(toastText)) {
+        break;
       }
+
+      if (/Mesa.*já foi ocupada/i.test(toastText)) {
+        throw new Error(`Mesa ${mesaId} já estava ocupada — use --repeat-each menor ou feche as comandas abertas.`);
+      }
+
+      if (/Falhou|Erro/i.test(toastText)) {
+        throw new Error(`Erro desconhecido interceptado: ${toastText}`);
+      }
+
+      await page.waitForTimeout(250);
     }
 
-    // ── 5. Validar toast — 1 comanda por pedido ───────────────────────────────
-    const toastSucesso = page.locator('text=/Pedido criado!/i');
-    const toastErroMesa = page.locator('text=/Mesa.*já foi ocupada/i');
-    const toastErroGen = page.locator('text=/Falhou|Erro/i');
+    if (!/Pedido criado!/i.test(toastText)) {
+      const isStillSubmitting = await submitBtn.locator('text=Criar Pedido').count() === 0;
+      throw new Error(
+        `Timeout esperando toast de sucesso. Toast atual: ${toastText || 'Nenhum toast renderizado'}. ` +
+        `Estado de submissão: ${isStillSubmitting ? 'ainda carregando' : 'botão liberado'}`
+      );
+    }
 
-    await Promise.race([
-      toastSucesso.waitFor({ state: 'visible', timeout: 20000 }),
-      toastErroMesa.waitFor({ state: 'visible', timeout: 10000 })
-        .then(() => { throw new Error(`Mesa ${mesaId} já estava ocupada — use --repeat-each menor ou feche as comandas abertas.`); }),
-      toastErroGen.waitFor({ state: 'visible', timeout: 10000 })
-        .then(async () => { throw new Error(`Erro desconhecido interceptado: ${await toastErroGen.textContent()}`); })
-    ]).catch(async (e) => {
-      // Se ainda der timeout, tenta capturar o texto do que quer que esteja na tela no container de toast
-      const qqrToast = await page.locator('[data-testid="toast-container"], div[role="status"]').textContent().catch(() => 'Nenhum toast renderizado');
-      throw new Error(`Timeout esperando toast. Toast atual na tela: ${qqrToast}. Erro original: ${e.message}`);
-    });
-
-    const toastText = await page.locator('[data-testid="toast-container"], div[role="status"]').textContent();
     console.log(`✅ [Mesa ${mesaId}] ${toastText}`);
     expect(toastText).toMatch(/Pedido criado!/i);
 
