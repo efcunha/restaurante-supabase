@@ -125,7 +125,7 @@ export default function ReservasScreen() {
     switch (status) {
       case 'confirmada': return colors.success;
       case 'cancelada': return colors.danger;
-      case 'concluida': return '#2196F3';
+      case 'concluida': return colors.secondary;
       case 'pendente': default: return colors.warning;
     }
   };
@@ -156,7 +156,7 @@ export default function ReservasScreen() {
           </TouchableOpacity>
         )}
         {item.status === 'confirmada' && (
-           <TouchableOpacity style={[styles.btnAction, { backgroundColor: '#2196F3' }]} onPress={() => alterarStatus(item.id, 'concluida')}>
+            <TouchableOpacity style={[styles.btnAction, { backgroundColor: colors.secondary }]} onPress={() => alterarStatus(item.id, 'concluida')}>
            <Text style={styles.btnActionText}>Check-in</Text>
          </TouchableOpacity>
         )}
@@ -181,12 +181,12 @@ export default function ReservasScreen() {
         </View>
         <View style={styles.headerCenter}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Ionicons name="calendar-outline" size={24} color="#FFF" style={{ marginRight: 8 }} />
+            <Ionicons name="calendar-outline" size={24} color={colors.white} style={{ marginRight: 8 }} />
             <Text style={styles.headerTitle}>Reservas</Text>
           </View>
         </View>
         <TouchableOpacity style={styles.logoutBtn} onPress={() => confirmLogout(logout)}>
-          <Ionicons name="log-out-outline" size={24} color="#FFF" />
+          <Ionicons name="log-out-outline" size={24} color={colors.white} />
         </TouchableOpacity>
       </View>
 
@@ -225,7 +225,7 @@ export default function ReservasScreen() {
       )}
 
       <TouchableOpacity style={styles.fab} onPress={() => { resetForm(); setModalVisible(true); }}>
-        <Ionicons name="add" size={24} color="#FFF" />
+        <Ionicons name="add" size={24} color={colors.white} />
       </TouchableOpacity>
 
       <Modal visible={modalVisible} animationType="slide" transparent>
@@ -238,7 +238,7 @@ export default function ReservasScreen() {
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Nova Reserva</Text>
                 <TouchableOpacity onPress={() => setModalVisible(false)}>
-                  <Ionicons name="close" size={24} color="#333" />
+                  <Ionicons name="close" size={24} color={colors.text} />
                 </TouchableOpacity>
               </View>
               
@@ -269,18 +269,18 @@ export default function ReservasScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F5DC' },
+  container: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingBottom: 15,
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
     elevation: 8,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 4.65,
@@ -299,16 +299,16 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#FFF',
+    color: colors.white,
     textAlign: 'center',
   },
   userInfoLabel: {
-    color: 'rgba(255,255,255,0.7)',
+    color: colors.primaryContrastMuted,
     fontSize: 10,
   },
   userInfo: {
     fontSize: 12,
-    color: '#B45309', // Using the gold color found in other files or just keeping similar tone
+    color: colors.userInfo,
     fontWeight: '600',
   },
   logoutBtn: {
@@ -321,42 +321,42 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: 20,
     paddingVertical: 15,
-    backgroundColor: '#FFF',
+    backgroundColor: colors.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0'
+    borderBottomColor: colors.border
   },
   filterButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: colors.surfaceMuted,
     marginRight: 10,
     borderWidth: 1,
-    borderColor: '#E0E0E0'
+    borderColor: colors.border
   },
   filterButtonActive: {
-    backgroundColor: '#8B2F2F',
-    borderColor: '#8B2F2F'
+    backgroundColor: colors.primary,
+    borderColor: colors.primary
   },
   filterText: {
-    color: '#666',
+    color: colors.textSecondary,
     fontWeight: '600'
   },
   filterTextActive: {
-    color: '#FFF'
+    color: colors.white
   },
   card: {
-    backgroundColor: '#FFF', borderRadius: 8, padding: 15, marginBottom: 15,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2,
+    backgroundColor: colors.white, borderRadius: 8, padding: 15, marginBottom: 15,
+    shadowColor: colors.shadow, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2,
   },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  clienteNome: { fontSize: 18, fontWeight: 'bold', color: '#333' },
+  clienteNome: { fontSize: 18, fontWeight: 'bold', color: colors.text },
   badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
-  badgeText: { color: '#FFF', fontSize: 12, fontWeight: 'bold' },
-  info: { fontSize: 14, color: '#666', marginBottom: 5 },
+  badgeText: { color: colors.white, fontSize: 12, fontWeight: 'bold' },
+  info: { fontSize: 14, color: colors.textSecondary, marginBottom: 5 },
   actions: { flexDirection: 'row', marginTop: 15, gap: 10 },
   btnAction: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 6, flex: 1, alignItems: 'center' },
-  btnActionText: { color: '#FFF', fontWeight: 'bold' },
+  btnActionText: { color: colors.white, fontWeight: 'bold' },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -369,24 +369,24 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#8B2F2F',
+    color: colors.primary,
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#999',
+    color: colors.textSecondary,
   },
   fab: {
     position: 'absolute', bottom: 30, right: 30, width: 56, height: 56,
     borderRadius: 28, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 8,
+    shadowColor: colors.shadow, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 8,
   },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
-  modalContainer: { backgroundColor: '#FFF', borderRadius: 12, padding: 20, maxHeight: '80%', width: '100%' },
+  modalOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', padding: 20 },
+  modalContainer: { backgroundColor: colors.white, borderRadius: 12, padding: 20, maxHeight: '80%', width: '100%' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  modalTitle: { fontSize: 18, fontWeight: 'bold' },
-  label: { fontSize: 14, fontWeight: '600', color: '#444', marginBottom: 5 },
-  input: { borderWidth: 1, borderColor: '#DDD', borderRadius: 6, padding: 10, marginBottom: 15, backgroundColor: '#F9F9F9' },
+  modalTitle: { fontSize: 18, fontWeight: 'bold', color: colors.text },
+  label: { fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: 5 },
+  input: { borderWidth: 1, borderColor: colors.border, borderRadius: 6, padding: 10, marginBottom: 15, backgroundColor: colors.surfaceMuted, color: colors.text },
   btnSave: { backgroundColor: colors.primary, padding: 15, borderRadius: 6, alignItems: 'center', marginTop: 10 },
-  btnSaveText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 }
+  btnSaveText: { color: colors.white, fontWeight: 'bold', fontSize: 16 }
 });
