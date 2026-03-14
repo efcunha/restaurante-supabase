@@ -12,6 +12,7 @@ import { supabase } from '../config/SupabaseConfig';
 import { getLocalDateKey } from '../utils/dateUtils';
 import { confirmLogout } from '../utils/appUtils';
 import OptimizedFlatList from '../components/OptimizedFlatList';
+import { colors } from '../theme/colors';
 
 export default function CozinhaScreen() {
   const { user, logout } = useAuth();
@@ -287,12 +288,12 @@ export default function CozinhaScreen() {
         </View>
         <View style={styles.headerCenter}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Ionicons name="restaurant-outline" size={24} color="#FFF" style={{ marginRight: 8 }} />
+            <Ionicons name="restaurant-outline" size={24} color={colors.white} style={{ marginRight: 8 }} />
             <Text style={styles.headerTitle}>Cozinha</Text>
           </View>
         </View>
         <TouchableOpacity style={styles.logoutBtn} onPress={() => confirmLogout(logout)}>
-          <Ionicons name="log-out-outline" size={24} color="#FFF" />
+          <Ionicons name="log-out-outline" size={24} color={colors.white} />
         </TouchableOpacity>
       </View>
 
@@ -317,7 +318,7 @@ export default function CozinhaScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5DC',
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -326,10 +327,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 50,
     paddingBottom: 15,
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
     elevation: 8,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.65,
     zIndex: 10,
   },
   headerLeft: {
@@ -345,16 +350,16 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#FFF',
+    color: colors.white,
     textAlign: 'center',
   },
   userInfoLabel: {
-    color: 'rgba(255,255,255,0.7)',
+    color: colors.primaryContrastMuted,
     fontSize: 10,
   },
   userInfo: {
     fontSize: 12,
-    color: '#B45309', // Using the gold color found in other files or just keeping similar tone
+    color: colors.userInfo,
     fontWeight: '600',
   },
   logoutBtn: {
@@ -379,25 +384,25 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#8B2F2F',
+    color: colors.primary,
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#999',
+    color: colors.textSecondary,
   },
   resumoTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#8B2F2F',
+    color: colors.primary,
     marginBottom: 15,
   },
   grupoCard: {
-    backgroundColor: '#FFF',
+    backgroundColor: colors.white,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -410,32 +415,32 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0D8C8',
+    borderBottomColor: colors.border,
   },
   grupoNome: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: colors.text,
     flex: 1,
   },
   totalBadge: {
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
   },
   totalText: {
-    color: '#FFF',
+    color: colors.white,
     fontWeight: 'bold',
     fontSize: 16,
   },
   grupoExtras: {
     fontSize: 14,
-    color: '#D32F2F', // Red color for visibility
+    color: colors.danger,
     fontWeight: 'bold',
     marginTop: 4,
     fontStyle: 'italic',
-    backgroundColor: '#FFF5F5',
+    backgroundColor: colors.dangerSurface,
     padding: 4,
     borderRadius: 4,
     alignSelf: 'flex-start'
@@ -448,7 +453,7 @@ const styles = StyleSheet.create({
   comandaItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F5F1E8',
+    backgroundColor: colors.background,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
@@ -457,15 +462,15 @@ const styles = StyleSheet.create({
   comandaNumero: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#8B2F2F',
+    color: colors.primary,
   },
   comandaQtd: {
     fontSize: 14,
-    color: '#666',
+    color: colors.textSecondary,
   },
   comandaObs: {
     fontSize: 12,
-    color: '#E65100', // Orange for visibility
+    color: colors.warning,
     fontStyle: 'italic',
     marginLeft: 4,
     flexShrink: 1 // Allow text to wrap if too long
