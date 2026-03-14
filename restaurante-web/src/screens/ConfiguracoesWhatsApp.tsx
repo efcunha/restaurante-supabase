@@ -11,11 +11,10 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { colors } from '../theme/colors';
 import { useAuth } from '../context/AuthContext';
 import { EvolutionApiService } from '../services/EvolutionApiService';
 import { ScreenScaffold } from '../layouts/ScreenScaffold';
-
+import { colors } from '../theme/colors';
 export default function ConfiguracoesWhatsApp({ onClose }: { onClose?: () => void }) {
     const navigation = useNavigation();
     const { user } = useAuth();
@@ -164,7 +163,7 @@ export default function ConfiguracoesWhatsApp({ onClose }: { onClose?: () => voi
 
     const renderNotCreated = () => (
         <View style={styles.card}>
-            <Ionicons name="logo-whatsapp" size={60} color="#25D366" style={{ marginBottom: 15 }} />
+            <Ionicons name="logo-whatsapp" size={60} color={colors.success} style={{ marginBottom: 15 }} />
             <Text style={styles.title}>Conecte seu WhatsApp</Text>
             <Text style={styles.description}>
                 Escaneie o QR Code com seu aparelho celular para permitir que o sistema envie 
@@ -203,7 +202,7 @@ export default function ConfiguracoesWhatsApp({ onClose }: { onClose?: () => voi
             ) : (
                 <View style={[styles.qrContainer, styles.qrLoading]}>
                     <ActivityIndicator size="large" color={colors.primary} />
-                    <Text style={{ marginTop: 15, color: '#666' }}>Aguardando imagem da API...</Text>
+                    <Text style={{ marginTop: 15, color: colors.textSecondary }}>Aguardando imagem da API...</Text>
                 </View>
             )}
 
@@ -266,7 +265,7 @@ export default function ConfiguracoesWhatsApp({ onClose }: { onClose?: () => voi
             <ScrollView contentContainerStyle={styles.content}>
                 {errorMsg && (
                     <View style={styles.errorBox}>
-                        <Ionicons name="warning" size={20} color="#856404" />
+                        <Ionicons name="warning" size={20} color={colors.warning} />
                         <Text style={styles.errorText}>{errorMsg}</Text>
                     </View>
                 )}
@@ -282,12 +281,12 @@ const styles = StyleSheet.create({
     content: { padding: 20, flexGrow: 1, justifyContent: 'center' },
     
     card: {
-        backgroundColor: '#fff',
+        backgroundColor: colors.white,
         borderRadius: 16,
         padding: 30,
         alignItems: 'center',
         elevation: 3,
-        shadowColor: '#000',
+        shadowColor: colors.shadow,
         shadowOpacity: 0.1,
         shadowRadius: 10,
         shadowOffset: { width: 0, height: 4 },
@@ -298,20 +297,20 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 22,
         fontWeight: 'bold',
-        color: '#333',
+        color: colors.text,
         marginBottom: 10,
         textAlign: 'center',
     },
     description: {
         fontSize: 15,
-        color: '#666',
+        color: colors.textSecondary,
         textAlign: 'center',
         lineHeight: 22,
         marginBottom: 25,
     },
 
     connectButton: {
-        backgroundColor: '#25D366',
+        backgroundColor: colors.success,
         paddingVertical: 14,
         paddingHorizontal: 30,
         borderRadius: 30,
@@ -320,13 +319,13 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     connectButtonText: {
-        color: '#fff',
+        color: colors.white,
         fontWeight: 'bold',
         fontSize: 16,
     },
 
     disconnectButton: {
-        backgroundColor: '#fff',
+        backgroundColor: colors.white,
         borderWidth: 1,
         borderColor: colors.danger,
         paddingVertical: 14,
@@ -355,17 +354,17 @@ const styles = StyleSheet.create({
     qrContainer: {
         width: 250,
         height: 250,
-        backgroundColor: '#f9f9f9',
+        backgroundColor: colors.surfaceMuted,
         borderRadius: 12,
         padding: 10,
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 15,
         borderWidth: 1,
-        borderColor: '#eee',
+        borderColor: colors.border,
     },
     qrLoading: {
-        backgroundColor: '#f0f0f0',
+        backgroundColor: colors.surfaceMuted,
     },
     qrImage: {
         width: '100%',
@@ -384,8 +383,8 @@ const styles = StyleSheet.create({
     },
 
     errorBox: {
-        backgroundColor: '#fff3cd',
-        borderColor: '#ffeeba',
+        backgroundColor: colors.warningSurface,
+        borderColor: colors.warningSurface,
         borderWidth: 1,
         padding: 15,
         borderRadius: 8,
@@ -397,7 +396,7 @@ const styles = StyleSheet.create({
         width: '100%',
     },
     errorText: {
-        color: '#856404',
+        color: colors.warning,
         marginLeft: 10,
         flex: 1,
         lineHeight: 20,

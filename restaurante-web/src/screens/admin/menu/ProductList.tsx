@@ -1,9 +1,8 @@
 
 import React, { useState, useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
-import { colors } from '../../../theme/colors';
 import { Product } from '../../../types';
-
+import { colors } from '../../../theme/colors';
 interface ProductListProps {
   products: Product[];
   categories: { label: string; value: string }[];

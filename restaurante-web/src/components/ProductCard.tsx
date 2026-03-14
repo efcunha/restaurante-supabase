@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-
+import { colors } from '../theme/colors';
 interface ProductCardProps {
   product: {
     id: string;
@@ -92,21 +92,21 @@ function getCategoryLabel(category: string): string {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 3,
     borderWidth: 1,
-    borderColor: '#F0EBE0',
+    borderColor: colors.border,
   },
   cardInactive: {
     opacity: 0.6,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: colors.surfaceMuted,
   },
   header: {
     flexDirection: 'row',
@@ -118,22 +118,22 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontWeight: '600',
-    color: '#2C2C2C',
+    color: colors.text,
     marginRight: 8,
   },
   statusBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: colors.border,
   },
   statusBadgeActive: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: colors.success,
   },
   statusText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.white,
   },
   footer: {
     flexDirection: 'row',
@@ -143,11 +143,11 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#8B2F2F',
+    color: colors.primary,
   },
   category: {
     fontSize: 13,
-    color: '#666',
+    color: colors.textSecondary,
   },
 });
 

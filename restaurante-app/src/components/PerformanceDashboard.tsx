@@ -15,10 +15,9 @@ import {
   RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../theme/colors';
 import { performanceMonitorService } from '../services/optimization/PerformanceMonitorService';
 import { usePerformanceDashboard, useResourceMetrics } from '../hooks/usePerformanceDashboard';
-
+import { colors } from '../theme/colors';
 export default function PerformanceDashboard() {
   const { dashboardData, loading, refresh } = usePerformanceDashboard(10000);
   const [refreshing, setRefreshing] = useState(false);

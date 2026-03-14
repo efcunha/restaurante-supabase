@@ -1,6 +1,6 @@
 import React, { Suspense, ComponentType } from 'react';
 import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
-
+import { colors } from '../theme/colors';
 /**
  * LazyLoadWrapper - Wrapper component for lazy-loaded screens
  * 
@@ -19,7 +19,7 @@ interface LazyLoadWrapperProps {
  */
 const DefaultLoadingFallback: React.FC<{ loadingText?: string }> = ({ loadingText }) => (
   <View style={styles.loadingContainer}>
-    <ActivityIndicator size="large" color="#8B2F2F" />
+    <ActivityIndicator size="large" color={colors.primary} />
     {loadingText && <Text style={styles.loadingText}>{loadingText}</Text>}
   </View>
 );
@@ -138,30 +138,30 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F5F1E8',
+    backgroundColor: colors.background,
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#8B2F2F',
+    color: colors.primary,
     fontWeight: '600',
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F5F1E8',
+    backgroundColor: colors.background,
     padding: 20,
   },
   errorTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#8B2F2F',
+    color: colors.primary,
     marginBottom: 12,
   },
   errorText: {
     fontSize: 14,
-    color: '#666',
+    color: colors.textSecondary,
     textAlign: 'center',
   },
 });

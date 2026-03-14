@@ -1,6 +1,5 @@
 import { Modal, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { colors } from '../theme/colors';
-
 interface CaixaMenuModalProps {
   visible: boolean;
   onClose: () => void;

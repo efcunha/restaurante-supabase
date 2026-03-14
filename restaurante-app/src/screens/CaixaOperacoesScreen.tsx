@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 // @ts-ignore
 import CaixaService from '../services/CaixaService';
 import { getUserFriendlyMessage } from '../utils/errors';
-
+import { colors } from '../theme/colors';
 export default function CaixaOperacoesScreen() {
   const { user } = useAuth();
   const [valorReforco, setValorReforco] = useState('');
@@ -71,7 +71,7 @@ export default function CaixaOperacoesScreen() {
           disabled={loadingReforco}
         >
           {loadingReforco ? (
-            <ActivityIndicator color="#2C2C2C" />
+            <ActivityIndicator color={colors.text} />
           ) : (
             <Text style={styles.btnText}>REGISTRAR REFORÇO</Text>
           )}
@@ -92,14 +92,14 @@ export default function CaixaOperacoesScreen() {
           onChangeText={setMotivoSangria}
         />
         <TouchableOpacity
-          style={[styles.btn, { backgroundColor: '#8B2F2F' }, loadingSangria && styles.btnDisabled]}
+          style={[styles.btn, { backgroundColor: colors.primary }, loadingSangria && styles.btnDisabled]}
           onPress={sangria}
           disabled={loadingSangria}
         >
           {loadingSangria ? (
-            <ActivityIndicator color="#FFFFFF" />
+            <ActivityIndicator color={colors.white} />
           ) : (
-            <Text style={[styles.btnText, { color: '#fff' }]}>REGISTRAR SANGRIA</Text>
+            <Text style={[styles.btnText, { color: colors.white }]}>REGISTRAR SANGRIA</Text>
           )}
         </TouchableOpacity>
       </ScrollView>
@@ -109,24 +109,24 @@ export default function CaixaOperacoesScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F1E8' },
-  section: { fontSize: 18, fontWeight: 'bold', marginBottom: 12, color: '#333' },
+  container: { flex: 1, backgroundColor: colors.background },
+  section: { fontSize: 18, fontWeight: 'bold', marginBottom: 12, color: colors.text },
   input: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: '#E0D8C8',
+    borderColor: colors.border,
     borderRadius: 8,
     padding: 12,
     marginBottom: 10,
     fontSize: 16
   },
   btn: {
-    backgroundColor: '#B45309',
+    backgroundColor: colors.secondary,
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',
     marginBottom: 10
   },
-  btnText: { fontWeight: 'bold', fontSize: 16, color: '#2C2C2C' },
+  btnText: { fontWeight: 'bold', fontSize: 16, color: colors.text },
   btnDisabled: { opacity: 0.6 }
 });

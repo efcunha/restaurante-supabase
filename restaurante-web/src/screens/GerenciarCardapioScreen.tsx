@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Alert, ActivityIndicator, Platform, TouchableOpacity, ScrollView, TextInput, Modal } from 'react-native';
-import { colors } from '../theme/colors';
 // @ts-ignore
 import KeyboardWrapper from '../components/KeyboardWrapper';
 import { useResponsive } from '../hooks/useResponsive';
@@ -15,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
  // Fix missing import if needed, assuming component exists
 import { SUPPORTED_UNITS } from '../utils/unitConversion';
 import { ScreenScaffold } from '../layouts/ScreenScaffold';
-
+import { colors } from '../theme/colors';
 // Componente para cada item de variação
 interface VariacaoItemProps {
   variacao: Product;

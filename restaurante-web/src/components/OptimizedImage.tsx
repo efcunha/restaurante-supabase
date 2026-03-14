@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Image,
+Image,
   ImageProps,
   View,
   ActivityIndicator,
@@ -8,7 +8,7 @@ import {
   ViewStyle,
   ImageStyle,
 } from 'react-native';
-
+import { colors } from '../theme/colors';
 /**
  * OptimizedImage - Image component with caching and lazy loading
  * 
@@ -123,7 +123,7 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
       {/* Loading indicator */}
       {loading && showLoadingIndicator && (
         <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="small" color="#8B2F2F" />
+          <ActivityIndicator size="small" color={colors.primary} />
         </View>
       )}
 

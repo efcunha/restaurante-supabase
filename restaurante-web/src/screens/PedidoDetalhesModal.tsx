@@ -12,7 +12,6 @@ import {
   Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { colors } from '../theme/colors';
 import { supabase } from '../config/SupabaseConfig';
 import { useOrders } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
@@ -20,7 +19,7 @@ import TransferModal from '../components/TransferModal';
 import { calcularPrecoItem, MenuItem } from '../utils/orderCalculator';
 
 import { getTodayKey } from '../utils/dateUtils';
-
+import { colors } from '../theme/colors';
 interface Props {
   visible: boolean;
   orderId: string;

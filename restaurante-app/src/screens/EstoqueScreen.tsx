@@ -15,7 +15,7 @@ import ConfiguracaoEstoqueScreen from './ConfiguracaoEstoqueScreen';
 // @ts-ignore
 import { SUPPORTED_UNITS } from '../utils/unitConversion';
 import { ScreenScaffold } from '../layouts/ScreenScaffold';
-
+import { colors } from '../theme/colors';
 interface Props {
   onClose?: () => void;
 }

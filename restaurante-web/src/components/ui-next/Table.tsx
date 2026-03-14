@@ -2,7 +2,6 @@
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colorSystem, radius, spacing, typography } from '../../design-system';
-
 type SortDir = 'asc' | 'desc';
 
 type TableColumn<T> = {
@@ -125,7 +124,7 @@ const styles = StyleSheet.create({
   },
   headerRow: {
     flexDirection: 'row',
-    backgroundColor: '#EDF3FC',
+    backgroundColor: colors.primaryTint,
     borderBottomWidth: 1,
     borderBottomColor: colorSystem.border,
   },
@@ -148,10 +147,10 @@ const styles = StyleSheet.create({
   dataRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: '#EEF2F9',
+    borderBottomColor: colors.primaryTint,
   },
   dataRowEven: {
-    backgroundColor: '#FAFBFE',
+    backgroundColor: colors.primaryTint,
   },
   dataCell: {
     minWidth: 140,

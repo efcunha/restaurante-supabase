@@ -1,6 +1,6 @@
 import React from 'react';
 import { Platform, View, StyleSheet, SafeAreaView } from 'react-native';
-
+import { colors } from '../theme/colors';
 // PhonePreview: On web, constrains the app to a typical phone width and centers it.
 // On native, renders children unchanged.
 export default function PhonePreview({ children }) {
@@ -20,7 +20,7 @@ export default function PhonePreview({ children }) {
 const styles = StyleSheet.create({
   page: {
     minHeight: '100vh',
-    backgroundColor: '#0f0f0f',
+    backgroundColor: colors.text,
     alignItems: 'center',
     justifyContent: 'flex-start',
     paddingVertical: 16,
@@ -28,11 +28,11 @@ const styles = StyleSheet.create({
   frame: {
     width: 390, // iPhone 14 width ~390px
     minHeight: 'calc(100vh - 32px)',
-    backgroundColor: '#F5F1E8',
+    backgroundColor: colors.background,
     borderRadius: 28,
     overflow: 'hidden',
     // Web shadows via RN-web shadow props
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.25,
     shadowRadius: 24,

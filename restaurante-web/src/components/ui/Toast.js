@@ -2,7 +2,6 @@ import React, { useEffect, useRef } from 'react';
 import { Text, StyleSheet, Animated, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
-
 // ─── Web: Componente HTML puro para compatibilidade total com Playwright ───────
 function ToastWeb({ visible, message, type = 'success', onHide }) {
   const config = {
@@ -39,7 +38,7 @@ function ToastWeb({ visible, message, type = 'success', onHide }) {
         transform: 'translateX(-50%)',
         zIndex: 9999,
         backgroundColor: bg,
-        color: '#FFF',
+        color: colors.white,
         padding: '16px 24px',
         borderRadius: 12,
         fontSize: 16,
@@ -129,7 +128,7 @@ export default function Toast({ visible, message, type = 'success', onHide }) {
         { backgroundColor: currentConfig.bg, transform: [{ translateY }], opacity }
       ]}
     >
-      <Ionicons name={currentConfig.icon} size={24} color="#FFF" />
+      <Ionicons name={currentConfig.icon} size={24} color={colors.white} />
       <Text style={styles.message}>{message}</Text>
       <TouchableOpacity onPress={hide}>
         <Ionicons name="close" size={20} color="rgba(255,255,255,0.8)" />
@@ -149,7 +148,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderRadius: 12,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -158,7 +157,7 @@ const styles = StyleSheet.create({
   },
   message: {
     flex: 1,
-    color: '#FFF',
+    color: colors.white,
     fontSize: 16,
     fontWeight: '600',
   }

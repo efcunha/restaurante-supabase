@@ -2,7 +2,6 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Card } from './Card';
 import { colorSystem, spacing, typography } from '../../design-system';
-
 type ProductCardProps = {
   name: string;
   description?: string;
@@ -44,7 +43,7 @@ const styles = StyleSheet.create({
   category: {
     ...typography.small,
     color: colorSystem.primary,
-    backgroundColor: '#DFF3F8',
+    backgroundColor: colors.primaryTint,
     paddingHorizontal: spacing.s8,
     paddingVertical: spacing.s4,
     borderRadius: 999,

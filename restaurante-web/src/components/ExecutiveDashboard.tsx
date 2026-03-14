@@ -14,11 +14,10 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../theme/colors';
 import SuccessMetricsService, {
   WeeklyReport,
 } from '../services/SuccessMetricsService';
-
+import { colors } from '../theme/colors';
 interface ExecutiveDashboardProps {
   companyId: string;
 }

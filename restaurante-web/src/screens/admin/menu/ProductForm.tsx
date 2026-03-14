@@ -1,9 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, StyleSheet, Alert, ActivityIndicator, Switch } from 'react-native';
-import { colors } from '../../../theme/colors';
 import { ProductFormData, ProductFormProps } from './types';
-
+import { colors } from '../../../theme/colors';
 export default function ProductForm({
   visible,
   onClose,

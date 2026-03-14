@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import { colors } from '../theme/colors';
-
 // Conditional import to prevent Web bundling errors if module is native-only
 // Tentar carregar para todas as plataformas (incluindo Web)
 let BarChart, PieChart;
@@ -16,8 +15,8 @@ try {
 
 
 const chartConfig = {
-  backgroundGradientFrom: "#ffffff",
-  backgroundGradientTo: "#ffffff",
+  backgroundGradientFrom: colors.white,
+  backgroundGradientTo: colors.white,
   color: (opacity = 1) => `rgba(139, 47, 47, ${opacity})`,
   strokeWidth: 2,
   barPercentage: 0.6,
@@ -108,12 +107,12 @@ export const SalesByPaymentChart = ({ data }) => {
 
 const styles = StyleSheet.create({
   chartContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     borderRadius: 15,
     padding: 16,
     marginBottom: 20,
     overflow: 'hidden',
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 15,
@@ -131,20 +130,20 @@ const styles = StyleSheet.create({
     marginVertical: 8,
   },
   emptyContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     borderRadius: 15,
     padding: 20,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
     elevation: 5,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 15,
   },
   emptyText: {
-    color: '#999',
+    color: colors.textSecondary,
     fontStyle: 'italic',
   }
 });

@@ -7,7 +7,6 @@ import { useAuth } from '../context/AuthContext';
 import ComandasService from '../services/ComandasService';
 import { supabase } from '../config/SupabaseConfig';
 import { colors } from '../theme/colors';
-
 export default function ComandaAbertaScreen() {
   const { user } = useAuth();
   const [comandasAbertas, setComandasAbertas] = useState<any[]>([]);
@@ -243,7 +242,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white
   },
   cardSelected: {
-    backgroundColor: '#FFF7ED',
+    backgroundColor: colors.warningSurface,
     borderLeftWidth: 4,
     borderLeftColor: colors.secondary
   },

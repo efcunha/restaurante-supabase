@@ -1,7 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colorSystem, radius, spacing, typography } from '../../design-system';
-
 type TabItem = {
   key: string;
   label: string;
@@ -48,7 +47,7 @@ const styles = StyleSheet.create({
   },
   tabActive: {
     borderColor: colorSystem.primary,
-    backgroundColor: '#E2F4F8',
+    backgroundColor: colors.primaryTint,
   },
   label: {
     ...typography.small,

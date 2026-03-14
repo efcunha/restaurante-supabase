@@ -2,7 +2,6 @@
 import React, { useState } from 'react';
 import { Modal, View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { colors } from '../../theme/colors';
-
 export default function CancelOrderModal({ visible, onClose, onConfirm }) {
     const [reason, setReason] = useState('');
 
@@ -64,11 +63,11 @@ const styles = StyleSheet.create({
     modalSubtitle: { fontSize: 16, color: colors.textSecondary, marginBottom: 10 },
     inputReason: {
         borderWidth: 1, borderColor: colors.border, borderRadius: 8,
-        padding: 12, fontSize: 16, marginBottom: 20, backgroundColor: '#f9f9f9'
+        padding: 12, fontSize: 16, marginBottom: 20, backgroundColor: colors.surfaceMuted
     },
     modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10 },
-    btnCancel: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, backgroundColor: '#ddd' },
-    btnCancelText: { fontWeight: 'bold', color: '#555' },
+    btnCancel: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, backgroundColor: colors.border },
+    btnCancelText: { fontWeight: 'bold', color: colors.textSecondary },
     btnConfirm: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, backgroundColor: colors.danger },
     btnConfirmText: { fontWeight: 'bold', color: 'white' }
 });

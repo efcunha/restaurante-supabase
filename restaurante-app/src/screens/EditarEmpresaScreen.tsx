@@ -13,13 +13,12 @@ import {
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useResponsive } from '../hooks/useResponsive';
-import { colors } from '../theme/colors';
 import { Ionicons } from '@expo/vector-icons';
 // @ts-ignore
 import { validateCPF, validateCNPJ } from '../utils/validation';
 import { supabase } from '../config/SupabaseConfig';
 import { ScreenScaffold } from '../layouts/ScreenScaffold';
-
+import { colors } from '../theme/colors';
 interface Props {
   onBack: () => void;
 }
@@ -351,7 +350,7 @@ export default function EditarEmpresaScreen({ onBack }: Props) {
                                 style={styles.searchButton}
                                 onPress={() => searchAddressByCEP(zipCode)}
                             >
-                                <Ionicons name="search" size={20} color="#FFF" />
+                                <Ionicons name="search" size={20} color={colors.white} />
                             </TouchableOpacity>
                         </View>
 
@@ -392,7 +391,7 @@ export default function EditarEmpresaScreen({ onBack }: Props) {
                             disabled={saving}
                         >
                             {saving ? (
-                                <ActivityIndicator color="#FFF" />
+                                <ActivityIndicator color={colors.white} />
                             ) : (
                                 <Text style={styles.saveButtonText}>SALVAR ALTERAÇÕES</Text>
                             )}
@@ -409,7 +408,7 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#F5F5DC',
+        backgroundColor: colors.background,
     },
     content: {
         flex: 1,
@@ -418,10 +417,10 @@ const styles = StyleSheet.create({
         padding: 20,
     },
     card: {
-        backgroundColor: '#FFF',
+        backgroundColor: colors.white,
         borderRadius: 15,
         padding: 20,
-        shadowColor: '#000',
+        shadowColor: colors.shadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
@@ -430,27 +429,27 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: '#333',
+        color: colors.text,
         marginBottom: 20,
         borderBottomWidth: 1,
-        borderBottomColor: '#EEE',
+        borderBottomColor: colors.border,
         paddingBottom: 10,
     },
     label: {
         fontSize: 14,
         fontWeight: 'bold',
-        color: '#555',
+        color: colors.textSecondary,
         marginBottom: 8,
         marginTop: 10,
     },
     input: {
-        backgroundColor: '#F9F9F9',
+        backgroundColor: colors.surfaceMuted,
         borderWidth: 1,
-        borderColor: '#E0E0E0',
+        borderColor: colors.border,
         borderRadius: 8,
         padding: 12,
         fontSize: 16,
-        color: '#333',
+        color: colors.text,
     },
     docTypeContainer: {
         flexDirection: 'row',
@@ -460,22 +459,22 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
         paddingHorizontal: 16,
         borderRadius: 20,
-        backgroundColor: '#F0F0F0',
+        backgroundColor: colors.surfaceMuted,
         marginRight: 10,
         borderWidth: 1,
-        borderColor: '#E0E0E0'
+        borderColor: colors.border
     },
     docTypeBtnActive: {
         backgroundColor: colors.primary,
         borderColor: colors.primary,
     },
     docTypeText: {
-        color: '#666',
+        color: colors.textSecondary,
         fontWeight: '600',
         fontSize: 14,
     },
     docTypeTextActive: {
-        color: '#FFF'
+        color: colors.white
     },
     saveButton: {
         backgroundColor: colors.primary,
@@ -494,7 +493,7 @@ const styles = StyleSheet.create({
         opacity: 0.7,
     },
     saveButtonText: {
-        color: '#FFF',
+        color: colors.white,
         fontWeight: 'bold',
         fontSize: 16,
     },

@@ -1,8 +1,7 @@
 import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
-import { colors } from '../theme/colors';
 import { Period } from '../utils/dateUtils';
-
+import { colors } from '../theme/colors';
 interface AdminStatsCardsProps {
   styles: any;
   loadingStats: boolean;

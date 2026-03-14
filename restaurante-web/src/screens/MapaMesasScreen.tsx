@@ -11,8 +11,6 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import { colors } from '../theme/colors';
-
 import TableService from '../services/TableService';
 import SupabaseOrderService from '../services/supabase/SupabaseOrderService';
 import { Table, Order } from '../types';
@@ -20,7 +18,7 @@ import { useAuth } from '../context/AuthContext';
 // @ts-ignore
 import PedidoDetalhesModal from './PedidoDetalhesModal';
 import { ScreenScaffold } from '../layouts/ScreenScaffold';
-
+import { colors } from '../theme/colors';
 const { width } = Dimensions.get('window');
 
 export default function MapaMesasScreen({ navigation, route }: any) {
@@ -433,7 +431,7 @@ const styles = StyleSheet.create({
     tabsScroll: { paddingHorizontal: 15, alignItems: 'center' },
     tab: {
         paddingVertical: 8, paddingHorizontal: 16, marginRight: 10, borderRadius: 20,
-        backgroundColor: '#F7FAFD', borderWidth: 1, borderColor: colors.border,
+        backgroundColor: colors.primaryTint, borderWidth: 1, borderColor: colors.border,
     },
     tabActive: { backgroundColor: colors.primary, borderColor: colors.primary },
     tabText: { color: colors.textSecondary, fontWeight: '600' },
@@ -468,7 +466,7 @@ const styles = StyleSheet.create({
     emptyState: { padding: 40, alignItems: 'center' },
     emptyStateContainer: { width: '100%', alignItems: 'center', padding: 40 },
     emptyText: { color: colors.textSecondary, fontSize: 16, marginTop: 10, fontWeight: 'bold' },
-    emptySubText: { color: '#9AA4B2', fontSize: 14, marginTop: 5 },
+    emptySubText: { color: colors.textSecondary, fontSize: 14, marginTop: 5 },
 
     // Filter Chips
     filterContainer: {
@@ -489,7 +487,7 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         borderWidth: 1,
         borderColor: colors.border,
-        backgroundColor: '#F7FAFD',
+        backgroundColor: colors.primaryTint,
         gap: 4,
     },
     filterChipActive: {

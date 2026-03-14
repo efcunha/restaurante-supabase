@@ -19,7 +19,7 @@ import BiometricAuthService from '../services/BiometricAuthService';
 import { useAuth } from '../context/AuthContext';
 import * as Device from 'expo-device';
 import { supabase } from '../config/SupabaseConfig';
-
+import { colors } from '../theme/colors';
 interface Props {
   visible: boolean;
   onClose: () => void;
@@ -126,7 +126,7 @@ export default function BiometricSetupModal({ visible, onClose, onSuccess }: Pro
   const renderUnavailable = () => (
     <View style={styles.content}>
       <View style={styles.iconContainer}>
-        <Ionicons name="alert-circle" size={64} color="#F57C00" />
+        <Ionicons name="alert-circle" size={64} color={colors.warning} />
       </View>
 
       <Text style={styles.title}>Biometria Não Disponível</Text>
@@ -157,7 +157,7 @@ export default function BiometricSetupModal({ visible, onClose, onSuccess }: Pro
   const renderAvailable = () => (
     <View style={styles.content}>
       <View style={styles.iconContainer}>
-        <Ionicons name={getBiometricIcon()} size={64} color="#8B2F2F" />
+        <Ionicons name={getBiometricIcon()} size={64} color={colors.primary} />
       </View>
 
       <Text style={styles.title}>Habilitar {biometricType}</Text>
@@ -182,7 +182,7 @@ export default function BiometricSetupModal({ visible, onClose, onSuccess }: Pro
                 disabled={loading}
               >
                 {loading ? (
-                  <ActivityIndicator color="#FFF" />
+                  <ActivityIndicator color={colors.white} />
                 ) : (
                   <Text style={styles.primaryButtonText}>Confirmar e Ativar</Text>
                 )}
@@ -193,25 +193,25 @@ export default function BiometricSetupModal({ visible, onClose, onSuccess }: Pro
 
       <View style={styles.benefitsList}>
         <View style={styles.benefitItem}>
-          <Ionicons name="checkmark-circle" size={24} color="#2E7D32" />
+          <Ionicons name="checkmark-circle" size={24} color={colors.success} />
           <Text style={styles.benefitText}>Login rápido e conveniente</Text>
         </View>
         <View style={styles.benefitItem}>
-          <Ionicons name="checkmark-circle" size={24} color="#2E7D32" />
+          <Ionicons name="checkmark-circle" size={24} color={colors.success} />
           <Text style={styles.benefitText}>Mais seguro que senha</Text>
         </View>
         <View style={styles.benefitItem}>
-          <Ionicons name="checkmark-circle" size={24} color="#2E7D32" />
+          <Ionicons name="checkmark-circle" size={24} color={colors.success} />
           <Text style={styles.benefitText}>Seus dados ficam no dispositivo</Text>
         </View>
         <View style={styles.benefitItem}>
-          <Ionicons name="checkmark-circle" size={24} color="#2E7D32" />
+          <Ionicons name="checkmark-circle" size={24} color={colors.success} />
           <Text style={styles.benefitText}>Fallback para senha sempre disponível</Text>
         </View>
       </View>
 
       <View style={styles.infoBox}>
-        <Ionicons name="information-circle-outline" size={20} color="#666" />
+        <Ionicons name="information-circle-outline" size={20} color={colors.textSecondary} />
         <Text style={styles.infoText}>
           Você sempre poderá usar sua senha se a biometria não funcionar.
         </Text>
@@ -223,10 +223,10 @@ export default function BiometricSetupModal({ visible, onClose, onSuccess }: Pro
         disabled={loading}
       >
         {loading ? (
-          <ActivityIndicator color="#FFF" />
+          <ActivityIndicator color={colors.white} />
         ) : (
           <>
-            <Ionicons name={getBiometricIcon()} size={20} color="#FFF" />
+            <Ionicons name={getBiometricIcon()} size={20} color={colors.white} />
             <Text style={styles.primaryButtonText}>Habilitar {biometricType}</Text>
           </>
         )}
@@ -246,7 +246,7 @@ export default function BiometricSetupModal({ visible, onClose, onSuccess }: Pro
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Autenticação Biométrica</Text>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Ionicons name="close" size={28} color="#333" />
+            <Ionicons name="close" size={28} color={colors.text} />
           </TouchableOpacity>
         </View>
 
@@ -259,10 +259,10 @@ export default function BiometricSetupModal({ visible, onClose, onSuccess }: Pro
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F1E8',
+    backgroundColor: colors.background,
   },
   header: {
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
     paddingTop: 50,
     paddingBottom: 15,
     paddingHorizontal: 20,
@@ -273,7 +273,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#FFF',
+    color: colors.white,
   },
   closeButton: {
     padding: 5,
@@ -290,13 +290,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#333',
+    color: colors.text,
     marginBottom: 10,
     textAlign: 'center',
   },
   description: {
     fontSize: 16,
-    color: '#666',
+    color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: 30,
     lineHeight: 24,
@@ -311,28 +311,28 @@ const styles = StyleSheet.create({
   },
   benefitText: {
     fontSize: 16,
-    color: '#333',
+    color: colors.text,
     marginLeft: 10,
     flex: 1,
   },
   infoBox: {
     flexDirection: 'row',
-    backgroundColor: '#E3F2FD',
+    backgroundColor: colors.primaryTint,
     padding: 15,
     borderRadius: 10,
     marginBottom: 20,
     borderLeftWidth: 4,
-    borderLeftColor: '#2196F3',
+    borderLeftColor: colors.secondary,
   },
   infoText: {
     fontSize: 14,
-    color: '#1565C0',
+    color: colors.secondary,
     marginLeft: 10,
     flex: 1,
     lineHeight: 20,
   },
   instructionsBox: {
-    backgroundColor: '#FFF',
+    backgroundColor: colors.white,
     padding: 20,
     borderRadius: 10,
     marginBottom: 20,
@@ -340,17 +340,17 @@ const styles = StyleSheet.create({
   instructionsTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#333',
+    color: colors.text,
     marginBottom: 15,
   },
   instructionText: {
     fontSize: 14,
-    color: '#666',
+    color: colors.textSecondary,
     marginBottom: 10,
     lineHeight: 20,
   },
   primaryButton: {
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
     borderRadius: 10,
     padding: 15,
     alignItems: 'center',
@@ -361,7 +361,7 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#FFF',
+    color: colors.white,
     marginLeft: 8,
   },
   secondaryButton: {
@@ -373,7 +373,7 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#8B2F2F',
+    color: colors.primary,
   },
   passwordContainer: {
     width: '100%',
@@ -382,13 +382,13 @@ const styles = StyleSheet.create({
   label: {
       fontSize: 16,
       marginBottom: 8,
-      color: '#333',
+      color: colors.text,
       fontWeight: '600',
   },
   input: {
-      backgroundColor: '#FFF',
+      backgroundColor: colors.white,
       borderWidth: 1,
-      borderColor: '#DDD',
+      borderColor: colors.border,
       borderRadius: 8,
       padding: 12,
       fontSize: 16,
