@@ -7,6 +7,7 @@
 | `20260311161100_schema_dump.sql` | Schema completo | 2026-03-11 | DDL de 27 tabelas, funções, índices e RLS do schema `public` |
 | `20260311161100_seed_data.sql` | Dados | 2026-03-11 | Dados de referência (produtos, mesas, configurações) |
 | `add_atomic_consume_function.sql` | Função | 2026-03-11 | RPC `adicionar_consumo_atomico` — fix de race condition |
+| `20260314164000_fix_atomic_consume_function_type_casts.sql` | Correção | 2026-03-14 | Corrige casts do RPC `adicionar_consumo_atomico` (`uuid/date/integer`) |
 | `create_delivery_comanda_number_function.sql` | Função | anterior | Função de controle de número de comanda para delivery |
 
 ## Tabelas capturadas (27)
@@ -33,6 +34,9 @@ psql "$DATABASE_URL" -f migrations/20260311161100_seed_data.sql
 
 # 4. Aplicar funções extras (se não incluídas no schema)
 psql "$DATABASE_URL" -f migrations/add_atomic_consume_function.sql
+
+# 5. Aplicar correções pós-dump
+psql "$DATABASE_URL" -f migrations/20260314164000_fix_atomic_consume_function_type_casts.sql
 ```
 
 Ou via Supabase CLI:
@@ -75,3 +79,16 @@ npx supabase db dump \
 - `ComandasService.ts`: busca sem `table_number`, RPC atômica `adicionar_consumo_atomico`, ordenação numérica em `listarComandasAbertas`
 
 **Resultado:** 4 workers simultâneos no Playwright → 4 mesas isoladas ✅
+
+### 2026-03-14 — Fix type mismatch no RPC atômico
+
+**Problema:** o fluxo de pedido funcionava, mas a RPC `adicionar_consumo_atomico` falhava em runtime e caía no fallback `READ→WRITE`.
+
+**Causa-raiz:** a função recebia parâmetros `TEXT`, enquanto a tabela `comandas` usa `company_id UUID`, `date_key DATE` e `comanda_number INTEGER`.
+
+**Fix aplicado:** casts explícitos na função:
+- `p_company_id::uuid`
+- `p_date_key::date`
+- `p_comanda_number::integer`
+
+**Resultado esperado:** o fluxo continua igual para o usuário, mas a atualização do consumo volta a ser realmente atômica e deixa de depender do fallback.
