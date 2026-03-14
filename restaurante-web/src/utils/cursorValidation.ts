@@ -101,7 +101,7 @@ export class CursorValidator {
       }
 
       return cursor as CursorData;
-    } catch (error) {
+    } catch {
       throw new Error('Failed to decode cursor');
     }
   }

@@ -12,7 +12,7 @@ interface Props {
 
 export default function CaixaAberturaScreen({ onSuccess }: Props) {
   const { user } = useAuth();
-  const { isTablet, horizontalPadding, inputMaxWidth } = useResponsive();
+  const { isTablet, horizontalPadding } = useResponsive();
   const [valorInicial, setValorInicial] = useState('0');
   const [loading, setLoading] = useState(false);
 

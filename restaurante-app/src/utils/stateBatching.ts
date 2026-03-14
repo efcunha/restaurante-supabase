@@ -219,7 +219,7 @@ export async function exampleAsyncBatching(
  * Example: Batching updates in setTimeout
  */
 export function exampleTimeoutBatching(
-  setCount: (count: number) => void,
+  setCount: (count: number | ((prev: number) => number)) => void,
   setMessage: (message: string) => void
 ) {
   setTimeout(() => {

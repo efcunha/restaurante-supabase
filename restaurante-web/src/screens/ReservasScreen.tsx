@@ -5,7 +5,7 @@ import { colors } from '../theme/colors';
 import { supabase } from '../config/SupabaseConfig';
 import { useAuth } from '../context/AuthContext';
 
-export default function ReservasScreen({ navigation }: any) {
+export default function ReservasScreen({ navigation: _navigation }: any) {
   const { user, logout } = useAuth();
   const [reservas, setReservas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

@@ -228,7 +228,7 @@ class UnifiedQueryService {
     try {
       const result = await this.getOrderById(companyId, orderId);
       return result?.isArchived || false;
-    } catch (error) {
+    } catch {
       return false;
     }
   }

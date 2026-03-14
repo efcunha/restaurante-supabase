@@ -6,10 +6,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   TextInput,
-  ScrollView,
-  Platform,
-  Alert,
-  ActivityIndicator
+  ScrollView
 } from 'react-native';
 import { Order, OrderItem } from '../types/models';
 import { calcularPrecoItem, MenuItem } from '../utils/orderCalculator';

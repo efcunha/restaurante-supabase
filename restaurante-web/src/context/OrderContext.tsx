@@ -1,6 +1,6 @@
 
 import React, { createContext, useState, useContext, useCallback, useEffect, ReactNode } from 'react';
-import { Platform, Alert } from 'react-native';
+import { Platform } from 'react-native';
 import { supabase } from '../config/SupabaseConfig';
 import * as ProductService from '../services/ProductService';
 import OrderService from '../services/OrderService';

@@ -7,7 +7,6 @@ import { cacheLayerService } from '../services/CacheLayerService';
 import CaixaService from './CaixaService';
 import OrderService from './OrderService';
 import SyncService from './SyncService';
-import { Comanda } from '../types';
 
 interface PagamentoData {
   companyId: string;
@@ -400,7 +399,6 @@ class PagamentosService {
 
         // 🔒 SELF-HEAL: Check for corrupted quantities (e.g. name "3x..." but quantity 1)
         // This fixes orders that were backfilled incorrectly before the trim() fix
-        let dataHealed = false;
         currentItems = currentItems.map((item: any) => {
              const safeName = (item.name || '').trim();
              const qtyMatch = safeName.match(/^(\d+)x?\s*/);
@@ -408,7 +406,6 @@ class PagamentosService {
              
              if (parsedQty > 1 && (item.quantity === 1 || !item.quantity)) {
                  console.log(`[PagamentosService] Healing corrupted quantity for ${safeName}. ${item.quantity} -> ${parsedQty}`);
-                 dataHealed = true;
                  return { ...item, quantity: parsedQty };
              }
              return item;

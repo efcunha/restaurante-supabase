@@ -62,7 +62,12 @@ class PerformanceMonitoringService {
     try {
       if (!this.performance) return;
 
-      const customTrace = trace(this.performance, traceName);
+      // Firebase trace disabled during migration; keep no-op trace handles.
+      const customTrace = {
+        start: () => undefined,
+        stop: () => undefined,
+        putAttribute: (_key: string, _value: string) => undefined,
+      };
       customTrace.start();
       this.activeTraces.set(traceName, customTrace);
 
@@ -357,7 +362,7 @@ class PerformanceMonitoringService {
    * Create performance dashboard data
    */
   getDashboardData(): {
-    summary: ReturnType<typeof this.getMetricsSummary>;
+    summary: ReturnType<PerformanceMonitoringService['getMetricsSummary']>;
     criticalOperations: Array<{
       name: string;
       avgLatency: number;

@@ -8,11 +8,11 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import PrinterService from '../services/PrinterService';
 import { useResponsive } from '../hooks/useResponsive';
 // @ts-ignore
+import { ScreenScaffold } from '../layouts/ScreenScaffold';
 
 
 interface Props {
@@ -100,22 +100,10 @@ export default function PrinterConfigScreen({ navigation }: Props) {
 
   if (!PrinterService.isAvailable()) {
     return (
-      <View style={styles.container}>
-
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color="#FFF" />
-            </TouchableOpacity>
-          </View>
-          <View style={styles.headerCenter}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Ionicons name="print-outline" size={24} color="#FFF" style={{ marginRight: 8 }} />
-              <Text style={styles.headerTitle}>Configurar Impressora</Text>
-            </View>
-          </View>
-          <View style={styles.headerRight} />
-        </View>
+      <ScreenScaffold
+        title="Configurar Impressora"
+        leftAction={{ label: 'Voltar', onPress: () => navigation.goBack() }}
+      >
         <View style={styles.unavailableContainer}>
           <Text style={styles.unavailableText}>⚠️</Text>
           <Text style={styles.unavailableTitle}>Não Disponível na Web</Text>
@@ -127,29 +115,15 @@ export default function PrinterConfigScreen({ navigation }: Props) {
           </Text>
         </View>
         <StatusBar style="light" />
-      </View>
+      </ScreenScaffold>
     );
   }
 
   return (
-    <View style={styles.container}>
-
-
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#FFF" />
-          </TouchableOpacity>
-        </View>
-        <View style={styles.headerCenter}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Ionicons name="print-outline" size={24} color="#FFF" style={{ marginRight: 8 }} />
-            <Text style={styles.headerTitle}>Configurar Impressora</Text>
-          </View>
-        </View>
-        <View style={styles.headerRight} />
-      </View>
+    <ScreenScaffold
+      title="Configurar Impressora"
+      leftAction={{ label: 'Voltar', onPress: () => navigation.goBack() }}
+    >
 
       <ScrollView style={styles.content} contentContainerStyle={{ 
         paddingBottom: 100,
@@ -267,52 +241,11 @@ export default function PrinterConfigScreen({ navigation }: Props) {
       </ScrollView>
 
       <StatusBar style="light" />
-    </View>
+    </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F5DC',
-  },
-  header: {
-    backgroundColor: '#8B2F2F',
-    paddingTop: 50,
-    paddingBottom: 15,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-    zIndex: 10,
-    elevation: 8,
-  },
-  headerLeft: {
-    width: 40,
-    alignItems: 'flex-start',
-    justifyContent: 'center',
-  },
-  headerCenter: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerRight: {
-    width: 40,
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-  },
-  backButton: {
-    padding: 5,
-  },
-  headerTitle: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
   content: {
     flex: 1,
     padding: 20,

@@ -199,7 +199,7 @@ export const withErrorHandling = (fn, options = {}) => {
 export const checkNetworkConnectivity = async () => {
   try {
     // Simple connectivity check - try to reach a reliable endpoint
-    const response = await fetch('https://www.google.com/favicon.ico', {
+    await fetch('https://www.google.com/favicon.ico', {
       method: 'HEAD',
       mode: 'no-cors',
       cache: 'no-cache',

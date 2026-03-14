@@ -1,9 +1,7 @@
 import { supabase } from '../../config/SupabaseConfig';
 import { Order } from '../../types';
-import { RealtimeChannel } from '@supabase/supabase-js';
 import offlineQueueService from '../OfflineQueueService';
 import { isRetryableError } from '../../utils/errors';
-import { optimizedSupabaseClient } from '../optimization/OptimizedSupabaseClient';
 import { realTimeListenerManager } from '../optimization/RealTimeListenerManager';
 import type { Subscription } from '../optimization/RealTimeListenerManager';
 import { CompanySettingsService } from '../CompanySettingsService';
@@ -92,7 +90,7 @@ class SupabaseOrderService {
     };
   }
 
-  async fetchActiveOrders(companyId: string, dateKey?: string): Promise<Order[]> {
+  async fetchActiveOrders(companyId: string, _dateKey?: string): Promise<Order[]> {
     // Use optimized client with caching for active orders
     // We filter orders from the current day (starting at 00:00) to ensure tables are cleared when the day turns
     // Use configurable Business Day Cutoff (default 6 AM)
@@ -374,7 +372,7 @@ class SupabaseOrderService {
 
     const operation = async () => {
       // 1. Get current order info to log 'from_table'
-      const { data: currentOrder, error: fetchError } = await supabase
+      const { error: fetchError } = await supabase
         .from('orders')
         .select('table_number, id') // add more fields if we can join with tables
         .eq('id', orderId)
@@ -508,7 +506,7 @@ class SupabaseOrderService {
   /**
    * Busca estatísticas de pagamentos
    */
-  async getEstatisticasPagamentos(companyId: string, garcomId: string | null = null, periodo: string = 'hoje') {
+  async getEstatisticasPagamentos(companyId: string, _garcomId: string | null = null, _periodo: string = 'hoje') {
     // TODO: Implementar usando tabela de pagamentos quando migrada
     return {
       dinheiro: { total: 0, quantidade: 0 },
@@ -550,7 +548,7 @@ class SupabaseOrderService {
         totalPago: comandas.reduce((acc, c) => acc + (c.total_paid || 0), 0),
         saldoAberto: comandas.reduce((acc, c) => acc + (c.open_balance || 0), 0)
       };
-    } catch (e) {
+    } catch {
       return { total: 0, abertas: 0, fechadas: 0, totalConsumido: 0, totalPago: 0, saldoAberto: 0 };
     }
   }
@@ -625,7 +623,7 @@ class SupabaseOrderService {
     };
   }
 
-  private _calcularEstatisticas(pedidos: Order[], pagamentos: any[]) {
+  private _calcularEstatisticas(pedidos: Order[], _pagamentos: any[]) {
     const totalPedidos = pedidos.length;
     const pedidosPagos = pedidos.filter(p => p.isPago);
     const pedidosAbertos = pedidos.filter(p => !p.isPago);
@@ -647,7 +645,7 @@ class SupabaseOrderService {
   }
 
   // Compatibility methods
-  findOrdersByComanda(comanda: string) { return []; }
+  findOrdersByComanda(_comanda: string) { return []; }
   findDocIdByOrderId() { return null; }
 }
 

@@ -10,7 +10,6 @@ import {
   requestDeduplicator, 
   deduplicateRequest,
   withDeduplication,
-  Deduplicate,
   RequestDeduplicator 
 } from './RequestDeduplicator';
 
@@ -104,7 +103,6 @@ export class ProductService {
   /**
    * Fetch products with automatic deduplication using decorator
    */
-  @Deduplicate((companyId: string) => `products:${companyId}`)
   async getProducts(companyId: string) {
     console.log('Fetching products from database...');
     
@@ -121,7 +119,6 @@ export class ProductService {
   /**
    * Fetch product by ID with deduplication
    */
-  @Deduplicate((companyId: string, productId: string) => `product:${companyId}:${productId}`)
   async getProductById(companyId: string, productId: string) {
     console.log(`Fetching product ${productId}...`);
     
@@ -248,7 +245,7 @@ export class OptimizedComandasService {
    */
   async ensureComandaAberta(
     companyId: string,
-    comandaNumber: string,
+    _comandaNumber: string,
     // ... other params
   ) {
     // Perform the operation

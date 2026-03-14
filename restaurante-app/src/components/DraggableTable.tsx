@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { View, PanResponder, Animated, StyleSheet } from 'react-native';
+import { PanResponder, Animated, StyleSheet } from 'react-native';
 import TableGraphic from './TableGraphic';
 import { Table } from '../types';
 
@@ -9,7 +9,7 @@ interface DraggableTableProps {
     scale?: number;
 }
 
-export default function DraggableTable({ table, onDragEnd, scale = 1 }: DraggableTableProps) {
+export default function DraggableTable({ table, onDragEnd, scale: _scale = 1 }: DraggableTableProps) {
     // Current position
     const pan = useRef(new Animated.ValueXY({ x: table.position_x, y: table.position_y })).current;
     const [isDragging, setIsDragging] = useState(false);

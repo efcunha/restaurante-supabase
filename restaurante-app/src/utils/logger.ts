@@ -5,7 +5,7 @@
  * Requirements: 22.1, 22.2
  */
 
-import { Platform } from 'react-native';
+
 
 // ============================================================================
 // TYPES
@@ -64,6 +64,10 @@ interface PerformanceMetadata {
 
 // Analytics placeholder for future implementation (e.g. Supabase Analytics or custom)
 // Currently logging only to console
+type AnalyticsEventLogger = (instance: unknown, eventName: string, params: Record<string, unknown>) => void;
+
+const analyticsInstance: unknown | null = null;
+const logEventFn: AnalyticsEventLogger | null = null;
 
 
 // ============================================================================
@@ -157,7 +161,7 @@ class Logger {
           timestamp: this._getTimestamp()
         });
       }
-    } catch (e) {
+    } catch {
       // Falha ao enviar para analytics, não interrompe app
     }
   }
@@ -278,9 +282,13 @@ const logger = new Logger();
 // ============================================================================
 
 export const setupGlobalErrorHandler = (): void => {
-  if (global.__exceptionHandler) {
-    const originalHandler = global.__exceptionHandler;
-    global.__exceptionHandler = (error: Error, isFatal: boolean) => {
+  const globalWithExceptionHandler = global as typeof globalThis & {
+    __exceptionHandler?: (error: Error, isFatal: boolean) => void;
+  };
+
+  if (globalWithExceptionHandler.__exceptionHandler) {
+    const originalHandler = globalWithExceptionHandler.__exceptionHandler;
+    globalWithExceptionHandler.__exceptionHandler = (error: Error, isFatal: boolean) => {
       logger.unhandledError(error, isFatal ? 'fatal' : 'non-fatal');
       originalHandler(error, isFatal);
     };

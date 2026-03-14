@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Modal, View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../config/SupabaseConfig';
 import { useAuth } from '../../context/AuthContext';
-import { getTodayKey } from '../../utils/dateUtils';
 import supabaseOrderService from '../../services/supabase/SupabaseOrderService';
 
 interface ItemCart {
@@ -21,8 +20,7 @@ interface NovoPedidoModalProps {
 
 export default function NovoPedidoModal({ onClose }: NovoPedidoModalProps) {
   const { user } = useAuth();
-  const [orderType, setOrderType] = useState<'delivery' | 'local'>('delivery');
-  
+
   // Delivery Form
   const [clientName, setClientName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');

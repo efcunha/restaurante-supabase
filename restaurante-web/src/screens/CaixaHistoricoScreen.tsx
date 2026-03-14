@@ -8,6 +8,7 @@ import CashFlowScreen from './CashFlowScreen';
 import { Ionicons } from '@expo/vector-icons';
 import { formatCurrency } from '../utils/formatCurrency';
 import { Caixa } from '../types';
+import { ScreenScaffold } from '../layouts/ScreenScaffold';
 
 interface CaixaHistoricoScreenProps {
   onClose: () => void;
@@ -43,24 +44,10 @@ export default function CaixaHistoricoScreen({ onClose }: CaixaHistoricoScreenPr
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          {onClose && (
-            <TouchableOpacity onPress={onClose} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color="#FFF" />
-            </TouchableOpacity>
-          )}
-        </View>
-        <View style={styles.headerCenter}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Ionicons name="calendar-outline" size={24} color="#FFF" />
-            <Text style={styles.headerTitle}>Histórico de Caixas</Text>
-          </View>
-        </View>
-        <View style={styles.headerRight} />
-      </View>
-
+    <ScreenScaffold
+      title="Histórico de Caixas"
+      leftAction={{ label: 'Voltar', onPress: onClose }}
+    >
       <ScrollView contentContainerStyle={{ padding: 15 }}>
         <Text style={styles.hintText}>Toque em um cartão para ver o extrato completo</Text>
 
@@ -138,49 +125,11 @@ export default function CaixaHistoricoScreen({ onClose }: CaixaHistoricoScreenPr
       </Modal>
 
       <StatusBar style="light" />
-    </View>
+    </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F1E8' },
-  header: {
-    backgroundColor: '#8B2F2F',
-    paddingTop: 50,
-    paddingBottom: 15,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-    zIndex: 10,
-    elevation: 8,
-  },
-  headerLeft: {
-    width: 40,
-    alignItems: 'flex-start',
-    justifyContent: 'center',
-  },
-  headerCenter: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerRight: {
-    width: 40,
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-  },
-  backButton: {
-    padding: 5,
-  },
-  headerTitle: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
   hintText: { textAlign: 'center', color: '#7F8C8D', marginBottom: 15, fontSize: 13, fontStyle: 'italic' },
 
   card: {

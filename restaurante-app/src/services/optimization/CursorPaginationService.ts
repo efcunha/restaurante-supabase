@@ -139,8 +139,7 @@ export class CursorPaginationService {
           value: items[items.length - 1][orderBy],
           column: orderBy,
           direction: orderDirection,
-          timestamp: Date.now(),
-          signature: ''
+          timestamp: Date.now()
         })
       : null;
 
@@ -150,8 +149,7 @@ export class CursorPaginationService {
           value: items[0][orderBy],
           column: orderBy,
           direction: orderDirection === 'desc' ? 'asc' : 'desc',
-          timestamp: Date.now(),
-          signature: ''
+          timestamp: Date.now()
         })
       : null;
 
@@ -204,7 +202,7 @@ export class CursorPaginationService {
     try {
       const json = Buffer.from(encodedCursor, 'base64').toString('utf-8');
       return JSON.parse(json);
-    } catch (error) {
+    } catch {
       throw new Error('Invalid cursor format');
     }
   }

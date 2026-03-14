@@ -5,13 +5,12 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
-  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { colorSystem, typography, spacing } from '../design-system';
-import { Roles, getRoleOverflowScreens } from '../auth/roles';
+import { getRoleOverflowScreens } from '../auth/roles';
 
 // Metadados visuais de cada destino secundário
 const OVERFLOW_ITEMS: Record<
@@ -53,8 +52,8 @@ export default function OverflowMenuScreen() {
   const overflowKeys = getRoleOverflowScreens(role);
 
   const items = overflowKeys
-    .map((key) => ({ key, ...(OVERFLOW_ITEMS[key] ?? null) }))
-    .filter((item) => item.label != null);
+    .map((key: string) => ({ key, ...(OVERFLOW_ITEMS[key] ?? null) }))
+    .filter((item: { label?: string | null }) => item.label != null);
 
   return (
     <ScrollView
@@ -71,7 +70,7 @@ export default function OverflowMenuScreen() {
         </View>
       )}
 
-      {items.map((item) => (
+      {items.map((item: { key: string; label: string; description?: string; icon: string; color: string }) => (
         <TouchableOpacity
           key={item.key}
           style={styles.row}

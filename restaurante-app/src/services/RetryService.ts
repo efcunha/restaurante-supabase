@@ -12,7 +12,6 @@
  */
 
 import {
-  AppError,
   isRetryableError,
   classifyError,
   NetworkError,

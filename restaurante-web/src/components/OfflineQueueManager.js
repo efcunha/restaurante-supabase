@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import NetInfo from '@react-native-community/netinfo';
 import { offlineQueueService } from '../services/OfflineQueueService';
 import { AppState } from 'react-native';

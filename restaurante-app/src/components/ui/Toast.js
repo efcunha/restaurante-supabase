@@ -1,9 +1,7 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, TouchableOpacity, Dimensions, Platform } from 'react-native';
+import { Text, StyleSheet, Animated, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
-
-const { width } = Dimensions.get('window');
 
 export default function Toast({ visible, message, type = 'success', onHide }) {
   const translateY = useRef(new Animated.Value(-100)).current;

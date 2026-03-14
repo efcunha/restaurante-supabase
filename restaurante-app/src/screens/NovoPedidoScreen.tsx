@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, SectionList, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, LayoutAnimation, Platform, UIManager, SectionListRenderItem, InteractionManager } from 'react-native';
+import { StyleSheet, Text, View, SectionList, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, LayoutAnimation, Platform, UIManager, SectionListRenderItem } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import React, { memo, useCallback, useState, useMemo, useRef, useEffect } from 'react';
 
@@ -10,11 +10,10 @@ import { Button, Navbar } from '../ui';
 import { useFocusEffect } from '@react-navigation/native';
 // @ts-ignore
 import PizzaBuilderModal from '../components/PizzaBuilderModal';
-import { Product, PizzaSize, PizzaConfig } from '../types';
+import { Product } from '../types';
 import { NewOrderCartFooter, NewOrderHeaderForm, NewOrderListFooter, PizzaProductCard } from '../features/new-order';
-import { Modal, FlatList } from 'react-native';
 // KeyboardWrapper removed to prevent touch stealing
-import { KeyboardAvoidingView, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native';
 
 if (Platform.OS === 'android') {
   if (UIManager.setLayoutAnimationEnabledExperimental) {
@@ -255,43 +254,10 @@ const areEspetinhoPropsEqual = (prev: EspetinhoRowProps, next: EspetinhoRowProps
   // Check variations
   if (prevVariacoes.length !== nextVariacoes.length) return false;
 
-  for (const v of prevVariacoes) {
-     const name = `${prev.baseName} ${v}`; // Simplistic reconstruction
-     // NOTE: This reconstruction might not match what the component does if the component filters against cardapio.
-     // But strictly, if we assume variacoes are static per render (which they essentially are), we just need to check if any *relevant* product changed.
-     // To be safe, we might iterate all keys in 'produtos' that start with baseName? No, too slow.
-     // Let's rely on iterating variacoes which is ~5 items.
-     
-     // The component logic:
-     // const targetName = `${baseName} ${variacao}`.toLowerCase();
-     // const produto = cardapioEspetinhos.find... 
-     
-     // We can just check the exact name in products map if we know it.
-     // Since we don't know the exact "Product Name" without the cardapio check, we can try to guess or just let it re-render if we can't be sure.
-     // However, Espetinhos usually follow "Alcatra com Bacon", "Alcatra com Queijo".
-     // Let's iterate variacoes.
-  }
-  
-  // Checking exact names requires the product list logic which is inside the component.
-  // Instead of duplicating logic, let's just make sure we only update if *any* product starting with this baseName changed?
-  // Or better: Re-calculating the list of items is cheap (memoized). Re-rendering the VIEWS is expensive.
-  // We can let the component re-evaluate the list, but we want to prevent the render if outcomes are same.
-  
-  // Let's use a simpler approach: 
+    // Compare the resolved product names derived from base name + variation.
   // If the list of *available products* changed (cardapioEspetinhos ref change?) -> yes
   if (prev.cardapioEspetinhos !== next.cardapioEspetinhos) return false;
-  
-  // If products map changed... 
-  // We can try to be smart.
-  // Let's just check the values in `produtos` for the *derived* names.
-  // We need to replicate the derived name logic to check equality efficiently.
-  
-  // Replicating:
-  // "Alcatra Suína" + "Com Bacon" -> "Alcatra Suína Com Bacon" (approx)
-  // Actually, the component filters cardapio. 
-  
-  // Let's try to trust that names match `${baseName} ${variacao}` (case insensitive).
-  
+
   for (const v of prevVariacoes) {
       // We check case-insensitive match against keys in 'produtos'? No, 'produtos' keys are exact strings.
       // This is tricky without the cardapio list to resolve exact product names.
@@ -452,14 +418,14 @@ export default function NovoPedidoScreen({ route }: any) {
   const [selectedPizza, setSelectedPizza] = useState<Product | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   // Ref para scroll programático ao pressionar chips de categoria
-  const sectionListRef = useRef<SectionList<any>>(null);
+  const sectionListRef = useRef<SectionList<SectionItem, Section>>(null);
   // Índice do chip de categoria atualmente visível
   const [activeChipIndex, setActiveChipIndex] = useState(0);
   // Carrinho expandido/colapsado no footer fixo
   const [cartExpanded, setCartExpanded] = useState(false);
   
   // Performance monitoring
-  const { metrics, startMonitoring, stopMonitoring, logMetrics, isMonitoring } = usePerformanceMonitor();
+  const { startMonitoring, stopMonitoring, logMetrics, isMonitoring } = usePerformanceMonitor();
 
   const {
     user,
@@ -470,13 +436,8 @@ export default function NovoPedidoScreen({ route }: any) {
     setClientName,
     mesa,
     setMesa,
-    tableId,
     setTableId,
-    waiterId,
     setWaiterId,
-    waiters,
-    observations,
-    setObservations,
     updateProduto,
     total,
     selectedItems,

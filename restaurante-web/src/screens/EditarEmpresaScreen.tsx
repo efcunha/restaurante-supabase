@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 // @ts-ignore
 import { validateCPF, validateCNPJ } from '../utils/validation';
 import { supabase } from '../config/SupabaseConfig';
+import { ScreenScaffold } from '../layouts/ScreenScaffold';
 
 interface Props {
   onBack: () => void;
@@ -264,22 +265,10 @@ export default function EditarEmpresaScreen({ onBack }: Props) {
     }
 
     return (
-        <View style={styles.container}>
-            <View style={styles.header}>
-                <View style={styles.headerLeft}>
-                    <TouchableOpacity onPress={onBack} style={styles.backButton}>
-                        <Ionicons name="arrow-back" size={24} color="#FFF" />
-                    </TouchableOpacity>
-                </View>
-                <View style={styles.headerCenter}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Ionicons name="business-outline" size={24} color="#FFF" style={{ marginRight: 8 }} />
-                        <Text style={styles.headerTitle}>Dados da Empresa</Text>
-                    </View>
-                </View>
-                <View style={styles.headerRight} />
-            </View>
-
+        <ScreenScaffold
+            title="Dados da Empresa"
+            leftAction={{ label: 'Voltar', onPress: onBack }}
+        >
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={styles.content}
@@ -411,57 +400,16 @@ export default function EditarEmpresaScreen({ onBack }: Props) {
                     </View>
                 </ScrollView>
             </KeyboardAvoidingView>
-        </View>
+        </ScreenScaffold>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#F5F5DC',
-    },
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: '#F5F5DC',
-    },
-    header: {
-        backgroundColor: '#8B2F2F',
-        paddingTop: 50,
-        paddingBottom: 15,
-        paddingHorizontal: 20,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        borderBottomLeftRadius: 20,
-        borderBottomRightRadius: 20,
-        zIndex: 10,
-        elevation: 8,
-    },
-    headerLeft: {
-        width: 40,
-        alignItems: 'flex-start',
-        justifyContent: 'center',
-    },
-    headerCenter: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    headerRight: {
-        width: 40,
-        alignItems: 'flex-end',
-        justifyContent: 'center',
-    },
-    headerTitle: {
-        color: '#FFFFFF',
-        fontSize: 20,
-        fontWeight: 'bold',
-        textAlign: 'center',
-    },
-    backButton: {
-        padding: 5,
     },
     content: {
         flex: 1,

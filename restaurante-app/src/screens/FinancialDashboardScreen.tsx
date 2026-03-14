@@ -7,6 +7,7 @@ import { formatCurrency } from '../utils/formatCurrency';
 import { SalesByDayChart, SalesByPaymentChart } from '../components/FinancialCharts';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../config/SupabaseConfig';
+import { ScreenScaffold } from '../layouts/ScreenScaffold';
 
 // Tipos para as props dos componentes internos
 interface KPICardProps {
@@ -275,18 +276,10 @@ export default function FinancialDashboardScreen({ onClose }: FinancialDashboard
     };
 
     return (
-        <View style={styles.container}>
-
-
-            {/* Header */}
-            <View style={styles.header}>
-                <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-                    <Ionicons name="arrow-back" size={24} color="#FFF" />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>📊 Dashboard Financeiro</Text>
-                <View style={{ width: 40 }} />
-            </View>
-
+        <ScreenScaffold
+            title="📊 Dashboard Financeiro"
+            leftAction={{ label: 'Voltar', onPress: onClose }}
+        >
             {/* Filtros de Período */}
             <View style={styles.filterContainer}>
                 {(['hoje', '7dias', '30dias'] as const).map((p) => (
@@ -383,33 +376,13 @@ export default function FinancialDashboardScreen({ onClose }: FinancialDashboard
                     <View style={{ height: 40 }} />
                 </ScrollView>
             )}
-        </View>
+        </ScreenScaffold>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F5F5DC' },
-    header: {
-        backgroundColor: '#8B2F2F',
-        paddingTop: 50,
-        paddingBottom: 20,
-        paddingHorizontal: 20,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        borderBottomLeftRadius: 20,
-        borderBottomRightRadius: 20,
-        elevation: 8,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-        zIndex: 10,
-    },
-    headerTitle: { color: '#FFF', fontSize: 20, fontWeight: 'bold' },
     content: { flex: 1, padding: 15 },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    closeBtn: { padding: 5 },
 
     filterContainer: { flexDirection: 'row', justifyContent: 'center', marginVertical: 15, gap: 10 },
     filterBtn: { paddingVertical: 8, paddingHorizontal: 20, borderRadius: 20, backgroundColor: '#E0D8C8' },

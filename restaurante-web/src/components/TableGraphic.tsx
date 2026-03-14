@@ -1,6 +1,5 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { View, StyleSheet, Text } from 'react-native';
-import { colors } from '../theme/colors';
 
 type TableShape = 'square' | 'round' | 'rect';
 type TableStatus = 'Livre' | 'Ocupada' | 'Reservada' | 'Pagando';
@@ -80,7 +79,6 @@ export default function TableGraphic({
 
         if (shape === 'round') {
             // Radial distribution
-            const radius = (size / 2) + spacing + (chairSize / 2);
             // Ensure even distribution
             const angleStep = (2 * Math.PI) / seats;
 

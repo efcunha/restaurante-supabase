@@ -4,14 +4,6 @@ import { convertUnit } from '../utils/unitConversion';
 import OfflineQueueService from './OfflineQueueService';
 import { Ingredient } from '../types';
 
-interface OrderItem {
-  name?: string;
-  nome?: string;
-  quantidade?: number;
-  inventoryItems?: Ingredient[];
-  [key: string]: any;
-}
-
 class InventoryService {
     /**
      * Realiza a baixa de estoque para uma lista de itens do pedido.
@@ -92,7 +84,7 @@ class InventoryService {
 
             // Process deductions
             let totalCost = 0;
-            const updates: Promise<any>[] = [];
+            const updates: any[] = [];
 
             for (const ded of deductions) {
                 const stockItem = stockMap[ded.stockId];
@@ -140,7 +132,7 @@ class InventoryService {
             console.error('[InventoryService] Erro no processStockDeduction:', error);
 
             if (!isRetry) {
-                await OfflineQueueService.addTask('STOCK_DEDUCTION', {
+                await OfflineQueueService.enqueue('STOCK_DEDUCTION', async () => ({ totalCost: 0 }), {
                     companyId,
                     orderItems: orderItems
                 });

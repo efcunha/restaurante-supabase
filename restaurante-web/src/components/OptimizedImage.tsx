@@ -72,7 +72,7 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
   placeholder,
   fallback,
   lazy = false,
-  lazyThreshold = 100,
+  lazyThreshold: _lazyThreshold = 100,
   containerStyle,
   showLoadingIndicator = true,
   cache = 'default',

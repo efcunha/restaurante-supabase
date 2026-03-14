@@ -10,18 +10,18 @@ import {
     Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
 import { colors } from '../theme/colors';
 
 import TableService from '../services/TableService';
 import SupabaseOrderService from '../services/supabase/SupabaseOrderService';
-import { Environment, Table, Order } from '../types';
+import { Table, Order } from '../types';
 import { useAuth } from '../context/AuthContext';
 // @ts-ignore
 import PedidoDetalhesModal from './PedidoDetalhesModal';
+import { ScreenScaffold } from '../layouts/ScreenScaffold';
 
 const { width } = Dimensions.get('window');
-const SAFE_AREA_TOP = 50;
 
 export default function MapaMesasScreen({ navigation, route }: any) {
     const { user } = useAuth();
@@ -238,17 +238,6 @@ export default function MapaMesasScreen({ navigation, route }: any) {
         }
     };
 
-    // Render
-    const renderHeader = () => (
-        <View style={styles.header}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                <Ionicons name="arrow-back" size={24} color={colors.white} />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Mapa de Mesas</Text>
-            <View style={{ width: 24 }} />
-        </View>
-    );
-
     const renderEnvTabs = () => (
         <View style={styles.tabsContainer}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsScroll}>
@@ -304,8 +293,10 @@ export default function MapaMesasScreen({ navigation, route }: any) {
     };
 
     return (
-        <View style={styles.container}>
-            {renderHeader()}
+        <ScreenScaffold
+            title="Mapa de Mesas"
+            leftAction={{ label: 'Voltar', onPress: () => navigation.goBack() }}
+        >
 
             {loading ? (
                 <View style={styles.center}>
@@ -427,7 +418,7 @@ export default function MapaMesasScreen({ navigation, route }: any) {
                     }}
                 />
             )}
-        </View>
+        </ScreenScaffold>
     );
 }
 
@@ -438,18 +429,6 @@ import TableGraphic from '../components/TableGraphic';
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingTop: SAFE_AREA_TOP,
-        paddingHorizontal: 20,
-        paddingBottom: 15,
-        backgroundColor: colors.primary,
-    },
-    headerTitle: { fontSize: 20, fontWeight: 'bold', color: colors.white },
-    backButton: { padding: 5 },
-
     tabsContainer: { height: 60, backgroundColor: colors.white, borderBottomWidth: 1, borderBottomColor: colors.border },
     tabsScroll: { paddingHorizontal: 15, alignItems: 'center' },
     tab: {

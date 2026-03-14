@@ -62,13 +62,6 @@ class PDFService {
       </tr>
     `).join('');
 
-    const pagamentosHtml = Object.entries(comanda.pagamentosResumo || {}).map(([forma, valor]) => `
-      <tr>
-        <td style="color: #444;">${forma.toUpperCase()}</td>
-        <td style="text-align: right; white-space: nowrap;">R$ ${valor.toFixed(2)}</td>
-      </tr>
-    `).join('') || '<tr><td colspan="2" style="text-align:center; font-style:italic">Nenhum pagamento registrado</td></tr>';
-
     const companyName = companyData?.name || 'Recibo de Vendas';
     const companyDoc = companyData?.document ? (companyData.documentType === 'cpf' ? 'CPF' : 'CNPJ') + ': ' + companyData.document : '';
 

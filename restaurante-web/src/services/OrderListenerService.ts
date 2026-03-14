@@ -110,7 +110,7 @@ class OrderListenerService {
           table: 'orders',
           filter: `company_id=eq.${companyId}`
         },
-        async (payload) => {
+        async (_payload) => {
           // Re-fetch dados quando houver mudança
           await fetchInitialData();
         }
@@ -177,7 +177,7 @@ class OrderListenerService {
           table: 'orders',
           filter: `id=eq.${orderId}`
         },
-        async (payload) => {
+        async (_payload) => {
           // Re-fetch dados quando houver mudança
           await fetchInitialData();
         }

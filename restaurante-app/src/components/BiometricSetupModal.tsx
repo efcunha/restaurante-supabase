@@ -12,9 +12,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  Platform,
   TextInput,
-  KeyboardAvoidingView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import BiometricAuthService from '../services/BiometricAuthService';

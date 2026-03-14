@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 // @ts-ignore
  // Fix missing import if needed, assuming component exists
 import { SUPPORTED_UNITS } from '../utils/unitConversion';
+import { ScreenScaffold } from '../layouts/ScreenScaffold';
 
 // Componente para cada item de variação
 interface VariacaoItemProps {
@@ -126,7 +127,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
   const [selectedStockId, setSelectedStockId] = useState('');
   const [qtyIngredient, setQtyIngredient] = useState('');
   const [unitIngredient, setUnitIngredient] = useState('ml');
-  const [tipoUnidade, setTipoUnidade] = useState('VOLUME'); // Default to VOLUME for recipes usually
+  const [tipoUnidade, setTipoUnidade] = useState<keyof typeof SUPPORTED_UNITS>('VOLUME'); // Default to VOLUME for recipes usually
 
   const unidadesUI = (SUPPORTED_UNITS[tipoUnidade] || []);
 
@@ -1088,28 +1089,11 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
   }, [produtos, categorias]);
 
   return (
-    <KeyboardWrapper style={styles.container}>
-
-
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          {onClose && (
-            <TouchableOpacity onPress={onClose} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color="#FFF" />
-            </TouchableOpacity>
-          )}
-        </View>
-
-        <View style={styles.headerCenter}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Ionicons name="restaurant-outline" size={24} color="#FFF" style={{ marginRight: 8 }} />
-            <Text style={styles.headerTitle}>Gerenciar Cardápio</Text>
-          </View>
-        </View>
-
-        <View style={styles.headerRight} />
-      </View>
-
+    <ScreenScaffold
+      title="Gerenciar Cardápio"
+      leftAction={onClose ? { label: 'Voltar', onPress: onClose } : undefined}
+    >
+      <KeyboardWrapper style={styles.container}>
       <ScrollView style={styles.content} contentContainerStyle={{ 
         paddingBottom: 100,
         paddingHorizontal: horizontalPadding 
@@ -1805,7 +1789,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={[styles.variacoesLista, Platform.OS === 'web' && { maxHeight: '60vh' }]}>
+            <ScrollView style={styles.variacoesLista}>
               {variacoesSelecionadas.map(variacao => (
                 <View key={variacao.id}>
                   <VariacaoItem
@@ -1941,7 +1925,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                 </View>
 
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  {unidadesUI.map(u => (
+                  {unidadesUI.map((u: string) => (
                     <TouchableOpacity
                       key={u}
                       style={{
@@ -1988,34 +1972,12 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
       </Modal>
 
     </KeyboardWrapper>
+    </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5DC' },
-  header: {
-    backgroundColor: '#8B2F2F',
-    paddingTop: 50,
-    paddingBottom: 15,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-    zIndex: 10,
-    elevation: 8,
-  },
-  headerLeft: { width: 40 },
-  headerCenter: { flex: 1, alignItems: 'center' },
-  headerRight: { width: 40 },
-  backButton: { padding: 5 },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFF',
-    marginLeft: 8,
-  },
   content: { paddingBottom: 50 },
   section: {
     backgroundColor: '#FFFFFF',
@@ -2386,8 +2348,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   variacoesLista: {
-    maxHeight: Platform.OS === 'web' ? '60vh' : 400,
-    flexGrow: 0, // Ensure it doesn't force expansion beyond limits
+    maxHeight: 480,
+    flexGrow: 0,
   },
   variacaoItem: {
     backgroundColor: '#F5F1E8',

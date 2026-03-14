@@ -92,7 +92,7 @@ export class RequestDeduplicator {
   private async executeRequest<T>(
     key: string,
     fetcher: () => Promise<T>,
-    ttl: number
+    _ttl: number
   ): Promise<T> {
     try {
       const result = await fetcher();

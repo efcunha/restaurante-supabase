@@ -256,8 +256,6 @@ export class ConnectionPoolManager {
     const index = this.pool.findIndex(c => c.id === connectionId);
     
     if (index !== -1) {
-      const pooledConn = this.pool[index];
-      
       // For Supabase client, we don't need to explicitly close
       // In a real pg.Client implementation, you would call client.end() here
       
@@ -283,7 +281,7 @@ export class ConnectionPoolManager {
       
       // Consider connection healthy if no error or if it's just "no rows" error
       return !error || error.code === 'PGRST116';
-    } catch (error) {
+    } catch {
       return false;
     }
   }
