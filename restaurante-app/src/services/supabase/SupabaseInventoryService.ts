@@ -32,10 +32,7 @@ class SupabaseInventoryService {
         const totalCost = 0;
         
         // Logical placeholder for stock deduction
-        for (const item of orderItems) {
-            // Logic to calculate cost would go here
-            // e.g. fetch product price if needed to validate total
-        }
+        void orderItems.length;
 
         return { totalCost, error: undefined };
 
@@ -45,7 +42,7 @@ class SupabaseInventoryService {
     }
   }
 
-  async checkAvailability(companyId: string, productId: string, quantity: number): Promise<boolean> {
+    async checkAvailability(_companyId: string, _productId: string, _quantity: number): Promise<boolean> {
       // Stub implementation: assumed available if 'available' flag is true (checked in getProducts)
       return true;
   }

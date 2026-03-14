@@ -56,8 +56,8 @@ class AuthPersistenceService {
 
       const authState: AuthState = {
         userId: user.uid,
-        email: user.email,
-        displayName: user.displayName,
+        email: user.email ?? null,
+        displayName: user.displayName ?? null,
         role: (user.role as string) || null,
         companyId: (user.companyId as string) || null,
         persistedAt: now.toISOString(),

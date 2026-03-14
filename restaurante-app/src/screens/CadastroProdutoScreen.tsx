@@ -1,7 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
 import { useResponsive } from '../hooks/useResponsive';
 // @ts-ignore
 import KeyboardWrapper from '../components/KeyboardWrapper';
@@ -9,8 +8,7 @@ import KeyboardWrapper from '../components/KeyboardWrapper';
 import { criarProduto } from '../services/ProductService';
 
 export default function CadastroProdutoScreen() {
-  const { user } = useAuth();
-  const { isTablet, horizontalPadding, inputMaxWidth } = useResponsive();
+  const { horizontalPadding, inputMaxWidth } = useResponsive();
   const [nome, setNome] = useState('');
   const [preco, setPreco] = useState('');
   const [categoria, setCategoria] = useState('espetinho');

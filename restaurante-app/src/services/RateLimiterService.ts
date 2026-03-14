@@ -145,7 +145,7 @@ export class RateLimiterService {
         violations: 0
       };
       
-      const { data: newData, error: insertError } = await supabase
+      const { error: insertError } = await supabase
         .from(this.tableName)
         .insert(initialInfo)
         .select()

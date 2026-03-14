@@ -1,4 +1,4 @@
-import { Dimensions, Platform } from 'react-native';
+import { Dimensions, type DimensionValue } from 'react-native';
 import { useState, useEffect } from 'react';
 
 export interface ResponsiveValues {
@@ -8,9 +8,9 @@ export interface ResponsiveValues {
   isSmallPhone: boolean;
   horizontalPadding: number;
   verticalPadding: number;
-  modalWidth: string;
+  modalWidth: DimensionValue;
   modalMaxWidth: number;
-  inputMaxWidth: number | string;
+  inputMaxWidth: DimensionValue;
   numColumns: number;
   fontSize: {
     small: number;

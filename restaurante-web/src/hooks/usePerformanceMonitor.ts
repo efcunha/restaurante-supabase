@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { InteractionManager } from 'react-native';
 
 interface PerformanceMetrics {
   renderTime: number;

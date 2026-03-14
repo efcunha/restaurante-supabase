@@ -9,8 +9,7 @@ import {
     TextInput,
     Platform,
     KeyboardAvoidingView,
-    TouchableWithoutFeedback,
-    Keyboard
+    TouchableWithoutFeedback
 } from 'react-native';
 
 interface TransferModalProps {

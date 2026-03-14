@@ -1,8 +1,7 @@
 import React, { createContext, useState, useContext, useEffect, useRef, ReactNode } from 'react';
 import { Alert, InteractionManager } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../config/SupabaseConfig';
-import { Session, User } from '@supabase/supabase-js';
+import { User } from '@supabase/supabase-js';
 
 // Services
 import AuthPersistenceService, { PersistenceUser } from '../services/AuthPersistenceService';
@@ -134,7 +133,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
              console.log('[SupabaseAuth] Processing SIGNED_IN. Manual?', isManualLoginRef.current);
              if (!isManualLoginRef.current) {
                  // Defer background refresh to avoid jank/timeout during interactions (e.g. scrolling)
-                 const handleInteraction = InteractionManager.runAfterInteractions(async () => {
+               InteractionManager.runAfterInteractions(async () => {
                      await reloadUserData(session.user);
                      setLoading(false);
                  });
@@ -321,7 +320,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
          // Re-fetch profile logic
          // For Supabase, usually just re-fetching the profile row is enough
          // or refreshing the session if using JWT claims
-         const { data: { session }, error } = await supabase.auth.refreshSession();
+         const { data: { session } } = await supabase.auth.refreshSession();
          if (session?.user) await reloadUserData(session.user);
       }
   };

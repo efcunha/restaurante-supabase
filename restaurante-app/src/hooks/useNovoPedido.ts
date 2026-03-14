@@ -8,20 +8,16 @@ import { useToast } from '../context/ToastContext';
 import { getNextComandaNumber, formatComandaNumber } from '../services/ComandaNumberService';
 import { supabase } from '../config/SupabaseConfig'; // Switched to Supabase
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect } from '@react-navigation/native';
 import { getLocalDateKey } from '../utils/dateUtils';
 // @ts-ignore
 import { confirmLogout } from '../utils/appUtils';
 // @ts-ignore
 // @ts-ignore
 import InventoryService from '../services/InventoryService';
-import OrderService from '../services/OrderService';
-import CaixaService from '../services/CaixaService';
 import { listarFuncionarios } from '../services/FuncionariosService';
-import { Product, Cardapio, PizzaConfig, PizzaSize, Ingredient, Funcionario } from '../types';
+import { Product, Cardapio, PizzaConfig, Funcionario } from '../types';
 
 const CARDAPIO_CACHE_KEY = '@cardapio_cache_v2';
-const CARDAPIO_CACHE_EXPIRY = 5 * 60 * 1000;
 
 export const fixDecimal = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
 
@@ -73,9 +69,9 @@ export function useNovoPedido(): UseNovoPedidoReturn {
     const [produtos, setProdutos] = useState<Record<string, number>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [cardapio, setCardapio] = useState<Cardapio>({ caldos: [], comidas: [], bebidas: [], porcoes: [], outros: [], espetinhos: [], espetinhosSimples: [], espetinhosEspeciais: [], pizzas: [] });
-    const [temperosCaldos, setTemperosCaldos] = useState(['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada']);
-    const [temperosComidas, setTemperosComidas] = useState(['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada']);
-    const [variacoesEspetinho, setVariacoesEspetinho] = useState(['Simples', 'com Arroz', 'com Macaxeira', 'Completo']);
+    const [temperosCaldos] = useState(['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada']);
+    const [temperosComidas] = useState(['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada']);
+    const [variacoesEspetinho] = useState(['Simples', 'com Arroz', 'com Macaxeira', 'Completo']);
     const [pizzaConfig, setPizzaConfig] = useState<PizzaConfig | null>(null);
     const [customPrices, setCustomPrices] = useState<Record<string, number>>({}); // { 'Pizza Grande (Calabresa)': 40.00 }
     const [loadingCardapio, setLoadingCardapio] = useState(true);

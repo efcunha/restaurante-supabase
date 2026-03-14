@@ -26,10 +26,10 @@ interface Props {
 }
 
 export default function RegisterCompanyScreen({ navigation }: Props) {
-  const { register } = useAuth(); // Use context register which acts as wrapper or we can use direct supabase too
+  useAuth(); // Keep auth context initialization side effects
   // Actually, context 'register' wraps firebase. We should use direct supabase here or update context register?
   // Context register in our new Supabase Auth Context DOES use supabase.auth.signUp.
-  const { isTablet, horizontalPadding, inputMaxWidth } = useResponsive();
+  const { isTablet, horizontalPadding } = useResponsive();
   
   const [restaurantName, setRestaurantName] = useState('');
   const [adminName, setAdminName] = useState('');

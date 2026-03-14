@@ -12,9 +12,9 @@ import StatisticsService from './StatisticsService';
 import CaixaService from './CaixaService';
 import ComandasService from './ComandasService';
 import PagamentosService from './PagamentosService';
-import CacheLayerService from './CacheLayerService';
-import AuditService from './AuditService';
-import RateLimiterService from './RateLimiterService';
+import { cacheLayerService } from './CacheLayerService';
+import { auditService } from './AuditService';
+import { rateLimiterService } from './RateLimiterService';
 
 // ============================================================================
 // TYPES
@@ -63,9 +63,9 @@ class ServiceContainer {
    */
   private initializeServices(): void {
     // Core Services
-    this.services.set('cacheService', CacheLayerService);
-    this.services.set('auditService', AuditService);
-    this.services.set('rateLimiterService', RateLimiterService);
+    this.services.set('cacheService', cacheLayerService);
+    this.services.set('auditService', auditService);
+    this.services.set('rateLimiterService', rateLimiterService);
 
     // Business Services
     this.services.set('orderService', OrderService);

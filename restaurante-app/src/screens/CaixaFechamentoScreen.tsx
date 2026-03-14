@@ -94,9 +94,15 @@ export default function CaixaFechamentoScreen() {
       const confirmFechamento = async () => {
         setLoading(true);
         try {
+          const companyId = user?.companyId;
+          if (!companyId) {
+            setLoading(false);
+            return;
+          }
+
           // @ts-ignore - CaixaService definition might need update for full types
           const r = await CaixaService.fecharCaixa(
-            user.companyId,
+            companyId,
             user?.id || null,
             user?.nome || '',
             saldoReal,

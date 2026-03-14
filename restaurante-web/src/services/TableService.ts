@@ -1,7 +1,5 @@
 import { supabase } from '../config/SupabaseConfig';
 import { Environment, Table } from '../types';
-import offlineQueueService from './OfflineQueueService';
-import { isRetryableError } from '../utils/errors';
 
 class TableService {
 

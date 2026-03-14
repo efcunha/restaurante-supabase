@@ -92,7 +92,7 @@ class OrderFirestoreService {
     };
   }
 
-  async fetchActiveOrders(companyId: string, dateKey: string): Promise<Order[]> {
+  async fetchActiveOrders(companyId: string, _dateKey: string): Promise<Order[]> {
     const { data, error } = await supabase
       .from('orders')
       .select('*')
@@ -523,7 +523,7 @@ class OrderFirestoreService {
         totalPago: comandas.reduce((acc, c) => acc + (c.total_paid || 0), 0),
         saldoAberto: comandas.reduce((acc, c) => acc + (c.open_balance || 0), 0)
       };
-    } catch (e) {
+    } catch {
       return { total: 0, abertas: 0, fechadas: 0, totalConsumido: 0, totalPago: 0, saldoAberto: 0 };
     }
   }
@@ -620,7 +620,7 @@ class OrderFirestoreService {
     };
   }
 
-  private _calcularEstatisticas(pedidos: Order[], pagamentos: any[]) {
+  private _calcularEstatisticas(pedidos: Order[], _pagamentos: any[]) {
     const totalPedidos = pedidos.length;
     const pedidosPagos = pedidos.filter(p => p.isPago);
     const pedidosAbertos = pedidos.filter(p => !p.isPago);
@@ -642,7 +642,7 @@ class OrderFirestoreService {
   }
 
   // Compatibility methods
-  findOrdersByComanda(comanda: string) { return []; }
+  findOrdersByComanda(_comanda: string) { return []; }
   findDocIdByOrderId() { return null; }
 }
 

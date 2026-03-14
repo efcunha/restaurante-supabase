@@ -7,9 +7,9 @@ import { useAuth } from '../context/AuthContext';
 import PedidoDetalhesModal from './PedidoDetalhesModal';
 import { supabase } from '../config/SupabaseConfig';
 import { exitApp } from '../utils/appUtils';
+import { colors } from '../theme/colors';
 
 import { getLocalDateKey } from '../utils/dateUtils';
-import OrderService from '../services/OrderService';
 import CaixaService from '../services/CaixaService';
 
 // Verificar se pedido é urgente (mais de 15 minutos)
@@ -385,7 +385,7 @@ export default function MontagemScreen() {
       // ✅ FIX: Use functional setState to access current state instead of stale closure
       // This ensures we always work with the most up-to-date order data
       let newChecked = false;
-      let itemsToSaveByOrder: Record<string, any[]> = {};
+      const itemsToSaveByOrder: Record<string, any[]> = {};
 
       setAllOrders(prevOrders => {
         // 2. Descobrir qual o NOVO ESTADO baseado no estado atual do primeiro item em prevOrders
@@ -726,7 +726,7 @@ const styles = StyleSheet.create({
   orderObs: {
     fontSize: 14,
     fontStyle: 'italic',
-    color: colors.warningText,
+    color: colors.warning,
     fontWeight: 'bold',
     marginBottom: 10,
     paddingLeft: 10,

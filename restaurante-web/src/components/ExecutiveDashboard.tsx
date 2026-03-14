@@ -15,8 +15,6 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import SuccessMetricsService, {
-  BaselineMetrics,
-  CurrentMetrics,
   WeeklyReport,
 } from '../services/SuccessMetricsService';
 

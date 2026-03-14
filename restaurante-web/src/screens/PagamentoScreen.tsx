@@ -7,7 +7,6 @@ import PagamentosService from '../services/PagamentosService';
 import { getTodayKey } from '../utils/dateUtils';
 import { supabase } from '../config/SupabaseConfig';
 import SplitPaymentModal from '../components/SplitPaymentModal';
-import { colors } from '../theme/colors';
 import { calcularPrecoItem, MenuItem } from '../utils/orderCalculator';
 import { ScreenScaffold } from '../layouts/ScreenScaffold';
 import { PaymentActionPanel, PaymentComandaSummary, PaymentOrderSummary, PaymentStepIndicator } from '../features/payments';
@@ -28,7 +27,6 @@ export default function PagamentoScreen({ route, navigation }: any) {
   };
   
   // --- STATE ---
-  const [activeTab, setActiveTab] = useState<'completo' | 'rateio'>('completo');
   const [splitInitialMode, setSplitInitialMode] = useState<'pessoas' | 'itens'>('pessoas');
 
   const [comanda, setComanda] = useState('');
@@ -111,7 +109,7 @@ export default function PagamentoScreen({ route, navigation }: any) {
       if (comandaError || !comandaData) throw new Error('Comanda não encontrada');
 
       // 2. Fetch Orders (Operational Data - Items)
-      const { data: ordersData, error: ordersError } = await supabase
+      const { data: ordersData } = await supabase
         .from('orders')
         .select('*')
         .eq('company_id', user.companyId)
@@ -235,7 +233,6 @@ export default function PagamentoScreen({ route, navigation }: any) {
       setPaidItemsIds([]);
     }
     setIsSplitModalVisible(false);
-    setActiveTab('completo'); 
   };
 
   const pagar = async () => {
@@ -298,7 +295,7 @@ export default function PagamentoScreen({ route, navigation }: any) {
       } else {
         navigation.navigate('ComandaList');
       }
-    } catch (e) {
+    } catch {
       navigation.navigate('ComandaList');
     }
   };

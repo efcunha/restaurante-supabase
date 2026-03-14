@@ -12,7 +12,7 @@ export const forceAppRestart = async () => {
         const { Updates } = require('expo-updates');
         await Updates.reloadAsync();
         return;
-      } catch (updateError) {
+      } catch {
         console.log('expo-updates não disponível, usando método alternativo');
       }
       
@@ -20,7 +20,7 @@ export const forceAppRestart = async () => {
       try {
         BackHandler.exitApp();
         return;
-      } catch (backError) {
+      } catch {
         console.log('BackHandler.exitApp falhou');
       }
       
@@ -29,7 +29,7 @@ export const forceAppRestart = async () => {
         const RNRestart = require('react-native-restart');
         RNRestart.Restart();
         return;
-      } catch (restartError) {
+      } catch {
         console.log('react-native-restart não disponível');
       }
     }

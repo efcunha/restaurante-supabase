@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Dimensions, Platform } from 'react-native';
+import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import { colors } from '../theme/colors';
 
 // Conditional import to prevent Web bundling errors if module is native-only

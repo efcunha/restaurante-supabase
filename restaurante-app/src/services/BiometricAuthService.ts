@@ -248,9 +248,6 @@ class BiometricAuthService {
         // Update last used timestamp
         await this.updateLastUsed(userId);
 
-        // Validate session token
-        const isTokenValid = await this.validateSessionToken(userId);
-
         return {
           success: true,
           biometricType: types[0],
@@ -542,7 +539,7 @@ class BiometricAuthService {
   async getLastEnrolledUser(): Promise<string | null> {
       try {
           return await AsyncStorage.getItem(this.LAST_USER_KEY);
-      } catch (e) {
+      } catch {
           return null;
       }
   }

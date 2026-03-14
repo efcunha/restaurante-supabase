@@ -20,8 +20,9 @@ import TableGraphic from '../components/TableGraphic';
 import DraggableTable from '../components/DraggableTable'; // Added
 import { Environment, Table } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { ScreenScaffold } from '../layouts/ScreenScaffold';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
 // Mock for safe area if not available
 const SAFE_AREA_TOP = 50;
@@ -126,7 +127,7 @@ export default function ConfiguracaoMesasScreen({ onClose }: Props) {
             setEnvName('');
             setEditingEnv(null);
             loadData();
-        } catch (error) {
+        } catch {
             Alert.alert('Erro', 'Falha ao salvar ambiente.');
         }
     };
@@ -213,7 +214,7 @@ export default function ConfiguracaoMesasScreen({ onClose }: Props) {
                             const allTables = await TableService.getTables(user.companyId);
                             setTables(allTables.filter(t => t.environment_id === selectedEnvId));
                             setShowTableModal(false); // Close modal if open
-                        } catch (error) {
+                        } catch {
                             Alert.alert('Erro', 'Falha ao excluir mesa.');
                         }
                     }
@@ -307,25 +308,6 @@ export default function ConfiguracaoMesasScreen({ onClose }: Props) {
     };
 
     // Renderers
-    const renderHeader = () => (
-        <View style={styles.header}>
-            <TouchableOpacity
-                onPress={() => {
-                    if (onClose) {
-                        onClose();
-                    } else {
-                        navigation.goBack();
-                    }
-                }}
-                style={styles.backButton}
-            >
-                <Ionicons name="arrow-back" size={24} color={colors.white} />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Configuração de Mesas</Text>
-            <View style={{ width: 24 }} />
-        </View>
-    );
-
     const renderEnvTabs = () => (
         <View style={styles.tabsContainer}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsScroll}>
@@ -356,10 +338,19 @@ export default function ConfiguracaoMesasScreen({ onClose }: Props) {
     );
 
     return (
-        <View style={styles.container}>
-
-            {renderHeader()}
-
+        <ScreenScaffold
+            title="Configuração de Mesas"
+            leftAction={{
+                label: 'Voltar',
+                onPress: () => {
+                    if (onClose) {
+                        onClose();
+                    } else {
+                        navigation.goBack();
+                    }
+                }
+            }}
+        >
             {loading ? (
                 <View style={styles.center}>
                     <ActivityIndicator size="large" color={colors.primary} />
@@ -614,25 +605,13 @@ export default function ConfiguracaoMesasScreen({ onClose }: Props) {
                 </View>
             </Modal>
 
-        </View>
+        </ScreenScaffold>
     );
 }
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F5F5DC' },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingTop: SAFE_AREA_TOP,
-        paddingHorizontal: 20,
-        paddingBottom: 15,
-        backgroundColor: colors.primary,
-    },
-    headerTitle: { fontSize: 20, fontWeight: 'bold', color: colors.white },
-    backButton: { padding: 5 },
-
     tabsContainer: {
         height: 60,
         backgroundColor: '#fff',

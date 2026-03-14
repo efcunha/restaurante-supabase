@@ -18,8 +18,7 @@ import {
   startAfter,
   getDocs,
   QueryConstraint,
-  DocumentSnapshot,
-  QueryDocumentSnapshot
+  DocumentSnapshot
 } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
 

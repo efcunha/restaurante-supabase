@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, ScrollView, Alert, ActivityIndicator, AppState } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { StyleSheet, View, ScrollView, AppState } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { supabase } from '../config/SupabaseConfig';
@@ -99,7 +98,6 @@ export default function AdminScreen() {
   const [showBiometricSetup, setShowBiometricSetup] = useState(false);
   const [showMFASetup, setShowMFASetup] = useState(false);
   const [showConfiguracoesWhatsApp, setShowConfiguracoesWhatsApp] = useState(false);
-  const [loadingLimpar, setLoadingLimpar] = useState(false);
 
   // Estados para estatísticas
   const [stats, setStats] = useState({
@@ -120,12 +118,6 @@ export default function AdminScreen() {
   });
 
   const [loadingVendas, setLoadingVendas] = useState(true);
-
-  // Estados para alertas de estoque
-  // @ts-ignore
-  const [alertasEstoque, setAlertasEstoque] = useState([]);
-  // @ts-ignore
-  const [loadingAlertas, setLoadingAlertas] = useState(false);
 
   // Ref para detectar quando o app volta ao foreground
   const appState = useRef(AppState.currentState);
@@ -221,98 +213,6 @@ export default function AdminScreen() {
       supabase.removeChannel(comandasChannel);
     };
   }, [periodoSelecionado]);
-
-  // Limpa uma coleção inteira em lotes (safe para >500 docs)
-  const limparColecao = async (nomeTabela: string) => {
-    let totalApagado = 0;
-    const PAGE_SIZE = 450;
-    try {
-      while (true) {
-        const { data, error } = await supabase
-          .from(nomeTabela)
-          .select('id')
-          .eq('company_id', user?.companyId)
-          .limit(PAGE_SIZE);
-
-        if (error) throw error;
-        if (!data || data.length === 0) {
-          if (totalApagado === 0) console.log(`⚠️ Tabela ${nomeTabela} já está vazia`);
-          break;
-        }
-
-        const ids = data.map(d => d.id);
-        const { error: deleteError } = await supabase
-          .from(nomeTabela)
-          .delete()
-          .in('id', ids);
-
-        if (deleteError) throw deleteError;
-
-        totalApagado += ids.length;
-        if (ids.length < PAGE_SIZE) break;
-      }
-      return totalApagado;
-    } catch (error: any) {
-      console.error(`❌ === ERRO ao limpar ${nomeTabela} ===`, error);
-      console.error(`❌ Tipo de erro:`, error.name);
-      console.error(`❌ Mensagem:`, error.message);
-      throw error;
-    }
-  };
-
-  // Garante que a coleção fique vazia: roda limparColecao e valida com getDocs até um número máximo de tentativas
-  const ensureColecaoVazia = async (nomeTabela: string, maxAttempts = 10, delayMs = 1000) => {
-    let attempt = 0;
-    while (attempt < maxAttempts) {
-      attempt++;
-
-      // Buscar para ver quantos docs existem
-      const { data: dataBefore, error: errorBefore } = await supabase
-        .from(nomeTabela)
-        .select('id', { count: 'exact', head: true })
-        .eq('company_id', user?.companyId);
-
-      if (errorBefore) throw errorBefore;
-      if (!dataBefore || dataBefore.length === 0) {
-        return { ok: true, attempts: attempt };
-      }
-
-      // Apagar
-      await limparColecao(nomeTabela);
-
-      // Aguardar commit no servidor
-      await new Promise(res => setTimeout(res, delayMs));
-
-      // Verifica
-      const { data: dataAfter, error: errorAfter } = await supabase
-        .from(nomeTabela)
-        .select('id', { count: 'exact', head: true })
-        .eq('company_id', user?.companyId);
-
-      if (errorAfter) throw errorAfter;
-      if (!dataAfter || dataAfter.length === 0) {
-        return { ok: true, attempts: attempt };
-      }
-
-      // Se o número não mudou, aumentar delay
-      if (dataAfter.length === dataBefore.length) {
-        await new Promise(res => setTimeout(res, delayMs * 2));
-      }
-    }
-
-    const { data: finalData, error: finalError } = await supabase
-      .from(nomeTabela)
-      .select('id')
-      .eq('company_id', user?.companyId);
-
-    if (finalError) throw finalError;
-
-    const remaining = finalData?.length || 0;
-    console.error(`❌ [ensureColecaoVazia] FALHA em ${nomeTabela} após ${maxAttempts} tentativas. Restantes: ${remaining}`);
-
-    // @ts-ignore
-    return { ok: remaining === 0, attempts: maxAttempts, remaining };
-  };
 
   /**
    * Loads operational statistics for the CURRENT day.
@@ -461,103 +361,6 @@ export default function AdminScreen() {
     }
   };
 
-  // Carregar alertas de estoque
-  // @ts-ignore
-  const carregarAlertasEstoque = async () => {
-    try {
-      setLoadingAlertas(true);
-
-      // TODO: Implementar EstoqueService quando necessário
-      // Por enquanto, apenas limpar alertas
-      setAlertasEstoque([]);
-
-      /* DESABILITADO até implementar EstoqueService
-      const { default: EstoqueService } = await import('../services/EstoqueService');
-      
-      // Verificar se estoque está habilitado
-      const estoqueHabilitado = await EstoqueService.isEstoqueHabilitado();
-      
-      if (!estoqueHabilitado) {
-        setAlertasEstoque([]);
-        return;
-      }
-      
-      // Buscar itens com estoque baixo
-      const itens = await EstoqueService.buscarItensEstoqueBaixo();
-      setAlertasEstoque(itens);
-      
-      if (itens.length > 0) {
-      }
-      */
-    } catch (error) {
-      console.error('[AdminScreen] Erro ao carregar alertas:', error);
-      setAlertasEstoque([]);
-    } finally {
-      setLoadingAlertas(false);
-    }
-  };
-
-  // Limpa apenas a coleção `comandas` (abertas e fechadas)
-  const limparSomenteComandas = async () => {
-    Alert.alert(
-      '⚠️ ATENÇÃO - LIMPAR COMANDAS',
-      'Isso apagará PERMANENTEMENTE todas as comandas (abertas e fechadas)\n\nEsta ação NÃO PODE ser desfeita!\n\nTem certeza?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'SIM, APAGAR COMANDAS',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              // sinalizar limpeza para listeners
-              // @ts-ignore
-              try { if (typeof window !== 'undefined' && window.localStorage) window.localStorage.setItem('limpezaEmAndamento', '1'); } catch { // ignore
-              }
-
-              // Sinalizar para outros clientes via Supabase (maintenance flag)
-              try {
-                await supabase
-                  .from('maintenance')
-                  .upsert({
-                    id: 'limpeza',
-                    started_at: new Date().toISOString(),
-                    by: (user && user.uid) ? user.uid : 'admin'
-                  });
-              } catch (e) {
-                // ignore
-              }
-              setLoadingLimpar(true);
-              const result = await ensureColecaoVazia('comandas', 10, 1200);
-              // @ts-ignore
-              const resumo = result.ok ? `✅ Todas as comandas apagadas (${result.attempts} tentativas)` : `❌ Falha ao apagar comandas (restam ${result.remaining})`;
-              Alert.alert('Resultado', resumo);
-              // @ts-ignore
-              try { if (typeof window !== 'undefined' && window.location && window.location.reload) setTimeout(() => window.location.reload(), 700); } catch { // ignore
-              }
-            } catch (e: any) {
-              console.error('❌ Erro ao apagar comandas:', e);
-              Alert.alert('Erro', `Falha: ${e.message}`);
-            } finally {
-              // @ts-ignore
-              try { if (typeof window !== 'undefined' && window.localStorage) window.localStorage.removeItem('limpezaEmAndamento'); } catch { // ignore
-              }
-              // remover flag de manutenção
-              try {
-                await supabase
-                  .from('maintenance')
-                  .delete()
-                  .eq('id', 'limpeza');
-              } catch (e) {
-                // ignore
-              }
-              setLoadingLimpar(false);
-            }
-          }
-        }
-      ]
-    );
-  };
-
   const reports = [
     { name: 'Gerenciar Funcionários', icon: '👥', action: () => setShowFuncionarios(true) },
     { name: 'Caixa', icon: '💰', action: () => setShowCaixaMenu(true) },
@@ -624,14 +427,7 @@ export default function AdminScreen() {
         </AdminSection>
 
         <AdminSection title="SISTEMA">
-          {loadingLimpar && (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={styles.loadingText}>Apagando todos os dados...</Text>
-            </View>
-          )}
-
-          {renderReportList(reports, { keyPrefix: 'sys', disabled: loadingLimpar })}
+          {renderReportList(reports, { keyPrefix: 'sys' })}
         </AdminSection>
       </ScrollView>
 
@@ -951,21 +747,6 @@ const styles = StyleSheet.create({
   },
   reportArrowDanger: {
     color: colors.danger,
-  },
-  loadingContainer: {
-    backgroundColor: colors.warningSurface,
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 15,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.secondary,
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 14,
-    color: colors.primary,
-    fontWeight: '600',
   },
   sectionTitle: {
     fontSize: 22,
