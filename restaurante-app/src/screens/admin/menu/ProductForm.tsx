@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, StyleSheet, Alert, ActivityIndicator, Switch } from 'react-native';
-import { Product, PizzaConfig } from '../../../types';
 import { ProductFormData, ProductFormProps } from './types';
 
 export default function ProductForm({

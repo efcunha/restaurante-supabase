@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useEffect } from 'react';
+import { useCallback, useMemo, useRef, useEffect, useState, type DependencyList } from 'react';
 
 /**
  * Custom hooks for performance optimization
@@ -36,7 +36,7 @@ export function useStableCallback<T extends (...args: any[]) => any>(
  */
 export function useMemoizedArray<T>(
   array: T[],
-  deps: React.DependencyList = []
+  deps: DependencyList = []
 ): T[] {
   return useMemo(() => array, deps);
 }
@@ -51,7 +51,7 @@ export function useMemoizedArray<T>(
  */
 export function useMemoizedObject<T extends Record<string, any>>(
   obj: T,
-  deps: React.DependencyList = []
+  deps: DependencyList = []
 ): T {
   return useMemo(() => obj, deps);
 }
@@ -65,7 +65,7 @@ export function useMemoizedObject<T extends Record<string, any>>(
  */
 export function useExpensiveComputation<T>(
   computeFn: () => T,
-  deps: React.DependencyList
+  deps: DependencyList
 ): T {
   return useMemo(() => {
     const startTime = performance.now();
@@ -92,7 +92,7 @@ export function useExpensiveComputation<T>(
  * @returns Debounced value
  */
 export function useDebouncedValue<T>(value: T, delay: number = 300): T {
-  const [debouncedValue, setDebouncedValue] = React.useState(value);
+  const [debouncedValue, setDebouncedValue] = useState(value);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -134,4 +134,4 @@ export function useThrottledCallback<T extends (...args: any[]) => any>(
 }
 
 // Re-export useState for convenience
-export { useState } from 'react';
+export { useState };

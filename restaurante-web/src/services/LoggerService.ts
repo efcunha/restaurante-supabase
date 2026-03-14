@@ -79,7 +79,7 @@ class LoggerService {
       redact(parsed);
       return parsed;
 
-    } catch (e) {
+    } catch {
       return data; // Return original if parsing fails
     }
   }

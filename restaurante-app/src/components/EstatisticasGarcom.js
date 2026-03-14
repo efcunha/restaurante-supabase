@@ -171,7 +171,7 @@ export const EstatisticasGarcomContainer = ({ estatisticas, nomeGarcom, loading 
     );
   }
 
-  const { vendas, pagamentos, comandas } = estatisticas;
+  const { vendas, pagamentos } = estatisticas;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }}>

@@ -2,13 +2,13 @@ import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, FlatList, TouchableOpacity, TextInput, Alert, Modal, ScrollView } from 'react-native';
 // @ts-ignore
 import KeyboardWrapper from '../components/KeyboardWrapper';
-import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useResponsive } from '../hooks/useResponsive';
 // @ts-ignore
 import { criarFuncionario, listarFuncionarios, deletarFuncionario, atualizarFuncionario } from '../services/FuncionariosService';
 import { supabase } from '../config/SupabaseConfig';
+import { ScreenScaffold } from '../layouts/ScreenScaffold';
 
 interface Props {
   onClose?: () => void;
@@ -33,6 +33,22 @@ export default function FuncionariosScreen({ onClose }: Props) {
   const [senha, setSenha] = useState('');
   const [funcao, setFuncao] = useState('garcom');
   const [senhaErrors, setSenhaErrors] = useState<string[]>([]);
+
+  const getResultMessage = (result: unknown) => {
+    if (!result || typeof result !== 'object') {
+      return null;
+    }
+
+    if ('warning' in result && typeof result.warning === 'string' && result.warning) {
+      return { kind: 'warning' as const, value: result.warning };
+    }
+
+    if ('mensagem' in result && typeof result.mensagem === 'string' && result.mensagem) {
+      return { kind: 'message' as const, value: result.mensagem };
+    }
+
+    return null;
+  };
 
   useEffect(() => {
     carregarFuncionarios();
@@ -127,10 +143,11 @@ export default function FuncionariosScreen({ onClose }: Props) {
       setLoading(false);
 
       // Mensagem personalizada se foi recriado para trocar senha
-      if (result.warning) {
-        alert(result.warning);
-      } else if (result.mensagem) {
-        alert('✅ ' + result.mensagem);
+      const resultMessage = getResultMessage(result);
+      if (resultMessage?.kind === 'warning') {
+        alert(resultMessage.value);
+      } else if (resultMessage?.kind === 'message') {
+        alert('✅ ' + resultMessage.value);
       } else {
         alert(editandoFuncionario ? '✅ Funcionário atualizado com sucesso!' : '✅ Funcionário cadastrado com sucesso!');
       }
@@ -169,8 +186,9 @@ export default function FuncionariosScreen({ onClose }: Props) {
     // console.log('[FuncionariosScreen] 📊 Resultado da exclusão:', result);
 
     if (result.success) {
-      if (result.warning) {
-        alert('✅ Funcionário excluído!\n\n⚠️ Observação: ' + result.warning);
+      const resultMessage = getResultMessage(result);
+      if (resultMessage?.kind === 'warning') {
+        alert('✅ Funcionário excluído!\n\n⚠️ Observação: ' + resultMessage.value);
       } else {
         alert('Funcionário excluído com sucesso!');
       }
@@ -250,7 +268,7 @@ export default function FuncionariosScreen({ onClose }: Props) {
     return phone;
   };
 
-  const getFuncaoLabel = (func) => {
+  const getFuncaoLabel = (func: string) => {
     const labels: any = {
       garcom: 'Garçom',
       churrasqueiro: 'Cozinheiro(a)', // Legacy
@@ -265,7 +283,7 @@ export default function FuncionariosScreen({ onClose }: Props) {
     return labels[func] || func;
   };
 
-  const getFuncaoColor = (func) => {
+  const getFuncaoColor = (func: string) => {
     const colors: any = {
       garcom: '#4A90E2',
       churrasqueiro: '#B45309', // Legacy
@@ -334,25 +352,11 @@ export default function FuncionariosScreen({ onClose }: Props) {
   ), [loading, funcionarios.length]);
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        {onClose ? (
-          <TouchableOpacity onPress={onClose} style={styles.headerLeftButton}>
-            <Ionicons name="arrow-back" size={24} color="#FFF" />
-          </TouchableOpacity>
-        ) : <View style={styles.headerLeftButton} />}
-
-        <View style={styles.headerCenter}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Ionicons name="people" size={28} color="#FFF" style={{ marginRight: 8 }} />
-            <Text style={styles.headerTitle}>Funcionários</Text>
-          </View>
-          <Text style={styles.headerSubtitle}>Logado: {user?.nome}</Text>
-        </View>
-
-        <View style={styles.headerRightButton} />
-      </View>
+    <ScreenScaffold
+      title="Funcionários"
+      subtitle={`Logado: ${user?.nome ?? ''}`}
+      leftAction={onClose ? { label: 'Voltar', onPress: onClose } : undefined}
+    >
 
       <FlatList
         data={funcionarios}
@@ -660,56 +664,11 @@ export default function FuncionariosScreen({ onClose }: Props) {
       </Modal>
 
       <StatusBar style="light" />
-    </View>
+    </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F5DC',
-  },
-  header: {
-    backgroundColor: '#8B2F2F',
-    paddingTop: 50,
-    paddingBottom: 15,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-    zIndex: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 15,
-    elevation: 8,
-  },
-  headerLeftButton: {
-    width: 40,
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-  },
-  headerRightButton: {
-    width: 40,
-  },
-  headerCenter: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    color: '#FFFFFF',
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  headerSubtitle: {
-    color: '#B45309',
-    fontSize: 12,
-    marginTop: 4,
-  },
-
   content: {
     padding: 20,
   },

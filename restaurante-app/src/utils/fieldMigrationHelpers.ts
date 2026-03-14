@@ -51,8 +51,10 @@ export function createCompatibleOrderFields(data: {
  * Útil para limpeza após migração
  */
 export function removeDeprecatedFields(data: any): any {
-  const { numeroComanda, criadoPor, ...rest } = data;
-  return rest;
+  const normalized = { ...data };
+  delete normalized.numeroComanda;
+  delete normalized.criadoPor;
+  return normalized;
 }
 
 /**

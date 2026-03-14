@@ -8,7 +8,16 @@ export default [
     ...tseslint.configs.recommended,
     reactPlugin.configs.flat.recommended,
     {
-        ignores: ["src/types/**/*.ts", "src/dataconnect-generated/**/*", "src/dataconnect-admin-generated/**/*"],
+        ignores: [
+            ".eslintrc.cjs",
+            "eslint.config.*",
+            "node_modules/**",
+            "dist/**",
+            "build/**",
+            "src/types/**/*.ts",
+            "src/dataconnect-generated/**/*",
+            "src/dataconnect-admin-generated/**/*"
+        ],
     },
     {
         files: ["**/*.js", "**/*.jsx", "**/*.ts", "**/*.tsx"],
@@ -34,7 +43,7 @@ export default [
         },
         rules: {
             "react/prop-types": "off",
-            "react/react-in-jsx-scope": "off", // Not needed in Expo/React Native usually
+            "react/react-in-jsx-scope": "off",
             "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
             "@typescript-eslint/no-explicit-any": "off",
             "@typescript-eslint/ban-ts-comment": "off",
@@ -42,16 +51,11 @@ export default [
             "react/no-unescaped-entities": "off",
             "react/display-name": "off",
             "no-console": "off",
-            "no-undef": "off", // TypeScript handles this usually, helps with Jest globals if not configured
+            "no-undef": "off",
         },
     },
     {
-        files: ["**/*.test.js", "**/*.test.ts", "**/*.spec.js", "**/*.spec.ts", "**/__tests__/**", "jest.setup.js"],
-        languageOptions: {
-            globals: {
-                ...globals.jest,
-            }
-        },
+        files: ["e2e/**/*.spec.ts"],
         rules: {
              "react/no-unknown-property": ["error", { "ignore": ["testID"] }]
         }

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { colors } from '../../../theme/colors';
-import { AdminSlideModalProps, AdminCaixaModalProps } from '../types';
+import { AdminSlideModalProps, AdminCaixaModalProps, BaseAdminModalProps } from '../types';
 
 export function AdminSlideModal({
   visible,

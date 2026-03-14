@@ -1,5 +1,0 @@
-.eslintrc.cjs
-eslint.config.*
-node_modules
-dist
-build

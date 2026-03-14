@@ -242,34 +242,45 @@ Completed on: 2026-03-13
 - Reduzida a barra de tabs de 9 → máx. 5 destinos por papel (admin/gerente/garcom).
 - Criado MaisStack com OverflowMenuScreen como índice + destinos secundários (Montagem, Prontos, Rotas Delivery, Reservas, Admin) como telas do stack.
 - Criado OverflowMenuScreen.tsx — lista role-aware com ícone + label + chevron.
-- Adicionado RoleOverflowScreens e getRoleOverflowScreens() em oles.js.
+- Adicionado RoleOverflowScreens e getRoleOverflowScreens() em 
+oles.js.
 - Papéis single-job (COZINHEIRO, MONTAGEM, ENTREGADOR) mantêm suas abas primárias sem alteração.
-- Arquivo: estaurante-app/App.js, estaurante-app/src/auth/roles.js, estaurante-app/src/screens/OverflowMenuScreen.tsx
+- Arquivo: 
+estaurante-app/App.js, 
+estaurante-app/src/auth/roles.js, 
+estaurante-app/src/screens/OverflowMenuScreen.tsx
 
 ### 2) NovoPedidoScreen — Chips de categoria sticky
 - Adicionada barra horizontal de chips acima da SectionList para navegação por categoria.
 - Chip ativo reflete a seção visível no topo via onViewableItemsChanged.
 - Pressionar chip rola a lista para a seção correspondente via scrollToLocation.
 - Chips ocultados automaticamente quando busca filtra para ≤0 seções.
-- Arquivo: estaurante-app/src/screens/NovoPedidoScreen.tsx
+- Arquivo: 
+estaurante-app/src/screens/NovoPedidoScreen.tsx
 
 ### 3) NovoPedidoScreen — Cart badge + expand/collapse
 - Footer fixo agora mostra: ícone de carrinho com badge de quantidade + total + toggle.
 - Botão de toggle expande/colapsa lista de itens selecionados (ScrollView máx. 180dp).
 - Estado colapsado por padrão; fecha automaticamente ao remover o último item.
-- Arquivo: estaurante-app/src/screens/NovoPedidoScreen.tsx
+- Arquivo: 
+estaurante-app/src/screens/NovoPedidoScreen.tsx
 
 ### 4) PagamentoScreen — StepIndicator visual
 - Adicionado StepIndicator entre navbar e conteúdo mostrando 3 passos: Resumo → Pagamento → Confirmado.
 - Passo ativo calculado automaticamente: saldo null=0, aberto>0=1, aberto=0=2.
 - Passos concluídos exibem checkmark verde; passo ativo destaque em primary.
-- Arquivo: estaurante-app/src/screens/PagamentoScreen.tsx
+- Arquivo: 
+estaurante-app/src/screens/PagamentoScreen.tsx
 
 ### 5) Thumb ergonomics — touch zones ≥ 44dp
-- quantityBtn e oundBtn em NovoPedidoScreen: 32×32 → 44×44 dp.
-- emoveBtn nos itens selecionados do carrinho: 28×28 → 44×44 dp.
+- quantityBtn e 
+oundBtn em NovoPedidoScreen: 32×32 → 44×44 dp.
+- 
+emoveBtn nos itens selecionados do carrinho: 28×28 → 44×44 dp.
 - ormaBtn em PagamentoScreen: adicionado minHeight: 48 + justifyContent: center.
-- Arquivo: estaurante-app/src/screens/NovoPedidoScreen.tsx, estaurante-app/src/screens/PagamentoScreen.tsx
+- Arquivo: 
+estaurante-app/src/screens/NovoPedidoScreen.tsx, 
+estaurante-app/src/screens/PagamentoScreen.tsx
 
 Phase 8 is complete. Phase 9 (Web Dashboard Transformation) can start on top of this base.
 ## Phase 9 - Web Dashboard Transformation Plan (restaurante-web)
@@ -282,7 +293,9 @@ Phase 8 is complete. Phase 9 (Web Dashboard Transformation) can start on top of 
 
 ## Phase 10 - Frontend Architecture Improvement
 
-### Proposed structure for both apps
+Status: concluida em codigo e documentacao de rollout.
+
+### Delivered structure for both apps
 
 src/
 - design-system/
@@ -299,6 +312,15 @@ src/
 - Feature modules: orchestration, data and state.
 - Service layer: backend integration.
 - Screen layer: composition only.
+
+### Delivered in Phase 10
+
+- `src/ui/index.ts` criado em app e web como fachada estavel para primitives.
+- `src/layouts/ScreenScaffold.tsx` criado em app e web e adotado nas telas auditadas.
+- Features extraidas e aplicadas: `features/payments`, `features/new-order`, `features/admin` e `features/delivery` (web).
+- Convergencia de `types.ts` aplicada nas features extraidas para reduzir contratos inline duplicados.
+- Rollout completo de `ScreenScaffold` nas telas administrativas secundarias Pattern A em app e web, conforme detalhado em `PHASE_10_FRONTEND_ARCHITECTURE.md`.
+- Resultado: objetivo estrutural da phase atingido sem mudanca de logica de negocio e com diagnosticos limpos nos arquivos migrados.
 
 ## Phase 11 - Improved Component Implementations
 

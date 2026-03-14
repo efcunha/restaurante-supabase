@@ -18,9 +18,13 @@ function formatPriceRange(values: number[]) {
 }
 
 export function PizzaProductCard({ item, onPress }: PizzaProductCardProps) {
+  const priceEntries = useMemo(
+    () => Object.values((item.prices ?? {}) as Record<string, string | number>),
+    [item.prices]
+  );
+
   const validPrices = useMemo(
-    () => item.prices
-      ? Object.values(item.prices)
+    () => priceEntries
           .map((price) => {
             if (typeof price === 'string') {
               return Number(price.replace(',', '.'));
@@ -28,9 +32,8 @@ export function PizzaProductCard({ item, onPress }: PizzaProductCardProps) {
 
             return Number(price);
           })
-          .filter((price) => !Number.isNaN(price) && price > 0)
-      : [],
-    [item.prices]
+          .filter((price): price is number => !Number.isNaN(price) && price > 0),
+    [priceEntries]
   );
 
   const description = useMemo(

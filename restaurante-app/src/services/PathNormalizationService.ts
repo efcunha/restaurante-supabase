@@ -42,9 +42,6 @@ class PathNormalizationService {
    * Valida se um path segue o padrão normalizado
    */
   isNormalizedPath(path: string): boolean {
-    // Padrão esperado: companies/{companyId}/orders/{orderId}
-    const normalizedPattern = /^companies\/[^/]+\/orders(\/[^/]+)?$/;
-    
     // Também aceita archived, statistics, users, payments
     const validPatterns = [
       /^companies\/[^/]+\/orders(\/[^/]+)?$/,

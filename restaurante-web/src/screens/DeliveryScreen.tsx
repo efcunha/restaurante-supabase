@@ -1,7 +1,7 @@
 ﻿import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, SectionList, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, LayoutAnimation, Platform, UIManager, SectionListRenderItem, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import React, { memo, useCallback, useState, useMemo, useEffect, useRef } from 'react';
+import React, { memo, useCallback, useState, useMemo, useRef } from 'react';
 
 import { useNovoPedido } from '../hooks/useNovoPedido';
 import { usePerformanceMonitor } from '../hooks/usePerformanceMonitor';
@@ -244,7 +244,7 @@ export default function DeliveryScreen() {
   const [isSearchingCep, setIsSearchingCep] = useState(false);
   const [isSubmittingDelivery, setIsSubmittingDelivery] = useState(false);
 
-  const { metrics, startMonitoring, stopMonitoring, logMetrics, isMonitoring } = usePerformanceMonitor();
+  const { startMonitoring, stopMonitoring, logMetrics, isMonitoring } = usePerformanceMonitor();
   const {
     user, loadingCardapio, cardapio, produtos,
     clientName, setClientName,

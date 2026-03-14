@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, Modal } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { useState, useEffect } from 'react';
 import { supabase } from '../config/SupabaseConfig';
 import { useAuth } from '../context/AuthContext';
@@ -13,7 +13,8 @@ import GerenciarFornecedoresScreen from './GerenciarFornecedoresScreen';
 // @ts-ignore
 import ConfiguracaoEstoqueScreen from './ConfiguracaoEstoqueScreen';
 // @ts-ignore
-import { SUPPORTED_UNITS, getUnitType } from '../utils/unitConversion';
+import { SUPPORTED_UNITS } from '../utils/unitConversion';
+import { ScreenScaffold } from '../layouts/ScreenScaffold';
 
 interface Props {
   onClose?: () => void;
@@ -222,7 +223,6 @@ export default function EstoqueScreen({ onClose }: Props) {
 
     // Auto-detect unit type
     const u = item.unidade || 'un';
-    const type = getUnitType(u); // assuming helper returns 'VOLUME', 'MASS', etc.
     // Map internal type to supported keys if needed, or just specific cases
     if (SUPPORTED_UNITS.VOLUME.includes(u)) setTipoUnidade('VOLUME');
     else if (SUPPORTED_UNITS.MASS.includes(u)) setTipoUnidade('MASS');
@@ -295,17 +295,10 @@ export default function EstoqueScreen({ onClose }: Props) {
   }
 
   return (
-    <View style={styles.container}>
-      <BackgroundPattern />
-
-      <View style={styles.header}>
-        {onClose && (
-          <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-            <Ionicons name="arrow-back" size={24} color="#FFF" />
-          </TouchableOpacity>
-        )}
-        <Text style={styles.headerTitle}>📦 Gerenciar Estoque</Text>
-
+    <ScreenScaffold
+      title="Gerenciar Estoque"
+      leftAction={onClose ? { label: 'Voltar', onPress: onClose } : undefined}
+      rightSlot={(
         <View style={styles.headerActions}>
           <TouchableOpacity onPress={() => setShowConfig(true)} style={styles.iconBtn}>
             <Ionicons name="settings-outline" size={24} color="#FFF" />
@@ -314,7 +307,9 @@ export default function EstoqueScreen({ onClose }: Props) {
             <Ionicons name="people-outline" size={24} color="#FFF" />
           </TouchableOpacity>
         </View>
-      </View>
+      )}
+    >
+      <BackgroundPattern />
 
       <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Categorias */}
@@ -549,48 +544,17 @@ export default function EstoqueScreen({ onClose }: Props) {
       </ScrollView>
 
       <StatusBar style="light" />
-    </View>
+    </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F1E8',
-  },
-  header: {
-    backgroundColor: '#8B2F2F',
-    paddingTop: 50,
-    paddingBottom: 15,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    elevation: 8,
-  },
-  headerTitle: {
-    color: '#FFFFFF',
-    fontSize: 22,
-    fontWeight: 'bold',
-    flex: 1,
-    textAlign: 'center',
-    marginLeft: 40 // offset close btn
-  },
   headerActions: {
     flexDirection: 'row',
     gap: 15
   },
   iconBtn: {
     padding: 5
-  },
-  closeBtn: {
-    padding: 5,
-    position: 'absolute',
-    left: 20,
-    top: 50,
-    zIndex: 20
   },
   content: {
     flex: 1,

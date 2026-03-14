@@ -259,7 +259,7 @@ export class QueryOptimizerService {
   private determineSeverity(
     executionTime: number,
     rowsScanned: number,
-    rowsReturned: number
+    _rowsReturned: number
   ): 'low' | 'medium' | 'high' {
     if (executionTime > 500 || rowsScanned > 10000) {
       return 'high';

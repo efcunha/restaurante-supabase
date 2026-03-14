@@ -16,7 +16,7 @@ Transformar o `restaurante-web` de uma interface com barra inferior para um **la
 **Mudanças:**
 - Criado componente `WebSidebarTabBar` como custom `tabBar` prop do `Tab.Navigator`
 - Sidebar posicionada absolutamente à esquerda com largura 270px (`SIDEBAR_WIDTH`)
-- Inclui: cabeçalho com marca ("🍽 RestaurantePDV"), chip do usuário logado, itens de navegação com ícone + label + destaque de ativo, rodapé com role atual
+- Inclui: cabeçalho com marca (ícone `restaurant` + texto "Restaurante"), chip com nome/email do usuário logado, itens de navegação com ícone + label + destaque de ativo, rodapé fixo com texto "PDV Web"
 - `App.js` reescrito para usar `WebSidebarTabBar` + `sceneContainerStyle={{ marginLeft: 270 }}` que desloca todo o conteúdo para a direita da sidebar
 - Todas as screens role-gated preservadas sem alteração
 

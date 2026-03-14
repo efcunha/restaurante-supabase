@@ -193,7 +193,7 @@ export function useOperationTracking(operationName: string) {
  * 
  * @returns Recent slow queries
  */
-export function useSlowQueries(limit: number = 10) {
+export function useSlowQueries(_limit: number = 10) {
   const [slowQueries, setSlowQueries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 

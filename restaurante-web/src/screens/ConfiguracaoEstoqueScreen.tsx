@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import BackgroundPattern from '../components/BackgroundPattern';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../config/SupabaseConfig';
+import { ScreenScaffold } from '../layouts/ScreenScaffold';
 
 interface Props {
     onClose: () => void;
@@ -74,7 +75,7 @@ export default function ConfiguracaoEstoqueScreen({ onClose }: Props) {
 
             setCategorias(novasCategorias);
             Alert.alert('Sucesso', 'Configurações salvas!');
-        } catch (error) {
+        } catch {
             Alert.alert('Erro', 'Falha ao salvar configurações.');
         } finally {
             setLoading(false);
@@ -142,16 +143,11 @@ export default function ConfiguracaoEstoqueScreen({ onClose }: Props) {
     const icons = ['📦', '🥤', '🛒', '🥩', '🥬', '🧹', '🍺', '🍽️', '🥫', '❄️'];
 
     return (
-        <View style={styles.container}>
+        <ScreenScaffold
+            title="Categorias de Estoque"
+            leftAction={{ label: 'Voltar', onPress: onClose }}
+        >
             <BackgroundPattern />
-
-            <View style={styles.header}>
-                <TouchableOpacity onPress={onClose} style={styles.backBtn}>
-                    <Ionicons name="arrow-back" size={24} color="#FFF" />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>Categorias de Estoque</Text>
-                <View style={{ width: 40 }} />
-            </View>
 
             <View style={styles.content}>
                 <View style={styles.addSection}>
@@ -219,26 +215,11 @@ export default function ConfiguracaoEstoqueScreen({ onClose }: Props) {
                     </ScrollView>
                 )}
             </View>
-        </View>
+        </ScreenScaffold>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F5F1E8' },
-    header: {
-        backgroundColor: '#8B2F2F',
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingTop: 50,
-        paddingBottom: 15,
-        paddingHorizontal: 20,
-        elevation: 5
-    },
-    headerTitle: { color: '#FFF', fontSize: 20, fontWeight: 'bold' },
-    backBtn: {
-        padding: 5
-    },
     content: { flex: 1, padding: 20 },
     addSection: {
         backgroundColor: '#FFF',

@@ -1,5 +1,5 @@
 import React, { ReactNode } from 'react';
-import { ScrollView, StyleSheet, View, ViewStyle } from 'react-native';
+import { ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { Navbar } from '../ui';
 import { colorSystem } from '../design-system';
 
@@ -16,9 +16,9 @@ interface ScreenScaffoldProps {
   children: ReactNode;
   footer?: ReactNode;
   scroll?: boolean;
-  headerContainerStyle?: ViewStyle;
-  contentContainerStyle?: ViewStyle;
-  bodyStyle?: ViewStyle;
+  headerContainerStyle?: StyleProp<ViewStyle>;
+  contentContainerStyle?: StyleProp<ViewStyle>;
+  bodyStyle?: StyleProp<ViewStyle>;
 }
 
 export function ScreenScaffold({

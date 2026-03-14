@@ -14,12 +14,8 @@ import React from 'react';
 import {
   AppError,
   classifyError,
-  getUserFriendlyMessage,
-  getErrorCode,
-  getErrorCategory,
   ErrorContext
 } from './errors';
-import { auditService } from '../services/AuditService';
 // Firebase auth import disabled during Supabase migration
 // import { auth } from '../config/firebaseConfig';
 
@@ -115,7 +111,7 @@ class ErrorHandler {
   /**
    * Loga erro no sistema de auditoria
    */
-  private async logError(error: AppError, context: ErrorContext): Promise<void> {
+  private async logError(error: AppError, _context: ErrorContext): Promise<void> {
     try {
       // Firebase auth disabled during Supabase migration
       // const currentUser = auth.currentUser;

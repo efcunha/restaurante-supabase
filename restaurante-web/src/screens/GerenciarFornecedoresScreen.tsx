@@ -230,7 +230,7 @@ export default function GerenciarFornecedoresScreen({ onClose }: Props) {
 
                             if (error) throw error;
                             carregarFornecedores();
-                        } catch (error) {
+                        } catch {
                             Alert.alert('Erro', 'Não foi possível excluir');
                         } finally {
                             setLoading(false);

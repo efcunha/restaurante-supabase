@@ -17,8 +17,7 @@ import {
   orderBy,
   limit,
   getDocs,
-  QueryConstraint,
-  CollectionReference
+  QueryConstraint
 } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
 import { cacheLayerService } from './CacheLayerService';

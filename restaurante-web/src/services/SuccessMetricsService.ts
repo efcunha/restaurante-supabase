@@ -10,15 +10,13 @@ import {
   getDoc,
   getDocs,
   query,
-  where,
   orderBy,
   limit as firestoreLimit,
   Timestamp,
-  Firestore,
 } from 'firebase/firestore';
 // @ts-ignore - firebaseConfig.js is not typed
 // import { db as dbImport } from '../config/firebaseConfig'; // Removed - Firebase specific
-// import PerformanceMonitoringService from './PerformanceMonitoringService'; // Removed - Firebase specific
+import PerformanceMonitoringService from './PerformanceMonitoringService';
 
 // Type the db import
 // @ts-ignore
@@ -289,7 +287,7 @@ class SuccessMetricsService {
    * Measure Firestore costs
    */
   private async measureFirestoreCosts(
-    companyId: string
+    _companyId: string
   ): Promise<BaselineMetrics['firestoreCosts']> {
     const metrics = PerformanceMonitoringService.getFirestoreMetrics();
 
@@ -318,7 +316,7 @@ class SuccessMetricsService {
    * Measure security incidents
    */
   private async measureSecurityIncidents(
-    companyId: string
+    _companyId: string
   ): Promise<BaselineMetrics['securityIncidents']> {
     // In a real implementation, this would query audit logs
     // For now, return mock data

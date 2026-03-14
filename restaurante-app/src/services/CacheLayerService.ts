@@ -326,7 +326,7 @@ class CacheLayerService {
       const serialized = JSON.stringify(data);
       // Rough estimate: 2 bytes per character in UTF-16
       return serialized.length * 2;
-    } catch (error) {
+    } catch {
       // If can't serialize, use a default estimate
       return 1024; // 1KB default
     }

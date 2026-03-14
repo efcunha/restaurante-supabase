@@ -3,7 +3,6 @@
  */
 import { supabase } from '../config/SupabaseConfig';
 import { Caixa } from '../types';
-import { Alert } from 'react-native';
 import { getLocalDateKey } from '../utils/dateUtils';
 
 const TABLE_CAIXA = 'cash_registers';
