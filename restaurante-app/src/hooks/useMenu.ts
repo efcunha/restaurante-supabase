@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../config/SupabaseConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/AuthContext';
-import { Product, Cardapio, MenuItem } from '../types';
+import { Product, Cardapio } from '../types';
+import type { MenuItem } from '../types/index';
 
 const CARDAPIO_CACHE_KEY = '@cardapio_cache';
 
@@ -58,7 +59,7 @@ export function useMenu() {
                 // Add to flat list for easier searching in SplitPayment
                 flatItems.push({
                     name: item.name,
-                    price: item.price
+                    price: item.price ?? 0
                 });
 
                 let cat = item.category?.toLowerCase() || 'outro';

@@ -85,7 +85,7 @@ export default function AddItemsModal({ visible, onClose, onConfirm, comandaNumb
         setItensSelecionados([]);
     };
 
-    const renderCardapioSection = (title, items, type = 'simple') => {
+    const renderCardapioSection = (title, items, _type = 'simple') => {
         if (!items || items.length === 0) return null;
         return (
             <View style={styles.section}>

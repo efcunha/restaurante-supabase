@@ -1,15 +1,10 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, RefreshControl } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 // @ts-ignore
 import ComandasService from '../services/ComandasService';
-// @ts-ignore
-import PagamentosService from '../services/PagamentosService';
-// @ts-ignore
-
-import { exitApp } from '../utils/appUtils';
 import { supabase } from '../config/SupabaseConfig';
 import { colors } from '../theme/colors';
 

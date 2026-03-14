@@ -8,15 +8,13 @@ import {
     ActivityIndicator,
     Alert,
     Image,
-    SafeAreaView
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '../theme/colors';
 import { useAuth } from '../context/AuthContext';
-import { EvolutionApiService, ConnectionStateResponse } from '../services/EvolutionApiService';
-
-const SAFE_AREA_TOP = 50;
+import { EvolutionApiService } from '../services/EvolutionApiService';
+import { ScreenScaffold } from '../layouts/ScreenScaffold';
 
 export default function ConfiguracoesWhatsApp({ onClose }: { onClose?: () => void }) {
     const navigation = useNavigation();
@@ -149,7 +147,7 @@ export default function ConfiguracoesWhatsApp({ onClose }: { onClose?: () => voi
                             setConnectionState('not_created');
                             setQrCodeBase64(null);
                             Alert.alert('Desconectado', 'Sua instância do WhatsApp foi removida.');
-                        } catch (error: any) {
+                        } catch {
                             Alert.alert('Erro', 'Falha ao desconectar.');
                             // Mesma se falhar, tenta buscar o estado real
                             checkConnectionStatus(false);
@@ -162,15 +160,7 @@ export default function ConfiguracoesWhatsApp({ onClose }: { onClose?: () => voi
         );
     };
 
-    const renderHeader = () => (
-        <View style={styles.header}>
-            <TouchableOpacity onPress={() => onClose ? onClose() : navigation.goBack()} style={styles.backButton}>
-                <Ionicons name="arrow-back" size={24} color={colors.white} />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Integração WhatsApp</Text>
-            <View style={{ width: 24 }} />
-        </View>
-    );
+    const handleBack = () => onClose ? onClose() : navigation.goBack();
 
     const renderNotCreated = () => (
         <View style={styles.card}>
@@ -269,8 +259,10 @@ export default function ConfiguracoesWhatsApp({ onClose }: { onClose?: () => voi
     };
 
     return (
-        <View style={styles.container}>
-            {renderHeader()}
+        <ScreenScaffold
+            title="Integração WhatsApp"
+            leftAction={{ label: 'Voltar', onPress: handleBack }}
+        >
             <ScrollView contentContainerStyle={styles.content}>
                 {errorMsg && (
                     <View style={styles.errorBox}>
@@ -281,29 +273,12 @@ export default function ConfiguracoesWhatsApp({ onClose }: { onClose?: () => voi
                 
                 {getContent()}
             </ScrollView>
-        </View>
+        </ScreenScaffold>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F5F5DC' },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center', minHeight: 400 },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingTop: SAFE_AREA_TOP,
-        paddingHorizontal: 20,
-        paddingBottom: 15,
-        backgroundColor: colors.primary,
-        elevation: 4,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-    },
-    headerTitle: { fontSize: 20, fontWeight: 'bold', color: colors.white },
-    backButton: { padding: 5 },
     content: { padding: 20, flexGrow: 1, justifyContent: 'center' },
     
     card: {

@@ -16,8 +16,8 @@ import { usePerformanceMetrics, useCacheStats, useConnectionPoolStats } from '..
  */
 export const PerformanceMonitor: React.FC = () => {
   const { metrics, loading: metricsLoading, refresh: refreshMetrics } = usePerformanceMetrics();
-  const { stats: cacheStats, loading: cacheLoading } = useCacheStats();
-  const { stats: poolStats, loading: poolLoading } = useConnectionPoolStats();
+  const { stats: cacheStats } = useCacheStats();
+  const { stats: poolStats } = useConnectionPoolStats();
 
   const [refreshing, setRefreshing] = React.useState(false);
 

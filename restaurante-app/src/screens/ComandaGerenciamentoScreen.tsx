@@ -5,9 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useOrders } from '../context/OrderContext';
-import OrderService from '../services/OrderService';
 // @ts-ignore
-import { useComandaManagement } from '../hooks/useComandaManagement';
+import { useComandaManagement, type ComandaManagementItem } from '../hooks/useComandaManagement';
 import { useToast } from '../context/ToastContext';
 import ComandaList from '../components/comandas/ComandaList';
 // @ts-ignore
@@ -16,7 +15,7 @@ import ComandaDetails from '../components/comandas/ComandaDetails';
 import AddItemsModal from '../components/comandas/AddItemsModal';
 import { colors } from '../theme/colors';
 import { getTodayKey } from '../utils/dateUtils'; // Migrated from FirebaseOptimizations
-import { fixDecimal, calcularPrecoItem } from '../utils/orderCalculator';
+import { calcularPrecoItem } from '../utils/orderCalculator';
 import CancelOrderModal from '../components/comandas/CancelOrderModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -155,6 +154,8 @@ export default function ComandaGerenciamentoScreen(props: any) {
 
   const handlePayment = async (comanda: any, forma: string, valor: number) => {
     try {
+      const usuarioNome = user?.nome || user?.email || 'Sistema';
+
       if (comanda.status === 'cancelada') {
         Alert.alert('Operação Bloqueada', 'Esta comanda está CANCELADA e não pode receber pagamentos.');
         return;
@@ -186,7 +187,7 @@ export default function ComandaGerenciamentoScreen(props: any) {
         forma: forma,
         valor: valor,
         usuarioId: user?.id,
-        usuarioNome: user?.nome,
+        usuarioNome,
       });
 
       if (pedidosParaPagar.length > 0) {
@@ -198,7 +199,7 @@ export default function ComandaGerenciamentoScreen(props: any) {
       if (saldoRestante <= 0.01) {
         // Close comanda
         await new Promise(r => setTimeout(r, 1000)); // wait propagation
-        await ComandasService.fecharComanda(user?.companyId || '', comanda.comandaNumber, user?.id, user?.nome);
+        await ComandasService.fecharComanda(user?.companyId || '', comanda.comandaNumber, user?.id, usuarioNome);
       }
 
       showToast('Pagamento registrado!', 'success');
@@ -233,6 +234,11 @@ export default function ComandaGerenciamentoScreen(props: any) {
   };
 
   const confirmCancel = async (reason: string) => {
+    const comanda = selectedComanda;
+    if (!comanda) {
+      return;
+    }
+
     if (!reason?.trim()) {
       Alert.alert('Erro', 'Por favor, informe o motivo do cancelamento.');
       return;
@@ -240,8 +246,8 @@ export default function ComandaGerenciamentoScreen(props: any) {
 
     try {
       console.log('[ComandaGerenciamento] 🚫 Cancelando comanda:', {
-        docId: `comanda-${getTodayKey()}-${selectedComanda.comandaNumber}`,
-        comandaNumber: selectedComanda.comandaNumber,
+        docId: `comanda-${getTodayKey()}-${comanda.comandaNumber}`,
+        comandaNumber: comanda.comandaNumber,
         reason
       });
 
@@ -256,12 +262,12 @@ export default function ComandaGerenciamentoScreen(props: any) {
         })
         .eq('company_id', user?.companyId || '')
         .eq('date_key', getTodayKey())
-        .eq('comanda_number', selectedComanda.comandaNumber);
+        .eq('comanda_number', comanda.comandaNumber);
 
       if (updateError) throw updateError;
 
-      if (selectedComanda.pedidos && selectedComanda.pedidos.length > 0) {
-        const updatePromises = selectedComanda.pedidos.map(async (pedido: any) => {
+      if (comanda.pedidos && comanda.pedidos.length > 0) {
+        const updatePromises = comanda.pedidos.map(async (pedido: any) => {
           try {
             const { error } = await supabase
               .from('orders')
@@ -294,10 +300,15 @@ export default function ComandaGerenciamentoScreen(props: any) {
   };
 
   const handleAddItems = async (items: string[]) => {
+    const comanda = selectedComanda;
+    if (!comanda) {
+      return;
+    }
+
     try {
       const novoPedido = {
-        comandaNumber: selectedComanda.comandaNumber,
-        client: selectedComanda.cliente || 'Não informado',
+        comandaNumber: comanda.comandaNumber,
+        client: comanda.cliente || 'Não informado',
         items: items,
         status: 'prontos',
         isPago: false,
@@ -311,7 +322,7 @@ export default function ComandaGerenciamentoScreen(props: any) {
         novoPedido.client,
         novoPedido.items,
         '',
-        novoPedido.comandaNumber,
+        String(novoPedido.comandaNumber),
         novoPedido.waiterId,
         novoPedido.waiter,
         0,
@@ -369,27 +380,29 @@ export default function ComandaGerenciamentoScreen(props: any) {
     try {
       const data = prepareDataForExport(comandaData);
       await PDFService.generateAndShareComanda(data, user?.company as any);
-    } catch (e) {
+    } catch {
       Alert.alert('Erro', 'Falha ao compartilhar PDF');
     }
   };
 
   if (selectedComanda) {
+    const comandaSelecionada: ComandaManagementItem = selectedComanda;
+
     return (
       <>
         <ComandaDetails
-          key={selectedComanda.comandaNumber} // Force re-mount to avoid stale data
-          comanda={selectedComanda}
+          key={comandaSelecionada.comandaNumber} // Force re-mount to avoid stale data
+          comanda={comandaSelecionada as any}
           cardapioDin={cardapioDin}
           onClose={() => setSelectedComanda(null)}
           onPay={(comanda: any, forma: string, valor: number) => handlePayment(comanda, forma, valor)}
           onCancel={handleCancel}
           onAddItems={() => setShowAddModal(true)}
-          onPrint={() => handlePrint(selectedComanda)}
-          onShare={() => handleShare(selectedComanda)}
+          onPrint={() => handlePrint(comandaSelecionada)}
+          onShare={() => handleShare(comandaSelecionada)}
           onFullPayment={() => {
-            const comandaNum = selectedComanda.comandaNumber;
-            const isDelivery = selectedComanda.pedidos?.some((p: any) => p.order_type === 'delivery' || p.orderType === 'delivery') || String(comandaNum) === '0';
+            const comandaNum = comandaSelecionada.comandaNumber;
+            const isDelivery = comandaSelecionada.pedidos?.some((p: any) => p.order_type === 'delivery' || p.orderType === 'delivery') || String(comandaNum) === '0';
             
             if (isDelivery) {
               Alert.alert(
@@ -412,7 +425,7 @@ export default function ComandaGerenciamentoScreen(props: any) {
           visible={showAddModal}
           onClose={() => setShowAddModal(false)}
           onConfirm={handleAddItems}
-          comandaNumber={selectedComanda.comandaNumber}
+          comandaNumber={comandaSelecionada.comandaNumber}
         />
 
         <CancelOrderModal

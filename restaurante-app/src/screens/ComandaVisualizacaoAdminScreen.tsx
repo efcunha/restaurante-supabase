@@ -1,12 +1,12 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, Modal } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect, useMemo } from 'react';
 import { useOrders } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
 // @ts-ignore
 import { EstatisticasGarcomContainer } from '../components/EstatisticasGarcom';
 import { colors } from '../theme/colors';
+import { ScreenScaffold } from '../layouts/ScreenScaffold';
 
 // Função auxiliar para gerar lista de meses disponíveis (últimos 12 meses)
 const gerarMesesDisponiveis = () => {
@@ -141,11 +141,8 @@ export default function ComandaVisualizacaoAdminScreen({ onClose }: Props) {
     // @ts-ignore
     if (!user || user.funcao !== 'admin') {
         return (
-            <View style={styles.container}>
+            <ScreenScaffold title="Acesso Restrito">
                 <StatusBar style="light" />
-                <View style={styles.header}>
-                    <Text style={styles.headerTitle}>Acesso Restrito</Text>
-                </View>
                 <View style={styles.accessDenied}>
                     <Text style={styles.accessDeniedIcon}>🔒</Text>
                     <Text style={styles.accessDeniedTitle}>Área Exclusiva</Text>
@@ -156,34 +153,17 @@ export default function ComandaVisualizacaoAdminScreen({ onClose }: Props) {
                         Apenas o Admin/Dona pode visualizar comandas no final do dia.
                     </Text>
                 </View>
-            </View>
+            </ScreenScaffold>
         );
     }
 
     // Tela Principal de Estatísticas
     return (
-        <View style={styles.container}>
+        <ScreenScaffold
+            title="Estatísticas dos Garçons"
+            leftAction={onClose ? { label: 'Voltar', onPress: onClose } : undefined}
+        >
             <StatusBar style="light" />
-
-            <View style={styles.header}>
-                <View style={styles.headerLeft}>
-                    {onClose && (
-                        <TouchableOpacity onPress={onClose} style={styles.backButton}>
-                            <Ionicons name="arrow-back" size={24} color={colors.white} />
-                        </TouchableOpacity>
-                    )}
-                </View>
-
-                <View style={styles.headerCenter}>
-                    <Text style={styles.headerTitle}>📊 Estatísticas dos Garçons</Text>
-                </View>
-
-                <View style={styles.headerRight}>
-                    <View style={styles.headerButtons}>
-
-                    </View>
-                </View>
-            </View>
 
             {/* Indicador do Mês Selecionado */}
             <View style={styles.mesIndicadorContainer}>
@@ -324,7 +304,7 @@ export default function ComandaVisualizacaoAdminScreen({ onClose }: Props) {
                 nomeGarcom={estatisticas?.garcomNome || user?.nome || 'Carregando...'}
                 loading={loadingEstatisticas}
             />
-        </View>
+        </ScreenScaffold>
     );
 }
 
@@ -332,47 +312,6 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: colors.background,
-    },
-    header: {
-        backgroundColor: colors.primary,
-        paddingTop: 50,
-        paddingBottom: 15,
-        paddingHorizontal: 15,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        borderBottomLeftRadius: 20,
-        borderBottomRightRadius: 20,
-        zIndex: 10,
-        elevation: 8,
-    },
-    headerLeft: {
-        flex: 1,
-        alignItems: 'flex-start',
-        justifyContent: 'center',
-    },
-    headerCenter: {
-        flex: 4, // More space for title
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    headerRight: {
-        flex: 1,
-        alignItems: 'flex-end',
-        justifyContent: 'center',
-    },
-    headerButtons: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    backButton: {
-        padding: 5,
-    },
-    headerTitle: {
-        color: colors.white,
-        fontSize: 20, // Slightly smaller to fit
-        fontWeight: 'bold',
-        textAlign: 'center',
     },
     filterBtn: {
         backgroundColor: 'rgba(255,255,255,0.2)',

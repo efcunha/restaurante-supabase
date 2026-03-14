@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, StyleSheet, Alert } from 'react-native';
-import { Product, Ingredient } from '../../../types';
+import { Product } from '../../../types';
 
 import { StockItem } from './types';
 

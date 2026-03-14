@@ -70,6 +70,6 @@ const styles = StyleSheet.create({
     minHeight: 44,
     outlineStyle: 'none' as any,
     paddingHorizontal: spacing.s12,
-    paddingVertical: spacing.s10,
+    paddingVertical: spacing.s8,
   },
 });

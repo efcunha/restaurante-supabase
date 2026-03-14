@@ -20,8 +20,7 @@ import type {
   QueryMetric,
   CacheMetric,
   ConnectionMetric,
-  RealtimeMetric,
-  QueryPerformanceLog
+  RealtimeMetric
 } from '../../types/performance';
 
 /**
@@ -206,7 +205,7 @@ class PerformanceMonitorService {
   async collectDatabaseResourceMetrics(): Promise<DatabaseResourceMetrics> {
     try {
       // Query pg_stat_database for database stats
-      const { data: dbStats, error: dbError } = await supabase.rpc('execute_sql', {
+      const { error: dbError } = await supabase.rpc('execute_sql', {
         query: `
           SELECT 
             numbackends as active_connections,

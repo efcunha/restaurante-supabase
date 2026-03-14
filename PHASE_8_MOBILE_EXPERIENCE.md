@@ -29,7 +29,7 @@ Elevate the mobile app experience across five dimensions:
 | Role | Primary tabs | Via "Mais" |
 |------|-------------|------------|
 | ADMIN/GERENTE | Novo Pedido, Mapa, Comandas, Cozinha, Mais | Montagem, Entrega Salão, Rotas Delivery, Reservas, Admin |
-| GARCOM | Novo Pedido, Mapa, Comandas, Mais | Entrega Salão, Reservas |
+| GARCOM | Novo Pedido, Mapa, Comandas, Mais | Prontos, Reservas |
 | COZINHEIRO | Cozinha | — |
 | MONTAGEM | Montagem, Prontos | — |
 | ENTREGADOR | Rotas Delivery | — |

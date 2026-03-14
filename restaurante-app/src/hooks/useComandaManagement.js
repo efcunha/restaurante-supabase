@@ -1,5 +1,5 @@
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../config/SupabaseConfig';
 import { useAuth } from '../context/AuthContext';
 import { getTodayKey } from '../utils/dateUtils'; // Migrated from FirebaseOptimizations
@@ -19,12 +19,9 @@ export function useComandaManagement() {
     const [hasMore, setHasMore] = useState({ pagas: true, canceladas: true });
     const [cardapioDin, setCardapioDin] = useState([]);
 
-    const reloadTimeout = useRef(null);
-    const realtimeSubscription = useRef(null);
-
     const todayKey = getTodayKey;
 
-    const carregarComandas = useCallback(async (forcarBusca = false, loadMore = false) => {
+    const carregarComandas = useCallback(async (_forcarBusca = false, loadMore = false) => {
         if (loadMore) {
             setIsLoadingMore(true);
         } else {
@@ -75,7 +72,7 @@ export function useComandaManagement() {
             if (pedidosError) throw pedidosError;
             
             // 🔄 NEW: Fetch product list for accurate dynamic calculations (avoiding hardcode)
-            const { data: produtos, error: produtosError } = await supabase
+            const { data: produtos } = await supabase
                 .from('products')
                 .select('name, price')
                 .eq('company_id', user.companyId)

@@ -4,11 +4,11 @@
  */
 
 import { perf } from '../config/firebaseConfig';
-import { trace, Trace } from 'firebase/performance';
+import { trace, PerformanceTrace } from 'firebase/performance';
 
 class PerformanceService {
   private activeMetrics: Map<string, number> = new Map();
-  private activeTraces: Map<string, Trace> = new Map();
+  private activeTraces: Map<string, PerformanceTrace> = new Map();
   private enabled: boolean = true;
 
   constructor() {

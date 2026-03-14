@@ -25,15 +25,6 @@ type User = any;
 type TotpSecret = any;
 type MultiFactorResolver = any;
 
-interface MFAEnrollmentData {
-  userId: string;
-  enrolledAt: Date;
-  backupCodes: string[];
-  failedAttempts: number;
-  lockedUntil: Date | null;
-  lastFailedAttempt: Date | null;
-}
-
 interface MFASetupResult {
   secret: TotpSecret;
   qrCodeUrl: string;
@@ -42,8 +33,6 @@ interface MFASetupResult {
 
 // Service disabled during Supabase migration - all methods throw errors
 class MFAService {
-  private readonly MAX_FAILED_ATTEMPTS = 5;
-  private readonly LOCKOUT_DURATION_MS = 30 * 60 * 1000; // 30 minutes
   private readonly BACKUP_CODES_COUNT = 10;
 
   private throwDisabledError(): never {
@@ -62,7 +51,7 @@ class MFAService {
   /**
    * Check if user has MFA enrolled
    */
-  async isEnrolled(user: User): Promise<boolean> {
+  async isEnrolled(_user: User): Promise<boolean> {
     return false;
   }
 
@@ -70,7 +59,7 @@ class MFAService {
    * Start MFA enrollment process
    * Returns secret and QR code URL for TOTP setup
    */
-  async startEnrollment(user: User, displayName: string = 'Restaurant App'): Promise<MFASetupResult> {
+  async startEnrollment(_user: User, _displayName: string = 'Restaurant App'): Promise<MFASetupResult> {
     this.throwDisabledError();
   }
 
@@ -78,11 +67,11 @@ class MFAService {
    * Complete MFA enrollment with verification code
    */
   async completeEnrollment(
-    user: User,
+    _user: User,
     secret: TotpSecret,
     verificationCode: string,
     backupCodes: string[],
-    displayName: string = 'TOTP'
+    _displayName: string = 'TOTP'
   ): Promise<void> {
     this.throwDisabledError();
   }
@@ -90,21 +79,21 @@ class MFAService {
   /**
    * Verify MFA code during sign-in
    */
-  async verifyCode(resolver: MultiFactorResolver, verificationCode: string): Promise<void> {
+  async verifyCode(_resolver: MultiFactorResolver, _verificationCode: string): Promise<void> {
     this.throwDisabledError();
   }
 
   /**
    * Verify backup code during sign-in
    */
-  async verifyBackupCode(userId: string, backupCode: string): Promise<boolean> {
+  async verifyBackupCode(_userId: string, _backupCode: string): Promise<boolean> {
     return false;
   }
 
   /**
    * Unenroll MFA for a user
    */
-  async unenroll(user: User): Promise<void> {
+  async unenroll(_user: User): Promise<void> {
     this.throwDisabledError();
   }
 
@@ -129,37 +118,37 @@ class MFAService {
   }
 
   // All Firestore methods disabled during migration
-  private async storeEnrollmentData(userId: string, backupCodes: string[]): Promise<void> {
+  private async storeEnrollmentData(_userId: string, _backupCodes: string[]): Promise<void> {
     this.throwDisabledError();
   }
 
-  private async removeEnrollmentData(userId: string): Promise<void> {
+  private async removeEnrollmentData(_userId: string): Promise<void> {
     this.throwDisabledError();
   }
 
-  private async isAccountLocked(userId: string): Promise<boolean> {
+  private async isAccountLocked(_userId: string): Promise<boolean> {
     return false;
   }
 
-  private async incrementFailedAttempts(userId: string): Promise<void> {
+  private async incrementFailedAttempts(_userId: string): Promise<void> {
     // No-op during migration
   }
 
-  private async resetFailedAttempts(userId: string): Promise<void> {
+  private async resetFailedAttempts(_userId: string): Promise<void> {
     // No-op during migration
   }
 
   /**
    * Get remaining backup codes count
    */
-  async getRemainingBackupCodesCount(userId: string): Promise<number> {
+  async getRemainingBackupCodesCount(_userId: string): Promise<number> {
     return 0;
   }
 
   /**
    * Regenerate backup codes
    */
-  async regenerateBackupCodes(userId: string): Promise<string[]> {
+  async regenerateBackupCodes(_userId: string): Promise<string[]> {
     this.throwDisabledError();
   }
 }

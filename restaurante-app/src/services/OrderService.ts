@@ -24,7 +24,7 @@ interface CardapioSection {
  * @deprecated Use Supabase 'products' table instead. This hardcoded map is kept only for 
  * emergency fallback for legacy offline orders.
  */
-const CARDAPIO: Record<string, CardapioSection> = {
+export const CARDAPIO: Record<string, CardapioSection> = {
   espetinhos: {
     'Carne': 12.00,
     'Frango': 12.00,
@@ -82,8 +82,6 @@ const CARDAPIO: Record<string, CardapioSection> = {
     'Risoto de Queijo': 25.00
   }
 };
-
-const fixDecimal = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
 
 class OrderService {
   calculateOrderTotal(items: string[]): number {
@@ -162,7 +160,7 @@ class OrderService {
     const result: OrderItemStatus[] = [];
     let absoluteIndex = 0;
 
-    expandedItems.forEach((info, index) => {
+    expandedItems.forEach((info) => {
       const lowerName = info.itemNameWithoutQty.toLowerCase();
       let category = 'outro';
 

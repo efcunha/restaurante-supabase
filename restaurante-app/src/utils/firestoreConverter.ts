@@ -152,7 +152,7 @@ class SupabaseConverter {
   convertChangedFields(
     oldRow: any,
     newRow: any,
-    rowId: string
+    _rowId: string
   ): Partial<any> {
     if (!this.hasChanges(oldRow, newRow)) {
       return {};

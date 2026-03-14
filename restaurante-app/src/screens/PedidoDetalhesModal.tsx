@@ -29,7 +29,7 @@ interface Props {
 export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props) {
   const navigation = useNavigation<any>();
   const { user } = useAuth();
-  const { getOrderById, editOrder, deleteOrder, transferOrder } = useOrders();
+  const { getOrderById, editOrder, transferOrder } = useOrders();
   const [isTransferModalVisible, setIsTransferModalVisible] = useState(false);
 
   const handleTransfer = async (newTable: string) => {
@@ -69,7 +69,7 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
                   // Use order's dateKey if available, otherwise today
                   const dateKey = order.dateKey || getTodayKey();
                   
-                  const { data, error } = await supabase
+                    const { data } = await supabase
                       .from('comandas')
                       .select('total_consumed, total_paid, open_balance')
                       .eq('company_id', user?.companyId) // Added company_id check for safety
@@ -114,17 +114,6 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
     if (!isoString) return '--';
     const date = typeof isoString === 'string' ? new Date(isoString) : isoString.toDate ? isoString.toDate() : new Date(isoString);
     return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  };
-
-  const formatDateFull = (isoString: any) => {
-    if (!isoString) return '--';
-    const date = typeof isoString === 'string' ? new Date(isoString) : isoString.toDate ? isoString.toDate() : new Date(isoString);
-    return date.toLocaleString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
   };
 
   const handleEdit = () => {

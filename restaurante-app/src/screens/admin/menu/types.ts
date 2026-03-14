@@ -1,5 +1,5 @@
 
-import { Product, Ingredient, PizzaConfig, PizzaSize } from '../../../types';
+import { Product, PizzaConfig } from '../../../types';
 
 export interface StockItem {
     id: string;
