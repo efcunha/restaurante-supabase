@@ -2,7 +2,6 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Card } from './Card';
 import { colorSystem, spacing, typography } from '../../design-system';
-
 type RestaurantCardProps = {
   name: string;
   subtitle?: string;
@@ -49,7 +48,7 @@ const styles = StyleSheet.create({
   status: {
     ...typography.small,
     color: colorSystem.success,
-    backgroundColor: '#E8F7EE',
+    backgroundColor: colors.successSurface,
     borderRadius: 999,
     paddingHorizontal: spacing.s8,
     paddingVertical: spacing.s4,

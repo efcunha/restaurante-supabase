@@ -42,13 +42,12 @@ import MFASetupModal from '../components/MFASetupModal';
 import AdminHeader from '../components/AdminHeader';
 import AdminStatsCards from '../components/AdminStatsCards';
 import CaixaMenuModal from '../components/CaixaMenuModal';
-import { colors } from '../theme/colors';
 import { AdminActionCard, AdminBareModal, AdminCaixaModal, AdminSection, AdminSlideModal } from '../features/admin';
 // import PerformanceService from '../services/PerformanceService'; // Removed - Firebase specific
 
 // WhatsApp Integração
 import ConfiguracoesWhatsApp from './ConfiguracoesWhatsApp';
-
+import { colors } from '../theme/colors';
 /**
  * AdminScreen - Main Administrative Dashboard
  * 

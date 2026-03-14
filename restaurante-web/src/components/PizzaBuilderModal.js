@@ -2,7 +2,6 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Modal, View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
-
 export default function PizzaBuilderModal({
     visible,
     onClose,
@@ -226,7 +225,7 @@ export default function PizzaBuilderModal({
                                 styles.flavorRow,
                                 isSelected && styles.flavorRowActive,
                                 isDisabled && styles.flavorRowDisabled,
-                                isLocked ? { borderColor: colors.success, backgroundColor: '#F1F8E9' } : null
+                                isLocked ? { borderColor: colors.success, backgroundColor: colors.successSurface } : null
                             ]}
                             onPress={() => !isDisabled && toggleFlavor(pizza)}
                             disabled={isDisabled || isLocked}
@@ -423,19 +422,19 @@ const styles = StyleSheet.create({
     sizeSubText: { fontSize: 13, color: colors.textSecondary, marginTop: 4 },
 
     headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 15, gap: 15 },
-    backBtn: { padding: 8, backgroundColor: '#f0f0f0', borderRadius: 50 },
+    backBtn: { padding: 8, backgroundColor: colors.surfaceMuted, borderRadius: 50 },
     search: { backgroundColor: colors.surfaceMuted, padding: 12, borderRadius: 12, marginBottom: 15, fontSize: 16 },
 
     flavorRow: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: colors.white, borderRadius: 12, marginBottom: 8, borderWidth: 1, borderColor: colors.border },
     flavorRowActive: { borderColor: colors.primary, backgroundColor: colors.dangerSurface },
-    flavorRowDisabled: { opacity: 0.5, backgroundColor: '#f9f9f9' },
+    flavorRowDisabled: { opacity: 0.5, backgroundColor: colors.surfaceMuted },
 
     flavorName: { fontSize: 16, fontWeight: '600', color: colors.text },
     flavorPrice: { fontSize: 14, color: colors.primary, fontWeight: 'bold', marginTop: 2 },
 
     checkbox: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: colors.border, justifyContent: 'center', alignItems: 'center' },
 
-    footer: { borderTopWidth: 1, borderTopColor: '#f0f0f0', paddingTop: 20, marginTop: 10, paddingBottom: 30 },
+    footer: { borderTopWidth: 1, borderTopColor: colors.surfaceMuted, paddingTop: 20, marginTop: 10, paddingBottom: 30 },
     totalText: { fontSize: 24, fontWeight: 'bold', color: colors.primary },
     confirmBtn: { backgroundColor: colors.success, padding: 18, borderRadius: 14, alignItems: 'center' },
     disabledBtn: { backgroundColor: colors.border },

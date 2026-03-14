@@ -12,9 +12,8 @@ import { supabase } from '../config/SupabaseConfig';
 import { getLocalDateKey } from '../utils/dateUtils';
 import { confirmLogout } from '../utils/appUtils';
 import OptimizedFlatList from '../components/OptimizedFlatList';
-import { colors } from '../theme/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
+import { colors } from '../theme/colors';
 export default function CozinhaScreen() {
   const { user, logout } = useAuth();
   const [allOrders, setAllOrders] = useState<any[]>([]);

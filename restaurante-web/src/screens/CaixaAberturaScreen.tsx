@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useResponsive } from '../hooks/useResponsive';
 // @ts-ignore
 import CaixaService from '../services/CaixaService';
-
+import { colors } from '../theme/colors';
 interface Props {
   onSuccess?: () => void;
 }
@@ -78,7 +78,7 @@ export default function CaixaAberturaScreen({ onSuccess }: Props) {
             value={valorInicial}
             onChangeText={setValorInicial}
             placeholder="0.00"
-            placeholderTextColor="#999"
+            placeholderTextColor={colors.textSecondary}
           />
           <TouchableOpacity
             style={[styles.btn, loading && styles.btnDisabled]}
@@ -97,11 +97,11 @@ export default function CaixaAberturaScreen({ onSuccess }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F1E8' },
+  container: { flex: 1, backgroundColor: colors.background },
   content: {},
-  label: { color: '#8B2F2F', fontWeight: '600', marginBottom: 8, fontSize: 16 },
-  input: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#E0D8C8', borderRadius: 12, padding: 14, marginBottom: 16, fontSize: 18 },
-  btn: { backgroundColor: '#B45309', padding: 16, borderRadius: 12, alignItems: 'center' },
-  btnText: { color: '#2C2C2C', fontWeight: '700', fontSize: 16 },
-  btnDisabled: { backgroundColor: '#D0D0D0' },
+  label: { color: colors.primary, fontWeight: '600', marginBottom: 8, fontSize: 16 },
+  input: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14, marginBottom: 16, fontSize: 18 },
+  btn: { backgroundColor: colors.secondary, padding: 16, borderRadius: 12, alignItems: 'center' },
+  btnText: { color: colors.text, fontWeight: '700', fontSize: 16 },
+  btnDisabled: { backgroundColor: colors.border },
 });

@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import {
-    Modal,
+Modal,
     View,
     Text,
     StyleSheet,
@@ -11,7 +11,7 @@ import {
     KeyboardAvoidingView,
     TouchableWithoutFeedback
 } from 'react-native';
-
+import { colors } from '../theme/colors';
 interface TransferModalProps {
     visible: boolean;
     onClose: () => void;
@@ -108,12 +108,12 @@ const styles = StyleSheet.create({
     container: {
         width: '100%',
         maxWidth: 340,
-        backgroundColor: '#FFF',
+        backgroundColor: colors.white,
         borderRadius: 16,
         overflow: 'hidden',
         ...Platform.select({
             ios: {
-                shadowColor: '#000',
+                shadowColor: colors.shadow,
                 shadowOffset: { width: 0, height: 4 },
                 shadowOpacity: 0.3,
                 shadowRadius: 8,
@@ -133,17 +133,17 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         padding: 16,
         borderBottomWidth: 1,
-        borderBottomColor: '#EEE',
-        backgroundColor: '#F8F9FA'
+        borderBottomColor: colors.border,
+        backgroundColor: colors.surfaceMuted
     },
     title: {
         fontSize: 18,
         fontWeight: '600',
-        color: '#333'
+        color: colors.text
     },
     closeBtn: {
         fontSize: 20,
-        color: '#999',
+        color: colors.textSecondary,
         padding: 4
     },
     content: {
@@ -151,23 +151,23 @@ const styles = StyleSheet.create({
     },
     currentTableText: {
         fontSize: 14,
-        color: '#666',
+        color: colors.textSecondary,
         marginBottom: 16
     },
     bold: {
         fontWeight: '700',
-        color: '#333'
+        color: colors.text
     },
     label: {
         fontSize: 14,
         fontWeight: '500',
-        color: '#333',
+        color: colors.text,
         marginBottom: 8
     },
     input: {
-        backgroundColor: '#F5F5F5',
+        backgroundColor: colors.surfaceMuted,
         borderWidth: 1,
-        borderColor: '#E0E0E0',
+        borderColor: colors.border,
         borderRadius: 8,
         padding: 12,
         fontSize: 16,
@@ -185,21 +185,21 @@ const styles = StyleSheet.create({
         justifyContent: 'center'
     },
     cancelBtn: {
-        backgroundColor: '#F5F5F5',
+        backgroundColor: colors.surfaceMuted,
     },
     confirmBtn: {
-        backgroundColor: '#8B2F2F',
+        backgroundColor: colors.primary,
     },
     disabledBtn: {
         opacity: 0.5
     },
     btnTextCancel: {
-        color: '#666',
+        color: colors.textSecondary,
         fontWeight: '600',
         fontSize: 16
     },
     btnTextConfirm: {
-        color: '#FFF',
+        color: colors.white,
         fontWeight: '600',
         fontSize: 16
     }

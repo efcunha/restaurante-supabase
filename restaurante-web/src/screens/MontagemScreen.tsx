@@ -7,11 +7,9 @@ import { useAuth } from '../context/AuthContext';
 import PedidoDetalhesModal from './PedidoDetalhesModal';
 import { supabase } from '../config/SupabaseConfig';
 import { exitApp } from '../utils/appUtils';
-import { colors } from '../theme/colors';
-
 import { getLocalDateKey } from '../utils/dateUtils';
 import CaixaService from '../services/CaixaService';
-
+import { colors } from '../theme/colors';
 // Verificar se pedido é urgente (mais de 15 minutos)
 const isUrgent = (timestamp: string) => {
   const orderTime = new Date(timestamp);
@@ -521,12 +519,12 @@ export default function MontagemScreen() {
   const ListEmptyComponent = useCallback(() => (
     <View style={styles.emptyState}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
-        <MaterialCommunityIcons name="silverware-fork-knife" size={40} color="#8B2F2F" style={{ marginRight: -10, transform: [{ rotate: '-15deg' }] }} />
+        <MaterialCommunityIcons name="silverware-fork-knife" size={40} color={colors.primary} style={{ marginRight: -10, transform: [{ rotate: '-15deg' }] }} />
         <View style={{ alignItems: 'center', zIndex: 1 }}>
-          <MaterialCommunityIcons name="chef-hat" size={80} color="#B45309" />
-          <MaterialCommunityIcons name="food-variant" size={50} color="#2C2C2C" style={{ marginTop: -15 }} />
+          <MaterialCommunityIcons name="chef-hat" size={80} color={colors.secondary} />
+          <MaterialCommunityIcons name="food-variant" size={50} color={colors.text} style={{ marginTop: -15 }} />
         </View>
-        <MaterialCommunityIcons name="food-turkey" size={45} color="#D84315" style={{ marginLeft: -15, marginTop: 20 }} />
+        <MaterialCommunityIcons name="food-turkey" size={45} color={colors.danger} style={{ marginLeft: -15, marginTop: 20 }} />
       </View>
       <Text style={styles.emptyText}>Nenhum pedido para montar</Text>
       <Text style={styles.emptySubtext}>Os pedidos da cozinha aparecerão aqui</Text>
@@ -562,12 +560,12 @@ export default function MontagemScreen() {
         </View>
         <View style={styles.headerCenter}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Ionicons name="layers-outline" size={24} color="#FFF" style={{ marginRight: 8 }} />
+            <Ionicons name="layers-outline" size={24} color={colors.white} style={{ marginRight: 8 }} />
             <Text style={styles.headerTitle}>Montagem</Text>
           </View>
         </View>
         <TouchableOpacity style={styles.logoutBtn} onPress={exitApp}>
-          <Ionicons name="log-out-outline" size={24} color="#FFF" />
+          <Ionicons name="log-out-outline" size={24} color={colors.white} />
         </TouchableOpacity>
       </View>
 
@@ -678,7 +676,7 @@ const styles = StyleSheet.create({
       }
     }),
     borderWidth: 1,
-    borderColor: '#E9EEF5',
+    borderColor: colors.surfaceMuted,
   },
   orderCardUrgent: {
     backgroundColor: colors.white,
@@ -700,7 +698,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: colors.white,
-    backgroundColor: '#FF8C42',
+    backgroundColor: colors.warning,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 6,
@@ -730,7 +728,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 10,
     paddingLeft: 10,
-    backgroundColor: '#FFF3E0',
+    backgroundColor: colors.warningSurface,
     padding: 8,
     borderRadius: 8,
   },
@@ -791,7 +789,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   itemTextDone: {
-    color: '#999',
+    color: colors.textSecondary,
     textDecorationLine: 'line-through',
   },
   readyBtn: {
@@ -811,7 +809,7 @@ const styles = StyleSheet.create({
     }),
   },
   readyBtnDisabled: {
-    backgroundColor: '#9AA4B2',
+    backgroundColor: colors.textSecondary,
     shadowOpacity: 0,
     elevation: 0,
   },

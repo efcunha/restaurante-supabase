@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Dimensions, Platform } from 'react-native';
 import { useNetInfo } from '@react-native-community/netinfo';
 import Constants from 'expo-constants';
-
+import { colors } from '../theme/colors';
 const OfflineNotice = () => {
     const netInfo = useNetInfo();
     const [isOffline, setIsOffline] = useState(false);
@@ -28,7 +28,7 @@ const OfflineNotice = () => {
 
 const styles = StyleSheet.create({
     offlineContainer: {
-        backgroundColor: '#b52424', // Red warning
+        backgroundColor: colors.danger, // Red warning
         height: 30,
         justifyContent: 'center',
         alignItems: 'center',
@@ -39,7 +39,7 @@ const styles = StyleSheet.create({
         zIndex: 9999,
     },
     offlineText: {
-        color: '#fff',
+        color: colors.white,
         fontSize: 12,
         fontWeight: 'bold',
     }

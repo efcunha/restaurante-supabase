@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-
+import { colors } from '../theme/colors';
 export default function BackgroundDecoration() {
   return (
     <View style={[styles.container, { pointerEvents: 'none' }]}>
@@ -58,14 +58,14 @@ const styles = StyleSheet.create({
   cactoBody: {
     width: 60,
     height: 120,
-    backgroundColor: '#7A9B7F',
+    backgroundColor: colors.success,
     borderRadius: 30,
     position: 'relative',
   },
   cactoBranch: {
     width: 30,
     height: 40,
-    backgroundColor: '#7A9B7F',
+    backgroundColor: colors.success,
     borderRadius: 15,
     position: 'absolute',
   },
@@ -88,7 +88,7 @@ const styles = StyleSheet.create({
   alhoCircle: {
     width: 50,
     height: 50,
-    backgroundColor: '#E8DCC8',
+    backgroundColor: colors.border,
     borderRadius: 25,
     marginBottom: 5,
   },
@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
   flame: {
     width: 40,
     height: 60,
-    backgroundColor: '#B45309',
+    backgroundColor: colors.secondary,
     borderRadius: 20,
     position: 'absolute',
   },
@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
     bottom: 10,
     height: 50,
     width: 35,
-    backgroundColor: '#D4A63A',
+    backgroundColor: colors.warning,
   },
   flame3: {
     left: 50,
@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
   spiceLeaf: {
     width: 50,
     height: 20,
-    backgroundColor: '#7A9B7F',
+    backgroundColor: colors.success,
     borderRadius: 10,
     position: 'absolute',
     transform: [{ rotate: '30deg' }],

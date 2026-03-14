@@ -14,8 +14,6 @@ import { useResponsive } from '../hooks/useResponsive';
 // @ts-ignore
 import { ScreenScaffold } from '../layouts/ScreenScaffold';
 import { colors } from '../theme/colors';
-
-
 interface Props {
   navigation: any;
 }
@@ -309,7 +307,7 @@ const styles = StyleSheet.create({
   },
   widthButton: {
     flex: 1,
-    backgroundColor: '#F0F0F0',
+    backgroundColor: colors.surfaceMuted,
     padding: 15,
     borderRadius: 10,
     alignItems: 'center',
@@ -317,7 +315,7 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   widthButtonActive: {
-    backgroundColor: '#FFF3E0',
+    backgroundColor: colors.warningSurface,
     borderColor: colors.secondary,
   },
   widthButtonText: {
@@ -350,7 +348,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 15,
-    backgroundColor: '#F9F9F9',
+    backgroundColor: colors.surfaceMuted,
     borderRadius: 10,
     marginBottom: 10,
   },
@@ -384,7 +382,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   instructionsCard: {
-    backgroundColor: '#FFF3E0',
+    backgroundColor: colors.warningSurface,
     borderRadius: 15,
     padding: 20,
     marginBottom: 30,

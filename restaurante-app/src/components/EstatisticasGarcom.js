@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { Table } from './ui-next/Table';
-
+import { colors } from '../theme/colors';
 /**
  * Componente: Card de Dados do Garçom
  */
@@ -157,7 +157,7 @@ export const EstatisticasGarcomContainer = ({ estatisticas, nomeGarcom, loading 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#8B2F2F" />
+        <ActivityIndicator size="large" color={colors.primary} />
         <Text style={styles.loadingText}>Carregando estatísticas...</Text>
       </View>
     );
@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 15,
     fontSize: 14,
-    color: '#999',
+    color: colors.textSecondary,
   },
   emptyContainer: {
     flex: 1,
@@ -213,24 +213,24 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: '#999',
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   headerSection: {
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
     padding: 20,
     alignItems: 'center',
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.white,
   },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     borderRadius: 15,
     margin: 15,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 10,
@@ -239,10 +239,10 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#8B2F2F',
+    color: colors.primary,
     padding: 18,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0D8C8',
+    borderBottomColor: colors.border,
   },
   cardContent: {
     padding: 18,
@@ -256,16 +256,16 @@ const styles = StyleSheet.create({
   infoLabel: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#666',
+    color: colors.textSecondary,
   },
   infoValue: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#333',
+    color: colors.text,
   },
   divider: {
     height: 1,
-    backgroundColor: '#E0D8C8',
+    backgroundColor: colors.border,
     marginVertical: 15,
   },
   statsGrid: {
@@ -281,12 +281,12 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#8B2F2F',
+    color: colors.primary,
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 11,
-    color: '#999',
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   periodoSection: {
@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
   periodoTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#8B2F2F',
+    color: colors.primary,
   },
   periodoStats: {
     flexDirection: 'row',
@@ -310,14 +310,14 @@ const styles = StyleSheet.create({
   },
   periodoStatLabel: {
     fontSize: 11,
-    color: '#999',
+    color: colors.textSecondary,
     marginBottom: 6,
     textAlign: 'center',
   },
   periodoStatValue: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#333',
+    color: colors.text,
   },
   metodoSection: {
     marginVertical: 8,
@@ -328,7 +328,7 @@ const styles = StyleSheet.create({
   metodoTitulo: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#333',
+    color: colors.text,
   },
   metodoGrid: {
     flexDirection: 'row',
@@ -340,51 +340,51 @@ const styles = StyleSheet.create({
   },
   metodoLabel: {
     fontSize: 11,
-    color: '#999',
+    color: colors.textSecondary,
     marginBottom: 6,
   },
   metodoValor: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#7ED321',
+    color: colors.success,
     marginBottom: 2,
   },
   metodoQtd: {
     fontSize: 10,
-    color: '#999',
+    color: colors.textSecondary,
   },
   totalItem: {
     marginVertical: 8,
   },
   totalLabel: {
     fontSize: 13,
-    color: '#999',
+    color: colors.textSecondary,
     marginBottom: 6,
   },
   totalValor: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#8B2F2F',
+    color: colors.primary,
   },
   produtoDestaque: {
-    backgroundColor: '#FFF9E6',
+    backgroundColor: colors.warningSurface,
     padding: 15,
     borderRadius: 10,
     alignItems: 'center',
   },
   produtoLabel: {
     fontSize: 13,
-    color: '#999',
+    color: colors.textSecondary,
     marginBottom: 8,
   },
   produtoNome: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#8B2F2F',
+    color: colors.primary,
     marginBottom: 4,
   },
   produtoQtd: {
     fontSize: 13,
-    color: '#666',
+    color: colors.textSecondary,
   },
 });

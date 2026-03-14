@@ -7,12 +7,11 @@ import PagamentosService from '../services/PagamentosService';
 import { getTodayKey } from '../utils/dateUtils';
 import { supabase } from '../config/SupabaseConfig';
 import SplitPaymentModal from '../components/SplitPaymentModal';
-import { colors } from '../theme/colors';
 import { calcularPrecoItem, MenuItem } from '../utils/orderCalculator';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenScaffold } from '../layouts/ScreenScaffold';
 import { PaymentActionPanel, PaymentComandaSummary, PaymentOrderSummary, PaymentStepIndicator } from '../features/payments';
-
+import { colors } from '../theme/colors';
 // Usar função centralizada para consistência de data local
 const todayKey = getTodayKey;
 

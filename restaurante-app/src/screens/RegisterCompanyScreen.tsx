@@ -12,7 +12,6 @@ import {
   Platform
 } from 'react-native';
 import { supabase } from '../config/SupabaseConfig'; // Replaced firebase config
-import { colors } from '../theme/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useResponsive } from '../hooks/useResponsive';
@@ -20,7 +19,7 @@ import { useResponsive } from '../hooks/useResponsive';
 import { validateCPF, validateCNPJ } from '../utils/validation';
 // @ts-ignore
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-
+import { colors } from '../theme/colors';
 interface Props {
   navigation: NativeStackNavigationProp<any>;
 }
@@ -335,7 +334,7 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
               style={styles.searchButton}
               onPress={() => searchAddressByCEP(zipCode)}
             >
-              <Ionicons name="search" size={20} color="#FFF" />
+              <Ionicons name="search" size={20} color={colors.white} />
             </TouchableOpacity>
           </View>
 
@@ -390,7 +389,7 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
               secureTextEntry={secureText}
             />
             <TouchableOpacity onPress={() => setSecureText(!secureText)} style={styles.eyeIcon}>
-              <Ionicons name={secureText ? "eye-off" : "eye"} size={24} color="#999" />
+              <Ionicons name={secureText ? "eye-off" : "eye"} size={24} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
@@ -409,7 +408,7 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator color="#FFF" />
+              <ActivityIndicator color={colors.white} />
             ) : (
               <Text style={styles.btnText}>CRIAR CONTA GRÁTIS</Text>
             )}
@@ -423,7 +422,7 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5DC',
+    backgroundColor: colors.background,
   },
   scrollContent: {
     flexGrow: 1,
@@ -443,13 +442,13 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: colors.textSecondary,
   },
   form: {
-    backgroundColor: '#FFF',
+    backgroundColor: colors.white,
     padding: 20,
     borderRadius: 15,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 10,
@@ -459,14 +458,14 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#333',
+    color: colors.text,
     marginBottom: 5,
     marginTop: 10,
   },
   input: {
-    backgroundColor: '#F9F9F9',
+    backgroundColor: colors.surfaceMuted,
     borderWidth: 1,
-    borderColor: '#DDD',
+    borderColor: colors.border,
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
@@ -474,9 +473,9 @@ const styles = StyleSheet.create({
   passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F9F9F9',
+    backgroundColor: colors.surfaceMuted,
     borderWidth: 1,
-    borderColor: '#DDD',
+    borderColor: colors.border,
     borderRadius: 8,
   },
   inputPassword: {
@@ -507,24 +506,24 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 20,
-    backgroundColor: '#F0F0F0',
+    backgroundColor: colors.surfaceMuted,
     marginRight: 10,
     borderWidth: 1,
-    borderColor: '#DDD'
+    borderColor: colors.border
   },
   docTypeBtnActive: {
     backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
   docTypeText: {
-    color: '#666',
+    color: colors.textSecondary,
     fontWeight: '600'
   },
   docTypeTextActive: {
-    color: '#FFF'
+    color: colors.white
   },
   btnText: {
-    color: '#FFF',
+    color: colors.white,
     fontWeight: 'bold',
     fontSize: 16,
   },

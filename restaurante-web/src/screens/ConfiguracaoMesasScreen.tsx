@@ -13,15 +13,13 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { colors } from '../theme/colors';
-
 import TableService from '../services/TableService';
 import TableGraphic from '../components/TableGraphic';
 import DraggableTable from '../components/DraggableTable'; // Added
 import { Environment, Table } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { ScreenScaffold } from '../layouts/ScreenScaffold';
-
+import { colors } from '../theme/colors';
 const { width } = Dimensions.get('window');
 
 // Mock for safe area if not available
@@ -610,7 +608,7 @@ export default function ConfiguracaoMesasScreen({ onClose }: Props) {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F5F5DC' },
+    container: { flex: 1, backgroundColor: colors.background },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     tabsContainer: {
         height: 60,
@@ -627,7 +625,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         marginRight: 10,
         borderRadius: 20,
-        backgroundColor: '#f0f0f0',
+        backgroundColor: colors.surfaceMuted,
         borderWidth: 1,
         borderColor: colors.border,
     },
@@ -738,7 +736,7 @@ const styles = StyleSheet.create({
     label: { fontSize: 14, color: colors.textSecondary, marginBottom: 6, fontWeight: '600' },
     modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10, gap: 10 },
     modalBtn: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8 },
-    cancelBtn: { backgroundColor: '#f0f0f0' },
+    cancelBtn: { backgroundColor: colors.surfaceMuted },
     saveBtn: { backgroundColor: colors.primary },
     deleteBtn: { backgroundColor: colors.danger, marginRight: 'auto' },
     cancelText: { color: colors.text, fontWeight: '600' },
@@ -747,7 +745,7 @@ const styles = StyleSheet.create({
 
     shapeSelector: { flexDirection: 'row', gap: 10, marginBottom: 20 },
     shapeOption: { flex: 1, padding: 10, borderWidth: 1, borderColor: colors.border, borderRadius: 8, alignItems: 'center' },
-    shapeOptionActive: { borderColor: colors.primary, backgroundColor: '#f0f9ff' },
+    shapeOptionActive: { borderColor: colors.primary, backgroundColor: colors.primaryTint },
     shapeText: { fontSize: 12, color: colors.textSecondary },
     shapeTextActive: { color: colors.primary, fontWeight: 'bold' },
 
@@ -809,7 +807,7 @@ const styles = StyleSheet.create({
     editorInstructionsText: {
         flex: 1,
         fontSize: 14,
-        color: '#1976d2',
+        color: colors.secondary,
     },
     editorCanvas: {
         flex: 1,

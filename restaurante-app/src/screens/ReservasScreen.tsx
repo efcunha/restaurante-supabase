@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, TextInput, Alert, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../theme/colors';
 import { supabase } from '../config/SupabaseConfig';
 import { useAuth } from '../context/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { confirmLogout } from '../utils/appUtils';
-
+import { colors } from '../theme/colors';
 export default function ReservasScreen() {
   const { user, logout } = useAuth();
   const [reservas, setReservas] = useState<any[]>([]);

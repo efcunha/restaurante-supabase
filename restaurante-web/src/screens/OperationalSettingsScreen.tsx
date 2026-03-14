@@ -4,7 +4,7 @@ import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, ActivityInd
 import { useAuth } from '../context/AuthContext';
 import { CompanySettingsService } from '../services/CompanySettingsService';
 import { ScreenScaffold } from '../layouts/ScreenScaffold';
-
+import { colors } from '../theme/colors';
 interface Props {
   onClose: () => void;
 }
@@ -65,7 +65,7 @@ export default function OperationalSettingsScreen({ onClose }: Props) {
         leftAction={{ label: 'Voltar', onPress: onClose }}
       >
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#8B2F2F" />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       </ScreenScaffold>
     );
@@ -107,7 +107,7 @@ export default function OperationalSettingsScreen({ onClose }: Props) {
           disabled={saving}
         >
           {saving ? (
-            <ActivityIndicator color="#FFF" />
+            <ActivityIndicator color={colors.white} />
           ) : (
             <Text style={styles.saveButtonText}>SALVAR CONFIGURAÇÕES</Text>
           )}
@@ -122,13 +122,13 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F5F5DC',
+    backgroundColor: colors.background,
   },
   content: {
     padding: 20,
   },
   card: {
-    backgroundColor: '#FFF',
+    backgroundColor: colors.white,
     borderRadius: 10,
     padding: 20,
     marginBottom: 20,
@@ -137,10 +137,10 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: colors.text,
     marginBottom: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#EEE',
+    borderBottomColor: colors.border,
     paddingBottom: 10,
   },
   settingRow: {
@@ -152,20 +152,20 @@ const styles = StyleSheet.create({
   settingLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
     marginBottom: 4,
   },
   settingDescription: {
     fontSize: 12,
-    color: '#666',
+    color: colors.textSecondary,
     maxWidth: '90%',
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F9F9F9',
+    backgroundColor: colors.surfaceMuted,
     borderWidth: 1,
-    borderColor: '#CCC',
+    borderColor: colors.border,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 5,
@@ -173,18 +173,18 @@ const styles = StyleSheet.create({
   timeInput: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: colors.text,
     width: 30,
     textAlign: 'center',
     padding: 0,
   },
   timeSuffix: {
     fontSize: 18,
-    color: '#666',
+    color: colors.textSecondary,
     marginLeft: 2,
   },
   saveButton: {
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
     borderRadius: 10,
     padding: 15,
     alignItems: 'center',
@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   saveButtonText: {
-    color: '#FFF',
+    color: colors.white,
     fontWeight: 'bold',
     fontSize: 16,
   },

@@ -1,7 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { colorSystem, typography } from '../../design-system';
-
 type AvatarProps = {
   name: string;
   size?: number;
@@ -24,7 +23,7 @@ export function Avatar({ name, size = 40 }: AvatarProps) {
 
 const styles = StyleSheet.create({
   avatar: {
-    backgroundColor: '#E2F4F8',
+    backgroundColor: colors.primaryTint,
     borderWidth: 1,
     borderColor: colorSystem.border,
     justifyContent: 'center',

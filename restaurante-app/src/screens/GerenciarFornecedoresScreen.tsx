@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenScaffold } from '../layouts/ScreenScaffold';
-
+import { colors } from '../theme/colors';
 // --- VALIDATION & MASKING HELPERS ---
 const maskCNPJ = (value: string) => {
     return value
@@ -252,7 +252,7 @@ export default function GerenciarFornecedoresScreen({ onClose }: Props) {
                 </TouchableOpacity>
 
                 {loading && !modalVisible ? (
-                    <ActivityIndicator size="large" color="#8B2F2F" style={{ marginTop: 20 }} />
+                    <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 20 }} />
                 ) : (
                     <ScrollView contentContainerStyle={styles.list}>
                         {fornecedores.length === 0 ? (
@@ -268,10 +268,10 @@ export default function GerenciarFornecedoresScreen({ onClose }: Props) {
                                     </View>
                                     <View style={styles.cardActions}>
                                         <TouchableOpacity onPress={() => abrirModal(item)} style={styles.actionBtn}>
-                                            <Ionicons name="pencil" size={20} color="#B45309" />
+                                            <Ionicons name="pencil" size={20} color={colors.secondary} />
                                         </TouchableOpacity>
                                         <TouchableOpacity onPress={() => deletarFornecedor(item)} style={styles.actionBtn}>
-                                            <Ionicons name="trash" size={20} color="#FF6B6B" />
+                                            <Ionicons name="trash" size={20} color={colors.danger} />
                                         </TouchableOpacity>
                                     </View>
                                 </View>
@@ -293,7 +293,7 @@ export default function GerenciarFornecedoresScreen({ onClose }: Props) {
                             placeholder="Nome da Empresa *"
                             value={nome}
                             onChangeText={setNome}
-                            placeholderTextColor="#999"
+                            placeholderTextColor={colors.textSecondary}
                         />
 
                         <TextInput
@@ -302,7 +302,7 @@ export default function GerenciarFornecedoresScreen({ onClose }: Props) {
                             value={cnpj}
                             onChangeText={handleChangeCnpj}
                             keyboardType="numeric"
-                            placeholderTextColor="#999"
+                            placeholderTextColor={colors.textSecondary}
                             maxLength={18}
                         />
 
@@ -312,7 +312,7 @@ export default function GerenciarFornecedoresScreen({ onClose }: Props) {
                             value={contato}
                             onChangeText={handleChangePhone}
                             keyboardType="phone-pad"
-                            placeholderTextColor="#999"
+                            placeholderTextColor={colors.textSecondary}
                             maxLength={15}
                         />
 
@@ -323,7 +323,7 @@ export default function GerenciarFornecedoresScreen({ onClose }: Props) {
                             onChangeText={setEmail}
                             keyboardType="email-address"
                             autoCapitalize="none"
-                            placeholderTextColor="#999"
+                            placeholderTextColor={colors.textSecondary}
                         />
 
                         <View style={styles.modalButtons}>
@@ -351,17 +351,17 @@ export default function GerenciarFornecedoresScreen({ onClose }: Props) {
 const styles = StyleSheet.create({
     content: { flex: 1, padding: 20 },
     addBtn: {
-        backgroundColor: '#B45309',
+        backgroundColor: colors.secondary,
         padding: 15,
         borderRadius: 10,
         alignItems: 'center',
         marginBottom: 20,
         elevation: 3
     },
-    addBtnText: { fontWeight: 'bold', color: '#2C2C2C', fontSize: 16 },
+    addBtnText: { fontWeight: 'bold', color: colors.text, fontSize: 16 },
     list: { paddingBottom: 50 },
     card: {
-        backgroundColor: '#FFF',
+        backgroundColor: colors.white,
         padding: 15,
         borderRadius: 12,
         marginBottom: 10,
@@ -371,11 +371,11 @@ const styles = StyleSheet.create({
         elevation: 2
     },
     cardInfo: { flex: 1 },
-    cardTitle: { fontSize: 16, fontWeight: 'bold', color: '#2C2C2C' },
-    cardSubtitle: { fontSize: 13, color: '#666', marginTop: 2 },
+    cardTitle: { fontSize: 16, fontWeight: 'bold', color: colors.text },
+    cardSubtitle: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
     cardActions: { flexDirection: 'row', gap: 15 },
     actionBtn: { padding: 5 },
-    emptyText: { textAlign: 'center', color: '#999', marginTop: 20 },
+    emptyText: { textAlign: 'center', color: colors.textSecondary, marginTop: 20 },
 
     // Modal
     modalOverlay: {
@@ -385,24 +385,24 @@ const styles = StyleSheet.create({
         padding: 20
     },
     modalContent: {
-        backgroundColor: '#FFF',
+        backgroundColor: colors.white,
         borderRadius: 15,
         padding: 20,
         elevation: 5
     },
-    modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#8B2F2F', marginBottom: 20, textAlign: 'center' },
+    modalTitle: { fontSize: 20, fontWeight: 'bold', color: colors.primary, marginBottom: 20, textAlign: 'center' },
     input: {
-        backgroundColor: '#F5F1E8',
+        backgroundColor: colors.background,
         borderRadius: 8,
         padding: 12,
         marginBottom: 12,
         borderWidth: 1,
-        borderColor: '#B45309'
+        borderColor: colors.secondary
     },
     modalButtons: { flexDirection: 'row', gap: 10, marginTop: 10 },
     modalBtn: { flex: 1, padding: 12, borderRadius: 8, alignItems: 'center' },
-    cancelBtn: { backgroundColor: '#DDD' },
-    saveBtn: { backgroundColor: '#8B2F2F' },
-    cancelBtnText: { color: '#333', fontWeight: 'bold' },
-    saveBtnText: { color: '#FFF', fontWeight: 'bold' }
+    cancelBtn: { backgroundColor: colors.border },
+    saveBtn: { backgroundColor: colors.primary },
+    cancelBtnText: { color: colors.text, fontWeight: 'bold' },
+    saveBtnText: { color: colors.white, fontWeight: 'bold' }
 });

@@ -1,7 +1,6 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colorSystem, radius, spacing, typography } from '../../design-system';
-
 type TableColumn<T> = {
   key: keyof T;
   title: string;
@@ -66,7 +65,7 @@ const styles = StyleSheet.create({
   },
   headerRow: {
     flexDirection: 'row',
-    backgroundColor: '#EDF3FC',
+    backgroundColor: colors.primaryTint,
     borderBottomWidth: 1,
     borderBottomColor: colorSystem.border,
   },
@@ -81,7 +80,7 @@ const styles = StyleSheet.create({
   dataRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: '#EEF2F9',
+    borderBottomColor: colors.primaryTint,
   },
   dataCell: {
     minWidth: 140,

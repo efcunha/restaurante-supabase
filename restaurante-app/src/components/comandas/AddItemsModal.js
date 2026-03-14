@@ -1,11 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Modal, StyleSheet, Alert } from 'react-native';
-import { colors } from '../../theme/colors';
 import { CARDAPIO_STATIC } from '../../utils/orderCalculator';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../config/SupabaseConfig';
-
+import { colors } from '../../theme/colors';
 export default function AddItemsModal({ visible, onClose, onConfirm, comandaNumber }) {
     const { user } = useAuth();
     const [itensSelecionados, setItensSelecionados] = useState([]);
@@ -183,11 +182,11 @@ const styles = StyleSheet.create({
     content: { flex: 1 },
     section: { marginBottom: 20 },
     sectionTitle: { fontSize: 18, fontWeight: 'bold', color: colors.primary, marginBottom: 10 },
-    menuItem: { flexDirection: 'row', justifyContent: 'space-between', padding: 12, borderBottomWidth: 1, borderColor: '#eee' },
+    menuItem: { flexDirection: 'row', justifyContent: 'space-between', padding: 12, borderBottomWidth: 1, borderColor: colors.border },
     menuItemText: { fontSize: 16, color: colors.text },
     menuItemPrice: { fontWeight: 'bold', color: colors.success },
 
-    cart: { backgroundColor: '#E8F5E9', padding: 15, borderRadius: 10, marginBottom: 20 },
+    cart: { backgroundColor: colors.successSurface, padding: 15, borderRadius: 10, marginBottom: 20 },
     cartTitle: { fontWeight: 'bold', color: colors.success, marginBottom: 10 },
     cartItem: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
     removeText: { color: colors.danger, fontWeight: 'bold', fontSize: 20 },

@@ -11,7 +11,6 @@ import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { colorSystem, typography, spacing } from '../design-system';
 import { getRoleOverflowScreens } from '../auth/roles';
-
 // Metadados visuais de cada destino secundário
 const OVERFLOW_ITEMS: Record<
   string,
@@ -30,12 +29,12 @@ const OVERFLOW_ITEMS: Record<
   RotasDelivery: {
     label: 'Rotas Delivery',
     icon: 'bicycle',
-    color: colorSystem.accent,
+    color: colors.secondary,
   },
   Reservas: {
     label: 'Reservas',
     icon: 'calendar',
-    color: '#7C3AED',
+    color: colors.secondary,
   },
   Admin: {
     label: 'Administração',

@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import BackgroundPattern from '../components/BackgroundPattern';
 import { supabase } from '../config/SupabaseConfig';
 import { ScreenScaffold } from '../layouts/ScreenScaffold';
-
+import { colors } from '../theme/colors';
 interface Props {
     onClose?: () => void;
 }
@@ -88,7 +88,7 @@ export default function FinancialConfigScreen({ onClose }: Props) {
 
             {loading ? (
                 <View style={styles.center}>
-                    <ActivityIndicator size="large" color="#8B2F2F" />
+                    <ActivityIndicator size="large" color={colors.primary} />
                 </View>
             ) : (
                 <ScrollView style={styles.content}>
@@ -105,8 +105,8 @@ export default function FinancialConfigScreen({ onClose }: Props) {
                             <Switch
                                 value={blindClosing}
                                 onValueChange={setBlindClosing}
-                                trackColor={{ false: "#767577", true: "#B45309" }}
-                                thumbColor={blindClosing ? "#8B2F2F" : "#f4f3f4"}
+                                trackColor={{ false: colors.disabled, true: colors.secondary }}
+                                thumbColor={blindClosing ? colors.primary : colors.surfaceMuted}
                             />
                         </View>
                     </View>
@@ -117,7 +117,7 @@ export default function FinancialConfigScreen({ onClose }: Props) {
                         disabled={saving}
                     >
                         {saving ? (
-                            <ActivityIndicator color="#FFF" />
+                            <ActivityIndicator color={colors.white} />
                         ) : (
                             <Text style={styles.saveBtnText}>Salvar Configurações</Text>
                         )}
@@ -139,7 +139,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     section: {
-        backgroundColor: '#FFF',
+        backgroundColor: colors.white,
         borderRadius: 12,
         padding: 20,
         marginBottom: 20,
@@ -150,10 +150,10 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: '#8B2F2F',
+        color: colors.primary,
         marginBottom: 15,
         borderBottomWidth: 1,
-        borderBottomColor: '#EEE',
+        borderBottomColor: colors.border,
         paddingBottom: 10,
     },
     settingRow: {
@@ -169,16 +169,16 @@ const styles = StyleSheet.create({
     settingLabel: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#333',
+        color: colors.text,
         marginBottom: 4,
     },
     settingDescription: {
         fontSize: 13,
-        color: '#666',
+        color: colors.textSecondary,
         lineHeight: 18,
     },
     saveBtn: {
-        backgroundColor: '#8B2F2F',
+        backgroundColor: colors.primary,
         padding: 16,
         borderRadius: 12,
         alignItems: 'center',
@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
         boxShadow: '0px 4px 6px rgba(0, 0, 0, 0.2)',
     },
     saveBtnText: {
-        color: '#FFF',
+        color: colors.white,
         fontSize: 16,
         fontWeight: 'bold',
     },

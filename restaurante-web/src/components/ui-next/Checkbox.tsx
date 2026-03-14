@@ -1,7 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colorSystem, radius, spacing, typography } from '../../design-system';
-
 type CheckboxProps = {
   checked: boolean;
   label: string;
@@ -46,7 +45,7 @@ const styles = StyleSheet.create({
   },
   boxChecked: {
     borderColor: colorSystem.primary,
-    backgroundColor: '#E2F4F8',
+    backgroundColor: colors.primaryTint,
   },
   dot: {
     width: 10,

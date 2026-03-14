@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Alert, StyleSheet } from 'react-native';
 import { supabase } from '../config/SupabaseConfig';
-
+import { colors } from '../theme/colors';
 const novoCardapio = [
   // Espetinhos - R$ 12,00 cada
   { nome: 'Carne', preco: 12.00, categoria: 'espetinho', ativo: true },
@@ -27,7 +27,6 @@ const novoCardapio = [
 ];
 
 import { useAuth } from '../context/AuthContext';
-
 export default function UpdateCardapioScreen() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -113,23 +112,23 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    backgroundColor: '#F5F1E8',
+    backgroundColor: colors.background,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#8B2F2F',
+    color: colors.primary,
     textAlign: 'center',
     marginBottom: 10,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: 30,
   },
   info: {
-    backgroundColor: '#FFF',
+    backgroundColor: colors.white,
     padding: 20,
     borderRadius: 10,
     marginBottom: 20,
@@ -142,25 +141,25 @@ const styles = StyleSheet.create({
   infoItem: {
     fontSize: 14,
     marginBottom: 5,
-    color: '#666',
+    color: colors.textSecondary,
   },
   button: {
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
     padding: 15,
     borderRadius: 10,
     alignItems: 'center',
     marginBottom: 20,
   },
   buttonDisabled: {
-    backgroundColor: '#ccc',
+    backgroundColor: colors.border,
   },
   buttonText: {
-    color: '#FFF',
+    color: colors.white,
     fontSize: 16,
     fontWeight: 'bold',
   },
   preview: {
-    backgroundColor: '#FFF',
+    backgroundColor: colors.white,
     padding: 15,
     borderRadius: 10,
     maxHeight: 200,
@@ -173,6 +172,6 @@ const styles = StyleSheet.create({
   previewItem: {
     fontSize: 12,
     marginBottom: 3,
-    color: '#666',
+    color: colors.textSecondary,
   },
 });

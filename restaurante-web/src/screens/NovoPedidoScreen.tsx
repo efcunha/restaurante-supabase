@@ -5,7 +5,6 @@ import React, { memo, useCallback, useState, useMemo, useEffect } from 'react';
 
 import { useNovoPedido } from '../hooks/useNovoPedido';
 import { usePerformanceMonitor } from '../hooks/usePerformanceMonitor';
-import { colors } from '../theme/colors';
 import { Button, Navbar } from '../ui';
 import { useFocusEffect } from '@react-navigation/native';
 // @ts-ignore
@@ -14,7 +13,7 @@ import { Product } from '../types';
 import { NewOrderCartFooter, NewOrderHeaderForm, NewOrderListFooter, PizzaProductCard } from '../features/new-order';
 // KeyboardWrapper removed to prevent touch stealing
 import { KeyboardAvoidingView } from 'react-native';
-
+import { colors } from '../theme/colors';
 if (Platform.OS === 'android') {
   if (UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -290,7 +289,7 @@ const EspetinhoRow = memo(({ baseName, cardapioEspetinhos, produtos, onIncrement
   if (itensVariaveis.length === 0) return null;
 
   // Cyclic colors for consistent UI
-  const rowColors = [colors.warning, colors.success, colors.disabled, '#4a90e2', '#9013fe']; 
+  const rowColors = [colors.warning, colors.success, colors.disabled, colors.secondary, colors.primary]; 
 
   return (
     <View style={styles.caldoCard}>
@@ -859,7 +858,7 @@ const styles = StyleSheet.create({
   },
   userInfo: {
     fontSize: 12,
-    color: colors.userInfo, // or '#B45309' if colors.userInfo is not suitable
+    color: colors.userInfo,
     fontWeight: '600',
   },
   logoutBtn: {

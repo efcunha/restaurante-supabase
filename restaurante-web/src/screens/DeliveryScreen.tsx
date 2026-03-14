@@ -5,7 +5,6 @@ import React, { memo, useCallback, useState, useMemo, useRef } from 'react';
 
 import { useNovoPedido } from '../hooks/useNovoPedido';
 import { usePerformanceMonitor } from '../hooks/usePerformanceMonitor';
-import { colors } from '../theme/colors';
 import { Button } from '../ui';
 import { useFocusEffect } from '@react-navigation/native';
 import PizzaBuilderModal from '../components/PizzaBuilderModal';
@@ -17,7 +16,7 @@ import { supabase } from '../config/SupabaseConfig';
 import { ScreenScaffold } from '../layouts/ScreenScaffold';
 import { NewOrderListFooter, PizzaProductCard } from '../features/new-order';
 import { DeliveryOrderForm, DeliverySubmitFooter } from '../features/delivery';
-
+import { colors } from '../theme/colors';
 if (Platform.OS === 'android') {
   if (UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -176,7 +175,7 @@ const EspetinhoRow = memo(({ baseName, cardapioEspetinhos, produtos, onIncrement
 
   if (itensVariaveis.length === 0) return null;
 
-  const rowColors = [colors.warning, colors.success, colors.disabled, '#4a90e2', '#9013fe']; 
+  const rowColors = [colors.warning, colors.success, colors.disabled, colors.secondary, colors.primary]; 
 
   return (
     <View style={styles.caldoCard}>
@@ -196,7 +195,7 @@ const StackedVariationRow = memo(({ name, price, qty, color, onInc, onDec, itemK
   const handleDec = useCallback(() => onDec(itemKey), [onDec, itemKey]);
   return (
     <View style={[styles.stackedRowContainer, last && { marginBottom: 12 }]}>
-      <TouchableOpacity style={[styles.stackedInfoCard, { backgroundColor: '#F5F5F5', borderLeftWidth: 4, borderLeftColor: color }]} onPress={handleInc} activeOpacity={0.8}>
+      <TouchableOpacity style={[styles.stackedInfoCard, { backgroundColor: colors.surfaceMuted, borderLeftWidth: 4, borderLeftColor: color }]} onPress={handleInc} activeOpacity={0.8}>
         <Text style={styles.stackedNameText}>{name}</Text>
         <Text style={styles.stackedPriceText}>R$ {price.toFixed(2)}</Text>
       </TouchableOpacity>
@@ -215,7 +214,7 @@ const VariationRow = memo(({ label, qty, color, onInc, onDec, itemKey, last, for
   const handleDec = useCallback(() => onDec(itemKey), [onDec, itemKey]);
   return (
     <View style={[styles.variationRow, last && { marginBottom: 12 }]}>
-      <TouchableOpacity style={[styles.variationLabelBtn, { backgroundColor: '#F5F5F5', borderLeftWidth: 4, borderLeftColor: color }]} onPress={handleInc}>
+      <TouchableOpacity style={[styles.variationLabelBtn, { backgroundColor: colors.surfaceMuted, borderLeftWidth: 4, borderLeftColor: color }]} onPress={handleInc}>
         <Text style={styles.variationLabelText} numberOfLines={forceOneLine ? 1 : undefined} adjustsFontSizeToFit={forceOneLine} minimumFontScale={0.6}>{label}</Text>
       </TouchableOpacity>
       <View style={styles.variationControls}>
@@ -607,7 +606,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   scaffoldBody: { flex: 1 },
   twoColLayout: { flex: 1, flexDirection: 'row' as const },
-  leftPanel: { width: 380, borderRightWidth: 1, borderRightColor: '#D7DEEA', backgroundColor: '#FFFFFF' },
+  leftPanel: { width: 380, borderRightWidth: 1, borderRightColor: colors.border, backgroundColor: colors.white },
   leftPanelContent: { padding: 16, gap: 0 },
   rightPanel: { flex: 1, flexDirection: 'column' as const },
   listContent: { padding: 20, paddingBottom: 120 },
@@ -622,7 +621,7 @@ const styles = StyleSheet.create({
   verticalName: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 8, textAlign: 'left' },
   verticalControlsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   verticalPrice: { fontSize: 17, fontWeight: '700', color: colors.primary },
-  variationRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, backgroundColor: '#F9F9F9', borderRadius: 8, padding: 8 },
+  variationRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, backgroundColor: colors.surfaceMuted, borderRadius: 8, padding: 8 },
   variationLabelBtn: { flex: 1, padding: 8, borderRadius: 8, marginRight: 8, justifyContent: 'center' },
   variationLabelText: { color: colors.text, fontSize: 16, fontWeight: '700', textAlign: 'left' },
   stackedRowContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
@@ -641,7 +640,7 @@ const styles = StyleSheet.create({
   quantityControl: { flexDirection: 'row', alignItems: 'center' },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { marginTop: 12, fontSize: 16, color: colors.primary },
-  searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', paddingHorizontal: 15, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border },
+  searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, paddingHorizontal: 15, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border },
   searchIcon: { marginRight: 8 },
   searchInput: { flex: 1, fontSize: 16, color: colors.text, paddingVertical: 8, outlineStyle: 'none' as any },
   searchClearBtn: { padding: 4 }

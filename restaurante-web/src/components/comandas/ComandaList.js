@@ -2,7 +2,6 @@
 import React, { memo } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Platform, ActivityIndicator } from 'react-native';
 import { colors } from '../../theme/colors';
-
 const ComandaCard = memo(({ comanda, onPress }) => (
     <TouchableOpacity style={styles.card} onPress={() => onPress(comanda)}>
         <View style={styles.cardHeader}>
@@ -91,7 +90,7 @@ const styles = StyleSheet.create({
     },
     emptySubtext: {
         fontSize: 14,
-        color: '#999',
+        color: colors.textSecondary,
     },
     card: {
         backgroundColor: colors.white,
@@ -134,16 +133,16 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
     },
     statusAberta: {
-        backgroundColor: '#E3F2FD',
-        color: '#1976D2',
+        backgroundColor: colors.primaryTint,
+        color: colors.secondary,
     },
     statusPaga: {
-        backgroundColor: '#E8F5E9',
-        color: '#388E3C',
+        backgroundColor: colors.successSurface,
+        color: colors.success,
     },
     statusCancelada: {
-        backgroundColor: '#FFEBEE',
-        color: '#D32F2F',
+        backgroundColor: colors.dangerSurface,
+        color: colors.danger,
     },
     cardBody: {
         marginBottom: 12,
