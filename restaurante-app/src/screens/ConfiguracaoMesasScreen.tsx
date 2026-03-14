@@ -394,7 +394,7 @@ export default function ConfiguracaoMesasScreen({ onClose }: Props) {
                                         </TouchableOpacity>
 
                                         <TouchableOpacity
-                                            style={[styles.addTableButton, { backgroundColor: '#2196F3' }]}
+                                            style={[styles.addTableButton, { backgroundColor: colors.secondary }]}
                                             onPress={openLayoutEditor}
                                         >
                                             <Ionicons name="move" size={20} color={colors.white} />
@@ -614,9 +614,9 @@ const styles = StyleSheet.create({
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     tabsContainer: {
         height: 60,
-        backgroundColor: '#fff',
+        backgroundColor: colors.white,
         borderBottomWidth: 1,
-        borderBottomColor: '#eee',
+        borderBottomColor: colors.border,
     },
     tabsScroll: {
         paddingHorizontal: 15,
@@ -629,7 +629,7 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         backgroundColor: '#f0f0f0',
         borderWidth: 1,
-        borderColor: '#e0e0e0',
+        borderColor: colors.border,
     },
     tabActive: {
         backgroundColor: colors.primary,
@@ -641,11 +641,11 @@ const styles = StyleSheet.create({
         paddingLeft: 12,
         marginTop: 0,
         borderColor: colors.primary,
-        backgroundColor: '#fff',
+        backgroundColor: colors.white,
         borderStyle: 'dashed',
     },
-    tabText: { color: '#666', fontWeight: '600' },
-    tabTextActive: { color: '#fff' },
+    tabText: { color: colors.textSecondary, fontWeight: '600' },
+    tabTextActive: { color: colors.white },
     addTabText: { color: colors.primary, fontWeight: 'bold', marginLeft: 4 },
 
     content: { padding: 20 },
@@ -655,7 +655,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 15,
         borderBottomWidth: 1,
-        borderBottomColor: '#eee',
+        borderBottomColor: colors.border,
         paddingBottom: 10,
     },
 
@@ -670,7 +670,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         gap: 10,
     },
-    sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#333' },
+    sectionTitle: { fontSize: 18, fontWeight: 'bold', color: colors.text },
     addTableButton: {
         flexDirection: 'row',
         backgroundColor: colors.success,
@@ -679,12 +679,12 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         alignItems: 'center',
     },
-    addTableText: { color: '#fff', fontWeight: 'bold', marginLeft: 4, fontSize: 13 },
+    addTableText: { color: colors.white, fontWeight: 'bold', marginLeft: 4, fontSize: 13 },
 
     editEnvButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#f5f5f5',
+        backgroundColor: colors.surfaceMuted,
         paddingHorizontal: 12,
         paddingVertical: 6,
         borderRadius: 20,
@@ -698,63 +698,63 @@ const styles = StyleSheet.create({
     },
     subtitle: {
         fontSize: 14,
-        color: '#666',
+        color: colors.textSecondary,
         fontWeight: '500',
     },
 
     grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 15 },
     tableCard: {
         width: (width - 60) / 3,
-        backgroundColor: '#fff',
+        backgroundColor: colors.white,
         borderRadius: 8,
         padding: 10,
         alignItems: 'center',
         elevation: 2,
-        shadowColor: '#000',
+        shadowColor: colors.shadow,
         shadowOpacity: 0.1,
         shadowRadius: 4,
         shadowOffset: { width: 0, height: 2 },
     },
     // Removed unused shape styles
 
-    tableNumber: { fontWeight: 'bold', fontSize: 16, color: '#333' },
-    seatsText: { fontSize: 12, color: '#666' },
+    tableNumber: { fontWeight: 'bold', fontSize: 16, color: colors.text },
+    seatsText: { fontSize: 12, color: colors.textSecondary },
 
     emptyState: { padding: 40, alignItems: 'center' },
-    emptyText: { color: '#999', fontSize: 16 },
+    emptyText: { color: colors.textSecondary, fontSize: 16 },
 
     // Modal
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
-    modalContent: { backgroundColor: '#fff', borderRadius: 12, padding: 20 },
+    modalContent: { backgroundColor: colors.white, borderRadius: 12, padding: 20 },
     modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
     input: {
         borderWidth: 1,
-        borderColor: '#ddd',
+        borderColor: colors.border,
         borderRadius: 8,
         padding: 12,
         fontSize: 16,
         marginBottom: 15,
     },
-    label: { fontSize: 14, color: '#666', marginBottom: 6, fontWeight: '600' },
+    label: { fontSize: 14, color: colors.textSecondary, marginBottom: 6, fontWeight: '600' },
     modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10, gap: 10 },
     modalBtn: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8 },
     cancelBtn: { backgroundColor: '#f0f0f0' },
     saveBtn: { backgroundColor: colors.primary },
     deleteBtn: { backgroundColor: colors.danger, marginRight: 'auto' },
-    cancelText: { color: '#333', fontWeight: '600' },
-    saveText: { color: '#fff', fontWeight: '600' },
-    deleteText: { color: '#fff', fontWeight: '600', marginLeft: 4 },
+    cancelText: { color: colors.text, fontWeight: '600' },
+    saveText: { color: colors.white, fontWeight: '600' },
+    deleteText: { color: colors.white, fontWeight: '600', marginLeft: 4 },
 
     shapeSelector: { flexDirection: 'row', gap: 10, marginBottom: 20 },
-    shapeOption: { flex: 1, padding: 10, borderWidth: 1, borderColor: '#ddd', borderRadius: 8, alignItems: 'center' },
+    shapeOption: { flex: 1, padding: 10, borderWidth: 1, borderColor: colors.border, borderRadius: 8, alignItems: 'center' },
     shapeOptionActive: { borderColor: colors.primary, backgroundColor: '#f0f9ff' },
-    shapeText: { fontSize: 12, color: '#666' },
+    shapeText: { fontSize: 12, color: colors.textSecondary },
     shapeTextActive: { color: colors.primary, fontWeight: 'bold' },
 
     // Layout Editor Styles
     editorContainer: {
         flex: 1,
-        backgroundColor: '#f5f5f5',
+        backgroundColor: colors.surfaceMuted,
     },
     editorHeader: {
         flexDirection: 'row',
@@ -765,7 +765,7 @@ const styles = StyleSheet.create({
         paddingBottom: 15,
         backgroundColor: colors.primary,
         elevation: 4,
-        shadowColor: '#000',
+        shadowColor: colors.shadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.2,
         shadowRadius: 4,
@@ -784,14 +784,14 @@ const styles = StyleSheet.create({
     editorSaveBtn: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#4CAF50',
+        backgroundColor: colors.success,
         paddingHorizontal: 12,
         paddingVertical: 8,
         borderRadius: 8,
         gap: 5,
     },
     editorSaveBtnDisabled: {
-        backgroundColor: '#999',
+        backgroundColor: colors.textSecondary,
         opacity: 0.5,
     },
     editorSaveBtnText: {
@@ -802,7 +802,7 @@ const styles = StyleSheet.create({
     editorInstructions: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#e3f2fd',
+        backgroundColor: colors.primaryTint,
         padding: 12,
         gap: 10,
     },
@@ -813,6 +813,6 @@ const styles = StyleSheet.create({
     },
     editorCanvas: {
         flex: 1,
-        backgroundColor: '#fff',
+        backgroundColor: colors.white,
     },
 });

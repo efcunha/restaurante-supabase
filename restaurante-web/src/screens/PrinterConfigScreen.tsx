@@ -13,6 +13,7 @@ import PrinterService from '../services/PrinterService';
 import { useResponsive } from '../hooks/useResponsive';
 // @ts-ignore
 import { ScreenScaffold } from '../layouts/ScreenScaffold';
+import { colors } from '../theme/colors';
 
 
 interface Props {
@@ -190,7 +191,7 @@ export default function PrinterConfigScreen({ navigation }: Props) {
           disabled={loading}
         >
           {loading ? (
-            <ActivityIndicator color="#FFFFFF" />
+            <ActivityIndicator color={colors.white} />
           ) : (
             <Text style={styles.scanButtonText}>🔍 Buscar Impressoras</Text>
           )}
@@ -251,15 +252,15 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   statusCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     borderRadius: 15,
     padding: 20,
     marginBottom: 15,
     borderWidth: 2,
-    borderColor: '#B45309',
+    borderColor: colors.secondary,
   },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     borderRadius: 15,
     padding: 20,
     marginBottom: 15,
@@ -267,38 +268,38 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#8B2F2F',
+    color: colors.primary,
     marginBottom: 15,
   },
   connectedText: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#27AE60',
+    color: colors.success,
     marginBottom: 8,
   },
   disconnectedText: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#E74C3C',
+    color: colors.danger,
   },
   printerName: {
     fontSize: 16,
-    color: '#2C2C2C',
+    color: colors.text,
     marginBottom: 4,
   },
   printerDetail: {
     fontSize: 14,
-    color: '#666',
+    color: colors.textSecondary,
     marginBottom: 15,
   },
   disconnectBtn: {
-    backgroundColor: '#E74C3C',
+    backgroundColor: colors.danger,
     padding: 12,
     borderRadius: 10,
     alignItems: 'center',
   },
   disconnectBtnText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -317,30 +318,30 @@ const styles = StyleSheet.create({
   },
   widthButtonActive: {
     backgroundColor: '#FFF3E0',
-    borderColor: '#B45309',
+    borderColor: colors.secondary,
   },
   widthButtonText: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#666',
+    color: colors.textSecondary,
   },
   widthButtonTextActive: {
-    color: '#8B2F2F',
+    color: colors.primary,
   },
   widthButtonSubtext: {
     fontSize: 12,
-    color: '#999',
+    color: colors.textSecondary,
     marginTop: 4,
   },
   scanButton: {
-    backgroundColor: '#B45309',
+    backgroundColor: colors.secondary,
     padding: 18,
     borderRadius: 12,
     alignItems: 'center',
     marginBottom: 15,
   },
   scanButtonText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -359,26 +360,26 @@ const styles = StyleSheet.create({
   printerItemName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#2C2C2C',
+    color: colors.text,
     marginBottom: 4,
   },
   printerItemAddress: {
     fontSize: 12,
-    color: '#999',
+    color: colors.textSecondary,
   },
   connectArrow: {
     fontSize: 24,
-    color: '#8B2F2F',
+    color: colors.primary,
   },
   testButton: {
-    backgroundColor: '#27AE60',
+    backgroundColor: colors.success,
     padding: 18,
     borderRadius: 12,
     alignItems: 'center',
     marginBottom: 15,
   },
   testButtonText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -391,12 +392,12 @@ const styles = StyleSheet.create({
   instructionsTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#8B2F2F',
+    color: colors.primary,
     marginBottom: 15,
   },
   instructionText: {
     fontSize: 14,
-    color: '#666',
+    color: colors.textSecondary,
     marginBottom: 8,
     paddingLeft: 10,
   },
@@ -413,13 +414,13 @@ const styles = StyleSheet.create({
   unavailableTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#8B2F2F',
+    color: colors.primary,
     marginBottom: 15,
     textAlign: 'center',
   },
   unavailableSubtext: {
     fontSize: 16,
-    color: '#666',
+    color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: 10,
   },

@@ -133,7 +133,7 @@ export default function AdminStatsCards({
           />
           <KpiCard
             icon="time"
-            iconColor="#7C3AED"
+            iconColor={colorSystem.secondary}
             label="Tempo medio"
             value={`${stats.tempoMedio}m`}
             loading={loadingStats}

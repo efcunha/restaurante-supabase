@@ -1,5 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, FlatList, TouchableOpacity, TextInput, Alert, Modal, ScrollView } from 'react-native';
+import { colors } from '../theme/colors';
 // @ts-ignore
 import KeyboardWrapper from '../components/KeyboardWrapper';
 import { useState, useEffect, useCallback } from 'react';
@@ -284,18 +285,18 @@ export default function FuncionariosScreen({ onClose }: Props) {
   };
 
   const getFuncaoColor = (func: string) => {
-    const colors: any = {
-      garcom: '#4A90E2',
-      churrasqueiro: '#B45309', // Legacy
-      cozinheiro: '#B45309',
-      montagem: '#7ED321',
-      admin: '#8B2F2F',
-      manager: '#8B2F2F',
-      waiter: '#4A90E2',
-      kitchen: '#B45309',
-      entregador: '#E17055', // Cor distinta para entregador
+    const funcaoColors: any = {
+      garcom: colors.secondary,
+      churrasqueiro: colors.secondary, // Legacy
+      cozinheiro: colors.secondary,
+      montagem: colors.success,
+      admin: colors.primary,
+      manager: colors.primary,
+      waiter: colors.secondary,
+      kitchen: colors.secondary,
+      entregador: colors.warning, // Cor distinta para entregador
     };
-    return colors[func] || '#999';
+    return funcaoColors[func] || colors.textSecondary;
   };
 
   // Componente memoizado para o card de funcionário
@@ -673,19 +674,19 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   addButton: {
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
     padding: 18,
     borderRadius: 12,
     alignItems: 'center',
     marginBottom: 10,
-    shadowColor: '#8B2F2F',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.3,
     shadowRadius: 15,
     elevation: 5,
   },
   addButtonText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 1,
@@ -694,21 +695,21 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#8B2F2F',
+    color: colors.primary,
     marginBottom: 15,
   },
   emptyText: {
     textAlign: 'center',
-    color: '#999',
+    color: colors.textSecondary,
     fontSize: 14,
     marginTop: 30,
   },
   funcionarioCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     borderRadius: 15,
     padding: 18,
     marginBottom: 12,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 15,
@@ -723,7 +724,7 @@ const styles = StyleSheet.create({
   funcionarioNome: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#2C2C2C',
+    color: colors.text,
     flex: 1,
   },
   funcaoBadge: {
@@ -732,13 +733,13 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   funcaoText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 11,
     fontWeight: '600',
   },
   funcionarioInfo: {
     fontSize: 13,
-    color: '#666',
+    color: colors.textSecondary,
     marginBottom: 4,
   },
   actionButtons: {
@@ -747,17 +748,17 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#F0EBE0',
+    borderTopColor: colors.border,
   },
   editarBtn: {
     flex: 1,
     paddingVertical: 8,
     alignItems: 'center',
-    backgroundColor: '#F5F1E8',
+    backgroundColor: colors.background,
     borderRadius: 8,
   },
   editarText: {
-    color: '#4A90E2',
+    color: colors.secondary,
     fontSize: 13,
     fontWeight: '600',
   },
@@ -765,22 +766,22 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 8,
     alignItems: 'center',
-    backgroundColor: '#FFF5F5',
+    backgroundColor: colors.dangerSurface,
     borderRadius: 8,
   },
   desativarText: {
-    color: '#E74C3C',
+    color: colors.danger,
     fontSize: 13,
     fontWeight: '600',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: colors.overlay,
     justifyContent: 'center',
     padding: 20,
   },
   modalContent: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     borderRadius: 20,
     padding: 25,
     maxHeight: '85%',
@@ -794,52 +795,52 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#8B2F2F',
+    color: colors.primary,
   },
   closeModalBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#F5F1E8',
+    backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
   },
   closeModalText: {
     fontSize: 24,
-    color: '#8B2F2F',
+    color: colors.primary,
     fontWeight: '300',
   },
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#8B2F2F',
+    color: colors.primary,
     marginTop: 12,
     marginBottom: 6,
   },
   input: {
-    backgroundColor: '#F5F1E8',
+    backgroundColor: colors.background,
     borderWidth: 1,
-    borderColor: '#E0D8C8',
+    borderColor: colors.border,
     borderRadius: 12,
     padding: 14,
     fontSize: 15,
   },
   inputDisabled: {
-    backgroundColor: '#EAEAEA',
-    color: '#999',
+    backgroundColor: colors.surfaceMuted,
+    color: colors.textSecondary,
   },
   helperText: {
     fontSize: 12,
-    color: '#E74C3C',
+    color: colors.danger,
     marginBottom: 6,
     fontStyle: 'italic',
   },
   passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F5F1E8',
+    backgroundColor: colors.background,
     borderWidth: 1,
-    borderColor: '#E0D8C8',
+    borderColor: colors.border,
     borderRadius: 12,
   },
   passwordInput: {
@@ -865,15 +866,15 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: '#E0D8C8',
+    borderColor: colors.border,
     alignItems: 'center',
   },
   funcaoButtonActive: {
-    backgroundColor: '#F5F1E8',
+    backgroundColor: colors.background,
   },
   funcaoButtonText: {
     fontSize: 14,
-    color: '#666',
+    color: colors.textSecondary,
   },
   modalButtons: {
     flexDirection: 'row',
@@ -887,23 +888,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelBtn: {
-    backgroundColor: '#E0D8C8',
+    backgroundColor: colors.border,
   },
   cancelBtnText: {
-    color: '#666',
+    color: colors.textSecondary,
     fontSize: 15,
     fontWeight: '600',
   },
   saveBtn: {
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
   },
   saveBtnText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 15,
     fontWeight: '700',
   },
   modalExcluirContent: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     borderRadius: 20,
     padding: 30,
     alignItems: 'center',
@@ -912,24 +913,24 @@ const styles = StyleSheet.create({
   modalExcluirTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#E74C3C',
+    color: colors.danger,
     marginBottom: 20,
     textAlign: 'center',
   },
   modalExcluirText: {
     fontSize: 16,
-    color: '#2C2C2C',
+    color: colors.text,
     textAlign: 'center',
     marginBottom: 10,
     lineHeight: 24,
   },
   modalExcluirNome: {
     fontWeight: '700',
-    color: '#8B2F2F',
+    color: colors.primary,
   },
   modalExcluirWarning: {
     fontSize: 13,
-    color: '#E74C3C',
+    color: colors.danger,
     textAlign: 'center',
     marginBottom: 25,
     fontStyle: 'italic',
@@ -946,38 +947,38 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalExcluirCancelar: {
-    backgroundColor: '#E0D8C8',
+    backgroundColor: colors.border,
   },
   modalExcluirCancelarText: {
-    color: '#666',
+    color: colors.textSecondary,
     fontSize: 15,
     fontWeight: '600',
   },
   modalExcluirConfirmar: {
-    backgroundColor: '#E74C3C',
+    backgroundColor: colors.danger,
   },
   modalExcluirConfirmarText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 15,
     fontWeight: '700',
   },
   resetPasswordBtn: {
     marginTop: 20,
-    backgroundColor: '#E3F2FD',
+    backgroundColor: colors.primaryTint,
     padding: 12,
     borderRadius: 10,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#4A90E2',
+    borderColor: colors.secondary,
     borderStyle: 'dashed',
   },
   resetPasswordText: {
-    color: '#3498DB',
+    color: colors.secondary,
     fontWeight: '600',
     fontSize: 14,
   },
   passwordRequirements: {
-    backgroundColor: '#F5F1E8',
+    backgroundColor: colors.background,
     padding: 12,
     borderRadius: 8,
     marginTop: 8,
@@ -986,22 +987,22 @@ const styles = StyleSheet.create({
   requirementsTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#8B2F2F',
+    color: colors.primary,
     marginBottom: 6,
   },
   requirementItem: {
     fontSize: 12,
-    color: '#999',
+    color: colors.textSecondary,
     marginBottom: 3,
   },
   requirementMet: {
-    color: '#27AE60',
+    color: colors.success,
     fontWeight: '600',
   },
   errorBox: {
-    backgroundColor: '#FFF5F5',
+    backgroundColor: colors.dangerSurface,
     borderWidth: 1,
-    borderColor: '#E74C3C',
+    borderColor: colors.danger,
     borderRadius: 8,
     padding: 12,
     marginTop: 8,
@@ -1009,25 +1010,25 @@ const styles = StyleSheet.create({
   errorTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#E74C3C',
+    color: colors.danger,
     marginBottom: 6,
   },
   errorText: {
     fontSize: 12,
-    color: '#E74C3C',
+    color: colors.danger,
     marginBottom: 2,
   },
   infoBox: {
-    backgroundColor: '#E8F4FD',
+    backgroundColor: colors.primaryTint,
     borderWidth: 1,
-    borderColor: '#3498DB',
+    borderColor: colors.secondary,
     borderRadius: 8,
     padding: 12,
     marginTop: 8,
   },
   infoText: {
     fontSize: 13,
-    color: '#2C3E50',
+    color: colors.text,
     lineHeight: 18,
   },
 });

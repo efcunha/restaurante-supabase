@@ -12,6 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { colors } from '../theme/colors';
 import { supabase } from '../config/SupabaseConfig';
 import { useOrders } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
@@ -138,11 +139,11 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'preparing': return '#B45309';
-      case 'ready': return '#7ED321';
-      case 'delivered': return '#4CAF50';
-      case 'cancelled': return '#F44336';
-      default: return '#999';
+      case 'preparing': return colors.secondary;
+      case 'ready': return colors.success;
+      case 'delivered': return colors.success;
+      case 'cancelled': return colors.danger;
+      default: return colors.textSecondary;
     }
   };
 
@@ -339,20 +340,20 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
                         return (
                             <>
                                 <View style={[styles.totalRow, { marginTop: 5, backgroundColor: 'transparent', paddingVertical: 0 }]}>
-                                   <Text style={[styles.totalLabel, { fontSize: 14, color: '#4CAF50' }]}>Pago (Itens):</Text>
-                                   <Text style={[styles.totalValue, { fontSize: 16, color: '#4CAF50' }]}>{formatarMoeda(displayPaid)}</Text>
+                                   <Text style={[styles.totalLabel, { fontSize: 14, color: colors.success }]}>Pago (Itens):</Text>
+                                   <Text style={[styles.totalValue, { fontSize: 16, color: colors.success }]}>{formatarMoeda(displayPaid)}</Text>
                                 </View>
-                                <View style={[styles.totalRow, { marginTop: 5, borderTopWidth: 1, borderColor: '#ddd' }]}>
-                                   <Text style={[styles.totalLabel, { color: '#8B2F2F' }]}>Restante a Pagar:</Text>
-                                   <Text style={[styles.totalValue, { color: '#8B2F2F' }]}>{formatarMoeda(displayRemaining)}</Text>
+                                <View style={[styles.totalRow, { marginTop: 5, borderTopWidth: 1, borderColor: colors.border }]}>
+                                   <Text style={[styles.totalLabel, { color: colors.primary }]}>Restante a Pagar:</Text>
+                                   <Text style={[styles.totalValue, { color: colors.primary }]}>{formatarMoeda(displayRemaining)}</Text>
                                 </View>
                             </>
                         );
                     } else if (isOrderPaidFinancially || (displayPaid >= (order.totalPrice || 0) && (order.totalPrice || 0) > 0)) {
                          return (
-                            <View style={[styles.totalRow, { marginTop: 5, backgroundColor: '#E8F5E9' }]}>
-                               <Text style={[styles.totalLabel, { color: '#4CAF50' }]}>PEDIDO PAGO</Text>
-                               <Text style={[styles.totalValue, { color: '#4CAF50' }]}>✓</Text>
+                            <View style={[styles.totalRow, { marginTop: 5, backgroundColor: colors.successSurface }]}>
+                               <Text style={[styles.totalLabel, { color: colors.success }]}>PEDIDO PAGO</Text>
+                               <Text style={[styles.totalValue, { color: colors.success }]}>✓</Text>
                             </View>
                          );
                     }
@@ -363,15 +364,15 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
               {/* --- COMANDA BALANCE INFO (NEW) --- */}
               {/* Shows partial payments that are not allocated to specific items yet */}
               {!!comandaData && comandaData.total_paid > 0 && (
-                   <View style={[styles.section, { marginTop: 10, padding: 10, backgroundColor: '#F9F9F9', borderRadius: 8 }]}>
+                   <View style={[styles.section, { marginTop: 10, padding: 10, backgroundColor: colors.surfaceMuted, borderRadius: 8 }]}>
                       <Text style={[styles.sectionTitle, { fontSize: 14, marginBottom: 5 }]}>Status Financeiro da Comanda</Text>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                          <Text style={{ color: '#666' }}>Total Pago (Geral):</Text>
-                          <Text style={{ color: '#4CAF50', fontWeight: 'bold' }}>{formatarMoeda(comandaData.total_paid)}</Text>
+                          <Text style={{ color: colors.textSecondary }}>Total Pago (Geral):</Text>
+                          <Text style={{ color: colors.success, fontWeight: 'bold' }}>{formatarMoeda(comandaData.total_paid)}</Text>
                       </View>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
-                          <Text style={{ color: '#666' }}>Saldo Devedor:</Text>
-                          <Text style={{ color: '#F44336', fontWeight: 'bold' }}>{formatarMoeda(comandaData.open_balance)}</Text>
+                          <Text style={{ color: colors.textSecondary }}>Saldo Devedor:</Text>
+                          <Text style={{ color: colors.danger, fontWeight: 'bold' }}>{formatarMoeda(comandaData.open_balance)}</Text>
                       </View>
                    </View>
                 )}
@@ -399,7 +400,7 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
                   <Text style={styles.sectionTitle}>Histórico do Pedido</Text>
                   <View style={styles.timeline}>
                     <View style={styles.timelineItem}>
-                      <View style={[styles.timelineDot, { backgroundColor: '#8B2F2F' }]} />
+                      <View style={[styles.timelineDot, { backgroundColor: colors.primary }]} />
                       <View style={styles.timelineContent}>
                         <Text style={styles.timelineLabel}>Entregue</Text>
                         <Text style={styles.timelineTime}>{formatDate(order.deliveredAt)}</Text>
@@ -414,7 +415,7 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
               {canEdit && (
                 <>
                   <TouchableOpacity
-                    style={[styles.actionBtn, { backgroundColor: '#FF9800', flex: 1 }]}
+                    style={[styles.actionBtn, { backgroundColor: colors.warning, flex: 1 }]}
                     onPress={() => setIsTransferModalVisible(true)}
                   >
                     <Text style={styles.actionBtnText}>🔄 Mover</Text>
@@ -432,7 +433,7 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
               )}
 
               <TouchableOpacity
-                style={[styles.actionBtn, { backgroundColor: '#4CAF50', flex: 1 }]}
+                style={[styles.actionBtn, { backgroundColor: colors.success, flex: 1 }]}
                 onPress={() => {
                   onClose();
                   setTimeout(() => {
@@ -492,12 +493,12 @@ const styles = StyleSheet.create({
     width: '90%',
     maxWidth: 500,
     maxHeight: '85%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     borderRadius: 20,
     overflow: 'hidden',
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
+        shadowColor: colors.shadow,
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.3,
         shadowRadius: 20,
@@ -516,12 +517,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     padding: 20,
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
   },
   orderId: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.white,
     marginBottom: 8,
     textAlign: 'center',
   },
@@ -532,7 +533,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   statusText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 12,
     fontWeight: '600',
   },
@@ -545,7 +546,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   closeBtnText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 20,
     fontWeight: '600',
   },
@@ -559,18 +560,18 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#8B2F2F',
+    color: colors.primary,
     marginBottom: 12,
   },
   clientName: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#2C2C2C',
+    color: colors.text,
   },
   input: {
-    backgroundColor: '#F5F1E8',
+    backgroundColor: colors.background,
     borderWidth: 1,
-    borderColor: '#E0D8C8',
+    borderColor: colors.border,
     borderRadius: 12,
     padding: 12,
     fontSize: 16,
@@ -585,35 +586,35 @@ const styles = StyleSheet.create({
   },
   itemBullet: {
     fontSize: 16,
-    color: '#8B2F2F',
+    color: colors.primary,
     marginRight: 8,
   },
   itemText: {
     flex: 1,
     fontSize: 15,
-    color: '#333',
+    color: colors.text,
   },
   totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#F5F1E8',
+    backgroundColor: colors.background,
     padding: 16,
     borderRadius: 12,
   },
   totalLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#2C2C2C',
+    color: colors.text,
   },
   totalValue: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#8B2F2F',
+    color: colors.primary,
   },
   observations: {
     fontSize: 14,
-    color: '#555',
+    color: colors.textSecondary,
     fontStyle: 'italic',
   },
   timeline: {
@@ -627,7 +628,7 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
     marginTop: 4,
     marginRight: 12,
   },
@@ -637,11 +638,11 @@ const styles = StyleSheet.create({
   timelineLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#2C2C2C',
+    color: colors.text,
   },
   timelineTime: {
     fontSize: 12,
-    color: '#666',
+    color: colors.textSecondary,
     marginTop: 2,
   },
   actions: {
@@ -649,7 +650,7 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 12,
     borderTopWidth: 1,
-    borderTopColor: '#E0D8C8',
+    borderTopColor: colors.border,
   },
   actionBtn: {
     flex: 1,
@@ -658,45 +659,45 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   editBtn: {
-    backgroundColor: '#4A90E2',
+    backgroundColor: colors.secondary,
   },
   deleteBtn: {
-    backgroundColor: '#E74C3C',
+    backgroundColor: colors.danger,
   },
   cancelBtn: {
-    backgroundColor: '#999',
+    backgroundColor: colors.textSecondary,
   },
   actionBtnText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 16,
     fontWeight: '600',
   },
   warningBox: {
-    backgroundColor: '#FFF3CD',
+    backgroundColor: colors.warningSurface,
     padding: 16,
     borderTopWidth: 1,
-    borderTopColor: '#FFE69C',
+    borderTopColor: colors.warning,
   },
   warningText: {
     fontSize: 13,
-    color: '#856404',
+    color: colors.warning,
     textAlign: 'center',
   },
   itemPaidText: {
     textDecorationLine: 'line-through',
-    color: '#999',
+    color: colors.textSecondary,
   },
   itemPaidBullet: {
-    color: '#4CAF50',
+    color: colors.success,
   },
   itemSubText: {
     fontSize: 12,
-    color: '#4CAF50',
+    color: colors.success,
     fontWeight: '600',
   },
   itemExtras: {
     fontSize: 13,
-    color: '#D32F2F',
+    color: colors.danger,
     fontWeight: 'bold',
     marginTop: 2,
     fontStyle: 'italic',

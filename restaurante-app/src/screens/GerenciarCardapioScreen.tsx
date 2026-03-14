@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Alert, ActivityIndicator, Platform, TouchableOpacity, ScrollView, TextInput, Modal } from 'react-native';
+import { colors } from '../theme/colors';
 // @ts-ignore
 import KeyboardWrapper from '../components/KeyboardWrapper';
 import { useResponsive } from '../hooks/useResponsive';
@@ -52,10 +53,10 @@ function VariacaoItem({ variacao, onSalvar, onEditarCompleto }: VariacaoItemProp
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.variacaoSalvarBtn, { backgroundColor: '#B45309', marginLeft: 8 }]}
+            style={[styles.variacaoSalvarBtn, { backgroundColor: colors.secondary, marginLeft: 8 }]}
             onPress={() => onEditarCompleto(variacao)}
           >
-            <Text style={[styles.variacaoSalvarText, { color: '#000' }]}>✏️</Text>
+            <Text style={[styles.variacaoSalvarText, { color: colors.text }]}>✏️</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -1100,7 +1101,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
             <TextInput
               style={[styles.input, { maxWidth: inputMaxWidth }]}
               placeholder="Nome do produto (ex: Camarão)"
-              placeholderTextColor="#999"
+              placeholderTextColor={colors.textSecondary}
               value={nome}
               onChangeText={setNome}
             />
@@ -1157,7 +1158,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                       <TextInput
                         style={styles.inputVariacao}
                         placeholder="0.00"
-                        placeholderTextColor="#999"
+                        placeholderTextColor={colors.textSecondary}
                         value={precosVariacoes[variacao] || ''}
                         onChangeText={(text) => setPrecosVariacoes(prev => ({ ...prev, [variacao]: text }))}
                         keyboardType="numeric"
@@ -1206,7 +1207,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                       }
                     }}
                   >
-                    <Ionicons name="add" size={24} color="#fff" />
+                    <Ionicons name="add" size={24} color={colors.white} />
                   </TouchableOpacity>
                 </View>
 
@@ -1218,7 +1219,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                         <TouchableOpacity onPress={() => {
                           setIngredientesSelecionados(ingredientesSelecionados.filter((_, i) => i !== index));
                         }}>
-                          <Ionicons name="trash-outline" size={20} color="#FF4444" />
+                          <Ionicons name="trash-outline" size={20} color={colors.danger} />
                         </TouchableOpacity>
                       </View>
                     ))}
@@ -1229,7 +1230,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                 <TextInput
                   style={[styles.input, { height: 60 }]}
                   placeholder="Ex: Molho especial da casa..."
-                  placeholderTextColor="#999"
+                  placeholderTextColor={colors.textSecondary}
                   value={ingredientesPersonalizados}
                   onChangeText={setIngredientesPersonalizados}
                   multiline
@@ -1243,7 +1244,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                       <TextInput
                         style={styles.inputVariacao}
                         placeholder="0.00"
-                        placeholderTextColor="#999"
+                        placeholderTextColor={colors.textSecondary}
                         value={precosPizza[size.name] !== undefined ? String(precosPizza[size.name]) : ''}
                         onChangeText={(text) => setPrecosPizza(prev => ({ ...prev, [size.name]: text }))}
                         keyboardType="numeric"
@@ -1256,7 +1257,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
               <TextInput
                 style={styles.input}
                 placeholder="Preço (ex: 12.00)"
-                placeholderTextColor="#999"
+                placeholderTextColor={colors.textSecondary}
                 value={preco}
                 onChangeText={setPreco}
                 keyboardType="numeric"
@@ -1345,11 +1346,11 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                     keyboardType="numeric"
                   />
                   <TouchableOpacity style={styles.addBtn} onPress={adicionarTamanhoPizza}>
-                    <Ionicons name={editTamanhoIndex >= 0 ? "checkmark" : "add"} size={24} color="#fff" />
+                    <Ionicons name={editTamanhoIndex >= 0 ? "checkmark" : "add"} size={24} color={colors.white} />
                   </TouchableOpacity>
                   {editTamanhoIndex >= 0 && (
-                    <TouchableOpacity style={[styles.addBtn, { backgroundColor: '#999' }]} onPress={cancelarEdicaoTamanho}>
-                      <Ionicons name="close" size={24} color="#fff" />
+                    <TouchableOpacity style={[styles.addBtn, { backgroundColor: colors.textSecondary }]} onPress={cancelarEdicaoTamanho}>
+                      <Ionicons name="close" size={24} color={colors.white} />
                     </TouchableOpacity>
                   )}
                 </View>
@@ -1357,19 +1358,19 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                 {/* LISTING SIZES WITH SORTING */}
                 {pizzaSizes.map((size, index) => ({ ...size, originalIndex: index }))
                   .map((size, idx) => (
-                    <View key={idx} style={[styles.temperoRow, size.active === false && { opacity: 0.5, backgroundColor: '#f0f0f0' }]}>
+                    <View key={idx} style={[styles.temperoRow, size.active === false && { opacity: 0.5, backgroundColor: colors.background }]}>
                       <Text style={styles.temperoText}>
                         {size.name} ({size.maxFlavors} sabores) {size.active === false ? '(Desativado)' : ''}
                       </Text>
                       <View style={{ flexDirection: 'row' }}>
                         <TouchableOpacity onPress={() => toggleTamanhoAtivo(size.originalIndex)} style={{ marginRight: 10 }}>
-                          <Ionicons name={size.active !== false ? "eye" : "eye-off"} size={20} color={size.active !== false ? "#2e7d32" : "#999"} />
+                          <Ionicons name={size.active !== false ? "eye" : "eye-off"} size={20} color={size.active !== false ? colors.success : colors.textSecondary} />
                         </TouchableOpacity>
                         <TouchableOpacity onPress={() => iniciarEdicaoTamanho(size.originalIndex)}>
-                          <Ionicons name="pencil" size={20} color="#444" />
+                          <Ionicons name="pencil" size={20} color={colors.text} />
                         </TouchableOpacity>
                         <TouchableOpacity onPress={() => removerTamanhoPizza(size.originalIndex)}>
-                          <Ionicons name="trash-outline" size={20} color="#FF4444" />
+                          <Ionicons name="trash-outline" size={20} color={colors.danger} />
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -1386,17 +1387,17 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                     onChangeText={setNovoTempero}
                   />
                   <TouchableOpacity style={styles.addBtn} onPress={adicionarTempero}>
-                    <Ionicons name={editTemperoIndex >= 0 ? "checkmark" : "add"} size={24} color="#fff" />
+                    <Ionicons name={editTemperoIndex >= 0 ? "checkmark" : "add"} size={24} color={colors.white} />
                   </TouchableOpacity>
                   {editTemperoIndex >= 0 && (
-                    <TouchableOpacity style={[styles.addBtn, { backgroundColor: '#999' }]} onPress={cancelarEdicaoTempero}>
-                      <Ionicons name="close" size={24} color="#fff" />
+                    <TouchableOpacity style={[styles.addBtn, { backgroundColor: colors.textSecondary }]} onPress={cancelarEdicaoTempero}>
+                      <Ionicons name="close" size={24} color={colors.white} />
                     </TouchableOpacity>
                   )}
                 </View>
 
                 {loadingTemperos ? (
-                  <ActivityIndicator color="#8B2F2F" />
+                  <ActivityIndicator color={colors.primary} />
                 ) : (
                   <View style={styles.listaTemperos}>
                     {getListaAtiva().map((item, index) => (
@@ -1404,10 +1405,10 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                         <Text style={styles.temperoText}>{item}</Text>
                         <View style={{ flexDirection: 'row' }}>
                           <TouchableOpacity onPress={() => iniciarEdicaoTempero(index)} style={{ marginRight: 10 }}>
-                            <Ionicons name="pencil" size={20} color="#444" />
+                            <Ionicons name="pencil" size={20} color={colors.text} />
                           </TouchableOpacity>
                           <TouchableOpacity onPress={() => removerTempero(index)}>
-                            <Ionicons name="trash-outline" size={20} color="#FF4444" />
+                            <Ionicons name="trash-outline" size={20} color={colors.danger} />
                           </TouchableOpacity>
                         </View>
                       </View>
@@ -1454,7 +1455,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
           {
             loadingProdutos ? (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#8B2F2F" />
+                <ActivityIndicator size="large" color={colors.primary} />
                 <Text style={styles.loadingText}>Carregando produtos...</Text>
               </View>
             ) : produtosFiltrados.length === 0 ? (
@@ -1510,10 +1511,10 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                       {/* Show Variações button for pizzas and espetinhos with multiple variations */}
                       {(isPizzaProduct(primeiraVariacao) || variacoes.length > 1) && (
                         <TouchableOpacity
-                          style={[styles.editBtn, { backgroundColor: '#B45309' }]}
+                          style={[styles.editBtn, { backgroundColor: colors.secondary }]}
                           onPress={() => abrirVariacoes(variacoes)}
                         >
-                          <Text style={[styles.editBtnText, { color: '#000' }]}>Variações</Text>
+                          <Text style={[styles.editBtnText, { color: colors.text }]}>Variações</Text>
                         </TouchableOpacity>
                       )}
 
@@ -1599,7 +1600,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
               <TextInput
                 style={[styles.input, { maxWidth: inputMaxWidth }]}
                 placeholder="Nome do produto"
-                placeholderTextColor="#999"
+                placeholderTextColor={colors.textSecondary}
                 value={editNome}
                 onChangeText={setEditNome}
               />
@@ -1674,7 +1675,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                     <TextInput
                       style={[styles.input, { flex: 1, marginRight: 8, maxWidth: inputMaxWidth }]}
                       placeholder="Adicionar ingrediente..."
-                      placeholderTextColor="#999"
+                      placeholderTextColor={colors.textSecondary}
                       value={novoIngrediente}
                       onChangeText={setNovoIngrediente}
                     />
@@ -1695,7 +1696,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                   <TextInput
                     style={[styles.input, { height: 60, maxWidth: inputMaxWidth }]}
                     placeholder="Ex: Ingredientes especiais, observações..."
-                    placeholderTextColor="#999"
+                    placeholderTextColor={colors.textSecondary}
                     value={ingredientesPersonalizados}
                     onChangeText={setIngredientesPersonalizados}
                     multiline
@@ -1712,7 +1713,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                           <TextInput
                             style={styles.inputVariacao}
                             placeholder="0.00"
-                            placeholderTextColor="#999"
+                            placeholderTextColor={colors.textSecondary}
                             value={precosPizza[size.name] !== undefined ? String(precosPizza[size.name]) : ''}
                             onChangeText={(text) => setPrecosPizza(prev => ({ ...prev, [size.name]: text }))}
                             keyboardType="numeric"
@@ -1728,7 +1729,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                   <TextInput
                     style={[styles.input, { maxWidth: inputMaxWidth }]}
                     placeholder="Preço"
-                    placeholderTextColor="#999"
+                    placeholderTextColor={colors.textSecondary}
                     value={editPreco}
                     onChangeText={setEditPreco}
                     keyboardType="numeric"
@@ -1880,24 +1881,24 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
 
             <Text style={styles.label}>Adicionar Ingrediente do Estoque:</Text>
 
-            <ScrollView style={{ maxHeight: 150, marginBottom: 10, borderWidth: 1, borderColor: '#eee', borderRadius: 8 }}>
+            <ScrollView style={{ maxHeight: 150, marginBottom: 10, borderWidth: 1, borderColor: colors.border, borderRadius: 8 }}>
               {stockItems.map(item => (
                 <TouchableOpacity
                   key={item.id}
-                  style={{ padding: 10, backgroundColor: selectedStockId === item.id ? '#FFE4B5' : '#fff', borderBottomWidth: 1, borderColor: '#eee' }}
+                  style={{ padding: 10, backgroundColor: selectedStockId === item.id ? colors.warningSurface : colors.white, borderBottomWidth: 1, borderColor: colors.border }}
                   onPress={() => setSelectedStockId(item.id)}
                 >
                   <Text>{item.nome} ({item.unidadeOriginal})</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
-            {stockItems.length === 0 && <Text style={{ color: '#999', fontStyle: 'italic', marginBottom: 10 }}>Nenhum item no estoque.</Text>}
+            {stockItems.length === 0 && <Text style={{ color: colors.textSecondary, fontStyle: 'italic', marginBottom: 10 }}>Nenhum item no estoque.</Text>}
 
             <View style={{ flexDirection: 'row' }}>
               <TextInput
                 style={[styles.input, { flex: 0.4, marginRight: 10 }]}
                 placeholder="Qtd"
-                cursorColor='#8B2F2F'
+                cursorColor={colors.primary}
                 value={qtyIngredient}
                 onChangeText={setQtyIngredient}
                 keyboardType="numeric"
@@ -1922,7 +1923,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                       style={{
                         paddingVertical: 8,
                         paddingHorizontal: 12,
-                        backgroundColor: unitIngredient === u ? '#8B2F2F' : '#eee',
+                        backgroundColor: unitIngredient === u ? colors.primary : colors.border,
                         borderRadius: 8,
                         marginRight: 5,
                         justifyContent: 'center',
@@ -1931,7 +1932,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                       }}
                       onPress={() => setUnitIngredient(u)}
                     >
-                      <Text style={{ color: unitIngredient === u ? '#fff' : '#333', fontWeight: 'bold', fontSize: 13 }}>{u}</Text>
+                      <Text style={{ color: unitIngredient === u ? colors.white : colors.text, fontWeight: 'bold', fontSize: 13 }}>{u}</Text>
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
@@ -1945,10 +1946,10 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
             <Text style={[styles.label, { marginTop: 20 }]}>Ingredientes Vinculados:</Text>
             <ScrollView style={{ maxHeight: 200 }}>
               {(currentProductForStock?.inventoryItems || []).length === 0 ? (
-                <Text style={{ fontStyle: 'italic', color: '#999' }}>Nenhum ingrediente vinculado.</Text>
+                <Text style={{ fontStyle: 'italic', color: colors.textSecondary }}>Nenhum ingrediente vinculado.</Text>
               ) : (
                 (currentProductForStock?.inventoryItems || []).map((ing, idx) => (
-                  <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 10, borderBottomWidth: 1, borderColor: '#eee' }}>
+                  <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 10, borderBottomWidth: 1, borderColor: colors.border }}>
                     <Text style={{ flex: 1 }}>{ing.nome} - {ing.qt} {ing.un}</Text>
                     <TouchableOpacity onPress={() => removeIngredient(ing.id)}>
                       <Text style={{ color: 'red' }}>🗑️</Text>
@@ -1968,14 +1969,14 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F5DC' },
+  container: { flex: 1, backgroundColor: colors.background },
   content: { paddingBottom: 50 },
   section: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     margin: 20,
     borderRadius: 20,
     padding: 20,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 10,
@@ -1984,10 +1985,10 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#8B2F2F',
+    color: colors.primary,
     marginBottom: 20,
     borderBottomWidth: 2,
-    borderBottomColor: '#F5F1E8',
+    borderBottomColor: colors.border,
     paddingBottom: 10,
   },
   form: {
@@ -1996,16 +1997,16 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#666',
+    color: colors.textSecondary,
     marginBottom: 5,
     marginLeft: 4,
   },
   input: {
-    backgroundColor: '#F5F1E8',
+    backgroundColor: colors.background,
     borderRadius: 12,
     padding: 15,
     fontSize: 16,
-    color: '#333',
+    color: colors.text,
     borderWidth: 1,
     borderColor: 'transparent',
   },
@@ -2015,26 +2016,26 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   categoriaBtn: {
-    backgroundColor: '#F5F1E8',
+    backgroundColor: colors.background,
     paddingVertical: 10,
     paddingHorizontal: 15,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: '#B45309',
+    borderColor: colors.secondary,
     marginRight: 10,
     marginBottom: 10,
   },
   categoriaBtnActive: {
-    backgroundColor: '#B45309',
-    borderColor: '#8B2F2F',
+    backgroundColor: colors.secondary,
+    borderColor: colors.primary,
   },
   categoriaBtnText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#666',
+    color: colors.textSecondary,
   },
   categoriaBtnTextActive: {
-    color: '#2C2C2C',
+    color: colors.text,
   },
   variacaoToggle: {
     flexDirection: 'row',
@@ -2047,21 +2048,21 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 6,
     borderWidth: 2,
-    borderColor: '#8B2F2F',
+    borderColor: colors.primary,
     marginRight: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
   },
   checkmark: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#8B2F2F',
+    color: colors.primary,
   },
   variacaoToggleText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#2C2C2C',
+    color: colors.text,
   },
   variacoesGrid: {
     flexDirection: 'row',
@@ -2077,26 +2078,26 @@ const styles = StyleSheet.create({
   variacaoLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#8B2F2F',
+    color: colors.primary,
     marginBottom: 5,
   },
   inputVariacao: {
-    backgroundColor: '#F5F1E8',
+    backgroundColor: colors.background,
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
-    color: '#2C2C2C',
+    color: colors.text,
     borderWidth: 1,
-    borderColor: '#B45309',
+    borderColor: colors.secondary,
     textAlign: 'center',
   },
   cadastrarBtn: {
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
     padding: 15,
     borderRadius: 12,
     alignItems: 'center',
     marginTop: 10,
-    shadowColor: '#8B2F2F',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 15,
@@ -2106,7 +2107,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   cadastrarBtnText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 1,
@@ -2116,28 +2117,28 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   filtroBtn: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     paddingVertical: 8,
     paddingHorizontal: 15,
     borderRadius: 20,
     marginRight: 10,
     borderWidth: 2,
-    borderColor: '#B45309',
+    borderColor: colors.secondary,
   },
   filtroBtnActive: {
-    backgroundColor: '#B45309',
-    borderColor: '#8B2F2F',
+    backgroundColor: colors.secondary,
+    borderColor: colors.primary,
   },
   filtroBtnText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#666',
+    color: colors.textSecondary,
   },
   filtroBtnTextActive: {
-    color: '#2C2C2C',
+    color: colors.text,
   },
   loadingContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     borderRadius: 15,
     padding: 40,
     alignItems: 'center',
@@ -2145,27 +2146,27 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 15,
     fontSize: 14,
-    color: '#999',
+    color: colors.textSecondary,
   },
   emptyContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     borderRadius: 15,
     padding: 40,
     alignItems: 'center',
   },
   emptyText: {
     fontSize: 16,
-    color: '#999',
+    color: colors.textSecondary,
   },
   produtoCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     borderRadius: 15,
     padding: 15,
     marginBottom: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 10,
@@ -2182,17 +2183,17 @@ const styles = StyleSheet.create({
   produtoNome: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#2C2C2C',
+    color: colors.text,
     marginBottom: 4,
   },
   produtoVariacoes: {
     fontSize: 12,
-    color: '#999',
+    color: colors.textSecondary,
     marginTop: 2,
   },
   produtoIngredientes: {
     fontSize: 11,
-    color: '#666',
+    color: colors.textSecondary,
     marginTop: 4,
     fontStyle: 'italic',
   },
@@ -2213,18 +2214,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   statusBtnAtivo: {
-    backgroundColor: '#7ED321',
+    backgroundColor: colors.success,
   },
   statusBtnInativo: {
-    backgroundColor: '#DC3545',
+    backgroundColor: colors.danger,
   },
   statusBtnText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.white,
   },
   editBtn: {
-    backgroundColor: '#B45309',
+    backgroundColor: colors.secondary,
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 8,
@@ -2235,10 +2236,10 @@ const styles = StyleSheet.create({
   editBtnText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#2C2C2C',
+    color: colors.text,
   },
   stockBtn: {
-    backgroundColor: '#D2691E',
+    backgroundColor: colors.warning,
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 8,
@@ -2249,10 +2250,10 @@ const styles = StyleSheet.create({
   stockBtnText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.white,
   },
   deleteBtn: {
-    backgroundColor: '#DC3545',
+    backgroundColor: colors.danger,
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 8,
@@ -2263,19 +2264,19 @@ const styles = StyleSheet.create({
   deleteBtnText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.white,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: colors.overlay,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
   modalContent: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     borderRadius: 20,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.3,
     shadowRadius: 20,
@@ -2291,25 +2292,25 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#8B2F2F',
+    color: colors.primary,
   },
   modalClose: {
     fontSize: 28,
-    color: '#999',
+    color: colors.textSecondary,
   },
   stockLinkBtn: {
-    backgroundColor: '#333',
+    backgroundColor: colors.text,
     padding: 10,
     borderRadius: 10,
     alignItems: 'center',
     marginVertical: 10,
   },
   stockLinkText: {
-    color: '#FFF',
+    color: colors.white,
     fontWeight: 'bold',
   },
   salvarBtn: {
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
     padding: 15,
     borderRadius: 12,
     alignItems: 'center',
@@ -2319,19 +2320,19 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   salvarBtnText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 16,
     fontWeight: '700',
   },
   fecharBtn: {
-    backgroundColor: '#999',
+    backgroundColor: colors.textSecondary,
     padding: 15,
     borderRadius: 12,
     alignItems: 'center',
     marginTop: 15,
   },
   fecharBtnText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -2339,7 +2340,7 @@ const styles = StyleSheet.create({
     maxHeight: 400,
   },
   variacaoItem: {
-    backgroundColor: '#F5F1E8',
+    backgroundColor: colors.background,
     borderRadius: 12,
     padding: 8,
     marginBottom: 12,
@@ -2350,10 +2351,10 @@ const styles = StyleSheet.create({
   variacaoNomeInput: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#2C2C2C',
+    color: colors.text,
     marginBottom: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
+    borderBottomColor: colors.border,
     paddingVertical: 4,
     minWidth: 150,
   },
@@ -2364,21 +2365,21 @@ const styles = StyleSheet.create({
   variacaoLabelLarge: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#8B2F2F',
+    color: colors.primary,
     marginRight: 8,
   },
   variacaoPrecoInput: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     borderRadius: 8,
     padding: 8,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#B45309',
+    borderColor: colors.secondary,
     minWidth: 80,
     textAlign: 'center',
   },
   variacaoSalvarBtn: {
-    backgroundColor: '#7ED321',
+    backgroundColor: colors.success,
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 8,
@@ -2387,21 +2388,21 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   variacaoSalvarText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 14,
     fontWeight: '700',
   },
   miniStockBtn: {
-    backgroundColor: '#eee',
+    backgroundColor: colors.border,
     padding: 8,
     borderRadius: 8,
     alignItems: 'center',
     marginBottom: 10
   },
-  miniStockText: { color: '#333', fontSize: 12 },
+  miniStockText: { color: colors.text, fontSize: 12 },
   unitTabs: {
     flexDirection: 'row',
-    backgroundColor: '#F5F1E8',
+    backgroundColor: colors.background,
     borderRadius: 8,
     padding: 2
   },
@@ -2412,16 +2413,16 @@ const styles = StyleSheet.create({
     borderRadius: 6
   },
   unitTabActive: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.white,
     elevation: 2
   },
   unitTabText: {
     fontSize: 10,
     fontWeight: 'bold',
-    color: '#999'
+    color: colors.textSecondary
   },
   unitTabTextActive: {
-    color: '#8B2F2F'
+    color: colors.primary
   },
   addTemperoRow: {
     flexDirection: 'row',
@@ -2430,18 +2431,18 @@ const styles = StyleSheet.create({
   },
   inputTempero: {
     flex: 1,
-    backgroundColor: '#F5F1E8',
+    backgroundColor: colors.background,
     borderRadius: 8,
     padding: 10,
     fontSize: 14,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: colors.border,
     marginRight: 10,
   },
   addBtn: {
     width: 40,
     height: 40,
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
@@ -2455,14 +2456,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 12,
-    backgroundColor: '#fff',
+    backgroundColor: colors.white,
     borderRadius: 10,
     marginBottom: 8,
     elevation: 1
   },
   temperoText: {
     fontSize: 14,
-    color: '#444',
+    color: colors.text,
     fontWeight: '500'
   },
   ingredientesContainer: {
@@ -2474,7 +2475,7 @@ const styles = StyleSheet.create({
   ingredienteChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#B45309',
+    backgroundColor: colors.secondary,
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 20,
@@ -2483,17 +2484,17 @@ const styles = StyleSheet.create({
   },
   ingredienteText: {
     fontSize: 14,
-    color: '#2C2C2C',
+    color: colors.text,
     fontWeight: '600',
     marginRight: 6,
   },
   ingredienteRemove: {
     fontSize: 18,
-    color: '#8B2F2F',
+    color: colors.primary,
     fontWeight: 'bold',
   },
   addIngredienteBtn: {
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
     width: 50,
     height: 50,
     borderRadius: 12,
@@ -2501,7 +2502,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   addIngredienteBtnText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 24,
     fontWeight: 'bold',
   }

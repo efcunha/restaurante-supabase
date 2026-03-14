@@ -156,8 +156,8 @@ export default function PizzaBuilderModal({
                         style={[styles.sizeCard, selectedSize === size.name && styles.sizeCardActive]}
                         onPress={() => handleSelectSize(size)}
                     >
-                        <View style={[styles.sizeIcon, { backgroundColor: selectedSize === size.name ? colors.primary : '#eee' }]}>
-                            <Ionicons name="pizza-outline" size={32} color={selectedSize === size.name ? '#fff' : '#666'} />
+                        <View style={[styles.sizeIcon, { backgroundColor: selectedSize === size.name ? colors.primary : colors.border }]}>
+                            <Ionicons name="pizza-outline" size={32} color={selectedSize === size.name ? colors.white : colors.textSecondary} />
                         </View>
                         <Text style={[styles.sizeText, selectedSize === size.name && styles.sizeTextActive]}>
                             {size.name}
@@ -226,17 +226,17 @@ export default function PizzaBuilderModal({
                                 styles.flavorRow,
                                 isSelected && styles.flavorRowActive,
                                 isDisabled && styles.flavorRowDisabled,
-                                isLocked ? { borderColor: '#2e7d32', backgroundColor: '#F1F8E9' } : null
+                                isLocked ? { borderColor: colors.success, backgroundColor: '#F1F8E9' } : null
                             ]}
                             onPress={() => !isDisabled && toggleFlavor(pizza)}
                             disabled={isDisabled || isLocked}
                         >
                             <View style={{ flex: 1 }}>
-                                <Text style={[styles.flavorName, isDisabled && { color: '#999' }]}>{pizza.name}</Text>
+                                <Text style={[styles.flavorName, isDisabled && { color: colors.textSecondary }]}>{pizza.name}</Text>
                                 <Text style={styles.flavorPrice}>R$ {priceForSize.toFixed(2)}</Text>
                             </View>
                             <View style={[styles.checkbox, isSelected && { borderColor: colors.primary, backgroundColor: colors.primary }]}>
-                                {isSelected && <Ionicons name="checkmark" size={16} color="#fff" />}
+                                {isSelected && <Ionicons name="checkmark" size={16} color={colors.white} />}
                             </View>
                         </TouchableOpacity>
                     );
@@ -245,7 +245,7 @@ export default function PizzaBuilderModal({
 
             <View style={styles.footer}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                    <Text style={{ fontSize: 16, color: '#666' }}>Total Estimado:</Text>
+                    <Text style={{ fontSize: 16, color: colors.textSecondary }}>Total Estimado:</Text>
                     <Text style={styles.totalText}>R$ {calculatePrice().toFixed(2)}</Text>
                 </View>
 
@@ -330,7 +330,7 @@ export default function PizzaBuilderModal({
                                             <Text style={styles.extraPrice}>+ R$ {adicional.price.toFixed(2)}</Text>
                                         </View>
                                         <View style={[styles.checkbox, isSelected && { borderColor: colors.primary, backgroundColor: colors.primary }]}>
-                                            {isSelected && <Ionicons name="checkmark" size={16} color="#fff" />}
+                                            {isSelected && <Ionicons name="checkmark" size={16} color={colors.white} />}
                                         </View>
                                     </TouchableOpacity>
                                 );
@@ -340,7 +340,7 @@ export default function PizzaBuilderModal({
 
                     {bordas.length === 0 && adicionais.length === 0 && (
                         <View style={{ alignItems: 'center', paddingVertical: 40 }}>
-                            <Text style={{ fontSize: 16, color: '#999' }}>Nenhum extra disponível.</Text>
+                            <Text style={{ fontSize: 16, color: colors.textSecondary }}>Nenhum extra disponível.</Text>
                         </View>
                     )}
                 </ScrollView>
@@ -348,17 +348,17 @@ export default function PizzaBuilderModal({
                 <View style={styles.footer}>
                     <View style={{ marginBottom: 12 }}>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                            <Text style={{ fontSize: 14, color: '#666' }}>Pizza:</Text>
-                            <Text style={{ fontSize: 14, color: '#666' }}>R$ {getBasePrice().toFixed(2)}</Text>
+                            <Text style={{ fontSize: 14, color: colors.textSecondary }}>Pizza:</Text>
+                            <Text style={{ fontSize: 14, color: colors.textSecondary }}>R$ {getBasePrice().toFixed(2)}</Text>
                         </View>
                         {getExtrasPrice() > 0 && (
                             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                                <Text style={{ fontSize: 14, color: '#666' }}>Extras:</Text>
-                                <Text style={{ fontSize: 14, color: '#666' }}>R$ {getExtrasPrice().toFixed(2)}</Text>
+                                <Text style={{ fontSize: 14, color: colors.textSecondary }}>Extras:</Text>
+                                <Text style={{ fontSize: 14, color: colors.textSecondary }}>R$ {getExtrasPrice().toFixed(2)}</Text>
                             </View>
                         )}
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 8 }}>
-                            <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#333' }}>Total:</Text>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 8 }}>
+                            <Text style={{ fontSize: 16, fontWeight: 'bold', color: colors.text }}>Total:</Text>
                             <Text style={styles.totalText}>R$ {calculatePrice().toFixed(2)}</Text>
                         </View>
                     </View>
@@ -380,7 +380,7 @@ export default function PizzaBuilderModal({
                 <View style={styles.container}>
                     <View style={styles.modalHeaderDrag} />
                     <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-                        <Ionicons name="close-circle" size={30} color="#ddd" />
+                        <Ionicons name="close-circle" size={30} color={colors.border} />
                     </TouchableOpacity>
 
                     {step === 1 ? renderStep1() : step === 2 ? renderStep2() : renderStep3()}
@@ -392,62 +392,62 @@ export default function PizzaBuilderModal({
 
 const styles = StyleSheet.create({
     overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-    container: { height: '85%', backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingTop: 10, shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 10 },
-    modalHeaderDrag: { width: 40, height: 4, backgroundColor: '#E0E0E0', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
+    container: { height: '85%', backgroundColor: colors.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingTop: 10, shadowColor: colors.shadow, shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 10 },
+    modalHeaderDrag: { width: 40, height: 4, backgroundColor: colors.border, borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
 
     closeBtn: { position: 'absolute', top: 15, right: 15, zIndex: 10 },
 
     stepContainer: { flex: 1 },
     title: { fontSize: 24, fontWeight: '800', color: colors.text, marginBottom: 5, textAlign: 'center' },
-    subtitle: { fontSize: 16, color: '#666', textAlign: 'center', marginBottom: 20 },
+    subtitle: { fontSize: 16, color: colors.textSecondary, textAlign: 'center', marginBottom: 20 },
 
     titleSmall: { fontSize: 18, fontWeight: 'bold', color: colors.text },
 
     grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
     sizeCard: {
         width: '48%',
-        backgroundColor: '#fff',
+        backgroundColor: colors.white,
         padding: 15,
         borderRadius: 16,
         borderWidth: 1,
-        borderColor: '#eee',
+        borderColor: colors.border,
         alignItems: 'center',
         marginBottom: 15,
         elevation: 2,
-        shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4
+        shadowColor: colors.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4
     },
-    sizeCardActive: { borderColor: colors.primary, backgroundColor: '#FFF5F5', borderWidth: 2 },
+    sizeCardActive: { borderColor: colors.primary, backgroundColor: colors.dangerSurface, borderWidth: 2 },
     sizeIcon: { width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
-    sizeText: { fontSize: 18, fontWeight: 'bold', color: '#333' },
+    sizeText: { fontSize: 18, fontWeight: 'bold', color: colors.text },
     sizeTextActive: { color: colors.primary },
-    sizeSubText: { fontSize: 13, color: '#888', marginTop: 4 },
+    sizeSubText: { fontSize: 13, color: colors.textSecondary, marginTop: 4 },
 
     headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 15, gap: 15 },
     backBtn: { padding: 8, backgroundColor: '#f0f0f0', borderRadius: 50 },
     search: { backgroundColor: '#F9F9F9', padding: 14, borderRadius: 12, marginBottom: 15, fontSize: 16, borderWidth: 1, borderColor: '#EAEAEA', minHeight: 48 },
 
-    flavorRow: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: '#fff', borderRadius: 16, marginBottom: 10, borderWidth: 1, borderColor: '#F0F0F0', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 },
+    flavorRow: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: colors.white, borderRadius: 16, marginBottom: 10, borderWidth: 1, borderColor: '#F0F0F0', shadowColor: colors.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 },
     flavorRowActive: { borderColor: colors.primary, backgroundColor: '#FFF9F9', borderWidth: 2 },
     flavorRowDisabled: { opacity: 0.5, backgroundColor: '#F9F9F9' },
 
-    flavorName: { fontSize: 16, fontWeight: '700', color: '#2C2C2C' },
+    flavorName: { fontSize: 16, fontWeight: '700', color: colors.text },
     flavorPrice: { fontSize: 15, color: colors.primary, fontWeight: 'bold', marginTop: 4 },
 
-    checkbox: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: '#ddd', justifyContent: 'center', alignItems: 'center' },
+    checkbox: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: colors.border, justifyContent: 'center', alignItems: 'center' },
 
     footer: { borderTopWidth: 1, borderTopColor: '#F0F0F0', paddingTop: 20, marginTop: 10, paddingBottom: 20 },
     totalText: { fontSize: 24, fontWeight: '800', color: colors.primary },
     confirmBtn: { backgroundColor: colors.success, padding: 16, borderRadius: 14, alignItems: 'center', minHeight: 56, justifyContent: 'center' },
-    disabledBtn: { backgroundColor: '#E0E0E0' },
-    nextBtnText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+    disabledBtn: { backgroundColor: colors.border },
+    nextBtnText: { color: colors.white, fontSize: 18, fontWeight: 'bold' },
 
     // Extras styles
-    sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#2C2C2C', marginBottom: 14 },
-    extraRow: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: '#fff', borderRadius: 16, marginBottom: 10, borderWidth: 1, borderColor: '#F0F0F0', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 },
+    sectionTitle: { fontSize: 18, fontWeight: 'bold', color: colors.text, marginBottom: 14 },
+    extraRow: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: colors.white, borderRadius: 16, marginBottom: 10, borderWidth: 1, borderColor: '#F0F0F0', shadowColor: colors.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 },
     extraRowActive: { borderColor: colors.primary, backgroundColor: '#FFF9F9', borderWidth: 2 },
-    extraName: { fontSize: 16, fontWeight: '700', color: '#2C2C2C' },
+    extraName: { fontSize: 16, fontWeight: '700', color: colors.text },
     extraPrice: { fontSize: 15, color: colors.primary, fontWeight: 'bold', marginTop: 4 },
-    radio: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: '#ddd', justifyContent: 'center', alignItems: 'center' },
+    radio: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: colors.border, justifyContent: 'center', alignItems: 'center' },
     radioActive: { borderColor: colors.primary },
     radioDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: colors.primary }
 });

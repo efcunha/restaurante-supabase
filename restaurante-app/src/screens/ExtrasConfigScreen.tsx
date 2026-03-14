@@ -26,6 +26,7 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../config/SupabaseConfig';
 import { Extra, ExtraType } from '../types/models';
 import { ScreenScaffold } from '../layouts/ScreenScaffold';
+import { colors } from '../theme/colors';
 
 
 interface ExtrasConfigScreenProps {
@@ -209,13 +210,13 @@ export default function ExtrasConfigScreen({ onClose }: ExtrasConfigScreenProps)
           style={styles.actionButton}
           onPress={() => openEditModal(extra)}
         >
-          <Ionicons name="pencil" size={20} color="#8B2F2F" />
+          <Ionicons name="pencil" size={20} color={colors.primary} />
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.actionButton}
           onPress={() => deleteExtra(extra)}
         >
-          <Ionicons name="trash" size={20} color="#D32F2F" />
+          <Ionicons name="trash" size={20} color={colors.danger} />
         </TouchableOpacity>
       </View>
     </View>
@@ -251,7 +252,7 @@ export default function ExtrasConfigScreen({ onClose }: ExtrasConfigScreenProps)
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
         {loading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#8B2F2F" />
+            <ActivityIndicator size="large" color={colors.primary} />
             <Text style={styles.loadingText}>Carregando extras...</Text>
           </View>
         ) : (
@@ -294,7 +295,7 @@ export default function ExtrasConfigScreen({ onClose }: ExtrasConfigScreenProps)
         style={[styles.addButton, { bottom: Math.max(insets.bottom + 20, 20) }]}
         onPress={() => openAddModal(activeTab)}
       >
-        <Ionicons name="add" size={24} color="#FFF" />
+        <Ionicons name="add" size={24} color={colors.white} />
         <Text style={styles.addButtonText}>
           Adicionar {activeTab === 'borda' ? 'Borda' : 'Adicional'}
         </Text>
@@ -315,7 +316,7 @@ export default function ExtrasConfigScreen({ onClose }: ExtrasConfigScreenProps)
                 {(editingExtra?.type || activeTab) === 'borda' ? 'Borda' : 'Adicional'}
               </Text>
               <TouchableOpacity onPress={closeModal}>
-                <Ionicons name="close" size={24} color="#333" />
+                <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
 
@@ -326,7 +327,7 @@ export default function ExtrasConfigScreen({ onClose }: ExtrasConfigScreenProps)
                 value={formName}
                 onChangeText={setFormName}
                 placeholder="Ex: Catupiry, Cheddar, Bacon..."
-                placeholderTextColor="#999"
+                placeholderTextColor={colors.textSecondary}
               />
 
               <Text style={styles.label}>Preço (R$)</Text>
@@ -335,7 +336,7 @@ export default function ExtrasConfigScreen({ onClose }: ExtrasConfigScreenProps)
                 value={formPrice}
                 onChangeText={setFormPrice}
                 placeholder="0.00"
-                placeholderTextColor="#999"
+                placeholderTextColor={colors.textSecondary}
                 keyboardType="decimal-pad"
               />
 
@@ -364,9 +365,9 @@ export default function ExtrasConfigScreen({ onClose }: ExtrasConfigScreenProps)
 const styles = StyleSheet.create({
   tabs: {
     flexDirection: 'row',
-    backgroundColor: '#FFF',
+    backgroundColor: colors.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0D8C8',
+    borderBottomColor: colors.border,
   },
   tab: {
     flex: 1,
@@ -376,14 +377,14 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
   },
   tabActive: {
-    borderBottomColor: '#8B2F2F',
+    borderBottomColor: colors.primary,
   },
   tabText: {
     fontSize: 16,
-    color: '#666',
+    color: colors.textSecondary,
   },
   tabTextActive: {
-    color: '#8B2F2F',
+    color: colors.primary,
     fontWeight: 'bold',
   },
   content: {
@@ -402,7 +403,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#666',
+    color: colors.textSecondary,
   },
   emptyContainer: {
     alignItems: 'center',
@@ -411,24 +412,24 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#666',
+    color: colors.textSecondary,
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#999',
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   extraItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#FFF',
+    backgroundColor: colors.white,
     padding: 16,
     borderRadius: 8,
     marginBottom: 12,
     elevation: 2,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 1.41,
@@ -439,12 +440,12 @@ const styles = StyleSheet.create({
   extraName: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#333',
+    color: colors.text,
     marginBottom: 4,
   },
   extraPrice: {
     fontSize: 14,
-    color: '#8B2F2F',
+    color: colors.primary,
     fontWeight: '600',
   },
   extraActions: {
@@ -459,20 +460,20 @@ const styles = StyleSheet.create({
     bottom: 20,
     left: 20,
     right: 20,
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,
     borderRadius: 8,
     elevation: 4,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
   },
   addButtonText: {
-    color: '#FFF',
+    color: colors.white,
     fontSize: 16,
     fontWeight: 'bold',
     marginLeft: 8,
@@ -484,12 +485,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContainer: {
-    backgroundColor: '#FFF',
+    backgroundColor: colors.white,
     borderRadius: 12,
     width: '90%',
     maxWidth: 400,
     elevation: 5,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
@@ -500,12 +501,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0D8C8',
+    borderBottomColor: colors.border,
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
+    color: colors.text,
   },
   modalContent: {
     padding: 20,
@@ -513,17 +514,17 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#F5F1E8',
+    backgroundColor: colors.background,
     borderWidth: 1,
-    borderColor: '#E0D8C8',
+    borderColor: colors.border,
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
-    color: '#333',
+    color: colors.text,
     marginBottom: 16,
   },
   modalActions: {
@@ -538,18 +539,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelButton: {
-    backgroundColor: '#E0D8C8',
+    backgroundColor: colors.border,
   },
   cancelButtonText: {
-    color: '#666',
+    color: colors.textSecondary,
     fontSize: 16,
     fontWeight: '600',
   },
   saveButton: {
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
   },
   saveButtonText: {
-    color: '#FFF',
+    color: colors.white,
     fontSize: 16,
     fontWeight: 'bold',
   },

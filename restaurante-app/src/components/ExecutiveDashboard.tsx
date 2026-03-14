@@ -14,6 +14,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { colors } from '../theme/colors';
 import SuccessMetricsService, {
   WeeklyReport,
 } from '../services/SuccessMetricsService';
@@ -71,7 +72,7 @@ export default function ExecutiveDashboard({ companyId }: ExecutiveDashboardProp
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#8B2F2F" />
+        <ActivityIndicator size="large" color={colors.primary} />
         <Text style={styles.loadingText}>Carregando métricas...</Text>
       </View>
     );
@@ -80,7 +81,7 @@ export default function ExecutiveDashboard({ companyId }: ExecutiveDashboardProp
   if (!dashboardData) {
     return (
       <View style={styles.emptyContainer}>
-        <Ionicons name="analytics-outline" size={64} color="#CCC" />
+        <Ionicons name="analytics-outline" size={64} color={colors.border} />
         <Text style={styles.emptyText}>Nenhuma métrica disponível</Text>
         <TouchableOpacity
           style={styles.recordButton}
@@ -97,13 +98,13 @@ export default function ExecutiveDashboard({ companyId }: ExecutiveDashboardProp
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'on-track':
-        return '#2E7D32';
+        return colors.success;
       case 'at-risk':
-        return '#F57C00';
+        return colors.warning;
       case 'off-track':
-        return '#D32F2F';
+        return colors.danger;
       default:
-        return '#999';
+        return colors.textSecondary;
     }
   };
 
@@ -135,10 +136,10 @@ export default function ExecutiveDashboard({ companyId }: ExecutiveDashboardProp
             style={styles.headerButton}
             onPress={handleGenerateReport}
           >
-            <Ionicons name="document-text-outline" size={20} color="#8B2F2F" />
+            <Ionicons name="document-text-outline" size={20} color={colors.primary} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.headerButton} onPress={handleExport}>
-            <Ionicons name="download-outline" size={20} color="#8B2F2F" />
+            <Ionicons name="download-outline" size={20} color={colors.primary} />
           </TouchableOpacity>
         </View>
       </View>
@@ -197,10 +198,10 @@ export default function ExecutiveDashboard({ companyId }: ExecutiveDashboardProp
                   ms
                 </Text>
               </View>
-              <Ionicons name="arrow-forward" size={24} color="#999" />
+              <Ionicons name="arrow-forward" size={24} color={colors.textSecondary} />
               <View style={styles.comparisonColumn}>
                 <Text style={styles.comparisonLabel}>Atual</Text>
-                <Text style={[styles.comparisonValue, { color: '#2E7D32' }]}>
+                <Text style={[styles.comparisonValue, { color: colors.success }]}>
                   {Math.round(
                     (current.p95Latency.fetchOrders +
                       current.p95Latency.createOrder +
@@ -229,10 +230,10 @@ export default function ExecutiveDashboard({ companyId }: ExecutiveDashboardProp
                   ${baseline.firestoreCosts.estimatedMonthlyCost.toFixed(2)}
                 </Text>
               </View>
-              <Ionicons name="arrow-forward" size={24} color="#999" />
+              <Ionicons name="arrow-forward" size={24} color={colors.textSecondary} />
               <View style={styles.comparisonColumn}>
                 <Text style={styles.comparisonLabel}>Atual</Text>
-                <Text style={[styles.comparisonValue, { color: '#2E7D32' }]}>
+                <Text style={[styles.comparisonValue, { color: colors.success }]}>
                   ${current.firestoreCosts.estimatedMonthlyCost.toFixed(2)}
                 </Text>
               </View>
@@ -379,40 +380,40 @@ export default function ExecutiveDashboard({ companyId }: ExecutiveDashboardProp
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F1E8',
+    backgroundColor: colors.background,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F5F1E8',
+    backgroundColor: colors.background,
   },
   loadingText: {
     marginTop: 10,
     fontSize: 16,
-    color: '#666',
+    color: colors.textSecondary,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F5F1E8',
+    backgroundColor: colors.background,
     padding: 20,
   },
   emptyText: {
     fontSize: 18,
-    color: '#999',
+    color: colors.textSecondary,
     marginTop: 20,
     marginBottom: 30,
   },
   recordButton: {
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
     paddingHorizontal: 30,
     paddingVertical: 15,
     borderRadius: 8,
   },
   recordButtonText: {
-    color: '#FFF',
+    color: colors.white,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -421,12 +422,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#8B2F2F',
+    backgroundColor: colors.primary,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#FFF',
+    color: colors.white,
   },
   headerButtons: {
     flexDirection: 'row',
@@ -434,15 +435,15 @@ const styles = StyleSheet.create({
   headerButton: {
     marginLeft: 15,
     padding: 5,
-    backgroundColor: '#FFF',
+    backgroundColor: colors.white,
     borderRadius: 5,
   },
   card: {
-    backgroundColor: '#FFF',
+    backgroundColor: colors.white,
     margin: 15,
     padding: 20,
     borderRadius: 10,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -451,7 +452,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#333',
+    color: colors.text,
     marginBottom: 15,
   },
   progressContainer: {
@@ -462,7 +463,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: '#F5F1E8',
+    backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 20,
@@ -470,11 +471,11 @@ const styles = StyleSheet.create({
   progressPercentage: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#8B2F2F',
+    color: colors.primary,
   },
   progressLabel: {
     fontSize: 12,
-    color: '#999',
+    color: colors.textSecondary,
     marginTop: 5,
   },
   progressDetails: {
@@ -492,7 +493,7 @@ const styles = StyleSheet.create({
   },
   targetsText: {
     fontSize: 14,
-    color: '#666',
+    color: colors.textSecondary,
   },
   comparisonRow: {
     flexDirection: 'row',
@@ -504,16 +505,16 @@ const styles = StyleSheet.create({
   },
   comparisonLabel: {
     fontSize: 12,
-    color: '#999',
+    color: colors.textSecondary,
     marginBottom: 5,
   },
   comparisonValue: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#333',
+    color: colors.text,
   },
   improvementBadge: {
-    backgroundColor: '#E8F5E9',
+    backgroundColor: colors.successSurface,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
@@ -521,23 +522,23 @@ const styles = StyleSheet.create({
   improvementText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#2E7D32',
+    color: colors.success,
   },
   costBreakdown: {
     marginTop: 15,
     paddingTop: 15,
     borderTopWidth: 1,
-    borderTopColor: '#E0D8C8',
+    borderTopColor: colors.border,
   },
   costBreakdownTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
     marginBottom: 8,
   },
   costBreakdownItem: {
     fontSize: 13,
-    color: '#666',
+    color: colors.textSecondary,
     marginBottom: 4,
   },
   securityGrid: {
@@ -553,11 +554,11 @@ const styles = StyleSheet.create({
   securityValue: {
     fontSize: 32,
     fontWeight: '700',
-    color: '#2E7D32',
+    color: colors.success,
   },
   securityLabel: {
     fontSize: 12,
-    color: '#999',
+    color: colors.textSecondary,
     textAlign: 'center',
     marginTop: 5,
   },
@@ -574,11 +575,11 @@ const styles = StyleSheet.create({
   qualityValue: {
     fontSize: 32,
     fontWeight: '700',
-    color: '#2196F3',
+    color: colors.secondary,
   },
   qualityLabel: {
     fontSize: 12,
-    color: '#999',
+    color: colors.textSecondary,
     textAlign: 'center',
     marginTop: 5,
   },
@@ -586,7 +587,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     paddingBottom: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0D8C8',
+    borderBottomColor: colors.border,
   },
   reportHeader: {
     marginBottom: 10,
@@ -594,11 +595,11 @@ const styles = StyleSheet.create({
   reportTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
   },
   reportDate: {
     fontSize: 12,
-    color: '#999',
+    color: colors.textSecondary,
     marginTop: 2,
   },
   reportSection: {
@@ -607,22 +608,22 @@ const styles = StyleSheet.create({
   reportSectionTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
     marginBottom: 5,
   },
   reportHighlight: {
     fontSize: 13,
-    color: '#2E7D32',
+    color: colors.success,
     marginBottom: 3,
   },
   reportConcern: {
     fontSize: 13,
-    color: '#F57C00',
+    color: colors.warning,
     marginBottom: 3,
   },
   reportRecommendation: {
     fontSize: 13,
-    color: '#2196F3',
+    color: colors.secondary,
     marginBottom: 3,
   },
 });
