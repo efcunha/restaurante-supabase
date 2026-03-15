@@ -8,6 +8,7 @@
 | `20260311161100_seed_data.sql` | Dados | 2026-03-11 | Dados de referência (produtos, mesas, configurações) |
 | `add_atomic_consume_function.sql` | Função | 2026-03-11 | RPC `adicionar_consumo_atomico` — fix de race condition |
 | `20260314164000_fix_atomic_consume_function_type_casts.sql` | Correção | 2026-03-14 | Corrige casts do RPC `adicionar_consumo_atomico` (`uuid/date/integer`) |
+| `20260314203000_add_unique_open_mesa_index.sql` | Índice | 2026-03-14 | Garante uma única comanda aberta por mesa (company + date + table_number) |
 | `create_delivery_comanda_number_function.sql` | Função | anterior | Função de controle de número de comanda para delivery |
 
 ## Tabelas capturadas (27)
@@ -92,3 +93,13 @@ npx supabase db dump \
 - `p_comanda_number::integer`
 
 **Resultado esperado:** o fluxo continua igual para o usuário, mas a atualização do consumo volta a ser realmente atômica e deixa de depender do fallback.
+
+### 2026-03-14 — Proteção definitiva de concorrência por mesa
+
+**Problema:** dois garçons em paralelo ainda podiam abrir comandas diferentes para a mesma mesa por janela de corrida entre o check do frontend e o insert/update.
+
+**Fix aplicado:** índice único parcial no banco:
+- `idx_unique_open_mesa` em `(company_id, date_key, btrim(table_number))`
+- aplicado apenas quando `status = 'aberta'` e `table_number` não vazio
+
+**Resultado esperado:** o banco passa a bloquear atomicamente a segunda abertura concorrente para a mesma mesa no mesmo dia/empresa.

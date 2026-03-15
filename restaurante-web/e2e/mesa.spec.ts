@@ -37,6 +37,55 @@ async function cancelOpenComanda(mesaNumber: string, accessToken: string) {
   }
 }
 
+async function cancelActiveOrdersForMesa(mesaNumber: string, accessToken: string) {
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/orders?table_number=eq.${mesaNumber}&status=neq.cancelled&status=neq.cancelada&select=id,comanda_number,status`,
+      {
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${accessToken}`,
+        }
+      }
+    );
+
+    if (!res.ok) {
+      console.warn(`[DB] Não foi possível listar pedidos ativos da mesa ${mesaNumber}: ${res.status}`);
+      return;
+    }
+
+    const activeOrders = await res.json();
+    if (!Array.isArray(activeOrders) || activeOrders.length === 0) {
+      return;
+    }
+
+    const idFilter = activeOrders.map((o: any) => `id.eq.${o.id}`).join(',');
+    const patchRes = await fetch(`${SUPABASE_URL}/rest/v1/orders?or=(${idFilter})`, {
+      method: 'PATCH',
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        status: 'cancelled',
+        comanda_status: 'cancelada',
+        updated_at: new Date().toISOString(),
+      }),
+    });
+
+    if (!patchRes.ok) {
+      const err = await patchRes.text();
+      console.warn(`[DB] Falha ao cancelar pedidos ativos da mesa ${mesaNumber}: ${patchRes.status} - ${err}`);
+      return;
+    }
+
+    console.log(`[DB] ${activeOrders.length} pedido(s) ativo(s) da mesa ${mesaNumber} foram cancelados antes do teste.`);
+  } catch (e) {
+    console.warn(`[DB] Falha não crítica ao limpar pedidos ativos da mesa ${mesaNumber}:`, e);
+  }
+}
+
 /**
  * Pega a próxima mesa disponível de 1 a 10 sincronizando terminais
  * pelo sistema de arquivos. 'wx' é atômico no Windows/Linux/Mac e 
@@ -118,6 +167,7 @@ test.describe('Fluxo Principal - Mesa (Mapa)', () => {
     // Cancela comandas fantasmas garantindo que RLS será validado (user logado)
     if (accessToken) {
       await cancelOpenComanda(mesaId, accessToken);
+      await cancelActiveOrdersForMesa(mesaId, accessToken);
     }
 
     const orderName = `Playwright W${testInfo.parallelIndex}R${testInfo.repeatEachIndex}`;
@@ -231,6 +281,59 @@ test.describe('Fluxo Principal - Mesa (Mapa)', () => {
 
     console.log(`✅ [Mesa ${mesaId}] ${toastText}`);
     expect(toastText).toMatch(/Pedido criado!/i);
+
+    // ── 5. Validação de integridade Mesa x Comanda x Pedido ───────────────────
+    const comandaMatch = toastText.match(/Comanda\s+(\d+)/i);
+    const comandaCriada = comandaMatch?.[1];
+    expect(comandaCriada).toBeTruthy();
+
+    if (accessToken && comandaCriada) {
+      const openComandasRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/comandas?status=eq.aberta&table_number=eq.${mesaId}&select=id,comanda_number,table_number`,
+        {
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${accessToken}`,
+          }
+        }
+      );
+
+      expect(openComandasRes.ok).toBeTruthy();
+      const openComandas = await openComandasRes.json();
+
+      // Regra 1 e 2: apenas 1 comanda aberta por mesa e deve ser a comanda recém-criada.
+      expect(Array.isArray(openComandas)).toBeTruthy();
+      expect(openComandas.length).toBe(1);
+      expect(String(openComandas[0].comanda_number)).toBe(String(comandaCriada));
+      expect(String(openComandas[0].table_number)).toBe(String(mesaId));
+
+      const ordersRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/orders?table_number=eq.${mesaId}&comanda_number=eq.${comandaCriada}&status=neq.cancelled&status=neq.cancelada&select=id,items_with_status,items,table_number,comanda_number,created_at&order=created_at.desc&limit=1`,
+        {
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${accessToken}`,
+          }
+        }
+      );
+
+      expect(ordersRes.ok).toBeTruthy();
+      const activeOrders = await ordersRes.json();
+      expect(Array.isArray(activeOrders)).toBeTruthy();
+      expect(activeOrders.length).toBe(1);
+
+      const newestOrder = activeOrders[0];
+      expect(String(newestOrder.table_number)).toBe(String(mesaId));
+      expect(String(newestOrder.comanda_number)).toBe(String(comandaCriada));
+
+      const itemNames: string[] = Array.isArray(newestOrder.items_with_status)
+        ? newestOrder.items_with_status.map((it: any) => String(it?.name || ''))
+        : Array.isArray(newestOrder.items)
+          ? newestOrder.items.map((it: any) => String(it || ''))
+          : [];
+
+      expect(itemNames.some(name => /calabresa/i.test(name))).toBeTruthy();
+    }
 
     // ── 6. Cozinha ────────────────────────────────────────────────────────────
     await page.locator('text=Cozinha').first().click();
