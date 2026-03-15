@@ -1513,7 +1513,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                           style={[styles.editBtn, { backgroundColor: colors.secondary }]}
                           onPress={() => abrirVariacoes(variacoes)}
                         >
-                          <Text style={[styles.editBtnText, { color: colors.text }]}>Variações</Text>
+                          <Text style={[styles.editBtnText, { color: colors.white }]}>Variações</Text>
                         </TouchableOpacity>
                       )}
 
@@ -2034,7 +2034,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   categoriaBtnTextActive: {
-    color: colors.text,
+    color: colors.white,
   },
   variacaoToggle: {
     flexDirection: 'row',
@@ -2134,7 +2134,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   filtroBtnTextActive: {
-    color: colors.text,
+    color: colors.white,
   },
   loadingContainer: {
     backgroundColor: colors.white,
@@ -2235,7 +2235,7 @@ const styles = StyleSheet.create({
   editBtnText: {
     fontSize: 12,
     fontWeight: '700',
-    color: colors.text,
+    color: colors.white,
   },
   stockBtn: {
     backgroundColor: colors.warning,

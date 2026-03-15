@@ -751,16 +751,16 @@ const styles = StyleSheet.create({
     fontWeight: '300',
   },
   reportCardDanger: {
-    backgroundColor: colors.dangerSurface,
+    backgroundColor: colors.danger,
     borderWidth: 2,
     borderColor: colors.danger,
   },
   reportNameDanger: {
-    color: colors.danger,
+    color: colors.onDanger,
     fontWeight: '700',
   },
   reportArrowDanger: {
-    color: colors.danger,
+    color: colors.onDanger,
   },
   sectionTitle: {
     fontSize: 22,
