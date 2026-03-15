@@ -16,8 +16,12 @@ export default function OperationalSettingsScreen({ onClose }: Props) {
   const [cutoffHour, setCutoffHour] = useState('06');
 
   useEffect(() => {
+    if (!user?.companyId) {
+      setLoading(false);
+      return;
+    }
     loadSettings();
-  }, []);
+  }, [user?.companyId]);
 
   const loadSettings = async () => {
     if (!user?.companyId) return;
@@ -75,6 +79,8 @@ export default function OperationalSettingsScreen({ onClose }: Props) {
     <ScreenScaffold
       title="Configurações Operacionais"
       leftAction={{ label: 'Voltar', onPress: onClose }}
+      scroll
+      contentContainerStyle={{ paddingBottom: 100 }}
     >
       <View style={styles.content}>
         <View style={styles.card}>

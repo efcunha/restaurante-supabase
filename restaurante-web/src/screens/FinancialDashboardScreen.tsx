@@ -74,10 +74,13 @@ export default function FinancialDashboardScreen({ onClose }: FinancialDashboard
 
     useEffect(() => {
         carregarDados();
-    }, [periodo]);
+    }, [periodo, user?.companyId]);
 
     const carregarDados = async () => {
-        if (!user?.companyId) return;
+        if (!user?.companyId) {
+            setLoading(false);
+            return;
+        }
         setLoading(true);
 
         try {

@@ -3,8 +3,6 @@ import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Alert,
 import { useState, useEffect } from 'react';
 import { supabase } from '../config/SupabaseConfig';
 import { useAuth } from '../context/AuthContext';
-// @ts-ignore
-import BackgroundPattern from '../components/BackgroundPattern';
 import { Ionicons } from '@expo/vector-icons';
 
 // Novas telas e utilitários
@@ -19,6 +17,15 @@ import { colors } from '../theme/colors';
 interface Props {
   onClose?: () => void;
 }
+
+const normalizeEstoqueItem = (item: any) => ({
+  id: item.id,
+  ...item,
+  precoCusto: item.preco_custo ?? item.precoCusto ?? 0,
+  quantidadeMinima: item.quantidade_minima ?? item.quantidadeMinima ?? 0,
+  fornecedorId: item.fornecedor_id ?? item.fornecedorId ?? '',
+  fornecedorNome: item.fornecedor_nome ?? item.fornecedorNome ?? '',
+});
 
 export default function EstoqueScreen({ onClose }: Props) {
   const { user } = useAuth();
@@ -132,7 +139,7 @@ export default function EstoqueScreen({ onClose }: Props) {
 
       if (error) throw error;
 
-      const items = (data || []).map(item => ({ id: item.id, ...item }));
+      const items = (data || []).map(item => normalizeEstoqueItem(item));
       setItensEstoque(items);
     } catch (error) {
       console.error('Erro ao carregar estoque:', error);
@@ -283,7 +290,8 @@ export default function EstoqueScreen({ onClose }: Props) {
   };
 
   const isEstoqueBaixo = (item: any) => {
-    return item.quantidadeMinima > 0 && item.quantidade <= item.quantidadeMinima;
+    const minimo = Number(item.quantidadeMinima || 0);
+    return minimo > 0 && Number(item.quantidade) <= minimo;
   };
 
   if (showFornecedores) {
@@ -309,8 +317,6 @@ export default function EstoqueScreen({ onClose }: Props) {
         </View>
       )}
     >
-      <BackgroundPattern />
-
       <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Categorias */}
         {categorias.length === 0 ? (
