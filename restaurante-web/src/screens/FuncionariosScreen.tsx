@@ -774,7 +774,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   desativarText: {
-    color: colors.white,
+    color: colors.onDanger,
     fontSize: 13,
     fontWeight: '700',
   },

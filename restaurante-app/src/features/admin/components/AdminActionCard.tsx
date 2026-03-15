@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   reportCardDanger: {
-    backgroundColor: colors.dangerLight,
+    backgroundColor: colors.danger,
     borderColor: colors.danger,
   },
   reportLeft: {
@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   reportNameDanger: {
-    color: colors.danger,
+    color: colors.onDanger,
   },
   subtitle: {
     fontSize: 12,
@@ -129,6 +129,6 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   reportArrowDanger: {
-    color: colors.danger,
+    color: colors.onDanger,
   },
 });

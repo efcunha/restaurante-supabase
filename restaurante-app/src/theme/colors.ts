@@ -14,6 +14,7 @@ export const colors = {
     success: colorSystem.success,
     warning: colorSystem.warningText,
     danger: colorSystem.error, // Also used for remove buttons
+    onDanger: '#FFFFFF',
     warningSurface: '#FFF7ED',
     dangerSurface: '#FEE2E2',
     primaryDivider: '#7A2828',

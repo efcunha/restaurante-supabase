@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
     filterBtn: { backgroundColor: colors.white, paddingVertical: 8, paddingHorizontal: 15, borderRadius: 20, marginRight: 10, borderWidth: 2, borderColor: colors.secondary },
     filterBtnActive: { backgroundColor: colors.secondary, borderColor: colors.primary },
     filterBtnText: { color: colors.textSecondary, fontWeight: '600', fontSize: 14 },
-    filterBtnTextActive: { color: colors.text },
+    filterBtnTextActive: { color: colors.white },
     
     loadingContainer: { padding: 40, alignItems: 'center', backgroundColor: colors.white, borderRadius: 15 },
     loadingText: { color: colors.textSecondary, marginTop: 15, fontSize: 14 },
