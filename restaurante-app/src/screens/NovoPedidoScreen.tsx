@@ -423,6 +423,8 @@ export default function NovoPedidoScreen({ route }: any) {
   // Guarda a seção alvo para retry quando o SectionList ainda não mediu o índice
   const pendingScrollSectionTitleRef = useRef<string | null>(null);
   const scrollRetryCountRef = useRef(0);
+  // Mapa de Y offsets reais de cada cabeçalho de seção (preenchido via onLayout)
+  const sectionOffsets = useRef<Record<string, number>>({});
   // Índice do chip de categoria atualmente visível
   const [activeChipIndex, setActiveChipIndex] = useState(0);
   // Carrinho expandido/colapsado no footer fixo
@@ -615,23 +617,28 @@ export default function NovoPedidoScreen({ route }: any) {
     return sectionsData;
   }, [cardapio, variacoesEspetinho]);
 
+  // Normaliza string: minúsculas + remove acentos/diacríticos (ex: "Porções" → "porcoes")
+  const normalizeStr = useCallback((str: string) =>
+    str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''),
+  []);
+
   // Filter sections based on search query
   const filteredSections = React.useMemo(() => {
     if (!searchQuery.trim()) return sections;
 
-    const query = searchQuery.toLowerCase().trim();
+    const query = normalizeStr(searchQuery.trim());
     return sections.map(section => {
       const filteredData = section.data.filter(item => {
         if (typeof item === 'string') {
           // Allow string items (Caldos, Espetinhos base names) to be searched
-          return item.toLowerCase().includes(query);
+          return normalizeStr(item).includes(query);
         }
         // Product items
-        return item.name?.toLowerCase().includes(query);
+        return normalizeStr(item.name ?? '').includes(query);
       });
       return { ...section, data: filteredData };
     }).filter(section => section.data.length > 0); // Remove empty sections
-  }, [sections, searchQuery]);
+  }, [sections, searchQuery, normalizeStr]);
 
   // Ref estável com o valor atualizado de filteredSections para uso no handler de viewability
   const filteredSectionsRef = useRef(filteredSections);
@@ -701,9 +708,15 @@ export default function NovoPedidoScreen({ route }: any) {
   const MAX_SCROLL_RETRIES = 8;
 
   const scrollToSectionTitle = useCallback((title: string, animated = true) => {
+    // Preferir offset medido via onLayout — evita dependência de medição interna do VirtualizedList
+    const measuredOffset = sectionOffsets.current[title];
+    if (measuredOffset !== undefined && measuredOffset >= 0) {
+      sectionListRef.current?.scrollToOffset({ offset: measuredOffset, animated });
+      return;
+    }
+    // Fallback: scrollToLocation (pode falhar em seções ainda não renderizadas)
     const sectionIndex = filteredSectionsRef.current.findIndex((section) => section.title === title);
     if (sectionIndex < 0) return;
-
     sectionListRef.current?.scrollToLocation({
       sectionIndex,
       itemIndex: 0,
@@ -759,10 +772,11 @@ export default function NovoPedidoScreen({ route }: any) {
       return;
     }
 
-    // Primeiro aproxima por offset para forçar medição de mais células, depois tenta novamente por título.
+    // Rola sem animação para forçar medição imediata das células próximas ao alvo;
+    // usar animated:true aqui faz o retry disparar antes da animação terminar.
     const measuredIndex = Math.max(info.index, info.highestMeasuredFrameIndex || 0);
     const fallbackOffset = Math.max(0, info.averageItemLength * measuredIndex);
-    sectionListRef.current?.scrollToOffset({ offset: fallbackOffset, animated: true });
+    sectionListRef.current?.scrollToOffset({ offset: fallbackOffset, animated: false });
 
     scrollRetryCountRef.current += 1;
     const retryDelayMs = 120 + scrollRetryCountRef.current * 80;
@@ -840,7 +854,14 @@ export default function NovoPedidoScreen({ route }: any) {
   }
 
   const renderSectionHeader = ({ section: { title } }: { section: Section }) => (
-    <Text style={styles.sectionTitle}>{title}</Text>
+    <View
+      onLayout={(e) => {
+        // Captura o Y real do cabeçalho para scroll preciso via scrollToOffset
+        sectionOffsets.current[title] = e.nativeEvent.layout.y;
+      }}
+    >
+      <Text style={styles.sectionTitle}>{title}</Text>
+    </View>
   );
 
 
