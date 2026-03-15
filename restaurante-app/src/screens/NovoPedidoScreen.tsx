@@ -423,8 +423,6 @@ export default function NovoPedidoScreen({ route }: any) {
   // Guarda a seção alvo para retry quando o SectionList ainda não mediu o índice
   const pendingScrollSectionTitleRef = useRef<string | null>(null);
   const scrollRetryCountRef = useRef(0);
-  // Mapa de Y offsets reais de cada cabeçalho de seção (preenchido via onLayout)
-  const sectionOffsets = useRef<Record<string, number>>({});
   // Índice do chip de categoria atualmente visível
   const [activeChipIndex, setActiveChipIndex] = useState(0);
   // Carrinho expandido/colapsado no footer fixo
@@ -617,9 +615,19 @@ export default function NovoPedidoScreen({ route }: any) {
     return sectionsData;
   }, [cardapio, variacoesEspetinho]);
 
-  // Normaliza string: minúsculas + remove acentos/diacríticos (ex: "Porções" → "porcoes")
+  // Normaliza string: minúsculas + substitui acentos/diacríticos do português
+  // Usa mapeamento explícito em vez de String.normalize('NFD') pois o Hermes
+  // (engine padrão do React Native no Android) pode não suportar NFD corretamente.
   const normalizeStr = useCallback((str: string) =>
-    str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''),
+    str
+      .toLowerCase()
+      .replace(/[àáâãäå]/g, 'a')
+      .replace(/[èéêë]/g, 'e')
+      .replace(/[ìíîï]/g, 'i')
+      .replace(/[òóôõö]/g, 'o')
+      .replace(/[ùúûü]/g, 'u')
+      .replace(/ç/g, 'c')
+      .replace(/ñ/g, 'n'),
   []);
 
   // Filter sections based on search query
@@ -708,15 +716,11 @@ export default function NovoPedidoScreen({ route }: any) {
   const MAX_SCROLL_RETRIES = 8;
 
   const scrollToSectionTitle = useCallback((title: string, animated = true) => {
-    // Preferir offset medido via onLayout — evita dependência de medição interna do VirtualizedList
-    const measuredOffset = sectionOffsets.current[title];
-    if (measuredOffset !== undefined && measuredOffset >= 0) {
-      sectionListRef.current?.scrollToOffset({ offset: measuredOffset, animated });
-      return;
-    }
-    // Fallback: scrollToLocation (pode falhar em seções ainda não renderizadas)
-    const sectionIndex = filteredSectionsRef.current.findIndex((section) => section.title === title);
+    const sectionIndex = filteredSectionsRef.current.findIndex((s) => s.title === title);
     if (sectionIndex < 0) return;
+    // scrollToLocation é a API correta para SectionList.
+    // Para seções ainda não renderizadas pelo VirtualizedList, onScrollToIndexFailed
+    // faz o scroll aproximado e tenta novamente até MAX_SCROLL_RETRIES vezes.
     sectionListRef.current?.scrollToLocation({
       sectionIndex,
       itemIndex: 0,
@@ -724,7 +728,8 @@ export default function NovoPedidoScreen({ route }: any) {
       viewPosition: 0,
       viewOffset: 0,
     });
-  }, []);
+  }, []);  // NÃO usar onLayout.y — retorna posição dentro do container da célula (sempre ~0),
+            // não o offset cumulativo no scroll view. Usar apenas scrollToLocation + retry.
 
   // Chip de categoria: ao pressionar, rola a lista para a seção correspondente
   const handleChipPress = useCallback((sectionIndex: number) => {
@@ -854,14 +859,7 @@ export default function NovoPedidoScreen({ route }: any) {
   }
 
   const renderSectionHeader = ({ section: { title } }: { section: Section }) => (
-    <View
-      onLayout={(e) => {
-        // Captura o Y real do cabeçalho para scroll preciso via scrollToOffset
-        sectionOffsets.current[title] = e.nativeEvent.layout.y;
-      }}
-    >
-      <Text style={styles.sectionTitle}>{title}</Text>
-    </View>
+    <Text style={styles.sectionTitle}>{title}</Text>
   );
 
 
