@@ -4,11 +4,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 interface AdminHeaderProps {
   userName?: string;
-  onLogout: () => void;
+  onLogout?: () => void;
+  onBack?: () => void;
   paddingTop?: number;
 }
 
-export default function AdminHeader({ userName, onLogout, paddingTop = 50 }: AdminHeaderProps) {
+export default function AdminHeader({ userName, onLogout, onBack, paddingTop = 50 }: AdminHeaderProps) {
   return (
     <View style={[styles.header, { paddingTop }]}>
       <View style={styles.headerLeft}>
@@ -26,9 +27,15 @@ export default function AdminHeader({ userName, onLogout, paddingTop = 50 }: Adm
         </View>
       </View>
       <View style={styles.headerRight}>
-        <TouchableOpacity style={styles.logoutBtn} onPress={onLogout}>
-          <Ionicons name="log-out-outline" size={24} color={colors.white} />
-        </TouchableOpacity>
+        {onBack ? (
+          <TouchableOpacity style={styles.logoutBtn} onPress={onBack}>
+            <Ionicons name="arrow-back-outline" size={24} color={colors.white} />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity style={styles.logoutBtn} onPress={onLogout}>
+            <Ionicons name="log-out-outline" size={24} color={colors.white} />
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );

@@ -2,18 +2,19 @@ import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, TouchableOpacity, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 // @ts-ignore
 
 import PedidoDetalhesModal from './PedidoDetalhesModal';
 import { supabase } from '../config/SupabaseConfig';
 import { getLocalDateKey } from '../utils/dateUtils';
-import { exitApp } from '../utils/appUtils';
 import OptimizedFlatList from '../components/OptimizedFlatList';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 export default function PedidosProntosScreen() {
   const { user } = useAuth();
+  const navigation = useNavigation<any>();
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [processingItems, setProcessingItems] = useState(new Set()); // Loading state
@@ -297,8 +298,8 @@ export default function PedidosProntosScreen() {
             <Text style={styles.headerTitle}>Prontos para entrega</Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.logoutBtn} onPress={exitApp}>
-          <Ionicons name="log-out-outline" size={24} color={colors.white} />
+        <TouchableOpacity style={styles.logoutBtn} onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back-outline" size={24} color={colors.white} />
         </TouchableOpacity>
       </View>
 
