@@ -54,14 +54,14 @@ function KpiCard({ icon, iconColor, label, value, loading }: KpiCardProps) {
 const kpiStyles = StyleSheet.create({
   card: {
     flex: 1,
-    minWidth: 100,
+    minWidth: 180,
     backgroundColor: colorSystem.surface,
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: colorSystem.border,
     padding: spacing.s16,
     alignItems: 'center',
-    gap: spacing.s4,
+    gap: spacing.s8,
   },
   iconWrapper: {
     width: 40,
@@ -73,14 +73,17 @@ const kpiStyles = StyleSheet.create({
   },
   label: {
     ...typography.small,
-    color: colorSystem.textMuted,
+    color: colorSystem.secondary,
+    fontWeight: '600',
     textAlign: 'center',
   },
   value: {
     ...typography.headingM,
     color: colorSystem.text,
     textAlign: 'center',
-    fontSize: 20,
+    fontSize: 32,
+    lineHeight: 36,
+    letterSpacing: -0.5,
   },
 });
 
@@ -98,7 +101,7 @@ export default function AdminStatsCards({
   const PERIODS: { key: Period; label: string }[] = [
     { key: 'hoje', label: 'Hoje' },
     { key: 'semana', label: 'Semana' },
-    { key: 'mes', label: 'Mes' },
+    { key: 'mes', label: 'Mês' },
   ];
 
   const taxaCancelamento =
@@ -111,8 +114,8 @@ export default function AdminStatsCards({
       {/* Bloco: Estatisticas Operacionais */}
       <View style={styles.block}>
         <View style={styles.blockHeader}>
-          <Text style={styles.blockTitle}>Estatisticas Operacionais</Text>
-          <TouchableOpacity onPress={onRefreshStats} style={styles.refreshBtn} accessibilityLabel="Atualizar estatisticas">
+          <Text style={styles.blockTitle}>Estatísticas Operacionais</Text>
+          <TouchableOpacity onPress={onRefreshStats} style={styles.refreshBtn} accessibilityLabel="Atualizar estatísticas operacionais">
             <Ionicons name="refresh" size={16} color={colorSystem.primary} />
           </TouchableOpacity>
         </View>
@@ -134,17 +137,20 @@ export default function AdminStatsCards({
           <KpiCard
             icon="time"
             iconColor={colorSystem.secondary}
-            label="Tempo medio"
+            label="Tempo médio"
             value={`${stats.tempoMedio}m`}
             loading={loadingStats}
           />
         </View>
       </View>
 
-      {/* Bloco: Estatisticas de Venda */}
+      {/* Bloco: Estatísticas de Venda */}
       <View style={styles.block}>
         <View style={styles.blockHeader}>
-          <Text style={styles.blockTitle}>Vendas do Periodo</Text>
+          <Text style={styles.blockTitle}>Vendas do Período</Text>
+        </View>
+
+        <View style={styles.periodControls}>
           <View style={styles.periodChips}>
             {PERIODS.map(({ key, label }) => (
               <TouchableOpacity
@@ -158,8 +164,8 @@ export default function AdminStatsCards({
               </TouchableOpacity>
             ))}
           </View>
-          <TouchableOpacity onPress={onRefreshVendas} style={styles.refreshBtn} accessibilityLabel="Atualizar vendas">
-            <Ionicons name="refresh" size={16} color={colorSystem.primary} />
+          <TouchableOpacity onPress={onRefreshVendas} style={styles.refreshBtnPrimary} accessibilityLabel="Atualizar vendas">
+            <Ionicons name="refresh" size={16} color={colorSystem.onPrimary} />
           </TouchableOpacity>
         </View>
 
@@ -181,7 +187,7 @@ export default function AdminStatsCards({
           <KpiCard
             icon="trending-up"
             iconColor={colorSystem.accent}
-            label="Ticket Medio"
+            label="Ticket médio"
             value={formatarMoeda(vendasStats.ticketMedio)}
             loading={loadingVendas}
           />
@@ -229,22 +235,23 @@ const styles = StyleSheet.create({
   },
   block: {
     backgroundColor: colorSystem.surface,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: colorSystem.border,
+    borderColor: '#C7D3E6',
     padding: spacing.s16,
     gap: spacing.s12,
   },
   blockHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     gap: spacing.s8,
   },
   blockTitle: {
-    ...typography.body,
+    ...typography.headingM,
     fontWeight: '700',
     color: colorSystem.text,
-    flex: 1,
+    letterSpacing: -0.2,
   },
   refreshBtn: {
     width: 32,
@@ -255,33 +262,57 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  refreshBtnPrimary: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: colorSystem.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colorSystem.primary,
+  },
+  periodControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.s8,
+  },
   periodChips: {
     flexDirection: 'row',
+    flex: 1,
+    backgroundColor: colorSystem.background,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colorSystem.border,
+    padding: spacing.s4,
     gap: spacing.s4,
   },
   periodChip: {
+    flex: 1,
+    minHeight: 40,
     paddingHorizontal: spacing.s12,
-    paddingVertical: spacing.s4,
+    paddingVertical: spacing.s8,
     borderRadius: 20,
-    backgroundColor: colorSystem.background,
-    borderWidth: 1,
-    borderColor: colorSystem.border,
+    backgroundColor: 'transparent',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   periodChipActive: {
     backgroundColor: colorSystem.primary,
-    borderColor: colorSystem.primary,
   },
   periodChipText: {
-    ...typography.small,
-    color: colorSystem.textMuted,
+    ...typography.body,
+    color: colorSystem.secondary,
     fontWeight: '600',
   },
   periodChipTextActive: {
     color: colorSystem.onPrimary,
+    fontWeight: '700',
   },
   kpiRow: {
     flexDirection: 'row',
     gap: spacing.s12,
+    flexWrap: 'wrap',
   },
   cancelRow: {
     borderTopWidth: 1,
