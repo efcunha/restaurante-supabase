@@ -16,6 +16,7 @@ import { supabase } from '../config/SupabaseConfig';
 import { ScreenScaffold } from '../layouts/ScreenScaffold';
 import { NewOrderListFooter, PizzaProductCard } from '../features/new-order';
 import { DeliveryOrderForm, DeliverySubmitFooter } from '../features/delivery';
+import { isFeatureEnabled } from '../config/featureFlags';
 import { colors } from '../theme/colors';
 if (Platform.OS === 'android') {
   if (UIManager.setLayoutAnimationEnabledExperimental) {
@@ -229,6 +230,7 @@ VariationRow.displayName = 'VariationRow';
 
 
 export default function DeliveryScreen() {
+  const useUiNextDelivery = isFeatureEnabled('delivery_uiNext');
   const [showPizzaModal, setShowPizzaModal] = useState(false);
   const [selectedPizza, setSelectedPizza] = useState<Product | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -523,7 +525,13 @@ export default function DeliveryScreen() {
       <ScreenScaffold
         title="Delivery Express"
         subtitle={user ? `Operador: ${user.nome || user.email}` : 'Entregas'}
-        rightSlot={<Button label="Sair" onPress={handleLogout} variant="ghost" size="sm" />}
+        rightSlot={useUiNextDelivery ? (
+          <Button label="Sair" onPress={handleLogout} variant="ghost" size="sm" />
+        ) : (
+          <TouchableOpacity style={styles.legacyHeaderAction} onPress={handleLogout}>
+            <Text style={styles.legacyHeaderActionText}>Sair</Text>
+          </TouchableOpacity>
+        )}
         bodyStyle={styles.scaffoldBody}
         footer={
           <DeliverySubmitFooter
@@ -605,6 +613,8 @@ export default function DeliveryScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   scaffoldBody: { flex: 1 },
+  legacyHeaderAction: { paddingHorizontal: 10, paddingVertical: 6 },
+  legacyHeaderActionText: { color: colors.primary, fontSize: 14, fontWeight: '700' },
   twoColLayout: { flex: 1, flexDirection: 'row' as const },
   leftPanel: { width: 380, borderRightWidth: 1, borderRightColor: colors.border, backgroundColor: colors.white },
   leftPanelContent: { padding: 16, gap: 0 },

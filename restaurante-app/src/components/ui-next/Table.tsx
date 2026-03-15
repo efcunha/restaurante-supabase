@@ -1,6 +1,7 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colorSystem, radius, spacing, typography } from '../../design-system';
+import { colors } from '../../theme/colors';
 type TableColumn<T> = {
   key: keyof T;
   title: string;

@@ -3,11 +3,13 @@ import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, Platform, I
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { Button, FormInput } from '../components/ui-next';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../config/SupabaseConfig'; // Replaced firebase config
 import { getUserFriendlyMessage } from '../utils/errors';
 import { validateEmail } from '../utils/validation';
 import MFAVerificationModal from '../components/MFAVerificationModal';
+import { isFeatureEnabled } from '../config/featureFlags';
 // @ts-ignore
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
@@ -18,6 +20,7 @@ interface Props {
 export default function LoginScreen({ navigation }: Props) {
   const { login, loginWithBiometric, biometricAvailable, biometricType, mfaResolver, setMfaResolver } = useAuth();
   const { showToast } = useToast();
+  const useUiNextLogin = isFeatureEnabled('login_uiNext');
   const windowWidth = Dimensions.get('window').width;
   const WIDE_BREAKPOINT = 720;
   const isWideLayout = windowWidth >= WIDE_BREAKPOINT;
@@ -101,17 +104,28 @@ export default function LoginScreen({ navigation }: Props) {
 
             {/* Formulário */}
             <View style={[styles.form, isWideLayout && styles.formWide]}>
-              <Text style={styles.label}>Email</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="seu@email.com"
-                placeholderTextColor={colors.textSecondary}
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
+              {useUiNextLogin ? (
+                <FormInput
+                  label="Email"
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="seu@email.com"
+                  style={styles.formInputSpacing}
+                />
+              ) : (
+                <>
+                  <Text style={styles.label}>Email</Text>
+                  <TextInput
+                    style={[styles.input, styles.formInputSpacing]}
+                    placeholder="seu@email.com"
+                    placeholderTextColor={colors.textSecondary}
+                    value={email}
+                    onChangeText={setEmail}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                  />
+                </>
+              )}
 
               <Text style={styles.label}>Senha</Text>
               <View style={styles.passwordContainer}>
@@ -136,15 +150,24 @@ export default function LoginScreen({ navigation }: Props) {
                 </TouchableOpacity>
               </View>
 
-              <TouchableOpacity
-                style={[styles.loginBtn, loading && styles.loginBtnDisabled]}
-                onPress={handleLogin}
-                disabled={loading}
-              >
-                <Text style={styles.loginBtnText}>
-                  {loading ? 'ENTRANDO...' : 'ENTRAR'}
-                </Text>
-              </TouchableOpacity>
+              {useUiNextLogin ? (
+                <Button
+                  label="ENTRAR"
+                  onPress={handleLogin}
+                  loading={loading}
+                  fullWidth
+                  size="lg"
+                  style={styles.loginBtnSpacing}
+                />
+              ) : (
+                <TouchableOpacity
+                  style={[styles.loginBtn, styles.loginBtnSpacing, loading && styles.loginBtnDisabled]}
+                  onPress={handleLogin}
+                  disabled={loading}
+                >
+                  <Text style={styles.loginBtnText}>{loading ? 'ENTRANDO...' : 'ENTRAR'}</Text>
+                </TouchableOpacity>
+              )}
 
               {biometricAvailable && (
                 <TouchableOpacity
@@ -338,13 +361,11 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   loginBtn: {
-    backgroundColor: colors.primary, // Updated primary color
+    backgroundColor: colors.primary,
     padding: 12,
     borderRadius: 12,
     alignItems: 'center',
     marginTop: 12,
-    // @ts-ignore
-    boxShadow: '0px 5px 10px rgba(127, 40, 33, 0.3)',
     elevation: 5,
   },
   loginBtnDisabled: {
@@ -355,6 +376,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 1,
+  },
+  loginBtnSpacing: {
+    marginTop: 12,
+  },
+  formInputSpacing: {
+    marginBottom: 12,
   },
   footer: {
     textAlign: 'center',

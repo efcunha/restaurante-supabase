@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Card } from './Card';
 import { colorSystem, spacing, typography } from '../../design-system';
+import { colors } from '../../theme/colors';
 type ProductCardProps = {
   name: string;
   description?: string;
