@@ -7,8 +7,10 @@ export function AdminSection({ title, children, showDivider = true }: AdminSecti
   return (
     <>
       {showDivider && <View style={styles.divider} />}
-      <Text style={styles.sectionHeader}>{title}</Text>
-      {children}
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionHeader}>{title}</Text>
+        <View style={styles.actionsGrid}>{children}</View>
+      </View>
     </>
   );
 }
@@ -16,14 +18,28 @@ export function AdminSection({ title, children, showDivider = true }: AdminSecti
 const styles = StyleSheet.create({
   divider: {
     height: 1,
-    backgroundColor: colors.border,
-    marginVertical: 16,
+    backgroundColor: '#C7D3E6',
+    marginTop: 4,
+    marginBottom: 16,
+  },
+  sectionCard: {
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 16,
+    padding: 12,
   },
   sectionHeader: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '800',
-    color: colors.textSecondary,
-    letterSpacing: 0.6,
+    color: colors.text,
+    letterSpacing: 0.4,
     marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  actionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
   },
 });

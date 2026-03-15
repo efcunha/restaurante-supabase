@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, View, ScrollView, AppState } from 'react-native';
+import { StyleSheet, View, ScrollView, AppState, Platform } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { supabase } from '../config/SupabaseConfig';
@@ -48,6 +48,7 @@ import { AdminActionCard, AdminBareModal, AdminCaixaModal, AdminSection, AdminSl
 // WhatsApp Integração
 import ConfiguracoesWhatsApp from './ConfiguracoesWhatsApp';
 import { colors } from '../theme/colors';
+import { layout, spacing } from '../design-system';
 /**
  * AdminScreen - Main Administrative Dashboard
  * 
@@ -408,7 +409,7 @@ export default function AdminScreen() {
         onLogout={() => confirmLogout(logout)}
       />
 
-      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
         <AdminStatsCards
           loadingStats={loadingStats}
           stats={stats}
@@ -636,7 +637,15 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 20,
+  },
+  contentContainer: {
+    width: '100%',
+    maxWidth: layout.maxContentWidth,
+    alignSelf: 'center',
+    paddingHorizontal: spacing.s16,
+    paddingTop: spacing.s16,
+    paddingBottom: spacing.s64,
+    gap: spacing.s16,
   },
   statsCard: {
     backgroundColor: colors.white,
@@ -795,8 +804,9 @@ const styles = StyleSheet.create({
   },
   modalHeader: {
     backgroundColor: colors.primary,
-    paddingTop: 50,
-    paddingBottom: 15,
+    minHeight: 92,
+    paddingTop: Platform.OS === 'web' ? 16 : 50,
+    paddingBottom: 14,
     paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
@@ -815,12 +825,19 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     flex: 1,
     textAlign: 'center',
-    marginRight: 60, // Balance the back button width
+    marginRight: 88,
   },
   closeButton: {
     color: colors.white,
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
+    backgroundColor: colors.logoutBg,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+    borderRadius: 10,
+    overflow: 'hidden',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
   },
   // Estilos para o card de vendas
   vendasCard: {
