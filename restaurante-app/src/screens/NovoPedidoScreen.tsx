@@ -420,6 +420,8 @@ export default function NovoPedidoScreen({ route }: any) {
   const [searchQuery, setSearchQuery] = useState('');
   // Ref para scroll programático ao pressionar chips de categoria
   const sectionListRef = useRef<SectionList<SectionItem, Section>>(null);
+  // Guarda a seção alvo para retry quando o SectionList ainda não mediu o índice
+  const pendingScrollSectionIndexRef = useRef<number | null>(null);
   // Índice do chip de categoria atualmente visível
   const [activeChipIndex, setActiveChipIndex] = useState(0);
   // Carrinho expandido/colapsado no footer fixo
@@ -691,6 +693,7 @@ export default function NovoPedidoScreen({ route }: any) {
   // Chip de categoria: ao pressionar, rola a lista para a seção correspondente
   const handleChipPress = useCallback((sectionIndex: number) => {
     setActiveChipIndex(sectionIndex);
+    pendingScrollSectionIndexRef.current = sectionIndex;
     try {
       sectionListRef.current?.scrollToLocation({
         sectionIndex,
@@ -717,6 +720,24 @@ export default function NovoPedidoScreen({ route }: any) {
       }
     }
   ).current;
+
+  const handleScrollToIndexFailed = useCallback((info: { index: number; averageItemLength: number }) => {
+    // Fallback: aproxima por offset e tenta novamente a seção escolhida.
+    const fallbackOffset = Math.max(0, info.averageItemLength * info.index);
+    sectionListRef.current?.scrollToOffset({ offset: fallbackOffset, animated: true });
+
+    const targetSectionIndex = pendingScrollSectionIndexRef.current;
+    if (targetSectionIndex === null) return;
+
+    setTimeout(() => {
+      sectionListRef.current?.scrollToLocation({
+        sectionIndex: targetSectionIndex,
+        itemIndex: 0,
+        animated: true,
+        viewOffset: 0,
+      });
+    }, 120);
+  }, []);
   
   // Log baseline metrics on mount
   useEffect(() => {
@@ -896,7 +917,7 @@ export default function NovoPedidoScreen({ route }: any) {
         onScrollBeginDrag={handleScrollBeginDrag}
         onScrollEndDrag={handleScrollEndDrag}
         onMomentumScrollEnd={handleScrollEndDrag}
-        onScrollToIndexFailed={() => {}}
+        onScrollToIndexFailed={handleScrollToIndexFailed}
         legacyImplementation={false}
         scrollEventThrottle={16}
         disableScrollViewPanResponder={false}
