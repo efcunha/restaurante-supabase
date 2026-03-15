@@ -786,13 +786,13 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 8,
     alignItems: 'center',
-    backgroundColor: colors.dangerSurface,
+    backgroundColor: colors.danger,
     borderRadius: 8,
   },
   desativarText: {
-    color: colors.danger,
+    color: colors.onDanger,
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   modalOverlay: {
     flex: 1,

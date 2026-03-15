@@ -593,7 +593,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   addBtnText: {
-    color: colors.text,
+    color: colors.white,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -699,7 +699,7 @@ const styles = StyleSheet.create({
     borderColor: colors.secondary
   },
   chipText: { color: colors.textSecondary },
-  chipTextActive: { color: colors.text, fontWeight: 'bold' },
+  chipTextActive: { color: colors.white, fontWeight: 'bold' },
 
   textArea: {
     height: 80,
