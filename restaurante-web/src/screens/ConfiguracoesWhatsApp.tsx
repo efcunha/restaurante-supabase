@@ -45,9 +45,13 @@ export default function ConfiguracoesWhatsApp({ onClose }: { onClose?: () => voi
     };
 
     useEffect(() => {
+        if (!user?.companyId) {
+            setLoading(false);
+            return;
+        }
         checkConnectionStatus(true);
         return () => stopPolling();
-    }, []);
+    }, [user?.companyId]);
 
     const checkConnectionStatus = async (showMainLoader = false) => {
         if (!user?.companyId) return;

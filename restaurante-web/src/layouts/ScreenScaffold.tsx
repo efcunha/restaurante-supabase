@@ -49,7 +49,7 @@ export function ScreenScaffold({
           {children}
         </ScrollView>
       ) : (
-        <View style={bodyStyle}>{children}</View>
+        <View style={[styles.body, bodyStyle]}>{children}</View>
       )}
 
       {footer}
@@ -61,5 +61,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colorSystem.background,
+  },
+  body: {
+    flex: 1,
   },
 });

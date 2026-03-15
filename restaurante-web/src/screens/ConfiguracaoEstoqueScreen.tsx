@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-// @ts-ignore
-import BackgroundPattern from '../components/BackgroundPattern';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../config/SupabaseConfig';
 import { ScreenScaffold } from '../layouts/ScreenScaffold';
@@ -28,8 +26,9 @@ export default function ConfiguracaoEstoqueScreen({ onClose }: Props) {
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
     useEffect(() => {
+        if (!user?.companyId) return;
         carregarConfig();
-    }, []);
+    }, [user?.companyId]);
 
     const carregarConfig = async () => {
         if (!user?.companyId) return;
@@ -147,8 +146,6 @@ export default function ConfiguracaoEstoqueScreen({ onClose }: Props) {
             title="Categorias de Estoque"
             leftAction={{ label: 'Voltar', onPress: onClose }}
         >
-            <BackgroundPattern />
-
             <View style={styles.content}>
                 <View style={styles.addSection}>
                     <Text style={styles.label}>{editingIndex !== null ? 'Editar Categoria:' : 'Nova Categoria:'}</Text>
