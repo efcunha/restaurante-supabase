@@ -3,8 +3,6 @@ import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Alert,
 import { useState, useEffect } from 'react';
 import { supabase } from '../config/SupabaseConfig';
 import { useAuth } from '../context/AuthContext';
-// @ts-ignore
-import BackgroundPattern from '../components/BackgroundPattern';
 import { Ionicons } from '@expo/vector-icons';
 
 // Novas telas e utilitários
@@ -309,8 +307,6 @@ export default function EstoqueScreen({ onClose }: Props) {
         </View>
       )}
     >
-      <BackgroundPattern />
-
       <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Categorias */}
         {categorias.length === 0 ? (

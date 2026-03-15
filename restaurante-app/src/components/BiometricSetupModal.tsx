@@ -244,10 +244,11 @@ export default function BiometricSetupModal({ visible, onClose, onSuccess }: Pro
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Autenticação Biométrica</Text>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Ionicons name="close" size={28} color={colors.text} />
+          <TouchableOpacity onPress={onClose} style={styles.backButton}>
+            <Text style={styles.backButtonText}>Voltar</Text>
           </TouchableOpacity>
+          <Text style={styles.headerTitle}>Autenticação Biométrica</Text>
+          <View style={styles.headerRightSpacer} />
         </View>
 
         {isAvailable ? renderAvailable() : renderUnavailable()}
@@ -274,9 +275,20 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     color: colors.white,
+    textAlign: 'center',
+    flex: 1,
   },
-  closeButton: {
+  backButton: {
     padding: 5,
+    minWidth: 70,
+  },
+  backButtonText: {
+    color: colors.white,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  headerRightSpacer: {
+    minWidth: 70,
   },
   content: {
     flex: 1,
