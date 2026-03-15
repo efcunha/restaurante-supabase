@@ -378,7 +378,7 @@ export default function FuncionariosScreen({ onClose }: Props) {
         transparent={true}
         onRequestClose={() => setModalVisible(false)}
       >
-        <KeyboardWrapper style={styles.modalOverlay}>
+        <KeyboardWrapper style={[styles.modalOverlay, !isTablet && styles.modalOverlayMobile]}>
           <View style={[styles.modalContent, {
             width: modalWidth,
             maxWidth: modalMaxWidth,
@@ -399,7 +399,12 @@ export default function FuncionariosScreen({ onClose }: Props) {
               </TouchableOpacity>
             </View>
 
-            <ScrollView>
+            <ScrollView
+              style={styles.modalScroll}
+              contentContainerStyle={styles.modalScrollContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator
+            >
               <Text style={styles.label}>Nome Completo</Text>
               <TextInput
                 style={[styles.input, { maxWidth: inputMaxWidth }]}
@@ -765,25 +770,39 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 8,
     alignItems: 'center',
-    backgroundColor: colors.dangerSurface,
+    backgroundColor: colors.danger,
     borderRadius: 8,
   },
   desativarText: {
-    color: colors.danger,
+    color: colors.white,
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   modalOverlay: {
     flex: 1,
     backgroundColor: colors.overlay,
     justifyContent: 'center',
+    alignItems: 'center',
     padding: 20,
+  },
+  modalOverlayMobile: {
+    justifyContent: 'flex-start',
+    paddingTop: 12,
   },
   modalContent: {
     backgroundColor: colors.white,
     borderRadius: 20,
     padding: 25,
     maxHeight: '85%',
+    alignSelf: 'center',
+    overflow: 'hidden',
+  },
+  modalScroll: {
+    flex: 1,
+    minHeight: 0,
+  },
+  modalScrollContent: {
+    paddingBottom: 12,
   },
   modalHeader: {
     flexDirection: 'row',
