@@ -4,10 +4,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../config/SupabaseConfig';
 import { useAuth } from '../context/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { confirmLogout } from '../utils/appUtils';
+import { useNavigation } from '@react-navigation/native';
 import { colors } from '../theme/colors';
 export default function ReservasScreen() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
+  const navigation = useNavigation<any>();
   const [reservas, setReservas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const insets = useSafeAreaInsets();
@@ -184,8 +185,8 @@ export default function ReservasScreen() {
             <Text style={styles.headerTitle}>Reservas</Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.logoutBtn} onPress={() => confirmLogout(logout)}>
-          <Ionicons name="log-out-outline" size={24} color={colors.white} />
+        <TouchableOpacity style={styles.logoutBtn} onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back-outline" size={24} color={colors.white} />
         </TouchableOpacity>
       </View>
 

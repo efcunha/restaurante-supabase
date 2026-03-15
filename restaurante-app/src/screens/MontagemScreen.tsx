@@ -4,9 +4,9 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useState, useEffect, useCallback, memo, useRef } from 'react';
 import { useOrders } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
+import { useNavigation } from '@react-navigation/native';
 import PedidoDetalhesModal from './PedidoDetalhesModal';
 import { supabase } from '../config/SupabaseConfig';
-import { exitApp } from '../utils/appUtils';
 import { getLocalDateKey } from '../utils/dateUtils';
 import CaixaService from '../services/CaixaService';
 import { colors } from '../theme/colors';
@@ -164,6 +164,7 @@ OrderCard.displayName = 'OrderCard';
 export default function MontagemScreen() {
   useOrders(); // mantido para não quebrar contexto
   const { user, hasPermission, Permissions } = useAuth();
+  const navigation = useNavigation<any>();
   const [allOrders, setAllOrders] = useState<any[]>([]);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
@@ -559,8 +560,8 @@ export default function MontagemScreen() {
             <Text style={styles.headerTitle}>Montagem</Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.logoutBtn} onPress={exitApp}>
-          <Ionicons name="log-out-outline" size={24} color={colors.white} />
+        <TouchableOpacity style={styles.logoutBtn} onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back-outline" size={24} color={colors.white} />
         </TouchableOpacity>
       </View>
 

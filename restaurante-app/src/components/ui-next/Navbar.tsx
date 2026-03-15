@@ -1,5 +1,6 @@
 import React, { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colorSystem, shadows, spacing, typography } from '../../design-system';
 
 type NavbarAction = {
@@ -15,8 +16,9 @@ type NavbarProps = {
 };
 
 export function Navbar({ title, subtitle, leftAction, rightSlot }: NavbarProps) {
+  const insets = useSafeAreaInsets();
   return (
-    <View style={styles.wrapper}>
+    <View style={[styles.wrapper, { paddingTop: insets.top }]}>
       <View style={styles.content}>
         <View style={styles.leftBlock}>
           {!!leftAction && (
