@@ -5,6 +5,7 @@ import KeyboardWrapper from '../components/KeyboardWrapper';
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useResponsive } from '../hooks/useResponsive';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 // @ts-ignore
 import { criarFuncionario, listarFuncionarios, deletarFuncionario, atualizarFuncionario } from '../services/FuncionariosService';
 import { supabase } from '../config/SupabaseConfig';
@@ -16,7 +17,10 @@ interface Props {
 
 export default function FuncionariosScreen({ onClose }: Props) {
   const { user } = useAuth();
-  const { isTablet, horizontalPadding, modalWidth, modalMaxWidth, inputMaxWidth } = useResponsive();
+  const { isTablet, isSmallPhone, width, height, horizontalPadding, verticalPadding, modalWidth, modalMaxWidth, inputMaxWidth } = useResponsive();
+  const insets = useSafeAreaInsets();
+  const formModalHeight = isTablet ? undefined : Math.max(520, height - insets.top - insets.bottom - 16);
+  const formModalWidth = isTablet ? modalWidth : width - Math.max(16, horizontalPadding);
   const [funcionarios, setFuncionarios] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -380,11 +384,21 @@ export default function FuncionariosScreen({ onClose }: Props) {
         transparent={true}
         onRequestClose={() => setModalVisible(false)}
       >
-        <KeyboardWrapper style={styles.modalOverlay}>
+        <KeyboardWrapper style={[
+          styles.modalOverlayForm,
+          {
+            justifyContent: isTablet ? 'center' : 'flex-start',
+            paddingHorizontal: horizontalPadding,
+            paddingTop: isTablet ? 20 : Math.max(insets.top + 8, verticalPadding),
+            paddingBottom: isTablet ? 20 : Math.max(insets.bottom + 8, 12),
+          }
+        ]}>
           <View style={[styles.modalContent, {
-            width: modalWidth,
+            width: formModalWidth,
             maxWidth: modalMaxWidth,
-            padding: isTablet ? 30 : 25,
+            ...(isTablet ? { maxHeight: '85%' } : { height: formModalHeight }),
+            alignSelf: 'center',
+            padding: isTablet ? 30 : isSmallPhone ? 18 : 22,
           }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
@@ -401,7 +415,12 @@ export default function FuncionariosScreen({ onClose }: Props) {
               </TouchableOpacity>
             </View>
 
-            <ScrollView>
+            <ScrollView
+              style={styles.modalFormScroll}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={styles.modalScrollContent}
+              showsVerticalScrollIndicator
+            >
               <Text style={styles.label}>Nome Completo</Text>
               <TextInput
                 style={[styles.input, { maxWidth: inputMaxWidth }]}
@@ -781,17 +800,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 20,
   },
+  modalOverlayForm: {
+    flex: 1,
+    backgroundColor: colors.overlay,
+  },
   modalContent: {
     backgroundColor: colors.white,
     borderRadius: 20,
     padding: 25,
-    maxHeight: '85%',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
+  },
+  modalScrollContent: {
+    paddingBottom: 12,
+  },
+  modalFormScroll: {
+    flex: 1,
   },
   modalTitle: {
     fontSize: 22,
@@ -880,7 +908,10 @@ const styles = StyleSheet.create({
   modalButtons: {
     flexDirection: 'row',
     gap: 12,
-    marginTop: 20,
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
   modalBtn: {
     flex: 1,
