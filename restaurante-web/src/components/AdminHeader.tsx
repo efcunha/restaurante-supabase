@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 interface AdminHeaderProps {
@@ -8,14 +8,16 @@ interface AdminHeaderProps {
   paddingTop?: number;
 }
 
-export default function AdminHeader({ userName, onLogout, paddingTop = 50 }: AdminHeaderProps) {
+export default function AdminHeader({ userName, onLogout, paddingTop }: AdminHeaderProps) {
+  const resolvedPaddingTop = paddingTop ?? (Platform.OS === 'web' ? 16 : 50);
+
   return (
-    <View style={[styles.header, { paddingTop }]}>
+    <View style={[styles.header, { paddingTop: resolvedPaddingTop }]}>
       <View style={styles.headerLeft}>
         {!!userName && (
           <View>
-            <Text style={styles.userInfoLabel}>Ola,</Text>
-            <Text style={styles.userInfo}>{userName}</Text>
+              <Text style={styles.userInfoLabel}>Olá,</Text>
+              <Text style={styles.userInfo} numberOfLines={1} ellipsizeMode="tail">{userName}</Text>
           </View>
         )}
       </View>
@@ -26,7 +28,12 @@ export default function AdminHeader({ userName, onLogout, paddingTop = 50 }: Adm
         </View>
       </View>
       <View style={styles.headerRight}>
-        <TouchableOpacity style={styles.logoutBtn} onPress={onLogout}>
+        <TouchableOpacity
+          style={styles.logoutBtn}
+          onPress={onLogout}
+          accessibilityRole="button"
+          accessibilityLabel="Sair da conta"
+        >
           <Ionicons name="log-out-outline" size={24} color={colors.white} />
         </TouchableOpacity>
       </View>
@@ -37,7 +44,8 @@ export default function AdminHeader({ userName, onLogout, paddingTop = 50 }: Adm
 const styles = StyleSheet.create({
   header: {
     backgroundColor: colors.primary,
-    paddingBottom: 15,
+    minHeight: 92,
+    paddingBottom: Platform.OS === 'web' ? 12 : 15,
     paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
@@ -81,14 +89,23 @@ const styles = StyleSheet.create({
   },
   userInfoLabel: {
     color: colors.primaryContrastMuted,
-    fontSize: 10,
-  },
-  userInfo: {
-    color: colors.secondary,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
   },
+  userInfo: {
+    color: colors.userInfo,
+    fontSize: 14,
+    fontWeight: '700',
+    maxWidth: 260,
+  },
   logoutBtn: {
-    padding: 5,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.logoutBg,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
   },
 });
