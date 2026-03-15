@@ -26,9 +26,10 @@ export default function CaixaFechamentoScreen() {
   const [totalCancelado, setTotalCancelado] = useState<number>(0); // ✅ Novo estado para exibir na tela
 
   useEffect(() => {
+    if (!user?.companyId) return;
     loadCaixas();
     loadConfig();
-  }, []);
+  }, [user?.companyId]);
 
   const loadConfig = async () => {
     if (!user?.companyId) return;

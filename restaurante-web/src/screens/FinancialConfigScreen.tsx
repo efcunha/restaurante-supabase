@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Switch, TouchableOpacity, ActivityIndicator, Alert, ScrollView } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-// @ts-ignore
-import BackgroundPattern from '../components/BackgroundPattern';
 import { supabase } from '../config/SupabaseConfig';
 import { ScreenScaffold } from '../layouts/ScreenScaffold';
 import { colors } from '../theme/colors';
@@ -19,8 +17,12 @@ export default function FinancialConfigScreen({ onClose }: Props) {
     const [blindClosing, setBlindClosing] = useState(false);
 
     useEffect(() => {
+        if (!user?.companyId) {
+            setLoading(false);
+            return;
+        }
         loadConfig();
-    }, []);
+    }, [user?.companyId]);
 
     const loadConfig = async () => {
         // @ts-ignore
@@ -84,8 +86,6 @@ export default function FinancialConfigScreen({ onClose }: Props) {
             title="⚙️ Configurações Financeiras"
             leftAction={{ label: 'Voltar', onPress: onClose ?? (() => {}) }}
         >
-            <BackgroundPattern />
-
             {loading ? (
                 <View style={styles.center}>
                     <ActivityIndicator size="large" color={colors.primary} />

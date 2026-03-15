@@ -44,8 +44,12 @@ export default function ExtrasConfigScreen({ onClose }: ExtrasConfigScreenProps)
   const [formPrice, setFormPrice] = useState('');
 
   useEffect(() => {
+    if (!user?.companyId) {
+      setLoading(false);
+      return;
+    }
     loadExtras();
-  }, []);
+  }, [user?.companyId]);
 
   const loadExtras = async () => {
     if (!user?.companyId) return;

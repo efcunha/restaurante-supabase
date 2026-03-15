@@ -94,8 +94,9 @@ export default function GerenciarFornecedoresScreen({ onClose }: Props) {
     const [email, setEmail] = useState('');
 
     useEffect(() => {
+        if (!user?.companyId) return;
         carregarFornecedores();
-    }, []);
+    }, [user?.companyId]);
 
     const carregarFornecedores = async () => {
         // @ts-ignore

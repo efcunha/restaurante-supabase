@@ -26,7 +26,7 @@ export function AdminSlideModal({
 export function AdminBareModal({ visible, onClose, children }: BaseAdminModalProps) {
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      {children}
+      <View style={styles.modalRoot}>{children}</View>
     </Modal>
   );
 }
