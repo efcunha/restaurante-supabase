@@ -418,13 +418,6 @@ export default function NovoPedidoScreen({ route }: any) {
   const [showPizzaModal, setShowPizzaModal] = useState(false);
   const [selectedPizza, setSelectedPizza] = useState<Product | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  // Ref para scroll programático ao pressionar chips de categoria
-  const sectionListRef = useRef<SectionList<SectionItem, Section>>(null);
-  // Guarda a seção alvo para retry quando o SectionList ainda não mediu o índice
-  const pendingScrollSectionTitleRef = useRef<string | null>(null);
-  const scrollRetryCountRef = useRef(0);
-  // Índice do chip de categoria atualmente visível
-  const [activeChipIndex, setActiveChipIndex] = useState(0);
   // Carrinho expandido/colapsado no footer fixo
   const [cartExpanded, setCartExpanded] = useState(false);
   
@@ -648,17 +641,6 @@ export default function NovoPedidoScreen({ route }: any) {
     }).filter(section => section.data.length > 0); // Remove empty sections
   }, [sections, searchQuery, normalizeStr]);
 
-  // Ref estável com o valor atualizado de filteredSections para uso no handler de viewability
-  const filteredSectionsRef = useRef(filteredSections);
-  useEffect(() => { filteredSectionsRef.current = filteredSections; }, [filteredSections]);
-
-  // Se a busca/reload reduzir o número de seções, evita chip ativo fora do intervalo
-  useEffect(() => {
-    if (activeChipIndex >= filteredSections.length) {
-      setActiveChipIndex(0);
-    }
-  }, [activeChipIndex, filteredSections.length]);
-
   // Wrappers for animation
   const updateProdutoAnimated = useCallback((itemName: string, delta: number) => {
     // Removed LayoutAnimation - it was causing lag on item selection
@@ -713,87 +695,6 @@ export default function NovoPedidoScreen({ route }: any) {
       }
   }, [isMonitoring, stopMonitoring, logMetrics]);
 
-  const MAX_SCROLL_RETRIES = 8;
-
-  const scrollToSectionTitle = useCallback((title: string, animated = true) => {
-    const sectionIndex = filteredSectionsRef.current.findIndex((s) => s.title === title);
-    if (sectionIndex < 0) return;
-    // scrollToLocation é a API correta para SectionList.
-    // Para seções ainda não renderizadas pelo VirtualizedList, onScrollToIndexFailed
-    // faz o scroll aproximado e tenta novamente até MAX_SCROLL_RETRIES vezes.
-    sectionListRef.current?.scrollToLocation({
-      sectionIndex,
-      itemIndex: 0,
-      animated,
-      viewPosition: 0,
-      viewOffset: 0,
-    });
-  }, []);  // NÃO usar onLayout.y — retorna posição dentro do container da célula (sempre ~0),
-            // não o offset cumulativo no scroll view. Usar apenas scrollToLocation + retry.
-
-  // Chip de categoria: ao pressionar, rola a lista para a seção correspondente
-  const handleChipPress = useCallback((sectionIndex: number) => {
-    const targetSection = filteredSections[sectionIndex];
-    if (!targetSection) return;
-
-    setActiveChipIndex(sectionIndex);
-    pendingScrollSectionTitleRef.current = targetSection.title;
-    scrollRetryCountRef.current = 0;
-
-    try {
-      scrollToSectionTitle(targetSection.title, true);
-    } catch {
-      // onScrollToIndexFailed fará a recuperação com retry
-    }
-  }, [filteredSections, scrollToSectionTitle]);
-
-  // Configuração de viewabilidade para detectar seção visível no topo
-  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 20 }).current;
-  const onViewableItemsChanged = useRef(
-    ({ viewableItems }: { viewableItems: any[] }) => {
-      if (viewableItems.length === 0) return;
-      const firstVisible = viewableItems[0];
-      if (firstVisible?.section) {
-        const visibleTitle = firstVisible.section.title;
-        const idx = filteredSectionsRef.current.findIndex((s) => s.title === visibleTitle);
-        if (idx >= 0) {
-          setActiveChipIndex(idx);
-        }
-
-        if (pendingScrollSectionTitleRef.current === visibleTitle) {
-          pendingScrollSectionTitleRef.current = null;
-          scrollRetryCountRef.current = 0;
-        }
-      }
-    }
-  ).current;
-
-  const handleScrollToIndexFailed = useCallback((info: { index: number; averageItemLength: number; highestMeasuredFrameIndex: number }) => {
-    const targetTitle = pendingScrollSectionTitleRef.current;
-    if (!targetTitle) return;
-
-    if (scrollRetryCountRef.current >= MAX_SCROLL_RETRIES) {
-      pendingScrollSectionTitleRef.current = null;
-      return;
-    }
-
-    // Rola sem animação para forçar medição imediata das células próximas ao alvo;
-    // usar animated:true aqui faz o retry disparar antes da animação terminar.
-    const measuredIndex = Math.max(info.index, info.highestMeasuredFrameIndex || 0);
-    const fallbackOffset = Math.max(0, info.averageItemLength * measuredIndex);
-    sectionListRef.current?.scrollToOffset({ offset: fallbackOffset, animated: false });
-
-    scrollRetryCountRef.current += 1;
-    const retryDelayMs = 120 + scrollRetryCountRef.current * 80;
-    setTimeout(() => {
-      try {
-        scrollToSectionTitle(targetTitle, true);
-      } catch {
-        // nova falha voltará para este handler, até MAX_SCROLL_RETRIES
-      }
-    }, retryDelayMs);
-  }, [scrollToSectionTitle]);
-  
   // Log baseline metrics on mount
   useEffect(() => {
     console.log('📊 [Performance] Baseline measurement ready');
@@ -913,47 +814,11 @@ export default function NovoPedidoScreen({ route }: any) {
         )}
       </View>
 
-      {/* Barra de chips de categoria — scroll horizontal para navegação rápida */}
-      {filteredSections.length > 0 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.chipsBar}
-          contentContainerStyle={styles.chipsBarContent}
-          keyboardShouldPersistTaps="handled"
-        >
-          {filteredSections.map((section, index) => (
-            <TouchableOpacity
-              key={section.title}
-              style={[
-                styles.chip,
-                activeChipIndex === index && styles.chipActive,
-              ]}
-              onPress={() => handleChipPress(index)}
-              activeOpacity={0.7}
-            >
-              <Text
-                style={[
-                  styles.chipText,
-                  activeChipIndex === index && styles.chipTextActive,
-                ]}
-                numberOfLines={1}
-              >
-                {section.title}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      )}
-
       <SectionList
-        ref={sectionListRef}
         style={styles.sectionList}
         sections={filteredSections}
         renderItem={renderItem}
         renderSectionHeader={renderSectionHeader}
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={viewabilityConfig}
         keyExtractor={keyExtractor}
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={<NewOrderHeaderForm
@@ -966,13 +831,12 @@ export default function NovoPedidoScreen({ route }: any) {
         stickySectionHeadersEnabled={false}
         initialNumToRender={10}
         maxToRenderPerBatch={10}
-        windowSize={11}
+        windowSize={21}
         updateCellsBatchingPeriod={50}
         removeClippedSubviews={Platform.OS === 'android'} // Only true on Android if issues persist, but false is safer for glitches
         onScrollBeginDrag={handleScrollBeginDrag}
         onScrollEndDrag={handleScrollEndDrag}
         onMomentumScrollEnd={handleScrollEndDrag}
-        onScrollToIndexFailed={handleScrollToIndexFailed}
         legacyImplementation={false}
         scrollEventThrottle={16}
         disableScrollViewPanResponder={false}
@@ -1318,40 +1182,4 @@ const styles = StyleSheet.create({
     padding: 4,
   },
 
-  // Barra de chips de categoria
-  chipsBar: {
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    maxHeight: 48,
-  },
-  chipsBarContent: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    gap: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: colors.surfaceMuted,
-    borderWidth: 1,
-    borderColor: colors.border,
-    minHeight: 32,
-    justifyContent: 'center',
-  },
-  chipActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  chipText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  chipTextActive: {
-    color: colors.white,
-  },
 });
