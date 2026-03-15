@@ -421,7 +421,8 @@ export default function NovoPedidoScreen({ route }: any) {
   // Ref para scroll programático ao pressionar chips de categoria
   const sectionListRef = useRef<SectionList<SectionItem, Section>>(null);
   // Guarda a seção alvo para retry quando o SectionList ainda não mediu o índice
-  const pendingScrollSectionIndexRef = useRef<number | null>(null);
+  const pendingScrollSectionTitleRef = useRef<string | null>(null);
+  const scrollRetryCountRef = useRef(0);
   // Índice do chip de categoria atualmente visível
   const [activeChipIndex, setActiveChipIndex] = useState(0);
   // Carrinho expandido/colapsado no footer fixo
@@ -636,6 +637,13 @@ export default function NovoPedidoScreen({ route }: any) {
   const filteredSectionsRef = useRef(filteredSections);
   useEffect(() => { filteredSectionsRef.current = filteredSections; }, [filteredSections]);
 
+  // Se a busca/reload reduzir o número de seções, evita chip ativo fora do intervalo
+  useEffect(() => {
+    if (activeChipIndex >= filteredSections.length) {
+      setActiveChipIndex(0);
+    }
+  }, [activeChipIndex, filteredSections.length]);
+
   // Wrappers for animation
   const updateProdutoAnimated = useCallback((itemName: string, delta: number) => {
     // Removed LayoutAnimation - it was causing lag on item selection
@@ -690,21 +698,36 @@ export default function NovoPedidoScreen({ route }: any) {
       }
   }, [isMonitoring, stopMonitoring, logMetrics]);
 
+  const MAX_SCROLL_RETRIES = 8;
+
+  const scrollToSectionTitle = useCallback((title: string, animated = true) => {
+    const sectionIndex = filteredSectionsRef.current.findIndex((section) => section.title === title);
+    if (sectionIndex < 0) return;
+
+    sectionListRef.current?.scrollToLocation({
+      sectionIndex,
+      itemIndex: 0,
+      animated,
+      viewPosition: 0,
+      viewOffset: 0,
+    });
+  }, []);
+
   // Chip de categoria: ao pressionar, rola a lista para a seção correspondente
   const handleChipPress = useCallback((sectionIndex: number) => {
+    const targetSection = filteredSections[sectionIndex];
+    if (!targetSection) return;
+
     setActiveChipIndex(sectionIndex);
-    pendingScrollSectionIndexRef.current = sectionIndex;
+    pendingScrollSectionTitleRef.current = targetSection.title;
+    scrollRetryCountRef.current = 0;
+
     try {
-      sectionListRef.current?.scrollToLocation({
-        sectionIndex,
-        itemIndex: 0,
-        animated: true,
-        viewOffset: 0,
-      });
+      scrollToSectionTitle(targetSection.title, true);
     } catch {
-      // ignora falha silenciosa de scroll
+      // onScrollToIndexFailed fará a recuperação com retry
     }
-  }, []);
+  }, [filteredSections, scrollToSectionTitle]);
 
   // Configuração de viewabilidade para detectar seção visível no topo
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 20 }).current;
@@ -713,31 +736,44 @@ export default function NovoPedidoScreen({ route }: any) {
       if (viewableItems.length === 0) return;
       const firstVisible = viewableItems[0];
       if (firstVisible?.section) {
-        const idx = filteredSectionsRef.current.findIndex(
-          (s) => s.title === firstVisible.section.title
-        );
-        if (idx >= 0) setActiveChipIndex(idx);
+        const visibleTitle = firstVisible.section.title;
+        const idx = filteredSectionsRef.current.findIndex((s) => s.title === visibleTitle);
+        if (idx >= 0) {
+          setActiveChipIndex(idx);
+        }
+
+        if (pendingScrollSectionTitleRef.current === visibleTitle) {
+          pendingScrollSectionTitleRef.current = null;
+          scrollRetryCountRef.current = 0;
+        }
       }
     }
   ).current;
 
-  const handleScrollToIndexFailed = useCallback((info: { index: number; averageItemLength: number }) => {
-    // Fallback: aproxima por offset e tenta novamente a seção escolhida.
-    const fallbackOffset = Math.max(0, info.averageItemLength * info.index);
+  const handleScrollToIndexFailed = useCallback((info: { index: number; averageItemLength: number; highestMeasuredFrameIndex: number }) => {
+    const targetTitle = pendingScrollSectionTitleRef.current;
+    if (!targetTitle) return;
+
+    if (scrollRetryCountRef.current >= MAX_SCROLL_RETRIES) {
+      pendingScrollSectionTitleRef.current = null;
+      return;
+    }
+
+    // Primeiro aproxima por offset para forçar medição de mais células, depois tenta novamente por título.
+    const measuredIndex = Math.max(info.index, info.highestMeasuredFrameIndex || 0);
+    const fallbackOffset = Math.max(0, info.averageItemLength * measuredIndex);
     sectionListRef.current?.scrollToOffset({ offset: fallbackOffset, animated: true });
 
-    const targetSectionIndex = pendingScrollSectionIndexRef.current;
-    if (targetSectionIndex === null) return;
-
+    scrollRetryCountRef.current += 1;
+    const retryDelayMs = 120 + scrollRetryCountRef.current * 80;
     setTimeout(() => {
-      sectionListRef.current?.scrollToLocation({
-        sectionIndex: targetSectionIndex,
-        itemIndex: 0,
-        animated: true,
-        viewOffset: 0,
-      });
-    }, 120);
-  }, []);
+      try {
+        scrollToSectionTitle(targetTitle, true);
+      } catch {
+        // nova falha voltará para este handler, até MAX_SCROLL_RETRIES
+      }
+    }, retryDelayMs);
+  }, [scrollToSectionTitle]);
   
   // Log baseline metrics on mount
   useEffect(() => {
