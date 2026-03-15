@@ -29,12 +29,12 @@ const OVERFLOW_ITEMS: Record<
   RotasDelivery: {
     label: 'Rotas Delivery',
     icon: 'bicycle',
-    color: colors.secondary,
+    color: colorSystem.secondary,
   },
   Reservas: {
     label: 'Reservas',
     icon: 'calendar',
-    color: colors.secondary,
+    color: colorSystem.secondary,
   },
   Admin: {
     label: 'Administração',

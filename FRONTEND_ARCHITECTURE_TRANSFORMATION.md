@@ -344,6 +344,9 @@ Implemented files:
 
 ## Phase 12 - Safe Migration Plan
 
+Operational runbook:
+- PHASE_12_CANARY_RUNBOOK.md
+
 1. Baseline
 - Freeze a release branch and capture visual snapshots for key journeys.
 - Define KPI baseline: task completion time, error rate, abandonment points.
@@ -375,6 +378,32 @@ Implemented files:
 7. Rollback strategy
 - Keep old components side-by-side during migration window.
 - Screen-level switch flags for immediate fallback.
+
+### Phase 12 continuation update (2026-03-14)
+
+- Feature flag infrastructure completed in both app and web `src/config/featureFlags.ts` with environment overrides for all migration guards:
+  - `EXPO_PUBLIC_FEATURE_LOGIN_UI_NEXT`
+  - `EXPO_PUBLIC_FEATURE_REGISTER_COMPANY_UI_NEXT`
+  - `EXPO_PUBLIC_FEATURE_NOVO_PEDIDO_UI_NEXT`
+  - `EXPO_PUBLIC_FEATURE_DELIVERY_UI_NEXT`
+  - `EXPO_PUBLIC_FEATURE_PAGAMENTO_UI_NEXT`
+  - `EXPO_PUBLIC_FEATURE_COMANDA_GERENCIAMENTO_UI_NEXT`
+  - `EXPO_PUBLIC_FEATURE_ADMIN_UI_NEXT`
+- Auth canary guard wired: `LoginScreen` (app/web) now switches between ui-next controls and legacy controls via `login_uiNext`.
+- Register canary guard wired: `RegisterCompanyScreen` (app/web) now switches between ui-next controls and legacy controls via `registerCompany_uiNext`.
+- Web parity advanced: `restaurante-web/src/screens/RegisterCompanyScreen.tsx` now includes ui-next primitives under guard, matching app migration strategy.
+- Orders canary guard wired: `NovoPedidoScreen` (app/web) now switches header/right-action between ui-next (`Navbar` + `Button`) and a legacy header fallback via `novoPedido_uiNext`.
+- Delivery canary guard wired: `DeliveryScreen` (web) now switches header right-action between ui-next `Button` and legacy touchable action via `delivery_uiNext`.
+- Payment canary guard wired: `PagamentoScreen` (app/web) now propagates `pagamento_uiNext` to payment feature components, toggling CTA/search controls between ui-next primitives and legacy touchable fallbacks.
+- Comanda canary guard wired: `ComandaGerenciamentoScreen` (app/web) now switches the header logout action between ui-next `Button` and legacy icon action via `comandaGerenciamento_uiNext`.
+- Admin canary guard wired: `AdminActionCard` (app/web feature layer) now switches card container rendering between ui-next `Card` and legacy touchable-card rendering via `admin_uiNext`.
+- Environment rollout profiles prepared: Phase 12 flags were added to app/web env examples (`.env.example` and `.env.development.example`) with conservative defaults and canary-ready dev values.
+- Rollout automation added: `scripts/phase12-profile.js` in both app/web now applies wave profiles (`legacy-safe`, `canary-auth`, `canary-ordering`, `canary-settlement`, `full-phase12`) directly to target env files.
+- Staging/production templates prepared: Phase 12 flags were also added to `.env.staging.example` and `.env.production.example` for app/web, eliminating manual variable drift during promotions.
+- Canary auth validation executed on web: `e2e/phase12-auth-canary.spec.ts` passed (`2 passed`), confirming login screen rendering + successful authentication path under Phase 12 guards.
+- Staging rollout advanced to wave 2 (`canary-ordering`) in app/web `.env.staging` using the rollout CLI, with resulting profile: LOGIN/REGISTER_COMPANY/NOVO_PEDIDO/DELIVERY = `true`; PAGAMENTO/COMANDA_GERENCIAMENTO/ADMIN = `false`.
+- Canary ordering validation executed on web: `e2e/phase12-ordering-canary.spec.ts` passed (`2 passed`) after ensuring the local web server was online, confirming navigation/render for Novo Pedido and Pedido Delivery.
+- Validation run completed for changed files with no TypeScript diagnostics and no ESLint issues.
 
 ## Final Outcome
 

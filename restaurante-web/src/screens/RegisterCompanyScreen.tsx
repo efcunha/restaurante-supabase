@@ -15,6 +15,8 @@ import { supabase } from '../config/SupabaseConfig'; // Replaced firebase config
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useResponsive } from '../hooks/useResponsive';
+import { Button, FormInput } from '../components/ui-next';
+import { isFeatureEnabled } from '../config/featureFlags';
 // @ts-ignore
 import { validateCPF, validateCNPJ } from '../utils/validation';
 // @ts-ignore
@@ -26,6 +28,7 @@ interface Props {
 
 export default function RegisterCompanyScreen({ navigation }: Props) {
   useAuth(); // Keep auth context initialization side effects
+  const useUiNextRegisterCompany = isFeatureEnabled('registerCompany_uiNext');
   // Actually, context 'register' wraps firebase. We should use direct supabase here or update context register?
   // Context register in our new Supabase Auth Context DOES use supabase.auth.signUp.
   const { isTablet, horizontalPadding } = useResponsive();
@@ -287,30 +290,63 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.label}>{documentType === 'cpf' ? 'CPF' : 'CNPJ'}</Text>
-          <TextInput
-            style={styles.input}
-            placeholder={documentType === 'cpf' ? '000.000.000-00' : '00.000.000/0000-00'}
-            value={documentValue}
-            onChangeText={handleDocumentChange}
-            keyboardType="numeric"
-          />
+          {useUiNextRegisterCompany ? (
+            <FormInput
+              label={documentType === 'cpf' ? 'CPF' : 'CNPJ'}
+              value={documentValue}
+              onChangeText={handleDocumentChange}
+              placeholder={documentType === 'cpf' ? '000.000.000-00' : '00.000.000/0000-00'}
+            />
+          ) : (
+            <>
+              <Text style={styles.label}>{documentType === 'cpf' ? 'CPF' : 'CNPJ'}</Text>
+              <TextInput
+                style={styles.input}
+                placeholder={documentType === 'cpf' ? '000.000.000-00' : '00.000.000/0000-00'}
+                value={documentValue}
+                onChangeText={handleDocumentChange}
+                keyboardType="numeric"
+              />
+            </>
+          )}
 
-          <Text style={styles.label}>Nome do Restaurante</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Ex: Espetinho do Zé"
-            value={restaurantName}
-            onChangeText={setRestaurantName}
-          />
+          {useUiNextRegisterCompany ? (
+            <FormInput
+              label="Nome do Restaurante"
+              value={restaurantName}
+              onChangeText={setRestaurantName}
+              placeholder="Ex: Espetinho do Zé"
+            />
+          ) : (
+            <>
+              <Text style={styles.label}>Nome do Restaurante</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Ex: Espetinho do Zé"
+                value={restaurantName}
+                onChangeText={setRestaurantName}
+              />
+            </>
+          )}
 
-          <Text style={styles.label}>Seu Nome (Administrador)</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Ex: José Silva"
-            value={adminName}
-            onChangeText={setAdminName}
-          />
+          {useUiNextRegisterCompany ? (
+            <FormInput
+              label="Seu Nome (Administrador)"
+              value={adminName}
+              onChangeText={setAdminName}
+              placeholder="Ex: José Silva"
+            />
+          ) : (
+            <>
+              <Text style={styles.label}>Seu Nome (Administrador)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Ex: José Silva"
+                value={adminName}
+                onChangeText={setAdminName}
+              />
+            </>
+          )}
 
           <Text style={styles.label}>Telefone de Contato</Text>
           <TextInput
@@ -369,15 +405,26 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
             </View>
           </View>
 
-          <Text style={styles.label}>Email</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="seu@email.com"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
+          {useUiNextRegisterCompany ? (
+            <FormInput
+              label="Email"
+              value={email}
+              onChangeText={setEmail}
+              placeholder="seu@email.com"
+            />
+          ) : (
+            <>
+              <Text style={styles.label}>Email</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="seu@email.com"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </>
+          )}
 
           <Text style={styles.label}>Senha</Text>
           <View style={styles.passwordContainer}>
@@ -393,26 +440,49 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.label}>Confirmar Senha</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Repita a senha"
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            secureTextEntry={secureText}
-          />
+          {useUiNextRegisterCompany ? (
+            <FormInput
+              label="Confirmar Senha"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              placeholder="Repita a senha"
+              secureTextEntry={secureText}
+            />
+          ) : (
+            <>
+              <Text style={styles.label}>Confirmar Senha</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Repita a senha"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry={secureText}
+              />
+            </>
+          )}
 
-          <TouchableOpacity
-            style={[styles.btn, loading && styles.btnDisabled]}
-            onPress={handleRegister}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color={colors.white} />
-            ) : (
-              <Text style={styles.btnText}>CRIAR CONTA GRÁTIS</Text>
-            )}
-          </TouchableOpacity>
+          {useUiNextRegisterCompany ? (
+            <Button
+              label="CRIAR CONTA GRÁTIS"
+              onPress={handleRegister}
+              loading={loading}
+              fullWidth
+              size="lg"
+              style={styles.btn}
+            />
+          ) : (
+            <TouchableOpacity
+              style={[styles.btn, loading && styles.btnDisabled]}
+              onPress={handleRegister}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color={colors.white} />
+              ) : (
+                <Text style={styles.btnText}>CRIAR CONTA GRÁTIS</Text>
+              )}
+            </TouchableOpacity>
+          )}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

@@ -2,6 +2,7 @@
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colorSystem, radius, spacing, typography } from '../../design-system';
+import { colors } from '../../theme/colors';
 type SortDir = 'asc' | 'desc';
 
 type TableColumn<T> = {

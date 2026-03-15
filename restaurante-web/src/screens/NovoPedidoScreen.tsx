@@ -6,6 +6,7 @@ import React, { memo, useCallback, useState, useMemo, useEffect } from 'react';
 import { useNovoPedido } from '../hooks/useNovoPedido';
 import { usePerformanceMonitor } from '../hooks/usePerformanceMonitor';
 import { Button, Navbar } from '../ui';
+import { isFeatureEnabled } from '../config/featureFlags';
 import { useFocusEffect } from '@react-navigation/native';
 // @ts-ignore
 import PizzaBuilderModal from '../components/PizzaBuilderModal';
@@ -413,6 +414,7 @@ interface Section {
 }
 
 export default function NovoPedidoScreen({ route }: any) {
+  const useUiNextNovoPedido = isFeatureEnabled('novoPedido_uiNext');
   const [showPizzaModal, setShowPizzaModal] = useState(false);
   const [selectedPizza, setSelectedPizza] = useState<Product | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -739,13 +741,29 @@ export default function NovoPedidoScreen({ route }: any) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
     >
-
-
-      <Navbar
-        title="Novo Pedido"
-        subtitle={user ? `Operador: ${user.nome || user.email}` : undefined}
-        rightSlot={<Button label="Sair" onPress={handleLogout} variant="ghost" size="sm" />}
-      />
+      {useUiNextNovoPedido ? (
+        <Navbar
+          title="Novo Pedido"
+          subtitle={user ? `Operador: ${user.nome || user.email}` : undefined}
+          rightSlot={<Button label="Sair" onPress={handleLogout} variant="ghost" size="sm" />}
+        />
+      ) : (
+        <View style={styles.header}>
+          <View style={styles.headerLeft} />
+          <View style={styles.headerCenter}>
+            <Text style={styles.headerTitle}>Novo Pedido</Text>
+            {user && (
+              <>
+                <Text style={styles.userInfoLabel}>Operador</Text>
+                <Text style={styles.userInfo}>{user.nome || user.email}</Text>
+              </>
+            )}
+          </View>
+          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+            <Text style={styles.logoutBtnText}>Sair</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Search Bar */}
       <View style={styles.searchContainer}>
@@ -866,6 +884,11 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'center',
     padding: 5,
+  },
+  logoutBtnText: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '700',
   },
   listContent: { padding: 20, paddingBottom: 120 },
   headerForm: { marginBottom: 20 },

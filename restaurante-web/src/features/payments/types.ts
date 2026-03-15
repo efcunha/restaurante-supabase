@@ -17,6 +17,7 @@ export interface PaymentComandaSummaryProps {
   onSearch: () => void;
   saldo: PaymentBalance | null;
   formatCurrency: (value: any) => string;
+  useUiNext?: boolean;
 }
 
 export interface PaymentOrderSummaryProps {
@@ -32,4 +33,5 @@ export interface PaymentActionPanelProps {
   onConfirmPayment: () => void;
   onSplitByPeople: () => void;
   onSplitByItems: () => void;
+  useUiNext?: boolean;
 }

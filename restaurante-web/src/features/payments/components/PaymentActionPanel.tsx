@@ -44,6 +44,7 @@ export const PaymentActionPanel = memo(function PaymentActionPanel({
   onConfirmPayment,
   onSplitByPeople,
   onSplitByItems,
+  useUiNext = true,
 }: PaymentActionPanelProps) {
   return (
     <>
@@ -93,15 +94,34 @@ export const PaymentActionPanel = memo(function PaymentActionPanel({
           })}
         </View>
 
-        <Button label="Confirmar Pagamento" onPress={onConfirmPayment} fullWidth />
+        {useUiNext ? (
+          <Button label="Confirmar Pagamento" onPress={onConfirmPayment} fullWidth />
+        ) : (
+          <TouchableOpacity style={styles.legacyPrimaryButton} onPress={onConfirmPayment}>
+            <Text style={styles.legacyPrimaryButtonText}>Confirmar Pagamento</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={styles.splitSection}>
         <Text style={styles.sectionTitle}>Opções de Divisão</Text>
 
         <View style={styles.splitButtonsRow}>
-          <Button label="Por Pessoas" onPress={onSplitByPeople} variant="ghost" style={styles.splitActionButton} />
-          <Button label="Por Itens" onPress={onSplitByItems} variant="ghost" style={styles.splitActionButton} />
+          {useUiNext ? (
+            <>
+              <Button label="Por Pessoas" onPress={onSplitByPeople} variant="ghost" style={styles.splitActionButton} />
+              <Button label="Por Itens" onPress={onSplitByItems} variant="ghost" style={styles.splitActionButton} />
+            </>
+          ) : (
+            <>
+              <TouchableOpacity style={[styles.legacySecondaryButton, styles.splitActionButton]} onPress={onSplitByPeople}>
+                <Text style={styles.legacySecondaryButtonText}>Por Pessoas</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.legacySecondaryButton, styles.splitActionButton]} onPress={onSplitByItems}>
+                <Text style={styles.legacySecondaryButtonText}>Por Itens</Text>
+              </TouchableOpacity>
+            </>
+          )}
         </View>
       </View>
     </>
@@ -183,5 +203,31 @@ const styles = StyleSheet.create({
   },
   splitActionButton: {
     flex: 1,
+  },
+  legacyPrimaryButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 10,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  legacyPrimaryButtonText: {
+    color: colors.white,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  legacySecondaryButton: {
+    minHeight: 44,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.white,
+  },
+  legacySecondaryButtonText: {
+    color: colors.primary,
+    fontSize: 14,
+    fontWeight: '700',
   },
 });

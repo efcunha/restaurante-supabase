@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colorSystem, radius, spacing, typography } from '../../design-system';
+import { colors } from '../../theme/colors';
 type CheckboxProps = {
   checked: boolean;
   label: string;

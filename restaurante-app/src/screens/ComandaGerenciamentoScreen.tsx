@@ -29,6 +29,8 @@ import { supabase } from '../config/SupabaseConfig';
 
 import { LayoutAnimation, Platform, UIManager } from 'react-native';
 import PDFService from '../services/PDFService';
+import { Button } from '../ui';
+import { isFeatureEnabled } from '../config/featureFlags';
 import { colors } from '../theme/colors';
 if (Platform.OS === 'android') {
   if (UIManager.setLayoutAnimationEnabledExperimental) {
@@ -37,6 +39,7 @@ if (Platform.OS === 'android') {
 }
 
 export default function ComandaGerenciamentoScreen(props: any) {
+  const useUiNextComanda = isFeatureEnabled('comandaGerenciamento_uiNext');
   const { user, logout } = useAuth();
   const { addOrder } = useOrders();
   const {
@@ -454,9 +457,15 @@ export default function ComandaGerenciamentoScreen(props: any) {
             <Text style={styles.headerTitle}>Gerenciamento</Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={24} color={colors.white} />
-        </TouchableOpacity>
+        <View style={styles.logoutBtn}>
+          {useUiNextComanda ? (
+            <Button label="Sair" onPress={handleLogout} size="sm" />
+          ) : (
+            <TouchableOpacity onPress={handleLogout}>
+              <Ionicons name="log-out-outline" size={24} color={colors.white} />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       <View style={styles.tabs}>

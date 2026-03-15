@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { colorSystem, typography } from '../../design-system';
+import { colors } from '../../theme/colors';
 type AvatarProps = {
   name: string;
   size?: number;
