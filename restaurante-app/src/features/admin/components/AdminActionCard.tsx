@@ -2,6 +2,8 @@ import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { colors } from '../../../theme/colors';
 import { AdminActionCardProps } from '../types';
+import { Card } from '../../../ui';
+import { isFeatureEnabled } from '../../../config/featureFlags';
 
 export function AdminActionCard({
   name,
@@ -14,6 +16,37 @@ export function AdminActionCard({
   nameStyle,
   arrowStyle,
 }: AdminActionCardProps) {
+  const useUiNextAdmin = isFeatureEnabled('admin_uiNext');
+
+  if (useUiNextAdmin) {
+    return (
+      <TouchableOpacity onPress={onPress} disabled={disabled}>
+        <Card
+          padded={false}
+          style={[
+            styles.reportCard,
+            styles.reportCardUiNext,
+            danger && styles.reportCardDanger,
+            cardStyle,
+          ]}
+        >
+          <View style={styles.reportInner}>
+            <View style={styles.reportLeft}>
+              <Text style={styles.reportIcon}>{icon}</Text>
+              <View>
+                <Text style={[styles.reportName, danger && styles.reportNameDanger, nameStyle as any]}>
+                  {name}
+                </Text>
+                {!!subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+              </View>
+            </View>
+            <Text style={[styles.reportArrow, danger && styles.reportArrowDanger, arrowStyle as any]}>›</Text>
+          </View>
+        </Card>
+      </TouchableOpacity>
+    );
+  }
+
   return (
     <TouchableOpacity
       style={[
@@ -24,16 +57,18 @@ export function AdminActionCard({
       onPress={onPress}
       disabled={disabled}
     >
-      <View style={styles.reportLeft}>
-        <Text style={styles.reportIcon}>{icon}</Text>
-        <View>
-          <Text style={[styles.reportName, danger && styles.reportNameDanger, nameStyle as any]}>
-            {name}
-          </Text>
-          {!!subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+      <View style={styles.reportInner}>
+        <View style={styles.reportLeft}>
+          <Text style={styles.reportIcon}>{icon}</Text>
+          <View>
+            <Text style={[styles.reportName, danger && styles.reportNameDanger, nameStyle as any]}>
+              {name}
+            </Text>
+            {!!subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+          </View>
         </View>
+        <Text style={[styles.reportArrow, danger && styles.reportArrowDanger, arrowStyle as any]}>›</Text>
       </View>
-      <Text style={[styles.reportArrow, danger && styles.reportArrowDanger, arrowStyle as any]}>›</Text>
     </TouchableOpacity>
   );
 }
@@ -50,6 +85,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  reportCardUiNext: {
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+  },
+  reportInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 14,
   },
   reportCardDanger: {
     backgroundColor: colors.dangerLight,

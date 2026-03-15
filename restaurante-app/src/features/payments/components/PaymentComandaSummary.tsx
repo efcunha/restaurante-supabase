@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { colors } from '../../../theme/colors';
 import { Button } from '../../../ui';
 import { PaymentComandaSummaryProps } from '../types';
@@ -10,6 +10,7 @@ export const PaymentComandaSummary = memo(function PaymentComandaSummary({
   onSearch,
   saldo,
   formatCurrency,
+  useUiNext = true,
 }: PaymentComandaSummaryProps) {
   return (
     <View style={styles.comandaInfoCard}>
@@ -24,7 +25,13 @@ export const PaymentComandaSummary = memo(function PaymentComandaSummary({
             placeholder="Nº"
           />
         </View>
-        <Button label="Buscar" onPress={onSearch} size="sm" style={styles.searchActionButton} />
+        {useUiNext ? (
+          <Button label="Buscar" onPress={onSearch} size="sm" style={styles.searchActionButton} />
+        ) : (
+          <TouchableOpacity style={styles.searchLegacyButton} onPress={onSearch}>
+            <Text style={styles.searchLegacyButtonText}>Buscar</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {saldo && (
@@ -83,6 +90,20 @@ const styles = StyleSheet.create({
   },
   searchActionButton: {
     minWidth: 88,
+  },
+  searchLegacyButton: {
+    minWidth: 88,
+    minHeight: 40,
+    borderRadius: 8,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  searchLegacyButtonText: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '700',
   },
   saldoRow: {
     flexDirection: 'row',

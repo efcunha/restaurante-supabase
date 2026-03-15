@@ -24,6 +24,22 @@ export interface FeatureFlags {
   // Fase 4: Advanced Features
   useBiometricAuth: boolean;          // Req 19: Autenticação biométrica
   usePerformanceMonitoring: boolean;  // Req 27: Monitoramento de performance
+
+  // Fase 5: Phase 12 – UI-Next Primitive Migration (rollback guards)
+  /** LoginScreen: FormInput + Button from ui-next */
+  login_uiNext: boolean;
+  /** RegisterCompanyScreen: FormInput + Button from ui-next */
+  registerCompany_uiNext: boolean;
+  /** NovoPedidoScreen: ProductCard + Button from ui-next */
+  novoPedido_uiNext: boolean;
+  /** DeliveryScreen (web): ProductCard + Button from ui-next */
+  delivery_uiNext: boolean;
+  /** PagamentoScreen: Button CTAs from ui-next */
+  pagamento_uiNext: boolean;
+  /** ComandaGerenciamentoScreen: Card + Button from ui-next */
+  comandaGerenciamento_uiNext: boolean;
+  /** AdminScreen: Card + Table from ui-next (disabled until wave completes) */
+  admin_uiNext: boolean;
 }
 
 /**
@@ -49,7 +65,16 @@ const defaultFlags: FeatureFlags = {
   
   // Fase 4
   useBiometricAuth: false,
-  usePerformanceMonitoring: false
+  usePerformanceMonitoring: false,
+
+  // Fase 5: Phase 12 – UI-Next migration (canary: auth + order flows first)
+  login_uiNext: true,
+  registerCompany_uiNext: true,
+  novoPedido_uiNext: true,
+  delivery_uiNext: true,
+  pagamento_uiNext: true,
+  comandaGerenciamento_uiNext: true,
+  admin_uiNext: false,
 };
 
 /**
@@ -117,6 +142,35 @@ function loadFeatureFlagsFromEnv(): Partial<FeatureFlags> {
   // Performance Monitoring
   if (process.env.EXPO_PUBLIC_FEATURE_PERFORMANCE_MONITORING !== undefined) {
     envFlags.usePerformanceMonitoring = process.env.EXPO_PUBLIC_FEATURE_PERFORMANCE_MONITORING === 'true';
+  }
+
+  // Phase 12 UI-next migration guards
+  if (process.env.EXPO_PUBLIC_FEATURE_LOGIN_UI_NEXT !== undefined) {
+    envFlags.login_uiNext = process.env.EXPO_PUBLIC_FEATURE_LOGIN_UI_NEXT === 'true';
+  }
+
+  if (process.env.EXPO_PUBLIC_FEATURE_REGISTER_COMPANY_UI_NEXT !== undefined) {
+    envFlags.registerCompany_uiNext = process.env.EXPO_PUBLIC_FEATURE_REGISTER_COMPANY_UI_NEXT === 'true';
+  }
+
+  if (process.env.EXPO_PUBLIC_FEATURE_NOVO_PEDIDO_UI_NEXT !== undefined) {
+    envFlags.novoPedido_uiNext = process.env.EXPO_PUBLIC_FEATURE_NOVO_PEDIDO_UI_NEXT === 'true';
+  }
+
+  if (process.env.EXPO_PUBLIC_FEATURE_DELIVERY_UI_NEXT !== undefined) {
+    envFlags.delivery_uiNext = process.env.EXPO_PUBLIC_FEATURE_DELIVERY_UI_NEXT === 'true';
+  }
+
+  if (process.env.EXPO_PUBLIC_FEATURE_PAGAMENTO_UI_NEXT !== undefined) {
+    envFlags.pagamento_uiNext = process.env.EXPO_PUBLIC_FEATURE_PAGAMENTO_UI_NEXT === 'true';
+  }
+
+  if (process.env.EXPO_PUBLIC_FEATURE_COMANDA_GERENCIAMENTO_UI_NEXT !== undefined) {
+    envFlags.comandaGerenciamento_uiNext = process.env.EXPO_PUBLIC_FEATURE_COMANDA_GERENCIAMENTO_UI_NEXT === 'true';
+  }
+
+  if (process.env.EXPO_PUBLIC_FEATURE_ADMIN_UI_NEXT !== undefined) {
+    envFlags.admin_uiNext = process.env.EXPO_PUBLIC_FEATURE_ADMIN_UI_NEXT === 'true';
   }
   
   return envFlags;

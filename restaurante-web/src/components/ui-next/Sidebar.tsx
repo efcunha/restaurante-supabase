@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colorSystem, spacing, typography } from '../../design-system';
+import { colors } from '../../theme/colors';
 type SidebarItem = {
   id: string;
   label: string;

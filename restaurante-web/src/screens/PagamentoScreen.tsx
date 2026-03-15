@@ -10,12 +10,14 @@ import SplitPaymentModal from '../components/SplitPaymentModal';
 import { calcularPrecoItem, MenuItem } from '../utils/orderCalculator';
 import { ScreenScaffold } from '../layouts/ScreenScaffold';
 import { PaymentActionPanel, PaymentComandaSummary, PaymentOrderSummary, PaymentStepIndicator } from '../features/payments';
+import { isFeatureEnabled } from '../config/featureFlags';
 
 // Usar função centralizada para consistência de data local
 const todayKey = getTodayKey;
 
 export default function PagamentoScreen({ route, navigation }: any) {
   const { user } = useAuth();
+  const useUiNextPagamento = isFeatureEnabled('pagamento_uiNext');
   
   // Helper para formatar valores em Real brasileiro
   const formatarMoeda = (valor: any) => {
@@ -321,6 +323,7 @@ export default function PagamentoScreen({ route, navigation }: any) {
           onSearch={carregarDadosComanda}
           saldo={saldo}
           formatCurrency={formatarMoeda}
+          useUiNext={useUiNextPagamento}
         />
 
         {/* 1. RESUMO DO PEDIDO */}
@@ -336,6 +339,7 @@ export default function PagamentoScreen({ route, navigation }: any) {
             onConfirmPayment={pagar}
             onSplitByPeople={() => openSplitModal('pessoas')}
             onSplitByItems={() => openSplitModal('itens')}
+            useUiNext={useUiNextPagamento}
           />
         )}
       
