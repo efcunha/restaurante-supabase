@@ -40,8 +40,16 @@ test.describe('Fluxo de Pedido Delivery', () => {
     });
 
     // 1. Navega para Pedido Delivery
+    // Sidebar web usa Pressable com role="button"; mantemos fallback para link.
     console.log('STEP 1: click Pedido Delivery');
-    await page.getByRole('link', { name: 'Pedido Delivery' }).click();
+    const deliveryNavButton = page.getByRole('button', { name: /Pedido Delivery|Delivery/i }).first();
+    const deliveryNavLink = page.getByRole('link', { name: /Pedido Delivery|Delivery/i }).first();
+
+    if (await deliveryNavButton.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await deliveryNavButton.click();
+    } else {
+      await deliveryNavLink.click();
+    }
 
     // 2. Aguarda o formulário carregar
     console.log('STEP 2: wait form');
@@ -57,7 +65,7 @@ test.describe('Fluxo de Pedido Delivery', () => {
 
     // 4. Busca e adiciona Caldo
     console.log('STEP 4: search and add Caldo');
-    const searchBox = page.getByPlaceholder('Buscar no cardápio...');
+    const searchBox = page.getByPlaceholder(/Buscar no card(a|á)pio\.\.\./i);
     await searchBox.fill('caldo');
     await page.waitForTimeout(1000);
     await page.locator('div[dir="auto"]').filter({ hasText: '+' }).first().click();

@@ -11,6 +11,12 @@ const todayKey = (): string => getLocalDateKey();
 
 class ComandasService {
 
+  private _isMesaOpenConflict(error: any): boolean {
+    if (!error || error.code !== '23505') return false;
+    const detail = `${error.message || ''} ${error.details || ''}`.toLowerCase();
+    return detail.includes('idx_unique_open_mesa') || detail.includes('table_number');
+  }
+
   // Helper to map DB row to Comanda type
   private _mapToComanda(row: any): Comanda {
     return {
@@ -113,7 +119,13 @@ class ComandasService {
 
       if (needsUpdate) {
         console.log(`[ComandasService] Updating existing comanda ${existing.id} with:`, updates);
-        await supabase.from(TABLE_COMANDAS).update(updates).eq('id', existing.id);
+        const { error: updateError } = await supabase.from(TABLE_COMANDAS).update(updates).eq('id', existing.id);
+        if (updateError) {
+          if (this._isMesaOpenConflict(updateError) && mesa) {
+            throw new Error(`Mesa ${mesa} já foi ocupada`);
+          }
+          throw updateError;
+        }
       }
 
       console.log(`[ComandasService] ensureComandaAberta SUCCESS - found existing comanda id: ${existing.id}`);
@@ -142,6 +154,9 @@ class ComandasService {
 
     if (error) {
       if (error.code === '23505') { 
+        if (this._isMesaOpenConflict(error) && mesa) {
+          throw new Error(`Mesa ${mesa} já foi ocupada`);
+        }
         // 23505 = Unique violation. Meaning another instance concurrently created this 'aberta' comanda just milliseconds ago!
         console.warn('[ComandasService] Empate (Race condition) identificado! Comanda foi criada milisegundos antes por outro usuário. Recuperando a existente...');
         
