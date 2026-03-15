@@ -347,6 +347,13 @@ Implemented files:
 Operational runbook:
 - PHASE_12_CANARY_RUNBOOK.md
 
+Release handoff notes:
+- PHASE_12_RELEASE_NOTES.md
+
+Current status:
+- Completed in staging through wave 4 (full-phase12).
+- Ready for controlled production promotion using the same wave order and canary gates.
+
 1. Baseline
 - Freeze a release branch and capture visual snapshots for key journeys.
 - Define KPI baseline: task completion time, error rate, abandonment points.
@@ -403,6 +410,10 @@ Operational runbook:
 - Canary auth validation executed on web: `e2e/phase12-auth-canary.spec.ts` passed (`2 passed`), confirming login screen rendering + successful authentication path under Phase 12 guards.
 - Staging rollout advanced to wave 2 (`canary-ordering`) in app/web `.env.staging` using the rollout CLI, with resulting profile: LOGIN/REGISTER_COMPANY/NOVO_PEDIDO/DELIVERY = `true`; PAGAMENTO/COMANDA_GERENCIAMENTO/ADMIN = `false`.
 - Canary ordering validation executed on web: `e2e/phase12-ordering-canary.spec.ts` passed (`2 passed`) after ensuring the local web server was online, confirming navigation/render for Novo Pedido and Pedido Delivery.
+- Canary settlement validation executed on web: `e2e/phase12-settlement-canary.spec.ts` passed (`1 passed`), validating Gerenciamento -> Rateio navigation and `Resumo e Pagamento` CTA rendering.
+- Staging rollout advanced to wave 3 (`canary-settlement`) in app/web `.env.staging`, enabling `PAGAMENTO` and `COMANDA_GERENCIAMENTO` while keeping `ADMIN` disabled.
+- Canary admin validation executed on web: `e2e/phase12-admin-canary.spec.ts` passed (`1 passed`) and remained green after enabling `admin_uiNext`, validating Admin section rendering and card-driven navigation.
+- Staging rollout advanced to wave 4 (`full-phase12`) in app/web `.env.staging`, enabling all Phase 12 guards including `ADMIN`.
 - Validation run completed for changed files with no TypeScript diagnostics and no ESLint issues.
 
 ## Final Outcome

@@ -118,6 +118,8 @@ Run from `restaurante-web`:
 
 - Auth wave: `npx playwright test e2e/phase12-auth-canary.spec.ts --project=chromium --workers=1 --reporter=line`
 - Ordering wave: `npx playwright test e2e/phase12-ordering-canary.spec.ts --project=chromium --workers=1 --reporter=line`
+- Settlement wave: `npx playwright test e2e/phase12-settlement-canary.spec.ts --project=chromium --workers=1 --reporter=line`
+- Admin wave: `npx playwright test e2e/phase12-admin-canary.spec.ts --project=chromium --workers=1 --reporter=line`
 
 ### Auth wave
 
@@ -191,6 +193,13 @@ Implemented and guarded:
 - Settlement: Pagamento feature controls + ComandaGerenciamento header action
 - Admin: AdminActionCard rendering path
 
-Pending operational step:
+Operational rollout executed in staging:
 
-- Start wave-based deployment using this runbook and capture KPI deltas per wave.
+- Wave 1 (`canary-auth`) applied and validated
+- Wave 2 (`canary-ordering`) applied and validated
+- Wave 3 (`canary-settlement`) applied and validated
+- Wave 4 (`full-phase12`) applied and validated
+
+Current staging state:
+
+- All Phase 12 flags enabled, including `EXPO_PUBLIC_FEATURE_ADMIN_UI_NEXT=true`
