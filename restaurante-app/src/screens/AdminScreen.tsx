@@ -665,8 +665,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingVertical: 12,
     backgroundColor: colors.primary,
-    borderBottomWidth: 2,
-    borderBottomColor: colors.primaryDivider,
   },
   statsHeader: {
     flexDirection: 'row',
@@ -856,8 +854,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingVertical: 12,
     backgroundColor: colors.primary,
-    borderBottomWidth: 2,
-    borderBottomColor: colors.primaryDivider,
   },
   vendasTabs: {
     flexDirection: 'row',
