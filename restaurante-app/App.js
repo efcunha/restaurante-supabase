@@ -3,7 +3,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { View, Text, Platform, ActivityIndicator, LogBox, StatusBar, StyleSheet } from 'react-native';
+import { View, Text, Platform, ActivityIndicator, LogBox, StatusBar, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 LogBox.ignoreLogs([
@@ -175,12 +175,48 @@ function AuthStack() {
 }
 
 function AppContent() {
-  const { user, loading, sessionKey } = useAuth();
+  const { user, loading, sessionKey, initError, debugLog } = useAuth();
 
   // Tentar reconexao com impressora ao iniciar
   useEffect(() => {
     PrinterService.autoConnect();
   }, []);
+
+  // ERRO DE INICIALIZACAO — mostra painel de diagnóstico diretamente no celular
+  if (initError) {
+    return (
+      <SafeAreaProvider>
+        <StatusBar barStyle="light-content" backgroundColor="#1a0000" />
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#1a0010' }} edges={['top', 'bottom']}>
+          <ScrollView contentContainerStyle={{ padding: 16 }}>
+            <Text style={{ color: '#ff5555', fontSize: 17, fontWeight: 'bold', marginBottom: 6 }}>
+              ⚠️ Erro na Inicialização
+            </Text>
+            <Text style={{ color: '#ffcccc', fontSize: 13, marginBottom: 16, lineHeight: 20 }}>
+              {initError}
+            </Text>
+
+            <Text style={{ color: '#aaffaa', fontSize: 12, fontWeight: 'bold', marginBottom: 4 }}>Log de eventos:</Text>
+            {debugLog.map((line, i) => (
+              <Text key={i} style={{ color: '#ccffcc', fontSize: 11, marginBottom: 1, fontFamily: 'monospace' }}>
+                {line}
+              </Text>
+            ))}
+
+            <View style={{ marginTop: 20, backgroundColor: '#220022', borderRadius: 8, padding: 12 }}>
+              <Text style={{ color: '#aaaaff', fontSize: 12, fontWeight: 'bold', marginBottom: 4 }}>Variáveis de Ambiente:</Text>
+              <Text style={{ color: process.env.EXPO_PUBLIC_SUPABASE_URL ? '#aaffaa' : '#ff5555', fontSize: 12 }}>
+                SUPABASE_URL: {process.env.EXPO_PUBLIC_SUPABASE_URL ? '✅ OK' : '❌ AUSENTE'}
+              </Text>
+              <Text style={{ color: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ? '#aaffaa' : '#ff5555', fontSize: 12 }}>
+                SUPABASE_KEY: {process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ? '✅ OK' : '❌ AUSENTE'}
+              </Text>
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </SafeAreaProvider>
+    );
+  }
 
   // LOADING
   if (loading) {
@@ -191,6 +227,11 @@ function AppContent() {
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={colorSystem.primary} />
             <Text style={styles.loadingText}>Verificando acesso...</Text>
+            {debugLog.length > 0 && (
+              <Text style={{ color: '#999', fontSize: 11, marginTop: 12, textAlign: 'center' }}>
+                {debugLog[debugLog.length - 1]}
+              </Text>
+            )}
           </View>
         </SafeAreaView>
       </SafeAreaProvider>

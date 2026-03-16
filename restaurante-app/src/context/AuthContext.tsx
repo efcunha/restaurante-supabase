@@ -51,6 +51,10 @@ interface AuthContextType {
   loginWithBiometric: () => Promise<{ success: boolean; error?: string }>;
   biometricAvailable: boolean;
   biometricType?: string;
+
+  // Debug / diagnostics — shows on-screen when initialization fails
+  initError: string | null;
+  debugLog: string[];
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -82,6 +86,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const isManualLoginRef = useRef<boolean>(false);
 
+  // --- On-screen diagnostics ---
+  const [initError, setInitError] = useState<string | null>(null);
+  const [debugLog, setDebugLog] = useState<string[]>([]);
+  const appendLog = (msg: string) => {
+    const ts = new Date().toTimeString().slice(0, 8);
+    setDebugLog(prev => [...prev.slice(-30), `${ts}  ${msg}`]);
+  };
+
   // Check Biometrics on Mount
   useEffect(() => {
     const checkBiometric = async () => {
@@ -98,34 +110,71 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     let mounted = true;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-        if (!mounted) return;
+    appendLog('AuthContext montado');
+    appendLog(`SUPABASE_URL: ${process.env.EXPO_PUBLIC_SUPABASE_URL ? '✅' : '❌ AUSENTE'}`);
+    appendLog(`SUPABASE_KEY: ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ? '✅' : '❌ AUSENTE'}`);
 
-        console.log(`[SupabaseAuth] Auth event: ${event}`, session?.user?.id);
+    // Safety timeout — if onAuthStateChange never fires (network/config issue), unblock UI
+    const safetyTimer = setTimeout(() => {
+      if (mounted) {
+        const msg = 'Timeout (15s): onAuthStateChange nao disparou. Verifique conexao e variaveis de ambiente SUPABASE.';
+        appendLog('⏱️ ' + msg);
+        setInitError(msg);
+        setLoading(false);
+      }
+    }, 15000);
 
-        // No session or explicit logout → release loading so Login screen renders
-        if (!session?.user || event === 'SIGNED_OUT') {
-            setUser(null);
-            setRole(null);
-            setCustomClaims(null);
-            setLoading(false);
-            return;
-        }
+    let listenerReady = false;
+    try {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+          if (!mounted) return;
+          if (!listenerReady) {
+            clearTimeout(safetyTimer);
+            listenerReady = true;
+          }
 
-        // Session available — load profile data
-        // Skip if login() already triggered a manual reload to avoid double fetch
-        if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-            console.log('[SupabaseAuth] Processing', event, '— Manual?', isManualLoginRef.current);
-            if (!isManualLoginRef.current) {
-                await reloadUserData(session.user);
-            }
-        }
-    });
+          const logLine = `event=${event} user=${session?.user?.id?.slice(0,8) ?? 'none'}`;
+          appendLog(logLine);
+          console.log(`[SupabaseAuth] Auth event: ${event}`, session?.user?.id);
 
-    return () => {
-        mounted = false;
-        subscription.unsubscribe();
-    };
+          // No session or explicit logout → release loading so Login screen renders
+          if (!session?.user || event === 'SIGNED_OUT') {
+              setUser(null);
+              setRole(null);
+              setCustomClaims(null);
+              setLoading(false);
+              return;
+          }
+
+          // Session available — load profile data
+          if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+              appendLog(`Carregando perfil (${event})...`);
+              console.log('[SupabaseAuth] Processing', event, '— Manual?', isManualLoginRef.current);
+              if (!isManualLoginRef.current) {
+                  try {
+                      await reloadUserData(session.user);
+                  } catch (e: any) {
+                      const errMsg = `Erro ao carregar perfil: ${e?.message ?? String(e)}`;
+                      appendLog('❌ ' + errMsg);
+                      setInitError(errMsg);
+                      setLoading(false);
+                  }
+              }
+          }
+      });
+
+      return () => {
+          mounted = false;
+          clearTimeout(safetyTimer);
+          subscription.unsubscribe();
+      };
+    } catch (e: any) {
+      const errMsg = `Falha ao criar listener Supabase: ${e?.message ?? String(e)}`;
+      appendLog('❌ ' + errMsg);
+      setInitError(errMsg);
+      setLoading(false);
+      return () => { mounted = false; clearTimeout(safetyTimer); };
+    }
   }, []);
 
   const reloadUserData = async (sbUser: User) => {
@@ -369,7 +418,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setMfaResolver,
       loginWithBiometric,
       biometricAvailable,
-      biometricType
+      biometricType,
+      initError,
+      debugLog,
     }}>
       {children}
     </AuthContext.Provider>
