@@ -25,7 +25,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../config/SupabaseConfig';
 import { Extra, ExtraType } from '../types/models';
-import { ScreenScaffold } from '../layouts/ScreenScaffold';
 import { colors } from '../theme/colors';
 interface ExtrasConfigScreenProps {
   onClose: () => void;
@@ -221,10 +220,22 @@ export default function ExtrasConfigScreen({ onClose }: ExtrasConfigScreenProps)
   );
 
   return (
-    <ScreenScaffold
-      title="Configurar Extras"
-      leftAction={{ label: 'Voltar', onPress: onClose }}
-    >
+    <View style={styles.container}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
+        <View style={styles.headerLeft} />
+        <View style={styles.headerCenter}>
+          <View style={styles.headerTitleRow}>
+            <Ionicons name="pizza-outline" size={24} color={colors.white} style={styles.headerIcon} />
+            <Text style={styles.headerTitle}>Configurar Extras</Text>
+          </View>
+          {!!user && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
+        </View>
+        <View style={styles.headerRight}>
+          <TouchableOpacity style={styles.logoutBtn} onPress={onClose}>
+            <Ionicons name="arrow-back-outline" size={24} color={colors.white} />
+          </TouchableOpacity>
+        </View>
+      </View>
 
       {/* Tabs */}
       <View style={styles.tabs}>
@@ -356,11 +367,21 @@ export default function ExtrasConfigScreen({ onClose }: ExtrasConfigScreenProps)
           </View>
         </View>
       </Modal>
-    </ScreenScaffold>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
+  header: { backgroundColor: colors.primary, minHeight: 92, paddingBottom: 15, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomLeftRadius: 20, borderBottomRightRadius: 20, zIndex: 10, elevation: 8, shadowColor: colors.shadow, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 6 },
+  headerLeft: { flex: 1 },
+  headerCenter: { flex: 2, alignItems: 'center', justifyContent: 'center' },
+  headerRight: { flex: 1, alignItems: 'flex-end', justifyContent: 'center' },
+  headerTitleRow: { flexDirection: 'row', alignItems: 'center' },
+  headerIcon: { marginRight: 8 },
+  headerTitle: { color: colors.white, fontSize: 20, fontWeight: 'bold', textAlign: 'center' },
+  userInfo: { fontSize: 12, color: colors.userInfo, fontWeight: '600', marginTop: 4, textAlign: 'center' },
+  logoutBtn: { paddingHorizontal: 10, paddingVertical: 8, borderRadius: 12, backgroundColor: colors.logoutBg },
   tabs: {
     flexDirection: 'row',
     backgroundColor: colors.white,

@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 // @ts-ignore
  // Fix missing import if needed, assuming component exists
 import { SUPPORTED_UNITS } from '../utils/unitConversion';
-import { ScreenScaffold } from '../layouts/ScreenScaffold';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 // Componente para cada item de variação
 interface VariacaoItemProps {
@@ -70,6 +70,7 @@ interface GerenciarCardapioScreenProps {
 export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioScreenProps) {
   const { user } = useAuth();
   const { isTablet, horizontalPadding, modalWidth, modalMaxWidth, inputMaxWidth } = useResponsive();
+  const insets = useSafeAreaInsets();
 
   // Estados para cadastro
   const [nome, setNome] = useState('');
@@ -1079,11 +1080,25 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
   }, {} as Record<string, Product[]>);
 
   return (
-    <ScreenScaffold
-      title="Gerenciar Cardápio"
-      leftAction={onClose ? { label: 'Voltar', onPress: onClose } : undefined}
-    >
-      <KeyboardWrapper style={styles.container}>
+    <View style={styles.container}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
+        <View style={styles.headerLeft} />
+        <View style={styles.headerCenter}>
+          <View style={styles.headerTitleRow}>
+            <Ionicons name="restaurant-outline" size={24} color={colors.white} style={styles.headerIcon} />
+            <Text style={styles.headerTitle}>Gerenciar Cardápio</Text>
+          </View>
+          {!!user && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
+        </View>
+        <View style={styles.headerRight}>
+          {!!onClose && (
+            <TouchableOpacity style={styles.logoutBtn} onPress={onClose}>
+              <Ionicons name="arrow-back-outline" size={24} color={colors.white} />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+      <KeyboardWrapper style={{ flex: 1 }}>
       <ScrollView style={styles.content} contentContainerStyle={{ 
         paddingBottom: 100,
         paddingHorizontal: horizontalPadding 
@@ -1962,13 +1977,22 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
         </View>
       </Modal>
 
-    </KeyboardWrapper>
-    </ScreenScaffold>
+      </KeyboardWrapper>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  header: { backgroundColor: colors.primary, minHeight: 92, paddingBottom: 15, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomLeftRadius: 20, borderBottomRightRadius: 20, zIndex: 10, elevation: 8, shadowColor: colors.shadow, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 6 },
+  headerLeft: { flex: 1 },
+  headerCenter: { flex: 2, alignItems: 'center', justifyContent: 'center' },
+  headerRight: { flex: 1, alignItems: 'flex-end', justifyContent: 'center' },
+  headerTitleRow: { flexDirection: 'row', alignItems: 'center' },
+  headerIcon: { marginRight: 8 },
+  headerTitle: { color: colors.white, fontSize: 20, fontWeight: 'bold', textAlign: 'center' },
+  userInfo: { fontSize: 12, color: colors.userInfo, fontWeight: '600', marginTop: 4, textAlign: 'center' },
+  logoutBtn: { paddingHorizontal: 10, paddingVertical: 8, borderRadius: 12, backgroundColor: colors.logoutBg },
   content: { paddingBottom: 50 },
   section: {
     backgroundColor: colors.white,
