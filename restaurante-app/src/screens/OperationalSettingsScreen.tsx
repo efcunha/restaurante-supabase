@@ -61,9 +61,7 @@ export default function OperationalSettingsScreen({ onClose }: Props) {
           <Ionicons name="options-outline" size={24} color={colors.white} style={styles.headerIcon} />
           <Text style={styles.headerTitle}>Config. Operacionais</Text>
         </View>
-        {'@
-Set-Content -Path d:restaurante-supabaserestaurante-appsrcscreensOperationalSettingsScreen.tsx -Value  -Encoding UTF8
-Write-Host Doneuser && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
+        {user && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
       </View>
       <View style={styles.headerRight}>
         <TouchableOpacity style={styles.logoutBtn} onPress={onClose}>
