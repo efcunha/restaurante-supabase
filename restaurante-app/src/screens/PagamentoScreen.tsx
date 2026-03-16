@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Alert } from 'react-native';
+import { StyleSheet, Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 // @ts-ignore
@@ -9,7 +9,7 @@ import { supabase } from '../config/SupabaseConfig';
 import SplitPaymentModal from '../components/SplitPaymentModal';
 import { calcularPrecoItem, MenuItem } from '../utils/orderCalculator';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ScreenScaffold } from '../layouts/ScreenScaffold';
+import { Ionicons } from '@expo/vector-icons';
 import { PaymentActionPanel, PaymentComandaSummary, PaymentOrderSummary, PaymentStepIndicator } from '../features/payments';
 import { isFeatureEnabled } from '../config/featureFlags';
 import { colors } from '../theme/colors';
@@ -312,14 +312,24 @@ export default function PagamentoScreen({ route, navigation }: any) {
   const paymentSteps = ['Resumo', 'Pagamento', 'Confirmado'];
 
   return (
-    <ScreenScaffold
-      title="Resumo e Pagamento"
-      subtitle={comanda ? `Comanda ${comanda}` : 'Consulta e fechamento'}
-      leftAction={{ label: 'Voltar', onPress: handleBack }}
-      headerContainerStyle={[styles.navbarWrapper, { paddingTop: Math.max(insets.top, 20) }]}
-      scroll
-      contentContainerStyle={styles.contentContainer}
-    >
+    <View style={styles.container}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}> 
+        <View style={styles.headerLeft} />
+        <View style={styles.headerCenter}>
+          <View style={styles.headerTitleRow}>
+            <Ionicons name="card-outline" size={24} color={colors.white} style={styles.headerIcon} />
+            <Text style={styles.headerTitle}>Resumo e Pagamento</Text>
+          </View>
+          <Text style={styles.userInfo}>{comanda ? `Comanda ${comanda}` : 'Consulta e fechamento'}</Text>
+        </View>
+        <View style={styles.headerRight}>
+          <TouchableOpacity style={styles.logoutBtn} onPress={handleBack}>
+            <Ionicons name="arrow-back-outline" size={24} color={colors.white} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
       <PaymentStepIndicator activeStep={activeStep} steps={paymentSteps} />
 
         {/* INFO DA COMANDA */}
@@ -358,17 +368,26 @@ export default function PagamentoScreen({ route, navigation }: any) {
         initialMode={splitInitialMode}
         menuItems={cardapioDin}
       />
+      </ScrollView>
       
       <StatusBar style="light" />
-    </ScreenScaffold>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
+  header: { backgroundColor: colors.primary, paddingBottom: 15, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomLeftRadius: 20, borderBottomRightRadius: 20, zIndex: 10, elevation: 8, shadowColor: colors.shadow, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 6 },
+  headerLeft: { flex: 1 },
+  headerCenter: { flex: 2, alignItems: 'center', justifyContent: 'center' },
+  headerRight: { flex: 1, alignItems: 'flex-end', justifyContent: 'center' },
+  headerTitleRow: { flexDirection: 'row', alignItems: 'center' },
+  headerIcon: { marginRight: 6 },
+  headerTitle: { color: colors.white, fontSize: 18, fontWeight: 'bold', textAlign: 'center' },
+  userInfo: { fontSize: 12, color: colors.userInfo, fontWeight: '600', marginTop: 4, textAlign: 'center' },
+  logoutBtn: { paddingHorizontal: 10, paddingVertical: 8, borderRadius: 12, backgroundColor: colors.logoutBg },
+  content: { flex: 1 },
   contentContainer: {
     padding: 20,
-  },
-  navbarWrapper: {
-    backgroundColor: colors.background,
   },
 });

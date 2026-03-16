@@ -2,10 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, Modal } from 'react-native';
 import { supabase } from '../config/SupabaseConfig';
 import { useAuth } from '../context/AuthContext';
-// @ts-ignore
-
 import { Ionicons } from '@expo/vector-icons';
-import { ScreenScaffold } from '../layouts/ScreenScaffold';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 // --- VALIDATION & MASKING HELPERS ---
 const maskCNPJ = (value: string) => {
@@ -82,6 +80,7 @@ interface Props {
 
 export default function GerenciarFornecedoresScreen({ onClose }: Props) {
     const { user } = useAuth();
+    const insets = useSafeAreaInsets();
     const [fornecedores, setFornecedores] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
@@ -242,10 +241,23 @@ export default function GerenciarFornecedoresScreen({ onClose }: Props) {
     };
 
     return (
-        <ScreenScaffold
-            title="Fornecedores"
-            leftAction={{ label: 'Voltar', onPress: onClose ?? (() => {}) }}
-        >
+        <View style={styles.container}>
+            <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}> 
+                <View style={styles.headerLeft} />
+                <View style={styles.headerCenter}>
+                    <View style={styles.headerTitleRow}>
+                        <Ionicons name="people-outline" size={24} color={colors.white} style={styles.headerIcon} />
+                        <Text style={styles.headerTitle}>Fornecedores</Text>
+                    </View>
+                    {!!user && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
+                </View>
+                <View style={styles.headerRight}>
+                    <TouchableOpacity style={styles.logoutBtn} onPress={onClose ?? (() => {})}>
+                        <Ionicons name="arrow-back-outline" size={24} color={colors.white} />
+                    </TouchableOpacity>
+                </View>
+            </View>
+
             <View style={styles.content}>
                 <TouchableOpacity style={styles.addBtn} onPress={() => abrirModal()}>
                     <Text style={styles.addBtnText}>+ Novo Fornecedor</Text>
@@ -344,11 +356,21 @@ export default function GerenciarFornecedoresScreen({ onClose }: Props) {
                     </View>
                 </View>
             </Modal>
-        </ScreenScaffold>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    header: { backgroundColor: colors.primary, paddingBottom: 15, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomLeftRadius: 20, borderBottomRightRadius: 20, zIndex: 10, elevation: 8, shadowColor: colors.shadow, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 6 },
+    headerLeft: { flex: 1 },
+    headerCenter: { flex: 2, alignItems: 'center', justifyContent: 'center' },
+    headerRight: { flex: 1, alignItems: 'flex-end', justifyContent: 'center' },
+    headerTitleRow: { flexDirection: 'row', alignItems: 'center' },
+    headerIcon: { marginRight: 6 },
+    headerTitle: { color: colors.white, fontSize: 18, fontWeight: 'bold', textAlign: 'center' },
+    userInfo: { fontSize: 12, color: colors.userInfo, fontWeight: '600', marginTop: 4, textAlign: 'center' },
+    logoutBtn: { paddingHorizontal: 10, paddingVertical: 8, borderRadius: 12, backgroundColor: colors.logoutBg },
     content: { flex: 1, padding: 20 },
     addBtn: {
         backgroundColor: colors.secondary,
