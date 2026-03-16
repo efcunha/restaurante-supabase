@@ -71,6 +71,7 @@ const styles = StyleSheet.create({
     listContent: {
         padding: 16,
         paddingBottom: 100,
+        ...(Platform.OS === 'web' ? { alignItems: 'center' } : {}),
     },
     emptyContainer: {
         flex: 1,
@@ -97,11 +98,14 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         padding: 16,
         marginBottom: 12,
+        borderWidth: 1,
+        borderColor: colors.border,
+        ...(Platform.OS === 'web' ? { width: '100%', maxWidth: 800 } : {}),
         ...Platform.select({
             ios: {
                 shadowColor: colors.shadow,
                 shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.1,
+                shadowOpacity: 0.05,
                 shadowRadius: 4,
             },
             android: {
@@ -109,7 +113,7 @@ const styles = StyleSheet.create({
             },
             web: {
                 // @ts-ignore
-                boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+                boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.06)',
             }
         }),
     },

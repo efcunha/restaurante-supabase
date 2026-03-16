@@ -36,7 +36,6 @@ import FinancialConfigScreen from './FinancialConfigScreen';
 import FinancialDashboardScreen from './FinancialDashboardScreen';
 // @ts-ignore
 import OperationalSettingsScreen from './OperationalSettingsScreen';
-import { confirmLogout } from '../utils/appUtils';
 import BiometricSetupModal from '../components/BiometricSetupModal';
 import MFASetupModal from '../components/MFASetupModal';
 import AdminHeader from '../components/AdminHeader';
@@ -59,7 +58,7 @@ import { layout, spacing } from '../design-system';
  * 4. System maintenance (Biometrics, MFA, Data Clearing).
  */
 export default function AdminScreen() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const route = useRoute() as any;
   const params = route?.params;
   const navigation = useNavigation() as any;
@@ -406,7 +405,6 @@ export default function AdminScreen() {
       {/* Header */}
       <AdminHeader
         userName={user?.name || user?.email || undefined}
-        onLogout={() => confirmLogout(logout)}
       />
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>

@@ -6,7 +6,6 @@ import { useOrders } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
 import PedidoDetalhesModal from './PedidoDetalhesModal';
 import { supabase } from '../config/SupabaseConfig';
-import { exitApp } from '../utils/appUtils';
 import { getLocalDateKey } from '../utils/dateUtils';
 import CaixaService from '../services/CaixaService';
 import { colors } from '../theme/colors';
@@ -550,23 +549,15 @@ export default function MontagemScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          {user && (
-            <View>
-              <Text style={styles.userInfoLabel}>Olá,</Text>
-              <Text style={styles.userInfo}>{user.nome || user.email}</Text>
-            </View>
-          )}
-        </View>
+        <View style={styles.headerLeft} />
         <View style={styles.headerCenter}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <Ionicons name="layers-outline" size={24} color={colors.white} style={{ marginRight: 8 }} />
             <Text style={styles.headerTitle}>Montagem</Text>
           </View>
+          {!!user && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
         </View>
-        <TouchableOpacity style={styles.logoutBtn} onPress={exitApp}>
-          <Ionicons name="log-out-outline" size={24} color={colors.white} />
-        </TouchableOpacity>
+        <View style={styles.logoutBtn} />
       </View>
 
       <FlatList
@@ -640,9 +631,11 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
   userInfo: {
-    color: colors.secondary,
+    color: colors.userInfo,
     fontSize: 12,
     fontWeight: '600',
+    marginTop: 4,
+    textAlign: 'center',
   },
   logoutBtn: {
     flex: 1,
@@ -659,6 +652,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: 20,
     paddingBottom: 100,
+    ...(Platform.OS === 'web' ? { alignItems: 'center' } : {}),
   },
   orderCard: {
     backgroundColor: colors.white,
@@ -677,6 +671,7 @@ const styles = StyleSheet.create({
     }),
     borderWidth: 1,
     borderColor: colors.surfaceMuted,
+    ...(Platform.OS === 'web' ? { width: '100%', maxWidth: 800 } : {}),
   },
   orderCardUrgent: {
     backgroundColor: colors.white,

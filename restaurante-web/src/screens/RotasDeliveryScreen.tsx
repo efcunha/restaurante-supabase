@@ -5,23 +5,16 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../config/SupabaseConfig';
 import { getLocalDateKey } from '../utils/dateUtils';
-import { exitApp } from '../utils/appUtils';
 import OptimizedFlatList from '../components/OptimizedFlatList';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
 import { colors } from '../theme/colors';
 export default function RotasDeliveryScreen() {
   const { user } = useAuth();
-  const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   
   const [loading, setLoading] = useState(true);
   const [deliveryOrders, setDeliveryOrders] = useState<any[]>([]);
   const [processingItems, setProcessingItems] = useState(new Set());
-
-  // Detecta se o App Header padrão de Stack está presente (caso o Admin navegue para cá a partir do botão)
-  // Em Tab views, o header do SafeArea próprio assumirá o visual.
-  const isFromAdmin = user?.funcao === 'admin' || user?.funcao === 'gerente';
 
   const fetchDeliveryOrders = useCallback(async () => {
     try {
@@ -302,30 +295,12 @@ export default function RotasDeliveryScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
-        <View style={styles.headerLeft}>
-           {isFromAdmin ? (
-               <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 5 }}>
-                   <Ionicons name="arrow-back" size={28} color={colors.white} />
-               </TouchableOpacity>
-           ) : (
-             <View>
-              <Text style={styles.userInfoLabel}>Motorista(a),</Text>
-              <Text style={styles.userInfo}>{user?.nome || user?.email}</Text>
-             </View>
-           )}
-        </View>
+        <View style={styles.headerLeft} />
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>Rotas Delivery</Text>
+          {!!user && <Text style={styles.userInfo}>Operador: {user?.nome || user?.email}</Text>}
         </View>
-        
-        {/* Somente exibe logout se for o Entregador nativo na tab (Admin desloga na sua própria tela) */}
-        {!isFromAdmin ? (
-            <TouchableOpacity style={styles.logoutBtn} onPress={exitApp}>
-            <Ionicons name="log-out-outline" size={24} color={colors.white} />
-            </TouchableOpacity>
-        ) : (
-            <View style={styles.logoutBtn} /> /* Spacer */
-        )}
+        <View style={styles.headerLeft} />
       </View>
 
       {loading ? (
@@ -394,29 +369,31 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
   userInfo: {
-    color: colors.secondary,
+    color: colors.userInfo,
     fontSize: 12,
     fontWeight: '600',
-  },
-  logoutBtn: {
-    flex: 1,
-    alignItems: 'flex-end',
-    justifyContent: 'center',
+    marginTop: 4,
+    textAlign: 'center',
   },
   content: {
     padding: 15,
+    paddingBottom: 100,
+    ...(Platform.OS === 'web' ? { alignItems: 'center' } : {}),
   },
   orderCard: {
     backgroundColor: colors.white,
     borderRadius: 15,
     padding: 18,
     marginBottom: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
     borderLeftWidth: 6,
     borderLeftColor: colors.secondary, // Padrão: Preparando (Amarelo/Warning)
     ...Platform.select({
+       web: { maxWidth: 800, width: '100%', boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.06)' },
        // @ts-ignore
        default: { elevation: 4, shadowColor: colors.shadow, shadowOpacity: 0.1, shadowRadius: 8, shadowOffset:{width:0, height:2} }
-    })
+    }),
   },
   dispatchedCard: {
     borderLeftColor: colors.secondary, // Na rua (Azul)

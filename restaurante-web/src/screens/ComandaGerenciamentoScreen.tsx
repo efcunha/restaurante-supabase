@@ -17,8 +17,6 @@ import { getTodayKey } from '../utils/dateUtils'; // Migrated from FirebaseOptim
 import { calcularPrecoItem } from '../utils/orderCalculator';
 import CancelOrderModal from '../components/comandas/CancelOrderModal';
 
-import { confirmLogout } from '../utils/appUtils';
-
 import PagamentosService from '../services/PagamentosService';
 import ComandasService from '../services/ComandasService';
 import PrinterService from '../services/PrinterService';
@@ -39,7 +37,7 @@ if (Platform.OS === 'android') {
 
 export default function ComandaGerenciamentoScreen(props: any) {
   const useUiNextComanda = isFeatureEnabled('comandaGerenciamento_uiNext');
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { addOrder } = useOrders();
   const {
     activeTab, setActiveTab,
@@ -97,10 +95,6 @@ export default function ComandaGerenciamentoScreen(props: any) {
   const { showToast } = useToast();
 
   // --- Actions ---
-
-  const handleLogout = () => {
-    confirmLogout(logout);
-  };
 
   const handlePrint = async (comandaData: any) => {
     // Preparar dados para o formato esperado pelo PrinterService (itens)
@@ -444,29 +438,15 @@ export default function ComandaGerenciamentoScreen(props: any) {
 
 
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          {user && (
-            <View>
-              <Text style={styles.userInfoLabel}>Olá,</Text>
-              <Text style={styles.userInfo}>{user.nome || user.email}</Text>
-            </View>
-          )}
-        </View>
+        <View style={styles.headerLeft} />
         <View style={styles.headerCenter}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <Ionicons name="clipboard-outline" size={24} color={colors.white} style={{ marginRight: 8 }} />
             <Text style={styles.headerTitle}>Gerenciamento</Text>
           </View>
+          {!!user && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
         </View>
-        <View style={styles.logoutBtn}>
-          {useUiNextComanda ? (
-            <Button label="Sair" onPress={handleLogout} size="sm" />
-          ) : (
-            <TouchableOpacity onPress={handleLogout}>
-              <Ionicons name="log-out-outline" size={24} color={colors.white} />
-            </TouchableOpacity>
-          )}
-        </View>
+        <View style={styles.logoutBtn} />
       </View>
 
       <View style={styles.tabs}>
@@ -567,12 +547,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.userInfo,
     fontWeight: '600',
+    marginTop: 4,
+    textAlign: 'center',
   },
   logoutBtn: {
     flex: 1,
     alignItems: 'flex-end',
     justifyContent: 'center',
-    padding: 5,
   },
   tabs: { flexDirection: 'row', padding: 10 },
   tab: {
