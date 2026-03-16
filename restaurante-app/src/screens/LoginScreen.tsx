@@ -99,15 +99,6 @@ export default function LoginScreen({ navigation }: Props) {
             ]}
             resizeMode="contain"
           />
-
-          <TouchableOpacity
-            style={styles.aboutCta}
-            onPress={() => navigation.navigate('About')}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.aboutCtaText}>Conhecer a plataforma</Text>
-            <Ionicons name="arrow-forward" size={16} color="#EAF7FB" />
-          </TouchableOpacity>
         </View>
 
         {/* Card do formulário */}
@@ -220,6 +211,15 @@ export default function LoginScreen({ navigation }: Props) {
             <Text style={styles.registerPrompt}>Precisa cadastrar um novo restaurante?</Text>
             <TouchableOpacity onPress={() => navigation.navigate('Register')}>
               <Text style={styles.registerLink}>Cadastre seu restaurante</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.aboutCtaCard}
+              onPress={() => navigation.navigate('About')}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.aboutCtaCardText}>Conhecer a plataforma</Text>
+              <Ionicons name="arrow-forward" size={16} color="#0B6780" />
             </TouchableOpacity>
           </View>
         </View>
@@ -487,6 +487,25 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     textDecorationLine: 'underline',
     textAlign: 'center',
+  },
+  aboutCtaCard: {
+    marginTop: 10,
+    minHeight: 38,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#B8D7E2',
+    backgroundColor: '#EAF6FA',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  aboutCtaCardText: {
+    color: '#0B6780',
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.2,
   },
   footer: {
     marginTop: 20,
