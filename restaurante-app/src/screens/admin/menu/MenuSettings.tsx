@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../../../context/AuthContext';
 import { PizzaSize, PizzaConfig } from '../../../types';
 import { colors } from '../../../theme/colors';
 interface MenuSettingsProps {
@@ -25,6 +26,7 @@ export default function MenuSettings({
     onSaveListas,
     onSavePizzaSizes
 }: MenuSettingsProps) {
+    const { user } = useAuth();
     const [activeTab, setActiveTab] = useState<'pizza' | 'caldos'>('pizza');
     
     // Pizza Size State
@@ -101,8 +103,19 @@ export default function MenuSettings({
             <View style={styles.overlay}>
                 <View style={styles.content}>
                     <View style={styles.header}>
-                        <Text style={styles.title}>⚙️ Configurações do Cardápio</Text>
-                        <TouchableOpacity onPress={onClose}><Text style={styles.close}>✕</Text></TouchableOpacity>
+                        <View style={styles.headerTop}>
+                            <View style={styles.headerLeft} />
+                            <View style={styles.headerCenter}>
+                                <View style={styles.titleRow}>
+                                    <Ionicons name="options-outline" size={22} color={colors.primary} style={styles.titleIcon} />
+                                    <Text style={styles.title}>Configurações do Cardápio</Text>
+                                </View>
+                            </View>
+                            <View style={styles.headerRight}>
+                                <TouchableOpacity onPress={onClose}><Text style={styles.close}>✕</Text></TouchableOpacity>
+                            </View>
+                        </View>
+                        {!!user && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
                     </View>
 
                     <View style={styles.tabs}>
@@ -198,9 +211,16 @@ export default function MenuSettings({
 const styles = StyleSheet.create({
     overlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', alignItems: 'center', padding: 20 },
     content: { backgroundColor: colors.white, width: '100%', maxWidth: 500, borderRadius: 20, padding: 20, maxHeight: '90%', height: 600 },
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+    header: { marginBottom: 20 },
+    headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    headerLeft: { flex: 1 },
+    headerCenter: { flex: 2, alignItems: 'center' },
+    headerRight: { flex: 1, alignItems: 'flex-end' },
+    titleRow: { flexDirection: 'row', alignItems: 'center' },
+    titleIcon: { marginRight: 8 },
     title: { fontSize: 20, fontWeight: 'bold', color: colors.primary },
     close: { fontSize: 24, color: colors.textSecondary, padding: 5 },
+    userInfo: { marginTop: 4, fontSize: 12, color: colors.textSecondary, fontWeight: '600', textAlign: 'center' },
     tabs: { flexDirection: 'row', marginBottom: 15, borderBottomWidth: 1, borderColor: colors.border },
     tab: { flex: 1, alignItems: 'center', paddingVertical: 10, borderBottomWidth: 2, borderColor: 'transparent' },
     tabActive: { borderColor: colors.primary },

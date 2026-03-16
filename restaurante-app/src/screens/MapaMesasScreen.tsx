@@ -17,12 +17,13 @@ import { Table, Order } from '../types';
 import { useAuth } from '../context/AuthContext';
 // @ts-ignore
 import PedidoDetalhesModal from './PedidoDetalhesModal';
-import { ScreenScaffold } from '../layouts/ScreenScaffold';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 const { width } = Dimensions.get('window');
 
 export default function MapaMesasScreen({ navigation, route }: any) {
     const { user } = useAuth();
+    const insets = useSafeAreaInsets();
 
     const [loading, setLoading] = useState(true);
     const [environments, setEnvironments] = useState<any[]>([]);
@@ -291,10 +292,22 @@ export default function MapaMesasScreen({ navigation, route }: any) {
     };
 
     return (
-        <ScreenScaffold
-            title="Mapa de Mesas"
-            leftAction={{ label: 'Voltar', onPress: () => navigation.goBack() }}
-        >
+        <View style={styles.container}>
+            <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
+                <View style={styles.headerLeft} />
+                <View style={styles.headerCenter}>
+                    <View style={styles.headerTitleRow}>
+                        <Ionicons name="grid-outline" size={24} color={colors.white} style={styles.headerIcon} />
+                        <Text style={styles.headerTitle}>Mapa de Mesas</Text>
+                    </View>
+                    {!!user && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
+                </View>
+                <View style={styles.headerRight}>
+                    <TouchableOpacity style={styles.logoutBtn} onPress={() => navigation.goBack()}>
+                        <Ionicons name="arrow-back-outline" size={20} color={colors.white} />
+                    </TouchableOpacity>
+                </View>
+            </View>
 
             {loading ? (
                 <View style={styles.center}>
@@ -416,7 +429,7 @@ export default function MapaMesasScreen({ navigation, route }: any) {
                     }}
                 />
             )}
-        </ScreenScaffold>
+        </View>
     );
 }
 
@@ -426,6 +439,15 @@ import TableGraphic from '../components/TableGraphic';
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
+    header: { backgroundColor: colors.primary, minHeight: 92, paddingBottom: 15, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomLeftRadius: 20, borderBottomRightRadius: 20, zIndex: 10, elevation: 8, shadowColor: colors.shadow, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 6 },
+    headerLeft: { flex: 1 },
+    headerCenter: { flex: 2, alignItems: 'center', justifyContent: 'center' },
+    headerRight: { flex: 1, alignItems: 'flex-end', justifyContent: 'center' },
+    headerTitleRow: { flexDirection: 'row', alignItems: 'center' },
+    headerIcon: { marginRight: 8 },
+    headerTitle: { color: colors.white, fontSize: 20, fontWeight: 'bold', textAlign: 'center' },
+    userInfo: { fontSize: 12, color: colors.userInfo, fontWeight: '600', marginTop: 4, textAlign: 'center' },
+    logoutBtn: { paddingHorizontal: 10, paddingVertical: 8, borderRadius: 12, backgroundColor: colors.logoutBg },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     tabsContainer: { height: 60, backgroundColor: colors.white, borderBottomWidth: 1, borderBottomColor: colors.border },
     tabsScroll: { paddingHorizontal: 15, alignItems: 'center' },

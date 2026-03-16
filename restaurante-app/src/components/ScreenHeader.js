@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { colorSystem, spacing, typography, shadows } from '../design-system';
@@ -21,9 +22,12 @@ export default function ScreenHeader({ title, onBack = null }) {
       )}
 
       <View style={styles.headerCenter}>
-        <Text style={styles.headerTitle}>{title}</Text>
+        <View style={styles.headerTitleRow}>
+          <Ionicons name="document-text-outline" size={20} color={colorSystem.onPrimary} style={styles.headerTitleIcon} />
+          <Text style={styles.headerTitle}>{title}</Text>
+        </View>
         {user?.nome && (
-          <Text style={styles.userInfo}>{user.nome}</Text>
+          <Text style={styles.userInfo}>Operador: {user.nome}</Text>
         )}
       </View>
 
@@ -57,6 +61,13 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingHorizontal: spacing.s8,
+  },
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerTitleIcon: {
+    marginRight: spacing.s6,
   },
   headerTitle: {
     ...typography.headingM,

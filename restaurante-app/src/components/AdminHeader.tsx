@@ -12,19 +12,13 @@ interface AdminHeaderProps {
 export default function AdminHeader({ userName, onLogout, onBack, paddingTop = 50 }: AdminHeaderProps) {
   return (
     <View style={[styles.header, { paddingTop }]}>
-      <View style={styles.headerLeft}>
-        {!!userName && (
-          <View>
-            <Text style={styles.userInfoLabel}>Ola,</Text>
-            <Text style={styles.userInfo}>{userName}</Text>
-          </View>
-        )}
-      </View>
+      <View style={styles.headerLeft} />
       <View style={styles.headerCenter}>
         <View style={styles.headerTitleRow}>
           <Ionicons name="shield-checkmark-outline" size={24} color={colors.white} style={styles.headerIcon} />
           <Text style={styles.headerTitle}>Admin</Text>
         </View>
+        {!!userName && <Text style={styles.userInfo}>Operador: {userName}</Text>}
       </View>
       <View style={styles.headerRight}>
         {onBack ? (
@@ -44,6 +38,7 @@ export default function AdminHeader({ userName, onLogout, onBack, paddingTop = 5
 const styles = StyleSheet.create({
   header: {
     backgroundColor: colors.primary,
+    minHeight: 92,
     paddingBottom: 15,
     paddingHorizontal: 20,
     flexDirection: 'row',
@@ -88,14 +83,20 @@ const styles = StyleSheet.create({
   },
   userInfoLabel: {
     color: colors.primaryContrastMuted,
-    fontSize: 10,
-  },
-  userInfo: {
-    color: colors.secondary,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
   },
+  userInfo: {
+    color: colors.userInfo,
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 4,
+    textAlign: 'center',
+  },
   logoutBtn: {
-    padding: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: colors.logoutBg,
   },
 });

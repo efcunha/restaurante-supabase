@@ -172,17 +172,24 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
         <View style={styles.overlay}>
           <View style={styles.modalContainer}>
             <View style={styles.header}>
-              <View>
-                <Text style={styles.orderId}>
-                  Comanda {order.comandaNumber || order.numeroComanda || order.id.slice(0, 8)}
-                </Text>
+              <View style={styles.headerLeft} />
+              <View style={styles.headerCenter}>
+                <View style={styles.headerTitleRow}>
+                  <Ionicons name="receipt-outline" size={22} color={colors.white} style={styles.headerIcon} />
+                  <Text style={styles.orderId}>
+                    Comanda {order.comandaNumber || order.numeroComanda || order.id.slice(0, 8)}
+                  </Text>
+                </View>
                 <View style={[styles.statusBadge, { backgroundColor: getStatusColor(order.status) }]}>
                   <Text style={styles.statusText}>{getStatusLabel(order.status)}</Text>
                 </View>
+                {!!user && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
               </View>
-              <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-                <Text style={styles.closeBtnText}>✕</Text>
-              </TouchableOpacity>
+              <View style={styles.headerRight}>
+                <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+                  <Text style={styles.closeBtnText}>✕</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             <ScrollView style={styles.content}>
@@ -514,12 +521,31 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     padding: 20,
     backgroundColor: colors.primary,
   },
+  headerLeft: {
+    flex: 1,
+  },
+  headerCenter: {
+    flex: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerRight: {
+    flex: 1,
+    alignItems: 'flex-end',
+  },
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerIcon: {
+    marginRight: 8,
+  },
   orderId: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '700',
     color: colors.white,
     marginBottom: 8,
@@ -535,6 +561,13 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 12,
     fontWeight: '600',
+  },
+  userInfo: {
+    marginTop: 6,
+    color: colors.userInfo,
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   closeBtn: {
     width: 32,

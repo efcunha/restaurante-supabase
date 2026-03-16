@@ -307,24 +307,27 @@ export default function RotasDeliveryScreen() {
                    <Ionicons name="arrow-back" size={28} color={colors.white} />
                </TouchableOpacity>
            ) : (
-             <View>
-              <Text style={styles.userInfoLabel}>Motorista(a),</Text>
-              <Text style={styles.userInfo}>{user?.nome || user?.email}</Text>
-             </View>
+             <View />
            )}
         </View>
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Rotas Delivery</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Ionicons name="map-outline" size={24} color={colors.white} style={{ marginRight: 8 }} />
+            <Text style={styles.headerTitle}>Rotas Delivery</Text>
+          </View>
+          {!!user && <Text style={styles.userInfo}>Operador: {user?.nome || user?.email}</Text>}
         </View>
         
         {/* Somente exibe logout se for o Entregador nativo na tab (Admin desloga na sua própria tela) */}
-        {!isFromAdmin ? (
+        <View style={styles.headerRight}>
+          {!isFromAdmin ? (
             <TouchableOpacity style={styles.logoutBtn} onPress={exitApp}>
-            <Ionicons name="log-out-outline" size={24} color={colors.white} />
+              <Ionicons name="log-out-outline" size={24} color={colors.white} />
             </TouchableOpacity>
-        ) : (
-            <View style={styles.logoutBtn} /> /* Spacer */
-        )}
+          ) : (
+            <View style={styles.logoutSpacer} />
+          )}
+        </View>
       </View>
 
       {loading ? (
@@ -358,6 +361,7 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: colors.primary,
+    minHeight: 92,
     paddingBottom: 15,
     paddingHorizontal: 20,
     flexDirection: 'row',
@@ -389,18 +393,31 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   userInfoLabel: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 10,
-  },
-  userInfo: {
-    color: colors.secondary,
-    fontSize: 12,
+    color: colors.primaryContrastMuted,
+    fontSize: 11,
     fontWeight: '600',
   },
-  logoutBtn: {
+  userInfo: {
+    color: colors.userInfo,
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  headerRight: {
     flex: 1,
     alignItems: 'flex-end',
     justifyContent: 'center',
+  },
+  logoutBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: colors.logoutBg,
+  },
+  logoutSpacer: {
+    width: 44,
+    height: 40,
   },
   content: {
     padding: 15,

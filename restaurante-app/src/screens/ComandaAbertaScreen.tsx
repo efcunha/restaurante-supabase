@@ -2,6 +2,7 @@ import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 // @ts-ignore
 import ComandasService from '../services/ComandasService';
@@ -9,6 +10,7 @@ import { supabase } from '../config/SupabaseConfig';
 import { colors } from '../theme/colors';
 export default function ComandaAbertaScreen() {
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const [comandasAbertas, setComandasAbertas] = useState<any[]>([]);
   const [selected, setSelected] = useState<any>(null);
   const [pedidos, setPedidos] = useState<any[]>([]);
@@ -113,11 +115,20 @@ export default function ComandaAbertaScreen() {
   return (
     <View style={styles.container}>
 
-      <View style={styles.header}>
-        <Text style={styles.title}>Comandas Abertas</Text>
-        <TouchableOpacity onPress={onRefresh}>
-          <Ionicons name="refresh" size={24} color={colors.white} />
-        </TouchableOpacity>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
+        <View style={styles.headerLeft} />
+        <View style={styles.headerCenter}>
+          <View style={styles.headerTitleRow}>
+            <Ionicons name="receipt-outline" size={24} color={colors.white} style={styles.headerIcon} />
+            <Text style={styles.title}>Comandas Abertas</Text>
+          </View>
+          {!!user && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
+        </View>
+        <View style={styles.headerRight}>
+          <TouchableOpacity onPress={onRefresh} style={styles.refreshBtn}>
+            <Ionicons name="refresh" size={24} color={colors.white} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={{ flex: 1, flexDirection: 'row' }}>
@@ -224,15 +235,51 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: {
     backgroundColor: colors.primary,
-    paddingTop: 50,
+    minHeight: 92,
     paddingBottom: 15,
     paddingHorizontal: 20,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    elevation: 5
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    elevation: 8,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.65,
+    zIndex: 10,
   },
+  headerLeft: { flex: 1 },
+  headerCenter: {
+    flex: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerRight: {
+    flex: 1,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerIcon: { marginRight: 8 },
   title: { color: colors.white, fontSize: 20, fontWeight: 'bold' },
+  userInfo: {
+    color: colors.userInfo,
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  refreshBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: colors.logoutBg,
+  },
   listContainer: { width: '35%', borderRightWidth: 1, borderColor: colors.border, backgroundColor: colors.white },
   detailsContainer: { flex: 1, padding: 20 },
   card: {
