@@ -86,9 +86,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: {
     backgroundColor: colors.primary,
-    minHeight: 92,
     paddingBottom: 15,
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -117,11 +116,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerIcon: {
-    marginRight: 8,
+    marginRight: 6,
   },
   headerTitle: {
     color: colors.white,
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     textAlign: 'center',
   },

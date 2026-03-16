@@ -839,7 +839,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
     paddingTop: 50,
     paddingBottom: 15,
     backgroundColor: colors.primary,
@@ -863,10 +863,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitleIcon: {
-    marginRight: 8,
+    marginRight: 6,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     color: colors.white,
     textAlign: 'center',

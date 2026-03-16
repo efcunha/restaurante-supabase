@@ -424,9 +424,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: {
     backgroundColor: colors.primary,
-    minHeight: 92,
     paddingBottom: 15,
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -450,9 +449,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  headerIcon: { marginRight: 8 },
+  headerIcon: { marginRight: 6 },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     color: colors.white,
     fontWeight: 'bold',
     textAlign: 'center',

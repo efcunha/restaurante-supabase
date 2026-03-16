@@ -69,8 +69,8 @@ export default function CadastroProdutoScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  header: { backgroundColor: colors.primary, paddingTop: 50, paddingBottom: 20, paddingHorizontal: 20 },
-  headerTitle: { color: colors.white, fontSize: 24, fontWeight: '600' },
+  header: { backgroundColor: colors.primary, paddingTop: 50, paddingBottom: 20, paddingHorizontal: 12 },
+  headerTitle: { color: colors.white, fontSize: 18, fontWeight: '600' },
   scrollContent: { paddingVertical: 20, paddingBottom: 100 },
   formContainer: {},
   label: { color: colors.primary, fontWeight: '600', marginBottom: 8, marginTop: 10 },

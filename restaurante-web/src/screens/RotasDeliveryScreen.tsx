@@ -338,7 +338,7 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: colors.primary,
     paddingBottom: 15,
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -366,11 +366,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitleIcon: {
-    marginRight: 8,
+    marginRight: 6,
   },
   headerTitle: {
     color: colors.white,
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     textAlign: 'center',
   },
