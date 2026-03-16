@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, useRef, ReactNode } from 'react';
-import { Alert, InteractionManager } from 'react-native';
+import { Alert } from 'react-native';
 import { supabase } from '../config/SupabaseConfig';
 import { User } from '@supabase/supabase-js';
 
@@ -92,35 +92,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkBiometric();
   }, []);
 
-  // Initialize Auth
+  // Initialize Auth — uses onAuthStateChange only (Supabase v2 recommended pattern).
+  // The INITIAL_SESSION event fires on mount with the current session state (from SecureStore),
+  // eliminating the need for a separate getSession() call.
   useEffect(() => {
     let mounted = true;
 
-    const initAuth = async () => {
-       try {
-         // Check active session first
-         const { data: { session } } = await supabase.auth.getSession();
-         
-         if (session?.user) {
-             console.log('[SupabaseAuth] Session restored', session.user.id);
-             await reloadUserData(session.user);
-         } else {
-             setLoading(false);
-         }
-       } catch (e) {
-         console.error('[SupabaseAuth] Init error', e);
-         setLoading(false);
-       }
-    };
-
-    initAuth();
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
         if (!mounted) return;
-        
+
         console.log(`[SupabaseAuth] Auth event: ${event}`, session?.user?.id);
 
-        if (event === 'SIGNED_OUT' || !session?.user) {
+        // No session or explicit logout → release loading so Login screen renders
+        if (!session?.user || event === 'SIGNED_OUT') {
             setUser(null);
             setRole(null);
             setCustomClaims(null);
@@ -128,18 +112,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             return;
         }
 
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-             // Avoid double reload if we did it manually in login()
-             console.log('[SupabaseAuth] Processing SIGNED_IN. Manual?', isManualLoginRef.current);
-             if (!isManualLoginRef.current) {
-                 // Defer background refresh to avoid jank/timeout during interactions (e.g. scrolling)
-               InteractionManager.runAfterInteractions(async () => {
-                     await reloadUserData(session.user);
-                     setLoading(false);
-                 });
-                 // Ideally cancel if unmounted, but interaction handle cancellation is tricky in effect return.
-                 // Since reloadUserData handles errors gracefully, it's safer to let it run.
-             }
+        // Session available — load profile data
+        // Skip if login() already triggered a manual reload to avoid double fetch
+        if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+            console.log('[SupabaseAuth] Processing', event, '— Manual?', isManualLoginRef.current);
+            if (!isManualLoginRef.current) {
+                await reloadUserData(session.user);
+            }
         }
     });
 
@@ -250,6 +229,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           console.error('[SupabaseAuth] Error reloading user data:', error);
           // Don't fail silently - set loading to false so UI can respond
           setLoading(false);
+          } finally {
+            setLoading(false);
       }
   };
 
