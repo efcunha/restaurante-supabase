@@ -3,10 +3,9 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, TextInput, A
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../config/SupabaseConfig';
 import { useAuth } from '../context/AuthContext';
-import { confirmLogout } from '../utils/appUtils';
 import { colors } from '../theme/colors';
 export default function ReservasScreen({ navigation: _navigation }: any) {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [reservas, setReservas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
@@ -212,25 +211,15 @@ export default function ReservasScreen({ navigation: _navigation }: any) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          {user && (
-            <View>
-              <Text style={styles.userInfoLabel}>Olá,</Text>
-              <Text style={styles.userInfo}>{user.nome || user.email}</Text>
-            </View>
-          )}
-        </View>
+        <View style={styles.headerLeft} />
         <View style={styles.headerCenter}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <Ionicons name="calendar-outline" size={24} color={colors.white} style={{ marginRight: 8 }} />
             <Text style={styles.headerTitle}>Agendamentos & Reservas</Text>
           </View>
+          {!!user && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
         </View>
-        <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.logoutBtn} onPress={() => confirmLogout(logout)}>
-            <Ionicons name="log-out-outline" size={24} color={colors.white} />
-          </TouchableOpacity>
-        </View>
+        <View style={styles.headerRight} />
       </View>
 
       {renderFiltros()}
@@ -335,12 +324,9 @@ const styles = StyleSheet.create({
      alignItems: 'flex-end',
      justifyContent: 'center',
   },
-  logoutBtn: {
-    padding: 5,
-  },
   headerTitle: { color: colors.white, fontSize: 20, fontWeight: 'bold', textAlign: 'center' },
   userInfoLabel: { color: colors.primaryContrastMuted, fontSize: 10 },
-  userInfo: { color: colors.userInfo, fontSize: 12, fontWeight: '600' },
+  userInfo: { color: colors.userInfo, fontSize: 12, fontWeight: '600', marginTop: 4, textAlign: 'center' },
   // Filtros
   filtroContainer: { backgroundColor: colors.white, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border },
   filtroScroll: { paddingHorizontal: 15, gap: 10 },

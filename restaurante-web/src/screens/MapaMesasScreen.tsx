@@ -293,7 +293,6 @@ export default function MapaMesasScreen({ navigation, route }: any) {
     return (
         <ScreenScaffold
             title="Mapa de Mesas"
-            leftAction={{ label: 'Voltar', onPress: () => navigation.goBack() }}
         >
 
             {loading ? (

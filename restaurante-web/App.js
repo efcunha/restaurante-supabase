@@ -33,6 +33,7 @@ import MapaMesasScreen from './src/screens/MapaMesasScreen';
 import ReservasScreen from './src/screens/ReservasScreen';
 
 import RegisterCompanyScreen from './src/screens/RegisterCompanyScreen';
+import AboutScreen from './src/screens/AboutScreen';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { OrderProvider } from './src/context/OrderContext';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
@@ -136,6 +137,7 @@ function AuthStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterCompanyScreen} />
+      <Stack.Screen name="About" component={AboutScreen} />
     </Stack.Navigator>
   );
 }

@@ -9,30 +9,37 @@ import {
   ActivityIndicator,
   ScrollView,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  Dimensions,
 } from 'react-native';
-import { supabase } from '../config/SupabaseConfig'; // Replaced firebase config
+import { supabase } from '../config/SupabaseConfig';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '../context/AuthContext';
-import { useResponsive } from '../hooks/useResponsive';
-import { Button, FormInput } from '../components/ui-next';
-import { isFeatureEnabled } from '../config/featureFlags';
 // @ts-ignore
 import { validateCPF, validateCNPJ } from '../utils/validation';
 // @ts-ignore
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
+
 interface Props {
   navigation: NativeStackNavigationProp<any>;
 }
 
+const onboardingHighlights = [
+  {
+    title: 'Cadastro orientado',
+    description: 'Formulario organizado por etapas para facilitar o preenchimento e evitar duvidas.',
+  },
+  {
+    title: 'Base pronta para operar',
+    description: 'A conta ja nasce preparada para iniciar administracao, atendimento e fluxo operacional.',
+  },
+];
+
 export default function RegisterCompanyScreen({ navigation }: Props) {
-  useAuth(); // Keep auth context initialization side effects
-  const useUiNextRegisterCompany = isFeatureEnabled('registerCompany_uiNext');
-  // Actually, context 'register' wraps firebase. We should use direct supabase here or update context register?
-  // Context register in our new Supabase Auth Context DOES use supabase.auth.signUp.
-  const { isTablet, horizontalPadding } = useResponsive();
-  
+  const windowWidth = Dimensions.get('window').width;
+  const isDesktop = windowWidth >= 1120;
+  const isTablet = windowWidth >= 760;
+
   const [restaurantName, setRestaurantName] = useState('');
   const [adminName, setAdminName] = useState('');
   const [email, setEmail] = useState('');
@@ -46,7 +53,8 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
   const [loading, setLoading] = useState(false);
-  const [secureText, setSecureText] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Formatter for display
   const formatDocument = (text: string, type: 'cpf' | 'cnpj') => {
@@ -263,226 +271,214 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
-      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: 100, paddingHorizontal: horizontalPadding }]}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={colors.primary} />
-        </TouchableOpacity>
+      <View style={[styles.backdropOrb, styles.backdropOrbTop]} />
+      <View style={[styles.backdropOrb, styles.backdropOrbBottom]} />
+      <View style={styles.overlayVeil} />
 
-        <View style={styles.header}>
-          <Text style={styles.title}>Crie sua conta</Text>
-          <Text style={styles.subtitle}>Gerencie seu restaurante de forma inteligente</Text>
-        </View>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={[styles.shell, isDesktop && styles.shellDesktop]}>
+          <View style={[styles.heroPanel, isDesktop && styles.heroPanelDesktop]}>
+            <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+              <Ionicons name="arrow-back" size={20} color={colors.white} />
+              <Text style={styles.backBtnText}>Voltar ao login</Text>
+            </TouchableOpacity>
 
-        <View style={[styles.form, { maxWidth: isTablet ? 700 : '100%', alignSelf: 'center', width: '100%' }]}>
-          <Text style={styles.label}>Tipo de Documento</Text>
-          <View style={styles.docTypeContainer}>
-            <TouchableOpacity
-              style={[styles.docTypeBtn, documentType === 'cpf' && styles.docTypeBtnActive]}
-              onPress={() => setDocumentType('cpf')}
-            >
-              <Text style={[styles.docTypeText, documentType === 'cpf' && styles.docTypeTextActive]}>CPF</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.docTypeBtn, documentType === 'cnpj' && styles.docTypeBtnActive]}
-              onPress={() => setDocumentType('cnpj')}
-            >
-              <Text style={[styles.docTypeText, documentType === 'cnpj' && styles.docTypeTextActive]}>CNPJ</Text>
-            </TouchableOpacity>
+            <View style={styles.heroBadge}>
+              <Text style={styles.heroBadgeText}>Cadastro da plataforma</Text>
+            </View>
+
+            <Text style={[styles.title, isDesktop && styles.titleDesktop]}>Crie a conta do seu restaurante com um fluxo mais claro e profissional.</Text>
+            <Text style={[styles.subtitle, isDesktop && styles.subtitleDesktop]}>Organize os dados da empresa, do administrador e do acesso inicial em uma experiencia de cadastro mais elegante e facil de preencher.</Text>
+
+            <View style={[styles.highlightRow, isDesktop && styles.highlightRowDesktop]}>
+              {onboardingHighlights.map((item, index) => (
+                <View key={item.title} style={[styles.highlightCard, isDesktop && styles.highlightCardDesktop, isDesktop && index === onboardingHighlights.length - 1 && styles.highlightCardDesktopLast]}>
+                  <Text style={styles.highlightTitle}>{item.title}</Text>
+                  <Text style={styles.highlightDescription}>{item.description}</Text>
+                </View>
+              ))}
+            </View>
+
+            <View style={styles.companyCard}>
+              <Text style={styles.companyCardLabel}>Desenvolvido por</Text>
+              <Text style={styles.companyCardTitle}>Machado & Cunha Soft House</Text>
+              <Text style={styles.companyCardText}>Todos os direitos reservados.</Text>
+            </View>
           </View>
 
-          {useUiNextRegisterCompany ? (
-            <FormInput
-              label={documentType === 'cpf' ? 'CPF' : 'CNPJ'}
-              value={documentValue}
-              onChangeText={handleDocumentChange}
-              placeholder={documentType === 'cpf' ? '000.000.000-00' : '00.000.000/0000-00'}
-            />
-          ) : (
-            <>
+          <View style={[styles.formColumn, isTablet && styles.formColumnTablet, isDesktop && styles.formColumnDesktop]}>
+            <View style={styles.form}>
+              <Text style={styles.formEyebrow}>Novo restaurante</Text>
+              <Text style={styles.formTitle}>Cadastro inicial</Text>
+              <Text style={styles.formSubtitle}>Preencha os dados essenciais para criar a conta administrativa e iniciar a configuracao do restaurante.</Text>
+
+              <Text style={styles.sectionTitle}>Identificacao</Text>
+
+              <Text style={styles.label}>Tipo de Documento</Text>
+              <View style={styles.docTypeContainer}>
+                <TouchableOpacity
+                  style={[styles.docTypeBtn, documentType === 'cpf' && styles.docTypeBtnActive]}
+                  onPress={() => setDocumentType('cpf')}
+                >
+                  <Text style={[styles.docTypeText, documentType === 'cpf' && styles.docTypeTextActive]}>CPF</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.docTypeBtn, documentType === 'cnpj' && styles.docTypeBtnActive]}
+                  onPress={() => setDocumentType('cnpj')}
+                >
+                  <Text style={[styles.docTypeText, documentType === 'cnpj' && styles.docTypeTextActive]}>CNPJ</Text>
+                </TouchableOpacity>
+              </View>
+
               <Text style={styles.label}>{documentType === 'cpf' ? 'CPF' : 'CNPJ'}</Text>
               <TextInput
                 style={styles.input}
                 placeholder={documentType === 'cpf' ? '000.000.000-00' : '00.000.000/0000-00'}
+                placeholderTextColor="#7A8B97"
                 value={documentValue}
                 onChangeText={handleDocumentChange}
                 keyboardType="numeric"
               />
-            </>
-          )}
 
-          {useUiNextRegisterCompany ? (
-            <FormInput
-              label="Nome do Restaurante"
-              value={restaurantName}
-              onChangeText={setRestaurantName}
-              placeholder="Ex: Espetinho do Zé"
-            />
-          ) : (
-            <>
               <Text style={styles.label}>Nome do Restaurante</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Ex: Espetinho do Zé"
+                placeholder="Ex: Espetinho do Ze"
+                placeholderTextColor="#7A8B97"
                 value={restaurantName}
                 onChangeText={setRestaurantName}
               />
-            </>
-          )}
 
-          {useUiNextRegisterCompany ? (
-            <FormInput
-              label="Seu Nome (Administrador)"
-              value={adminName}
-              onChangeText={setAdminName}
-              placeholder="Ex: José Silva"
-            />
-          ) : (
-            <>
               <Text style={styles.label}>Seu Nome (Administrador)</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Ex: José Silva"
+                placeholder="Ex: Jose Silva"
+                placeholderTextColor="#7A8B97"
                 value={adminName}
                 onChangeText={setAdminName}
               />
-            </>
-          )}
 
-          <Text style={styles.label}>Telefone de Contato</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="(00) 00000-0000"
-            value={contactPhone}
-            onChangeText={handlePhoneChange}
-            keyboardType="phone-pad"
-          />
+              <Text style={styles.sectionTitle}>Contato e endereco</Text>
 
-          <Text style={styles.label}>CEP</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <TextInput
-              style={[styles.input, { flex: 1, marginRight: 10 }]}
-              placeholder="00000-000"
-              value={zipCode}
-              onChangeText={handleZipCodeChange}
-              keyboardType="numeric"
-            />
-            <TouchableOpacity
-              style={styles.searchButton}
-              onPress={() => searchAddressByCEP(zipCode)}
-            >
-              <Ionicons name="search" size={20} color={colors.white} />
-            </TouchableOpacity>
-          </View>
-
-          <Text style={styles.label}>Endereço Completo</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Rua, número, complemento"
-            value={address}
-            onChangeText={setAddress}
-          />
-
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-            <View style={{ flex: 2, marginRight: 10 }}>
-              <Text style={styles.label}>Cidade</Text>
+              <Text style={styles.label}>Telefone de Contato</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Cidade"
-                value={city}
-                onChangeText={setCity}
+                placeholder="(00) 00000-0000"
+                placeholderTextColor="#7A8B97"
+                value={contactPhone}
+                onChangeText={handlePhoneChange}
+                keyboardType="phone-pad"
               />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.label}>Estado</Text>
+
+              <Text style={styles.label}>CEP</Text>
+              <View style={styles.inlineRow}>
+                <TextInput
+                  style={[styles.input, styles.inlineInput]}
+                  placeholder="00000-000"
+                  placeholderTextColor="#7A8B97"
+                  value={zipCode}
+                  onChangeText={handleZipCodeChange}
+                  keyboardType="numeric"
+                />
+                <TouchableOpacity style={styles.searchButton} onPress={() => searchAddressByCEP(zipCode)}>
+                  <Ionicons name="search" size={20} color={colors.white} />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.label}>Endereco Completo</Text>
               <TextInput
                 style={styles.input}
-                placeholder="UF"
-                value={state}
-                onChangeText={(text) => setState(text.toUpperCase())}
-                maxLength={2}
-                autoCapitalize="characters"
+                placeholder="Rua, numero, complemento"
+                placeholderTextColor="#7A8B97"
+                value={address}
+                onChangeText={setAddress}
               />
-            </View>
-          </View>
 
-          {useUiNextRegisterCompany ? (
-            <FormInput
-              label="Email"
-              value={email}
-              onChangeText={setEmail}
-              placeholder="seu@email.com"
-            />
-          ) : (
-            <>
+              <View style={[styles.inlineRow, styles.cityRow]}>
+                <View style={styles.cityFieldLarge}>
+                  <Text style={styles.label}>Cidade</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Cidade"
+                    placeholderTextColor="#7A8B97"
+                    value={city}
+                    onChangeText={setCity}
+                  />
+                </View>
+                <View style={styles.cityFieldSmall}>
+                  <Text style={styles.label}>Estado</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="UF"
+                    placeholderTextColor="#7A8B97"
+                    value={state}
+                    onChangeText={(text) => setState(text.toUpperCase())}
+                    maxLength={2}
+                    autoCapitalize="characters"
+                  />
+                </View>
+              </View>
+
+              <Text style={styles.sectionTitle}>Acesso</Text>
+
               <Text style={styles.label}>Email</Text>
               <TextInput
                 style={styles.input}
                 placeholder="seu@email.com"
+                placeholderTextColor="#7A8B97"
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
-            </>
-          )}
 
-          <Text style={styles.label}>Senha</Text>
-          <View style={styles.passwordContainer}>
-            <TextInput
-              style={styles.inputPassword}
-              placeholder="Mínimo 6 caracteres"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={secureText}
-            />
-            <TouchableOpacity onPress={() => setSecureText(!secureText)} style={styles.eyeIcon}>
-              <Ionicons name={secureText ? "eye-off" : "eye"} size={24} color={colors.textSecondary} />
-            </TouchableOpacity>
-          </View>
+              <Text style={styles.label}>Senha</Text>
+              <View style={styles.passwordContainer}>
+                <TextInput
+                  style={styles.inputPassword}
+                  placeholder="Minimo 6 caracteres"
+                  placeholderTextColor="#7A8B97"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
+                  <Ionicons name={showPassword ? 'eye' : 'eye-off'} size={22} color="#0B6780" />
+                </TouchableOpacity>
+              </View>
 
-          {useUiNextRegisterCompany ? (
-            <FormInput
-              label="Confirmar Senha"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              placeholder="Repita a senha"
-              secureTextEntry={secureText}
-            />
-          ) : (
-            <>
               <Text style={styles.label}>Confirmar Senha</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Repita a senha"
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry={secureText}
-              />
-            </>
-          )}
+              <View style={styles.passwordContainer}>
+                <TextInput
+                  style={styles.inputPassword}
+                  placeholder="Repita a senha"
+                  placeholderTextColor="#7A8B97"
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry={!showConfirmPassword}
+                />
+                <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={styles.eyeIcon}>
+                  <Ionicons name={showConfirmPassword ? 'eye' : 'eye-off'} size={22} color="#0B6780" />
+                </TouchableOpacity>
+              </View>
 
-          {useUiNextRegisterCompany ? (
-            <Button
-              label="CRIAR CONTA GRÁTIS"
-              onPress={handleRegister}
-              loading={loading}
-              fullWidth
-              size="lg"
-              style={styles.btn}
-            />
-          ) : (
-            <TouchableOpacity
-              style={[styles.btn, loading && styles.btnDisabled]}
-              onPress={handleRegister}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color={colors.white} />
-              ) : (
-                <Text style={styles.btnText}>CRIAR CONTA GRÁTIS</Text>
-              )}
-            </TouchableOpacity>
-          )}
+              <TouchableOpacity style={[styles.btn, loading && styles.btnDisabled]} onPress={handleRegister} disabled={loading}>
+                {loading ? <ActivityIndicator color={colors.white} /> : <Text style={styles.btnText}>CRIAR CONTA GRATIS</Text>}
+              </TouchableOpacity>
+
+              <View style={styles.helperCard}>
+                <Ionicons name="sparkles" size={18} color="#0A5B6F" style={styles.helperIcon} />
+                <Text style={styles.helperText}>Depois do cadastro, voce podera entrar com a conta administrativa e iniciar a configuracao completa do restaurante.</Text>
+              </View>
+            </View>
+
+            <View style={styles.bottomLinkRow}>
+              <Text style={styles.bottomLinkText}>Ja possui conta criada?</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+                <Text style={styles.bottomLinkAction}>Voltar para o login</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -492,117 +488,396 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#0C7A96',
+    overflow: 'hidden',
+  },
+  backdropOrb: {
+    position: 'absolute',
+    borderRadius: 999,
+    opacity: 0.28,
+  },
+  backdropOrbTop: {
+    width: 360,
+    height: 360,
+    backgroundColor: '#F1B24B',
+    top: -120,
+    left: -90,
+  },
+  backdropOrbBottom: {
+    width: 460,
+    height: 460,
+    backgroundColor: '#073A49',
+    bottom: -180,
+    right: -130,
+  },
+  overlayVeil: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255,255,255,0.02)',
   },
   scrollContent: {
     flexGrow: 1,
+    paddingHorizontal: 22,
+    paddingTop: 44,
+    paddingBottom: 42,
   },
   backBtn: {
-    marginBottom: 20,
-    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    marginBottom: 22,
   },
-  header: {
-    marginBottom: 30,
+  backBtnText: {
+    color: colors.white,
+    fontSize: 15,
+    fontWeight: '800',
+    marginLeft: 8,
+  },
+  shell: {
+    width: '100%',
+    maxWidth: 1280,
+    alignSelf: 'center',
+  },
+  shellDesktop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  heroPanel: {
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 26,
+  },
+  heroPanelDesktop: {
+    flex: 1,
+    maxWidth: 560,
+    alignItems: 'flex-start',
+    paddingRight: 38,
+    marginBottom: 0,
+    paddingTop: 8,
+  },
+  heroBadge: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    marginBottom: 18,
+  },
+  heroBadgeText: {
+    color: '#EDF9FC',
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+    textAlign: 'center',
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: colors.primary,
-    marginBottom: 10,
+    fontSize: 34,
+    lineHeight: 41,
+    fontWeight: '900',
+    color: colors.white,
+    textAlign: 'center',
+    maxWidth: 560,
+  },
+  titleDesktop: {
+    textAlign: 'left',
+    fontSize: 44,
+    lineHeight: 52,
   },
   subtitle: {
+    fontSize: 17,
+    lineHeight: 28,
+    color: '#D9F1F6',
+    marginTop: 14,
+    textAlign: 'center',
+    maxWidth: 540,
+  },
+  subtitleDesktop: {
+    textAlign: 'left',
+    fontSize: 18,
+    lineHeight: 29,
+  },
+  highlightRow: {
+    width: '100%',
+    marginTop: 24,
+  },
+  highlightRowDesktop: {
+    flexDirection: 'row',
+  },
+  highlightCard: {
+    width: '100%',
+    backgroundColor: 'rgba(4, 43, 54, 0.34)',
+    borderRadius: 22,
+    paddingVertical: 16,
+    paddingHorizontal: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    marginBottom: 12,
+  },
+  highlightCardDesktop: {
+    flex: 1,
+    marginRight: 12,
+  },
+  highlightCardDesktopLast: {
+    marginRight: 0,
+  },
+  highlightTitle: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    lineHeight: 24,
+    fontWeight: '800',
+  },
+  highlightDescription: {
+    color: '#D5EFF5',
+    fontSize: 14,
+    lineHeight: 21,
+    marginTop: 8,
+  },
+  companyCard: {
+    width: '100%',
+    maxWidth: 560,
+    marginTop: 12,
+    backgroundColor: 'rgba(6, 36, 45, 0.42)',
+    borderRadius: 26,
+    paddingVertical: 20,
+    paddingHorizontal: 22,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  companyCardLabel: {
+    color: '#9EDDE9',
+    fontSize: 12,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    textAlign: 'center',
+  },
+  companyCardTitle: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    lineHeight: 31,
+    fontWeight: '900',
+    textAlign: 'center',
+    marginTop: 10,
+  },
+  companyCardText: {
+    color: '#D8F0F5',
+    fontSize: 15,
+    lineHeight: 22,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  formColumn: {
+    width: '100%',
+    maxWidth: 560,
+    alignSelf: 'center',
+  },
+  formColumnTablet: {
+    maxWidth: 760,
+  },
+  formColumnDesktop: {
+    width: 700,
+    maxWidth: 700,
+  },
+  formEyebrow: {
+    color: '#0B6780',
+    fontSize: 12,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  formTitle: {
+    color: '#12202C',
+    fontSize: 34,
+    lineHeight: 40,
+    fontWeight: '900',
+    marginTop: 10,
+  },
+  formSubtitle: {
+    color: '#576875',
     fontSize: 16,
-    color: colors.textSecondary,
+    lineHeight: 25,
+    marginTop: 12,
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    color: '#133140',
+    fontSize: 18,
+    lineHeight: 24,
+    fontWeight: '900',
+    marginTop: 10,
+    marginBottom: 8,
   },
   form: {
-    backgroundColor: colors.white,
-    padding: 20,
-    borderRadius: 15,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 3,
+    backgroundColor: 'rgba(255, 252, 247, 0.98)',
+    paddingVertical: 28,
+    paddingHorizontal: 28,
+    borderRadius: 30,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.65)',
+    // @ts-ignore
+    boxShadow: '0px 22px 50px rgba(4, 38, 47, 0.28)',
+    elevation: 14,
     marginBottom: 20,
   },
   label: {
     fontSize: 14,
-    fontWeight: 'bold',
-    color: colors.text,
-    marginBottom: 5,
-    marginTop: 10,
+    fontWeight: '800',
+    color: '#0D5D72',
+    marginBottom: 8,
+    marginTop: 12,
   },
   input: {
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: '#F4F8FB',
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    padding: 12,
+    borderColor: '#D4E2EA',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    minHeight: 56,
     fontSize: 16,
+    color: '#10202D',
   },
   passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: '#F4F8FB',
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
+    borderColor: '#D4E2EA',
+    borderRadius: 16,
+    minHeight: 56,
   },
   inputPassword: {
     flex: 1,
-    padding: 12,
+    paddingHorizontal: 16,
     fontSize: 16,
+    color: '#10202D',
   },
   eyeIcon: {
     padding: 10,
   },
   btn: {
-    backgroundColor: colors.primary,
-    padding: 16,
-    borderRadius: 8,
+    backgroundColor: '#0B6F88',
+    minHeight: 58,
+    borderRadius: 16,
     alignItems: 'center',
+    justifyContent: 'center',
     marginTop: 30,
     marginBottom: 10,
+    // @ts-ignore
+    boxShadow: '0px 12px 26px rgba(11, 111, 136, 0.32)',
+    elevation: 8,
   },
   btnDisabled: {
     opacity: 0.7,
   },
   docTypeContainer: {
     flexDirection: 'row',
-    marginBottom: 5,
-    marginTop: 5,
+    marginBottom: 6,
+    marginTop: 4,
   },
   docTypeBtn: {
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 20,
-    borderRadius: 20,
-    backgroundColor: colors.surfaceMuted,
+    borderRadius: 999,
+    backgroundColor: '#F4F8FB',
     marginRight: 10,
     borderWidth: 1,
-    borderColor: colors.border
+    borderColor: '#D4E2EA',
   },
   docTypeBtnActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    backgroundColor: '#0B6F88',
+    borderColor: '#0B6F88',
   },
   docTypeText: {
-    color: colors.textSecondary,
-    fontWeight: '600'
+    color: '#5D6C77',
+    fontWeight: '800',
   },
   docTypeTextActive: {
-    color: colors.white
+    color: colors.white,
   },
   btnText: {
     color: colors.white,
-    fontWeight: 'bold',
+    fontWeight: '900',
     fontSize: 16,
+    letterSpacing: 0.8,
+  },
+  inlineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  inlineInput: {
+    flex: 1,
+    marginRight: 10,
+  },
+  cityRow: {
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+  },
+  cityFieldLarge: {
+    flex: 2,
+    marginRight: 10,
+  },
+  cityFieldSmall: {
+    flex: 1,
   },
   searchButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 8,
-    padding: 12,
+    backgroundColor: '#0B6F88',
+    borderRadius: 16,
+    width: 56,
+    height: 56,
     justifyContent: 'center',
     alignItems: 'center',
-    minWidth: 48,
-  }
+  },
+  helperCard: {
+    marginTop: 18,
+    borderRadius: 18,
+    backgroundColor: '#EEF7F9',
+    borderWidth: 1,
+    borderColor: '#D5E7EC',
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  helperIcon: {
+    marginRight: 10,
+    marginTop: 1,
+  },
+  helperText: {
+    flex: 1,
+    color: '#5A6A75',
+    fontSize: 13,
+    lineHeight: 20,
+    fontWeight: '700',
+  },
+  bottomLinkRow: {
+    alignItems: 'center',
+    marginTop: 18,
+    paddingHorizontal: 12,
+  },
+  bottomLinkText: {
+    color: '#E6F7FB',
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  bottomLinkAction: {
+    color: '#F7C45C',
+    fontSize: 16,
+    fontWeight: '900',
+    textDecorationLine: 'underline',
+    textAlign: 'center',
+    marginTop: 6,
+  },
 });
