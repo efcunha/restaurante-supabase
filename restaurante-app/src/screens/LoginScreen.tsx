@@ -287,37 +287,37 @@ const styles = StyleSheet.create({
   },
   scroll: {
     flexGrow: 1,
-    paddingTop: Platform.OS === 'ios' ? 88 : 68,
-    paddingBottom: 30,
+    paddingTop: Platform.OS === 'ios' ? 52 : 24,
+    paddingBottom: 24,
     paddingHorizontal: 20,
   },
   scrollCompact: {
-    paddingTop: Platform.OS === 'ios' ? 74 : 56,
-    paddingBottom: 24,
+    paddingTop: Platform.OS === 'ios' ? 44 : 18,
+    paddingBottom: 18,
   },
   scrollVeryCompact: {
-    paddingTop: Platform.OS === 'ios' ? 64 : 48,
+    paddingTop: Platform.OS === 'ios' ? 38 : 14,
     paddingHorizontal: 16,
-    paddingBottom: 18,
+    paddingBottom: 14,
   },
   logoWrap: {
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 10,
   },
   logoWrapCompact: {
-    marginBottom: 12,
+    marginBottom: 8,
   },
   logo: {
-    width: 140,
-    height: 140,
+    width: 110,
+    height: 110,
   },
   logoCompact: {
-    width: 122,
-    height: 122,
+    width: 96,
+    height: 96,
   },
   logoVeryCompact: {
-    width: 108,
-    height: 108,
+    width: 82,
+    height: 82,
   },
   aboutCta: {
     marginTop: 8,
@@ -341,7 +341,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: 'rgba(255,252,247,0.98)',
     borderRadius: 28,
-    paddingVertical: 26,
+    paddingVertical: 22,
     paddingHorizontal: 22,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.6)',
@@ -349,7 +349,7 @@ const styles = StyleSheet.create({
   },
   cardCompact: {
     borderRadius: 24,
-    paddingVertical: 22,
+    paddingVertical: 18,
     paddingHorizontal: 18,
   },
   cardEyebrow: {
@@ -375,21 +375,21 @@ const styles = StyleSheet.create({
     color: '#5A6E7A',
     fontSize: 14,
     lineHeight: 21,
-    marginBottom: 22,
+    marginBottom: 16,
   },
   cardSubtitleCompact: {
     fontSize: 13,
     lineHeight: 19,
-    marginBottom: 18,
+    marginBottom: 12,
   },
   fieldGroup: {
-    marginBottom: 14,
+    marginBottom: 12,
   },
   label: {
     color: '#0D5D72',
     fontSize: 13,
     fontWeight: '800',
-    marginBottom: 7,
+    marginBottom: 6,
   },
   input: {
     backgroundColor: '#F4F8FB',
@@ -421,8 +421,8 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   loginBtn: {
-    marginTop: 6,
-    minHeight: 54,
+    marginTop: 4,
+    minHeight: 52,
     borderRadius: 14,
     backgroundColor: '#0B6F88',
     justifyContent: 'center',
@@ -439,8 +439,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
   },
   biometricBtn: {
-    marginTop: 12,
-    minHeight: 48,
+    marginTop: 10,
+    minHeight: 46,
     borderRadius: 13,
     backgroundColor: '#E8F6FA',
     borderWidth: 1,
@@ -459,7 +459,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   forgotBtn: {
-    marginTop: 14,
+    marginTop: 10,
     alignSelf: 'center',
     paddingVertical: 6,
     paddingHorizontal: 8,
@@ -471,7 +471,7 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
   },
   registerArea: {
-    marginTop: 12,
+    marginTop: 8,
     alignItems: 'center',
   },
   registerPrompt: {
