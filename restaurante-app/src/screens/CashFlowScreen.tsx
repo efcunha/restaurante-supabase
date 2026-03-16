@@ -167,11 +167,21 @@ export default function CashFlowScreen({ caixa, onClose }: CashFlowScreenProps) 
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-                    <Ionicons name="close" size={24} color={colors.white} />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>Livro Caixa - {formatDate(caixa?.data)}</Text>
-                <View style={{ width: 40 }} />
+                <View style={styles.headerTop}>
+                    <View style={styles.headerLeft}>
+                        <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+                            <Ionicons name="close" size={24} color={colors.white} />
+                        </TouchableOpacity>
+                    </View>
+                    <View style={styles.headerCenter}>
+                        <View style={styles.headerTitleRow}>
+                            <Ionicons name="receipt-outline" size={22} color={colors.white} style={styles.headerIcon} />
+                            <Text style={styles.headerTitle}>Livro Caixa - {formatDate(caixa?.data)}</Text>
+                        </View>
+                    </View>
+                    <View style={styles.headerRight} />
+                </View>
+                {!!user && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
             </View>
 
             {loading ? (
@@ -218,9 +228,6 @@ const styles = StyleSheet.create({
         paddingTop: 20, // Reduced top padding since it's a modal likely inside a safe area or centered
         paddingBottom: 20,
         paddingHorizontal: 20,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
         borderBottomLeftRadius: 20,
         borderBottomRightRadius: 20,
         elevation: 8,
@@ -229,8 +236,32 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.3,
         shadowRadius: 4,
     },
+    headerTop: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    headerLeft: { flex: 1 },
+    headerCenter: {
+        flex: 2,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    headerRight: { flex: 1 },
     closeBtn: { padding: 5 },
+    headerTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    headerIcon: { marginRight: 8 },
     headerTitle: { color: colors.white, fontSize: 18, fontWeight: 'bold' },
+    userInfo: {
+        marginTop: 4,
+        color: colors.userInfo,
+        fontSize: 12,
+        fontWeight: '600',
+        textAlign: 'center',
+    },
     content: { padding: 20 },
     emptyText: { textAlign: 'center', color: colors.textSecondary, marginTop: 20 },
 

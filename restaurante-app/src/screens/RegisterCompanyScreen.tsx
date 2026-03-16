@@ -269,7 +269,10 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
         </TouchableOpacity>
 
         <View style={styles.header}>
-          <Text style={styles.title}>Crie sua conta</Text>
+          <View style={styles.titleRow}>
+            <Ionicons name="business-outline" size={24} color={colors.primary} style={styles.titleIcon} />
+            <Text style={styles.title}>Crie sua conta</Text>
+          </View>
           <Text style={styles.subtitle}>Gerencie seu restaurante de forma inteligente</Text>
         </View>
 
@@ -508,6 +511,13 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: 30,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  titleIcon: {
+    marginRight: 8,
   },
   title: {
     fontSize: 28,

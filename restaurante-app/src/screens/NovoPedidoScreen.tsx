@@ -781,13 +781,11 @@ export default function NovoPedidoScreen({ route }: any) {
         <View style={styles.header}>
           <View style={styles.headerLeft} />
           <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>Novo Pedido</Text>
-            {user && (
-              <>
-                <Text style={styles.userInfoLabel}>Operador</Text>
-                <Text style={styles.userInfo}>{user.nome || user.email}</Text>
-              </>
-            )}
+            <View style={styles.headerTitleRow}>
+              <Ionicons name="receipt-outline" size={24} color={colors.white} style={styles.headerTitleIcon} />
+              <Text style={styles.headerTitle}>Novo Pedido</Text>
+            </View>
+            {user && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
           </View>
           <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
             <Text style={styles.logoutBtnText}>Sair</Text>
@@ -875,6 +873,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    minHeight: 92,
     paddingHorizontal: 20,
     paddingTop: 50,
     paddingBottom: 15,
@@ -909,12 +908,15 @@ const styles = StyleSheet.create({
   },
   userInfoLabel: {
     color: colors.primaryContrastMuted,
-    fontSize: 10,
+    fontSize: 11,
+    fontWeight: '600',
   },
   userInfo: {
     fontSize: 12,
     color: colors.userInfo,
     fontWeight: '600',
+    marginTop: 4,
+    textAlign: 'center',
   },
   logoutBtn: {
     flex: 1,

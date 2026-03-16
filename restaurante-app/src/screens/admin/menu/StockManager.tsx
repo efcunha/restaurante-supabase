@@ -1,7 +1,9 @@
 
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, StyleSheet, Alert } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Product } from '../../../types';
+import { useAuth } from '../../../context/AuthContext';
 
 import { StockItem } from './types';
 import { colors } from '../../../theme/colors';
@@ -22,6 +24,7 @@ export default function StockManager({
   onAddIngredient,
   onRemoveIngredient
 }: StockManagerProps) {
+    const { user } = useAuth();
   const [selectedStockId, setSelectedStockId] = useState<string | null>(null);
   const [qty, setQty] = useState('');
   const [unitType, setUnitType] = useState<'QUANTITY' | 'VOLUME' | 'MASS'>('QUANTITY');
@@ -43,8 +46,19 @@ export default function StockManager({
       <View style={styles.overlay}>
         <View style={styles.content}>
            <View style={styles.header}>
-             <Text style={styles.title}>📦 Ficha Técnica</Text>
-             <TouchableOpacity onPress={onClose}><Text style={styles.close}>✕</Text></TouchableOpacity>
+                         <View style={styles.headerTop}>
+                             <View style={styles.headerLeft} />
+                             <View style={styles.headerCenter}>
+                                 <View style={styles.titleRow}>
+                                     <Ionicons name="cube-outline" size={22} color={colors.primary} style={styles.titleIcon} />
+                                     <Text style={styles.title}>Ficha Técnica</Text>
+                                 </View>
+                             </View>
+                             <View style={styles.headerRight}>
+                                 <TouchableOpacity onPress={onClose}><Text style={styles.close}>✕</Text></TouchableOpacity>
+                             </View>
+                         </View>
+                         {!!user && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
            </View>
 
            <Text style={styles.subtitle}>Produto: <Text style={{fontWeight: 'bold'}}>{product?.name}</Text></Text>
@@ -133,9 +147,16 @@ export default function StockManager({
 const styles = StyleSheet.create({
     overlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', alignItems: 'center', padding: 20 },
     content: { backgroundColor: colors.white, width: '100%', maxWidth: 500, borderRadius: 20, padding: 20, maxHeight: '90%' },
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
+    header: { marginBottom: 15 },
+    headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    headerLeft: { flex: 1 },
+    headerCenter: { flex: 2, alignItems: 'center' },
+    headerRight: { flex: 1, alignItems: 'flex-end' },
+    titleRow: { flexDirection: 'row', alignItems: 'center' },
+    titleIcon: { marginRight: 8 },
     title: { fontSize: 20, fontWeight: 'bold', color: colors.primary },
     close: { fontSize: 24, color: colors.textSecondary, padding: 5 },
+    userInfo: { marginTop: 4, fontSize: 12, color: colors.textSecondary, fontWeight: '600', textAlign: 'center' },
     subtitle: { fontSize: 16, marginBottom: 15 },
     label: { fontSize: 14, fontWeight: '600', color: colors.textSecondary, marginBottom: 8 },
     listContainer: { maxHeight: 150, borderWidth: 1, borderColor: colors.border, borderRadius: 8, marginBottom: 10 },
