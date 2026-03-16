@@ -745,12 +745,16 @@ export default function NovoPedidoScreen({ route }: any) {
         <Navbar
           title="Novo Pedido"
           subtitle={user ? `Operador: ${user.nome || user.email}` : undefined}
+          titleIcon={<Ionicons name="cart-outline" size={24} color={colors.white} />}
         />
       ) : (
         <View style={styles.header}>
           <View style={styles.headerLeft} />
           <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>Novo Pedido</Text>
+            <View style={styles.headerTitleRow}>
+              <Ionicons name="cart-outline" size={24} color={colors.white} style={styles.headerTitleIcon} />
+              <Text style={styles.headerTitle}>Novo Pedido</Text>
+            </View>
             {user && (
               <>
                 <Text style={styles.userInfoLabel}>Operador</Text>

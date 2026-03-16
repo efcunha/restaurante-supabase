@@ -293,6 +293,7 @@ export default function MapaMesasScreen({ navigation, route }: any) {
     return (
         <ScreenScaffold
             title="Mapa de Mesas"
+            titleIcon={<Ionicons name="map-outline" size={24} color={colors.white} />}
         >
 
             {loading ? (
