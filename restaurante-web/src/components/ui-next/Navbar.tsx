@@ -10,11 +10,12 @@ type NavbarAction = {
 type NavbarProps = {
   title: string;
   subtitle?: string;
+  titleIcon?: ReactNode;
   leftAction?: NavbarAction;
   rightSlot?: ReactNode;
 };
 
-export function Navbar({ title, subtitle, leftAction, rightSlot }: NavbarProps) {
+export function Navbar({ title, subtitle, titleIcon, leftAction, rightSlot }: NavbarProps) {
   return (
     <View style={styles.wrapper}>
       <View style={styles.content}>
@@ -27,7 +28,10 @@ export function Navbar({ title, subtitle, leftAction, rightSlot }: NavbarProps) 
         </View>
 
         <View style={styles.centerBlock}>
-          <Text style={styles.title}>{title}</Text>
+          <View style={styles.titleRow}>
+            {!!titleIcon && <View style={styles.titleIcon}>{titleIcon}</View>}
+            <Text style={styles.title}>{title}</Text>
+          </View>
           {!!subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
         </View>
 
@@ -66,6 +70,14 @@ const styles = StyleSheet.create({
   },
   rightSlot: {
     alignItems: 'flex-end',
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  titleIcon: {
+    marginRight: spacing.s8,
   },
   title: {
     ...typography.headingM,

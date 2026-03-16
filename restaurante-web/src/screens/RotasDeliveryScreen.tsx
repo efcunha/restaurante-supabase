@@ -297,7 +297,10 @@ export default function RotasDeliveryScreen() {
       <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
         <View style={styles.headerLeft} />
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Rotas Delivery</Text>
+          <View style={styles.headerTitleRow}>
+            <Ionicons name="bicycle-outline" size={24} color={colors.white} style={styles.headerTitleIcon} />
+            <Text style={styles.headerTitle}>Rotas Delivery</Text>
+          </View>
           {!!user && <Text style={styles.userInfo}>Operador: {user?.nome || user?.email}</Text>}
         </View>
         <View style={styles.headerLeft} />
@@ -357,6 +360,13 @@ const styles = StyleSheet.create({
     flex: 2,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerTitleIcon: {
+    marginRight: 8,
   },
   headerTitle: {
     color: colors.white,

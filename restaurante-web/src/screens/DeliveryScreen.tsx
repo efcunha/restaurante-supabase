@@ -524,6 +524,7 @@ export default function DeliveryScreen() {
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScreenScaffold
         title="Delivery Express"
+        titleIcon={<Ionicons name="fast-food-outline" size={24} color={colors.white} />}
         subtitle={user ? `Operador: ${user.nome || user.email}` : 'Entregas'}
         bodyStyle={styles.scaffoldBody}
         footer={
