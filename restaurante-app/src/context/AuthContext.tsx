@@ -258,8 +258,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setCustomClaims(newClaims);
           setSessionKey(Date.now());
 
-          // 4. Persistence Hook (Generic)
-          // We map Supabase User + props to PersistenceUser interface
+          // ✅ Libera o loading AGORA — não espera a persistência para mostrar a tela
+          setLoading(false);
+          appendLog('✅ Usuário carregado, loading liberado');
+
+          // 4. Persistence Hook — fire-and-forget, não bloqueia a UI
           const persistenceUser: PersistenceUser = {
               uid: sbUser.id,
               email: sbUser.email,
@@ -267,19 +270,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               companyId: companyId,
               displayName: profile.full_name
           };
-          
-          await AuthPersistenceService.persistAuthState(
-              persistenceUser, 
-              (await supabase.auth.getSession()).data.session?.access_token || '', 
-              (await supabase.auth.getSession()).data.session?.refresh_token
-          );
 
-      } catch (error) {
+          supabase.auth.getSession().then(({ data: sessionData }) => {
+              AuthPersistenceService.persistAuthState(
+                  persistenceUser,
+                  sessionData.session?.access_token || '',
+                  sessionData.session?.refresh_token
+              ).catch(e => console.warn('[AuthContext] persistAuthState failed (non-blocking):', e));
+          }).catch(e => console.warn('[AuthContext] getSession for persist failed:', e));
+
+      } catch (error: any) {
+          const errMsg = `Erro ao carregar dados do usuário: ${error?.message ?? String(error)}`;
           console.error('[SupabaseAuth] Error reloading user data:', error);
-          // Don't fail silently - set loading to false so UI can respond
+          appendLog('❌ ' + errMsg);
+          setInitError(errMsg);
           setLoading(false);
-          } finally {
-            setLoading(false);
       }
   };
 

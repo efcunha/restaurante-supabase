@@ -22,6 +22,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 const { width } = Dimensions.get('window');
 
+const SAFE_AREA_TOP = 50;
+
 
 interface Props {
     onClose?: () => void;
