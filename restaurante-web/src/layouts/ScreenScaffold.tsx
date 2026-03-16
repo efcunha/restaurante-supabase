@@ -2,6 +2,7 @@ import React, { ReactNode } from 'react';
 import { ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { Navbar } from '../ui';
 import { colorSystem } from '../design-system';
+import { useAuth } from '../context/AuthContext';
 
 type NavbarAction = {
   label: string;
@@ -33,12 +34,15 @@ export function ScreenScaffold({
   contentContainerStyle,
   bodyStyle,
 }: ScreenScaffoldProps) {
+  const { user } = useAuth();
+  const resolvedSubtitle = subtitle ?? (user ? `Operador: ${user.nome || user.email}` : undefined);
+
   return (
     <View style={styles.container}>
       <View style={headerContainerStyle}>
         <Navbar
           title={title}
-          subtitle={subtitle}
+          subtitle={resolvedSubtitle}
           leftAction={leftAction}
           rightSlot={rightSlot}
         />
