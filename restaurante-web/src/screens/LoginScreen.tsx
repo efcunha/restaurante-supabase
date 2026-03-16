@@ -1,18 +1,17 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, Platform, Image, BackHandler, ScrollView, NativeModules, Dimensions } from 'react-native';
+import { Alert, BackHandler, Dimensions, Image, NativeModules, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+// @ts-ignore
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { Button, FormInput } from '../components/ui-next';
-import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../config/SupabaseConfig'; // Replaced firebase config
+import { supabase } from '../config/SupabaseConfig';
 import { getUserFriendlyMessage } from '../utils/errors';
 import { validateEmail } from '../utils/validation';
 import MFAVerificationModal from '../components/MFAVerificationModal';
-import { isFeatureEnabled } from '../config/featureFlags';
-// @ts-ignore
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
+
 interface Props {
   navigation: NativeStackNavigationProp<any>;
 }
@@ -20,13 +19,10 @@ interface Props {
 export default function LoginScreen({ navigation }: Props) {
   const { login, loginWithBiometric, biometricAvailable, biometricType, mfaResolver, setMfaResolver } = useAuth();
   const { showToast } = useToast();
-  const useUiNextLogin = isFeatureEnabled('login_uiNext');
   const windowWidth = Dimensions.get('window').width;
-  const WIDE_BREAKPOINT = 720;
-  const isWideLayout = windowWidth >= WIDE_BREAKPOINT;
-  const logoSize = isWideLayout
-    ? Math.min(Math.max(windowWidth * 0.16, 220), 280)
-    : Math.min(Math.max(windowWidth * 0.42, 220), 300);
+  const isDesktop = windowWidth >= 1080;
+  const isTablet = windowWidth >= 760;
+  const logoSize = isDesktop ? 290 : isTablet ? 220 : 170;
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [loading, setLoading] = useState(false);
@@ -40,13 +36,9 @@ export default function LoginScreen({ navigation }: Props) {
 
     setLoading(true);
     try {
-      const success = await login(email.toLowerCase().trim(), senha);
-      if (!success) {
-        // Se o login retorna false mas não lançou erro, pode ser um caso específico ou o erro já foi tratado no context.
-        // Mas se o context lançar erro, ele vem pro catch.
-      }
-    } catch (e) {
-      Alert.alert('Erro no Login', getUserFriendlyMessage(e));
+      await login(email.toLowerCase().trim(), senha);
+    } catch (error) {
+      Alert.alert('Erro no Login', getUserFriendlyMessage(error));
     } finally {
       setLoading(false);
     }
@@ -65,131 +57,129 @@ export default function LoginScreen({ navigation }: Props) {
               BackHandler.exitApp();
             } catch (error) {
               console.error('Erro ao sair do app:', error);
-              // Fallback: tentar fechar de outra forma
               if (Platform.OS === 'android') {
-                // No Android, podemos tentar usar o método nativo
                 NativeModules.DevSettings?.reload();
               }
             }
-          }
-        }
+          },
+        },
       ]
     );
   };
 
   return (
     <View style={styles.container}>
-      {/* Botão Sair - Fixo no topo */}
-      <TouchableOpacity
-        style={styles.exitButton}
-        onPress={handleSair}
-      >
-        <Ionicons name="close" size={24} color={colors.white} />
+      <View style={[styles.backdropOrb, styles.backdropOrbTop]} />
+      <View style={[styles.backdropOrb, styles.backdropOrbBottom]} />
+      <View style={styles.overlayVeil} />
+
+      <TouchableOpacity style={styles.exitButton} onPress={handleSair}>
+        <Ionicons name="close" size={22} color={colors.white} />
       </TouchableOpacity>
 
       <ScrollView
-        contentContainerStyle={[styles.scrollContent, isWideLayout && styles.scrollContentWide]}
+        contentContainerStyle={[styles.scrollContent, isDesktop && styles.scrollContentDesktop]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={[styles.content, isWideLayout && styles.contentWide]}>
-            {/* Logo/Título */}
-            <View style={styles.header}>
+        <View style={[styles.shell, isDesktop && styles.shellDesktop]}>
+          {isTablet && (
+          <View style={[styles.heroPanel, isDesktop && styles.heroPanelDesktop]}>
+            <Image
+              source={require('../../imagem/icone.png')}
+              style={[styles.logo, { width: logoSize, height: logoSize }]}
+              resizeMode="contain"
+            />
+
+            <Text style={[styles.productName, isDesktop && styles.productNameDesktop]}>
+              Restaurante Web
+            </Text>
+
+            <Text style={[styles.productTagline, isDesktop && styles.productTaglineDesktop]}>
+              Sistema de gestao para restaurantes
+            </Text>
+
+            <View style={styles.heroDivider} />
+
+            <Text style={[styles.companyCredit, isDesktop && styles.companyCreditDesktop]}>
+              © Machado & Cunha Soft House
+            </Text>
+
+            <TouchableOpacity style={[styles.aboutCta, isDesktop && styles.aboutCtaDesktop]} onPress={() => navigation.navigate('About')}>
+              <Text style={styles.aboutCtaText}>Conhecer a plataforma</Text>
+              <Ionicons name="arrow-forward" size={18} color="#1D2A35" />
+            </TouchableOpacity>
+          </View>
+          )}
+
+          <View style={[styles.authColumn, isDesktop && styles.authColumnDesktop]}>
+            {!isTablet && (
               <Image
                 source={require('../../imagem/icone.png')}
-                style={[styles.logo, { width: logoSize, height: logoSize }]}
+                style={styles.mobileLogo}
                 resizeMode="contain"
               />
-            </View>
+            )}
+            <View style={styles.formCard}>
+              <Text style={styles.formEyebrow}>Acesso restrito</Text>
+              <Text style={styles.formTitle}>Entrar na plataforma</Text>
+              <Text style={styles.formSubtitle}>
+                Use o usuario e a senha fornecidos pelo administrador para acessar o ambiente do restaurante.
+              </Text>
 
-            {/* Formulário */}
-            <View style={[styles.form, isWideLayout && styles.formWide]}>
-              {useUiNextLogin ? (
-                <FormInput
-                  label="Email"
+              <View style={styles.fieldGroup}>
+                <Text style={styles.label}>Email</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="seu@email.com"
+                  placeholderTextColor="#7A8B97"
                   value={email}
                   onChangeText={setEmail}
-                  placeholder="seu@email.com"
-                  style={styles.formInputSpacing}
-                />
-              ) : (
-                <>
-                  <Text style={styles.label}>Email</Text>
-                  <TextInput
-                    style={[styles.input, styles.formInputSpacing]}
-                    placeholder="seu@email.com"
-                    placeholderTextColor={colors.textSecondary}
-                    value={email}
-                    onChangeText={setEmail}
-                    autoCapitalize="none"
-                    keyboardType="email-address"
-                  />
-                </>
-              )}
-
-              <Text style={styles.label}>Senha</Text>
-              <View style={styles.passwordContainer}>
-                <TextInput
-                  style={styles.passwordInput}
-                  placeholder="••••••••"
-                  placeholderTextColor={colors.textSecondary}
-                  value={senha}
-                  onChangeText={setSenha}
-                  secureTextEntry={!mostrarSenha}
                   autoCapitalize="none"
+                  keyboardType="email-address"
                 />
-                <TouchableOpacity
-                  style={styles.eyeButton}
-                  onPress={() => setMostrarSenha(!mostrarSenha)}
-                >
-                  <Ionicons
-                    name={mostrarSenha ? 'eye-off' : 'eye'}
-                    size={24}
-                    color={colors.primary}
-                  />
-                </TouchableOpacity>
               </View>
 
-              {useUiNextLogin ? (
-                <Button
-                  label="ENTRAR"
-                  onPress={handleLogin}
-                  loading={loading}
-                  fullWidth
-                  size="lg"
-                  style={styles.loginBtnSpacing}
-                />
-              ) : (
-                <TouchableOpacity
-                  style={[styles.loginBtn, styles.loginBtnSpacing, loading && styles.loginBtnDisabled]}
-                  onPress={handleLogin}
-                  disabled={loading}
-                >
-                  <Text style={styles.loginBtnText}>{loading ? 'ENTRANDO...' : 'ENTRAR'}</Text>
-                </TouchableOpacity>
-              )}
+              <View style={styles.fieldGroup}>
+                <Text style={styles.label}>Senha</Text>
+                <View style={styles.passwordContainer}>
+                  <TextInput
+                    style={styles.passwordInput}
+                    placeholder="••••••••"
+                    placeholderTextColor="#7A8B97"
+                    value={senha}
+                    onChangeText={setSenha}
+                    secureTextEntry={!mostrarSenha}
+                    autoCapitalize="none"
+                  />
+                  <TouchableOpacity style={styles.eyeButton} onPress={() => setMostrarSenha(!mostrarSenha)}>
+                    <Ionicons name={mostrarSenha ? 'eye-off' : 'eye'} size={22} color="#0B667F" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <TouchableOpacity style={[styles.loginBtn, loading && styles.loginBtnDisabled]} onPress={handleLogin} disabled={loading}>
+                <Text style={styles.loginBtnText}>{loading ? 'ENTRANDO...' : 'ENTRAR'}</Text>
+              </TouchableOpacity>
 
               {biometricAvailable && (
                 <TouchableOpacity
-                  style={[styles.biometricBtn, { marginTop: 15 }]}
+                  style={styles.biometricBtn}
                   onPress={async () => {
                     const result = await loginWithBiometric();
                     if (!result.success && result.error) {
-                       // Show error alert natively from the UI component
-                       Alert.alert('Biometria', result.error);
+                      Alert.alert('Biometria', result.error);
                     }
                   }}
                   disabled={loading}
                 >
-                  <Ionicons 
-                    name={biometricType === 'Reconhecimento Facial' ? 'scan-outline' : 'finger-print-outline'} 
-                    size={24} 
-                    color={colors.primary} 
-                    style={{ marginRight: 10 }}
+                  <Ionicons
+                    name={biometricType === 'Reconhecimento Facial' ? 'scan-outline' : 'finger-print-outline'}
+                    size={20}
+                    color="#0A5063"
+                    style={styles.biometricIcon}
                   />
-                  <Text style={styles.biometricBtnText}>
-                    Entrar com {biometricType}
-                  </Text>
+                  <Text style={styles.biometricBtnText}>Entrar com {biometricType}</Text>
                 </TouchableOpacity>
               )}
 
@@ -203,13 +193,13 @@ export default function LoginScreen({ navigation }: Props) {
 
                   const validation = validateEmail(email.trim());
                   if (!validation.isValid) {
-                    Alert.alert('Email Inválido', validation.error || 'Por favor, digite um email válido.');
+                    Alert.alert('Email Inválido', validation.error || 'Por favor, digite um email valido.');
                     return;
                   }
 
                   Alert.alert(
                     'Redefinir Senha',
-                    `Enviar link de redefinição para:\n${email.trim()}?`,
+                    `Enviar link de redefinicao para:\n${email.trim()}?`,
                     [
                       { text: 'Cancelar', style: 'cancel' },
                       {
@@ -217,212 +207,533 @@ export default function LoginScreen({ navigation }: Props) {
                         onPress: async () => {
                           try {
                             const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-                              redirectTo: 'your-app://reset-password'
+                              redirectTo: 'your-app://reset-password',
                             });
                             if (error) throw error;
-                            Alert.alert('Sucesso', '✅ Email enviado!\nVerifique sua caixa de entrada (e spam) para redefinir a senha.');
-                          } catch (error: any) {
-                            Alert.alert('Erro', '❌ Não foi possível enviar: ' + error.message);
+                            Alert.alert('Sucesso', 'Email enviado. Verifique sua caixa de entrada e spam para redefinir a senha.');
+                          } catch (resetError: any) {
+                            Alert.alert('Erro', 'Nao foi possivel enviar: ' + resetError.message);
                           }
-                        }
-                      }
+                        },
+                      },
                     ]
                   );
                 }}
               >
                 <Text style={styles.forgotPasswordText}>Esqueci minha senha</Text>
               </TouchableOpacity>
+
+              <View style={styles.trustPanel}>
+                <View style={styles.trustPanelIconWrap}>
+                  <Ionicons name="shield-checkmark" size={18} color="#0A5B6F" />
+                </View>
+                <Text style={styles.trustPanelTitle}>Acesso seguro com suporte a biometria</Text>
+              </View>
             </View>
 
-            <Text style={styles.footer}>
-              Entre com seu usuário e senha{'\n'}fornecidos pelo administrador
-            </Text>
-
-            <TouchableOpacity
-              style={styles.registerLink}
-              onPress={() => navigation.navigate('Register')}
-            >
-              <Text style={styles.registerLinkText}>
-                Não tem conta? Cadastre seu restaurante
-              </Text>
-            </TouchableOpacity>
+            <View style={styles.loginFooterArea}>
+              <Text style={styles.footerText}>Precisa cadastrar um novo restaurante?</Text>
+              <TouchableOpacity style={styles.registerLink} onPress={() => navigation.navigate('Register')}>
+                <Text style={styles.registerLinkText}>Cadastre seu restaurante</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </ScrollView>
+        </View>
+      </ScrollView>
 
-        <StatusBar style="light" />
+      <StatusBar style="light" />
 
-        {/* MFA Verification Modal */}
-        <MFAVerificationModal
-          visible={!!mfaResolver}
-          resolver={mfaResolver}
-          onSuccess={() => {
-              setMfaResolver(null);
-              // Auth state listener in AuthContext will handle the successful login/redirect
-          }}
-          onCancel={() => {
-              setMfaResolver(null);
-          }}
-        />
-      </View>
-    );
-  }
+      <MFAVerificationModal
+        visible={!!mfaResolver}
+        resolver={mfaResolver}
+        onSuccess={() => {
+          setMfaResolver(null);
+        }}
+        onCancel={() => {
+          setMfaResolver(null);
+        }}
+      />
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.primary, // Updated to match the image background perfectly
+    backgroundColor: '#0C7A96',
+    overflow: 'hidden',
   },
-  content: {
-    padding: 10,
-    paddingHorizontal: 20,
-    paddingTop: 5,
-    width: '100%',
+  backdropOrb: {
+    position: 'absolute',
+    borderRadius: 999,
+    opacity: 0.28,
   },
-  contentWide: {
-    width: '92%',
-    maxWidth: 560,
-    alignSelf: 'center',
+  backdropOrbTop: {
+    width: 360,
+    height: 360,
+    backgroundColor: '#F1B24B',
+    top: -120,
+    left: -90,
   },
-
-  scrollContent: {
-    paddingTop: 60,
-    paddingBottom: 20,
+  backdropOrbBottom: {
+    width: 460,
+    height: 460,
+    backgroundColor: '#073A49',
+    bottom: -180,
+    right: -130,
   },
-  scrollContentWide: {
-    alignItems: 'center',
+  overlayVeil: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255,255,255,0.02)',
   },
   exitButton: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 50 : 30,
-    right: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.2)', // Darker background for visibility
+    top: Platform.OS === 'ios' ? 26 : 24,
+    right: 24,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: 'rgba(4, 36, 45, 0.34)',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 999,
+    zIndex: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
   },
-  header: {
-    alignItems: 'center',
-    marginBottom: 16,
-    marginTop: 0,
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 22,
+    paddingTop: 74,
+    paddingBottom: 38,
+  },
+  scrollContentDesktop: {
+    minHeight: '100%',
+  },
+  shell: {
     width: '100%',
+    maxWidth: 1240,
+    alignSelf: 'center',
+  },
+  shellDesktop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  heroPanel: {
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 26,
+  },
+  heroPanelDesktop: {
+    flex: 1,
+    maxWidth: 600,
+    alignItems: 'flex-start',
+    marginBottom: 0,
+    paddingRight: 42,
+  },
+  heroBadge: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    marginBottom: 18,
+  },
+  heroBadgeText: {
+    color: '#EDF9FC',
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    textAlign: 'center',
   },
   logo: {
-    width: 240,
-    height: 240,
+    marginBottom: 14,
   },
-  form: {
-    backgroundColor: colors.white,
-    borderRadius: 15,
-    padding: 12,
-    // @ts-ignore
-    boxShadow: '0px 10px 20px rgba(0, 0, 0, 0.3)',
-    elevation: 10,
+  mobileLogo: {
+    width: 120,
+    height: 120,
+    alignSelf: 'center',
+    marginBottom: 8,
   },
-  formWide: {
+  productName: {
+    color: '#FFFFFF',
+    fontSize: 30,
+    fontWeight: '900',
+    textAlign: 'center',
+    letterSpacing: -0.5,
+    marginBottom: 6,
+  },
+  productNameDesktop: {
+    fontSize: 40,
+    textAlign: 'left',
+  },
+  productTagline: {
+    color: 'rgba(196,237,246,0.9)',
+    fontSize: 16,
+    lineHeight: 24,
+    textAlign: 'center',
+  },
+  productTaglineDesktop: {
+    textAlign: 'left',
+  },
+  heroDivider: {
+    width: 40,
+    height: 2,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    borderRadius: 999,
+    marginVertical: 22,
+  },
+  companyCredit: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 18,
+  },
+  companyCreditDesktop: {
+    textAlign: 'left',
+  },
+  heroTitle: {
+    color: '#FFFFFF',
+    fontSize: 34,
+    lineHeight: 41,
+    fontWeight: '900',
+    textAlign: 'center',
+    maxWidth: 560,
+  },
+  heroTitleDesktop: {
+    textAlign: 'left',
+    fontSize: 46,
+    lineHeight: 54,
+  },
+  heroDescription: {
+    color: '#DAF0F5',
+    fontSize: 17,
+    lineHeight: 28,
+    textAlign: 'center',
+    marginTop: 14,
+    maxWidth: 560,
+  },
+  heroDescriptionDesktop: {
+    textAlign: 'left',
+    fontSize: 18,
+    lineHeight: 29,
+  },
+  tagRow: {
     width: '100%',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    marginTop: 18,
+    marginBottom: 4,
+  },
+  tagRowDesktop: {
+    justifyContent: 'flex-start',
+  },
+  tagChip: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+    marginRight: 10,
+    marginBottom: 10,
+  },
+  tagChipText: {
+    color: '#F4FBFD',
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  highlightRow: {
+    width: '100%',
+    marginTop: 24,
+  },
+  highlightRowDesktop: {
+    flexDirection: 'row',
+  },
+  highlightCard: {
+    width: '100%',
+    backgroundColor: 'rgba(4, 43, 54, 0.34)',
+    borderRadius: 22,
+    paddingVertical: 16,
+    paddingHorizontal: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    marginBottom: 12,
+  },
+  highlightCardDesktop: {
+    flex: 1,
+    marginRight: 12,
+  },
+  highlightCardDesktopLast: {
+    marginRight: 0,
+  },
+  highlightTitle: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    lineHeight: 24,
+    fontWeight: '800',
+  },
+  highlightDescription: {
+    color: '#D5EFF5',
+    fontSize: 14,
+    lineHeight: 21,
+    marginTop: 8,
+  },
+  companySpotlight: {
+    width: '100%',
+    maxWidth: 560,
+    marginTop: 12,
+    backgroundColor: 'rgba(6, 36, 45, 0.42)',
+    borderRadius: 26,
+    paddingVertical: 20,
+    paddingHorizontal: 22,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  companySpotlightLabel: {
+    color: '#9EDDE9',
+    fontSize: 12,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    textAlign: 'center',
+  },
+  companySpotlightName: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    lineHeight: 31,
+    fontWeight: '900',
+    textAlign: 'center',
+    marginTop: 10,
+  },
+  companySpotlightNameDesktop: {
+    maxWidth: 420,
+    alignSelf: 'center',
+  },
+  companySpotlightRights: {
+    color: '#D8F0F5',
+    fontSize: 15,
+    lineHeight: 22,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  aboutCta: {
+    marginTop: 18,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F1B24B',
+    borderRadius: 999,
+    minHeight: 54,
+    paddingHorizontal: 22,
+  },
+  aboutCtaDesktop: {
+    alignSelf: 'flex-start',
+  },
+  aboutCtaText: {
+    color: '#1D2A35',
+    fontSize: 15,
+    fontWeight: '900',
+    marginRight: 8,
+  },
+  authColumn: {
+    width: '100%',
+    maxWidth: 500,
+    alignSelf: 'center',
+  },
+  authColumnDesktop: {
+    width: 470,
+    maxWidth: 470,
+  },
+  formCard: {
+    backgroundColor: 'rgba(255, 252, 247, 0.98)',
+    borderRadius: 30,
+    paddingVertical: 28,
+    paddingHorizontal: 28,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.65)',
+    // @ts-ignore
+    boxShadow: '0px 22px 50px rgba(4, 38, 47, 0.28)',
+    elevation: 14,
+  },
+  formEyebrow: {
+    color: '#0B6780',
+    fontSize: 12,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  formTitle: {
+    color: '#12202C',
+    fontSize: 34,
+    lineHeight: 40,
+    fontWeight: '900',
+    marginTop: 10,
+  },
+  formSubtitle: {
+    color: '#576875',
+    fontSize: 16,
+    lineHeight: 25,
+    marginTop: 12,
+    marginBottom: 22,
+  },
+  fieldGroup: {
+    marginBottom: 16,
   },
   label: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.primary,
-    marginBottom: 4,
-    marginTop: 6,
+    color: '#0D5D72',
+    fontSize: 14,
+    fontWeight: '800',
+    marginBottom: 8,
   },
   input: {
-    backgroundColor: colors.background,
+    backgroundColor: '#F4F8FB',
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    padding: 10,
-    fontSize: 15,
-    color: colors.text,
+    borderColor: '#D4E2EA',
+    borderRadius: 16,
+    minHeight: 56,
+    paddingHorizontal: 16,
+    fontSize: 16,
+    color: '#10202D',
   },
   passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.background,
+    backgroundColor: '#F4F8FB',
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
+    borderColor: '#D4E2EA',
+    borderRadius: 16,
+    minHeight: 56,
     paddingRight: 10,
   },
   passwordInput: {
     flex: 1,
-    padding: 10,
-    fontSize: 15,
-    color: colors.text,
+    paddingHorizontal: 16,
+    fontSize: 16,
+    color: '#10202D',
   },
   eyeButton: {
     padding: 10,
   },
   loginBtn: {
-    backgroundColor: colors.primary,
-    padding: 12,
-    borderRadius: 12,
+    marginTop: 4,
+    minHeight: 58,
+    borderRadius: 16,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 12,
-    elevation: 5,
+    backgroundColor: '#0B6F88',
+    // @ts-ignore
+    boxShadow: '0px 12px 26px rgba(11, 111, 136, 0.32)',
+    elevation: 8,
   },
   loginBtnDisabled: {
-    opacity: 0.6,
+    opacity: 0.65,
   },
   loginBtnText: {
-    color: colors.white,
+    color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 1,
-  },
-  loginBtnSpacing: {
-    marginTop: 12,
-  },
-  formInputSpacing: {
-    marginBottom: 12,
-  },
-  footer: {
-    textAlign: 'center',
-    color: colors.white,
-    fontSize: 10,
-    marginTop: 10,
-    opacity: 0.8,
-    lineHeight: 14,
-  },
-  forgotPasswordBtn: {
-    marginTop: 10,
-    padding: 5,
-    alignSelf: 'center',
-  },
-  forgotPasswordText: {
-    color: colors.primary, // Updated link color
-    fontSize: 14,
-    textDecorationLine: 'underline',
-    fontWeight: '600',
+    fontWeight: '900',
+    letterSpacing: 0.8,
   },
   biometricBtn: {
-    backgroundColor: colors.background,
-    borderColor: colors.primary,
+    marginTop: 14,
+    minHeight: 52,
+    borderRadius: 15,
+    backgroundColor: '#E8F6FA',
     borderWidth: 1,
-    padding: 10,
-    borderRadius: 12,
+    borderColor: '#AADAE5',
     alignItems: 'center',
-    flexDirection: 'row',
     justifyContent: 'center',
+    flexDirection: 'row',
+    paddingHorizontal: 14,
+  },
+  biometricIcon: {
+    marginRight: 8,
   },
   biometricBtnText: {
-    color: colors.primary,
-    fontSize: 16,
-    fontWeight: '600',
+    color: '#0A5063',
+    fontSize: 15,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  forgotPasswordBtn: {
+    marginTop: 16,
+    alignSelf: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+  },
+  forgotPasswordText: {
+    color: '#0B6780',
+    fontSize: 15,
+    fontWeight: '800',
+    textDecorationLine: 'underline',
+  },
+  trustPanel: {
+    marginTop: 20,
+    borderRadius: 14,
+    backgroundColor: '#EEF7F9',
+    borderWidth: 1,
+    borderColor: '#D5E7EC',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  trustPanelIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#D8EEF4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  trustPanelCopy: {
+    flex: 1,
+  },
+  trustPanelTitle: {
+    color: '#12303D',
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '900',
+  },
+  trustPanelText: {
+    color: '#5A6A75',
+    fontSize: 13,
+    lineHeight: 20,
+    marginTop: 4,
+  },
+  loginFooterArea: {
+    alignItems: 'center',
+    marginTop: 18,
+    paddingHorizontal: 12,
+  },
+  footerText: {
+    color: '#E6F7FB',
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: '700',
+    textAlign: 'center',
   },
   registerLink: {
-    marginTop: 10,
-    padding: 8,
-    alignSelf: 'center',
+    marginTop: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
   },
   registerLinkText: {
-    color: colors.white,
-    fontSize: 11,
+    color: '#F7C45C',
+    fontSize: 16,
+    fontWeight: '900',
     textDecorationLine: 'underline',
     textAlign: 'center',
   },

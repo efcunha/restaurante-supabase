@@ -1,42 +1,26 @@
 import React from 'react';
-import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 interface AdminHeaderProps {
   userName?: string;
-  onLogout: () => void;
   paddingTop?: number;
 }
 
-export default function AdminHeader({ userName, onLogout, paddingTop }: AdminHeaderProps) {
+export default function AdminHeader({ userName, paddingTop }: AdminHeaderProps) {
   const resolvedPaddingTop = paddingTop ?? (Platform.OS === 'web' ? 16 : 50);
 
   return (
     <View style={[styles.header, { paddingTop: resolvedPaddingTop }]}>
-      <View style={styles.headerLeft}>
-        {!!userName && (
-          <View>
-              <Text style={styles.userInfoLabel}>Olá,</Text>
-              <Text style={styles.userInfo} numberOfLines={1} ellipsizeMode="tail">{userName}</Text>
-          </View>
-        )}
-      </View>
+      <View style={styles.headerLeft} />
       <View style={styles.headerCenter}>
         <View style={styles.headerTitleRow}>
           <Ionicons name="shield-checkmark-outline" size={24} color={colors.white} style={styles.headerIcon} />
           <Text style={styles.headerTitle}>Admin</Text>
         </View>
+        {!!userName && <Text style={styles.userInfo} numberOfLines={1} ellipsizeMode="tail">Operador: {userName}</Text>}
       </View>
-      <View style={styles.headerRight}>
-        <TouchableOpacity
-          style={styles.logoutBtn}
-          onPress={onLogout}
-          accessibilityRole="button"
-          accessibilityLabel="Sair da conta"
-        >
-          <Ionicons name="log-out-outline" size={24} color={colors.white} />
-        </TouchableOpacity>
-      </View>
+      <View style={styles.headerRight} />
     </View>
   );
 }
@@ -94,18 +78,10 @@ const styles = StyleSheet.create({
   },
   userInfo: {
     color: colors.userInfo,
-    fontSize: 14,
-    fontWeight: '700',
-    maxWidth: 260,
-  },
-  logoutBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.logoutBg,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
+    fontSize: 12,
+    fontWeight: '600',
+    maxWidth: 360,
+    marginTop: 4,
+    textAlign: 'center',
   },
 });

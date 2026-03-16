@@ -745,7 +745,6 @@ export default function NovoPedidoScreen({ route }: any) {
         <Navbar
           title="Novo Pedido"
           subtitle={user ? `Operador: ${user.nome || user.email}` : undefined}
-          rightSlot={<Button label="Sair" onPress={handleLogout} variant="ghost" size="sm" />}
         />
       ) : (
         <View style={styles.header}>
@@ -759,9 +758,7 @@ export default function NovoPedidoScreen({ route }: any) {
               </>
             )}
           </View>
-          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-            <Text style={styles.logoutBtnText}>Sair</Text>
-          </TouchableOpacity>
+          <View style={styles.headerLeft} />
         </View>
       )}
 
@@ -879,17 +876,8 @@ const styles = StyleSheet.create({
     color: colors.userInfo,
     fontWeight: '600',
   },
-  logoutBtn: {
-    flex: 1,
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-    padding: 5,
-  },
-  logoutBtnText: {
-    color: colors.white,
-    fontSize: 14,
-    fontWeight: '700',
-  },
+  logoutBtn: {},
+  logoutBtnText: {},
   listContent: { padding: 20, paddingBottom: 120 },
   headerForm: { marginBottom: 20 },
   label: { fontSize: 16, color: colors.text, marginBottom: 6, fontWeight: 'bold' },

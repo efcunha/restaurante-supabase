@@ -10,11 +10,10 @@ import OrderService from '../services/OrderService';
 import { supabase } from '../config/SupabaseConfig';
 // @ts-ignore
 import { getLocalDateKey } from '../utils/dateUtils';
-import { confirmLogout } from '../utils/appUtils';
 import OptimizedFlatList from '../components/OptimizedFlatList';
 import { colors } from '../theme/colors';
 export default function CozinhaScreen() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [allOrders, setAllOrders] = useState<any[]>([]);
 
   useEffect(() => {
@@ -277,23 +276,15 @@ export default function CozinhaScreen() {
 
 
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          {user && (
-            <View>
-              <Text style={styles.userInfoLabel}>Olá,</Text>
-              <Text style={styles.userInfo}>{user.nome || user.email}</Text>
-            </View>
-          )}
-        </View>
+        <View style={styles.headerLeft} />
         <View style={styles.headerCenter}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <Ionicons name="restaurant-outline" size={24} color={colors.white} style={{ marginRight: 8 }} />
             <Text style={styles.headerTitle}>Cozinha</Text>
           </View>
+          {!!user && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
         </View>
-        <TouchableOpacity style={styles.logoutBtn} onPress={() => confirmLogout(logout)}>
-          <Ionicons name="log-out-outline" size={24} color={colors.white} />
-        </TouchableOpacity>
+        <View style={styles.logoutBtn} />
       </View>
 
       <OptimizedFlatList
@@ -360,6 +351,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.userInfo,
     fontWeight: '600',
+    marginTop: 4,
+    textAlign: 'center',
   },
   logoutBtn: {
     flex: 1,
@@ -370,6 +363,7 @@ const styles = StyleSheet.create({
   listContainer: {
     padding: 20,
     paddingBottom: 20,
+    ...(Platform.OS === 'web' ? { alignItems: 'center' } : {}),
   },
   emptyState: {
     alignItems: 'center',
@@ -395,17 +389,21 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: colors.primary,
     marginBottom: 15,
+    ...(Platform.OS === 'web' ? { width: '100%', maxWidth: 800, alignSelf: 'center' } : {}),
   },
   grupoCard: {
     backgroundColor: colors.white,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
     shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 3,
+    ...(Platform.OS === 'web' ? { width: '100%', maxWidth: 800 } : {}),
   },
   grupoHeader: {
     flexDirection: 'row',
