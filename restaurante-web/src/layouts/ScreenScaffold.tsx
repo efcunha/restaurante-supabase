@@ -12,6 +12,7 @@ type NavbarAction = {
 interface ScreenScaffoldProps {
   title: string;
   subtitle?: string;
+  titleIcon?: ReactNode;
   leftAction?: NavbarAction;
   rightSlot?: ReactNode;
   children: ReactNode;
@@ -25,6 +26,7 @@ interface ScreenScaffoldProps {
 export function ScreenScaffold({
   title,
   subtitle,
+  titleIcon,
   leftAction,
   rightSlot,
   children,
@@ -43,6 +45,7 @@ export function ScreenScaffold({
         <Navbar
           title={title}
           subtitle={resolvedSubtitle}
+          titleIcon={titleIcon}
           leftAction={leftAction}
           rightSlot={rightSlot}
         />
