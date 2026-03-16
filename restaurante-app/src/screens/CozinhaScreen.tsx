@@ -282,7 +282,7 @@ export default function CozinhaScreen() {
         <View style={styles.headerLeft} />
         <View style={styles.headerCenter}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Ionicons name="restaurant-outline" size={24} color={colors.white} style={{ marginRight: 8 }} />
+            <Ionicons name="restaurant-outline" size={24} color={colors.white} style={{ marginRight: 6 }} />
             <Text style={styles.headerTitle}>Cozinha</Text>
           </View>
           {user && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
@@ -321,8 +321,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    minHeight: 92,
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
     paddingBottom: 15,
     backgroundColor: colors.primary,
     borderBottomLeftRadius: 20,
@@ -345,7 +344,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     color: colors.white,
     textAlign: 'center',

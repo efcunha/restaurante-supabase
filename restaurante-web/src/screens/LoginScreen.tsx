@@ -322,7 +322,7 @@ const styles = StyleSheet.create({
   shellDesktop: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
   },
   heroPanel: {
     width: '100%',
@@ -330,11 +330,11 @@ const styles = StyleSheet.create({
     marginBottom: 26,
   },
   heroPanelDesktop: {
-    flex: 1,
-    maxWidth: 600,
+    width: 540,
+    maxWidth: 540,
     alignItems: 'flex-start',
     marginBottom: 0,
-    paddingRight: 42,
+    paddingRight: 24,
   },
   heroBadge: {
     paddingVertical: 8,
@@ -554,6 +554,7 @@ const styles = StyleSheet.create({
   authColumnDesktop: {
     width: 470,
     maxWidth: 470,
+    marginLeft: 12,
   },
   formCard: {
     backgroundColor: 'rgba(255, 252, 247, 0.98)',
