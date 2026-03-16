@@ -5,7 +5,8 @@ import { useOrders } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
 // @ts-ignore
 import { EstatisticasGarcomContainer } from '../components/EstatisticasGarcom';
-import { ScreenScaffold } from '../layouts/ScreenScaffold';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 // Função auxiliar para gerar lista de meses disponíveis (últimos 12 meses)
 const gerarMesesDisponiveis = () => {
@@ -39,6 +40,7 @@ export default function ComandaVisualizacaoAdminScreen({ onClose }: Props) {
     const { user } = useAuth();
     // @ts-ignore
     const { getEstatisticasCompletas, getEstatisticasTodosGarcons } = useOrders();
+        const insets = useSafeAreaInsets();
     const [estatisticas, setEstatisticas] = useState<any>(null);
     const [loadingEstatisticas, setLoadingEstatisticas] = useState(false);
     const [garconsDisponiveis, setGarconsDisponiveis] = useState<any[]>([]);
@@ -140,7 +142,17 @@ export default function ComandaVisualizacaoAdminScreen({ onClose }: Props) {
     // @ts-ignore
     if (!user || user.funcao !== 'admin') {
         return (
-            <ScreenScaffold title="Acesso Restrito">
+                        <View style={styles.container}>
+                            <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
+                                <View style={styles.headerLeft} />
+                                <View style={styles.headerCenter}>
+                                    <View style={styles.headerTitleRow}>
+                                        <Ionicons name="bar-chart-outline" size={24} color={colors.white} style={styles.headerIcon} />
+                                        <Text style={styles.headerTitle}>Estatísticas dos Garçons</Text>
+                                    </View>
+                                </View>
+                                <View style={styles.headerRight} />
+                            </View>
                 <StatusBar style="light" />
                 <View style={styles.accessDenied}>
                     <Text style={styles.accessDeniedIcon}>🔒</Text>
@@ -152,16 +164,30 @@ export default function ComandaVisualizacaoAdminScreen({ onClose }: Props) {
                         Apenas o Admin/Dona pode visualizar comandas no final do dia.
                     </Text>
                 </View>
-            </ScreenScaffold>
+            </View>
         );
     }
 
     // Tela Principal de Estatísticas
     return (
-        <ScreenScaffold
-            title="Estatísticas dos Garçons"
-            leftAction={onClose ? { label: 'Voltar', onPress: onClose } : undefined}
-        >
+        <View style={styles.container}>
+            <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
+                <View style={styles.headerLeft} />
+                <View style={styles.headerCenter}>
+                    <View style={styles.headerTitleRow}>
+                        <Ionicons name="bar-chart-outline" size={24} color={colors.white} style={styles.headerIcon} />
+                        <Text style={styles.headerTitle}>Estatísticas dos Garçons</Text>
+                    </View>
+                    {!!user && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
+                </View>
+                <View style={styles.headerRight}>
+                    {!!onClose && (
+                        <TouchableOpacity style={styles.logoutBtn} onPress={onClose}>
+                            <Ionicons name="arrow-back-outline" size={24} color={colors.white} />
+                        </TouchableOpacity>
+                    )}
+                </View>
+            </View>
             <StatusBar style="light" />
 
             {/* Indicador do Mês Selecionado */}
@@ -303,15 +329,21 @@ export default function ComandaVisualizacaoAdminScreen({ onClose }: Props) {
                 nomeGarcom={estatisticas?.garcomNome || user?.nome || 'Carregando...'}
                 loading={loadingEstatisticas}
             />
-        </ScreenScaffold>
+            </View>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: colors.background,
-    },
+    container: { flex: 1, backgroundColor: colors.background },
+    header: { backgroundColor: colors.primary, minHeight: 92, paddingBottom: 15, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomLeftRadius: 20, borderBottomRightRadius: 20, zIndex: 10, elevation: 8, shadowColor: colors.shadow, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 6 },
+    headerLeft: { flex: 1 },
+    headerCenter: { flex: 2, alignItems: 'center', justifyContent: 'center' },
+    headerRight: { flex: 1, alignItems: 'flex-end', justifyContent: 'center' },
+    headerTitleRow: { flexDirection: 'row', alignItems: 'center' },
+    headerIcon: { marginRight: 8 },
+    headerTitle: { color: colors.white, fontSize: 20, fontWeight: 'bold', textAlign: 'center' },
+    userInfo: { fontSize: 12, color: colors.userInfo, fontWeight: '600', marginTop: 4, textAlign: 'center' },
+    logoutBtn: { paddingHorizontal: 10, paddingVertical: 8, borderRadius: 12, backgroundColor: colors.logoutBg },
     filterBtn: {
         backgroundColor: 'rgba(255,255,255,0.2)',
         paddingHorizontal: 12,

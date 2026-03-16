@@ -18,12 +18,10 @@ import TableGraphic from '../components/TableGraphic';
 import DraggableTable from '../components/DraggableTable'; // Added
 import { Environment, Table } from '../types';
 import { useAuth } from '../context/AuthContext';
-import { ScreenScaffold } from '../layouts/ScreenScaffold';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 const { width } = Dimensions.get('window');
 
-// Mock for safe area if not available
-const SAFE_AREA_TOP = 50;
 
 interface Props {
     onClose?: () => void;
@@ -32,6 +30,7 @@ interface Props {
 export default function ConfiguracaoMesasScreen({ onClose }: Props) {
     const navigation = useNavigation();
     const { user } = useAuth();
+    const insets = useSafeAreaInsets();
 
     // Editor State
     const [isEditingLayout, setIsEditingLayout] = useState(false);
@@ -336,19 +335,22 @@ export default function ConfiguracaoMesasScreen({ onClose }: Props) {
     );
 
     return (
-        <ScreenScaffold
-            title="Configuração de Mesas"
-            leftAction={{
-                label: 'Voltar',
-                onPress: () => {
-                    if (onClose) {
-                        onClose();
-                    } else {
-                        navigation.goBack();
-                    }
-                }
-            }}
-        >
+        <View style={styles.container}>
+            <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
+                <View style={styles.headerLeft} />
+                <View style={styles.headerCenter}>
+                    <View style={styles.headerTitleRow}>
+                        <Ionicons name="grid-outline" size={24} color={colors.white} style={styles.headerIcon} />
+                        <Text style={styles.headerTitle}>Configuração de Mesas</Text>
+                    </View>
+                    {!!user && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
+                </View>
+                <View style={styles.headerRight}>
+                    <TouchableOpacity style={styles.logoutBtn} onPress={() => { if (onClose) { onClose(); } else { navigation.goBack(); } }}>
+                        <Ionicons name="arrow-back-outline" size={24} color={colors.white} />
+                    </TouchableOpacity>
+                </View>
+            </View>
             {loading ? (
                 <View style={styles.center}>
                     <ActivityIndicator size="large" color={colors.primary} />
@@ -603,12 +605,21 @@ export default function ConfiguracaoMesasScreen({ onClose }: Props) {
                 </View>
             </Modal>
 
-        </ScreenScaffold>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
+    header: { backgroundColor: colors.primary, minHeight: 92, paddingBottom: 15, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomLeftRadius: 20, borderBottomRightRadius: 20, zIndex: 10, elevation: 8, shadowColor: colors.shadow, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 6 },
+    headerLeft: { flex: 1 },
+    headerCenter: { flex: 2, alignItems: 'center', justifyContent: 'center' },
+    headerRight: { flex: 1, alignItems: 'flex-end', justifyContent: 'center' },
+    headerTitleRow: { flexDirection: 'row', alignItems: 'center' },
+    headerIcon: { marginRight: 8 },
+    headerTitle: { color: colors.white, fontSize: 20, fontWeight: 'bold', textAlign: 'center' },
+    userInfo: { fontSize: 12, color: colors.userInfo, fontWeight: '600', marginTop: 4, textAlign: 'center' },
+    logoutBtn: { paddingHorizontal: 10, paddingVertical: 8, borderRadius: 12, backgroundColor: colors.logoutBg },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     tabsContainer: {
         height: 60,

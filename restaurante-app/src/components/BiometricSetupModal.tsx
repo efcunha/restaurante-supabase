@@ -15,6 +15,7 @@ import {
   TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import BiometricAuthService from '../services/BiometricAuthService';
 import { useAuth } from '../context/AuthContext';
 import * as Device from 'expo-device';
@@ -28,6 +29,7 @@ interface Props {
 
 export default function BiometricSetupModal({ visible, onClose, onSuccess }: Props) {
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(false);
   const [biometricType, setBiometricType] = useState<string>('Biometria');
   const [isAvailable, setIsAvailable] = useState(false);
@@ -243,12 +245,20 @@ export default function BiometricSetupModal({ visible, onClose, onSuccess }: Pro
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={onClose} style={styles.backButton}>
-            <Text style={styles.backButtonText}>Voltar</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Autenticação Biométrica</Text>
-          <View style={styles.headerRightSpacer} />
+        <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
+          <View style={styles.headerLeft} />
+          <View style={styles.headerCenter}>
+            <View style={styles.headerTitleRow}>
+              <Ionicons name="finger-print-outline" size={24} color={colors.white} style={styles.headerIcon} />
+              <Text style={styles.headerTitle}>Autenticação Biométrica</Text>
+            </View>
+            {!!user && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
+          </View>
+          <View style={styles.headerRight}>
+            <TouchableOpacity style={styles.logoutBtn} onPress={onClose}>
+              <Ionicons name="arrow-back-outline" size={24} color={colors.white} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {isAvailable ? renderAvailable() : renderUnavailable()}
@@ -262,34 +272,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  header: {
-    backgroundColor: colors.primary,
-    paddingTop: 50,
-    paddingBottom: 15,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.white,
-    textAlign: 'center',
-    flex: 1,
-  },
-  backButton: {
-    padding: 5,
-    minWidth: 70,
-  },
-  backButtonText: {
-    color: colors.white,
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  headerRightSpacer: {
-    minWidth: 70,
-  },
+  header: { backgroundColor: colors.primary, minHeight: 92, paddingBottom: 15, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomLeftRadius: 20, borderBottomRightRadius: 20, zIndex: 10, elevation: 8, shadowColor: colors.shadow, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 6 },
+  headerLeft: { flex: 1 },
+  headerCenter: { flex: 2, alignItems: 'center', justifyContent: 'center' },
+  headerRight: { flex: 1, alignItems: 'flex-end', justifyContent: 'center' },
+  headerTitleRow: { flexDirection: 'row', alignItems: 'center' },
+  headerIcon: { marginRight: 8 },
+  headerTitle: { color: colors.white, fontSize: 20, fontWeight: 'bold', textAlign: 'center' },
+  userInfo: { fontSize: 12, color: colors.userInfo, fontWeight: '600', marginTop: 4, textAlign: 'center' },
+  logoutBtn: { paddingHorizontal: 10, paddingVertical: 8, borderRadius: 12, backgroundColor: colors.logoutBg },
   content: {
     flex: 1,
     padding: 20,
