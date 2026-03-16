@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, Platform, Image, BackHandler, ScrollView, NativeModules } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, Platform, Image, BackHandler, ScrollView, NativeModules, useWindowDimensions, KeyboardAvoidingView } from 'react-native';
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -18,10 +18,14 @@ interface Props {
 export default function LoginScreen({ navigation }: Props) {
   const { login, loginWithBiometric, biometricAvailable, biometricType, mfaResolver, setMfaResolver } = useAuth();
   const { showToast } = useToast();
+  const { height } = useWindowDimensions();
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [loading, setLoading] = useState(false);
   const [mostrarSenha, setMostrarSenha] = useState(false);
+
+  const isCompactScreen = height < 760;
+  const isVeryCompactScreen = height < 690;
 
   const handleLogin = async () => {
     if (!email.trim() || !senha.trim()) {
@@ -70,16 +74,29 @@ export default function LoginScreen({ navigation }: Props) {
         <Ionicons name="close" size={22} color="#FFFFFF" />
       </TouchableOpacity>
 
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoid}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
+      >
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={[
+          styles.scroll,
+          isCompactScreen && styles.scrollCompact,
+          isVeryCompactScreen && styles.scrollVeryCompact,
+        ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
         {/* Logo */}
-        <View style={styles.logoWrap}>
+        <View style={[styles.logoWrap, isCompactScreen && styles.logoWrapCompact]}>
           <Image
             source={require('../../imagem/icone.png')}
-            style={styles.logo}
+            style={[
+              styles.logo,
+              isCompactScreen && styles.logoCompact,
+              isVeryCompactScreen && styles.logoVeryCompact,
+            ]}
             resizeMode="contain"
           />
 
@@ -94,10 +111,10 @@ export default function LoginScreen({ navigation }: Props) {
         </View>
 
         {/* Card do formulário */}
-        <View style={styles.card}>
+        <View style={[styles.card, isCompactScreen && styles.cardCompact]}>
           <Text style={styles.cardEyebrow}>Acesso restrito</Text>
-          <Text style={styles.cardTitle}>Entrar na plataforma</Text>
-          <Text style={styles.cardSubtitle}>
+          <Text style={[styles.cardTitle, isVeryCompactScreen && styles.cardTitleCompact]}>Entrar na plataforma</Text>
+          <Text style={[styles.cardSubtitle, isVeryCompactScreen && styles.cardSubtitleCompact]}>
             Use o email e senha fornecidos pelo administrador.
           </Text>
 
@@ -207,11 +224,12 @@ export default function LoginScreen({ navigation }: Props) {
           </View>
         </View>
 
-        {/* Rodapé */}
-        <View style={styles.footer}>
+        {/* Rodape */}
+        <View style={[styles.footer, isCompactScreen && styles.footerCompact]}>
           <Text style={styles.credit}>© Machado &amp; Cunha Soft House</Text>
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
 
       <StatusBar style="light" />
 
@@ -230,6 +248,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0C7A96',
     overflow: 'hidden',
+  },
+  keyboardAvoid: {
+    flex: 1,
   },
   orb: {
     position: 'absolute',
@@ -265,17 +286,38 @@ const styles = StyleSheet.create({
     zIndex: 20,
   },
   scroll: {
-    paddingTop: Platform.OS === 'ios' ? 100 : 80,
-    paddingBottom: 36,
+    flexGrow: 1,
+    paddingTop: Platform.OS === 'ios' ? 88 : 68,
+    paddingBottom: 30,
     paddingHorizontal: 20,
+  },
+  scrollCompact: {
+    paddingTop: Platform.OS === 'ios' ? 74 : 56,
+    paddingBottom: 24,
+  },
+  scrollVeryCompact: {
+    paddingTop: Platform.OS === 'ios' ? 64 : 48,
+    paddingHorizontal: 16,
+    paddingBottom: 18,
   },
   logoWrap: {
     alignItems: 'center',
     marginBottom: 16,
   },
+  logoWrapCompact: {
+    marginBottom: 12,
+  },
   logo: {
     width: 140,
     height: 140,
+  },
+  logoCompact: {
+    width: 122,
+    height: 122,
+  },
+  logoVeryCompact: {
+    width: 108,
+    height: 108,
   },
   aboutCta: {
     marginTop: 8,
@@ -305,6 +347,11 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.6)',
     elevation: 12,
   },
+  cardCompact: {
+    borderRadius: 24,
+    paddingVertical: 22,
+    paddingHorizontal: 18,
+  },
   cardEyebrow: {
     color: '#0B6780',
     fontSize: 11,
@@ -320,11 +367,20 @@ const styles = StyleSheet.create({
     lineHeight: 32,
     marginBottom: 8,
   },
+  cardTitleCompact: {
+    fontSize: 22,
+    lineHeight: 28,
+  },
   cardSubtitle: {
     color: '#5A6E7A',
     fontSize: 14,
     lineHeight: 21,
     marginBottom: 22,
+  },
+  cardSubtitleCompact: {
+    fontSize: 13,
+    lineHeight: 19,
+    marginBottom: 18,
   },
   fieldGroup: {
     marginBottom: 14,
@@ -436,6 +492,9 @@ const styles = StyleSheet.create({
     marginTop: 20,
     alignItems: 'center',
     gap: 10,
+  },
+  footerCompact: {
+    marginTop: 14,
   },
   aboutRow: {
     flexDirection: 'row',
