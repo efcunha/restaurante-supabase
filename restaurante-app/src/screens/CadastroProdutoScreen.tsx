@@ -1,6 +1,9 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuth } from '../context/AuthContext';
 import { useResponsive } from '../hooks/useResponsive';
 // @ts-ignore
 import KeyboardWrapper from '../components/KeyboardWrapper';
@@ -8,6 +11,8 @@ import KeyboardWrapper from '../components/KeyboardWrapper';
 import { criarProduto } from '../services/ProductService';
 import { colors } from '../theme/colors';
 export default function CadastroProdutoScreen() {
+  const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const { horizontalPadding, inputMaxWidth } = useResponsive();
   const [nome, setNome] = useState('');
   const [preco, setPreco] = useState('');
@@ -38,7 +43,17 @@ export default function CadastroProdutoScreen() {
       style={{ flex: 1 }}
     >
       <KeyboardWrapper style={styles.container}>
-        <View style={styles.header}><Text style={styles.headerTitle}>Cadastro de Produtos</Text></View>
+        <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
+          <View style={styles.headerLeft} />
+          <View style={styles.headerCenter}>
+            <View style={styles.headerTitleRow}>
+              <Ionicons name="pricetag-outline" size={24} color={colors.white} style={styles.headerIcon} />
+              <Text style={styles.headerTitle}>Cadastro de Produtos</Text>
+            </View>
+            {!!user && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
+          </View>
+          <View style={styles.headerRight} />
+        </View>
         <ScrollView contentContainerStyle={[styles.scrollContent, { paddingHorizontal: horizontalPadding }]}>
           <View style={[styles.formContainer, { maxWidth: inputMaxWidth, alignSelf: 'center', width: '100%' }]}>
             <Text style={styles.label}>Nome do Produto</Text>
@@ -69,8 +84,54 @@ export default function CadastroProdutoScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  header: { backgroundColor: colors.primary, paddingTop: 50, paddingBottom: 20, paddingHorizontal: 20 },
-  headerTitle: { color: colors.white, fontSize: 24, fontWeight: '600' },
+  header: {
+    backgroundColor: colors.primary,
+    minHeight: 92,
+    paddingBottom: 15,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    zIndex: 10,
+    elevation: 8,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.65,
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  headerCenter: {
+    flex: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerRight: {
+    flex: 1,
+  },
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerIcon: {
+    marginRight: 8,
+  },
+  headerTitle: {
+    color: colors.white,
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  userInfo: {
+    fontSize: 12,
+    color: colors.userInfo,
+    fontWeight: '600',
+    marginTop: 4,
+    textAlign: 'center',
+  },
   scrollContent: { paddingVertical: 20, paddingBottom: 100 },
   formContainer: {},
   label: { color: colors.primary, fontWeight: '600', marginBottom: 8, marginTop: 10 },

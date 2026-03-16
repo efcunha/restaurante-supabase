@@ -1,7 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, StyleSheet, Alert, ActivityIndicator, Switch } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { ProductFormData, ProductFormProps } from './types';
+import { useAuth } from '../../../context/AuthContext';
 import { colors } from '../../../theme/colors';
 export default function ProductForm({
   visible,
@@ -14,6 +16,7 @@ export default function ProductForm({
   onOpenStock,
   variationNames
 }: ProductFormProps) {
+    const { user } = useAuth();
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [category, setCategory] = useState('');
@@ -102,8 +105,24 @@ export default function ProductForm({
       <View style={styles.overlay}>
         <View style={styles.content}>
            <View style={styles.header}>
-             <Text style={styles.title}>{initialData ? '✏️ Editar Produto' : '✨ Novo Produto'}</Text>
-             <TouchableOpacity onPress={onClose}><Text style={styles.close}>✕</Text></TouchableOpacity>
+                         <View style={styles.headerTop}>
+                             <View style={styles.headerLeft} />
+                             <View style={styles.headerCenter}>
+                                 <View style={styles.titleRow}>
+                                     <Ionicons
+                                         name={initialData ? 'create-outline' : 'add-circle-outline'}
+                                         size={22}
+                                         color={colors.primary}
+                                         style={styles.titleIcon}
+                                     />
+                                     <Text style={styles.title}>{initialData ? 'Editar Produto' : 'Novo Produto'}</Text>
+                                 </View>
+                             </View>
+                             <View style={styles.headerRight}>
+                                 <TouchableOpacity onPress={onClose}><Text style={styles.close}>✕</Text></TouchableOpacity>
+                             </View>
+                         </View>
+                         {!!user && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
            </View>
 
            <ScrollView showsVerticalScrollIndicator={false}>
@@ -222,9 +241,16 @@ export default function ProductForm({
 const styles = StyleSheet.create({
     overlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', alignItems: 'center', padding: 20 },
     content: { backgroundColor: colors.white, width: '100%', maxWidth: 400, borderRadius: 20, padding: 20, maxHeight: '90%', shadowColor: colors.shadow, elevation: 10 },
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+    header: { marginBottom: 20 },
+    headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    headerLeft: { flex: 1 },
+    headerCenter: { flex: 2, alignItems: 'center' },
+    headerRight: { flex: 1, alignItems: 'flex-end' },
+    titleRow: { flexDirection: 'row', alignItems: 'center' },
+    titleIcon: { marginRight: 8 },
     title: { fontSize: 20, fontWeight: 'bold', color: colors.primary },
     close: { fontSize: 24, color: colors.textSecondary, padding: 5 },
+    userInfo: { marginTop: 4, fontSize: 12, color: colors.textSecondary, fontWeight: '600', textAlign: 'center' },
     label: { fontSize: 14, fontWeight: '600', color: colors.textSecondary, marginBottom: 8, marginLeft: 4 },
     input: { backgroundColor: colors.background, borderRadius: 12, padding: 15, fontSize: 16, color: colors.text, marginBottom: 15 },
     catContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 15 },

@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback, memo, useRef } from 'react';
 import { useOrders } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PedidoDetalhesModal from './PedidoDetalhesModal';
 import { supabase } from '../config/SupabaseConfig';
 import { getLocalDateKey } from '../utils/dateUtils';
@@ -165,6 +166,7 @@ export default function MontagemScreen() {
   useOrders(); // mantido para não quebrar contexto
   const { user, hasPermission, Permissions } = useAuth();
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
   const [allOrders, setAllOrders] = useState<any[]>([]);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
@@ -545,24 +547,20 @@ export default function MontagemScreen() {
 
 
       {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          {user && (
-            <View>
-              <Text style={styles.userInfoLabel}>Olá,</Text>
-              <Text style={styles.userInfo}>{user.nome || user.email}</Text>
-            </View>
-          )}
-        </View>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
+        <View style={styles.headerLeft} />
         <View style={styles.headerCenter}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <Ionicons name="layers-outline" size={24} color={colors.white} style={{ marginRight: 8 }} />
             <Text style={styles.headerTitle}>Montagem</Text>
           </View>
+          {user && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
         </View>
-        <TouchableOpacity style={styles.logoutBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back-outline" size={24} color={colors.white} />
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <TouchableOpacity style={styles.logoutBtn} onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back-outline" size={24} color={colors.white} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <FlatList
@@ -599,7 +597,7 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: colors.primary,
-    paddingTop: 50,
+    minHeight: 92,
     paddingBottom: 15,
     paddingHorizontal: 20,
     flexDirection: 'row',
@@ -632,19 +630,27 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   userInfoLabel: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 10,
-  },
-  userInfo: {
-    color: colors.secondary,
-    fontSize: 12,
+    color: colors.primaryContrastMuted,
+    fontSize: 11,
     fontWeight: '600',
   },
-  logoutBtn: {
+  userInfo: {
+    color: colors.userInfo,
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  headerRight: {
     flex: 1,
     alignItems: 'flex-end',
     justifyContent: 'center',
-    padding: 5,
+  },
+  logoutBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: colors.logoutBg,
   },
 
   list: {

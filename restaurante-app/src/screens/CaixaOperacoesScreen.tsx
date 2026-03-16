@@ -1,6 +1,8 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, TouchableOpacity, TextInput, Alert, ScrollView, ActivityIndicator } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 // @ts-ignore
 import CaixaService from '../services/CaixaService';
@@ -8,6 +10,7 @@ import { getUserFriendlyMessage } from '../utils/errors';
 import { colors } from '../theme/colors';
 export default function CaixaOperacoesScreen() {
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const [valorReforco, setValorReforco] = useState('');
   const [motivoReforco, setMotivoReforco] = useState('');
   const [valorSangria, setValorSangria] = useState('');
@@ -50,6 +53,18 @@ export default function CaixaOperacoesScreen() {
 
   return (
     <View style={styles.container}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
+        <View style={styles.headerLeft} />
+        <View style={styles.headerCenter}>
+          <View style={styles.headerTitleRow}>
+            <Ionicons name="swap-horizontal-outline" size={24} color={colors.white} style={styles.headerIcon} />
+            <Text style={styles.headerTitle}>Operações de Caixa</Text>
+          </View>
+          {!!user && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
+        </View>
+        <View style={styles.headerRight} />
+      </View>
+
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
         <Text style={styles.section}>Reforço</Text>
         <TextInput
@@ -110,6 +125,50 @@ export default function CaixaOperacoesScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  header: {
+    backgroundColor: colors.primary,
+    minHeight: 92,
+    paddingBottom: 15,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    zIndex: 10,
+    elevation: 8,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.65,
+  },
+  headerLeft: { flex: 1 },
+  headerCenter: {
+    flex: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerRight: { flex: 1 },
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerIcon: {
+    marginRight: 8,
+  },
+  headerTitle: {
+    color: colors.white,
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  userInfo: {
+    fontSize: 12,
+    color: colors.userInfo,
+    fontWeight: '600',
+    marginTop: 4,
+    textAlign: 'center',
+  },
   section: { fontSize: 18, fontWeight: 'bold', marginBottom: 12, color: colors.text },
   input: {
     backgroundColor: colors.white,

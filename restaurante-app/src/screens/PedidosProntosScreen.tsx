@@ -284,23 +284,19 @@ export default function PedidosProntosScreen() {
 
       {/* Header */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
-        <View style={styles.headerLeft}>
-          {user && (
-            <View>
-              <Text style={styles.userInfoLabel}>Olá,</Text>
-              <Text style={styles.userInfo}>{user.nome || user.email}</Text>
-            </View>
-          )}
-        </View>
+        <View style={styles.headerLeft} />
         <View style={styles.headerCenter}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <Ionicons name="checkmark-done-circle-outline" size={24} color={colors.white} style={{ marginRight: 8 }} />
             <Text style={styles.headerTitle}>Prontos para entrega</Text>
           </View>
+          {user && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
         </View>
-        <TouchableOpacity style={styles.logoutBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back-outline" size={24} color={colors.white} />
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <TouchableOpacity style={styles.logoutBtn} onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back-outline" size={24} color={colors.white} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <OptimizedFlatList
@@ -335,6 +331,7 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: colors.primary,
+    minHeight: 92,
     paddingBottom: 15,
     paddingHorizontal: 20,
     flexDirection: 'row',
@@ -368,18 +365,26 @@ const styles = StyleSheet.create({
   },
   userInfoLabel: {
     color: colors.primaryContrastMuted,
-    fontSize: 10,
+    fontSize: 11,
+    fontWeight: '600',
   },
   userInfo: {
     color: colors.userInfo,
     fontSize: 12,
     fontWeight: '600',
+    marginTop: 4,
+    textAlign: 'center',
   },
-  logoutBtn: {
+  headerRight: {
     flex: 1,
     alignItems: 'flex-end',
     justifyContent: 'center',
-    padding: 5,
+  },
+  logoutBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: colors.logoutBg,
   },
   content: {
     padding: 20,

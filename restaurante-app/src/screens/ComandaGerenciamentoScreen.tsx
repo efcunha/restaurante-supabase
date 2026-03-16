@@ -443,25 +443,19 @@ export default function ComandaGerenciamentoScreen(props: any) {
 
 
       <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
-        <View style={styles.headerLeft}>
-          {user && (
-            <View>
-              <Text style={styles.userInfoLabel}>Olá,</Text>
-              <Text style={styles.userInfo}>{user.nome || user.email}</Text>
-            </View>
-          )}
-        </View>
+        <View style={styles.headerLeft} />
         <View style={styles.headerCenter}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <Ionicons name="clipboard-outline" size={24} color={colors.white} style={{ marginRight: 8 }} />
             <Text style={styles.headerTitle}>Gerenciamento</Text>
           </View>
+          {user && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
         </View>
         <View style={styles.logoutBtn}>
           {useUiNextComanda ? (
             <Button label="Sair" onPress={handleLogout} size="sm" />
           ) : (
-            <TouchableOpacity onPress={handleLogout}>
+            <TouchableOpacity style={styles.logoutIconBtn} onPress={handleLogout}>
               <Ionicons name="log-out-outline" size={24} color={colors.white} />
             </TouchableOpacity>
           )}
@@ -533,6 +527,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    minHeight: 92,
     paddingHorizontal: 20,
     paddingBottom: 15,
     backgroundColor: colors.primary,
@@ -562,19 +557,27 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   userInfoLabel: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 10,
+    color: colors.primaryContrastMuted,
+    fontSize: 11,
+    fontWeight: '600',
   },
   userInfo: {
     fontSize: 12,
     color: colors.userInfo,
     fontWeight: '600',
+    marginTop: 4,
+    textAlign: 'center',
   },
   logoutBtn: {
     flex: 1,
     alignItems: 'flex-end',
     justifyContent: 'center',
-    padding: 5,
+  },
+  logoutIconBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: colors.logoutBg,
   },
   tabs: { flexDirection: 'row', padding: 10 },
   tab: {
