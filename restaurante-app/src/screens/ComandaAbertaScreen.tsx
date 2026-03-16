@@ -235,9 +235,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: {
     backgroundColor: colors.primary,
-    minHeight: 92,
     paddingBottom: 15,
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -265,8 +264,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  headerIcon: { marginRight: 8 },
-  title: { color: colors.white, fontSize: 20, fontWeight: 'bold' },
+  headerIcon: { marginRight: 6 },
+  title: { color: colors.white, fontSize: 18, fontWeight: 'bold' },
   userInfo: {
     color: colors.userInfo,
     fontSize: 12,

@@ -551,7 +551,7 @@ export default function MontagemScreen() {
         <View style={styles.headerLeft} />
         <View style={styles.headerCenter}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Ionicons name="layers-outline" size={24} color={colors.white} style={{ marginRight: 8 }} />
+            <Ionicons name="layers-outline" size={24} color={colors.white} style={{ marginRight: 6 }} />
             <Text style={styles.headerTitle}>Montagem</Text>
           </View>
           {user && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
@@ -597,9 +597,8 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: colors.primary,
-    minHeight: 92,
     paddingBottom: 15,
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -625,7 +624,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     color: colors.white,
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     textAlign: 'center',
   },

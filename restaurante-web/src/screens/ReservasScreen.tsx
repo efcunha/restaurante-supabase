@@ -213,8 +213,8 @@ export default function ReservasScreen({ navigation: _navigation }: any) {
       <View style={styles.header}>
         <View style={styles.headerLeft} />
         <View style={styles.headerCenter}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Ionicons name="calendar-outline" size={24} color={colors.white} style={{ marginRight: 8 }} />
+          <View style={styles.headerTitleRow}>
+            <Ionicons name="calendar-outline" size={24} color={colors.white} style={styles.headerIcon} />
             <Text style={styles.headerTitle}>Agendamentos & Reservas</Text>
           </View>
           {!!user && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
@@ -295,7 +295,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: {
     paddingTop: Platform.OS === 'ios' ? 50 : 20, 
-    paddingHorizontal: 20, 
+    paddingHorizontal: 12, 
     paddingBottom: 15,
     backgroundColor: colors.primary,
     borderBottomLeftRadius: 20,
@@ -319,12 +319,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  headerTitleRow: { flexDirection: 'row', alignItems: 'center' },
+  headerIcon: { marginRight: 6 },
   headerRight: {
      flex: 1,
      alignItems: 'flex-end',
      justifyContent: 'center',
   },
-  headerTitle: { color: colors.white, fontSize: 20, fontWeight: 'bold', textAlign: 'center' },
+  headerTitle: { color: colors.white, fontSize: 18, fontWeight: 'bold', textAlign: 'center' },
   userInfoLabel: { color: colors.primaryContrastMuted, fontSize: 10 },
   userInfo: { color: colors.userInfo, fontSize: 12, fontWeight: '600', marginTop: 4, textAlign: 'center' },
   // Filtros

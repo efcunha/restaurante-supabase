@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
     },
-    headerIcon: { marginRight: 8 },
+    headerIcon: { marginRight: 6 },
     headerTitle: { color: colors.white, fontSize: 18, fontWeight: 'bold' },
     userInfo: {
         marginTop: 4,

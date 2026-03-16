@@ -5,8 +5,6 @@ import React, { memo, useCallback, useState, useMemo, useRef, useEffect } from '
 
 import { useNovoPedido } from '../hooks/useNovoPedido';
 import { usePerformanceMonitor } from '../hooks/usePerformanceMonitor';
-import { Button, Navbar } from '../ui';
-import { isFeatureEnabled } from '../config/featureFlags';
 import { useFocusEffect } from '@react-navigation/native';
 // @ts-ignore
 import PizzaBuilderModal from '../components/PizzaBuilderModal';
@@ -414,7 +412,6 @@ interface Section {
 }
 
 export default function NovoPedidoScreen({ route }: any) {
-  const useUiNextNovoPedido = isFeatureEnabled('novoPedido_uiNext');
   const [showPizzaModal, setShowPizzaModal] = useState(false);
   const [selectedPizza, setSelectedPizza] = useState<Product | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -771,27 +768,19 @@ export default function NovoPedidoScreen({ route }: any) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
     >
-      {useUiNextNovoPedido ? (
-        <Navbar
-          title="Novo Pedido"
-          subtitle={user ? `Operador: ${user.nome || user.email}` : undefined}
-          rightSlot={<Button label="Sair" onPress={handleLogout} variant="ghost" size="sm" />}
-        />
-      ) : (
-        <View style={styles.header}>
-          <View style={styles.headerLeft} />
-          <View style={styles.headerCenter}>
-            <View style={styles.headerTitleRow}>
-              <Ionicons name="receipt-outline" size={24} color={colors.white} style={styles.headerTitleIcon} />
-              <Text style={styles.headerTitle}>Novo Pedido</Text>
-            </View>
-            {user && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
+      <View style={styles.header}>
+        <View style={styles.headerLeft} />
+        <View style={styles.headerCenter}>
+          <View style={styles.headerTitleRow}>
+            <Ionicons name="receipt-outline" size={24} color={colors.white} style={styles.headerTitleIcon} />
+            <Text style={styles.headerTitle}>Novo Pedido</Text>
           </View>
-          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-            <Text style={styles.logoutBtnText}>Sair</Text>
-          </TouchableOpacity>
+          {user && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
         </View>
-      )}
+        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+          <Text style={styles.logoutBtnText}>Sair</Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Search Bar */}
       <View style={styles.searchContainer}>
