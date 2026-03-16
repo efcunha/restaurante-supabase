@@ -12,7 +12,7 @@ import GerenciarFornecedoresScreen from './GerenciarFornecedoresScreen';
 import ConfiguracaoEstoqueScreen from './ConfiguracaoEstoqueScreen';
 // @ts-ignore
 import { SUPPORTED_UNITS } from '../utils/unitConversion';
-import { ScreenScaffold } from '../layouts/ScreenScaffold';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 interface Props {
   onClose?: () => void;
@@ -20,6 +20,7 @@ interface Props {
 
 export default function EstoqueScreen({ onClose }: Props) {
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
 
   // Navigation states
   const [showFornecedores, setShowFornecedores] = useState(false);
@@ -293,20 +294,32 @@ export default function EstoqueScreen({ onClose }: Props) {
   }
 
   return (
-    <ScreenScaffold
-      title="Gerenciar Estoque"
-      leftAction={onClose ? { label: 'Voltar', onPress: onClose } : undefined}
-      rightSlot={(
-        <View style={styles.headerActions}>
-          <TouchableOpacity onPress={() => setShowConfig(true)} style={styles.iconBtn}>
-            <Ionicons name="settings-outline" size={24} color={colors.white} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => setShowFornecedores(true)} style={styles.iconBtn}>
-            <Ionicons name="people-outline" size={24} color={colors.white} />
-          </TouchableOpacity>
+    <View style={styles.container}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
+        <View style={styles.headerLeft} />
+        <View style={styles.headerCenter}>
+          <View style={styles.headerTitleRow}>
+            <Ionicons name="cube-outline" size={24} color={colors.white} style={styles.headerIcon} />
+            <Text style={styles.headerTitle}>Gerenciar Estoque</Text>
+          </View>
+          {!!user && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
         </View>
-      )}
-    >
+        <View style={styles.headerRight}>
+          <View style={styles.headerActions}>
+            <TouchableOpacity onPress={() => setShowConfig(true)} style={styles.iconBtn}>
+              <Ionicons name="settings-outline" size={24} color={colors.white} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setShowFornecedores(true)} style={styles.iconBtn}>
+              <Ionicons name="people-outline" size={24} color={colors.white} />
+            </TouchableOpacity>
+            {!!onClose && (
+              <TouchableOpacity style={styles.logoutBtn} onPress={onClose}>
+                <Ionicons name="arrow-back-outline" size={24} color={colors.white} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      </View>
       <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Categorias */}
         {categorias.length === 0 ? (
@@ -540,18 +553,23 @@ export default function EstoqueScreen({ onClose }: Props) {
       </ScrollView>
 
       <StatusBar style="light" />
-    </ScreenScaffold>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  headerActions: {
-    flexDirection: 'row',
-    gap: 15
-  },
-  iconBtn: {
-    padding: 5
-  },
+  container: { flex: 1, backgroundColor: colors.background },
+  header: { backgroundColor: colors.primary, minHeight: 92, paddingBottom: 15, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomLeftRadius: 20, borderBottomRightRadius: 20, zIndex: 10, elevation: 8, shadowColor: colors.shadow, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 6 },
+  headerLeft: { flex: 1 },
+  headerCenter: { flex: 2, alignItems: 'center', justifyContent: 'center' },
+  headerRight: { flex: 1, alignItems: 'flex-end', justifyContent: 'center' },
+  headerTitleRow: { flexDirection: 'row', alignItems: 'center' },
+  headerIcon: { marginRight: 8 },
+  headerTitle: { color: colors.white, fontSize: 20, fontWeight: 'bold', textAlign: 'center' },
+  userInfo: { fontSize: 12, color: colors.userInfo, fontWeight: '600', marginTop: 4, textAlign: 'center' },
+  logoutBtn: { paddingHorizontal: 10, paddingVertical: 8, borderRadius: 12, backgroundColor: colors.logoutBg },
+  headerActions: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  iconBtn: { padding: 5 },
   content: {
     flex: 1,
     padding: 20,

@@ -17,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 // @ts-ignore
 import { validateCPF, validateCNPJ } from '../utils/validation';
 import { supabase } from '../config/SupabaseConfig';
-import { ScreenScaffold } from '../layouts/ScreenScaffold';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 interface Props {
   onBack: () => void;
@@ -25,6 +25,7 @@ interface Props {
 
 export default function EditarEmpresaScreen({ onBack }: Props) {
     const { user } = useAuth();
+    const insets = useSafeAreaInsets();
     const { isTablet, horizontalPadding, inputMaxWidth } = useResponsive();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -257,17 +258,46 @@ export default function EditarEmpresaScreen({ onBack }: Props) {
 
     if (loading) {
         return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={colors.primary} />
+            <View style={styles.container}>
+                <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
+                    <View style={styles.headerLeft} />
+                    <View style={styles.headerCenter}>
+                        <View style={styles.headerTitleRow}>
+                            <Ionicons name="business-outline" size={24} color={colors.white} style={styles.headerIcon} />
+                            <Text style={styles.headerTitle}>Dados da Empresa</Text>
+                        </View>
+                        {!!user && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
+                    </View>
+                    <View style={styles.headerRight}>
+                        <TouchableOpacity style={styles.logoutBtn} onPress={onBack}>
+                            <Ionicons name="arrow-back-outline" size={24} color={colors.white} />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={colors.primary} />
+                </View>
             </View>
         );
     }
 
     return (
-        <ScreenScaffold
-            title="Dados da Empresa"
-            leftAction={{ label: 'Voltar', onPress: onBack }}
-        >
+        <View style={styles.container}>
+            <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
+                <View style={styles.headerLeft} />
+                <View style={styles.headerCenter}>
+                    <View style={styles.headerTitleRow}>
+                        <Ionicons name="business-outline" size={24} color={colors.white} style={styles.headerIcon} />
+                        <Text style={styles.headerTitle}>Dados da Empresa</Text>
+                    </View>
+                    {!!user && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
+                </View>
+                <View style={styles.headerRight}>
+                    <TouchableOpacity style={styles.logoutBtn} onPress={onBack}>
+                        <Ionicons name="arrow-back-outline" size={24} color={colors.white} />
+                    </TouchableOpacity>
+                </View>
+            </View>
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={styles.content}
@@ -399,11 +429,21 @@ export default function EditarEmpresaScreen({ onBack }: Props) {
                     </View>
                 </ScrollView>
             </KeyboardAvoidingView>
-        </ScreenScaffold>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    header: { backgroundColor: colors.primary, minHeight: 92, paddingBottom: 15, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomLeftRadius: 20, borderBottomRightRadius: 20, zIndex: 10, elevation: 8, shadowColor: colors.shadow, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 6 },
+    headerLeft: { flex: 1 },
+    headerCenter: { flex: 2, alignItems: 'center', justifyContent: 'center' },
+    headerRight: { flex: 1, alignItems: 'flex-end', justifyContent: 'center' },
+    headerTitleRow: { flexDirection: 'row', alignItems: 'center' },
+    headerIcon: { marginRight: 8 },
+    headerTitle: { color: colors.white, fontSize: 20, fontWeight: 'bold', textAlign: 'center' },
+    userInfo: { fontSize: 12, color: colors.userInfo, fontWeight: '600', marginTop: 4, textAlign: 'center' },
+    logoutBtn: { paddingHorizontal: 10, paddingVertical: 8, borderRadius: 12, backgroundColor: colors.logoutBg },
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',

@@ -301,15 +301,7 @@ export default function RotasDeliveryScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
-        <View style={styles.headerLeft}>
-           {isFromAdmin ? (
-               <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 5 }}>
-                   <Ionicons name="arrow-back" size={28} color={colors.white} />
-               </TouchableOpacity>
-           ) : (
-             <View />
-           )}
-        </View>
+        <View style={styles.headerLeft} />
         <View style={styles.headerCenter}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <Ionicons name="map-outline" size={24} color={colors.white} style={{ marginRight: 8 }} />
@@ -317,15 +309,17 @@ export default function RotasDeliveryScreen() {
           </View>
           {!!user && <Text style={styles.userInfo}>Operador: {user?.nome || user?.email}</Text>}
         </View>
-        
-        {/* Somente exibe logout se for o Entregador nativo na tab (Admin desloga na sua própria tela) */}
+
+        {/* Somente exibe logout se for o Entregador nativo na tab (Admin usa botão voltar) */}
         <View style={styles.headerRight}>
-          {!isFromAdmin ? (
+          {isFromAdmin ? (
+            <TouchableOpacity style={styles.logoutBtn} onPress={() => navigation.goBack()}>
+              <Ionicons name="arrow-back-outline" size={24} color={colors.white} />
+            </TouchableOpacity>
+          ) : (
             <TouchableOpacity style={styles.logoutBtn} onPress={exitApp}>
               <Ionicons name="log-out-outline" size={24} color={colors.white} />
             </TouchableOpacity>
-          ) : (
-            <View style={styles.logoutSpacer} />
           )}
         </View>
       </View>
