@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { Alert, BackHandler, Dimensions, Image, NativeModules, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Dimensions, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 // @ts-ignore
@@ -44,38 +44,11 @@ export default function LoginScreen({ navigation }: Props) {
     }
   };
 
-  const handleSair = () => {
-    Alert.alert(
-      'Sair do App',
-      'Deseja realmente sair?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Sair',
-          onPress: () => {
-            try {
-              BackHandler.exitApp();
-            } catch (error) {
-              console.error('Erro ao sair do app:', error);
-              if (Platform.OS === 'android') {
-                NativeModules.DevSettings?.reload();
-              }
-            }
-          },
-        },
-      ]
-    );
-  };
-
   return (
     <View style={styles.container}>
       <View style={[styles.backdropOrb, styles.backdropOrbTop]} />
       <View style={[styles.backdropOrb, styles.backdropOrbBottom]} />
       <View style={styles.overlayVeil} />
-
-      <TouchableOpacity style={styles.exitButton} onPress={handleSair}>
-        <Ionicons name="close" size={22} color={colors.white} />
-      </TouchableOpacity>
 
       <ScrollView
         contentContainerStyle={[styles.scrollContent, isDesktop && styles.scrollContentDesktop]}
@@ -223,19 +196,16 @@ export default function LoginScreen({ navigation }: Props) {
                 <Text style={styles.forgotPasswordText}>Esqueci minha senha</Text>
               </TouchableOpacity>
 
-              <View style={styles.trustPanel}>
-                <View style={styles.trustPanelIconWrap}>
-                  <Ionicons name="shield-checkmark" size={18} color="#0A5B6F" />
-                </View>
-                <Text style={styles.trustPanelTitle}>Acesso seguro com suporte a biometria</Text>
+              <View style={styles.registerPanel}>
+                <Text style={styles.registerPanelPrompt}>Precisa cadastrar um novo restaurante?</Text>
+                <TouchableOpacity style={styles.registerPanelLink} onPress={() => navigation.navigate('Register')}>
+                  <Text style={styles.registerPanelLinkText}>Cadastre seu restaurante</Text>
+                </TouchableOpacity>
               </View>
             </View>
 
             <View style={styles.loginFooterArea}>
-              <Text style={styles.footerText}>Precisa cadastrar um novo restaurante?</Text>
-              <TouchableOpacity style={styles.registerLink} onPress={() => navigation.navigate('Register')}>
-                <Text style={styles.registerLinkText}>Cadastre seu restaurante</Text>
-              </TouchableOpacity>
+              <Text style={styles.footerText}>© Machado & Cunha Soft House</Text>
             </View>
           </View>
         </View>
@@ -289,20 +259,6 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: 'rgba(255,255,255,0.02)',
-  },
-  exitButton: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 26 : 24,
-    right: 24,
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: 'rgba(4, 36, 45, 0.34)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
   },
   scrollContent: {
     flexGrow: 1,
@@ -679,7 +635,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     textDecorationLine: 'underline',
   },
-  trustPanel: {
+  registerPanel: {
     marginTop: 20,
     borderRadius: 14,
     backgroundColor: '#EEF7F9',
@@ -687,32 +643,26 @@ const styles = StyleSheet.create({
     borderColor: '#D5E7EC',
     paddingVertical: 12,
     paddingHorizontal: 14,
-    flexDirection: 'row',
     alignItems: 'center',
   },
-  trustPanelIconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: '#D8EEF4',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  trustPanelCopy: {
-    flex: 1,
-  },
-  trustPanelTitle: {
+  registerPanelPrompt: {
     color: '#12303D',
     fontSize: 14,
     lineHeight: 20,
-    fontWeight: '900',
+    fontWeight: '800',
+    textAlign: 'center',
   },
-  trustPanelText: {
-    color: '#5A6A75',
-    fontSize: 13,
-    lineHeight: 20,
-    marginTop: 4,
+  registerPanelLink: {
+    marginTop: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  registerPanelLinkText: {
+    color: '#0B6780',
+    fontSize: 14,
+    fontWeight: '900',
+    textDecorationLine: 'underline',
+    textAlign: 'center',
   },
   loginFooterArea: {
     alignItems: 'center',
@@ -720,22 +670,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   footerText: {
-    color: '#E6F7FB',
-    fontSize: 15,
-    lineHeight: 22,
+    color: 'rgba(230,247,251,0.72)',
+    fontSize: 13,
+    lineHeight: 20,
     fontWeight: '700',
-    textAlign: 'center',
-  },
-  registerLink: {
-    marginTop: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-  },
-  registerLinkText: {
-    color: '#F7C45C',
-    fontSize: 16,
-    fontWeight: '900',
-    textDecorationLine: 'underline',
     textAlign: 'center',
   },
 });

@@ -82,6 +82,15 @@ export default function LoginScreen({ navigation }: Props) {
             style={styles.logo}
             resizeMode="contain"
           />
+
+          <TouchableOpacity
+            style={styles.aboutCta}
+            onPress={() => navigation.navigate('About')}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.aboutCtaText}>Conhecer a plataforma</Text>
+            <Ionicons name="arrow-forward" size={16} color="#EAF7FB" />
+          </TouchableOpacity>
         </View>
 
         {/* Card do formulário */}
@@ -189,14 +198,17 @@ export default function LoginScreen({ navigation }: Props) {
           >
             <Text style={styles.forgotBtnText}>Esqueci minha senha</Text>
           </TouchableOpacity>
+
+          <View style={styles.registerArea}>
+            <Text style={styles.registerPrompt}>Precisa cadastrar um novo restaurante?</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+              <Text style={styles.registerLink}>Cadastre seu restaurante</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Rodapé */}
         <View style={styles.footer}>
-          <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-            <Text style={styles.footerLink}>Cadastre seu restaurante</Text>
-          </TouchableOpacity>
-
           <Text style={styles.credit}>© Machado &amp; Cunha Soft House</Text>
         </View>
       </ScrollView>
@@ -259,11 +271,30 @@ const styles = StyleSheet.create({
   },
   logoWrap: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   logo: {
     width: 140,
     height: 140,
+  },
+  aboutCta: {
+    marginTop: 8,
+    minHeight: 38,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.42)',
+    backgroundColor: 'rgba(8,54,67,0.26)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  aboutCtaText: {
+    color: '#EAF7FB',
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.2,
   },
   card: {
     backgroundColor: 'rgba(255,252,247,0.98)',
@@ -383,17 +414,28 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textDecorationLine: 'underline',
   },
-  footer: {
-    marginTop: 26,
+  registerArea: {
+    marginTop: 12,
     alignItems: 'center',
-    gap: 10,
   },
-  footerLink: {
-    color: '#F7C45C',
-    fontSize: 15,
+  registerPrompt: {
+    color: '#5A6E7A',
+    fontSize: 13,
+    lineHeight: 19,
+    textAlign: 'center',
+  },
+  registerLink: {
+    marginTop: 6,
+    color: '#0B6780',
+    fontSize: 14,
     fontWeight: '900',
     textDecorationLine: 'underline',
     textAlign: 'center',
+  },
+  footer: {
+    marginTop: 20,
+    alignItems: 'center',
+    gap: 10,
   },
   aboutRow: {
     flexDirection: 'row',
