@@ -108,4 +108,3 @@ __tests__*
 *.bak
 .vercel
 test-results*
-e2e/*
