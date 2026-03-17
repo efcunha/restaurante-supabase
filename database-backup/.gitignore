@@ -12,6 +12,10 @@
 *.gz
 *.zip
 
+# Permitir migrations versionadas (fonte de verdade do schema)
+!migrations/
+!migrations/**/*.sql
+
 # Ignorar arquivo de credenciais
 .env
 .env.local
