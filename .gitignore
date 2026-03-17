@@ -120,11 +120,9 @@ kiro/*
 snyk-mcp.log
 .config/snyk/
 
-# Trae / AI IDEs
-.trae/
-.cursor/
-.windsurf/
+# E2E test outputs (added by cleanup script)
 e2e/*
+recovered/*
 
 # Sensitive files (added by cleanup script)
 *-adminsdk-*.json
