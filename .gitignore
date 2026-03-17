@@ -1,7 +1,7 @@
 # Dependencies
 node_modules/
 
-# React Native
+# Expo / React Native
 .expo/
 .metro-health-check*
 *.hbc
@@ -14,10 +14,10 @@ android/local.properties
 *.apk
 *.aab
 *.jks
+*.keystore
 !android/app/debug.keystore
 
 # iOS
-test-results*
 ios/Pods/
 ios/build/
 ios/.xcode.env.local
@@ -29,60 +29,34 @@ DerivedData/
 *.perspectivev3
 *.xcuserstate
 
-# Firebase
+# Firebase / service accounts
 .firebase/
 serviceAccountKey.json
 firebase-adminsdk-*.json
+*-adminsdk-*.json
+google-services.json
+GoogleService-Info.plist
 
 # Environment keys
 .env
 .env.local
+.env.staging
 .env.development.local
 .env.test.local
 .env.production.local
-serviceAccountKey.json
 
-# IDE/Editor
+# IDE / tooling
 .idea/
 .vscode/
+.cursor/
+.windsurf/
+.trae/
+.kiro/
+.gemini/
+.antigravity/
+kiro/
 *.swp
 *.swo
-.DS_Store
-Thumbs.db
-
-# Logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Build
-dist/
-*.tsbuildinfo
-mcp-server-ts/*
-
-# Build outputs (if any in root)
-build/
-dist/
-coverage/
-dataconnect/
-kotlin*
-
-# Temporary
-*.tmp
-*.temp
-.cache/
-
-# Keystores (Security)
-*.keystore
-!android/app/debug.keystore
-
-# Build Output
-build/
-
-# Firebase Config (Optional - uncomment to track)
-google-services.json
-GoogleService-Info.plist
 
 # OS
 .DS_Store
@@ -90,28 +64,36 @@ GoogleService-Info.plist
 ._*
 .Spotlight-V100
 .Trashes
+Thumbs.db
 ehthumbs.db
-__tests__*
-*__tests__*
 
-# Misc
-.firebase/
-.gemini/
-.expo/
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build / coverage
+build/
+dist/
+coverage/
+*.tsbuildinfo
+dataconnect/
+kotlin*
+mcp-server-ts/*
+
+# Playwright / test artifacts
+test-results*
+restaurante-web/playwright-report/
+e2e/*
+
+# Temporary files
+*.tmp
+*.temp
 *.bak
-kiro/*
-.vscode/*
-.cursor/*
-.windsurf/*
-.trae/*
-.gemini/*
-.antigravity/*
-.kiro/*
-.cursor/*
-.windsurf/*
-.trae/*
-
-# Temporary files (added by cleanup script)
+.cache/
+tmp/*
+recovered/*
 *output*.txt
 *results*.txt
 
@@ -120,17 +102,10 @@ kiro/*
 snyk-mcp.log
 .config/snyk/
 
-# E2E test outputs (added by cleanup script)
-e2e/*
-recovered/*
-tmp/*
-# Sensitive files (added by cleanup script)
-*-adminsdk-*.json
-
-# Debug scripts (added by cleanup script)
+# Debug scripts generated locally
 scripts/debug/
 
-# Database backups (NEVER commit these!)
+# Database backups (NEVER commit these)
 database-backup/backups/
 database-backup/logs/
 database-backup/config.local.sh
