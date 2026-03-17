@@ -8,6 +8,7 @@ import { supabase } from '../config/SupabaseConfig';
 import { getUserFriendlyMessage } from '../utils/errors';
 import { validateEmail } from '../utils/validation';
 import MFAVerificationModal from '../components/MFAVerificationModal';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 // @ts-ignore
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -18,6 +19,7 @@ interface Props {
 export default function LoginScreen({ navigation }: Props) {
   const { login, loginWithBiometric, biometricAvailable, biometricType, mfaResolver, setMfaResolver } = useAuth();
   const { showToast } = useToast();
+  const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
@@ -26,6 +28,8 @@ export default function LoginScreen({ navigation }: Props) {
 
   const isCompactScreen = height < 760;
   const isVeryCompactScreen = height < 690;
+  const scrollTopPadding = insets.top + (isVeryCompactScreen ? 10 : isCompactScreen ? 14 : 18);
+  const closeButtonTop = insets.top + 8;
 
   const handleLogin = async () => {
     if (!email.trim() || !senha.trim()) {
@@ -70,7 +74,7 @@ export default function LoginScreen({ navigation }: Props) {
       <View style={[styles.orb, styles.orbTop]} />
       <View style={[styles.orb, styles.orbBottom]} />
 
-      <TouchableOpacity style={styles.exitButton} onPress={handleSair}>
+      <TouchableOpacity style={[styles.exitButton, { top: closeButtonTop }]} onPress={handleSair}>
         <Ionicons name="close" size={22} color="#FFFFFF" />
       </TouchableOpacity>
 
@@ -82,6 +86,7 @@ export default function LoginScreen({ navigation }: Props) {
       <ScrollView
         contentContainerStyle={[
           styles.scroll,
+          { paddingTop: scrollTopPadding },
           isCompactScreen && styles.scrollCompact,
           isVeryCompactScreen && styles.scrollVeryCompact,
         ]}
@@ -273,7 +278,7 @@ const styles = StyleSheet.create({
   },
   exitButton: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 52 : 28,
+    top: 28,
     right: 20,
     width: 42,
     height: 42,
@@ -287,16 +292,14 @@ const styles = StyleSheet.create({
   },
   scroll: {
     flexGrow: 1,
-    paddingTop: Platform.OS === 'ios' ? 52 : 24,
+    paddingTop: 24,
     paddingBottom: 24,
     paddingHorizontal: 20,
   },
   scrollCompact: {
-    paddingTop: Platform.OS === 'ios' ? 44 : 18,
     paddingBottom: 18,
   },
   scrollVeryCompact: {
-    paddingTop: Platform.OS === 'ios' ? 38 : 14,
     paddingHorizontal: 16,
     paddingBottom: 14,
   },
