@@ -63,6 +63,10 @@ Use este checklist em review tecnico e review de produto.
 
 Copie e use no corpo do PR.
 
+Exemplo preenchido (DeliveryScreen): `.github/prompts/ui-ux-pro-max/EXEMPLO-PR-DELIVERYSCREEN.md`
+Exemplo preenchido (NovoPedidoScreen): `.github/prompts/ui-ux-pro-max/EXEMPLO-PR-NOVOPEDIDO.md`
+Exemplo preenchido (AdminScreen Web): `.github/prompts/ui-ux-pro-max/EXEMPLO-PR-ADMINSCREEN-WEB.md`
+
 ```md
 ## Contexto
 - Tela: <nome-da-tela>
