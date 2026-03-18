@@ -152,3 +152,101 @@ Limitation:
 Fallback:
 - Provide conservative guidance aligned with existing repository patterns only.
 ```
+
+## Quick Prompts (RN/CI)
+
+Use these prompts in Copilot Chat to force explicit skill context:
+
+```text
+#file:c:\Users\ECUNHA\.copilot\skills\restaurante-supabase\SKILL.md
+#file:.github/agent-skills/skills/react-native-best-practices/SKILL.md
+#file:restaurante-app/src/screens/NovoPedidoScreen.tsx
+
+Profile this screen and propose a measured optimization plan with no behavior changes.
+```
+
+```text
+#file:c:\Users\ECUNHA\.copilot\skills\restaurante-supabase\SKILL.md
+#file:.github/agent-skills/skills/upgrading-react-native/SKILL.md
+
+Plan an Expo SDK + React Native upgrade path for this repository with risk checklist and verification gates.
+```
+
+```text
+#file:c:\Users\ECUNHA\.copilot\skills\restaurante-supabase\SKILL.md
+#file:.github/agent-skills/skills/github-actions/SKILL.md
+
+Create a GitHub Actions workflow to build Android emulator APK and iOS simulator artifacts and document download commands.
+```
+
+```text
+#file:c:\Users\ECUNHA\.copilot\skills\restaurante-supabase\SKILL.md
+#file:.github/agent-skills/skills/github/SKILL.md
+
+Propose a safe stacked PR merge plan with gh CLI commands for this branch chain.
+```
+
+```text
+#file:c:\Users\ECUNHA\.copilot\skills\restaurante-supabase\SKILL.md
+#file:.github/agent-skills/skills/react-native-brownfield-migration/SKILL.md
+
+Design a phased brownfield integration plan for adding Expo features into an existing native app path.
+```
+
+## Quick Prompts by Target (App/Web)
+
+Use these variants when you want explicit scope by codebase area.
+
+### Mobile app (`restaurante-app`)
+
+```text
+#file:c:\Users\ECUNHA\.copilot\skills\restaurante-supabase\SKILL.md
+#file:.github/agent-skills/skills/react-native-best-practices/SKILL.md
+#file:restaurante-app/src/screens/NovoPedidoScreen.tsx
+
+Review this screen for render bottlenecks, propose measured optimizations, and keep behavior unchanged.
+```
+
+```text
+#file:c:\Users\ECUNHA\.copilot\skills\restaurante-supabase\SKILL.md
+#file:.github/agent-skills/skills/upgrading-react-native/SKILL.md
+#file:restaurante-app/package.json
+
+Plan a safe Expo SDK + React Native upgrade path for this app with risks, checkpoints, and rollback criteria.
+```
+
+### Web app (`restaurante-web`)
+
+```text
+#file:c:\Users\ECUNHA\.copilot\skills\restaurante-supabase\SKILL.md
+#file:.github/agent-skills/skills/github-actions/SKILL.md
+#file:restaurante-web/playwright.config.ts
+
+Propose CI changes to build and publish emulator/simulator artifacts and include artifact download commands.
+```
+
+```text
+#file:c:\Users\ECUNHA\.copilot\skills\restaurante-supabase\SKILL.md
+#file:.github/agent-skills/skills/github/SKILL.md
+#file:restaurante-web/e2e/delivery.spec.ts
+
+Create a safe stacked PR plan for this area, including gh CLI commands and merge order.
+```
+
+## Usage Runbook
+
+Use this order to keep responses consistent with mandatory skill checks:
+
+1. Choose scope first (`restaurante-app` or `restaurante-web`) and attach one real target file.
+2. Attach the primary project skill: `#file:c:\Users\ECUNHA\.copilot\skills\restaurante-supabase\SKILL.md`.
+3. Attach exactly one specialized Callstack skill matching the task type.
+4. Ask for a constrained output (plan, checklist, or implementation with no behavior change).
+5. Verify the response starts with the mandatory RN/CI checklist block.
+
+Task-to-skill quick map:
+
+- RN performance or rendering -> `.github/agent-skills/skills/react-native-best-practices/SKILL.md`
+- RN/Expo upgrade -> `.github/agent-skills/skills/upgrading-react-native/SKILL.md`
+- CI/build artifacts -> `.github/agent-skills/skills/github-actions/SKILL.md`
+- PR workflow/branching -> `.github/agent-skills/skills/github/SKILL.md`
+- Brownfield integration -> `.github/agent-skills/skills/react-native-brownfield-migration/SKILL.md`
