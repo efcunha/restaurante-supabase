@@ -8,7 +8,7 @@
 
 **Project:** Restaurante App Novo Pedido
 **Generated:** 2026-03-18 17:13:35
-**Category:** Healthcare App
+**Category:** Restaurante PDV - Novo Pedido (App)
 
 ---
 
@@ -24,7 +24,7 @@
 | Background | `#ECFEFF` | `--color-background` |
 | Text | `#164E63` | `--color-text` |
 
-**Color Notes:** Calm cyan + health green
+**Color Notes:** Ciano para navegacao operacional, verde para confirmacao/continuidade de pedido.
 
 ### Typography
 
@@ -149,27 +149,29 @@
 
 **Style:** Accessible & Ethical
 
-**Keywords:** High contrast, large text (16px+), keyboard navigation, screen reader friendly, WCAG compliant, focus state, semantic
+**Keywords:** operacao de balcao, velocidade com precisao, alvos de toque grandes, feedback imediato, estados claros
 
-**Best For:** Government, healthcare, education, inclusive products, large audience, legal compliance, public
+**Best For:** abertura rapida de pedido, adicao de itens em sequencia, fluxo de pagamento sem perda de contexto
 
-**Key Effects:** Clear focus rings (3-4px), ARIA labels, skip links, responsive design, reduced motion, 44x44px touch targets
+**Key Effects:** atualizacao instantanea de quantidade/total, barra inferior persistente, confirmacoes visuais curtas
 
 ### Page Pattern
 
-**Pattern Name:** App Store Style Landing
+**Pattern Name:** Mobile First POS Flow
 
-- **Conversion Strategy:** Show real screenshots. Include ratings (4.5+ stars). QR code for mobile. Platform-specific CTAs.
-- **CTA Placement:** Download buttons prominent (App Store + Play Store) throughout
-- **Section Order:** 1. Hero with device mockup, 2. Screenshots carousel, 3. Features with icons, 4. Reviews/ratings, 5. Download CTAs
+- **Conversion Strategy:** minimizar toques e reduzir tempo ate avancar para pagamento
+- **CTA Placement:** barra inferior persistente do carrinho
+- **Section Order:** Contexto do pedido > Busca/Filtros > Lista de produtos > Itens selecionados > Avancar para pagamento
+- **Primary Success Metric:** tempo medio para montar pedido e taxa de erro operacional
 
 ---
 
 ## Anti-Patterns (Do NOT Use)
 
-- ❌ Bright neon colors
-- ❌ Motion-heavy animations
-- ❌ AI purple/pink gradients
+- ❌ Modais desnecessarios para tarefas frequentes
+- ❌ Acoes importantes fora da zona de alcance do polegar
+- ❌ Falta de feedback ao adicionar/remover item
+- ❌ Total do carrinho desatualizado apos alterar quantidade
 
 ### Additional Forbidden Patterns
 
@@ -196,3 +198,6 @@ Before delivering any UI code, verify:
 - [ ] Responsive: 375px, 768px, 1024px, 1440px
 - [ ] No content hidden behind fixed navbars
 - [ ] No horizontal scroll on mobile
+- [ ] Alvos de toque com minimo de 44px em acoes principais
+- [ ] Barra do carrinho mostra quantidade, total e CTA sem obstrucao
+- [ ] Fluxo de edicao de quantidade nao remove contexto do operador

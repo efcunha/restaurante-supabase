@@ -8,7 +8,7 @@
 
 **Project:** Restaurante Web Delivery
 **Generated:** 2026-03-18 17:13:32
-**Category:** Logistics/Delivery
+**Category:** Restaurante Delivery Checkout (Web)
 
 ---
 
@@ -24,7 +24,7 @@
 | Background | `#EFF6FF` | `--color-background` |
 | Text | `#1E40AF` | `--color-text` |
 
-**Color Notes:** Tracking blue + delivery orange
+**Color Notes:** Azul para confianca no fluxo, laranja para acao principal e feedback de entrega.
 
 ### Typography
 
@@ -153,28 +153,30 @@
 
 ## Style Guidelines
 
-**Style:** Exaggerated Minimalism
+**Style:** Operational Clarity + Accessible Checkout
 
-**Keywords:** Bold minimalism, oversized typography, high contrast, negative space, loud minimal, statement design
+**Keywords:** checkout de baixa friccao, formulario progressivo, resumo persistente, estados claros, foco em conclusao
 
-**Best For:** Fashion, architecture, portfolios, agency landing pages, luxury brands, editorial
+**Best For:** fluxo de pedido delivery, pagamento rapido, operacao em pico, validacao de endereco
 
-**Key Effects:** font-size: clamp(3rem 10vw 12rem), font-weight: 900, letter-spacing: -0.05em, massive whitespace
+**Key Effects:** recalculo em tempo real do resumo, feedback imediato de validacao, transicoes curtas (150-250ms)
 
 ### Page Pattern
 
-**Pattern Name:** Feature-Rich Showcase + Real-Time
+**Pattern Name:** Two-Column Checkout with Sticky Summary
 
-- **CTA Placement:** Above fold
-- **Section Order:** Hero > Features > CTA
+- **CTA Placement:** fixo no resumo (desktop) e fixo no rodape (mobile)
+- **Section Order:** Cliente > Endereco > Pagamento > Itens/Observacoes > Resumo e Confirmacao
+- **Primary Success Metric:** reduzir abandono no checkout e tempo ate confirmacao
 
 ---
 
 ## Anti-Patterns (Do NOT Use)
 
-- ❌ Static tracking
-- ❌ No map integration
-- ❌ AI purple/pink gradients
+- ❌ CTA principal fora da area visivel
+- ❌ Validacao bloqueante cedo demais (antes da digitacao terminar)
+- ❌ Perda do resumo ao rolar a pagina
+- ❌ Erros sem mensagem acionavel para o operador/cliente
 
 ### Additional Forbidden Patterns
 
@@ -201,3 +203,5 @@ Before delivering any UI code, verify:
 - [ ] Responsive: 375px, 768px, 1024px, 1440px
 - [ ] No content hidden behind fixed navbars
 - [ ] No horizontal scroll on mobile
+- [ ] Resumo mostra subtotal, taxa, desconto e total sem inconsistencias
+- [ ] Erros de endereco e pagamento sao exibidos perto do campo correspondente
