@@ -41,6 +41,7 @@ For tasks involving React Native, Expo, performance, upgrades, GitHub Actions, C
 	- RN/Expo upgrade path -> `.github/agent-skills/skills/upgrading-react-native/SKILL.md`
 	- CI/GitHub Actions/build artifacts -> `.github/agent-skills/skills/github-actions/SKILL.md`
 	- PR flow/branching/gh CLI -> `.github/agent-skills/skills/github/SKILL.md`
+	- Brownfield native/Expo integration path -> `.github/agent-skills/skills/react-native-brownfield-migration/SKILL.md`
 3. Do not answer with implementation-level recommendations until both checks above are completed.
 4. If any required skill cannot be accessed, explicitly state the missing file and provide a conservative fallback aligned with existing repository patterns.
 5. For substantial implementation guidance, explicitly mention which skill(s) were consulted before presenting the solution.
