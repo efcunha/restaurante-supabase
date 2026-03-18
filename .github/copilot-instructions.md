@@ -2,6 +2,7 @@
 
 This workspace includes the Callstack Agent Skills repository at `.github/agent-skills`.
 This setup also uses a local project-specific skill at `c:\Users\ECUNHA\.copilot\skills\restaurante-supabase\SKILL.md`.
+This workspace also includes the UI/UX Pro Max Copilot workflow at `.github/prompts/ui-ux-pro-max/PROMPT.md`.
 
 When working in this repository, consult the relevant skill before proposing or implementing changes.
 
@@ -22,6 +23,19 @@ For any task in this repository, start with:
 Use this as the main source for domain rules, architecture, naming, and feature-specific constraints for this project.
 
 Then route to Callstack skills for specialized guidance (performance, upgrades, CI, GitHub workflow, brownfield migration).
+
+### UI/UX workflow
+
+For UI/UX design direction, visual exploration, design system generation, or interface quality reviews:
+
+- Use `.github/prompts/ui-ux-pro-max/PROMPT.md`
+- Invoke it in GitHub Copilot with `/ui-ux-pro-max <pedido>`
+
+Usage rules:
+
+- Keep `c:\Users\ECUNHA\.copilot\skills\restaurante-supabase\SKILL.md` as the source for repository architecture and domain constraints.
+- Use the UI/UX Pro Max prompt to generate design-system recommendations and UI/UX guardrails for app or web surfaces.
+- If both apply, combine them: repository skill first for constraints, then `/ui-ux-pro-max` for visual/design workflow.
 
 #### Mandatory enforcement
 
@@ -122,6 +136,8 @@ When deeper context is needed, explicitly reference the relevant skill file in c
 - `#file:.github/agent-skills/skills/github-actions/SKILL.md`
 
 Start with the main `SKILL.md` file, then open individual reference files for implementation details.
+
+For UI/UX workflow usage, explicitly reference `.github/prompts/ui-ux-pro-max/PROMPT.md` or invoke `/ui-ux-pro-max` in chat.
 
 ## Mandatory Response Format (RN/CI)
 

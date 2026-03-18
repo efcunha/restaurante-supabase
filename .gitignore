@@ -92,6 +92,8 @@ e2e/*
 *.temp
 *.bak
 .cache/
+__pycache__/
+*.pyc
 tmp/*
 recovered/*
 *output*.txt
