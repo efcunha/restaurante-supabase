@@ -2,6 +2,8 @@
 
 Guia rapido para o time usar o workflow de UI/UX no `restaurante-app` e `restaurante-web`.
 
+Pack completo do time: `.github/prompts/ui-ux-pro-max/PACK-EXECUCAO-UIUX.md`
+
 ## 1) No Copilot Chat (recomendado)
 
 Use sempre com contexto de arquivo + pedido claro.
