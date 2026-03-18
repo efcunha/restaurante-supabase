@@ -32,6 +32,7 @@ For UI/UX design direction, visual exploration, design system generation, or int
 - Invoke it in GitHub Copilot with `/ui-ux-pro-max <pedido>`
 - Team shortcut guide: `.github/prompts/ui-ux-pro-max/ATALHO-USO-INTERNO.md`
 - Team execution pack: `.github/prompts/ui-ux-pro-max/PACK-EXECUCAO-UIUX.md`
+- Team onboarding index: `.github/prompts/ui-ux-pro-max/ONBOARDING-UIUX.md`
 
 Usage rules:
 
