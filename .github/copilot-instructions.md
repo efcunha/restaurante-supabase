@@ -30,6 +30,7 @@ For UI/UX design direction, visual exploration, design system generation, or int
 
 - Use `.github/prompts/ui-ux-pro-max/PROMPT.md`
 - Invoke it in GitHub Copilot with `/ui-ux-pro-max <pedido>`
+- Team shortcut guide: `.github/prompts/ui-ux-pro-max/ATALHO-USO-INTERNO.md`
 
 Usage rules:
 
