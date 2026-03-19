@@ -208,37 +208,39 @@ test.describe('Fluxo Principal - Mesa (Mapa)', () => {
 
     console.log(`2. Mesa ${mesaId} preenchida`);
 
-    // ── 3. Adicionar itens ────────────────────────────────────────────────────
+    // ── 3. Adicionar itens (mesma base do balcão) ───────────────────────────
     const searchInput = page.getByPlaceholder('Buscar item do cardápio...');
     await searchInput.waitFor({ state: 'visible', timeout: 10000 });
 
-    // Pizza Calabresa
-    await searchInput.fill('calabresa');
-    await page.waitForTimeout(1500);
-    try {
-      const pizzaCard = page.locator('div[dir="auto"]').filter({ hasText: 'Calabresa' }).first();
-      await pizzaCard.waitFor({ state: 'visible', timeout: 5000 });
-      await pizzaCard.click();
-      await page.locator('text=Broto').click();
-      await page.locator('text=Próximo: Extras').click();
-      await page.locator('text=Adicionar ao Pedido').click();
-      console.log('   ✓ Pizza Calabresa adicionada');
-    } catch (e: any) {
-      console.log(`   ⚠️ Calabresa: ${e.message}`);
-    }
+    const itemsToSearch = ['chopp', 'risoto', 'caldo'];
 
-    await page.waitForTimeout(500);
+    for (const term of itemsToSearch) {
+      console.log(`Buscando por: ${term}`);
+      await searchInput.click();
+      await searchInput.fill('');
+      await searchInput.fill(term);
+      await page.waitForTimeout(1500);
 
-    // Caldo
-    await searchInput.fill('caldo');
-    await page.waitForTimeout(1500);
-    try {
-      const caldoCard = page.locator('div[dir="auto"]').filter({ hasText: /caldo/i }).first();
-      await caldoCard.waitFor({ state: 'visible', timeout: 5000 });
-      await caldoCard.click();
-      console.log('   ✓ Caldo adicionado');
-    } catch (e: any) {
-      console.log(`   ⚠️ Caldo: ${e.message}`);
+      try {
+        const plusBtn = page
+          .locator('div[role="button"], div[dir="auto"]')
+          .filter({ hasText: '+' })
+          .filter({ visible: true })
+          .first();
+
+        if (await plusBtn.count() > 0) {
+          await plusBtn.click();
+          console.log(`- Item '${term}' adicionado com sucesso!`);
+        } else {
+          const itemCard = page.locator('div[dir="auto"]').filter({ hasText: new RegExp(term, 'i') }).first();
+          await itemCard.click();
+          console.log(`- Item '${term}' selecionado pelo card.`);
+        }
+      } catch (e: any) {
+        console.log(`- Erro ao adicionar '${term}': ${e.message}`);
+      }
+
+      await page.waitForTimeout(500);
     }
 
     // ── 4. Submeter pedido ────────────────────────────────────────────────────
@@ -332,17 +334,19 @@ test.describe('Fluxo Principal - Mesa (Mapa)', () => {
           ? newestOrder.items.map((it: any) => String(it || ''))
           : [];
 
-      expect(itemNames.some(name => /calabresa/i.test(name))).toBeTruthy();
+      expect(itemNames.some(name => /chopp/i.test(name))).toBeTruthy();
+      expect(itemNames.some(name => /risoto/i.test(name))).toBeTruthy();
+      expect(itemNames.some(name => /caldo/i.test(name))).toBeTruthy();
     }
 
     // ── 6. Cozinha ────────────────────────────────────────────────────────────
     await page.locator('text=Cozinha').first().click();
     await page.waitForTimeout(2000);
-    await page.locator('text=Calabresa').first()
+    await page.locator('text=Caldo').first()
       .waitFor({ state: 'visible', timeout: 10000 })
       .catch(() => console.log('⚠️ Item não apareceu na cozinha.'));
 
-    await page.screenshot({ path: `pizza-success-${Date.now()}.png` });
+    await page.screenshot({ path: `mesa-success-${Date.now()}.png` });
     console.log(`[W${testInfo.workerIndex}/R${testInfo.repeatEachIndex}] Sucesso ao gerar comanda na mesa ${mesaId}`);
   });
 });
