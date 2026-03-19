@@ -180,6 +180,7 @@ export default function PedidoDetalhesModal({ visible, orderId, orderIds = [], t
 
   const canEdit = !isTableAggregate && order.status === 'preparing';
   const canPay = !isTableAggregate;
+  const viewModeLabel = isTableAggregate ? 'Modo: Mesa consolidada' : 'Modo: Pedido individual';
 
   return (
     <>
@@ -201,6 +202,7 @@ export default function PedidoDetalhesModal({ visible, orderId, orderIds = [], t
                 <View style={[styles.statusBadge, { backgroundColor: getStatusColor(order.status) }]}>
                   <Text style={styles.statusText}>{isTableAggregate ? `${resolvedOrders.length} pedidos ativos` : getStatusLabel(order.status)}</Text>
                 </View>
+                <Text style={styles.viewModeText}>{viewModeLabel}</Text>
               </View>
               <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
                 <Text style={styles.closeBtnText}>✕</Text>
@@ -241,7 +243,7 @@ export default function PedidoDetalhesModal({ visible, orderId, orderIds = [], t
               )}
 
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Itens do Pedido</Text>
+                <Text style={styles.sectionTitle}>{isTableAggregate ? 'Itens da Mesa (Consolidado)' : 'Itens do Pedido'}</Text>
                 {resolvedOrders.map((currentOrder: any, orderIndex: number) => (
                   <View key={currentOrder.id} style={isTableAggregate ? styles.orderGroup : undefined}>
                     {isTableAggregate && (
@@ -406,7 +408,7 @@ export default function PedidoDetalhesModal({ visible, orderId, orderIds = [], t
                 )}
 
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Observações</Text>
+                <Text style={styles.sectionTitle}>{isTableAggregate ? 'Observações da Mesa' : 'Observações'}</Text>
                 {isEditing ? (
                   <TextInput
                     style={[styles.input, styles.textArea]}
@@ -586,6 +588,13 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 12,
     fontWeight: '600',
+  },
+  viewModeText: {
+    marginTop: 6,
+    color: colors.white,
+    fontSize: 12,
+    fontWeight: '700',
+    opacity: 0.9,
   },
   closeBtn: {
     width: 32,
