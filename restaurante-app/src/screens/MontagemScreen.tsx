@@ -9,6 +9,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../config/SupabaseConfig';
 import { getLocalDateKey } from '../utils/dateUtils';
 import CaixaService from '../services/CaixaService';
+import offlineQueueService from '../services/OfflineQueueService';
+import { persistMontagemToggleItems } from '../services/MontagemSyncService';
 import { colors } from '../theme/colors';
 // Verificar se pedido é urgente (mais de 15 minutos)
 const isUrgent = (timestamp: string) => {
@@ -17,6 +19,14 @@ const isUrgent = (timestamp: string) => {
   const diffMinutes = (now.getTime() - orderTime.getTime()) / 1000 / 60;
   return diffMinutes > 15;
 };
+
+const getItemUiKey = (orderId: string, itemId: string, itemIndex: number) => (
+  `${orderId}::${itemId}::${itemIndex}`
+);
+
+const createItemMutationId = (orderId: string, itemId: string) => (
+  `${orderId}:${itemId}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`
+);
 
 // Componente OrderCard memoizado
 interface OrderCardProps {
@@ -62,13 +72,13 @@ const OrderCard = memo(({ order, onToggleItem, onMarkReady }: OrderCardProps) =>
         <Text style={styles.orderTime}>{orderTimeLabel}</Text>
       </View>
       <Text style={styles.orderClient}>{order.client}</Text>
-      {(order.criadoPorNome || order.createdByName) && (
+      {!!(order.criadoPorNome || order.createdByName) && (
         <Text style={styles.garcomText}>👤 Garçom: {order.criadoPorNome || order.createdByName}</Text>
       )}
-      {order.movidoParaMontagemPorNome && (
+      {!!order.movidoParaMontagemPorNome && (
         <Text style={styles.movimentadoPorText}>🔧 Recebido de: {order.movidoParaMontagemPorNome}</Text>
       )}
-      {order.observations && (
+      {!!order.observations && (
         <Text style={styles.orderObs}>📝 Obs: {order.observations}</Text>
       )}
       <View style={styles.orderItems}>
@@ -77,22 +87,26 @@ const OrderCard = memo(({ order, onToggleItem, onMarkReady }: OrderCardProps) =>
             const parts = item.name.split(' + ');
             const mainName = parts[0];
             const extras = parts.length > 1 ? parts.slice(1).join(' + ') : null;
+            const isPendingSync = !!item._isPendingSync;
             return (
               <TouchableOpacity
                 key={item.id}
-                style={styles.orderItem}
+                style={[styles.orderItem, isPendingSync && styles.orderItemPending]}
                 onPress={() => onToggleItem(item.originalOrderId || order.id, [item.id], item.status)}
                 activeOpacity={0.7}
+                disabled={isPendingSync}
               >
                 <View style={[
                   styles.checkbox,
-                  item.checked && styles.checkboxChecked
+                  isPendingSync && styles.checkboxPending,
+                  !!item.checked && styles.checkboxChecked
                 ]}>
-                  {item.checked && <Text style={styles.checkmark}>✓</Text>}
+                  {isPendingSync ? <Text style={styles.pendingMark}>...</Text> : (!!item.checked && <Text style={styles.checkmark}>✓</Text>)}
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[
                     styles.itemText,
+                    isPendingSync && styles.itemTextPending,
                     item.checked && styles.itemTextDone
                   ]}>
                     {mainName}
@@ -100,11 +114,15 @@ const OrderCard = memo(({ order, onToggleItem, onMarkReady }: OrderCardProps) =>
                   {extras && (
                     <Text style={[
                       styles.itemExtras,
+                      isPendingSync && styles.itemTextPending,
                       item.checked && styles.itemTextDone
                     ]}>
                       + {extras}
                     </Text>
                   )}
+                  {isPendingSync ? (
+                    <Text style={styles.itemPendingText}>Sincronizando...</Text>
+                  ) : null}
                 </View>
               </TouchableOpacity>
             );
@@ -144,11 +162,17 @@ export default function MontagemScreen() {
 
   // ✅ Guarda IDs marcados como prontos nesta sessão para proteger contra race condition do Realtime
   const locallyMarkedReady = useRef<Set<string>>(new Set());
+  // ✅ Contador de sequência para descartar resultados de fetchOrders obsoletos (race condition)
+  const fetchSeq = useRef(0);
+  // ✅ Preserva toggle otimista por item durante a janela inicial de realtime/fetch concorrente
+  const pendingItemOverrides = useRef<Map<string, { checked: boolean; timestamp: string; mutationId: string; queueOperationId?: string }>>(new Map());
 
   // Initial fetch — busca APENAS pedidos em 'preparing' para evitar race conditions
   const fetchOrders = useCallback(async () => {
     // @ts-ignore
     if (!user?.companyId) return;
+    const seq = ++fetchSeq.current;
+    const queuedOperationIds = new Set(offlineQueueService.getOperations().map(op => op.id));
     const today = getLocalDateKey();
 
     const { data, error } = await supabase
@@ -158,20 +182,47 @@ export default function MontagemScreen() {
       .eq('date_key', today)
       .eq('status', 'preparing'); // ✅ CRITICAL FIX: filtrar no banco, não só no cliente
 
+    // ✅ RACE GUARD: se um fetchOrders mais recente foi disparado, descartar este resultado
+    if (seq !== fetchSeq.current) return;
+
     if (!error && data) {
       const mappedOrders = data
         .filter(order => !locallyMarkedReady.current.has(order.id))
         .map(order => ({
           ...order,
           // ✅ ID COMPOSTO: garante unicidade por pedido, evitando colisão em delivery
-          itemsWithStatus: (order.items_with_status || []).map((item: any, itemIndex: number) => ({
-            ...item,
-            // ID composto de UI: orderId::itemId::index (garante unicidade mesmo com item.id repetido)
-            id: `${order.id}::${item.id}::${itemIndex}`,
-            _originalItemId: item.id,
-            _itemIndex: itemIndex,
-            originalOrderId: order.id
-          })),
+          itemsWithStatus: (order.items_with_status || []).map((item: any, itemIndex: number) => {
+            const uiKey = getItemUiKey(order.id, item.id, itemIndex);
+            const pendingOverride = pendingItemOverrides.current.get(uiKey);
+
+            if (pendingOverride) {
+              const isConfirmedRemotely =
+                item.checked === pendingOverride.checked &&
+                item.clientMutationId === pendingOverride.mutationId;
+              const wasQueuedButRemoved = !!pendingOverride.queueOperationId
+                && !queuedOperationIds.has(pendingOverride.queueOperationId);
+
+              if (isConfirmedRemotely) {
+                pendingItemOverrides.current.delete(uiKey);
+              } else if (wasQueuedButRemoved) {
+                pendingItemOverrides.current.delete(uiKey);
+              }
+            }
+
+            const activeOverride = pendingItemOverrides.current.get(uiKey);
+
+            return {
+              ...item,
+              checked: activeOverride ? activeOverride.checked : item.checked,
+              timestamp: activeOverride ? activeOverride.timestamp : item.timestamp,
+              _isPendingSync: !!activeOverride,
+              // ID composto de UI: orderId::itemId::index (garante unicidade mesmo com item.id repetido)
+              id: uiKey,
+              _originalItemId: item.id,
+              _itemIndex: itemIndex,
+              originalOrderId: order.id
+            };
+          }),
           comandaNumber: order.comanda_number,
           mesa: (order.table_number && order.table_number !== 0) ? order.table_number.toString() : '',
           comandaStatus: order.comanda_status,
@@ -310,6 +361,10 @@ export default function MontagemScreen() {
 
   const handleToggleItem = async (_orderId: string, itemIds: string | string[], _currentStatus: string) => {
     const idsToUpdate = Array.isArray(itemIds) ? itemIds : [itemIds];
+
+    if (idsToUpdate.some((uiKey: string) => pendingItemOverrides.current.has(String(uiKey)))) {
+      return;
+    }
     
     // Validar se caixa está aberto
     try {
@@ -356,6 +411,7 @@ export default function MontagemScreen() {
       // This ensures we always work with the most up-to-date order data
       let newChecked = false;
       const itemsToSaveByOrder: Record<string, any[]> = {};
+      const mutationIdByUiKey: Record<string, string> = {};
 
       setAllOrders(prevOrders => {
         // 2. Descobrir qual o NOVO ESTADO baseado no estado atual do primeiro item em prevOrders
@@ -380,6 +436,19 @@ export default function MontagemScreen() {
 
         // 3. ATUALIZAÇÃO OTIMISTA LOCAL — usa os IDs COMPOSTOS para identificar os itens no estado
         const now = new Date().toISOString();
+        Object.values(updatesByRealOrder).forEach(({ uiKeys }) => {
+          uiKeys.forEach((uiKey: string) => {
+            const parts = String(uiKey).split('::');
+            const mutationId = createItemMutationId(parts[0] || 'order', parts[1] || 'item');
+            mutationIdByUiKey[uiKey] = mutationId;
+            pendingItemOverrides.current.set(uiKey, {
+              checked: newChecked,
+              timestamp: now,
+              mutationId
+            });
+          });
+        });
+
         const updatedOrders = prevOrders.map(o => {
           const entry = updatesByRealOrder[o.id];
           if (!entry) return o;
@@ -387,7 +456,7 @@ export default function MontagemScreen() {
           const updatedOrder = {
             ...o,
             itemsWithStatus: o.itemsWithStatus.map((i: any) => 
-              entry.uiKeys.includes(i.id) ? { ...i, checked: newChecked, timestamp: now } : i
+              entry.uiKeys.includes(i.id) ? { ...i, checked: newChecked, timestamp: now, _isPendingSync: true } : i
             )
           };
 
@@ -401,7 +470,9 @@ export default function MontagemScreen() {
               id: i._originalItemId || fallbackOriginalItemId,
               _originalItemId: undefined, // Limpar campo auxiliar
               _itemIndex: undefined,
+              _isPendingSync: undefined,
               originalOrderId: undefined, // Limpar campo auxiliar
+              clientMutationId: isTarget ? mutationIdByUiKey[i.id] : i.clientMutationId,
               checked: isTarget ? newChecked : i.checked,
               timestamp: isTarget ? now : i.timestamp
             };
@@ -435,15 +506,21 @@ export default function MontagemScreen() {
           };
         });
 
-        let payloadItems = itemsToSave;
-        const { data: latestOrder } = await supabase
+        const { data: latestOrder, error: fetchError } = await supabase
           .from('orders')
           .select('items_with_status')
           .eq('id', realOrderId)
           .eq('company_id', user?.companyId)
           .single();
 
-        if (latestOrder?.items_with_status && Array.isArray(latestOrder.items_with_status) && targetMeta.length > 0) {
+        if (fetchError || !latestOrder?.items_with_status || !Array.isArray(latestOrder.items_with_status)) {
+          console.error('[Montagem] ❌ Falha ao buscar items_with_status para merge. Abortando persistência.', fetchError?.message);
+          throw new Error('Falha ao buscar estado atual do pedido para merge seguro.');
+        }
+
+        let payloadItems: any[] = latestOrder.items_with_status;
+
+        if (targetMeta.length > 0) {
           const mergedItems = [...latestOrder.items_with_status];
           const usedIndexes = new Set<number>();
 
@@ -462,28 +539,46 @@ export default function MontagemScreen() {
               usedIndexes.add(targetIdx);
               mergedItems[targetIdx] = {
                 ...mergedItems[targetIdx],
+                clientMutationId: mutationIdByUiKey[entry.uiKeys.find((uiKey: string) => {
+                  const parts = String(uiKey).split('::');
+                  return parts[1] === originalItemId && Number(parts[2]) === itemIndex;
+                }) || ''] || mergedItems[targetIdx].clientMutationId,
                 checked: newChecked,
                 timestamp: now
               };
+            } else {
+              console.warn('[Montagem] ⚠️ Item não encontrado no DB para merge:', originalItemId, 'índice:', itemIndex);
             }
           });
 
           payloadItems = mergedItems;
         }
         
-        const { error } = await supabase
-          .from('orders')
-          .update({ items_with_status: payloadItems, updated_at: now })
-          .eq('id', realOrderId)
-          .eq('company_id', user?.companyId);
+        const persistResult = await persistMontagemToggleItems({
+          orderId: realOrderId,
+          companyId: user?.companyId,
+          payloadItems,
+          updatedAt: now,
+          checked: newChecked,
+          targetUiKeys: entry?.uiKeys || [],
+          mutationIds: (entry?.uiKeys || []).map((uiKey: string) => mutationIdByUiKey[uiKey]).filter(Boolean)
+        });
 
-        if (error) throw new Error(`Supabase erro: ${error.message}`);
+        if (persistResult.queueOperationId) {
+          (entry?.uiKeys || []).forEach((uiKey: string) => {
+            const pending = pendingItemOverrides.current.get(uiKey);
+            if (pending) {
+              pendingItemOverrides.current.set(uiKey, { ...pending, queueOperationId: persistResult.queueOperationId });
+            }
+          });
+        }
       });
 
       await Promise.all(persistPromises);
       console.log('[Montagem] ✅ Persistência concluída com sucesso');
 
     } catch (error: any) {
+      idsToUpdate.forEach((uiKey: string) => pendingItemOverrides.current.delete(String(uiKey)));
       console.error('[Montagem] Erro inesperado no toggle:', error);
       if (Platform.OS === 'web') window.alert('Erro: ' + error.message);
       else Alert.alert('Erro', 'Não foi possível atualizar o item: ' + error.message);
@@ -749,6 +844,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
   },
+  orderItemPending: {
+    opacity: 0.72,
+  },
   checkbox: {
     width: 24,
     height: 24,
@@ -760,9 +858,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.white,
   },
+  checkboxPending: {
+    borderColor: colors.warning,
+    backgroundColor: colors.warningSurface,
+  },
   checkboxChecked: {
     backgroundColor: colors.primary,
     borderColor: colors.primary,
+  },
+  pendingMark: {
+    color: colors.warning,
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 1,
   },
   checkmark: {
     color: colors.white,
@@ -784,6 +892,9 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: '600',
   },
+  itemTextPending: {
+    color: colors.warning,
+  },
   itemExtras: {
     fontSize: 14,
     color: colors.danger,
@@ -800,6 +911,12 @@ const styles = StyleSheet.create({
   itemTextDone: {
     color: colors.textSecondary,
     textDecorationLine: 'line-through',
+  },
+  itemPendingText: {
+    fontSize: 12,
+    color: colors.warning,
+    fontWeight: '600',
+    marginTop: 4,
   },
   readyBtn: {
     backgroundColor: colors.primary,
