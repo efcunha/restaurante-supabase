@@ -71,7 +71,7 @@ const styles = StyleSheet.create({
     listContent: {
         padding: 16,
         paddingBottom: 100,
-        ...(Platform.OS === 'web' ? { alignItems: 'center' } : {}),
+
     },
     emptyContainer: {
         flex: 1,
@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
         marginBottom: 12,
         borderWidth: 1,
         borderColor: colors.border,
-        ...(Platform.OS === 'web' ? { width: '100%', maxWidth: 800 } : {}),
+        width: '100%',
         ...Platform.select({
             ios: {
                 shadowColor: colors.shadow,

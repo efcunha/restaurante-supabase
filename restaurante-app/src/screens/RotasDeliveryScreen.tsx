@@ -10,6 +10,9 @@ import OptimizedFlatList from '../components/OptimizedFlatList';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '../theme/colors';
+
+type DeliveryStatus = 'dispatched' | 'delivered' | 'failed_delivery' | 'returned' | 'refused';
+
 export default function RotasDeliveryScreen() {
   const { user } = useAuth();
   const navigation = useNavigation();
@@ -133,24 +136,102 @@ export default function RotasDeliveryScreen() {
     Linking.openURL(url).catch(() => Alert.alert('Erro', 'Não foi possível abrir o mapa.'));
   };
 
-  const updateOrderStatus = async (orderId: string, novoStatus: 'dispatched' | 'delivered') => {
+  const closeDeliveryComandaIfSettled = async (order: any) => {
+    if (!user?.companyId || !order?.comandaNumber) return;
+
+    const dateKey = getLocalDateKey();
+    const comandaNumber = String(order.comandaNumber);
+
+    try {
+      const { data: comandaOrders, error: ordersError } = await supabase
+        .from('orders')
+        .select('id, is_paid, status')
+        .eq('company_id', user.companyId)
+        .eq('date_key', dateKey)
+        .eq('comanda_number', comandaNumber);
+
+      if (ordersError) throw ordersError;
+
+      const activeOrders = (comandaOrders || []).filter((o: any) => {
+        const st = String(o.status || '').toLowerCase();
+        return st !== 'cancelled' && st !== 'cancelada';
+      });
+
+      const allPaid = activeOrders.length > 0 && activeOrders.every((o: any) => (
+        o.is_paid === true || o.is_paid === 'true' || o.is_paid === 1
+      ));
+
+      if (!allPaid) return;
+
+      const operatorName = user?.nome || user?.email || 'Motoboy';
+      const { error: comandaError } = await supabase
+        .from('comandas')
+        .update({
+          status: 'fechada',
+          open_balance: 0,
+          closed_at: new Date().toISOString(),
+          closed_by: user?.id || null,
+          closed_by_name: operatorName
+        })
+        .eq('company_id', user.companyId)
+        .eq('date_key', dateKey)
+        .eq('comanda_number', comandaNumber)
+        .neq('status', 'cancelada');
+
+      if (comandaError) throw comandaError;
+
+      await supabase
+        .from('orders')
+        .update({ comanda_status: 'fechada' })
+        .eq('company_id', user.companyId)
+        .eq('date_key', dateKey)
+        .eq('comanda_number', comandaNumber)
+        .neq('status', 'cancelada');
+    } catch (error) {
+      console.error('[RotasDelivery] Falha ao fechar comanda de delivery:', error);
+    }
+  };
+
+  const updateOrderStatus = async (
+    orderId: string,
+    novoStatus: DeliveryStatus,
+    reasonText?: string
+    ) => {
       try {
         setProcessingItems(prev => new Set([...prev, orderId]));
         
+        const nowIso = new Date().toISOString();
         const updatePayload: any = {
             status: novoStatus,
-            updated_at: new Date().toISOString()
+            updated_at: nowIso
         };
 
-        // Se for entregue (delivered), marcamos também os sub-itens caso estejam no json items_with_status
         const order = deliveryOrders.find(o => o.id === orderId);
-        if (order && order.itemsWithStatus && novoStatus === 'delivered') {
-            updatePayload.items_with_status = order.itemsWithStatus.map((item: any) => ({
-                ...item,
-                delivered: true,
-                deliveredAt: new Date().toISOString()
-            }));
+
+      // Ao confirmar entrega, baixa financeira e comanda para não manter Delivery em aberto no gerenciamento.
+        if (order && novoStatus === 'delivered') {
+            updatePayload.is_paid = true;
+            updatePayload.delivered_at = nowIso;
+            updatePayload.comanda_status = 'fechada';
+
+            if (order.itemsWithStatus) {
+              updatePayload.items_with_status = order.itemsWithStatus.map((item: any) => ({
+                  ...item,
+                  delivered: true,
+                  deliveredAt: nowIso,
+                  paid: true,
+                  paid_quantity: Number(item.quantity || 1)
+              }));
+            }
         }
+
+      // Para falha/devolucao, registra motivo no campo de observacoes para auditoria operacional.
+      if (order && reasonText && ['failed_delivery', 'returned', 'refused'].includes(novoStatus)) {
+        const previousObs = String(order.observations || '').trim();
+        const operatorName = user?.nome || user?.name || user?.email || 'Operador nao identificado';
+        const reasonLine = `[${new Date().toLocaleString('pt-BR')}] Entrega nao concluida por ${operatorName}: ${reasonText}`;
+        updatePayload.observations = previousObs ? `${previousObs}\n${reasonLine}` : reasonLine;
+      }
 
         const { error } = await supabase
             .from('orders')
@@ -160,9 +241,13 @@ export default function RotasDeliveryScreen() {
             .eq('company_id', user.companyId);
 
         if (error) throw error;
-        
-        // Remove from list if delivered (as the view filters by delivered later if needed, but the main query EXCLUDES delivered)
-        if (novoStatus === 'delivered') {
+
+        if (novoStatus === 'delivered' && order) {
+          await closeDeliveryComandaIfSettled(order);
+        }
+
+           // Estados finais nao ficam na lista de rotas pendentes.
+           if (['delivered', 'failed_delivery', 'returned', 'refused'].includes(novoStatus)) {
              setDeliveryOrders(prev => prev.filter(o => o.id !== orderId));
         } else {
              fetchDeliveryOrders();
@@ -180,6 +265,40 @@ export default function RotasDeliveryScreen() {
       }
   };
 
+  const handleUndeliveredAction = (order: any) => {
+      Alert.alert(
+          'Entrega nao concluida',
+          'Selecione o motivo principal.',
+          [
+              {
+                  text: 'Cliente/local nao encontrado',
+                  onPress: () => updateOrderStatus(order.id, 'failed_delivery', 'Cliente/local nao encontrado')
+              },
+              {
+                  text: 'Recusa ou devolucao',
+                  onPress: () => {
+                    Alert.alert(
+                      'Recusa ou devolucao',
+                      'Escolha o desfecho:',
+                      [
+                        {
+                          text: 'Cliente recusou',
+                          onPress: () => updateOrderStatus(order.id, 'refused', 'Cliente recusou o pedido na entrega')
+                        },
+                        {
+                          text: 'Produto devolvido',
+                          onPress: () => updateOrderStatus(order.id, 'returned', 'Pedido devolvido para a loja')
+                        },
+                        { text: 'Cancelar', style: 'cancel' }
+                      ]
+                    );
+                  }
+              },
+              { text: 'Cancelar', style: 'cancel' }
+          ]
+      );
+  };
+
   const handleAction = (order: any) => {
       // Regra de Negócio Delivery:
       // Se status for 'pronto' (Cozinha e Montagem OK), ele muda para 'dispatched' (Saiu p/ entrega).
@@ -192,10 +311,11 @@ export default function RotasDeliveryScreen() {
       } else if (currentStatus === 'dispatched') {
           Alert.alert(
               'Confirmar Entrega',
-              'O pedido foi entregue ao cliente e o pagamento (se pendente) foi recolhido?',
+            'Confirme o desfecho desta rota.',
               [
-                  { text: 'Não', style: 'cancel' },
-                  { text: 'Sim, Entregue!', style: 'default', onPress: () => updateOrderStatus(order.id, 'delivered') }
+              { text: 'Cancelar', style: 'cancel' },
+              { text: 'Nao entregue', style: 'destructive', onPress: () => handleUndeliveredAction(order) },
+              { text: 'Sim, entregue com sucesso', style: 'default', onPress: () => updateOrderStatus(order.id, 'delivered') }
               ]
           );
       }
@@ -283,6 +403,17 @@ export default function RotasDeliveryScreen() {
               </Text>
           )}
         </TouchableOpacity>
+
+        {isDispatched && (
+          <TouchableOpacity
+            style={styles.secondaryActionBtn}
+            onPress={() => handleUndeliveredAction(item)}
+            // @ts-ignore
+            disabled={processingItems.has(item.id)}
+          >
+            <Text style={styles.secondaryActionBtnText}>NAO FOI POSSIVEL ENTREGAR</Text>
+          </TouchableOpacity>
+        )}
       </View>
     );
   }, [processingItems]);
@@ -336,7 +467,7 @@ export default function RotasDeliveryScreen() {
             keyExtractor={keyExtractor}
             ListEmptyComponent={ListEmptyComponent}
             contentContainerStyle={styles.content}
-            itemHeight={350}
+          itemHeight={420}
             initialNumToRender={5}
             maxToRenderPerBatch={5}
             windowSize={5}
@@ -547,6 +678,20 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
     letterSpacing: 0.5,
+  },
+  secondaryActionBtn: {
+    marginTop: 10,
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.danger,
+    backgroundColor: colors.white,
+    alignItems: 'center',
+  },
+  secondaryActionBtnText: {
+    color: colors.danger,
+    fontWeight: '700',
+    fontSize: 13,
   },
   emptyState: {
     alignItems: 'center',

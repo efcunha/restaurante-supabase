@@ -652,7 +652,6 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: 20,
     paddingBottom: 100,
-    ...(Platform.OS === 'web' ? { alignItems: 'center' } : {}),
   },
   orderCard: {
     backgroundColor: colors.white,
@@ -671,7 +670,7 @@ const styles = StyleSheet.create({
     }),
     borderWidth: 1,
     borderColor: colors.surfaceMuted,
-    ...(Platform.OS === 'web' ? { width: '100%', maxWidth: 800 } : {}),
+    width: '100%',
   },
   orderCardUrgent: {
     backgroundColor: colors.white,

@@ -17,7 +17,7 @@ test.describe('Fluxo de Pedido Delivery', () => {
     if (await loginEmail.isVisible()) {
       await loginEmail.fill('lu@m.com');
       await page.getByPlaceholder('••••••••').fill('mudar123');
-      await page.getByText('ENTRAR').click();
+      await page.getByText('ENTRAR', { exact: true }).click();
       await expect(homeIndicator).toBeVisible({ timeout: 30000 });
     }
   });
