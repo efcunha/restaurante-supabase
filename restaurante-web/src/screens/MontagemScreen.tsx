@@ -28,6 +28,18 @@ const OrderCard = memo(({ order, onToggleItem, onMarkReady }: OrderCardProps) =>
   const allItemsDone = order.itemsWithStatus && order.itemsWithStatus.length > 0
     ? order.itemsWithStatus.every((item: any) => item.checked === true)
     : true;
+  const orderTitle = order.orderType === 'delivery'
+    ? `Delivery ${order.comandaNumber || '?'}`
+    : order.isMesaGroup
+      ? `Mesa ${order.mesa}`
+      : `Comanda ${order.comandaNumber || '?'}`;
+  const orderComandasLabel = order.isMesaGroup && order.allComandas && order.allComandas.length > 0
+    ? `Comandas: ${order.allComandas.join(', ')}`
+    : null;
+  const orderTimeLabel = order.horarioCriacao
+    || (order.timestamp
+      ? new Date(order.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+      : '--:--');
 
   const handleReadyPress = useCallback((e: any) => {
     e.stopPropagation();
@@ -39,22 +51,13 @@ const OrderCard = memo(({ order, onToggleItem, onMarkReady }: OrderCardProps) =>
       style={[styles.orderCard, urgent && styles.orderCardUrgent]}
     >
       <View style={styles.orderHeader}>
-        <Text style={styles.orderNumber}>
-          {order.orderType === 'delivery'
-            ? `Delivery ${order.comandaNumber || '?'}`
-            : order.isMesaGroup 
-              ? `Mesa ${order.mesa}` 
-              : `Comanda ${order.comandaNumber || '?'}`
-          }
-          {order.isMesaGroup && order.allComandas && order.allComandas.length > 0 && (
-            <Text style={{ fontSize: 12, fontWeight: 'normal', opacity: 0.8 }}>
-              {` (C: ${order.allComandas.join(', ')})`}
-            </Text>
-          )}
-        </Text>
-        <Text style={styles.orderTime}>
-          {order.horarioCriacao || (order.timestamp ? new Date(order.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '--:--')}
-        </Text>
+        <View style={{ flex: 1, paddingRight: 8 }}>
+          <Text style={styles.orderNumber}>{orderTitle}</Text>
+          {orderComandasLabel ? (
+            <Text style={styles.orderComandas}>{orderComandasLabel}</Text>
+          ) : null}
+        </View>
+        <Text style={styles.orderTime}>{orderTimeLabel}</Text>
       </View>
       <Text style={styles.orderClient}>{order.client}</Text>
       {(order.criadoPorNome || order.createdByName) && (
@@ -160,10 +163,12 @@ export default function MontagemScreen() {
           // ✅ GERAR IDs ÚNICOS POR PEDIDO: combina o UUID do pedido com o ID do item
           // Isso evita que itens com o mesmo ID de produto (ex: 'item_coca_cola') em pedidos
           // de delivery diferentes colidam no estado local e causem marcação cruzada.
-          itemsWithStatus: (order.items_with_status || []).map((item: any) => ({
+          itemsWithStatus: (order.items_with_status || []).map((item: any, itemIndex: number) => ({
             ...item,
-            id: `${order.id}::${item.id}`, // ID composto: orderId::itemId
+            // ID composto de UI: orderId::itemId::index (garante unicidade mesmo com item.id repetido)
+            id: `${order.id}::${item.id}::${itemIndex}`,
             _originalItemId: item.id,       // preservar ID original para persistência no DB
+            _itemIndex: itemIndex,
             originalOrderId: order.id       // Guardar UUID REAL para envio seguro no clique
           })),
           comandaNumber: order.comanda_number,
@@ -321,16 +326,16 @@ export default function MontagemScreen() {
     try {
       // 1. Extrair Pedido Real + Item Real de dentro do "Composto" (orderId::itemId)
       //    Os idsToUpdate são SEMPRE compostos: "<UUID_pedido>::<id_item_banco>"
-      const updatesByRealOrder: Record<string, { realItemIds: string[], compoundIds: string[] }> = {};
+      const updatesByRealOrder: Record<string, { realItemIds: string[], uiKeys: string[] }> = {};
       
       idsToUpdate.forEach(compoundId => {
-        const sepIdx = compoundId.indexOf('::');
-        if (sepIdx > 0) {
-          const rOrderId = compoundId.substring(0, sepIdx);
-          const rItemId = compoundId.substring(sepIdx + 2);
-          if (!updatesByRealOrder[rOrderId]) updatesByRealOrder[rOrderId] = { realItemIds: [], compoundIds: [] };
+        const parts = String(compoundId).split('::');
+        if (parts.length >= 2) {
+          const rOrderId = parts[0];
+          const rItemId = parts[1];
+          if (!updatesByRealOrder[rOrderId]) updatesByRealOrder[rOrderId] = { realItemIds: [], uiKeys: [] };
           updatesByRealOrder[rOrderId].realItemIds.push(rItemId);
-          updatesByRealOrder[rOrderId].compoundIds.push(compoundId);
+          updatesByRealOrder[rOrderId].uiKeys.push(compoundId);
         }
       });
 
@@ -355,7 +360,7 @@ export default function MontagemScreen() {
       setAllOrders(prevOrders => {
         // 2. Descobrir qual o NOVO ESTADO baseado no estado atual do primeiro item em prevOrders
         const firstRealOrderId = Object.keys(updatesByRealOrder)[0];
-        const firstCompoundId = updatesByRealOrder[firstRealOrderId].compoundIds[0];
+        const firstCompoundId = updatesByRealOrder[firstRealOrderId].uiKeys[0];
         const sourceOrder = prevOrders.find(o => o.id === firstRealOrderId);
         
         if (!sourceOrder) {
@@ -382,18 +387,20 @@ export default function MontagemScreen() {
           const updatedOrder = {
             ...o,
             itemsWithStatus: o.itemsWithStatus.map((i: any) => 
-              entry.compoundIds.includes(i.id) ? { ...i, checked: newChecked, timestamp: now } : i
+              entry.uiKeys.includes(i.id) ? { ...i, checked: newChecked, timestamp: now } : i
             )
           };
 
           // Preparar dados para persistência no Supabase
           itemsToSaveByOrder[o.id] = updatedOrder.itemsWithStatus.map((i: any) => {
-            const isTarget = entry.realItemIds.includes(i._originalItemId || i.id.split('::').pop() || i.id);
+            const fallbackOriginalItemId = String(i.id).split('::')[1] || i.id;
+            const isTarget = entry.uiKeys.includes(i.id);
             return {
               // Salvar com o ID ORIGINAL do banco (sem o prefixo UUID::)
               ...i,
-              id: i._originalItemId || i.id.split('::').pop() || i.id,
+              id: i._originalItemId || fallbackOriginalItemId,
               _originalItemId: undefined, // Limpar campo auxiliar
+              _itemIndex: undefined,
               originalOrderId: undefined, // Limpar campo auxiliar
               checked: isTarget ? newChecked : i.checked,
               timestamp: isTarget ? now : i.timestamp
@@ -417,10 +424,56 @@ export default function MontagemScreen() {
       const now = new Date().toISOString();
       const persistPromises = Object.entries(itemsToSaveByOrder).map(async ([realOrderId, itemsToSave]) => {
         console.log('[Montagem] 💾 Salvando pedido:', realOrderId, 'itens:', itemsToSave.length);
+
+        // Merge defensivo com estado mais recente do banco para evitar sobrescrita concorrente
+        const entry = updatesByRealOrder[realOrderId];
+        const targetMeta = (entry?.uiKeys || []).map((uiKey: string) => {
+          const parts = String(uiKey).split('::');
+          return {
+            originalItemId: parts[1],
+            itemIndex: Number(parts[2])
+          };
+        });
+
+        let payloadItems = itemsToSave;
+        const { data: latestOrder } = await supabase
+          .from('orders')
+          .select('items_with_status')
+          .eq('id', realOrderId)
+          .eq('company_id', user?.companyId)
+          .single();
+
+        if (latestOrder?.items_with_status && Array.isArray(latestOrder.items_with_status) && targetMeta.length > 0) {
+          const mergedItems = [...latestOrder.items_with_status];
+          const usedIndexes = new Set<number>();
+
+          targetMeta.forEach(({ originalItemId, itemIndex }: { originalItemId: string; itemIndex: number }) => {
+            if (!originalItemId) return;
+
+            let targetIdx = -1;
+
+            if (Number.isInteger(itemIndex) && itemIndex >= 0 && mergedItems[itemIndex]?.id === originalItemId) {
+              targetIdx = itemIndex;
+            } else {
+              targetIdx = mergedItems.findIndex((ri: any, idx: number) => ri?.id === originalItemId && !usedIndexes.has(idx));
+            }
+
+            if (targetIdx >= 0) {
+              usedIndexes.add(targetIdx);
+              mergedItems[targetIdx] = {
+                ...mergedItems[targetIdx],
+                checked: newChecked,
+                timestamp: now
+              };
+            }
+          });
+
+          payloadItems = mergedItems;
+        }
         
         const { error } = await supabase
           .from('orders')
-          .update({ items_with_status: itemsToSave, updated_at: now })
+          .update({ items_with_status: payloadItems, updated_at: now })
           .eq('id', realOrderId)
           .eq('company_id', user?.companyId);
 
@@ -636,6 +689,12 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     color: colors.primary,
+  },
+  orderComandas: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.textSecondary,
+    marginTop: 2,
   },
   orderTime: {
     fontSize: 14,
