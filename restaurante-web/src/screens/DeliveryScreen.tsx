@@ -24,6 +24,14 @@ if (Platform.OS === 'android') {
   }
 }
 
+const toTestId = (value: string) =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
 const QuantityButton = memo(({ onPress, text }: { onPress: () => void, text: string }) => (
   <TouchableOpacity style={styles.quantityBtn} onPress={onPress}>
     <Text style={styles.quantityBtnText}>{text}</Text>
@@ -146,7 +154,7 @@ const StandardRow = memo(({ item, produtos, onIncrement, onDecrement, type, temp
         <View style={styles.quantityControl}>
           <TouchableOpacity style={[styles.roundBtn, { backgroundColor: colors.danger }]} onPress={handleDec}><Text style={styles.roundBtnText}>−</Text></TouchableOpacity>
           <Text style={styles.qtyText}>{qty}</Text>
-          <TouchableOpacity style={[styles.roundBtn, { backgroundColor: colors.success }]} onPress={handleInc}><Text style={styles.roundBtnText}>+</Text></TouchableOpacity>
+          <TouchableOpacity testID={`delivery-inc-${toTestId(item.name)}`} style={[styles.roundBtn, { backgroundColor: colors.success }]} onPress={handleInc}><Text style={styles.roundBtnText}>+</Text></TouchableOpacity>
         </View>
       </View>
     </View>
@@ -203,7 +211,7 @@ const StackedVariationRow = memo(({ name, price, qty, color, onInc, onDec, itemK
       <View style={styles.variationControlsOutside}>
         <TouchableOpacity style={[styles.roundBtn, { backgroundColor: colors.danger }]} onPress={handleDec}><Text style={styles.roundBtnText}>−</Text></TouchableOpacity>
         <Text style={styles.qtyText}>{qty}</Text>
-        <TouchableOpacity style={[styles.roundBtn, { backgroundColor: colors.success }]} onPress={handleInc}><Text style={styles.roundBtnText}>+</Text></TouchableOpacity>
+        <TouchableOpacity testID={`delivery-inc-${toTestId(itemKey)}`} style={[styles.roundBtn, { backgroundColor: colors.success }]} onPress={handleInc}><Text style={styles.roundBtnText}>+</Text></TouchableOpacity>
       </View>
     </View>
   );
@@ -221,7 +229,7 @@ const VariationRow = memo(({ label, qty, color, onInc, onDec, itemKey, last, for
       <View style={styles.variationControls}>
         <TouchableOpacity style={[styles.roundBtn, { backgroundColor: colors.danger }]} onPress={handleDec}><Text style={styles.roundBtnText}>−</Text></TouchableOpacity>
         <Text style={styles.qtyText}>{qty}</Text>
-        <TouchableOpacity style={[styles.roundBtn, { backgroundColor: colors.success }]} onPress={handleInc}><Text style={styles.roundBtnText}>+</Text></TouchableOpacity>
+        <TouchableOpacity testID={`delivery-inc-${toTestId(itemKey)}`} style={[styles.roundBtn, { backgroundColor: colors.success }]} onPress={handleInc}><Text style={styles.roundBtnText}>+</Text></TouchableOpacity>
       </View>
     </View>
   );

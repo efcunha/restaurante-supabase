@@ -79,30 +79,51 @@ test.describe('Fluxo de Pedido Delivery', () => {
     await searchBox.fill('');
     await searchBox.fill('calabresa');
     await page.waitForTimeout(1500);
-    const pizzaCard = page.getByTestId('pizza-card-calabresa').first();
-    await expect(pizzaCard).toBeVisible({ timeout: 8000 });
-    await pizzaCard.click();
+    const pizzaCard = page
+      .locator('[data-testid="pizza-card-calabresa"]')
+      .filter({ hasText: /Calabresa/i })
+      .filter({ visible: true })
+      .first();
+
+    const clickedVisibleCard = await pizzaCard.count();
+    if (clickedVisibleCard > 0) {
+      await pizzaCard.click();
+    } else {
+      const fallbackClicked = await page.evaluate(() => {
+        const nodes = Array.from(document.querySelectorAll('[data-testid="pizza-card-calabresa"]')) as HTMLElement[];
+        const visibleNode = nodes.find((el) => {
+          const rect = el.getBoundingClientRect();
+          const style = window.getComputedStyle(el);
+          return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+        });
+        if (!visibleNode) return false;
+        visibleNode.click();
+        return true;
+      });
+      expect(fallbackClicked).toBeTruthy();
+    }
+
     await expect(page.getByText('Escolha o Tamanho').first()).toBeVisible({ timeout: 8000 });
     await page.waitForTimeout(500);
-    const sizeGrande = page.getByText('Grande/Família').first();
-    await sizeGrande.waitFor({ state: 'attached', timeout: 8000 });
-    await sizeGrande.dispatchEvent('click');
+    const sizeGrande = page.getByText('Grande/Família').filter({ visible: true }).first();
+    await sizeGrande.waitFor({ state: 'visible', timeout: 8000 });
+    await sizeGrande.click();
     await page.waitForTimeout(500);
-    const chocMorango = page.getByText('Chocolate com Morango').last();
-    await chocMorango.waitFor({ state: 'attached', timeout: 10000 });
-    await chocMorango.dispatchEvent('click');
+    const chocMorango = page.getByText('Chocolate com Morango').filter({ visible: true }).last();
+    await chocMorango.waitFor({ state: 'visible', timeout: 8000 });
+    await chocMorango.click();
     await page.waitForTimeout(500);
-    const btnExtras = page.getByText('Próximo: Extras').last();
-    await btnExtras.waitFor({ state: 'attached', timeout: 8000 });
-    await btnExtras.dispatchEvent('click');
+    const btnExtras = page.getByText('Próximo: Extras').filter({ visible: true }).last();
+    await btnExtras.waitFor({ state: 'visible', timeout: 8000 });
+    await btnExtras.click();
     await page.waitForTimeout(500);
-    const bacon = page.getByText('Bacon').last();
-    await bacon.waitFor({ state: 'attached', timeout: 8000 });
-    await bacon.dispatchEvent('click');
+    const bacon = page.getByText('Bacon').filter({ visible: true }).last();
+    await bacon.waitFor({ state: 'visible', timeout: 8000 });
+    await bacon.click();
     await page.waitForTimeout(500);
-    const addBtn = page.getByText('Adicionar ao Pedido').last();
-    await addBtn.waitFor({ state: 'attached', timeout: 8000 });
-    await addBtn.dispatchEvent('click');
+    const addPizzaBtn = page.getByText('Adicionar ao Pedido').filter({ visible: true }).last();
+    await addPizzaBtn.waitFor({ state: 'visible', timeout: 8000 });
+    await addPizzaBtn.click();
     console.log('   ✓ Pizza Grande/Família adicionada');
     await page.waitForTimeout(500);
 
@@ -111,6 +132,12 @@ test.describe('Fluxo de Pedido Delivery', () => {
       { term: 'risoto', quantity: 1 },
       { term: 'caldo', quantity: 3 },
     ];
+
+    const incrementTestIds: Record<string, string> = {
+      chopp: 'delivery-inc-chopp-300-ml',
+      risoto: 'delivery-inc-risoto-de-camarao-cebolinha-e-coentro',
+      caldo: 'delivery-inc-caldo-de-camarao-300ml-cebolinha-e-coentro',
+    };
 
     for (const { term, quantity } of itemsToSearch) {
       for (let i = 0; i < quantity; i++) {
@@ -121,16 +148,14 @@ test.describe('Fluxo de Pedido Delivery', () => {
         await page.waitForTimeout(1000);
 
         try {
-          const plusBtn = page.locator('div[role="button"], div[dir="auto"]').filter({ hasText: '+' }).filter({ visible: true }).first();
+          const incBtn = page
+            .locator(`[data-testid="${incrementTestIds[term]}"]`)
+            .filter({ visible: true })
+            .first();
 
-          if (await plusBtn.count() > 0) {
-            await plusBtn.click();
-            console.log(`- Item '${term}' adicionado com sucesso!`);
-          } else {
-            const itemCard = page.locator('div[dir="auto"]').filter({ hasText: new RegExp(term, 'i') }).first();
-            await itemCard.click();
-            console.log(`- Item '${term}' selecionado pelo card.`);
-          }
+          await incBtn.waitFor({ state: 'attached', timeout: 8000 });
+          await incBtn.dispatchEvent('click');
+          console.log(`- Item '${term}' adicionado com sucesso!`);
         } catch (e: any) {
           console.log(`- Erro ao adicionar '${term}': ${e.message}`);
         }
@@ -215,9 +240,14 @@ test.describe('Fluxo de Pedido Delivery', () => {
     const normalized = itemNames.join(' | ');
     console.log(`[DELIVERY][DB] Itens persistidos: ${normalized}`);
     expect(/Pizza Grande\/Família.*Calabresa.*Chocolate com Morango.*Bacon/i.test(normalized)).toBeTruthy();
-    expect(/3x\s*Chopp\s*300\s*ML/i.test(normalized)).toBeTruthy();
-    expect(/1x\s*Risoto/i.test(normalized)).toBeTruthy();
-    expect(/3x\s*Caldo de Camarão\s*300ml/i.test(normalized)).toBeTruthy();
+
+    const choppCount = itemNames.filter(name => /Chopp\s*300\s*ML/i.test(name)).length;
+    const risotoCount = itemNames.filter(name => /Risoto/i.test(name)).length;
+    const caldoCount = itemNames.filter(name => /Caldo de Camarão\s*300ml/i.test(name)).length;
+
+    expect(choppCount).toBe(3);
+    expect(risotoCount).toBe(1);
+    expect(caldoCount).toBe(3);
 
     // Reporta erros capturados
     if (consoleErrors.length > 0) {
