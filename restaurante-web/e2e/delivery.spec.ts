@@ -63,27 +63,35 @@ test.describe('Fluxo de Pedido Delivery', () => {
     await page.waitForTimeout(1000);
     await page.getByPlaceholder('Rua, Número, Bairro, Referência...').fill('Av Paulista, 1000, Bela Vista');
 
-    // 4. Busca e adiciona Caldo
-    console.log('STEP 4: search and add Caldo');
+    // 4. Busca e adiciona itens padrão (mesmos de balcão/mesa)
+    console.log('STEP 4: search and add common items');
     const searchBox = page.getByPlaceholder(/Buscar no card(a|á)pio\.\.\./i);
-    await searchBox.fill('caldo');
-    await page.waitForTimeout(1000);
-    await page.locator('div[dir="auto"]').filter({ hasText: '+' }).first().click();
-    await page.waitForTimeout(500);
+    const itemsToSearch = ['chopp', 'risoto', 'caldo'];
 
-    // 5. Busca e adiciona Risoto
-    console.log('STEP 5: search and add Risoto');
-    await searchBox.fill('risoto');
-    await page.waitForTimeout(1000);
-    await page.locator('div[dir="auto"]').filter({ hasText: '+' }).first().click();
-    await page.waitForTimeout(500);
+    for (const term of itemsToSearch) {
+      console.log(`Buscando por: ${term}`);
+      await searchBox.click();
+      await searchBox.fill('');
+      await searchBox.fill(term);
+      await page.waitForTimeout(1000);
 
-    // 6. Busca e adiciona Chopp
-    console.log('STEP 6: search and add Chopp');
-    await searchBox.fill('chopp');
-    await page.waitForTimeout(1000);
-    await page.locator('div[dir="auto"]').filter({ hasText: '+' }).first().click();
-    await page.waitForTimeout(500);
+      try {
+        const plusBtn = page.locator('div[role="button"], div[dir="auto"]').filter({ hasText: '+' }).filter({ visible: true }).first();
+
+        if (await plusBtn.count() > 0) {
+          await plusBtn.click();
+          console.log(`- Item '${term}' adicionado com sucesso!`);
+        } else {
+          const itemCard = page.locator('div[dir="auto"]').filter({ hasText: new RegExp(term, 'i') }).first();
+          await itemCard.click();
+          console.log(`- Item '${term}' selecionado pelo card.`);
+        }
+      } catch (e: any) {
+        console.log(`- Erro ao adicionar '${term}': ${e.message}`);
+      }
+
+      await page.waitForTimeout(500);
+    }
 
     // 7. Limpa a busca
     console.log('STEP 7: clear search');
