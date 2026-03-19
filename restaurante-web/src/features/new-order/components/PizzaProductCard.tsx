@@ -2,6 +2,15 @@ import React, { useMemo } from 'react';
 import { ProductCard } from '../../../ui';
 import { PizzaProductCardProps } from '../types';
 
+function toSlug(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 function formatPriceRange(values: number[]) {
   if (values.length === 0) {
     return 'R$ 0,00';
@@ -17,7 +26,7 @@ function formatPriceRange(values: number[]) {
   return `R$ ${minPrice.toFixed(2).replace('.', ',')} - R$ ${maxPrice.toFixed(2).replace('.', ',')}`;
 }
 
-export function PizzaProductCard({ item, onPress }: PizzaProductCardProps) {
+export function PizzaProductCard({ item, onPress, testID }: PizzaProductCardProps) {
   const priceEntries = useMemo(
     () => Object.values((item.prices ?? {}) as Record<string, string | number>),
     [item.prices]
@@ -53,6 +62,7 @@ export function PizzaProductCard({ item, onPress }: PizzaProductCardProps) {
       priceLabel={formatPriceRange(validPrices)}
       category={item.subcategory}
       onPress={() => onPress(item)}
+      testID={testID ?? `pizza-card-${toSlug(item.name)}`}
     />
   );
 }
