@@ -8,7 +8,7 @@ test('Pedido de Pizza - Estável Final', async ({ page }) => {
   await page.goto('/');
   await page.getByPlaceholder('seu@email.com').fill('lu@m.com');
   await page.getByPlaceholder('••••••••').fill('mudar123');
-  await page.getByText('ENTRAR').first().click();
+  await page.getByText('ENTRAR', { exact: true }).click();
 
   // 2. Dash e Identificação
   console.log('Aguardando Dashboard...');

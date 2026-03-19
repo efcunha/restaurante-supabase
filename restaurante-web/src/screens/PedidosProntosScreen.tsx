@@ -375,7 +375,6 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
     paddingBottom: 100,
-    ...(Platform.OS === 'web' ? { alignItems: 'center' } : {}),
   },
   orderCard: {
     backgroundColor: colors.white,
@@ -389,7 +388,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 10,
     elevation: 3,
-    ...(Platform.OS === 'web' ? { width: '100%', maxWidth: 800 } : {}),
+    width: '100%',
   },
   itemCard: {
     backgroundColor: colors.white,
@@ -405,7 +404,7 @@ const styles = StyleSheet.create({
     elevation: 3,
     borderLeftWidth: 5,
     borderLeftColor: colors.success,
-    ...(Platform.OS === 'web' ? { width: '100%', maxWidth: 800 } : {}),
+    width: '100%',
   },
   itemHeader: {
     flexDirection: 'row',

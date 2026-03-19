@@ -14,7 +14,7 @@ test.describe('Fluxo Principal - Balcão (Novo Pedido Direto)', () => {
       console.log('Preenchendo credenciais...');
       await emailInput.fill('lu@m.com');
       await page.locator('input[placeholder="••••••••"]').fill('mudar123');
-      await page.locator('text=ENTRAR').click();
+      await page.getByText('ENTRAR', { exact: true }).click();
 
       await expect(page.locator('text=Novo Pedido').first()).toBeVisible({ timeout: 15000 });
     } catch (e) {

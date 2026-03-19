@@ -46,6 +46,7 @@ import { AdminActionCard, AdminBareModal, AdminCaixaModal, AdminSection, AdminSl
 
 // WhatsApp Integração
 import ConfiguracoesWhatsApp from './ConfiguracoesWhatsApp';
+import DeliveryOcorrenciasScreen from './DeliveryOcorrenciasScreen';
 import { colors } from '../theme/colors';
 import { layout, spacing } from '../design-system';
 /**
@@ -97,6 +98,7 @@ export default function AdminScreen() {
   const [showBiometricSetup, setShowBiometricSetup] = useState(false);
   const [showMFASetup, setShowMFASetup] = useState(false);
   const [showConfiguracoesWhatsApp, setShowConfiguracoesWhatsApp] = useState(false);
+  const [showDeliveryOcorrencias, setShowDeliveryOcorrencias] = useState(false);
 
   // Estados para estatísticas
   const [stats, setStats] = useState({
@@ -365,6 +367,7 @@ export default function AdminScreen() {
     { name: 'Caixa', icon: '💰', action: () => setShowCaixaMenu(true) },
     { name: 'Estatísticas dos Garçons', icon: '📊', action: () => setShowComandasVisualizacao(true) },
     { name: 'Gerenciar Entregas/Despacho', icon: '🛵', action: () => navigation.navigate('Entregas') },
+    { name: 'Ocorrencias de Entrega', icon: '⚠️', action: () => setShowDeliveryOcorrencias(true) },
     { name: 'Gerenciar Estoque', icon: '📦', action: () => setShowEstoque(true) },
     { name: 'Gerenciar Cardápio', icon: '🍴', action: () => setShowGerenciarCardapio(true) },
     { name: 'Configurar Mesas e Ambientes', icon: '🪑', action: () => setShowConfiguracaoMesas(true) },
@@ -442,6 +445,11 @@ export default function AdminScreen() {
       {/* Modal Configurações WhatsApp */}
       <AdminSlideModal visible={showConfiguracoesWhatsApp} onClose={() => setShowConfiguracoesWhatsApp(false)}>
         <ConfiguracoesWhatsApp onClose={() => setShowConfiguracoesWhatsApp(false)} />
+      </AdminSlideModal>
+
+      {/* Modal Ocorrencias de Entrega */}
+      <AdminSlideModal visible={showDeliveryOcorrencias} onClose={() => setShowDeliveryOcorrencias(false)}>
+        <DeliveryOcorrenciasScreen onClose={() => setShowDeliveryOcorrencias(false)} />
       </AdminSlideModal>
 
       {/* Modal Menu Caixa */}
