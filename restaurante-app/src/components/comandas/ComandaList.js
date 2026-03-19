@@ -2,24 +2,56 @@
 import React, { memo } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Platform, ActivityIndicator } from 'react-native';
 import { colors } from '../../theme/colors';
-const ComandaCard = memo(({ comanda, onPress }) => (
+
+const getTipoComandaMeta = (tipoComanda) => {
+    if (tipoComanda === 'delivery') {
+        return { label: 'Delivery', icon: '🛵', backgroundColor: colors.primaryTint, textColor: colors.primary };
+    }
+    if (tipoComanda === 'mesa') {
+        return { label: 'Mesa', icon: '🪑', backgroundColor: colors.warningSurface, textColor: colors.warning };
+    }
+    return { label: 'Balcão', icon: '🏪', backgroundColor: colors.primaryTint, textColor: colors.secondary };
+};
+
+const hasMesaValida = (mesa) => {
+    const mesaNumero = Number(String(mesa || '').replace(/\D/g, ''));
+    return Number.isFinite(mesaNumero) && mesaNumero > 0;
+};
+
+const ComandaCard = memo(({ comanda, onPress }) => {
+    const tipoMeta = getTipoComandaMeta(comanda.tipoComanda);
+
+    return (
     <TouchableOpacity style={styles.card} onPress={() => onPress(comanda)}>
         <View style={styles.cardHeader}>
             <Text style={styles.comandaNumber}>Comanda {comanda.comandaNumber}</Text>
-            <Text style={[
-                styles.statusBadge,
-                comanda.status === 'paga' ? styles.statusPaga :
-                    comanda.status === 'cancelada' ? styles.statusCancelada : styles.statusAberta
-            ]}>
-                {comanda.status.toUpperCase()}
-            </Text>
+            <View style={styles.badgesRow}>
+                <Text
+                    style={[
+                        styles.typeBadge,
+                        {
+                            backgroundColor: tipoMeta.backgroundColor,
+                            color: tipoMeta.textColor,
+                        },
+                    ]}
+                >
+                    {tipoMeta.icon} {tipoMeta.label}
+                </Text>
+                <Text style={[
+                    styles.statusBadge,
+                    comanda.status === 'paga' ? styles.statusPaga :
+                        comanda.status === 'cancelada' ? styles.statusCancelada : styles.statusAberta
+                ]}>
+                    {comanda.status.toUpperCase()}
+                </Text>
+            </View>
         </View>
 
         <View style={styles.cardBody}>
             <Text style={styles.clienteInfo}>
                 👤 {comanda.cliente !== 'Não informado' ? comanda.cliente : 'Cliente Balcão'}
             </Text>
-            {comanda.mesa ? (
+            {hasMesaValida(comanda.mesa) ? (
                 <Text style={styles.mesaInfo}>🪑 Mesa: {comanda.mesa}</Text>
             ) : null}
             {(comanda.abertaPorNome || comanda.criadoPorNome) ? (
@@ -35,7 +67,8 @@ const ComandaCard = memo(({ comanda, onPress }) => (
             </Text>
         </View>
     </TouchableOpacity>
-));
+    );
+});
 ComandaCard.displayName = 'ComandaCard';
 
 export default function ComandaList({ comandas, onSelectComanda, refreshing, onRefresh, onLoadMore, loadingMore }) {
@@ -116,13 +149,26 @@ const styles = StyleSheet.create({
     cardHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         marginBottom: 12,
+    },
+    badgesRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
     },
     comandaNumber: {
         fontSize: 20,
         fontWeight: 'bold',
         color: colors.text,
+    },
+    typeBadge: {
+        fontSize: 12,
+        fontWeight: '700',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 999,
+        overflow: 'hidden',
     },
     statusBadge: {
         fontSize: 12,
