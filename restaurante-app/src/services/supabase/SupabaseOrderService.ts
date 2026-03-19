@@ -385,6 +385,7 @@ class SupabaseOrderService {
         .from('orders')
         .update({
           table_number: parseInt(targetTableNumber),
+          updated_at: new Date().toISOString(),
           // table_id: targetTableId // If we had a direct FK column active
         })
         .eq('id', orderId);

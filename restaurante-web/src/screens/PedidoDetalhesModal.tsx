@@ -22,20 +22,40 @@ import { getTodayKey } from '../utils/dateUtils';
 import { colors } from '../theme/colors';
 interface Props {
   visible: boolean;
-  orderId: string;
+  orderId?: string;
+  orderIds?: string[];
+  tableNumber?: string;
   onClose: () => void;
 }
 
-export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props) {
+export default function PedidoDetalhesModal({ visible, orderId, orderIds = [], tableNumber, onClose }: Props) {
   const navigation = useNavigation<any>();
   const { user } = useAuth();
   const { getOrderById, editOrder, transferOrder } = useOrders();
   const [isTransferModalVisible, setIsTransferModalVisible] = useState(false);
 
+  const resolvedOrderIds = orderIds.length > 0
+    ? Array.from(new Set(orderIds))
+    : orderId
+      ? [orderId]
+      : [];
+  const resolvedOrders = resolvedOrderIds
+    .map(currentOrderId => getOrderById(currentOrderId))
+    .filter(Boolean) as any[];
+  const order = resolvedOrders[0];
+  const isTableAggregate = resolvedOrders.length > 1;
+  const aggregateTableNumber = tableNumber || order?.mesa;
+  const aggregateTotal = resolvedOrders.reduce((sum, currentOrder) => sum + (currentOrder.totalPrice || 0), 0);
+
   const handleTransfer = async (newTable: string) => {
     try {
-      await transferOrder(orderId, newTable);
-      Alert.alert('Sucesso', `Pedido transferido para a mesa ${newTable}`);
+      await Promise.all(resolvedOrderIds.map(currentOrderId => transferOrder(currentOrderId, newTable)));
+      Alert.alert(
+        'Sucesso',
+        isTableAggregate
+          ? `Mesa ${aggregateTableNumber || ''} transferida para a mesa ${newTable}`.trim()
+          : `Pedido transferido para a mesa ${newTable}`
+      );
       setIsTransferModalVisible(false);
       onClose();
     } catch (error: any) {
@@ -57,13 +77,10 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
   const [comandaData, setComandaData] = useState<any>(null);
   const [cardapioDin, setCardapioDin] = useState<MenuItem[]>([]);
 
-  const order = getOrderById(orderId);
-
   // Fetch Comanda Data
   React.useEffect(() => {
-      if (visible) {
+      if (visible && order && !isTableAggregate) {
           const fetchComanda = async () => {
-              const order = getOrderById(orderId);
               if (order && (order.comandaNumber || order.numeroComanda)) {
                   const num = order.comandaNumber || order.numeroComanda;
                   // Use order's dateKey if available, otherwise today
@@ -86,8 +103,10 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
               }
           };
           fetchComanda();
+          } else {
+            setComandaData(null);
       }
-  }, [visible, orderId]);
+        }, [visible, order, isTableAggregate]);
 
   // Fetch Products for accurate pricing
   React.useEffect(() => {
@@ -159,7 +178,8 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
 
   if (!order) return null;
 
-  const canEdit = order.status === 'preparing';
+  const canEdit = !isTableAggregate && order.status === 'preparing';
+  const canPay = !isTableAggregate;
 
   return (
     <>
@@ -174,10 +194,12 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
             <View style={styles.header}>
               <View>
                 <Text style={styles.orderId}>
-                  Comanda {order.comandaNumber || order.numeroComanda || order.id.slice(0, 8)}
+                  {isTableAggregate
+                    ? `Mesa ${aggregateTableNumber || '--'}`
+                    : `Comanda ${order.comandaNumber || order.numeroComanda || order.id.slice(0, 8)}`}
                 </Text>
                 <View style={[styles.statusBadge, { backgroundColor: getStatusColor(order.status) }]}>
-                  <Text style={styles.statusText}>{getStatusLabel(order.status)}</Text>
+                  <Text style={styles.statusText}>{isTableAggregate ? `${resolvedOrders.length} pedidos ativos` : getStatusLabel(order.status)}</Text>
                 </View>
               </View>
               <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
@@ -198,20 +220,20 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
                         placeholder="Nome do cliente"
                       />
                     ) : (
-                      <Text style={styles.clientName}>{order.client}</Text>
+                      <Text style={styles.clientName}>{isTableAggregate ? `${resolvedOrders.length} pedidos na mesa` : order.client}</Text>
                     )}
                   </View>
 
-                  {order.mesa && (
+                  {aggregateTableNumber && (
                     <View style={{ marginLeft: 20 }}>
                       <Text style={styles.sectionTitle}>Mesa</Text>
-                      <Text style={styles.clientName}>{order.mesa}</Text>
+                      <Text style={styles.clientName}>{aggregateTableNumber}</Text>
                     </View>
                   )}
                 </View>
               </View>
 
-              {order.createdByName && (
+              {!isTableAggregate && order.createdByName && (
                 <View style={styles.section}>
                   <Text style={styles.sectionTitle}>Garçom</Text>
                   <Text style={styles.clientName}>{order.createdByName}</Text>
@@ -220,9 +242,15 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
 
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Itens do Pedido</Text>
-                {/* Render itemsWithStatus if available (Rich Data) */}
-                {order.itemsWithStatus && order.itemsWithStatus.length > 0 ? (
-                    order.itemsWithStatus.map((item: any, index: number) => {
+                {resolvedOrders.map((currentOrder: any, orderIndex: number) => (
+                  <View key={currentOrder.id} style={isTableAggregate ? styles.orderGroup : undefined}>
+                    {isTableAggregate && (
+                      <Text style={styles.orderGroupTitle}>
+                        Pedido {orderIndex + 1} - {currentOrder.client || 'Cliente'}
+                      </Text>
+                    )}
+                    {currentOrder.itemsWithStatus && currentOrder.itemsWithStatus.length > 0 ? (
+                    currentOrder.itemsWithStatus.map((item: any, index: number) => {
                        const qty = item.quantity || 1;
                        const paidQty = item.paid_quantity || (item.paid ? qty : 0);
                        const isFullyPaid = paidQty >= qty;
@@ -234,7 +262,7 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
                        const extras = parts.length > 1 ? parts.slice(1).join(' + ') : null;
 
                        return (
-                          <View key={item.id || index} style={styles.itemRow}>
+                          <View key={`${currentOrder.id}-${item.id || index}`} style={styles.itemRow}>
                             <Text style={[styles.itemBullet, isFullyPaid && styles.itemPaidBullet]}>
                                 {isFullyPaid ? '✓' : '*'}
                             </Text>
@@ -259,27 +287,28 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
                           </View>
                        );
                     })
-                ) : (
-                    Array.isArray(order.items) && order.items.map((item: string, index: number) => (
+                    ) : (
+                    Array.isArray(currentOrder.items) && currentOrder.items.map((item: string, index: number) => (
                       <View key={index} style={styles.itemRow}>
                         <Text style={styles.itemBullet}>*</Text>
                         <Text style={styles.itemText}>{String(item)}</Text>
                       </View>
                     ))
-                )}
+                    )}
+                  </View>
+                ))}
               </View>
 
               <View style={styles.section}>
                 <View style={styles.totalRow}>
                    <View>
-                      <Text style={styles.totalLabel}>Total do Pedido:</Text>
-                      {/* Show paid items summary if needed, but Total do Pedido usually means Grand Total */}
+                      <Text style={styles.totalLabel}>{isTableAggregate ? 'Total da Mesa:' : 'Total do Pedido:'}</Text>
                    </View>
-                   <Text style={styles.totalValue}>{formatarMoeda(order.totalPrice)}</Text>
+                   <Text style={styles.totalValue}>{formatarMoeda(isTableAggregate ? aggregateTotal : order.totalPrice)}</Text>
                 </View>
                 
                 {/* Show Remaining Balance if any payment exists */}
-                {(() => {
+                {!isTableAggregate && (() => {
                     const items = order.itemsWithStatus || [];
                     
                     // 1. Calculate paid amount based on ITEMS (Physical/Logical Status)
@@ -362,7 +391,7 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
 
               {/* --- COMANDA BALANCE INFO (NEW) --- */}
               {/* Shows partial payments that are not allocated to specific items yet */}
-              {!!comandaData && comandaData.total_paid > 0 && (
+              {!isTableAggregate && !!comandaData && comandaData.total_paid > 0 && (
                    <View style={[styles.section, { marginTop: 10, padding: 10, backgroundColor: colors.surfaceMuted, borderRadius: 8 }]}>
                       <Text style={[styles.sectionTitle, { fontSize: 14, marginBottom: 5 }]}>Status Financeiro da Comanda</Text>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
@@ -388,13 +417,29 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
                     numberOfLines={3}
                   />
                 ) : (
-                  <Text style={styles.observations}>
-                    {order.observations || 'Sem observações'}
-                  </Text>
+                  <>
+                    {isTableAggregate ? (
+                      resolvedOrders.some((currentOrder: any) => currentOrder.observations) ? (
+                        resolvedOrders
+                          .filter((currentOrder: any) => currentOrder.observations)
+                          .map((currentOrder: any) => (
+                            <Text key={`${currentOrder.id}-obs`} style={styles.observations}>
+                              {currentOrder.client || 'Cliente'}: {currentOrder.observations}
+                            </Text>
+                          ))
+                      ) : (
+                        <Text style={styles.observations}>Sem observações</Text>
+                      )
+                    ) : (
+                      <Text style={styles.observations}>
+                        {order.observations || 'Sem observações'}
+                      </Text>
+                    )}
+                  </>
                 )}
               </View>
 
-              {order.deliveredAt && (
+              {!isTableAggregate && order.deliveredAt && (
                 <View style={styles.section}>
                   <Text style={styles.sectionTitle}>Histórico do Pedido</Text>
                   <View style={styles.timeline}>
@@ -417,9 +462,10 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
                     style={[styles.actionBtn, { backgroundColor: colors.warning, flex: 1 }]}
                     onPress={() => setIsTransferModalVisible(true)}
                   >
-                    <Text style={styles.actionBtnText}>🔄 Mover</Text>
+                    <Text style={styles.actionBtnText}>{isTableAggregate ? '🔄 Mover Mesa' : '🔄 Mover'}</Text>
                   </TouchableOpacity>
 
+                  {!isTableAggregate && (
                   <TouchableOpacity
                     style={[styles.actionBtn, styles.editBtn, { flex: 1 }]}
                     onPress={handleEdit}
@@ -428,9 +474,11 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
                       {isEditing ? '💾 Salvar' : '✏️ Editar'}
                     </Text>
                   </TouchableOpacity>
+                  )}
                 </>
               )}
 
+              {canPay && (
               <TouchableOpacity
                 style={[styles.actionBtn, { backgroundColor: colors.success, flex: 1 }]}
                 onPress={() => {
@@ -450,6 +498,7 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
               >
                 <Text style={styles.actionBtnText}>💰 Pagar</Text>
               </TouchableOpacity>
+              )}
 
               {isEditing && (
                 <TouchableOpacity
@@ -464,7 +513,9 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
             {!canEdit && (
               <View style={styles.warningBox}>
                 <Text style={styles.warningText}>
-                  ⚠️ Pedidos em montagem ou prontos não podem ser editados
+                  {isTableAggregate
+                    ? '⚠️ Visualização consolidada da mesa. Para editar ou pagar individualmente, abra a comanda específica.'
+                    : '⚠️ Pedidos em montagem ou prontos não podem ser editados'}
                 </Text>
               </View>
             )}
@@ -475,7 +526,7 @@ export default function PedidoDetalhesModal({ visible, orderId, onClose }: Props
         visible={isTransferModalVisible}
         onClose={() => setIsTransferModalVisible(false)}
         onConfirm={handleTransfer}
-        currentTable={order.mesa}
+        currentTable={aggregateTableNumber}
       />
     </>
   );
@@ -581,6 +632,15 @@ const styles = StyleSheet.create({
   },
   itemRow: {
     flexDirection: 'row',
+    marginBottom: 8,
+  },
+  orderGroup: {
+    marginBottom: 16,
+  },
+  orderGroupTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.primary,
     marginBottom: 8,
   },
   itemBullet: {

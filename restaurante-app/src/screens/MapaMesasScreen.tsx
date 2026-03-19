@@ -36,6 +36,8 @@ export default function MapaMesasScreen({ navigation, route }: any) {
 
     // Modal State
     const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+    const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
+    const [selectedTableNumber, setSelectedTableNumber] = useState<string | null>(null);
     const [modalVisible, setModalVisible] = useState(false);
 
     // Load Environments and Tables
@@ -67,6 +69,8 @@ export default function MapaMesasScreen({ navigation, route }: any) {
             // @ts-ignore
             const orderId = route.params.openOrderId;
             setSelectedOrderId(orderId);
+            setSelectedOrderIds([orderId]);
+            setSelectedTableNumber(null);
             setModalVisible(true);
             
             // Limpar parametro para não reabrir em reload
@@ -236,9 +240,10 @@ export default function MapaMesasScreen({ navigation, route }: any) {
             const filteredOrders = table.activeOrders.filter((o: Order) => !o.isPago && o.status !== 'cancelled' && o.status !== 'cancelada');
             
             if (filteredOrders.length > 0) {
-                // Se tem pedidos ativos (não pagos), abre detalhes
-                const order = filteredOrders[0]; // Pega o primeiro/mais recente
-                setSelectedOrderId(order.id);
+                const orderedIds = filteredOrders.map((order: Order) => order.id);
+                setSelectedOrderId(filteredOrders.length === 1 ? filteredOrders[0].id : null);
+                setSelectedOrderIds(orderedIds);
+                setSelectedTableNumber(String(table.number));
                 setModalVisible(true);
             } else {
                 // Se não tem pedidos (ou todos pagos), abre novo pedido
@@ -433,13 +438,17 @@ export default function MapaMesasScreen({ navigation, route }: any) {
             </TouchableOpacity>
 
             {/* Modal de Detalhes do Pedido */}
-            {!!selectedOrderId && (
+            {(!!selectedOrderId || selectedOrderIds.length > 0) && (
                 <PedidoDetalhesModal
                     visible={modalVisible}
-                    orderId={selectedOrderId}
+                    orderId={selectedOrderId || undefined}
+                    orderIds={selectedOrderIds}
+                    tableNumber={selectedTableNumber || undefined}
                     onClose={() => {
                         setModalVisible(false);
                         setSelectedOrderId(null);
+                        setSelectedOrderIds([]);
+                        setSelectedTableNumber(null);
                     }}
                 />
             )}
