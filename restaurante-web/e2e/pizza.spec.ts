@@ -57,39 +57,45 @@ test('Pedido de Pizza - Estável Final', async ({ page }) => {
   await page.getByText('Adicionar ao Pedido').last().click();
 
   // 9. Adicionar itens extras padronizados dos outros testes
-  console.log('Adicionando itens extras padrão: chopp, risoto, caldo...');
+  console.log('Adicionando itens extras padrão: chopp, risoto e caldo...');
   const searchInput = page.getByPlaceholder('Buscar item do cardápio...');
   await searchInput.waitFor({ state: 'visible', timeout: 10000 });
 
-  const itemsToSearch = ['chopp', 'risoto', 'caldo'];
+  const itemsToSearch = [
+    { term: 'chopp', quantity: 3 },
+    { term: 'risoto', quantity: 1 },
+    { term: 'caldo', quantity: 3 },
+  ];
 
-  for (const term of itemsToSearch) {
-    console.log(`Buscando por: ${term}`);
-    await searchInput.click();
-    await searchInput.fill('');
-    await searchInput.fill(term);
-    await page.waitForTimeout(1500);
+  for (const { term, quantity } of itemsToSearch) {
+    for (let i = 0; i < quantity; i++) {
+      console.log(`Buscando por: ${term} (${i + 1}/${quantity})`);
+      await searchInput.click();
+      await searchInput.fill('');
+      await searchInput.fill(term);
+      await page.waitForTimeout(1500);
 
-    try {
-      const plusBtn = page
-        .locator('div[role="button"], div[dir="auto"]')
-        .filter({ hasText: '+' })
-        .filter({ visible: true })
-        .first();
+      try {
+        const plusBtn = page
+          .locator('div[role="button"], div[dir="auto"]')
+          .filter({ hasText: '+' })
+          .filter({ visible: true })
+          .first();
 
-      if (await plusBtn.count() > 0) {
-        await plusBtn.click();
-        console.log(`- Item '${term}' adicionado com sucesso!`);
-      } else {
-        const itemCard = page.locator('div[dir="auto"]').filter({ hasText: new RegExp(term, 'i') }).first();
-        await itemCard.click();
-        console.log(`- Item '${term}' selecionado pelo card.`);
+        if (await plusBtn.count() > 0) {
+          await plusBtn.click();
+          console.log(`- Item '${term}' adicionado com sucesso!`);
+        } else {
+          const itemCard = page.locator('div[dir="auto"]').filter({ hasText: new RegExp(term, 'i') }).first();
+          await itemCard.click();
+          console.log(`- Item '${term}' selecionado pelo card.`);
+        }
+      } catch (e: any) {
+        console.log(`- Erro ao adicionar '${term}': ${e.message}`);
       }
-    } catch (e: any) {
-      console.log(`- Erro ao adicionar '${term}': ${e.message}`);
-    }
 
-    await page.waitForTimeout(500);
+      await page.waitForTimeout(500);
+    }
   }
 
   // 10. Criar Pedido Final

@@ -50,33 +50,58 @@ test.describe('Fluxo Principal - Balcão (Novo Pedido Direto)', () => {
     const searchInput = page.getByPlaceholder('Buscar item do cardápio...');
     await searchInput.waitFor({ state: 'visible', timeout: 10000 });
 
-    // Lista de itens reais e variados para o teste de balcão
-    const itemsToSearch = ['chopp', 'risoto', 'caldo'];
+    // Pizza Grande/Família: 1/2 Calabresa + 1/2 Chocolate com Morango + Bacon
+    console.log('Adicionando Pizza Grande/Família (1/2 Calabresa, 1/2 Chocolate com Morango) + Bacon...');
+    try {
+      const calabresaCard = page.locator('div[dir="auto"]').filter({ hasText: /^Calabresa$/ }).first();
+      await calabresaCard.waitFor({ state: 'visible', timeout: 5000 });
+      await calabresaCard.click();
+      await page.getByText('Grande/Família').first().waitFor({ state: 'visible' });
+      await page.getByText('Grande/Família').first().click();
+      await page.getByText('Chocolate com Morango').last().waitFor({ state: 'visible', timeout: 10000 });
+      await page.getByText('Chocolate com Morango').last().click();
+      await page.getByText('Próximo: Extras').last().click();
+      await page.getByText('Bacon').last().waitFor({ state: 'visible' });
+      await page.getByText('Bacon').last().click();
+      await page.getByText('Adicionar ao Pedido').last().click();
+      console.log('   ✓ Pizza Grande/Família adicionada');
+    } catch (e: any) {
+      console.log(`   ⚠️ Pizza: ${e.message}`);
+    }
+    await page.waitForTimeout(500);
 
-    for (const term of itemsToSearch) {
-      console.log(`Buscando por: ${term}`);
-      await searchInput.click();
-      await searchInput.fill('');
-      await searchInput.fill(term);
-      await page.waitForTimeout(1500);
+    const itemsToSearch = [
+      { term: 'chopp', quantity: 3 },
+      { term: 'risoto', quantity: 1 },
+      { term: 'caldo', quantity: 3 },
+    ];
 
-      try {
-        // Tenta clicar no botão de adicionar (+) que aparece nos resultados
-        const plusBtn = page.locator('div[role="button"], div[dir="auto"]').filter({ hasText: '+' }).filter({ visible: true }).first();
+    for (const { term, quantity } of itemsToSearch) {
+      for (let i = 0; i < quantity; i++) {
+        console.log(`Buscando por: ${term} (${i + 1}/${quantity})`);
+        await searchInput.click();
+        await searchInput.fill('');
+        await searchInput.fill(term);
+        await page.waitForTimeout(1500);
 
-        if (await plusBtn.count() > 0) {
-          await plusBtn.click();
-          console.log(`- Item '${term}' adicionado com sucesso!`);
-        } else {
-          // Se não achar o botão +, tenta clicar no card do item
-          const itemCard = page.locator('div[dir="auto"]').filter({ hasText: new RegExp(term, 'i') }).first();
-          await itemCard.click();
-          console.log(`- Item '${term}' selecionado pelo card.`);
+        try {
+          // Tenta clicar no botão de adicionar (+) que aparece nos resultados
+          const plusBtn = page.locator('div[role="button"], div[dir="auto"]').filter({ hasText: '+' }).filter({ visible: true }).first();
+
+          if (await plusBtn.count() > 0) {
+            await plusBtn.click();
+            console.log(`- Item '${term}' adicionado com sucesso!`);
+          } else {
+            // Se não achar o botão +, tenta clicar no card do item
+            const itemCard = page.locator('div[dir="auto"]').filter({ hasText: new RegExp(term, 'i') }).first();
+            await itemCard.click();
+            console.log(`- Item '${term}' selecionado pelo card.`);
+          }
+        } catch (e: any) {
+          console.log(`- Erro ao adicionar '${term}': ${e.message}`);
         }
-      } catch (e: any) {
-        console.log(`- Erro ao adicionar '${term}': ${e.message}`);
+        await page.waitForTimeout(500);
       }
-      await page.waitForTimeout(500);
     }
 
     console.log('4. Finalizando Pedido');
