@@ -267,28 +267,26 @@ export default function ComandaGerenciamentoScreen(props: any) {
 
       if (updateError) throw updateError;
 
-      if (comanda.pedidos && comanda.pedidos.length > 0) {
-        const updatePromises = comanda.pedidos.map(async (pedido: any) => {
-          try {
-            const { error } = await supabase
-              .from('orders')
-              .update({
-                status: 'cancelada',
-                comanda_status: 'cancelada',
-                cancelado_em: new Date().toISOString(),
-                cancelado_por: user?.nome || 'Admin'
-              })
-              .eq('company_id', user?.companyId || '')
-              .eq('id', pedido.id);
+      const cancelTimestamp = new Date().toISOString();
+      const parsedComandaNumber = Number(comanda.comandaNumber);
+      const comandaNumberFilter = Number.isFinite(parsedComandaNumber)
+        ? parsedComandaNumber
+        : comanda.comandaNumber;
 
-            if (error) throw error;
-          } catch (err) {
-            console.error('[ComandaGerenciamento] ❌ Erro ao marcar pedido:', pedido.id, err);
-          }
-        });
+      // Atualiza todos os pedidos da comanda no dia para evitar mesa presa como ocupada.
+      const { error: ordersUpdateError } = await supabase
+        .from('orders')
+        .update({
+          status: 'cancelled',
+          comanda_status: 'cancelada',
+          cancelado_em: cancelTimestamp,
+          cancelado_por: user?.nome || 'Admin'
+        })
+        .eq('company_id', user?.companyId || '')
+        .eq('date_key', getTodayKey())
+        .eq('comanda_number', comandaNumberFilter);
 
-        await Promise.all(updatePromises);
-      }
+      if (ordersUpdateError) throw ordersUpdateError;
 
       showToast('Comanda cancelada', 'info');
       setSelectedComanda(null);
