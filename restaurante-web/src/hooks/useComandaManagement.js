@@ -7,6 +7,17 @@ import { normalizeComandaNumber } from '../services/OrderFirestoreService';
 import { calcularTotalPedido, calcularPagoPedido, fixDecimal } from '../utils/orderCalculator';
 import ComandasService from '../services/ComandasService';
 
+const getMesaValida = (mesa) => {
+    const normalizedMesa = String(mesa || '').trim();
+    const mesaNumero = Number(normalizedMesa.replace(/\D/g, ''));
+
+    if (!normalizedMesa || !Number.isFinite(mesaNumero) || mesaNumero <= 0) {
+        return '';
+    }
+
+    return normalizedMesa;
+};
+
 export function useComandaManagement() {
     const { user } = useAuth();
     const [activeTab, setActiveTab] = useState('abertas');
@@ -111,10 +122,11 @@ export function useComandaManagement() {
                         saldoAberto: 0,
                         status: 'aberta',
                         cliente: order.client_name || order.client || 'Não informado',
-                        mesa: order.table_number?.toString() || order.mesa || '',
+                        mesa: getMesaValida(order.table_number?.toString() || order.mesa),
                         ultimaAtualizacao: order.created_at,
                         criadoPorNome: order.created_by_name || null,
                         horarioCriacao: horarioCriacao,
+                        tipoComanda: 'balcao',
                         entregues: [],
                         recebidoPor: [],
                         recebedores: [],
@@ -127,9 +139,16 @@ export function useComandaManagement() {
                 }
 
                 // Atualizar mesa se vier do pedido
-                const mesaPedido = order.table_number?.toString() || order.mesa;
+                const mesaPedido = getMesaValida(order.table_number?.toString() || order.mesa);
                 if (mesaPedido && !comandasMap[comandaNum].mesa) {
                     comandasMap[comandaNum].mesa = mesaPedido;
+                }
+
+                const orderType = String(order.order_type || order.orderType || '').toLowerCase();
+                if (orderType === 'delivery') {
+                    comandasMap[comandaNum].tipoComanda = 'delivery';
+                } else if (mesaPedido && comandasMap[comandaNum].tipoComanda !== 'delivery') {
+                    comandasMap[comandaNum].tipoComanda = 'mesa';
                 }
 
                 // Map Supabase fields to expected format before adding to array
@@ -175,8 +194,12 @@ export function useComandaManagement() {
                     c.ultimoPagamentoPor = data.ultimo_pagamento_por || c.ultimoPagamentoPor;
                     c.ultimoPagamentoForma = data.ultimo_pagamento_forma || c.ultimoPagamentoForma;
                     c.ultimoPagamentoEm = data.ultimo_pagamento_em || c.ultimoPagamentoEm;
-                    c.mesa = data.mesa || c.mesa;
+                    c.mesa = getMesaValida(data.mesa) || c.mesa;
                     c.abertaPorNome = data.opened_by_name || c.criadoPorNome;
+
+                    if (c.mesa && c.tipoComanda !== 'delivery') {
+                        c.tipoComanda = 'mesa';
+                    }
 
                     // Support for synced financial data
                     c.totalPaidMetadata = data.total_paid || 0;
