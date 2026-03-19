@@ -40,8 +40,13 @@ export interface Order {
 export type OrderStatus = 
   | 'pending'      // Pedido criado, aguardando preparo
   | 'preparing'    // Em preparo na cozinha
-  | 'ready'        // Pronto para entrega
-  | 'delivered'    // Entregue ao cliente
+  | 'pronto'       // Pronto para rota/entrega
+  | 'ready'        // Pronto para entrega (compatibilidade)
+  | 'dispatched'   // Saiu para entrega
+  | 'delivered'    // Entregue com sucesso
+  | 'failed_delivery' // Tentativa falhou (nao encontrou cliente/local)
+  | 'returned'     // Pedido devolvido para a loja
+  | 'refused'      // Cliente recusou no ato da entrega
   | 'cancelled';   // Cancelado
 
 export interface OrderItem {

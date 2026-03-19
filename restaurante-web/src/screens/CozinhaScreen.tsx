@@ -363,7 +363,6 @@ const styles = StyleSheet.create({
   listContainer: {
     padding: 20,
     paddingBottom: 20,
-    ...(Platform.OS === 'web' ? { alignItems: 'center' } : {}),
   },
   emptyState: {
     alignItems: 'center',
@@ -389,7 +388,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: colors.primary,
     marginBottom: 15,
-    ...(Platform.OS === 'web' ? { width: '100%', maxWidth: 800, alignSelf: 'center' } : {}),
   },
   grupoCard: {
     backgroundColor: colors.white,
@@ -403,7 +401,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 3,
-    ...(Platform.OS === 'web' ? { width: '100%', maxWidth: 800 } : {}),
+    width: '100%',
   },
   grupoHeader: {
     flexDirection: 'row',

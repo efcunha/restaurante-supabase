@@ -37,6 +37,7 @@ import FinancialConfigScreen from './FinancialConfigScreen';
 import FinancialDashboardScreen from './FinancialDashboardScreen';
 // @ts-ignore
 import OperationalSettingsScreen from './OperationalSettingsScreen';
+import DeliveryOcorrenciasScreen from './DeliveryOcorrenciasScreen';
 import BiometricSetupModal from '../components/BiometricSetupModal';
 import MFASetupModal from '../components/MFASetupModal';
 import AdminHeader from '../components/AdminHeader';
@@ -97,6 +98,7 @@ export default function AdminScreen() {
   const [showDashboard, setShowDashboard] = useState(false);
   const [showBiometricSetup, setShowBiometricSetup] = useState(false);
   const [showMFASetup, setShowMFASetup] = useState(false);
+  const [showDeliveryOcorrencias, setShowDeliveryOcorrencias] = useState(false);
 
   // Estados para estatísticas
   const [stats, setStats] = useState({
@@ -364,6 +366,7 @@ export default function AdminScreen() {
     { name: 'Gerenciar Funcionários', icon: '👥', action: () => setShowFuncionarios(true) },
     { name: 'Caixa', icon: '💰', action: () => setShowCaixaMenu(true) },
     { name: 'Estatísticas dos Garçons', icon: '📊', action: () => setShowComandasVisualizacao(true) },
+    { name: 'Ocorrencias de Entrega', icon: '⚠️', action: () => setShowDeliveryOcorrencias(true) },
     { name: 'Gerenciar Estoque', icon: '📦', action: () => setShowEstoque(true) },
     { name: 'Gerenciar Cardápio', icon: '🍴', action: () => setShowGerenciarCardapio(true) },
     { name: 'Configurar Mesas e Ambientes', icon: '🪑', action: () => setShowConfiguracaoMesas(true) },
@@ -556,6 +559,11 @@ export default function AdminScreen() {
       <AdminBareModal visible={showDashboard} onClose={() => setShowDashboard(false)}>
         <FinancialDashboardScreen onClose={() => setShowDashboard(false)} />
       </AdminBareModal>
+
+      {/* Modal Ocorrencias de Entrega */}
+      <AdminSlideModal visible={showDeliveryOcorrencias} onClose={() => setShowDeliveryOcorrencias(false)}>
+        <DeliveryOcorrenciasScreen onClose={() => setShowDeliveryOcorrencias(false)} />
+      </AdminSlideModal>
 
       <StatusBar style="light" />
       <BiometricSetupModal
