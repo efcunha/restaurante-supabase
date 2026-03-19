@@ -9,9 +9,10 @@ type ProductCardProps = {
   priceLabel: string;
   category?: string;
   onPress?: () => void;
+  testID?: string;
 };
 
-export function ProductCard({ name, description, priceLabel, category, onPress }: ProductCardProps) {
+export function ProductCard({ name, description, priceLabel, category, onPress, testID }: ProductCardProps) {
   const content = (
     <Card elevated="low" style={styles.card}>
       <View style={styles.header}>
@@ -26,7 +27,7 @@ export function ProductCard({ name, description, priceLabel, category, onPress }
   if (!onPress) return content;
 
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [pressed && styles.pressed]}>
+    <Pressable testID={testID} onPress={onPress} style={({ pressed }) => [pressed && styles.pressed]}>
       {content}
     </Pressable>
   );
