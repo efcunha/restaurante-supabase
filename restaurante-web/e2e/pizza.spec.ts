@@ -24,7 +24,6 @@ test('Pedido de Pizza - Estável Final', async ({ page }) => {
 
   // 3. Seleção da Pizza (Principal)
   console.log('Selecionando Pizza Calabresa...');
-  // Procura o card que contém o texto EXATO Calabresa na lista principal
   const calabresaCard = page.locator('div[dir="auto"]').filter({ hasText: /^Calabresa$/ }).first();
   await calabresaCard.waitFor({ state: 'visible' });
   await calabresaCard.click();
@@ -37,9 +36,6 @@ test('Pedido de Pizza - Estável Final', async ({ page }) => {
 
   // 5. Seleção de Sabores (Dentro do Modal)
   console.log('Aguardando Modal de Sabores...');
-  // O modal costuma ter papel de 'dialog' ou ser um container específico
-  const modal = page.locator('div[role="dialog"], div.modal, div').filter({ hasText: /Escolha os Sabores/i }).last();
-
   console.log('Selecionando sabor Chocolate com Morango no modal...');
   const flavorOption = page.getByText('Chocolate com Morango').last();
   await flavorOption.waitFor({ state: 'visible', timeout: 10000 });
@@ -56,11 +52,47 @@ test('Pedido de Pizza - Estável Final', async ({ page }) => {
   await addBacon.waitFor({ state: 'visible' });
   await addBacon.click();
 
-  // 8. Adicionar ao Pedido (Carrinho)
+  // 8. Adicionar pizza configurada ao pedido
   console.log('Confirmando configuração da pizza...');
   await page.getByText('Adicionar ao Pedido').last().click();
 
-  // 9. Criar Pedido Final
+  // 9. Adicionar itens extras padronizados dos outros testes
+  console.log('Adicionando itens extras padrão: chopp, risoto, caldo...');
+  const searchInput = page.getByPlaceholder('Buscar item do cardápio...');
+  await searchInput.waitFor({ state: 'visible', timeout: 10000 });
+
+  const itemsToSearch = ['chopp', 'risoto', 'caldo'];
+
+  for (const term of itemsToSearch) {
+    console.log(`Buscando por: ${term}`);
+    await searchInput.click();
+    await searchInput.fill('');
+    await searchInput.fill(term);
+    await page.waitForTimeout(1500);
+
+    try {
+      const plusBtn = page
+        .locator('div[role="button"], div[dir="auto"]')
+        .filter({ hasText: '+' })
+        .filter({ visible: true })
+        .first();
+
+      if (await plusBtn.count() > 0) {
+        await plusBtn.click();
+        console.log(`- Item '${term}' adicionado com sucesso!`);
+      } else {
+        const itemCard = page.locator('div[dir="auto"]').filter({ hasText: new RegExp(term, 'i') }).first();
+        await itemCard.click();
+        console.log(`- Item '${term}' selecionado pelo card.`);
+      }
+    } catch (e: any) {
+      console.log(`- Erro ao adicionar '${term}': ${e.message}`);
+    }
+
+    await page.waitForTimeout(500);
+  }
+
+  // 10. Criar Pedido Final
   console.log('Finalizando Pedido no Balcão...');
   await page.waitForTimeout(1000);
   const btnCriar = page.locator('div[role="button"], div[dir="auto"]').filter({ hasText: /^Criar Pedido$/ }).last();
