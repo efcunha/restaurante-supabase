@@ -109,7 +109,5 @@ test('Pedido de Pizza - Estável Final', async ({ page }) => {
   const toast = page.locator('text=/Pedido criado! Comanda/i');
   await expect(toast).toBeVisible({ timeout: 15000 });
 
-  const screenshotPath = `pizza-success-${Date.now()}.png`;
-  await page.screenshot({ path: screenshotPath });
-  console.log(`- Screenshot salvo: ${screenshotPath}`);
+  console.log('- Pedido Pizza criado!');
 });
