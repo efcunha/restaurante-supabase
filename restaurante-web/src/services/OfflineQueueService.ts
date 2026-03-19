@@ -67,14 +67,18 @@ interface QueueConfig {
   enableAutoProcess: boolean;
 }
 
+type OperationHandler = (payload: any) => Promise<any>;
+
 /**
  * Offline Queue Service
  */
 class OfflineQueueService {
   private queue: QueuedOperation[] = [];
+  private deferredOperations: SerializedOperation[] = [];
   private processing = false;
   private isOnline = true;
   private unsubscribeNetInfo?: () => void;
+  private operationHandlers = new Map<string, OperationHandler>();
 
   private config: QueueConfig = {
     maxQueueSize: 100,
@@ -146,7 +150,8 @@ class OfflineQueueService {
       idempotencyKey || retryService.generateIdempotencyKey(type, payload);
 
     // Verifica duplicação
-    const existing = this.queue.find(op => op.idempotencyKey === effectiveKey);
+    const existing = this.queue.find(op => op.idempotencyKey === effectiveKey)
+      || this.deferredOperations.find(op => op.idempotencyKey === effectiveKey);
     if (existing) {
       console.log('[OfflineQueue] Operation already queued', {
         type,
@@ -182,6 +187,26 @@ class OfflineQueueService {
     }
 
     return id;
+  }
+
+  registerOperationHandler(type: string, handler: OperationHandler): void {
+    this.operationHandlers.set(type, handler);
+
+    const restorable = this.deferredOperations.filter(op => op.type === type);
+    if (restorable.length === 0) {
+      return;
+    }
+
+    this.deferredOperations = this.deferredOperations.filter(op => op.type !== type);
+    restorable.forEach(op => {
+      this.queue.push(this.createQueuedOperation(op, handler));
+    });
+
+    void this.persistQueue();
+
+    if (this.isOnline && !this.processing && this.queue.length > 0) {
+      void this.processQueue();
+    }
   }
 
   /**
@@ -322,7 +347,7 @@ class OfflineQueueService {
   private async persistQueue(): Promise<void> {
     try {
       // Serializa operações (remove funções)
-      const serialized: SerializedOperation[] = this.queue.map(op => ({
+      const serializedQueue: SerializedOperation[] = this.queue.map(op => ({
         id: op.id,
         type: op.type,
         idempotencyKey: op.idempotencyKey,
@@ -332,6 +357,11 @@ class OfflineQueueService {
         lastAttempt: op.lastAttempt,
         error: op.error
       }));
+
+      const serialized: SerializedOperation[] = [
+        ...serializedQueue,
+        ...this.deferredOperations,
+      ];
 
       await AsyncStorage.setItem(this.config.persistenceKey, JSON.stringify(serialized));
     } catch (error) {
@@ -352,20 +382,33 @@ class OfflineQueueService {
 
       const serialized: SerializedOperation[] = JSON.parse(stored);
 
-      // Nota: Operações carregadas não terão a função operation
-      // Elas precisam ser re-criadas pela aplicação ou descartadas
-      // Por enquanto, apenas logamos e limpamos
-      if (serialized.length > 0) {
-        console.warn('[OfflineQueue] Found persisted operations but cannot restore functions', {
-          count: serialized.length
-        });
+      serialized.forEach(operation => {
+        const handler = this.operationHandlers.get(operation.type);
+        if (handler) {
+          this.queue.push(this.createQueuedOperation(operation, handler));
+        } else {
+          this.deferredOperations.push(operation);
+        }
+      });
 
-        // Limpa fila persistida
-        await AsyncStorage.removeItem(this.config.persistenceKey);
+      if (this.deferredOperations.length > 0) {
+        console.warn('[OfflineQueue] Found persisted operations but cannot restore functions', {
+          count: this.deferredOperations.length
+        });
       }
     } catch (error) {
       console.error('[OfflineQueue] Error loading queue:', error);
     }
+  }
+
+  private createQueuedOperation(
+    serializedOperation: SerializedOperation,
+    handler: OperationHandler
+  ): QueuedOperation {
+    return {
+      ...serializedOperation,
+      operation: () => handler(serializedOperation.payload),
+    };
   }
 
   /**
@@ -379,15 +422,16 @@ class OfflineQueueService {
    * Obtém estatísticas da fila
    */
   getStats(): QueueStats {
-    const failed = this.queue.filter(
+    const allOperations = [...this.queue, ...this.deferredOperations];
+    const failed = allOperations.filter(
       op => op.attempts >= this.config.maxRetries
     ).length;
 
-    const oldestOp = this.queue.length > 0 ? this.queue[0] : null;
+    const oldestOp = allOperations.length > 0 ? allOperations[0] : null;
 
     return {
-      total: this.queue.length,
-      pending: this.queue.length - failed,
+      total: allOperations.length,
+      pending: allOperations.length - failed,
       processing: this.processing ? 1 : 0,
       failed,
       oldestTimestamp: oldestOp?.timestamp
@@ -398,7 +442,7 @@ class OfflineQueueService {
    * Obtém operações da fila
    */
   getOperations(): SerializedOperation[] {
-    return this.queue.map(op => ({
+    const serializedQueue = this.queue.map(op => ({
       id: op.id,
       type: op.type,
       idempotencyKey: op.idempotencyKey,
@@ -408,6 +452,8 @@ class OfflineQueueService {
       lastAttempt: op.lastAttempt,
       error: op.error
     }));
+
+    return [...serializedQueue, ...this.deferredOperations];
   }
 
   /**
@@ -415,6 +461,7 @@ class OfflineQueueService {
    */
   async clearQueue(): Promise<void> {
     this.queue = [];
+    this.deferredOperations = [];
     await AsyncStorage.removeItem(this.config.persistenceKey);
     console.log('[OfflineQueue] Queue cleared');
   }
@@ -425,11 +472,20 @@ class OfflineQueueService {
   async removeOperation(id: string): Promise<boolean> {
     const index = this.queue.findIndex(op => op.id === id);
 
-    if (index === -1) {
+    if (index >= 0) {
+      this.queue.splice(index, 1);
+      await this.persistQueue();
+
+      console.log('[OfflineQueue] Operation removed', { id });
+      return true;
+    }
+
+    const deferredIndex = this.deferredOperations.findIndex(op => op.id === id);
+    if (deferredIndex === -1) {
       return false;
     }
 
-    this.queue.splice(index, 1);
+    this.deferredOperations.splice(deferredIndex, 1);
     await this.persistQueue();
 
     console.log('[OfflineQueue] Operation removed', { id });
@@ -459,4 +515,4 @@ export default offlineQueueService;
 
 // Export para testes
 export { OfflineQueueService };
-export type { QueuedOperation, SerializedOperation, QueueStats, QueueConfig };
+export type { QueuedOperation, SerializedOperation, QueueStats, QueueConfig, OperationHandler };

@@ -42,6 +42,7 @@ import { ToastProvider } from './src/context/ToastContext';
 import { canAccessScreen } from './src/auth/roles';
 import OfflineNotice from './src/components/OfflineNotice';
 import OfflineQueueManager from './src/components/OfflineQueueManager';
+import './src/services/MontagemSyncService';
 import PrinterService from './src/services/PrinterService';
 import { colorSystem } from './src/design-system';
 import { useEffect } from 'react';
