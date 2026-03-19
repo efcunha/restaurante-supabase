@@ -6,7 +6,6 @@ import { useOrders } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import PedidoDetalhesModal from './PedidoDetalhesModal';
 import { supabase } from '../config/SupabaseConfig';
 import { getLocalDateKey } from '../utils/dateUtils';
 import CaixaService from '../services/CaixaService';
@@ -22,20 +21,15 @@ const isUrgent = (timestamp: string) => {
 // Componente OrderCard memoizado
 interface OrderCardProps {
   order: any;
-  onOpenDetails: (orderId: string) => void;
   onToggleItem: (orderId: string, itemIds: string | string[], status: string) => void;
   onMarkReady: (order: any) => void;
 }
 
-const OrderCard = memo(({ order, onOpenDetails, onToggleItem, onMarkReady }: OrderCardProps) => {
+const OrderCard = memo(({ order, onToggleItem, onMarkReady }: OrderCardProps) => {
   const urgent = isUrgent(order.timestamp);
   const allItemsDone = order.itemsWithStatus && order.itemsWithStatus.length > 0
     ? order.itemsWithStatus.every((item: any) => item.checked === true)
     : true;
-
-  const handleCardPress = useCallback(() => {
-    onOpenDetails(order.id);
-  }, [order.id, onOpenDetails]);
 
   const handleReadyPress = useCallback((e: any) => {
     e.stopPropagation();
@@ -43,10 +37,8 @@ const OrderCard = memo(({ order, onOpenDetails, onToggleItem, onMarkReady }: Ord
   }, [order, onMarkReady]);
 
   return (
-    <TouchableOpacity
+    <View
       style={[styles.orderCard, urgent && styles.orderCardUrgent]}
-      onPress={handleCardPress}
-      activeOpacity={0.7}
     >
       <View style={styles.orderHeader}>
         <Text style={styles.orderNumber}>
@@ -77,38 +69,16 @@ const OrderCard = memo(({ order, onOpenDetails, onToggleItem, onMarkReady }: Ord
         <Text style={styles.orderObs}>📝 Obs: {order.observations}</Text>
       )}
       <View style={styles.orderItems}>
-        {order.itemsWithStatus && order.itemsWithStatus.length > 0 ? (() => {
-          // ✅ FIX: Agrupar itens com mesmo nome e status APENAS dentro do mesmo pedido
-          // Não agrupar itens de pedidos diferentes mesmo que tenham o mesmo nome
-          const groupedItems: any[] = [];
-          order.itemsWithStatus.forEach((item: any) => {
-             // ✅ CRÍTICO: Incluir originalOrderId na chave de agrupamento
-             // Isso garante que itens de pedidos diferentes não sejam agrupados
-             const existing = groupedItems.find(g => 
-               g.name === item.name && 
-               g.checked === item.checked &&
-               g.originalOrderId === item.originalOrderId
-             );
-             if (existing) {
-                existing.groupedCount = (existing.groupedCount || 1) + 1;
-                existing.groupedIds = [...(existing.groupedIds || [existing.id]), item.id];
-             } else {
-                groupedItems.push({ ...item, groupedCount: 1, groupedIds: [item.id] });
-             }
-          });
-
-          return groupedItems.map((item: any) => {
-            // Parse Extras
+        {order.itemsWithStatus && order.itemsWithStatus.length > 0 ? (
+          order.itemsWithStatus.map((item: any) => {
             const parts = item.name.split(' + ');
             const mainName = parts[0];
             const extras = parts.length > 1 ? parts.slice(1).join(' + ') : null;
-            const qtdStr = item.groupedCount > 1 ? `${item.groupedCount}x ` : '';
-
             return (
               <TouchableOpacity
                 key={item.id}
                 style={styles.orderItem}
-                onPress={() => onToggleItem(item.originalOrderId || order.id, item.groupedIds || [item.id], item.status)}
+                onPress={() => onToggleItem(item.originalOrderId || order.id, [item.id], item.status)}
                 activeOpacity={0.7}
               >
                 <View style={[
@@ -122,7 +92,7 @@ const OrderCard = memo(({ order, onOpenDetails, onToggleItem, onMarkReady }: Ord
                     styles.itemText,
                     item.checked && styles.itemTextDone
                   ]}>
-                    {qtdStr}{mainName}
+                    {mainName}
                   </Text>
                   {extras && (
                     <Text style={[
@@ -135,8 +105,8 @@ const OrderCard = memo(({ order, onOpenDetails, onToggleItem, onMarkReady }: Ord
                 </View>
               </TouchableOpacity>
             );
-          });
-        })() : (
+          })
+        ) : (
           order.items?.map((item: string, idx: number) => (
             <View key={idx} style={styles.orderItem}>
               <View style={[styles.itemDot, idx % 2 === 1 && styles.itemDotSecondary]} />
@@ -157,7 +127,7 @@ const OrderCard = memo(({ order, onOpenDetails, onToggleItem, onMarkReady }: Ord
           {allItemsDone ? 'PEDIDO MONTADO' : 'MARQUE TODOS OS ITENS'}
         </Text>
       </TouchableOpacity>
-    </TouchableOpacity>
+    </View>
   );
 });
 OrderCard.displayName = 'OrderCard';
@@ -168,8 +138,6 @@ export default function MontagemScreen() {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const [allOrders, setAllOrders] = useState<any[]>([]);
-  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
-  const [modalVisible, setModalVisible] = useState(false);
 
   // ✅ Guarda IDs marcados como prontos nesta sessão para proteger contra race condition do Realtime
   const locallyMarkedReady = useRef<Set<string>>(new Set());
@@ -503,16 +471,6 @@ export default function MontagemScreen() {
     }
   }, [hasPermission, Permissions, user, supabase, fetchOrders]);
 
-  const handleOpenDetails = useCallback((orderId: string) => {
-    setSelectedOrderId(orderId);
-    setModalVisible(true);
-  }, []);
-
-  const handleCloseModal = useCallback(() => {
-    setModalVisible(false);
-    setSelectedOrderId(null);
-  }, []);
-
   // Componente de lista vazia memoizado
   const ListEmptyComponent = useCallback(() => (
     <View style={styles.emptyState}>
@@ -533,11 +491,10 @@ export default function MontagemScreen() {
   const renderItem = useCallback(({ item }: { item: any }) => (
     <OrderCard
       order={item}
-      onOpenDetails={handleOpenDetails}
       onToggleItem={handleToggleItem}
       onMarkReady={handleMarkReady}
     />
-  ), [handleOpenDetails, handleToggleItem, handleMarkReady]);
+  ), [handleToggleItem, handleMarkReady]);
 
   // KeyExtractor memoizado
   const keyExtractor = useCallback((item: any) => item.id, []);
@@ -576,14 +533,6 @@ export default function MontagemScreen() {
         updateCellsBatchingPeriod={100}
         removeClippedSubviews={true}
       />
-
-      {selectedOrderId && (
-        <PedidoDetalhesModal
-          visible={modalVisible}
-          orderId={selectedOrderId}
-          onClose={handleCloseModal}
-        />
-      )}
 
       <StatusBar style="light" />
     </View>
