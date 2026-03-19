@@ -372,7 +372,6 @@ test.describe('Fluxo Principal - Mesa (Mapa)', () => {
       .waitFor({ state: 'visible', timeout: 10000 })
       .catch(() => console.log('⚠️ Item não apareceu na cozinha.'));
 
-    await page.screenshot({ path: `mesa-success-${Date.now()}.png` });
     console.log(`[W${testInfo.workerIndex}/R${testInfo.repeatEachIndex}] Sucesso ao gerar comanda na mesa ${mesaId}`);
   });
 });
