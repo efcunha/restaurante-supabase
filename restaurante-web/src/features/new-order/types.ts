@@ -33,4 +33,5 @@ export interface NewOrderHeaderFormProps {
 export interface PizzaProductCardProps {
   item: Product;
   onPress: (item: Product) => void;
+  testID?: string;
 }

@@ -79,28 +79,9 @@ test.describe('Fluxo de Pedido Delivery', () => {
     await searchBox.fill('');
     await searchBox.fill('calabresa');
     await page.waitForTimeout(1500);
-    const pizzaCardClicked = await page.evaluate(() => {
-      const signature = [
-        'Tradicional',
-        'R$ 7,00 - R$ 53,00',
-        'Calabresa',
-        'Calabresa fatiada, Cebola roxa, Muçarela, Orégano',
-      ];
-
-      const candidate = Array.from(document.querySelectorAll('*')).find((el) => {
-        const text = (el.textContent || '').replace(/\s+/g, ' ').trim();
-        if (!signature.every((part) => text.includes(part))) {
-          return false;
-        }
-        return window.getComputedStyle(el as Element).cursor === 'pointer';
-      }) as HTMLElement | undefined;
-
-      if (!candidate) return false;
-      candidate.click();
-      return true;
-    });
-
-    expect(pizzaCardClicked).toBeTruthy();
+    const pizzaCard = page.getByTestId('pizza-card-calabresa').first();
+    await expect(pizzaCard).toBeVisible({ timeout: 8000 });
+    await pizzaCard.click();
     await expect(page.getByText('Escolha o Tamanho').first()).toBeVisible({ timeout: 8000 });
     await page.waitForTimeout(500);
     const sizeGrande = page.getByText('Grande/Família').first();
