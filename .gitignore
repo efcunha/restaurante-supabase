@@ -115,3 +115,6 @@ database-backup/*.dump
 database-backup/*.sql
 database-backup/*.backup
 database-backup/*.bak
+
+#Misc
+playwright-report/*
