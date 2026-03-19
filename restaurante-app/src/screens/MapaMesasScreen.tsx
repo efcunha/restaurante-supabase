@@ -13,10 +13,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import TableService from '../services/TableService';
 import SupabaseOrderService from '../services/supabase/SupabaseOrderService';
+import { supabase } from '../config/SupabaseConfig';
 import { Table, Order } from '../types';
 import { useAuth } from '../context/AuthContext';
 // @ts-ignore
 import PedidoDetalhesModal from './PedidoDetalhesModal';
+import { getTodayKey } from '../utils/dateUtils';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 const { width } = Dimensions.get('window');
@@ -91,7 +93,18 @@ export default function MapaMesasScreen({ navigation, route }: any) {
     useEffect(() => {
         if (!user?.companyId) return;
 
-        const unsubscribe = SupabaseOrderService.listenToActiveOrders(user.companyId, ({ orders }) => {
+        const unsubscribe = SupabaseOrderService.listenToActiveOrders(user.companyId, async ({ orders }) => {
+            const { data: canceledComandas } = await supabase
+                .from('comandas')
+                .select('comanda_number')
+                .eq('company_id', user.companyId)
+                .eq('date_key', getTodayKey())
+                .eq('status', 'cancelada');
+
+            const canceledComandaSet = new Set(
+                (canceledComandas || []).map((c: any) => String(c.comanda_number || ''))
+            );
+
             // Filter only truly active orders (not paid/delivered if we want strict "occupied")
             // For now, let's consider anything not 'delivered' 'cancelled' or 'paid' as active on table
             // Or maybe 'isPago' means table is free?
@@ -105,6 +118,7 @@ export default function MapaMesasScreen({ navigation, route }: any) {
                 o.status !== 'cancelada' &&
                 o.status !== 'cancelled' &&
                 o.comandaStatus !== 'cancelada' &&
+                !canceledComandaSet.has(String(o.comandaNumber || '')) &&
                 !o.isPago
             );
             setActiveOrders(active);

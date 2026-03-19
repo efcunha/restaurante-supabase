@@ -272,9 +272,10 @@ export default function ComandaGerenciamentoScreen(props: any) {
       const comandaNumberFilter = Number.isFinite(parsedComandaNumber)
         ? parsedComandaNumber
         : comanda.comandaNumber;
+      const mesaNumber = Number(String(comanda.mesa || '').replace(/\D/g, ''));
 
       // Atualiza todos os pedidos da comanda no dia para evitar mesa presa como ocupada.
-      const { error: ordersUpdateError } = await supabase
+      const { data: updatedTodayOrders, error: ordersUpdateError } = await supabase
         .from('orders')
         .update({
           status: 'cancelled',
@@ -284,9 +285,28 @@ export default function ComandaGerenciamentoScreen(props: any) {
         })
         .eq('company_id', user?.companyId || '')
         .eq('date_key', getTodayKey())
-        .eq('comanda_number', comandaNumberFilter);
+        .eq('comanda_number', comandaNumberFilter)
+        .select('id');
 
       if (ordersUpdateError) throw ordersUpdateError;
+
+      // Fallback defensivo: alguns registros legados podem estar com date_key inconsistente.
+      if ((updatedTodayOrders?.length || 0) === 0 && Number.isFinite(mesaNumber) && mesaNumber > 0) {
+        const { error: fallbackOrdersUpdateError } = await supabase
+          .from('orders')
+          .update({
+            status: 'cancelled',
+            comanda_status: 'cancelada',
+            cancelado_em: cancelTimestamp,
+            cancelado_por: user?.nome || 'Admin'
+          })
+          .eq('company_id', user?.companyId || '')
+          .eq('comanda_number', comandaNumberFilter)
+          .eq('table_number', mesaNumber)
+          .eq('is_paid', false);
+
+        if (fallbackOrdersUpdateError) throw fallbackOrdersUpdateError;
+      }
 
       showToast('Comanda cancelada', 'info');
       setSelectedComanda(null);
