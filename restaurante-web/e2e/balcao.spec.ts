@@ -114,8 +114,6 @@ test.describe('Fluxo Principal - Balcão (Novo Pedido Direto)', () => {
     const toast = page.locator('text=/Pedido criado! Comanda/i');
     await expect(toast).toBeVisible({ timeout: 15000 });
 
-    const screenshotPath = `balcao-success-${Date.now()}.png`;
-    await page.screenshot({ path: screenshotPath });
-    console.log(`- Pedido Balcão criado! Screenshot: ${screenshotPath}`);
+    console.log('- Pedido Balcão criado!');
   });
 });
