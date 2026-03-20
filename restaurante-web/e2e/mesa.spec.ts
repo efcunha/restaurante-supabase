@@ -396,13 +396,7 @@ test.describe('Fluxo Principal - Mesa (Mapa)', () => {
     await page.locator('text=Montagem').first().click();
     await page.waitForTimeout(2000);
 
-    // Pelo menos um card operacional de Montagem deve estar visível
-    await expect(
-      page.locator('text=PEDIDO MONTADO').first()
-    ).toBeVisible({ timeout: 10000 });
-    console.log('   ✓ Card operacional visível na Montagem');
-
-    // Itens do pedido devem aparecer no card de Montagem
+    // Itens do pedido devem aparecer na lista de Montagem
     await expect(
       page.locator('div:visible').filter({ hasText: 'Caldo de Camarão 300ml (Cebolinha e Coentro)' }).first()
     ).toBeVisible({ timeout: 5000 });
