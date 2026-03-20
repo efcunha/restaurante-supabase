@@ -445,12 +445,21 @@ export default function NovoPedidoScreen({ route }: any) {
     pizzaConfig,
     addPizzaToOrder,
     carregarCardapio,
+    refreshCardapio,
+    isRefreshingCardapio,
     extras
   } = useNovoPedido();
+
+  const isInitialFocusRef = useRef(true);
 
   // Refresh menu whenever screen gains focus
   useFocusEffect(
     useCallback(() => {
+      if (isInitialFocusRef.current) {
+        isInitialFocusRef.current = false;
+        return;
+      }
+
       console.log('🔄 NovoPedidoScreen focused, refreshing menu...');
       carregarCardapio();
     }, [carregarCardapio])
@@ -813,6 +822,8 @@ export default function NovoPedidoScreen({ route }: any) {
           onClientNameChange={setClientName}
           mesa={mesa}
           onMesaChange={setMesa}
+          onRefresh={refreshCardapio}
+          isRefreshing={isRefreshingCardapio}
         />}
         ListFooterComponent={<NewOrderListFooter selectedItems={selectedItems} onRemoveItem={handleRemoveItemAnimated} />}
         stickySectionHeadersEnabled={false}
