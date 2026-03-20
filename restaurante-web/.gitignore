@@ -65,6 +65,7 @@ dist/*
 coverage/*
 dataconnect/*
 playwright-report/*
+playwright-report/index.html
 
 # Temporary
 *.tmp
