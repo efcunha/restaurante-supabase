@@ -32,6 +32,8 @@ export interface NewOrderHeaderFormProps {
   onClientNameChange: (value: string) => void;
   mesa: string;
   onMesaChange: (value: string) => void;
+  onRefresh: () => void;
+  isRefreshing: boolean;
 }
 
 export interface PizzaProductCardProps {

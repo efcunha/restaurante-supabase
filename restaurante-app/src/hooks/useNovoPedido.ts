@@ -18,6 +18,7 @@ import { listarFuncionarios } from '../services/FuncionariosService';
 import { Product, Cardapio, PizzaConfig, Funcionario } from '../types';
 
 const CARDAPIO_CACHE_KEY = '@cardapio_cache_v2';
+const MENU_REFRESH_WINDOW_MS = 30 * 60 * 1000;
 
 export const fixDecimal = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
 
@@ -50,6 +51,8 @@ interface UseNovoPedidoReturn {
     pizzaConfig: PizzaConfig | null;
     addPizzaToOrder: (sizeName: string, flavors: Product[], selectedBorda?: any, selectedAdicionais?: any[]) => void;
     carregarCardapio: () => Promise<void>;
+    refreshCardapio: () => Promise<void>;
+    isRefreshingCardapio: boolean;
     extras: any[];
     resetForm: () => void;
 }
@@ -75,6 +78,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
     const [pizzaConfig, setPizzaConfig] = useState<PizzaConfig | null>(null);
     const [customPrices, setCustomPrices] = useState<Record<string, number>>({}); // { 'Pizza Grande (Calabresa)': 40.00 }
     const [loadingCardapio, setLoadingCardapio] = useState(true);
+    const [isRefreshingCardapio, setIsRefreshingCardapio] = useState(false);
     const [extras, setExtras] = useState<any[]>([]); // Pizza extras (bordas and adicionais)
 
     const cardapioLoadedRef = useRef(false);
@@ -103,19 +107,30 @@ export function useNovoPedido(): UseNovoPedidoReturn {
         }
     }, [user, waiters, waiterId]);
 
-    const carregarCardapioSupabase = async (isBackground = false) => {
+    const applyCachedCardapio = useCallback((parsedCache: { data: Cardapio; pizzaConfig?: PizzaConfig | null; extras?: any[] }) => {
+        setCardapio(parsedCache.data);
+        if (parsedCache.pizzaConfig) {
+            setPizzaConfig(parsedCache.pizzaConfig);
+        }
+        setExtras(parsedCache.extras || []);
+        cardapioLoadedRef.current = true;
+        lastLoadTimeRef.current = Date.now();
+    }, []);
+
+    const carregarCardapioSupabase = useCallback(async ({ showGlobalLoading = true }: { showGlobalLoading?: boolean } = {}) => {
         try {
-            if (!isBackground) setLoadingCardapio(true);
+            if (showGlobalLoading) setLoadingCardapio(true);
 
             if (!user?.companyId) {
                 console.warn('⚠️ Usuário sem empresa vinculada');
-                if (!isBackground) {
+                if (showGlobalLoading) {
                     Alert.alert(
                         'Atenção',
                         'Seu usuário não está vinculado a nenhuma empresa/loja.\n\nContate o administrador ou verifique seu cadastro.'
                     );
                 }
                 setCardapio({ caldos: [], comidas: [], bebidas: [], porcoes: [], outros: [], espetinhos: [], espetinhosSimples: [], espetinhosEspeciais: [], pizzas: [] });
+                setExtras([]);
                 setLoadingCardapio(false);
                 return;
             }
@@ -281,13 +296,13 @@ export function useNovoPedido(): UseNovoPedidoReturn {
             }));
         } catch (error) {
             console.error('❌ Erro ao carregar cardápio do Supabase:', error);
-            if (!isBackground) Alert.alert('Erro', 'Não foi possível carregar o cardápio');
+            if (showGlobalLoading) Alert.alert('Erro', 'Não foi possível carregar o cardápio');
         } finally {
-            if (!isBackground) setLoadingCardapio(false);
+            if (showGlobalLoading) setLoadingCardapio(false);
         }
-    };
+    }, [user?.companyId]);
 
-    const checkMenuUpdates = async () => {
+    const checkMenuUpdates = useCallback(async () => {
         try {
             if (!user?.companyId) return true; // Force load if no company
 
@@ -336,39 +351,60 @@ export function useNovoPedido(): UseNovoPedidoReturn {
             }
 
             console.log('✅ Menu is up to date. Using cache.');
-            setCardapio(parsedCache.data);
-            if (parsedCache.pizzaConfig) setPizzaConfig(parsedCache.pizzaConfig);
-            if (parsedCache.extras) setExtras(parsedCache.extras);
+            applyCachedCardapio(parsedCache);
             setLoadingCardapio(false);
             return false; // No reload needed
         } catch (err) {
             console.warn('⚠️ Error checking updates, forcing reload:', err);
             return true;
         }
-    };
+    }, [applyCachedCardapio, user?.companyId]);
 
     const carregarCardapio = useCallback(async () => {
         try {
-            setLoadingCardapio(true);
+            const hasLoadedMenu = cardapioLoadedRef.current;
+            const isRecentLoad = hasLoadedMenu && (Date.now() - lastLoadTimeRef.current) < MENU_REFRESH_WINDOW_MS;
+
+            if (isRecentLoad) {
+                console.log('⏭️ Skipping menu refresh, cache still within refresh window.');
+                return;
+            }
+
+            if (!hasLoadedMenu) {
+                setLoadingCardapio(true);
+            }
 
             // Smart Cache Check
             const needsReload = await checkMenuUpdates();
 
             if (needsReload) {
                 console.log('🔄 Reloading cardápio from database (Smart Cache trigger)...');
-                await carregarCardapioSupabase(false);
+                await carregarCardapioSupabase({ showGlobalLoading: !hasLoadedMenu });
             }
         } catch (error) {
             console.error('❌ Erro ao carregar cardápio:', error);
             // Fallback
-            await carregarCardapioSupabase(false);
+            await carregarCardapioSupabase({ showGlobalLoading: !cardapioLoadedRef.current });
         }
-    }, [user]);
+    }, [carregarCardapioSupabase, checkMenuUpdates]);
+
+    const refreshCardapio = useCallback(async () => {
+        if (isRefreshingCardapio) {
+            return;
+        }
+
+        try {
+            setIsRefreshingCardapio(true);
+            await carregarCardapioSupabase({ showGlobalLoading: false });
+        } finally {
+            setIsRefreshingCardapio(false);
+        }
+    }, [carregarCardapioSupabase, isRefreshingCardapio]);
 
     // Load menu once on mount (or when user changes)
     useEffect(() => {
         carregarCardapio();
-    }, [user?.companyId]);
+    }, [carregarCardapio]);
 
 
     const updateProduto = useCallback((itemName: string, delta: number) => {
@@ -840,6 +876,8 @@ export function useNovoPedido(): UseNovoPedidoReturn {
         pizzaConfig,
         addPizzaToOrder,
         carregarCardapio,
+        refreshCardapio,
+        isRefreshingCardapio,
         extras,
         resetForm
     };
