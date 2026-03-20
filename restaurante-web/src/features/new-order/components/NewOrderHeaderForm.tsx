@@ -1,6 +1,5 @@
 import React, { memo } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { colorSystem, radius, spacing, typography } from '../../../design-system';
 import { NewOrderHeaderFormProps } from '../types';
 
@@ -9,8 +8,6 @@ export const NewOrderHeaderForm = memo(function NewOrderHeaderForm({
   onClientNameChange,
   mesa,
   onMesaChange,
-  onRefresh,
-  isRefreshing,
 }: NewOrderHeaderFormProps) {
   return (
     <View style={styles.container}>
@@ -37,22 +34,6 @@ export const NewOrderHeaderForm = memo(function NewOrderHeaderForm({
             keyboardType="numeric"
           />
         </View>
-
-        <View style={styles.refreshColumn}>
-          <Text style={styles.label}>Atualizar</Text>
-          <TouchableOpacity
-            accessibilityLabel="Atualizar cardápio"
-            disabled={isRefreshing}
-            onPress={onRefresh}
-            style={[styles.refreshButton, isRefreshing ? styles.refreshButtonDisabled : null]}
-          >
-            {isRefreshing ? (
-              <ActivityIndicator color={colorSystem.primary} size="small" />
-            ) : (
-              <Ionicons color={colorSystem.primary} name="refresh" size={18} />
-            )}
-          </TouchableOpacity>
-        </View>
       </View>
     </View>
   );
@@ -73,9 +54,6 @@ const styles = StyleSheet.create({
   mesaFieldColumn: {
     width: 80,
   },
-  refreshColumn: {
-    width: 56,
-  },
   label: {
     ...typography.body,
     fontWeight: '700',
@@ -93,17 +71,5 @@ const styles = StyleSheet.create({
     outlineStyle: 'none' as any,
     paddingHorizontal: spacing.s12,
     paddingVertical: spacing.s8,
-  },
-  refreshButton: {
-    alignItems: 'center',
-    backgroundColor: colorSystem.surface,
-    borderColor: colorSystem.border,
-    borderRadius: radius.medium,
-    borderWidth: 1,
-    justifyContent: 'center',
-    minHeight: 44,
-  },
-  refreshButtonDisabled: {
-    opacity: 0.7,
   },
 });
