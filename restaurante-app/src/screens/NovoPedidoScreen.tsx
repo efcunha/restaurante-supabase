@@ -450,6 +450,9 @@ export default function NovoPedidoScreen({ route }: any) {
     extras
   } = useNovoPedido();
 
+  const [showRefreshSuccess, setShowRefreshSuccess] = useState(false);
+  const refreshSuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const isInitialFocusRef = useRef(true);
 
   // Refresh menu whenever screen gains focus
@@ -464,6 +467,22 @@ export default function NovoPedidoScreen({ route }: any) {
       carregarCardapio();
     }, [carregarCardapio])
   );
+
+  const handleHeaderRefresh = useCallback(async () => {
+    if (isRefreshingCardapio) return;
+
+    setShowRefreshSuccess(false);
+    await refreshCardapio();
+
+    if (refreshSuccessTimeoutRef.current) {
+      clearTimeout(refreshSuccessTimeoutRef.current);
+    }
+
+    setShowRefreshSuccess(true);
+    refreshSuccessTimeoutRef.current = setTimeout(() => {
+      setShowRefreshSuccess(false);
+    }, 1000);
+  }, [isRefreshingCardapio, refreshCardapio]);
 
 
   // Handle Route Params (from Map or other screens)
@@ -714,6 +733,14 @@ export default function NovoPedidoScreen({ route }: any) {
   }, []);
 
   useEffect(() => {
+    return () => {
+      if (refreshSuccessTimeoutRef.current) {
+        clearTimeout(refreshSuccessTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     if (selectedItems.length === 0 && cartExpanded) {
       setCartExpanded(false);
     }
@@ -786,9 +813,32 @@ export default function NovoPedidoScreen({ route }: any) {
           </View>
           {user && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
         </View>
-        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-          <Text style={styles.logoutBtnText}>Sair</Text>
-        </TouchableOpacity>
+        <View style={styles.headerActionsRight}>
+          <TouchableOpacity
+            accessibilityLabel="Atualizar cardápio"
+            accessibilityHint="Atualiza os itens do cardápio sem limpar os dados do pedido"
+            disabled={isRefreshingCardapio}
+            onPress={handleHeaderRefresh}
+            style={[
+              styles.headerRefreshButton,
+              showRefreshSuccess ? styles.headerRefreshButtonSuccess : null,
+              isRefreshingCardapio ? styles.headerRefreshButtonDisabled : null,
+            ]}
+          >
+            {isRefreshingCardapio ? (
+              <ActivityIndicator color={colors.white} size="small" />
+            ) : showRefreshSuccess ? (
+              <Ionicons color={colors.white} name="checkmark" size={18} />
+            ) : (
+              <Ionicons color={colors.white} name="refresh" size={18} />
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity activeOpacity={0.82} style={styles.logoutBtn} onPress={handleLogout}>
+            <Ionicons color={colors.white} name="log-out-outline" size={14} style={styles.logoutBtnIcon} />
+            <Text style={styles.logoutBtnText}>Sair</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Search Bar */}
@@ -822,8 +872,6 @@ export default function NovoPedidoScreen({ route }: any) {
           onClientNameChange={setClientName}
           mesa={mesa}
           onMesaChange={setMesa}
-          onRefresh={refreshCardapio}
-          isRefreshing={isRefreshingCardapio}
         />}
         ListFooterComponent={<NewOrderListFooter selectedItems={selectedItems} onRemoveItem={handleRemoveItemAnimated} />}
         stickySectionHeadersEnabled={false}
@@ -919,15 +967,49 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   logoutBtn: {
-    flex: 1,
-    alignItems: 'flex-end',
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'center',
-    padding: 5,
+    height: 36,
+    minWidth: 72,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.24)',
+    backgroundColor: 'rgba(255,255,255,0.13)',
+    paddingHorizontal: 10,
+  },
+  logoutBtnIcon: {
+    marginRight: 4,
   },
   logoutBtnText: {
     color: colors.white,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
+    letterSpacing: 0.15,
+  },
+  headerActionsRight: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  headerRefreshButton: {
+    width: 36,
+    height: 36,
+    marginRight: 10,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.26)',
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerRefreshButtonSuccess: {
+    backgroundColor: 'rgba(68,188,122,0.55)',
+    borderColor: 'rgba(173,255,209,0.75)',
+  },
+  headerRefreshButtonDisabled: {
+    opacity: 0.75,
   },
   listContent: { padding: 20, paddingBottom: 120 },
   headerForm: { marginBottom: 20 },
