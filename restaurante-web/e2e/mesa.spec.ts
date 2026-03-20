@@ -366,11 +366,58 @@ test.describe('Fluxo Principal - Mesa (Mapa)', () => {
     }
 
     // ── 6. Cozinha ────────────────────────────────────────────────────────────
+    // Assertion: itens de produção (Caldo, Risoto, Pizza) devem aparecer na Cozinha.
+    // Bebidas (Chopp) são filtradas por categoria e não devem aparecer.
+    console.log('6. Verificando Cozinha...');
     await page.locator('text=Cozinha').first().click();
     await page.waitForTimeout(2000);
-    await page.locator('text=Caldo').first()
-      .waitFor({ state: 'visible', timeout: 10000 })
-      .catch(() => console.log('⚠️ Item não apareceu na cozinha.'));
+
+    // Verificar item de cozinha obrigatório (forçando elemento visível para evitar colisão com nós ocultos)
+    await expect(
+      page.locator('div:visible').filter({ hasText: 'Caldo de Camarão 300ml (Cebolinha e Coentro)' }).first()
+    ).toBeVisible({ timeout: 10000 });
+    console.log('   ✓ Caldo de Camarão visível na Cozinha');
+
+    // Verificar item de cozinha obrigatório (nome específico visível)
+    await expect(
+      page.locator('div:visible').filter({ hasText: 'Risoto de Camarão (Cebolinha e Coentro)' }).first()
+    ).toBeVisible({ timeout: 5000 });
+    console.log('   ✓ Risoto de Camarão visível na Cozinha');
+
+    // Verificar que a tag da mesa aparece (agrupamento por mesa, não por comanda)
+    await expect(
+      page.locator(`text=Mesa ${mesaId}`).first()
+    ).toBeVisible({ timeout: 5000 });
+    console.log(`   ✓ Mesa ${mesaId} visível como tag na Cozinha`);
+
+    // ── 7. Montagem ───────────────────────────────────────────────────────────
+    // Assertion: card da mesa deve aparecer com todos os itens de produção checkable.
+    console.log('7. Verificando Montagem...');
+    await page.locator('text=Montagem').first().click();
+    await page.waitForTimeout(2000);
+
+    // Pelo menos um card operacional de Montagem deve estar visível
+    await expect(
+      page.locator('text=PEDIDO MONTADO').first()
+    ).toBeVisible({ timeout: 10000 });
+    console.log('   ✓ Card operacional visível na Montagem');
+
+    // Itens do pedido devem aparecer no card de Montagem
+    await expect(
+      page.locator('div:visible').filter({ hasText: 'Caldo de Camarão 300ml (Cebolinha e Coentro)' }).first()
+    ).toBeVisible({ timeout: 5000 });
+    console.log('   ✓ Caldo de Camarão visível no card de Montagem');
+
+    await expect(
+      page.locator('div:visible').filter({ hasText: 'Risoto de Camarão (Cebolinha e Coentro)' }).first()
+    ).toBeVisible({ timeout: 5000 });
+    console.log('   ✓ Risoto de Camarão visível no card de Montagem');
+
+    // Montagem exibe todos os itens do pedido (incluindo bebidas).
+    await expect(
+      page.locator('div:visible').filter({ hasText: 'Chopp 300 ML' }).first()
+    ).toBeVisible({ timeout: 5000 });
+    console.log('   ✓ Chopp 300 ML visível no card de Montagem');
 
     console.log(`[W${testInfo.workerIndex}/R${testInfo.repeatEachIndex}] Sucesso ao gerar comanda na mesa ${mesaId}`);
   });
