@@ -153,6 +153,22 @@ export default function ComandaGerenciamentoScreen(props: any) {
         return;
       }
 
+      if (comanda.status === 'merged') {
+        const targetComanda = comanda.merged_into_comanda_number || comanda.mergedIntoComandaNumber;
+        Alert.alert(
+          'Operação Bloqueada',
+          targetComanda
+            ? `Esta comanda foi consolidada. Continue o pagamento na comanda ${targetComanda}.`
+            : 'Esta comanda foi consolidada em outra comanda e não pode receber pagamentos diretamente.'
+        );
+        if (targetComanda && props.navigation?.setParams) {
+          props.navigation.setParams({ searchComanda: String(targetComanda) });
+          setSelectedComanda(null);
+          carregarComandas(true);
+        }
+        return;
+      }
+
       const isDelivery = comanda.pedidos?.some((p: any) => p.order_type === 'delivery' || p.orderType === 'delivery') || String(comanda.comandaNumber) === '0';
       if (isDelivery) {
         const msg = 'Aviso de Delivery: Esta é uma ordem de delivery.\n\nO recebimento financeiro e baixa de pedidos de entrega devem ser concluídos na tela do Motoboy (Rotas/Entrega), onde a confirmação de recebimento é feita junto com a entrega física.';

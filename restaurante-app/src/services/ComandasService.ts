@@ -186,6 +186,20 @@ class ComandasService {
 
     if (isNaN(valor) || valor <= 0) return;
 
+    const { data: mergedCheck } = await supabase
+      .from(TABLE_COMANDAS)
+      .select('id')
+      .eq('company_id', companyId)
+      .eq('date_key', dateK)
+      .eq('comanda_number', numStr)
+      .eq('status', 'merged')
+      .limit(1)
+      .maybeSingle();
+
+    if (mergedCheck) {
+      throw new Error('Comanda consolidada não pode receber novos consumos');
+    }
+
     // 🔒 ATÔMICO: usa RPC para fazer o UPDATE direto no Postgres sem READ-MODIFY-WRITE.
     // Evita race condition quando múltiplos garçons adicionam pedidos à mesma comanda simultaneamente.
     const { error } = await supabase.rpc('adicionar_consumo_atomico', {
@@ -238,6 +252,7 @@ class ComandasService {
 
     if (!comanda) throw new Error('Comanda não encontrada');
     if (comanda.status === 'cancelada') throw new Error('Comanda cancelada não pode ser fechada');
+    if (comanda.status === 'merged') throw new Error('Comanda consolidada não pode ser fechada diretamente');
 
     const saldo = Number(comanda.open_balance || 0);
     if (saldo > 0.01) throw new Error(`Saldo em aberto: R$ ${saldo.toFixed(2)}`);
