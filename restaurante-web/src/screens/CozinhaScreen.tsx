@@ -67,18 +67,18 @@ export default function CozinhaScreen() {
     };
   }, [user]);
 
-  const ordersRaw = allOrders.filter(order => {
+  const ordersRaw = useMemo(() => allOrders.filter(order => {
     // Filtrar apenas pedidos em preparing
     if (order.status !== 'preparing') return false;
-    
+
     // ✅ PROTEÇÃO: Se o pedido tem comandaStatus='cancelada', não mostrar
     if (order.comandaStatus === 'cancelada') {
       console.log('[Cozinha] 🚫 Pedido filtrado (comanda cancelada):', order.id);
       return false;
     }
-    
+
     return true;
-  });
+  }), [allOrders]);
 
   // DEBUG: Verificar nomes chegando na cozinha
   useEffect(() => {
@@ -96,36 +96,6 @@ export default function CozinhaScreen() {
     }
   }, [ordersRaw]);
 
-  const seenItemIds = new Set();
-
-  const allValidItems: any[] = [];
-
-  ordersRaw.forEach(order => {
-    if (!order.itemsWithStatus || order.itemsWithStatus.length === 0) return;
-
-    order.itemsWithStatus.forEach((item: any) => {
-      // Filtragem dinâmica:
-      // 1. Se tiver categoria, checa se é de cozinha
-      // 2. Fallback: Se não tiver categoria (legacy), checa nome usando OrderService
-      const isKitchenItem = item.category
-        ? OrderService.isKitchenCategory(item.category, item.name)
-        : OrderService.extractBebidas([item.name]).length === 0;
-
-      // ✅ CORREÇÃO: Verificar AMBOS status e checked
-      const shouldShow = item.status !== 'pronto' && item.checked !== true && !seenItemIds.has(item.id) && isKitchenItem;
-
-      if (shouldShow) {
-        seenItemIds.add(item.id);
-        allValidItems.push({
-          ...item,
-          comandaNumber: order.comandaNumber,
-          mesa: order.mesa, // ✅ Propagar mesa
-          observations: order.observations // ✅ Propagar observações do pedido
-        });
-      }
-    });
-  });
-
   const extrairQuantidade = (itemText: string) => {
     const match = itemText.match(/^(\d+)\s*x?\s*/);
     return match ? parseInt(match[1], 10) : 1;
@@ -135,15 +105,46 @@ export default function CozinhaScreen() {
     return itemText.replace(/^\d+\s*x?\s*/, '').trim();
   };
 
-  const caldosPendentes = allValidItems.map(item => ({
-    id: item.id,
-    nome: extrairNome(item.name),
-    quantidade: extrairQuantidade(item.name),
-    comanda: item.comandaNumber,
-    mesa: item.mesa || '', // ✅ Mapear mesa
-    observations: item.observations, // ✅ Mapear observações
-    nomeCompleto: item.name
-  }));
+  const caldosPendentes = useMemo(() => {
+    const seenItemIds = new Set();
+    const allValidItems: any[] = [];
+
+    ordersRaw.forEach(order => {
+      if (!order.itemsWithStatus || order.itemsWithStatus.length === 0) return;
+
+      order.itemsWithStatus.forEach((item: any) => {
+        // Filtragem dinâmica:
+        // 1. Se tiver categoria, checa se é de cozinha
+        // 2. Fallback: Se não tiver categoria (legacy), checa nome usando OrderService
+        const isKitchenItem = item.category
+          ? OrderService.isKitchenCategory(item.category, item.name)
+          : OrderService.extractBebidas([item.name]).length === 0;
+
+        // ✅ CORREÇÃO: Verificar AMBOS status e checked
+        const shouldShow = item.status !== 'pronto' && item.checked !== true && !seenItemIds.has(item.id) && isKitchenItem;
+
+        if (shouldShow) {
+          seenItemIds.add(item.id);
+          allValidItems.push({
+            ...item,
+            comandaNumber: order.comandaNumber,
+            mesa: order.mesa, // ✅ Propagar mesa
+            observations: order.observations // ✅ Propagar observações do pedido
+          });
+        }
+      });
+    });
+
+    return allValidItems.map(item => ({
+      id: item.id,
+      nome: extrairNome(item.name),
+      quantidade: extrairQuantidade(item.name),
+      comanda: item.comandaNumber,
+      mesa: item.mesa || '', // ✅ Mapear mesa
+      observations: item.observations, // ✅ Mapear observações
+      nomeCompleto: item.name
+    }));
+  }, [ordersRaw]);
 
   const agruparPorTipo = () => {
     const grupos: any = {};

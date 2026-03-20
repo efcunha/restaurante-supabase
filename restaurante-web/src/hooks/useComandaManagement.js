@@ -73,22 +73,32 @@ export function useComandaManagement() {
         const diaHoje = getTodayKey();
 
         try {
-            // Buscar pedidos do dia
-            const { data: pedidos, error: pedidosError } = await supabase
-                .from('orders')
-                .select('*')
-                .eq('company_id', user.companyId)
-                .eq('date_key', diaHoje);
+            // Buscar em paralelo para reduzir latência total de carregamento
+            const [pedidosResult, produtosResult, comandasResult] = await Promise.all([
+                supabase
+                    .from('orders')
+                    .select('*')
+                    .eq('company_id', user.companyId)
+                    .eq('date_key', diaHoje),
+                supabase
+                    .from('products')
+                    .select('name, price')
+                    .eq('company_id', user.companyId)
+                    .eq('available', true),
+                supabase
+                    .from('comandas')
+                    .select('*')
+                    .eq('company_id', user.companyId)
+                    .eq('date_key', diaHoje)
+            ]);
+
+            const { data: pedidos, error: pedidosError } = pedidosResult;
+            const { data: produtos } = produtosResult;
+            const { data: comandas, error: comandasError } = comandasResult;
 
             if (pedidosError) throw pedidosError;
-            
-            // 🔄 NEW: Fetch product list for accurate dynamic calculations (avoiding hardcode)
-            const { data: produtos } = await supabase
-                .from('products')
-                .select('name, price')
-                .eq('company_id', user.companyId)
-                .eq('available', true);
-            
+            if (comandasError) throw comandasError;
+
             const cardapioList = (produtos || []).map(p => ({
                 name: p.name,
                 price: Number(p.price)
@@ -174,15 +184,6 @@ export function useComandaManagement() {
                     comandasMap[comandaNum].cliente = order.client_name || order.client || comandasMap[comandaNum].cliente;
                 }
             });
-
-            // Buscar metadados das comandas
-            const { data: comandas, error: comandasError } = await supabase
-                .from('comandas')
-                .select('*')
-                .eq('company_id', user.companyId)
-                .eq('date_key', diaHoje);
-
-            if (comandasError) throw comandasError;
 
             (comandas || []).forEach(data => {
                 const comandaNum = normalizeComandaNumber(data.comanda_number);
