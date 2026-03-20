@@ -211,6 +211,7 @@ export function useComandaManagement() {
 
                     if (data.status === 'fechada') c.status = 'paga';
                     else if (data.status === 'cancelada') c.status = 'cancelada';
+                    else if (data.status === 'merged') c.status = 'merged';
                 }
             });
 

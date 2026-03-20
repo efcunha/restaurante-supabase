@@ -134,7 +134,7 @@ export interface Comanda {
   id: string;
   dateKey: string;
   comandaNumber: string;
-  status: 'aberta' | 'fechada' | 'cancelada' | 'paga';
+  status: 'aberta' | 'fechada' | 'cancelada' | 'paga' | 'merged';
   mesa?: string;
   cliente?: string;
   totalConsumido: number;
