@@ -5,6 +5,7 @@ import React, { memo, useCallback, useState, useMemo, useEffect, useRef } from '
 
 import { useNovoPedido } from '../hooks/useNovoPedido';
 import { usePerformanceMonitor } from '../hooks/usePerformanceMonitor';
+import { useResponsive } from '../hooks/useResponsive';
 import { Button, Navbar } from '../ui';
 import { isFeatureEnabled } from '../config/featureFlags';
 import { useFocusEffect } from '@react-navigation/native';
@@ -415,6 +416,7 @@ interface Section {
 
 export default function NovoPedidoScreen({ route }: any) {
   const useUiNextNovoPedido = isFeatureEnabled('novoPedido_uiNext');
+  const { isSmallPhone } = useResponsive();
   const [showPizzaModal, setShowPizzaModal] = useState(false);
   const [selectedPizza, setSelectedPizza] = useState<Product | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -771,13 +773,13 @@ export default function NovoPedidoScreen({ route }: any) {
     <Text style={styles.sectionTitle}>{title}</Text>
   );
 
-  const isTooltipVisible = (isRefreshHovered || isRefreshFocused) && !isRefreshingCardapio;
+  const isTooltipVisible = (isRefreshHovered || isRefreshFocused) && !isRefreshingCardapio && !isSmallPhone;
 
   const headerRefreshButton = (
-    <View style={styles.headerRefreshWrapper}>
+    <View pointerEvents="box-none" style={styles.headerRefreshWrapper}>
       {isTooltipVisible && (
-        <View style={styles.headerRefreshTooltip}>
-          <Text style={styles.headerRefreshTooltipText}>Atualizar cardápio</Text>
+        <View pointerEvents="none" style={styles.headerRefreshTooltip}>
+          <Text numberOfLines={1} style={styles.headerRefreshTooltipText}>Atualizar cardápio</Text>
         </View>
       )}
 
@@ -991,6 +993,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 5,
+    maxWidth: 140,
     zIndex: 20,
   },
   headerRefreshTooltipText: {
