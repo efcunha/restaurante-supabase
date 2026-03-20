@@ -371,26 +371,91 @@ class SupabaseOrderService {
     // We do this optimistically or let the server handle it (triggered functions would be better but we do it client-side for now)
 
     const operation = async () => {
+      const normalizedTargetTable = parseInt(String(targetTableNumber).replace(/\D/g, ''), 10);
+      if (!Number.isFinite(normalizedTargetTable) || normalizedTargetTable <= 0) {
+        throw new Error('Mesa de destino inválida');
+      }
+
+      const dateK = getTodayKey();
+
       // 1. Get current order info to log 'from_table'
-      const { error: fetchError } = await supabase
+      const { data: currentOrder, error: fetchError } = await supabase
         .from('orders')
-        .select('table_number, id') // add more fields if we can join with tables
+        .select('table_number, comanda_number, id') // add more fields if we can join with tables
         .eq('id', orderId)
         .single();
 
       if (fetchError) throw fetchError;
 
+      // 1.1 Resolve canonical open comanda for destination table.
+      const { data: targetComanda, error: targetComandaError } = await supabase
+        .from('comandas')
+        .select('comanda_number')
+        .eq('company_id', companyId)
+        .eq('date_key', dateK)
+        .eq('table_number', String(normalizedTargetTable))
+        .eq('status', 'aberta')
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (targetComandaError) throw targetComandaError;
+
+      const canonicalComanda = targetComanda?.comanda_number ?? currentOrder?.comanda_number;
+
       // 2. Perform the transfer (update order)
       const { error: updateError } = await supabase
         .from('orders')
         .update({
-          table_number: parseInt(targetTableNumber),
+          table_number: normalizedTargetTable,
+          ...(canonicalComanda != null ? { comanda_number: canonicalComanda } : {}),
           updated_at: new Date().toISOString(),
           // table_id: targetTableId // If we had a direct FK column active
         })
         .eq('id', orderId);
 
       if (updateError) throw updateError;
+
+      // 2.1 If source comanda has no remaining active orders, mark it as merged.
+      // This is a best-effort operation and should never block the transfer flow.
+      const sourceComanda = currentOrder?.comanda_number;
+      if (sourceComanda != null && canonicalComanda != null && String(sourceComanda) !== String(canonicalComanda)) {
+        try {
+          const { count: remainingActiveOrders, error: remainingError } = await supabase
+            .from('orders')
+            .select('id', { count: 'exact', head: true })
+            .eq('company_id', companyId)
+            .eq('date_key', dateK)
+            .eq('comanda_number', sourceComanda)
+            .not('status', 'eq', 'cancelled')
+            .not('status', 'eq', 'cancelada');
+
+          if (remainingError) throw remainingError;
+
+          if ((remainingActiveOrders || 0) === 0) {
+            const { error: mergeError } = await supabase
+              .from('comandas')
+              .update({
+                status: 'merged',
+                merged_into_comanda_number: canonicalComanda,
+                merged_at: new Date().toISOString(),
+                merged_by: userId || null,
+                merge_reason: reason || `Consolidada automaticamente ao mover para mesa ${normalizedTargetTable}`,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('company_id', companyId)
+              .eq('date_key', dateK)
+              .eq('comanda_number', sourceComanda)
+              .eq('status', 'aberta');
+
+            if (mergeError) {
+              console.warn('[SupabaseOrderService] Could not mark source comanda as merged:', mergeError.message);
+            }
+          }
+        } catch (mergeStepError: any) {
+          console.warn('[SupabaseOrderService] Merge finalization skipped:', mergeStepError?.message || mergeStepError);
+        }
+      }
 
       // 3. Log the transfer
       const { error: logError } = await supabase
