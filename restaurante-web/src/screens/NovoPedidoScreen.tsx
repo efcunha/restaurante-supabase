@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, SectionList, TouchableOpacity, TextInput, ActivityIndicator, LayoutAnimation, Platform, UIManager, SectionListRenderItem } from 'react-native';
+import { StyleSheet, Text, View, SectionList, TouchableOpacity, TextInput, ActivityIndicator, LayoutAnimation, Platform, UIManager, SectionListRenderItem, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import React, { memo, useCallback, useState, useMemo, useEffect, useRef } from 'react';
 
@@ -451,6 +451,11 @@ export default function NovoPedidoScreen({ route }: any) {
     extras
   } = useNovoPedido();
 
+  const [isRefreshHovered, setIsRefreshHovered] = useState(false);
+  const [isRefreshFocused, setIsRefreshFocused] = useState(false);
+  const [showRefreshSuccess, setShowRefreshSuccess] = useState(false);
+  const refreshSuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const isInitialFocusRef = useRef(true);
 
   // Refresh menu whenever screen gains focus
@@ -465,6 +470,30 @@ export default function NovoPedidoScreen({ route }: any) {
       carregarCardapio();
     }, [carregarCardapio])
   );
+
+  useEffect(() => {
+    return () => {
+      if (refreshSuccessTimeoutRef.current) {
+        clearTimeout(refreshSuccessTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleHeaderRefresh = useCallback(async () => {
+    if (isRefreshingCardapio) return;
+
+    setShowRefreshSuccess(false);
+    await refreshCardapio();
+
+    if (refreshSuccessTimeoutRef.current) {
+      clearTimeout(refreshSuccessTimeoutRef.current);
+    }
+
+    setShowRefreshSuccess(true);
+    refreshSuccessTimeoutRef.current = setTimeout(() => {
+      setShowRefreshSuccess(false);
+    }, 1000);
+  }, [isRefreshingCardapio, refreshCardapio]);
 
 
   // Handle Route Params (from Map or other screens)
@@ -742,6 +771,44 @@ export default function NovoPedidoScreen({ route }: any) {
     <Text style={styles.sectionTitle}>{title}</Text>
   );
 
+  const isTooltipVisible = (isRefreshHovered || isRefreshFocused) && !isRefreshingCardapio;
+
+  const headerRefreshButton = (
+    <View style={styles.headerRefreshWrapper}>
+      {isTooltipVisible && (
+        <View style={styles.headerRefreshTooltip}>
+          <Text style={styles.headerRefreshTooltipText}>Atualizar cardápio</Text>
+        </View>
+      )}
+
+      <Pressable
+        accessibilityLabel="Atualizar cardápio"
+        accessibilityHint="Atualiza os itens do cardápio sem limpar os dados do pedido"
+        disabled={isRefreshingCardapio}
+        onBlur={() => setIsRefreshFocused(false)}
+        onFocus={() => setIsRefreshFocused(true)}
+        onHoverIn={() => setIsRefreshHovered(true)}
+        onHoverOut={() => setIsRefreshHovered(false)}
+        onPress={handleHeaderRefresh}
+        style={({ pressed }) => [
+          styles.headerRefreshButton,
+          isRefreshHovered && !isRefreshingCardapio ? styles.headerRefreshButtonHover : null,
+          pressed && !isRefreshingCardapio ? styles.headerRefreshButtonPressed : null,
+          showRefreshSuccess ? styles.headerRefreshButtonSuccess : null,
+          isRefreshingCardapio ? styles.headerRefreshButtonDisabled : null,
+        ]}
+      >
+        {isRefreshingCardapio ? (
+          <ActivityIndicator color={colors.white} size="small" />
+        ) : showRefreshSuccess ? (
+          <Ionicons color={colors.white} name="checkmark" size={18} />
+        ) : (
+          <Ionicons color={colors.white} name="refresh" size={18} />
+        )}
+      </Pressable>
+    </View>
+  );
+
 
 
   return (
@@ -755,6 +822,7 @@ export default function NovoPedidoScreen({ route }: any) {
           title="Novo Pedido"
           subtitle={user ? `Operador: ${user.nome || user.email}` : undefined}
           titleIcon={<Ionicons name="cart-outline" size={24} color={colors.white} />}
+          rightSlot={headerRefreshButton}
         />
       ) : (
         <View style={styles.header}>
@@ -771,7 +839,7 @@ export default function NovoPedidoScreen({ route }: any) {
               </>
             )}
           </View>
-          <View style={styles.headerLeft} />
+          <View style={styles.headerRight}>{headerRefreshButton}</View>
         </View>
       )}
 
@@ -806,8 +874,6 @@ export default function NovoPedidoScreen({ route }: any) {
           onClientNameChange={setClientName}
           mesa={mesa}
           onMesaChange={setMesa}
-          onRefresh={refreshCardapio}
-          isRefreshing={isRefreshingCardapio}
         />}
         ListFooterComponent={<NewOrderListFooter selectedItems={selectedItems} onRemoveItem={handleRemoveItemAnimated} />}
         stickySectionHeadersEnabled={false}
@@ -864,6 +930,11 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     justifyContent: 'center',
   },
+  headerRight: {
+    flex: 1,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
   headerCenter: {
     flex: 2,
     alignItems: 'center',
@@ -893,6 +964,57 @@ const styles = StyleSheet.create({
   },
   logoutBtn: {},
   logoutBtnText: {},
+  headerRefreshButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.28)',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerRefreshWrapper: {
+    width: 38,
+    height: 38,
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerRefreshTooltip: {
+    position: 'absolute',
+    right: 44,
+    top: 7,
+    backgroundColor: 'rgba(8,23,43,0.9)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.28)',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    zIndex: 20,
+  },
+  headerRefreshTooltipText: {
+    color: colors.white,
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.1,
+  },
+  headerRefreshButtonHover: {
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    borderColor: 'rgba(255,255,255,0.42)',
+  },
+  headerRefreshButtonPressed: {
+    backgroundColor: 'rgba(255,255,255,0.30)',
+    borderColor: 'rgba(255,255,255,0.5)',
+    transform: [{ scale: 0.96 }],
+  },
+  headerRefreshButtonSuccess: {
+    backgroundColor: 'rgba(68,188,122,0.55)',
+    borderColor: 'rgba(173,255,209,0.75)',
+  },
+  headerRefreshButtonDisabled: {
+    opacity: 0.75,
+  },
   listContent: { padding: 20, paddingBottom: 120 },
   headerForm: { marginBottom: 20 },
   label: { fontSize: 16, color: colors.text, marginBottom: 6, fontWeight: 'bold' },
