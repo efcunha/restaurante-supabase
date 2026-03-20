@@ -120,10 +120,10 @@ function TabNavigator() {
   );
 }
 
-function MainApp({ sessionKey }) {
+function MainApp() {
   return (
-    <OrderProvider key={`order-${sessionKey}`}>
-      <NavigationContainer key={`nav-${sessionKey}`}>
+    <OrderProvider>
+      <NavigationContainer>
         <TabNavigator />
       </NavigationContainer>
     </OrderProvider>
@@ -144,7 +144,7 @@ function AuthStack() {
 }
 
 function AppContent() {
-  const { user, loading, sessionKey } = useAuth();
+  const { user, loading } = useAuth();
 
   // Tentar reconexao com impressora ao iniciar
   useEffect(() => {
@@ -169,7 +169,7 @@ function AppContent() {
   // SEM USUARIO = AUTH STACK (Login/Register)
   if (!user) {
     return (
-      <SafeAreaProvider key={`auth-${sessionKey}-${Date.now()}`}>
+      <SafeAreaProvider>
         <StatusBar barStyle="dark-content" backgroundColor={colorSystem.background} translucent={false} />
         <NavigationContainer>
           <AuthStack />
@@ -180,12 +180,12 @@ function AppContent() {
 
   // COM USUARIO = APP
   return (
-    <SafeAreaProvider key={`app-${sessionKey}-${Date.now()}`}>
+    <SafeAreaProvider>
       <StatusBar barStyle="dark-content" backgroundColor={colorSystem.background} translucent={false} />
       <OfflineNotice />
       <OfflineQueueManager />
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-        <MainApp sessionKey={sessionKey} />
+        <MainApp />
       </SafeAreaView>
     </SafeAreaProvider>
   );

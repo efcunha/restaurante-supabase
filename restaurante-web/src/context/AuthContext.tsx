@@ -103,7 +103,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
          
          if (session?.user) {
              console.log('[SupabaseAuth] Session restored', session.user.id);
-             await reloadUserData(session.user);
+           await reloadUserData(session.user, { rotateSessionKey: true });
          } else {
              setLoading(false);
          }
@@ -134,7 +134,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
              if (!isManualLoginRef.current) {
                  // Defer background refresh to avoid jank/timeout during interactions (e.g. scrolling)
                InteractionManager.runAfterInteractions(async () => {
-                     await reloadUserData(session.user);
+                     await reloadUserData(session.user, {
+                       rotateSessionKey: event !== 'TOKEN_REFRESHED'
+                     });
                      setLoading(false);
                  });
                  // Ideally cancel if unmounted, but interaction handle cancellation is tricky in effect return.
@@ -149,7 +151,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
   }, []);
 
-  const reloadUserData = async (sbUser: User) => {
+  const reloadUserData = async (
+    sbUser: User,
+    options?: { rotateSessionKey?: boolean }
+  ) => {
+      const rotateSessionKey = options?.rotateSessionKey ?? true;
       console.log('[AuthContext] reloadUserData called for:', sbUser.id);
       try {
           // 1. Fetch Profile (Simple, no joins first to avoid lock)
@@ -228,7 +234,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setUser(appUser);
           setRole(normalizeRole(userRole));
           setCustomClaims(newClaims);
-          setSessionKey(Date.now());
+          if (rotateSessionKey) {
+            setSessionKey(Date.now());
+          }
 
           // 4. Persistence Hook (Generic)
           // We map Supabase User + props to PersistenceUser interface
@@ -277,7 +285,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                   console.warn('[SupabaseAuth] Failed to update biometric creds', bioError);
               }
 
-              await reloadUserData(data.session.user);
+              await reloadUserData(data.session.user, { rotateSessionKey: true });
               
               setLoading(false);
               isManualLoginRef.current = false;
@@ -321,7 +329,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
          // For Supabase, usually just re-fetching the profile row is enough
          // or refreshing the session if using JWT claims
          const { data: { session } } = await supabase.auth.refreshSession();
-         if (session?.user) await reloadUserData(session.user);
+         if (session?.user) await reloadUserData(session.user, { rotateSessionKey: false });
       }
   };
 
@@ -355,7 +363,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
           if (error) throw error;
           if (data.session?.user) {
-              await reloadUserData(data.session.user);
+              await reloadUserData(data.session.user, { rotateSessionKey: true });
               setLoading(false);
               return { success: true };
           }

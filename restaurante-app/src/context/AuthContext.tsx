@@ -147,12 +147,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
 
           // Session available — load profile data
-          if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+            if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
               appendLog(`Carregando perfil (${event})...`);
               console.log('[SupabaseAuth] Processing', event, '— Manual?', isManualLoginRef.current);
               if (!isManualLoginRef.current) {
                   try {
-                      await reloadUserData(session.user);
+                  await reloadUserData(session.user, {
+                  rotateSessionKey: event !== 'TOKEN_REFRESHED'
+                  });
                   } catch (e: any) {
                       const errMsg = `Erro ao carregar perfil: ${e?.message ?? String(e)}`;
                       appendLog('❌ ' + errMsg);
@@ -177,7 +179,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, []);
 
-  const reloadUserData = async (sbUser: User) => {
+  const reloadUserData = async (
+    sbUser: User,
+    options?: { rotateSessionKey?: boolean }
+  ) => {
+      const rotateSessionKey = options?.rotateSessionKey ?? true;
       console.log('[AuthContext] reloadUserData called for:', sbUser.id);
       try {
           // 1. Fetch Profile (Simple, no joins first to avoid lock)
@@ -256,7 +262,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setUser(appUser);
           setRole(normalizeRole(userRole));
           setCustomClaims(newClaims);
-          setSessionKey(Date.now());
+          if (rotateSessionKey) {
+            setSessionKey(Date.now());
+          }
 
           // ✅ Libera o loading AGORA — não espera a persistência para mostrar a tela
           setLoading(false);
@@ -312,7 +320,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                   console.warn('[SupabaseAuth] Failed to update biometric creds', bioError);
               }
 
-              await reloadUserData(data.session.user);
+              await reloadUserData(data.session.user, { rotateSessionKey: true });
               
               setLoading(false);
               isManualLoginRef.current = false;
@@ -356,7 +364,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
          // For Supabase, usually just re-fetching the profile row is enough
          // or refreshing the session if using JWT claims
          const { data: { session } } = await supabase.auth.refreshSession();
-         if (session?.user) await reloadUserData(session.user);
+         if (session?.user) await reloadUserData(session.user, { rotateSessionKey: false });
       }
   };
 
@@ -390,7 +398,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
           if (error) throw error;
           if (data.session?.user) {
-              await reloadUserData(data.session.user);
+              await reloadUserData(data.session.user, { rotateSessionKey: true });
               setLoading(false);
               return { success: true };
           }
