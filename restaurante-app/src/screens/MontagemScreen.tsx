@@ -1,7 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, FlatList, TouchableOpacity, Alert, Platform } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useState, useEffect, useCallback, memo, useRef } from 'react';
+import { useState, useEffect, useCallback, memo, useRef, useMemo } from 'react';
 import { useOrders } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
 import { useNavigation } from '@react-navigation/native';
@@ -275,89 +275,90 @@ export default function MontagemScreen() {
   }, [user]);
 
   // ✅ FILTRO SEGURO: Excluir pedidos de comandas canceladas usando comandaStatus do pedido
-  const ordersRaw = allOrders.filter(order => {
+  const ordersRaw = useMemo(() => allOrders.filter(order => {
     // Filtrar apenas pedidos em preparing
     if (order.status !== 'preparing') return false;
-    
+
     // ✅ PROTEÇÃO: Se o pedido tem comandaStatus='cancelada', não mostrar
     if (order.comandaStatus === 'cancelada') {
       console.log('[Montagem] 🚫 Pedido filtrado (comanda cancelada):', order.id);
       return false;
     }
-    
+
     return true;
-  });
+  }), [allOrders]);
 
-  // Agrupar por comandaNumber para unificar pedidos da mesma comanda
-  const comandasMap = new Map();
+  const orders = useMemo(() => {
+    // Agrupar por comandaNumber para unificar pedidos da mesma comanda
+    const comandasMap = new Map();
 
-  ordersRaw.forEach(order => {
-    if (!order.itemsWithStatus || order.itemsWithStatus.length === 0) {
-      return;
-    }
-
-    // ✅ FIX: Não filtrar itens duplicados entre pedidos diferentes
-    // Cada pedido delivery deve ter seus próprios itens, mesmo que sejam iguais
-    const itemsParaMontar = order.itemsWithStatus.map((item: any) => ({
-      ...item,
-      originalOrderId: order.id
-    }));
-
-    if (itemsParaMontar.length === 0) return;
-
-    // ✅ LÓGICA DE AGRUPAMENTO:
-    // 1. MESA: Agrupar todos os pedidos da mesma mesa (vários pedidos → 1 card)
-    // 2. BALCÃO COM COMANDA: Agrupar pedidos da mesma comanda (vários pedidos → 1 card)
-    // 3. DELIVERY: Cada pedido é um card separado (1 pedido → 1 card) - NUNCA agrupar
-    
-    const hasMesa = !!order.mesa && order.mesa.trim() !== '';
-    const hasComanda = order.comandaNumber && String(order.comandaNumber) !== '0';
-    const isDelivery = order.orderType === 'delivery';
-    
-    let groupKey;
-    if (isDelivery) {
-      // DELIVERY: Sempre separado, um card por pedido
-      groupKey = `order-${order.id}`;
-    } else if (hasMesa) {
-      // MESA: Agrupar por número da mesa
-      groupKey = `mesa-${order.mesa}`;
-    } else if (hasComanda) {
-      // BALCÃO COM COMANDA: Agrupar por número da comanda
-      groupKey = `comanda-${order.comandaNumber}`;
-    } else {
-      // BALCÃO SEM COMANDA: Cada pedido é separado
-      groupKey = `order-${order.id}`;
-    }
-
-    if (comandasMap.has(groupKey)) {
-      const existing = comandasMap.get(groupKey);
-      existing.itemsWithStatus.push(...itemsParaMontar);
-      existing.items.push(...itemsParaMontar.map((i: any) => i.name));
-      if (!existing.allOrderIds.includes(order.id)) {
-        existing.allOrderIds.push(order.id);
+    ordersRaw.forEach(order => {
+      if (!order.itemsWithStatus || order.itemsWithStatus.length === 0) {
+        return;
       }
-      // Se tiver mesa, garantir que o número da comanda seja concatenado se for diferente
-      if (order.comandaNumber && order.comandaNumber !== 0 && !existing.allComandas.includes(order.comandaNumber)) {
-        existing.allComandas.push(order.comandaNumber);
-      }
-    } else {
-      comandasMap.set(groupKey, {
-        ...order,
-        isMesaGroup: hasMesa,
-        itemsWithStatus: [...itemsParaMontar],
-        items: itemsParaMontar.map((i: any) => i.name),
-        allOrderIds: [order.id],
-        allComandas: (order.comandaNumber && order.comandaNumber !== 0) ? [order.comandaNumber] : []
-      });
-    }
-  });
 
-  const orders = Array.from(comandasMap.values())
-    .sort((a: any, b: any) => {
-      const numA = parseInt(a.comandaNumber) || 0;
-      const numB = parseInt(b.comandaNumber) || 0;
-      return numA - numB;
+      // ✅ FIX: Não filtrar itens duplicados entre pedidos diferentes
+      // Cada pedido delivery deve ter seus próprios itens, mesmo que sejam iguais
+      const itemsParaMontar = order.itemsWithStatus.map((item: any) => ({
+        ...item,
+        originalOrderId: order.id
+      }));
+
+      if (itemsParaMontar.length === 0) return;
+
+      // ✅ LÓGICA DE AGRUPAMENTO:
+      // 1. MESA: Agrupar todos os pedidos da mesma mesa (vários pedidos → 1 card)
+      // 2. BALCÃO COM COMANDA: Agrupar pedidos da mesma comanda (vários pedidos → 1 card)
+      // 3. DELIVERY: Cada pedido é um card separado (1 pedido → 1 card) - NUNCA agrupar
+      const hasMesa = !!order.mesa && order.mesa.trim() !== '';
+      const hasComanda = order.comandaNumber && String(order.comandaNumber) !== '0';
+      const isDelivery = order.orderType === 'delivery';
+
+      let groupKey;
+      if (isDelivery) {
+        // DELIVERY: Sempre separado, um card por pedido
+        groupKey = `order-${order.id}`;
+      } else if (hasMesa) {
+        // MESA: Agrupar por número da mesa
+        groupKey = `mesa-${order.mesa}`;
+      } else if (hasComanda) {
+        // BALCÃO COM COMANDA: Agrupar por número da comanda
+        groupKey = `comanda-${order.comandaNumber}`;
+      } else {
+        // BALCÃO SEM COMANDA: Cada pedido é separado
+        groupKey = `order-${order.id}`;
+      }
+
+      if (comandasMap.has(groupKey)) {
+        const existing = comandasMap.get(groupKey);
+        existing.itemsWithStatus.push(...itemsParaMontar);
+        existing.items.push(...itemsParaMontar.map((i: any) => i.name));
+        if (!existing.allOrderIds.includes(order.id)) {
+          existing.allOrderIds.push(order.id);
+        }
+        // Se tiver mesa, garantir que o número da comanda seja concatenado se for diferente
+        if (order.comandaNumber && order.comandaNumber !== 0 && !existing.allComandas.includes(order.comandaNumber)) {
+          existing.allComandas.push(order.comandaNumber);
+        }
+      } else {
+        comandasMap.set(groupKey, {
+          ...order,
+          isMesaGroup: hasMesa,
+          itemsWithStatus: [...itemsParaMontar],
+          items: itemsParaMontar.map((i: any) => i.name),
+          allOrderIds: [order.id],
+          allComandas: (order.comandaNumber && order.comandaNumber !== 0) ? [order.comandaNumber] : []
+        });
+      }
     });
+
+    return Array.from(comandasMap.values())
+      .sort((a: any, b: any) => {
+        const numA = parseInt(a.comandaNumber) || 0;
+        const numB = parseInt(b.comandaNumber) || 0;
+        return numA - numB;
+      });
+  }, [ordersRaw]);
 
   const handleToggleItem = async (_orderId: string, itemIds: string | string[], _currentStatus: string) => {
     const idsToUpdate = Array.isArray(itemIds) ? itemIds : [itemIds];
