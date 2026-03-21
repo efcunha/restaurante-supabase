@@ -21,8 +21,8 @@ export function renderDashboardHtml(user: OpsUser): string {
         --amber-500: #f1b24b;
         --ink-900: #1d2a35;
         --ink-700: #2f4353;
-        --ink-500: #6f808d;
-        --line: #d5e1e8;
+        --ink-500: #516675;
+        --line: #c8d7e1;
         --surface: #ffffff;
         --surface-muted: #f4f8fb;
         --success: #16a34a;
@@ -35,6 +35,7 @@ export function renderDashboardHtml(user: OpsUser): string {
         font-family: "Segoe UI", "Trebuchet MS", sans-serif;
         background: var(--surface-muted);
         color: var(--ink-900);
+        line-height: 1.45;
         min-height: 100vh;
       }
 
@@ -45,24 +46,24 @@ export function renderDashboardHtml(user: OpsUser): string {
         align-items: center;
         justify-content: space-between;
         padding: 0 24px;
-        height: 56px;
+        height: 64px;
         gap: 12px;
       }
 
       .topbar-brand {
         color: #fff;
-        font-size: 17px;
+        font-size: 22px;
         font-weight: 800;
         letter-spacing: -0.2px;
       }
 
       .topbar-badge {
-        font-size: 11px;
+        font-size: 12px;
         background: rgba(255,255,255,0.18);
         border: 1px solid rgba(255,255,255,0.18);
         border-radius: 999px;
-        padding: 3px 10px;
-        color: #d5f3fa;
+        padding: 4px 12px;
+        color: #ecfbff;
         font-weight: 700;
         margin-left: 8px;
       }
@@ -71,13 +72,13 @@ export function renderDashboardHtml(user: OpsUser): string {
         display: flex;
         align-items: center;
         gap: 8px;
-        color: #d5f3fa;
-        font-size: 14px;
+        color: #ecfbff;
+        font-size: 15px;
       }
 
       .avatar {
-        width: 32px;
-        height: 32px;
+        width: 36px;
+        height: 36px;
         border-radius: 50%;
         background: rgba(255,255,255,0.22);
         border: 1.5px solid rgba(255,255,255,0.32);
@@ -85,7 +86,7 @@ export function renderDashboardHtml(user: OpsUser): string {
         align-items: center;
         justify-content: center;
         font-weight: 800;
-        font-size: 13px;
+        font-size: 14px;
         color: #fff;
       }
 
@@ -93,9 +94,9 @@ export function renderDashboardHtml(user: OpsUser): string {
         background: rgba(255,255,255,0.15);
         border: 1px solid rgba(255,255,255,0.22);
         border-radius: 8px;
-        padding: 5px 12px;
+        padding: 7px 14px;
         color: #fff;
-        font-size: 13px;
+        font-size: 14px;
         font-weight: 700;
         cursor: pointer;
         text-decoration: none;
@@ -123,23 +124,25 @@ export function renderDashboardHtml(user: OpsUser): string {
       }
 
       .welcome-text h1 {
-        font-size: 22px;
+        font-size: 34px;
+        font-weight: 800;
+        letter-spacing: -0.5px;
         line-height: 1.2;
       }
 
       .welcome-text p {
         margin-top: 4px;
-        font-size: 14px;
-        color: #cef1f9;
+        font-size: 17px;
+        color: #ecfbff;
       }
 
       .welcome-meta {
         background: rgba(255,255,255,0.15);
         border: 1px solid rgba(255,255,255,0.2);
         border-radius: 12px;
-        padding: 10px 14px;
-        font-size: 13px;
-        color: #d5f3fa;
+        padding: 12px 16px;
+        font-size: 16px;
+        color: #ecfbff;
       }
 
       /* --- KPI grid --- */
@@ -158,15 +161,15 @@ export function renderDashboardHtml(user: OpsUser): string {
       }
 
       .kpi-label {
-        font-size: 12px;
-        font-weight: 600;
+        font-size: 14px;
+        font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.4px;
-        color: var(--ink-500);
+        color: var(--ink-700);
       }
 
       .kpi-value {
-        font-size: 28px;
+        font-size: 32px;
         font-weight: 800;
         line-height: 1.15;
         margin-top: 6px;
@@ -175,16 +178,16 @@ export function renderDashboardHtml(user: OpsUser): string {
 
       .kpi-hint {
         margin-top: 4px;
-        font-size: 12px;
-        color: var(--ink-500);
+        font-size: 15px;
+        color: var(--ink-700);
       }
 
       .kpi-chip {
         display: inline-block;
         margin-top: 8px;
-        font-size: 11px;
+        font-size: 14px;
         font-weight: 700;
-        padding: 2px 8px;
+        padding: 4px 10px;
         border-radius: 999px;
       }
 
@@ -208,7 +211,7 @@ export function renderDashboardHtml(user: OpsUser): string {
       }
 
       .panel-title {
-        font-size: 14px;
+        font-size: 22px;
         font-weight: 700;
         color: var(--ink-700);
         margin-bottom: 14px;
@@ -216,15 +219,15 @@ export function renderDashboardHtml(user: OpsUser): string {
         border-bottom: 1px solid var(--line);
       }
 
-      .table { width: 100%; border-collapse: collapse; font-size: 13px; }
-      .table th { text-align: left; color: var(--ink-500); font-weight: 600; font-size: 11px; text-transform: uppercase; padding-bottom: 8px; }
-      .table td { padding: 10px 0; border-top: 1px solid #eef3f6; color: var(--ink-700); }
+      .table { width: 100%; border-collapse: collapse; font-size: 16px; }
+      .table th { text-align: left; color: var(--ink-700); font-weight: 700; font-size: 14px; text-transform: uppercase; padding-bottom: 8px; }
+      .table td { padding: 10px 0; border-top: 1px solid #e3edf3; color: var(--ink-700); }
       .table td:last-child { text-align: right; }
 
       .status-pill {
-        font-size: 11px;
+        font-size: 14px;
         font-weight: 700;
-        padding: 3px 8px;
+        padding: 4px 10px;
         border-radius: 999px;
       }
 
@@ -236,10 +239,10 @@ export function renderDashboardHtml(user: OpsUser): string {
 
       .quick-link {
         display: block;
-        padding: 10px 12px;
+        padding: 12px 14px;
         border-radius: 10px;
         border: 1px solid var(--line);
-        font-size: 13px;
+        font-size: 16px;
         color: var(--ink-700);
         font-weight: 600;
         text-decoration: none;
@@ -250,6 +253,9 @@ export function renderDashboardHtml(user: OpsUser): string {
 
       @media (max-width: 820px) {
         .section-grid { grid-template-columns: 1fr; }
+        .welcome-text h1 { font-size: 28px; }
+        .welcome-text p { font-size: 16px; }
+        .panel-title { font-size: 20px; }
       }
     </style>
   </head>
@@ -323,7 +329,7 @@ export function renderDashboardHtml(user: OpsUser): string {
             </thead>
             <tbody>
               <tr>
-                <td colspan="4" style="text-align:center;color:#8aa0ab;padding:24px 0;font-size:13px;">
+                <td colspan="4" style="text-align:center;color:#526877;padding:24px 0;font-size:16px;">
                   Conectar queries reais ao Supabase na proxima fase
                 </td>
               </tr>
@@ -337,8 +343,8 @@ export function renderDashboardHtml(user: OpsUser): string {
             <a class="quick-link" href="/customers">Gerenciar clientes</a>
             <a class="quick-link" href="/billing">Faturamento e invoices</a>
             <a class="quick-link" href="/metrics">Metricas SaaS</a>
-            <a class="quick-link" href="/healthz">Estado do servico</a>
-            <a class="quick-link" href="/api/status">API status JSON</a>
+            <a class="quick-link" href="/service-status">Estado do servico</a>
+            <a class="quick-link" href="/api-status">API status JSON</a>
           </nav>
         </div>
       </section>
