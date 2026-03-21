@@ -218,6 +218,13 @@ export default function LoginScreen({ navigation }: Props) {
               <Text style={styles.registerLink}>Cadastre seu restaurante</Text>
             </TouchableOpacity>
 
+            <View style={styles.billingInfoCard}>
+              <Ionicons name="card-outline" size={18} color="#0B6780" />
+              <Text style={styles.billingInfoText}>
+                A empresa nasce com trial de 30 dias. A regularização da assinatura fica disponível no Admin e precisa ser concluída antes do vencimento.
+              </Text>
+            </View>
+
             <TouchableOpacity
               style={styles.aboutCtaCard}
               onPress={() => navigation.navigate('About')}
@@ -490,6 +497,26 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     textDecorationLine: 'underline',
     textAlign: 'center',
+  },
+  billingInfoCard: {
+    marginTop: 10,
+    borderRadius: 12,
+    backgroundColor: '#EAF6FA',
+    borderWidth: 1,
+    borderColor: '#C2E0E8',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  billingInfoText: {
+    flex: 1,
+    color: '#11303D',
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: '700',
+    textAlign: 'left',
   },
   aboutCtaCard: {
     marginTop: 10,

@@ -201,6 +201,13 @@ export default function LoginScreen({ navigation }: Props) {
                 <TouchableOpacity style={styles.registerPanelLink} onPress={() => navigation.navigate('Register')}>
                   <Text style={styles.registerPanelLinkText}>Cadastre seu restaurante</Text>
                 </TouchableOpacity>
+
+                <View style={styles.billingNoteCard}>
+                  <Ionicons name="card-outline" size={18} color="#0B6780" />
+                  <Text style={styles.billingNoteText}>
+                    O onboarding já cria um trial de 30 dias. A cobrança fica disponível no Admin e deve ser configurada antes do vencimento para evitar bloqueio operacional.
+                  </Text>
+                </View>
               </View>
             </View>
 
@@ -663,6 +670,26 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     textDecorationLine: 'underline',
     textAlign: 'center',
+  },
+  billingNoteCard: {
+    marginTop: 12,
+    borderRadius: 12,
+    backgroundColor: '#E7F5F8',
+    borderWidth: 1,
+    borderColor: '#C9E3EA',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  billingNoteText: {
+    flex: 1,
+    color: '#12303D',
+    fontSize: 13,
+    lineHeight: 19,
+    textAlign: 'left',
+    fontWeight: '700',
   },
   loginFooterArea: {
     alignItems: 'center',

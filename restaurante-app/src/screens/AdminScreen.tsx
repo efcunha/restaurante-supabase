@@ -37,6 +37,7 @@ import FinancialConfigScreen from './FinancialConfigScreen';
 import FinancialDashboardScreen from './FinancialDashboardScreen';
 // @ts-ignore
 import OperationalSettingsScreen from './OperationalSettingsScreen';
+import BillingScreen from './BillingScreen';
 import DeliveryOcorrenciasScreen from './DeliveryOcorrenciasScreen';
 import BiometricSetupModal from '../components/BiometricSetupModal';
 import MFASetupModal from '../components/MFASetupModal';
@@ -45,6 +46,7 @@ import AdminStatsCards from '../components/AdminStatsCards';
 import CaixaMenuModal from '../components/CaixaMenuModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AdminActionCard, AdminBareModal, AdminCaixaModal, AdminSection, AdminSlideModal } from '../features/admin';
+import { TrialBanner } from '../components/LicenseGate';
 import { colors } from '../theme/colors';
 // import PerformanceService from '../services/PerformanceService'; // Removed - Firebase specific
 
@@ -96,6 +98,7 @@ export default function AdminScreen() {
   const [showConfiguracaoMesas, setShowConfiguracaoMesas] = useState(false);
   const [showOperationalSettings, setShowOperationalSettings] = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);
+  const [showBillingScreen, setShowBillingScreen] = useState(false);
   const [showBiometricSetup, setShowBiometricSetup] = useState(false);
   const [showMFASetup, setShowMFASetup] = useState(false);
   const [showDeliveryOcorrencias, setShowDeliveryOcorrencias] = useState(false);
@@ -379,6 +382,7 @@ export default function AdminScreen() {
   ];
 
   const financialReports = [
+    { name: 'Assinatura SaaS', icon: '💳', action: () => setShowBillingScreen(true) },
     { name: 'Dashboard Financeiro', icon: '📊', action: () => setShowDashboard(true) },
     { name: 'Histórico de Caixas', icon: '📜', action: () => setShowCaixaHistorico(true) },
     { name: 'Config. Financeira', icon: '⚙️', action: () => setShowFinancialConfig(true) },
@@ -411,6 +415,8 @@ export default function AdminScreen() {
       />
 
       <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }}>
+        <TrialBanner />
+
         <AdminStatsCards
           styles={styles}
           loadingStats={loadingStats}
@@ -547,6 +553,10 @@ export default function AdminScreen() {
       {/* Modal Configuração Financeira */}
       <AdminBareModal visible={showFinancialConfig} onClose={() => setShowFinancialConfig(false)}>
         <FinancialConfigScreen onClose={() => setShowFinancialConfig(false)} />
+      </AdminBareModal>
+
+      <AdminBareModal visible={showBillingScreen} onClose={() => setShowBillingScreen(false)}>
+        <BillingScreen onClose={() => setShowBillingScreen(false)} />
       </AdminBareModal>
 
       {/* Modal Dashboard Financeiro */}

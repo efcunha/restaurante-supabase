@@ -36,12 +36,14 @@ import FinancialConfigScreen from './FinancialConfigScreen';
 import FinancialDashboardScreen from './FinancialDashboardScreen';
 // @ts-ignore
 import OperationalSettingsScreen from './OperationalSettingsScreen';
+import BillingScreen from './BillingScreen';
 import BiometricSetupModal from '../components/BiometricSetupModal';
 import MFASetupModal from '../components/MFASetupModal';
 import AdminHeader from '../components/AdminHeader';
 import AdminStatsCards from '../components/AdminStatsCards';
 import CaixaMenuModal from '../components/CaixaMenuModal';
 import { AdminActionCard, AdminBareModal, AdminCaixaModal, AdminSection, AdminSlideModal } from '../features/admin';
+import { TrialBanner } from '../components/LicenseGate';
 // import PerformanceService from '../services/PerformanceService'; // Removed - Firebase specific
 
 // WhatsApp Integração
@@ -95,6 +97,7 @@ export default function AdminScreen() {
   const [showConfiguracaoMesas, setShowConfiguracaoMesas] = useState(false);
   const [showOperationalSettings, setShowOperationalSettings] = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);
+  const [showBillingScreen, setShowBillingScreen] = useState(false);
   const [showBiometricSetup, setShowBiometricSetup] = useState(false);
   const [showMFASetup, setShowMFASetup] = useState(false);
   const [showConfiguracoesWhatsApp, setShowConfiguracoesWhatsApp] = useState(false);
@@ -381,6 +384,7 @@ export default function AdminScreen() {
   ];
 
   const financialReports = [
+    { name: 'Assinatura SaaS', icon: '💳', action: () => setShowBillingScreen(true) },
     { name: 'Dashboard Financeiro', icon: '📊', action: () => setShowDashboard(true) },
     { name: 'Histórico de Caixas', icon: '📜', action: () => setShowCaixaHistorico(true) },
     { name: 'Config. Financeira', icon: '⚙️', action: () => setShowFinancialConfig(true) },
@@ -411,6 +415,8 @@ export default function AdminScreen() {
       />
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+        <TrialBanner />
+
         <AdminStatsCards
           loadingStats={loadingStats}
           stats={stats}
@@ -548,6 +554,10 @@ export default function AdminScreen() {
       {/* Modal Configuração Financeira */}
       <AdminBareModal visible={showFinancialConfig} onClose={() => setShowFinancialConfig(false)}>
         <FinancialConfigScreen onClose={() => setShowFinancialConfig(false)} />
+      </AdminBareModal>
+
+      <AdminBareModal visible={showBillingScreen} onClose={() => setShowBillingScreen(false)}>
+        <BillingScreen onClose={() => setShowBillingScreen(false)} />
       </AdminBareModal>
 
       {/* Modal Dashboard Financeiro */}
