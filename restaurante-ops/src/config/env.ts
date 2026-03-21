@@ -4,6 +4,10 @@ export interface OpsEnv {
   OPS_PORT: number;
   OPS_ENV: string;
   OPS_PUBLIC_BASE_URL?: string;
+  APP_BASE_URL?: string;
+  WEB_BASE_URL?: string;
+  ACTIVEPIECES_BASE_URL?: string;
+  EVOLUTION_API_BASE_URL?: string;
 }
 
 function required(name: string): string {
@@ -23,5 +27,9 @@ export function buildEnv(): OpsEnv {
     OPS_PORT: Number.isFinite(resolvedPort) ? resolvedPort : 4040,
     OPS_ENV: process.env.OPS_ENV || 'development',
     OPS_PUBLIC_BASE_URL: process.env.OPS_PUBLIC_BASE_URL,
+    APP_BASE_URL: process.env.APP_BASE_URL,
+    WEB_BASE_URL: process.env.WEB_BASE_URL,
+    ACTIVEPIECES_BASE_URL: process.env.ACTIVEPIECES_BASE_URL,
+    EVOLUTION_API_BASE_URL: process.env.EVOLUTION_API_BASE_URL,
   };
 }

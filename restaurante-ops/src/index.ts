@@ -18,6 +18,7 @@ import {
   type SaasMetrics,
   type KpiCounts,
 } from './modules/data.js';
+import { checkAllServices, type ServiceStatus } from './modules/service-status.js';
 
 const env = buildEnv();
 
@@ -380,9 +381,7 @@ function renderLoginHtml(errorMsg?: string): string {
         <button class="btn-primary" type="submit">ENTRAR</button>
       </form>
 
-      <button class="btn-secondary" type="button" onclick="window.location.href='/register'">Criar acesso administrativo</button>
       <p class="helper">Precisa recuperar acesso? Contate o administrador do ecossistema.</p>
-      <div class="billing-note">Onboarding de empresas em trial de 30 dias com regularizacao antes do vencimento para evitar bloqueio operacional.</div>
     </div>
     <div class="footer-note">Machado & Cunha Soft House</div>
   </section>
@@ -945,11 +944,23 @@ function renderMetricsPanel(user: OpsUser, metrics: SaasMetrics): string {
   );
 }
 
-function renderServiceStatusPanel(user: OpsUser): string {
+function renderServiceStatusPanel(user: OpsUser, services: ServiceStatus[]): string {
+  const serviceRows = services
+    .map(
+      (svc) =>
+        `<tr>
+          <td>${svc.name}</td>
+          <td>${svc.status === 'online' ? '<span class="pill ok">Online</span>' : svc.status === 'offline' ? '<span class="pill error">Offline</span>' : '<span class="pill warn">Unknown</span>'}</td>
+          <td>${svc.responseTime ? svc.responseTime + 'ms' : '—'}</td>
+          <td>${svc.url ? `<a href="${svc.url}" target="_blank">Check</a>` : '—'}</td>
+        </tr>`,
+    )
+    .join('');
+
   return renderQuickActionPanel(
     user,
     'Estado do servico',
-    'Status do runtime do restaurante-ops e endpoints essenciais de operacao.',
+    'Status do runtime de todos os servicos e endpoints essenciais de operacao.',
     `<section class="panel">
       <h2>Saude operacional</h2>
       <div class="grid">
@@ -959,28 +970,26 @@ function renderServiceStatusPanel(user: OpsUser): string {
           <div class="metric-hint">Runtime atual</div>
         </article>
         <article class="metric">
-          <div class="metric-label">Servico</div>
-          <div class="metric-value">restaurante-ops</div>
-          <div class="metric-hint">Backoffice SaaS</div>
+          <div class="metric-label">Servicos online</div>
+          <div class="metric-value">${services.filter((s) => s.status === 'online').length}/${services.length}</div>
+          <div class="metric-hint">Disponibilidade</div>
         </article>
         <article class="metric">
-          <div class="metric-label">Base URL</div>
-          <div class="metric-value"><span class="pill info">Ativa</span></div>
-          <div class="metric-hint">${env.OPS_PUBLIC_BASE_URL}</div>
+          <div class="metric-label">Tipo</div>
+          <div class="metric-value"><span class="pill info">SaaS</span></div>
+          <div class="metric-hint">Backoffice operacional</div>
         </article>
       </div>
     </section>
 
     <section class="panel">
-      <h2>Checks rapidos</h2>
+      <h2>Status de servicos</h2>
       <table class="table">
         <thead>
-          <tr><th>Endpoint</th><th>Uso</th><th>Status esperado</th><th>Acesso</th></tr>
+          <tr><th>Servico</th><th>Status</th><th>Tempo de resposta</th><th>Healthz</th></tr>
         </thead>
         <tbody>
-          <tr><td>/healthz</td><td>Healthcheck edge</td><td><span class="pill ok">200 OK</span></td><td><a href="/healthz">Abrir</a></td></tr>
-          <tr><td>/api/status</td><td>Status tecnico JSON</td><td><span class="pill ok">200 OK</span></td><td><a href="/api/status">Abrir</a></td></tr>
-          <tr><td>/dashboard</td><td>Painel principal</td><td><span class="pill ok">Auth</span></td><td><a href="/dashboard">Abrir</a></td></tr>
+          ${serviceRows}
         </tbody>
       </table>
     </section>`,
@@ -1179,8 +1188,9 @@ function startServer() {
     if (path === '/service-status') {
       const user = await requireAuth(req, res);
       if (!user) return;
+      const services = await checkAllServices();
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-      res.end(renderServiceStatusPanel(user));
+      res.end(renderServiceStatusPanel(user, services));
       return;
     }
 
