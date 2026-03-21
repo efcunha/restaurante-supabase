@@ -32,7 +32,7 @@ export async function checkAllServices(): Promise<ServiceStatus[]> {
   const opsUrl = env.OPS_PUBLIC_BASE_URL ? `${env.OPS_PUBLIC_BASE_URL}/healthz` : undefined;
   const webUrl = env.WEB_BASE_URL ? `${env.WEB_BASE_URL}/healthz` : undefined;
   const activepiecesUrl = env.ACTIVEPIECES_BASE_URL ? `${env.ACTIVEPIECES_BASE_URL}/health` : undefined;
-  const evolutionUrl = env.EVOLUTION_API_BASE_URL ? `${env.EVOLUTION_API_BASE_URL}/health` : undefined;
+  const evolutionUrl = env.EVOLUTION_API_BASE_URL ? `${env.EVOLUTION_API_BASE_URL}` : undefined;
 
   const [ops, web, activepieces, evolution] = await Promise.all([
     opsUrl ? checkServiceHealth('restaurante-ops', opsUrl) : Promise.resolve({ name: 'restaurante-ops', status: 'unknown' as const }),
