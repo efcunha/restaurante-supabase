@@ -123,7 +123,7 @@ function TabNavigator() {
 function MainApp() {
   return (
     <OrderProvider>
-      <NavigationContainer>
+      <NavigationContainer documentTitle={{ formatter: () => 'Restaurante Web' }}>
         <TabNavigator />
       </NavigationContainer>
     </OrderProvider>
@@ -171,7 +171,7 @@ function AppContent() {
     return (
       <SafeAreaProvider>
         <StatusBar barStyle="dark-content" backgroundColor={colorSystem.background} translucent={false} />
-        <NavigationContainer>
+        <NavigationContainer documentTitle={{ formatter: () => 'Restaurante Web' }}>
           <AuthStack />
         </NavigationContainer>
       </SafeAreaProvider>
