@@ -4,6 +4,7 @@ import { signInWithPassword } from './auth/supabase.js';
 import { setSessionCookie, clearSessionCookie } from './auth/session.js';
 import { requireAuth } from './auth/middleware.js';
 import { renderDashboardHtml } from './views/dashboard.js';
+import type { OpsUser } from './auth/supabase.js';
 
 const env = buildEnv();
 
@@ -511,6 +512,442 @@ function renderHomeHtml(): string {
   return renderBaseLayout('restaurante-ops', body);
 }
 
+function renderQuickActionPanel(
+  user: OpsUser,
+  title: string,
+  subtitle: string,
+  body: string,
+): string {
+  const initials = (user.full_name ?? user.email)
+    .split(' ')
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? '')
+    .join('');
+
+  return `<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>restaurante-ops | ${title}</title>
+    <style>
+      :root {
+        --teal-700: #0c7a96;
+        --teal-900: #073a49;
+        --ink-900: #1d2a35;
+        --ink-700: #2f4353;
+        --ink-500: #516675;
+        --line: #c8d7e1;
+        --surface: #ffffff;
+        --surface-muted: #f4f8fb;
+      }
+
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+
+      body {
+        font-family: "Segoe UI", "Trebuchet MS", sans-serif;
+        background: var(--surface-muted);
+        color: var(--ink-900);
+        min-height: 100vh;
+        line-height: 1.45;
+      }
+
+      .topbar {
+        background: var(--teal-700);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 24px;
+        height: 64px;
+        gap: 12px;
+      }
+
+      .topbar-brand {
+        color: #fff;
+        font-size: 22px;
+        font-weight: 800;
+      }
+
+      .topbar-badge {
+        font-size: 12px;
+        background: rgba(255,255,255,0.18);
+        border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 999px;
+        padding: 4px 12px;
+        color: #ecfbff;
+        font-weight: 700;
+        margin-left: 8px;
+      }
+
+      .topbar-user {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #ecfbff;
+        font-size: 15px;
+      }
+
+      .avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.22);
+        border: 1.5px solid rgba(255,255,255,0.32);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 14px;
+        color: #fff;
+      }
+
+      .btn-logout {
+        background: rgba(255,255,255,0.15);
+        border: 1px solid rgba(255,255,255,0.22);
+        border-radius: 8px;
+        padding: 7px 14px;
+        color: #fff;
+        font-size: 14px;
+        font-weight: 700;
+        text-decoration: none;
+      }
+
+      .shell {
+        max-width: 1200px;
+        margin: 28px auto;
+        padding: 0 20px 24px;
+        display: grid;
+        gap: 16px;
+      }
+
+      .title-card {
+        background: linear-gradient(135deg, #0b6780, #0e7d9b);
+        color: #fff;
+        border-radius: 16px;
+        padding: 18px 20px;
+      }
+
+      .title-card h1 {
+        font-size: 30px;
+        line-height: 1.2;
+      }
+
+      .title-card p {
+        margin-top: 4px;
+        color: #ecfbff;
+        font-size: 16px;
+      }
+
+      .nav-links {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 8px;
+      }
+
+      .nav-link {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 10px 12px;
+        text-decoration: none;
+        color: var(--ink-700);
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .nav-link:hover { border-color: #0b6780; color: #0b6780; }
+
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 18px;
+        box-shadow: 0 2px 8px rgba(7,47,59,0.06);
+      }
+
+      .panel h2 {
+        font-size: 20px;
+        color: var(--ink-700);
+        margin-bottom: 10px;
+      }
+
+      .panel p {
+        font-size: 15px;
+        color: var(--ink-700);
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+        gap: 10px;
+        margin-top: 12px;
+      }
+
+      .metric {
+        border: 1px solid #dbe7ee;
+        border-radius: 12px;
+        padding: 12px;
+        background: #fbfdff;
+      }
+
+      .metric-label { font-size: 13px; color: var(--ink-500); font-weight: 700; }
+      .metric-value { font-size: 24px; color: var(--ink-900); font-weight: 800; margin-top: 4px; }
+      .metric-hint { font-size: 13px; color: var(--ink-700); margin-top: 2px; }
+
+      .table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 14px; }
+      .table th { text-align: left; font-size: 12px; text-transform: uppercase; color: var(--ink-500); padding-bottom: 8px; }
+      .table td { padding: 10px 0; border-top: 1px solid #e5eef4; color: var(--ink-700); }
+
+      .pill {
+        display: inline-block;
+        padding: 3px 9px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .ok { background: #f0fdf4; color: #14532d; border: 1px solid #bbf7d0; }
+      .warn { background: #fff7ed; color: #92400e; border: 1px solid #fde8c0; }
+      .info { background: #eff8fc; color: #0a5063; border: 1px solid #b8e2f0; }
+
+      .mono {
+        margin-top: 10px;
+        padding: 12px;
+        border-radius: 12px;
+        border: 1px solid #dbe7ee;
+        background: #f7fbfe;
+        font-family: Consolas, "Courier New", monospace;
+        font-size: 13px;
+        overflow: auto;
+      }
+
+      @media (max-width: 780px) {
+        .topbar { height: auto; padding: 10px 14px; flex-wrap: wrap; }
+        .title-card h1 { font-size: 24px; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="topbar">
+      <div style="display:flex;align-items:center;gap:4px;">
+        <span class="topbar-brand">restaurante-ops</span>
+        <span class="topbar-badge">Backoffice SaaS</span>
+      </div>
+      <div class="topbar-user">
+        <div class="avatar">${initials}</div>
+        <span>${user.email}</span>
+        <a class="btn-logout" href="/auth/logout">Sair</a>
+      </div>
+    </header>
+
+    <main class="shell">
+      <section class="title-card">
+        <h1>${title}</h1>
+        <p>${subtitle}</p>
+      </section>
+
+      <nav class="nav-links">
+        <a class="nav-link" href="/dashboard">Voltar ao dashboard</a>
+        <a class="nav-link" href="/customers">Gerenciar clientes</a>
+        <a class="nav-link" href="/billing">Faturamento e invoices</a>
+        <a class="nav-link" href="/metrics">Metricas SaaS</a>
+        <a class="nav-link" href="/service-status">Estado do servico</a>
+        <a class="nav-link" href="/api-status">API status JSON</a>
+      </nav>
+
+      ${body}
+    </main>
+  </body>
+</html>`;
+}
+
+function renderCustomersPanel(user: OpsUser): string {
+  return renderQuickActionPanel(
+    user,
+    'Gerenciar clientes',
+    'Painel inicial para lifecycle de contas e acompanhamento comercial.',
+    `<section class="panel">
+      <h2>Resumo da carteira</h2>
+      <div class="grid">
+        <article class="metric">
+          <div class="metric-label">Clientes ativos</div>
+          <div class="metric-value">--</div>
+          <div class="metric-hint">Empresas com assinatura ativa</div>
+        </article>
+        <article class="metric">
+          <div class="metric-label">Em onboarding</div>
+          <div class="metric-value">--</div>
+          <div class="metric-hint">Contas em ativacao inicial</div>
+        </article>
+        <article class="metric">
+          <div class="metric-label">Risco de churn</div>
+          <div class="metric-value">--</div>
+          <div class="metric-hint">Clientes com alertas recentes</div>
+        </article>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Fila de acompanhamento</h2>
+      <table class="table">
+        <thead>
+          <tr><th>Empresa</th><th>Plano</th><th>Status</th><th>Ultimo contato</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td colspan="4">Integrar com query de clientes do Supabase na proxima etapa.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>`,
+  );
+}
+
+function renderBillingPanel(user: OpsUser): string {
+  return renderQuickActionPanel(
+    user,
+    'Faturamento e invoices',
+    'Visao operacional de pagamentos, invoices e conciliacao de assinaturas.',
+    `<section class="panel">
+      <h2>Visao de cobranca</h2>
+      <div class="grid">
+        <article class="metric">
+          <div class="metric-label">Invoices abertas</div>
+          <div class="metric-value">--</div>
+          <div class="metric-hint">Faturas pendentes no ciclo atual</div>
+        </article>
+        <article class="metric">
+          <div class="metric-label">Recebidas hoje</div>
+          <div class="metric-value">--</div>
+          <div class="metric-hint">Pagamentos confirmados</div>
+        </article>
+        <article class="metric">
+          <div class="metric-label">Atrasadas</div>
+          <div class="metric-value">--</div>
+          <div class="metric-hint">Faturas com vencimento expirado</div>
+        </article>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Pipeline de invoices</h2>
+      <table class="table">
+        <thead>
+          <tr><th>Invoice</th><th>Empresa</th><th>Valor</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td colspan="4">Conectar modulo de billing para preencher invoices e reconciliacao.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>`,
+  );
+}
+
+function renderMetricsPanel(user: OpsUser): string {
+  return renderQuickActionPanel(
+    user,
+    'Metricas SaaS',
+    'Indicadores de crescimento, receita e saude da base em um unico painel.',
+    `<section class="panel">
+      <h2>KPIs principais</h2>
+      <div class="grid">
+        <article class="metric">
+          <div class="metric-label">MRR estimado</div>
+          <div class="metric-value">--</div>
+          <div class="metric-hint">Receita recorrente mensal</div>
+        </article>
+        <article class="metric">
+          <div class="metric-label">Churn mensal</div>
+          <div class="metric-value">--</div>
+          <div class="metric-hint">Taxa de cancelamento</div>
+        </article>
+        <article class="metric">
+          <div class="metric-label">Conversao trial</div>
+          <div class="metric-value">--</div>
+          <div class="metric-hint">Trials convertidos em pagantes</div>
+        </article>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Notas de instrumentacao</h2>
+      <p>Proxima fase: ligar consultas reais por periodo, empresa e plano para alimentar graficos e alertas de tendencia.</p>
+      <div class="mono">Sugestao de filtros: periodo, plano, status da empresa e canal de aquisicao.</div>
+    </section>`,
+  );
+}
+
+function renderServiceStatusPanel(user: OpsUser): string {
+  return renderQuickActionPanel(
+    user,
+    'Estado do servico',
+    'Status do runtime do restaurante-ops e endpoints essenciais de operacao.',
+    `<section class="panel">
+      <h2>Saude operacional</h2>
+      <div class="grid">
+        <article class="metric">
+          <div class="metric-label">Ambiente</div>
+          <div class="metric-value">${env.OPS_ENV}</div>
+          <div class="metric-hint">Runtime atual</div>
+        </article>
+        <article class="metric">
+          <div class="metric-label">Servico</div>
+          <div class="metric-value">restaurante-ops</div>
+          <div class="metric-hint">Backoffice SaaS</div>
+        </article>
+        <article class="metric">
+          <div class="metric-label">Base URL</div>
+          <div class="metric-value"><span class="pill info">Ativa</span></div>
+          <div class="metric-hint">${env.OPS_PUBLIC_BASE_URL}</div>
+        </article>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Checks rapidos</h2>
+      <table class="table">
+        <thead>
+          <tr><th>Endpoint</th><th>Uso</th><th>Status esperado</th><th>Acesso</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>/healthz</td><td>Healthcheck edge</td><td><span class="pill ok">200 OK</span></td><td><a href="/healthz">Abrir</a></td></tr>
+          <tr><td>/api/status</td><td>Status tecnico JSON</td><td><span class="pill ok">200 OK</span></td><td><a href="/api/status">Abrir</a></td></tr>
+          <tr><td>/dashboard</td><td>Painel principal</td><td><span class="pill ok">Auth</span></td><td><a href="/dashboard">Abrir</a></td></tr>
+        </tbody>
+      </table>
+    </section>`,
+  );
+}
+
+function renderApiStatusPanel(user: OpsUser): string {
+  const payload = {
+    service: 'restaurante-ops',
+    modules: ['customers', 'billing', 'metrics'],
+    env: env.OPS_ENV,
+  };
+
+  return renderQuickActionPanel(
+    user,
+    'API status JSON',
+    'Visualizacao do payload tecnico para diagnostico e automacoes.',
+    `<section class="panel">
+      <h2>Payload atual</h2>
+      <p>Este JSON e o retorno do endpoint publico <strong>/api/status</strong>.</p>
+      <pre class="mono">${JSON.stringify(payload, null, 2)}</pre>
+    </section>
+
+    <section class="panel">
+      <h2>Acoes rapidas de diagnostico</h2>
+      <p>Use os comandos abaixo para monitoramento basico.</p>
+      <pre class="mono">curl -sS ${env.OPS_PUBLIC_BASE_URL}/healthz
+curl -sS ${env.OPS_PUBLIC_BASE_URL}/api/status</pre>
+      <p style="margin-top:8px;">Status sugerido: <span class="pill ok">Operacional</span></p>
+    </section>`,
+  );
+}
+
 /** Coleta o body de um POST como string (limite 64 KB). */
 function readBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -635,12 +1072,44 @@ function startServer() {
       return;
     }
 
-    // ---- Rotas filhas protegidas (placeholder) ----
-    if (['/customers', '/billing', '/metrics'].includes(path)) {
+    // ---- Rotas filhas protegidas (paineis de acoes rapidas) ----
+    if (path === '/customers') {
       const user = await requireAuth(req, res);
       if (!user) return;
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-      res.end(renderDashboardHtml(user)); // redirecionar para modulo ao implementar
+      res.end(renderCustomersPanel(user));
+      return;
+    }
+
+    if (path === '/billing') {
+      const user = await requireAuth(req, res);
+      if (!user) return;
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+      res.end(renderBillingPanel(user));
+      return;
+    }
+
+    if (path === '/metrics') {
+      const user = await requireAuth(req, res);
+      if (!user) return;
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+      res.end(renderMetricsPanel(user));
+      return;
+    }
+
+    if (path === '/service-status') {
+      const user = await requireAuth(req, res);
+      if (!user) return;
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+      res.end(renderServiceStatusPanel(user));
+      return;
+    }
+
+    if (path === '/api-status') {
+      const user = await requireAuth(req, res);
+      if (!user) return;
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+      res.end(renderApiStatusPanel(user));
       return;
     }
 
