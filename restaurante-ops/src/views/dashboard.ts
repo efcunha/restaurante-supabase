@@ -1,6 +1,14 @@
 import type { OpsUser } from '../auth/supabase.js';
+import type { KpiCounts, CompanyRow } from '../modules/data.js';
 
-export function renderDashboardHtml(user: OpsUser): string {
+export interface DashboardData {
+  kpis: KpiCounts;
+  companies: CompanyRow[];
+}
+
+export function renderDashboardHtml(user: OpsUser, data?: DashboardData): string {
+  const kpis = data?.kpis ?? { active: 0, trialing: 0, pastDue: 0, mrr: 0 };
+  const companies = data?.companies ?? [];
   const initials = (user.full_name ?? user.email)
     .split(' ')
     .slice(0, 2)
@@ -286,31 +294,30 @@ export function renderDashboardHtml(user: OpsUser): string {
         </div>
       </section>
 
-      <!-- KPIs (placeholder — integrar com queries reais) -->
       <section class="kpi-grid">
         <div class="kpi-card">
           <div class="kpi-label">Clientes ativos</div>
-          <div class="kpi-value">—</div>
+          <div class="kpi-value">${kpis.active}</div>
           <div class="kpi-hint">Empresas com assinatura ativa</div>
-          <span class="kpi-chip chip-pending">Aguardando dados</span>
+          <span class="kpi-chip ${kpis.active > 0 ? 'chip-ok' : 'chip-pending'}">${kpis.active > 0 ? 'Operacional' : 'Aguardando dados'}</span>
         </div>
         <div class="kpi-card">
           <div class="kpi-label">Em trial</div>
-          <div class="kpi-value">—</div>
+          <div class="kpi-value">${kpis.trialing}</div>
           <div class="kpi-hint">Trial ativos (30 dias)</div>
           <span class="kpi-chip chip-ok">Pipeline de conversao</span>
         </div>
         <div class="kpi-card">
           <div class="kpi-label">MRR estimado</div>
-          <div class="kpi-value">—</div>
+          <div class="kpi-value">${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(kpis.mrr)}</div>
           <div class="kpi-hint">Receita mensal recorrente</div>
-          <span class="kpi-chip chip-pending">Aguardando dados</span>
+          <span class="kpi-chip ${kpis.mrr > 0 ? 'chip-ok' : 'chip-pending'}">${kpis.mrr > 0 ? 'Ativo' : 'Aguardando dados'}</span>
         </div>
         <div class="kpi-card">
           <div class="kpi-label">Inadimplentes</div>
-          <div class="kpi-value">—</div>
-          <div class="kpi-hint">Assinaturas vencidas</div>
-          <span class="kpi-chip chip-warn">Requer atencao</span>
+          <div class="kpi-value">${kpis.pastDue}</div>
+          <div class="kpi-hint">past_due + suspended</div>
+          <span class="kpi-chip ${kpis.pastDue > 0 ? 'chip-warn' : 'chip-ok'}">${kpis.pastDue > 0 ? 'Requer atencao' : 'Sem pendencias'}</span>
         </div>
       </section>
 
@@ -328,11 +335,17 @@ export function renderDashboardHtml(user: OpsUser): string {
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td colspan="4" style="text-align:center;color:#526877;padding:24px 0;font-size:16px;">
-                  Conectar queries reais ao Supabase na proxima fase
-                </td>
-              </tr>
+              ${companies.length === 0
+                ? '<tr><td colspan="4" style="text-align:center;color:#516675;padding:24px 0;font-size:15px;">Nenhuma empresa encontrada. Verifique a chave Supabase.</td></tr>'
+                : companies.slice(0, 8).map((c) => {
+                    const statusMap: Record<string, string> = { active: '#14532d', trialing: '#0a5063', past_due: '#92400e', suspended: '#92400e', cancelled: '#92400e' };
+                    const bgMap: Record<string, string> = { active: '#f0fdf4', trialing: '#eff8fc', past_due: '#fff7ed', suspended: '#fff7ed', cancelled: '#fff7ed' };
+                    const st = c.subscription_status ?? 'sem plano';
+                    const stStyle = `background:${bgMap[st] ?? '#f4f8fb'};color:${statusMap[st] ?? '#2f4353'};border-radius:999px;padding:2px 8px;font-size:12px;font-weight:700;`;
+                    const since = c.created_at ? new Date(c.created_at).toLocaleDateString('pt-BR') : '—';
+                    return `<tr><td>${c.name}</td><td>${c.plan ?? '—'}</td><td><span style="${stStyle}">${st}</span></td><td>${since}</td></tr>`;
+                  }).join('')
+              }
             </tbody>
           </table>
         </div>

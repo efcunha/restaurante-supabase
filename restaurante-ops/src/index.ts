@@ -5,6 +5,19 @@ import { setSessionCookie, clearSessionCookie } from './auth/session.js';
 import { requireAuth } from './auth/middleware.js';
 import { renderDashboardHtml } from './views/dashboard.js';
 import type { OpsUser } from './auth/supabase.js';
+import {
+  fetchRecentCompanies,
+  fetchInvoiceStats,
+  fetchRecentInvoices,
+  fetchSaasMetrics,
+  fetchKpiCounts,
+  brl,
+  type CompanyRow,
+  type InvoiceRow,
+  type InvoiceStats,
+  type SaasMetrics,
+  type KpiCounts,
+} from './modules/data.js';
 
 const env = buildEnv();
 
@@ -761,49 +774,100 @@ function renderQuickActionPanel(
 </html>`;
 }
 
-function renderCustomersPanel(user: OpsUser): string {
+function statusPill(status: string | null): string {
+  if (!status) return '<span class="pill info">sem plano</span>';
+  const map: Record<string, string> = {
+    active: 'ok',
+    trialing: 'info',
+    past_due: 'warn',
+    grace_period: 'warn',
+    suspended: 'warn',
+    reactivated: 'ok',
+    cancelled: 'warn',
+  };
+  const cls = map[status] ?? 'info';
+  return `<span class="pill ${cls}">${status}</span>`;
+}
+
+function fmtDate(iso: string | null): string {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function renderCustomersPanel(
+  user: OpsUser,
+  kpis: KpiCounts,
+  companies: CompanyRow[],
+): string {
+  const rows = companies.length === 0
+    ? '<tr><td colspan="5" style="text-align:center;color:#516675;">Nenhuma empresa encontrada.</td></tr>'
+    : companies.map((c) => `
+        <tr>
+          <td>${c.name}</td>
+          <td>${c.plan ?? '—'}</td>
+          <td>${statusPill(c.subscription_status)}</td>
+          <td>${fmtDate(c.trial_ends_at)}</td>
+          <td>${fmtDate(c.created_at)}</td>
+        </tr>`).join('');
+
   return renderQuickActionPanel(
     user,
     'Gerenciar clientes',
-    'Painel inicial para lifecycle de contas e acompanhamento comercial.',
+    'Lifecycle de contas e acompanhamento comercial.',
     `<section class="panel">
       <h2>Resumo da carteira</h2>
       <div class="grid">
         <article class="metric">
           <div class="metric-label">Clientes ativos</div>
-          <div class="metric-value">--</div>
-          <div class="metric-hint">Empresas com assinatura ativa</div>
+          <div class="metric-value">${kpis.active}</div>
+          <div class="metric-hint">Assinatura ativa</div>
         </article>
         <article class="metric">
-          <div class="metric-label">Em onboarding</div>
-          <div class="metric-value">--</div>
-          <div class="metric-hint">Contas em ativacao inicial</div>
+          <div class="metric-label">Em trial</div>
+          <div class="metric-value">${kpis.trialing}</div>
+          <div class="metric-hint">Trial de 30 dias</div>
         </article>
         <article class="metric">
-          <div class="metric-label">Risco de churn</div>
-          <div class="metric-value">--</div>
-          <div class="metric-hint">Clientes com alertas recentes</div>
+          <div class="metric-label">Em atraso / suspensos</div>
+          <div class="metric-value">${kpis.pastDue}</div>
+          <div class="metric-hint">past_due + suspended</div>
         </article>
       </div>
     </section>
 
     <section class="panel">
-      <h2>Fila de acompanhamento</h2>
+      <h2>Empresas cadastradas</h2>
       <table class="table">
         <thead>
-          <tr><th>Empresa</th><th>Plano</th><th>Status</th><th>Ultimo contato</th></tr>
+          <tr><th>Empresa</th><th>Plano</th><th>Status</th><th>Trial ate</th><th>Criada em</th></tr>
         </thead>
-        <tbody>
-          <tr>
-            <td colspan="4">Integrar com query de clientes do Supabase na proxima etapa.</td>
-          </tr>
-        </tbody>
+        <tbody>${rows}</tbody>
       </table>
     </section>`,
   );
 }
 
-function renderBillingPanel(user: OpsUser): string {
+function renderBillingPanel(
+  user: OpsUser,
+  stats: InvoiceStats,
+  invoices: InvoiceRow[],
+): string {
+  const invPill = (s: string) => {
+    const map: Record<string, string> = { paid: 'ok', pending: 'info', failed: 'warn', cancelled: 'warn' };
+    return `<span class="pill ${map[s] ?? 'info'}">${s}</span>`;
+  };
+
+  const rows = invoices.length === 0
+    ? '<tr><td colspan="5" style="text-align:center;color:#516675;">Nenhuma invoice encontrada.</td></tr>'
+    : invoices.map((inv) => `
+        <tr>
+          <td>${inv.company_name}</td>
+          <td>${brl(inv.amount)}</td>
+          <td>${invPill(inv.status)}</td>
+          <td>${fmtDate(inv.due_date)}</td>
+          <td>${inv.paid_at ? fmtDate(inv.paid_at) : '—'}</td>
+        </tr>`).join('');
+
   return renderQuickActionPanel(
     user,
     'Faturamento e invoices',
@@ -813,68 +877,70 @@ function renderBillingPanel(user: OpsUser): string {
       <div class="grid">
         <article class="metric">
           <div class="metric-label">Invoices abertas</div>
-          <div class="metric-value">--</div>
+          <div class="metric-value">${stats.pending}</div>
           <div class="metric-hint">Faturas pendentes no ciclo atual</div>
         </article>
         <article class="metric">
-          <div class="metric-label">Recebidas hoje</div>
-          <div class="metric-value">--</div>
+          <div class="metric-label">Pagas hoje</div>
+          <div class="metric-value">${stats.paidToday}</div>
           <div class="metric-hint">Pagamentos confirmados</div>
         </article>
         <article class="metric">
           <div class="metric-label">Atrasadas</div>
-          <div class="metric-value">--</div>
-          <div class="metric-hint">Faturas com vencimento expirado</div>
+          <div class="metric-value">${stats.overdue}</div>
+          <div class="metric-hint">Vencimento expirado</div>
         </article>
       </div>
     </section>
 
     <section class="panel">
-      <h2>Pipeline de invoices</h2>
+      <h2>Invoices recentes</h2>
       <table class="table">
         <thead>
-          <tr><th>Invoice</th><th>Empresa</th><th>Valor</th><th>Status</th></tr>
+          <tr><th>Empresa</th><th>Valor</th><th>Status</th><th>Vencimento</th><th>Pago em</th></tr>
         </thead>
-        <tbody>
-          <tr>
-            <td colspan="4">Conectar modulo de billing para preencher invoices e reconciliacao.</td>
-          </tr>
-        </tbody>
+        <tbody>${rows}</tbody>
       </table>
     </section>`,
   );
 }
 
-function renderMetricsPanel(user: OpsUser): string {
+function renderMetricsPanel(user: OpsUser, metrics: SaasMetrics): string {
+  const mrrFmt = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(metrics.mrr);
+
   return renderQuickActionPanel(
     user,
     'Metricas SaaS',
-    'Indicadores de crescimento, receita e saude da base em um unico painel.',
+    'Indicadores de crescimento, receita e saude da base.',
     `<section class="panel">
       <h2>KPIs principais</h2>
       <div class="grid">
         <article class="metric">
           <div class="metric-label">MRR estimado</div>
-          <div class="metric-value">--</div>
-          <div class="metric-hint">Receita recorrente mensal</div>
+          <div class="metric-value">${mrrFmt}</div>
+          <div class="metric-hint">Soma de assinaturas ativas</div>
         </article>
         <article class="metric">
-          <div class="metric-label">Churn mensal</div>
-          <div class="metric-value">--</div>
-          <div class="metric-hint">Taxa de cancelamento</div>
+          <div class="metric-label">Cancelados no mes</div>
+          <div class="metric-value">${metrics.cancelledThisMonth}</div>
+          <div class="metric-hint">Churn do ciclo atual</div>
         </article>
         <article class="metric">
           <div class="metric-label">Conversao trial</div>
-          <div class="metric-value">--</div>
-          <div class="metric-hint">Trials convertidos em pagantes</div>
+          <div class="metric-value">${metrics.conversionRate}</div>
+          <div class="metric-hint">Trials ativos convertidos</div>
+        </article>
+        <article class="metric">
+          <div class="metric-label">Total de empresas</div>
+          <div class="metric-value">${metrics.totalCompanies}</div>
+          <div class="metric-hint">Ativas no cadastro</div>
+        </article>
+        <article class="metric">
+          <div class="metric-label">Pagantes</div>
+          <div class="metric-value">${metrics.activeCompanies}</div>
+          <div class="metric-hint">Status active</div>
         </article>
       </div>
-    </section>
-
-    <section class="panel">
-      <h2>Notas de instrumentacao</h2>
-      <p>Proxima fase: ligar consultas reais por periodo, empresa e plano para alimentar graficos e alertas de tendencia.</p>
-      <div class="mono">Sugestao de filtros: periodo, plano, status da empresa e canal de aquisicao.</div>
     </section>`,
   );
 }
@@ -1067,8 +1133,12 @@ function startServer() {
     if (path === '/dashboard') {
       const user = await requireAuth(req, res);
       if (!user) return; // requireAuth ja redirecionou para /login
+      const [kpis, companies] = await Promise.all([
+        fetchKpiCounts(),
+        fetchRecentCompanies(8),
+      ]);
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-      res.end(renderDashboardHtml(user));
+      res.end(renderDashboardHtml(user, { kpis, companies }));
       return;
     }
 
@@ -1076,24 +1146,33 @@ function startServer() {
     if (path === '/customers') {
       const user = await requireAuth(req, res);
       if (!user) return;
+      const [kpis, companies] = await Promise.all([
+        fetchKpiCounts(),
+        fetchRecentCompanies(20),
+      ]);
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-      res.end(renderCustomersPanel(user));
+      res.end(renderCustomersPanel(user, kpis, companies));
       return;
     }
 
     if (path === '/billing') {
       const user = await requireAuth(req, res);
       if (!user) return;
+      const [stats, invoices] = await Promise.all([
+        fetchInvoiceStats(),
+        fetchRecentInvoices(15),
+      ]);
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-      res.end(renderBillingPanel(user));
+      res.end(renderBillingPanel(user, stats, invoices));
       return;
     }
 
     if (path === '/metrics') {
       const user = await requireAuth(req, res);
       if (!user) return;
+      const metrics = await fetchSaasMetrics();
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-      res.end(renderMetricsPanel(user));
+      res.end(renderMetricsPanel(user, metrics));
       return;
     }
 
