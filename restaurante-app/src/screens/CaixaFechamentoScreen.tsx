@@ -1,8 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, TouchableOpacity, TextInput, ScrollView, Modal, ActivityIndicator, Alert } from 'react-native';
 import { useEffect, useState } from 'react';
-import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import CaixaService from '../services/CaixaService';
 import * as Print from 'expo-print';
@@ -19,7 +17,6 @@ interface FechamentoResult {
 
 export default function CaixaFechamentoScreen() {
   const { user } = useAuth();
-  const insets = useSafeAreaInsets();
   const [caixasAbertos, setCaixasAbertos] = useState<Caixa[]>([]);
   const [selectedCaixa, setSelectedCaixa] = useState<Caixa | null>(null);
   const [saldoReal, setSaldoReal] = useState<string>('');
@@ -238,17 +235,6 @@ export default function CaixaFechamentoScreen() {
   if (loading && !selectedCaixa && caixasAbertos.length === 0) {
     return (
       <View style={styles.container}>
-        <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
-          <View style={styles.headerLeft} />
-          <View style={styles.headerCenter}>
-            <View style={styles.headerTitleRow}>
-              <Ionicons name="lock-closed-outline" size={24} color={colors.white} style={styles.headerIcon} />
-              <Text style={styles.headerTitle}>Fechamento de Caixa</Text>
-            </View>
-            {!!user && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
-          </View>
-          <View style={styles.headerRight} />
-        </View>
         <ActivityIndicator size="large" color={colors.secondary} style={{ marginTop: 50 }} />
       </View>
     );
@@ -256,18 +242,6 @@ export default function CaixaFechamentoScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
-        <View style={styles.headerLeft} />
-        <View style={styles.headerCenter}>
-          <View style={styles.headerTitleRow}>
-            <Ionicons name="lock-closed-outline" size={24} color={colors.white} style={styles.headerIcon} />
-            <Text style={styles.headerTitle}>Fechamento de Caixa</Text>
-          </View>
-          {!!user && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
-        </View>
-        <View style={styles.headerRight} />
-      </View>
-
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
 
         {/* LISTA DE CAIXAS ABERTOS (se nada selecionado) */}
@@ -422,47 +396,6 @@ export default function CaixaFechamentoScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  header: {
-    backgroundColor: colors.primary,
-    paddingBottom: 15,
-    paddingHorizontal: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-    zIndex: 10,
-    elevation: 8,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4.65,
-  },
-  headerLeft: { flex: 1 },
-  headerCenter: {
-    flex: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerRight: { flex: 1 },
-  headerTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  headerIcon: { marginRight: 6 },
-  headerTitle: {
-    fontSize: 18,
-    color: colors.white,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  userInfo: {
-    color: colors.userInfo,
-    fontSize: 12,
-    fontWeight: '600',
-    marginTop: 4,
-    textAlign: 'center',
-  },
   sectionTitle: { fontSize: 18, fontWeight: 'bold', color: colors.primary, marginBottom: 15 },
   cardItem: { backgroundColor: colors.white, padding: 15, borderRadius: 10, marginBottom: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderColor: colors.border, borderWidth: 1 },
   cardDate: { fontSize: 16, fontWeight: 'bold', color: colors.text },
