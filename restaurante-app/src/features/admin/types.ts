@@ -20,9 +20,6 @@ export interface AdminSlideModalProps extends BaseAdminModalProps {
 
 export interface AdminCaixaModalProps extends BaseAdminModalProps {
   title: string;
-  headerStyle?: ViewStyle;
-  closeButtonStyle?: TextStyle;
-  titleStyle?: TextStyle;
 }
 
 export interface AdminActionCardProps {

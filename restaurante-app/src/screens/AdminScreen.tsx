@@ -472,9 +472,6 @@ export default function AdminScreen() {
         visible={showCaixaAbertura}
         onClose={() => setShowCaixaAbertura(false)}
         title="Abertura de Caixa"
-        headerStyle={styles.modalHeader}
-        closeButtonStyle={styles.closeButton}
-        titleStyle={styles.modalHeaderTitle}
       >
         {showCaixaAbertura && <CaixaAberturaScreen onSuccess={() => setShowCaixaAbertura(false)} />}
       </AdminCaixaModal>
@@ -484,9 +481,6 @@ export default function AdminScreen() {
         visible={showCaixaOperacoes}
         onClose={() => setShowCaixaOperacoes(false)}
         title="Sangria / Reforço"
-        headerStyle={styles.modalHeader}
-        closeButtonStyle={styles.closeButton}
-        titleStyle={styles.modalHeaderTitle}
       >
         {showCaixaOperacoes && <CaixaOperacoesScreen />}
       </AdminCaixaModal>
@@ -496,9 +490,6 @@ export default function AdminScreen() {
         visible={showCaixaFechamento}
         onClose={() => setShowCaixaFechamento(false)}
         title="Fechamento de Caixa"
-        headerStyle={styles.modalHeader}
-        closeButtonStyle={styles.closeButton}
-        titleStyle={styles.modalHeaderTitle}
       >
         {showCaixaFechamento && <CaixaFechamentoScreen />}
       </AdminCaixaModal>
@@ -813,35 +804,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 1,
-  },
-  modalHeader: {
-    backgroundColor: colors.primary,
-    paddingTop: 50,
-    paddingBottom: 15,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-    elevation: 8,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    zIndex: 10,
-  },
-  modalHeaderTitle: {
-    color: colors.white,
-    fontSize: 20,
-    fontWeight: 'bold',
-    flex: 1,
-    textAlign: 'center',
-    marginRight: 60, // Balance the back button width
-  },
-  closeButton: {
-    color: colors.white,
-    fontSize: 18,
-    fontWeight: '600',
   },
   // Estilos para o card de vendas
   vendasCard: {

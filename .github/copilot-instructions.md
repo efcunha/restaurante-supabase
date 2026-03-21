@@ -12,6 +12,30 @@ When working in this repository, consult the relevant skill before proposing or 
 - `restaurante-web/` is the web project and may mirror some mobile flows, but React Native guidance should only be applied where relevant.
 - Prefer solutions that fit the current repository structure and existing patterns.
 
+## Project Guardrails Snapshot (Synced from Skill)
+
+Source of truth:
+- `c:\Users\ECUNHA\.copilot\skills\restaurante-supabase\SKILL.md`
+
+Critical rules to always enforce in this repository:
+- Multi-tenant safety first: all data access must respect `company_id` and Supabase RLS.
+- Never hardcode secrets in source code (especially integration/webhook steps).
+- Protect critical flows (`Balcao`, `Mesa`, `Delivery`, `Montagem`) from behavior regressions.
+- Preserve app/web parity for mirrored modules; avoid one-sided refactors when both sides are equivalent.
+- For new UI, use design tokens and stable exports (`src/ui/`) instead of ad-hoc styling.
+- Use feature flags for rollout/rollback (`*_UI_NEXT`) and promote canary waves in order.
+
+Operational reminders from recent incidents:
+- Delivery completion logic must reconcile payment + comanda closure, not only order status.
+- In `orders`, cancellation status is `cancelled`; keep `cancelada` semantics for comanda state only.
+- Avoid duplicate `.neq` filters for the same field in Supabase/PostgREST queries (can lead to 400).
+- If `webhook=200` but no payment row inserted, validate `code_delivery_payment` inputs and flow publish/enabled status.
+
+Maintenance policy for these instruction files:
+- Keep this file as orchestration/routing + concise guardrails.
+- Keep detailed domain/implementation guidance in the project skill file.
+- When rules change, update the skill first, then refresh this snapshot section.
+
 ## Skill Routing
 
 ### Primary project skill (always first)
