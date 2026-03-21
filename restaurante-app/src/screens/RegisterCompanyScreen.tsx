@@ -296,6 +296,18 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
           <Text style={styles.subtitle}>Gerencie seu restaurante de forma inteligente</Text>
         </View>
 
+        <View style={[styles.billingCallout, { maxWidth: isTablet ? 700 : '100%', alignSelf: 'center', width: '100%' }]}>
+          <View style={styles.billingCalloutIconWrap}>
+            <Ionicons name="card-outline" size={20} color={colors.primary} />
+          </View>
+          <View style={styles.billingCalloutContent}>
+            <Text style={styles.billingCalloutTitle}>Cobrança SaaS preparada no onboarding</Text>
+            <Text style={styles.billingCalloutText}>
+              A empresa é criada com 30 dias de trial. O método de pagamento não bloqueia a criação da conta, mas deve ser configurado antes do vencimento para manter o acesso operacional.
+            </Text>
+          </View>
+        </View>
+
         <View style={[styles.form, { maxWidth: isTablet ? 700 : '100%', alignSelf: 'center', width: '100%' }]}>
           <Text style={styles.label}>Tipo de Documento</Text>
           <View style={styles.docTypeContainer}>
@@ -544,6 +556,40 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: colors.primary,
     marginBottom: 10,
+  },
+  billingCallout: {
+    marginTop: 18,
+    marginBottom: 12,
+    backgroundColor: '#EFF7FB',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#D3E5EE',
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  billingCalloutIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#DFF1F7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  billingCalloutContent: {
+    flex: 1,
+  },
+  billingCalloutTitle: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: '800',
+    marginBottom: 6,
+  },
+  billingCalloutText: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    lineHeight: 20,
   },
   subtitle: {
     fontSize: 16,
