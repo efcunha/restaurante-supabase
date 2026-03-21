@@ -33,6 +33,10 @@ const onboardingHighlights = [
     title: 'Base pronta para operar',
     description: 'A conta ja nasce preparada para iniciar administracao, atendimento e fluxo operacional.',
   },
+  {
+    title: 'Billing desde o onboarding',
+    description: 'A assinatura fica disponivel logo apos a criacao da empresa, com trial de 30 dias e regularizacao obrigatoria antes do vencimento.',
+  },
 ];
 
 export default function RegisterCompanyScreen({ navigation }: Props) {
