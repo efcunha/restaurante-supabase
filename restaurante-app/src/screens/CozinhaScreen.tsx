@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
@@ -10,12 +10,11 @@ import OrderService from '../services/OrderService';
 import { supabase } from '../config/SupabaseConfig';
 // @ts-ignore
 import { getLocalDateKey } from '../utils/dateUtils';
-import { confirmLogout } from '../utils/appUtils';
 import OptimizedFlatList from '../components/OptimizedFlatList';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 export default function CozinhaScreen() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [allOrders, setAllOrders] = useState<any[]>([]);
   const insets = useSafeAreaInsets();
 
@@ -288,11 +287,7 @@ export default function CozinhaScreen() {
           </View>
           {user && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
         </View>
-        <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.logoutBtn} onPress={() => confirmLogout(logout)}>
-            <Ionicons name="log-out-outline" size={24} color={colors.white} />
-          </TouchableOpacity>
-        </View>
+        <View style={styles.headerRight} />
       </View>
 
       <OptimizedFlatList
@@ -366,12 +361,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'flex-end',
     justifyContent: 'center',
-  },
-  logoutBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 12,
-    backgroundColor: colors.logoutBg,
   },
   listContainer: {
     padding: 20,

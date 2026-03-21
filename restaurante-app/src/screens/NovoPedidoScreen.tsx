@@ -805,15 +805,7 @@ export default function NovoPedidoScreen({ route }: any) {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
     >
       <View style={styles.header}>
-        <View style={styles.headerLeft} />
-        <View style={styles.headerCenter}>
-          <View style={styles.headerTitleRow}>
-            <Ionicons name="receipt-outline" size={24} color={colors.white} style={styles.headerTitleIcon} />
-            <Text style={styles.headerTitle}>Novo Pedido</Text>
-          </View>
-          {user && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
-        </View>
-        <View style={styles.headerActionsRight}>
+        <View style={styles.headerLeft}>
           <TouchableOpacity
             accessibilityLabel="Atualizar cardápio"
             accessibilityHint="Atualiza os itens do cardápio sem limpar os dados do pedido"
@@ -821,6 +813,7 @@ export default function NovoPedidoScreen({ route }: any) {
             onPress={handleHeaderRefresh}
             style={[
               styles.headerRefreshButton,
+              styles.headerRefreshButtonLeft,
               showRefreshSuccess ? styles.headerRefreshButtonSuccess : null,
               isRefreshingCardapio ? styles.headerRefreshButtonDisabled : null,
             ]}
@@ -833,7 +826,15 @@ export default function NovoPedidoScreen({ route }: any) {
               <Ionicons color={colors.white} name="refresh" size={18} />
             )}
           </TouchableOpacity>
-
+        </View>
+        <View style={styles.headerCenter}>
+          <View style={styles.headerTitleRow}>
+            <Ionicons name="receipt-outline" size={24} color={colors.white} style={styles.headerTitleIcon} />
+            <Text style={styles.headerTitle}>Novo Pedido</Text>
+          </View>
+          {user && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
+        </View>
+        <View style={styles.headerActionsRight}>
           <TouchableOpacity activeOpacity={0.82} style={styles.logoutBtn} onPress={handleLogout}>
             <Ionicons color={colors.white} name="log-out-outline" size={14} style={styles.logoutBtnIcon} />
             <Text style={styles.logoutBtnText}>Sair</Text>
@@ -1003,6 +1004,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.14)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  headerRefreshButtonLeft: {
+    marginRight: 0,
   },
   headerRefreshButtonSuccess: {
     backgroundColor: 'rgba(68,188,122,0.55)',
