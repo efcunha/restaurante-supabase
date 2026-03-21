@@ -3,6 +3,9 @@ import { buildEnv } from '../config/env.js';
 
 const env = buildEnv();
 
+/** Unica empresa autorizada a acessar o restaurante-ops */
+const OPS_ALLOWED_COMPANY_ID = 'f85bfdc2-982a-4cf7-b176-bce68426f861';
+
 /**
  * Cliente Supabase com service-role para operacoes internas do ops.
  * Nunca expor este cliente ao browser/cliente.
@@ -16,6 +19,7 @@ export interface OpsUser {
   email: string;
   full_name: string | null;
   role: string | null;
+  company_id: string | null;
 }
 
 /**
@@ -37,9 +41,14 @@ export async function signInWithPassword(
   // Busca perfil interno
   const { data: profile } = await supabase
     .from('profiles')
-    .select('full_name, role')
+    .select('full_name, role, company_id')
     .eq('id', userId)
     .single();
+
+  // Restringe acesso: somente usuarios da empresa autorizada
+  if (profile?.company_id !== OPS_ALLOWED_COMPANY_ID) {
+    throw new Error('Acesso negado: usuario nao pertence a empresa autorizada.');
+  }
 
   return {
     token,
@@ -48,6 +57,7 @@ export async function signInWithPassword(
       email: data.user.email ?? email,
       full_name: profile?.full_name ?? null,
       role: profile?.role ?? null,
+      company_id: profile?.company_id ?? null,
     },
   };
 }
@@ -61,14 +71,18 @@ export async function getUserFromToken(token: string): Promise<OpsUser | null> {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('full_name, role')
+    .select('full_name, role, company_id')
     .eq('id', data.user.id)
     .single();
+
+  // Restringe acesso: somente usuarios da empresa autorizada
+  if (profile?.company_id !== OPS_ALLOWED_COMPANY_ID) return null;
 
   return {
     id: data.user.id,
     email: data.user.email ?? '',
     full_name: profile?.full_name ?? null,
     role: profile?.role ?? null,
+    company_id: profile?.company_id ?? null,
   };
 }
