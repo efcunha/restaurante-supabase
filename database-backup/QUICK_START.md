@@ -74,6 +74,11 @@ restore.bat backups\backup_2026-02-11_150000.dump
 
 ## 📝 Comandos Úteis
 
+### Verificar drift de migrations (local x remoto)
+```bash
+./check-migration-sync.sh
+```
+
 ### Listar backups disponíveis
 ```bash
 ls -lh backups/

@@ -38,6 +38,7 @@ import AboutScreen from './src/screens/AboutScreen';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { OrderProvider } from './src/context/OrderContext';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
+import { BillingProvider } from './src/context/BillingContext';
 import { ToastProvider } from './src/context/ToastContext';
 import { canAccessScreen } from './src/auth/roles';
 import OfflineNotice from './src/components/OfflineNotice';
@@ -251,9 +252,11 @@ export default function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <ToastProvider>
-          <AppContent />
-        </ToastProvider>
+        <BillingProvider>
+          <ToastProvider>
+            <AppContent />
+          </ToastProvider>
+        </BillingProvider>
       </AuthProvider>
     </ErrorBoundary>
   );
