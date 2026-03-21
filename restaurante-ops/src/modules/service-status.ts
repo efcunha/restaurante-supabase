@@ -30,18 +30,16 @@ async function checkServiceHealth(name: string, url: string): Promise<ServiceSta
 
 export async function checkAllServices(): Promise<ServiceStatus[]> {
   const opsUrl = env.OPS_PUBLIC_BASE_URL ? `${env.OPS_PUBLIC_BASE_URL}/healthz` : undefined;
-  const appUrl = env.APP_BASE_URL ? `${env.APP_BASE_URL}/healthz` : undefined;
   const webUrl = env.WEB_BASE_URL ? `${env.WEB_BASE_URL}/healthz` : undefined;
   const activepiecesUrl = env.ACTIVEPIECES_BASE_URL ? `${env.ACTIVEPIECES_BASE_URL}/health` : undefined;
   const evolutionUrl = env.EVOLUTION_API_BASE_URL ? `${env.EVOLUTION_API_BASE_URL}/health` : undefined;
 
-  const [ops, app, web, activepieces, evolution] = await Promise.all([
+  const [ops, web, activepieces, evolution] = await Promise.all([
     opsUrl ? checkServiceHealth('restaurante-ops', opsUrl) : Promise.resolve({ name: 'restaurante-ops', status: 'unknown' as const }),
-    appUrl ? checkServiceHealth('restaurante-app', appUrl) : Promise.resolve({ name: 'restaurante-app', status: 'unknown' as const }),
     webUrl ? checkServiceHealth('restaurante-web', webUrl) : Promise.resolve({ name: 'restaurante-web', status: 'unknown' as const }),
     activepiecesUrl ? checkServiceHealth('activepieces', activepiecesUrl) : Promise.resolve({ name: 'activepieces', status: 'unknown' as const }),
     evolutionUrl ? checkServiceHealth('evolution-api', evolutionUrl) : Promise.resolve({ name: 'evolution-api', status: 'unknown' as const }),
   ]);
 
-  return [ops, app, web, activepieces, evolution];
+  return [ops, web, activepieces, evolution];
 }
