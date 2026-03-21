@@ -472,6 +472,7 @@ export default function AdminScreen() {
         visible={showCaixaAbertura}
         onClose={() => setShowCaixaAbertura(false)}
         title="Abertura de Caixa"
+        icon="cash-outline"
       >
         {showCaixaAbertura && <CaixaAberturaScreen onSuccess={() => setShowCaixaAbertura(false)} />}
       </AdminCaixaModal>
@@ -481,6 +482,7 @@ export default function AdminScreen() {
         visible={showCaixaOperacoes}
         onClose={() => setShowCaixaOperacoes(false)}
         title="Sangria / Reforço"
+        icon="swap-horizontal-outline"
       >
         {showCaixaOperacoes && <CaixaOperacoesScreen />}
       </AdminCaixaModal>
@@ -490,6 +492,7 @@ export default function AdminScreen() {
         visible={showCaixaFechamento}
         onClose={() => setShowCaixaFechamento(false)}
         title="Fechamento de Caixa"
+        icon="lock-closed-outline"
       >
         {showCaixaFechamento && <CaixaFechamentoScreen />}
       </AdminCaixaModal>

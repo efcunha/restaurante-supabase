@@ -37,6 +37,7 @@ export function AdminCaixaModal({
   visible,
   onClose,
   title,
+  icon = 'wallet-outline',
   children,
 }: AdminCaixaModalProps) {
   const insets = useSafeAreaInsets();
@@ -51,15 +52,18 @@ export function AdminCaixaModal({
     >
       <View style={styles.modalRoot}>
         <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
-          <View style={styles.headerLeft}>
+          <View style={styles.headerLeft} />
+          <View style={styles.headerCenter}>
+            <View style={styles.headerTitleRow}>
+              <Ionicons name={icon} size={24} color={colors.white} style={styles.headerIcon} />
+              <Text style={styles.headerTitle}>{title}</Text>
+            </View>
+          </View>
+          <View style={styles.headerRight}>
             <TouchableOpacity style={styles.backButton} onPress={onClose}>
               <Ionicons name="arrow-back-outline" size={24} color={colors.white} />
             </TouchableOpacity>
           </View>
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>{title}</Text>
-          </View>
-          <View style={styles.headerRight} />
         </View>
         {children}
       </View>
@@ -88,9 +92,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4,
   },
-  headerLeft: { flex: 1, justifyContent: 'center' },
+  headerLeft: { flex: 1 },
   headerCenter: { flex: 2, alignItems: 'center', justifyContent: 'center' },
-  headerRight: { flex: 1 },
+  headerRight: { flex: 1, alignItems: 'flex-end', justifyContent: 'center' },
+  headerTitleRow: { flexDirection: 'row', alignItems: 'center' },
+  headerIcon: { marginRight: 6 },
   backButton: { paddingHorizontal: 10, paddingVertical: 8, borderRadius: 12, backgroundColor: colors.logoutBg },
   headerTitle: { color: colors.white, fontSize: 18, fontWeight: 'bold', textAlign: 'center' },
 });
