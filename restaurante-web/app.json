@@ -45,7 +45,11 @@
       "screenOrientation": "default"
     },
     "web": {
-      "bundler": "metro"
+      "bundler": "metro",
+      "name": "Restaurante Web",
+      "shortName": "Restaurante Web",
+      "backgroundColor": "#0C7A96",
+      "favicon": "./imagem/icone.png"
     },
     "jsEngine": "hermes",
     "extra": {
