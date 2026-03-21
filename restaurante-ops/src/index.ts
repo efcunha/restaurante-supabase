@@ -1,5 +1,9 @@
-import { createServer } from 'node:http';
+import { createServer, type IncomingMessage } from 'node:http';
 import { buildEnv } from './config/env.js';
+import { signInWithPassword } from './auth/supabase.js';
+import { setSessionCookie, clearSessionCookie } from './auth/session.js';
+import { requireAuth } from './auth/middleware.js';
+import { renderDashboardHtml } from './views/dashboard.js';
 
 const env = buildEnv();
 
@@ -316,7 +320,11 @@ function renderBaseLayout(title: string, body: string): string {
 </html>`;
 }
 
-function renderLoginHtml(): string {
+function renderLoginHtml(errorMsg?: string): string {
+  const errorBlock = errorMsg
+    ? `<div style="margin-bottom:10px;padding:10px 12px;border-radius:10px;background:#fff7ed;border:1px solid #fde8c0;color:#92400e;font-size:13px;font-weight:600;">${errorMsg}</div>`
+    : '';
+
   const body = `<section class="shell">
   <aside class="hero-panel">
     <span class="hero-badge">Acesso do ecossistema</span>
@@ -345,6 +353,7 @@ function renderLoginHtml(): string {
       <h2 class="form-title">Login do time interno</h2>
       <p class="form-subtitle">Use credenciais administrativas para acessar a operacao SaaS do ambiente.</p>
 
+      ${errorBlock}
       <form method="post" action="/auth/login">
         <div class="field">
           <label class="label" for="email">Email</label>
@@ -358,7 +367,7 @@ function renderLoginHtml(): string {
       </form>
 
       <button class="btn-secondary" type="button" onclick="window.location.href='/register'">Criar acesso administrativo</button>
-      <p class="helper">Precisa recuperar acesso? Integrar fluxo em <a href="/api/status">/api/status</a> e provider de auth.</p>
+      <p class="helper">Precisa recuperar acesso? Contate o administrador do ecossistema.</p>
       <div class="billing-note">Onboarding de empresas em trial de 30 dias com regularizacao antes do vencimento para evitar bloqueio operacional.</div>
     </div>
     <div class="footer-note">Machado & Cunha Soft House</div>
@@ -502,22 +511,34 @@ function renderHomeHtml(): string {
   return renderBaseLayout('restaurante-ops', body);
 }
 
+/** Coleta o body de um POST como string (limite 64 KB). */
+function readBody(req: IncomingMessage): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    let total = 0;
+    req.on('data', (chunk: Buffer) => {
+      total += chunk.length;
+      if (total > 65_536) return reject(new Error('Payload too large'));
+      chunks.push(chunk);
+    });
+    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
+    req.on('error', reject);
+  });
+}
+
+/** Parseia application/x-www-form-urlencoded simples. */
+function parseFormBody(raw: string): Record<string, string> {
+  return Object.fromEntries(
+    raw.split('&').map((pair) => pair.split('=').map(decodeURIComponent)),
+  );
+}
+
 function startServer() {
-  const server = createServer((req, res) => {
-    const path = new URL(req.url || '/', 'http://localhost').pathname;
+  const server = createServer(async (req, res) => {
+    const url = new URL(req.url || '/', 'http://localhost');
+    const path = url.pathname;
 
-    if (req.method === 'POST' && (path === '/auth/login' || path === '/auth/register')) {
-      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
-      res.end(
-        JSON.stringify({
-          ok: true,
-          message: 'Auth endpoint scaffolded. Integrate Supabase Auth flow in next phase.',
-          endpoint: path,
-        }),
-      );
-      return;
-    }
-
+    // ---- Healthcheck / API status (publicos) ----
     if (path === '/healthz') {
       res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ ok: true, service: 'restaurante-ops', env: env.OPS_ENV }));
@@ -536,19 +557,95 @@ function startServer() {
       return;
     }
 
-    if (path === '/login') {
+    // ---- Telas publicas de auth ----
+    if (req.method === 'GET' && path === '/login') {
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
       res.end(renderLoginHtml());
       return;
     }
 
-    if (path === '/register') {
+    if (req.method === 'GET' && path === '/register') {
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
       res.end(renderRegisterHtml());
       return;
     }
 
-    if (path === '/' || path === '/dashboard') {
+    // ---- POST /auth/login — autenticacao real via Supabase ----
+    if (req.method === 'POST' && path === '/auth/login') {
+      try {
+        const raw = await readBody(req);
+        const body = parseFormBody(raw);
+        const { email, password } = body;
+
+        if (!email || !password) {
+          res.writeHead(400, { 'content-type': 'text/html; charset=utf-8' });
+          res.end(renderLoginHtml('Email e senha sao obrigatorios.'));
+          return;
+        }
+
+        const { token } = await signInWithPassword(
+          String(email).toLowerCase().trim(),
+          String(password),
+        );
+
+        setSessionCookie(res, token);
+        res.writeHead(302, { Location: '/dashboard' });
+        res.end();
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Erro ao fazer login';
+        res.writeHead(401, { 'content-type': 'text/html; charset=utf-8' });
+        res.end(renderLoginHtml(msg));
+      }
+      return;
+    }
+
+    // ---- POST /auth/register — scaffold (integracao completa na proxima fase) ----
+    if (req.method === 'POST' && path === '/auth/register') {
+      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+      res.end(
+        JSON.stringify({
+          ok: true,
+          message: 'Register endpoint em fase 2. Integrar fluxo de criacao de empresa no Supabase.',
+        }),
+      );
+      return;
+    }
+
+    // ---- GET /auth/logout ----
+    if (path === '/auth/logout') {
+      clearSessionCookie(res);
+      res.writeHead(302, { Location: '/login' });
+      res.end();
+      return;
+    }
+
+    // ---- GET / raiz — redireciona para dashboard (middleware valida sessao) ----
+    if (path === '/') {
+      res.writeHead(302, { Location: '/dashboard' });
+      res.end();
+      return;
+    }
+
+    // ---- GET /dashboard — protegido ----
+    if (path === '/dashboard') {
+      const user = await requireAuth(req, res);
+      if (!user) return; // requireAuth ja redirecionou para /login
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+      res.end(renderDashboardHtml(user));
+      return;
+    }
+
+    // ---- Rotas filhas protegidas (placeholder) ----
+    if (['/customers', '/billing', '/metrics'].includes(path)) {
+      const user = await requireAuth(req, res);
+      if (!user) return;
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+      res.end(renderDashboardHtml(user)); // redirecionar para modulo ao implementar
+      return;
+    }
+
+    // ---- Modo legacy: homepage publica ----
+    if (path === '/home') {
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
       res.end(renderHomeHtml());
       return;
