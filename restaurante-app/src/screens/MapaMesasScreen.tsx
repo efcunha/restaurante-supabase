@@ -321,11 +321,7 @@ export default function MapaMesasScreen({ navigation, route }: any) {
                     </View>
                     {!!user && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
                 </View>
-                <View style={styles.headerRight}>
-                    <TouchableOpacity style={styles.logoutBtn} onPress={() => navigation.goBack()}>
-                        <Ionicons name="arrow-back-outline" size={20} color={colors.white} />
-                    </TouchableOpacity>
-                </View>
+                <View style={styles.headerRight} />
             </View>
 
             {loading ? (
@@ -470,7 +466,6 @@ const styles = StyleSheet.create({
     headerIcon: { marginRight: 6 },
     headerTitle: { color: colors.white, fontSize: 18, fontWeight: 'bold', textAlign: 'center' },
     userInfo: { fontSize: 12, color: colors.userInfo, fontWeight: '600', marginTop: 4, textAlign: 'center' },
-    logoutBtn: { paddingHorizontal: 10, paddingVertical: 8, borderRadius: 12, backgroundColor: colors.logoutBg },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     tabsContainer: { height: 60, backgroundColor: colors.white, borderBottomWidth: 1, borderBottomColor: colors.border },
     tabsScroll: { paddingHorizontal: 15, alignItems: 'center' },
