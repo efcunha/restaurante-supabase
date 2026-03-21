@@ -20,6 +20,7 @@ export interface AdminSlideModalProps extends BaseAdminModalProps {
 
 export interface AdminCaixaModalProps extends BaseAdminModalProps {
   title: string;
+  icon?: string;
 }
 
 export interface AdminActionCardProps {
