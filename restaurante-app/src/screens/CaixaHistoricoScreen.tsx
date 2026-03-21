@@ -133,7 +133,13 @@ export default function CaixaHistoricoScreen({ onClose }: CaixaHistoricoScreenPr
         ))}
       </ScrollView>
 
-      <Modal visible={!!selectedCaixa} animationType="slide" onRequestClose={() => setSelectedCaixa(null)}>
+      <Modal
+        visible={!!selectedCaixa}
+        animationType="slide"
+        onRequestClose={() => setSelectedCaixa(null)}
+        statusBarTranslucent
+        hardwareAccelerated
+      >
         <CashFlowScreen caixa={selectedCaixa} onClose={() => setSelectedCaixa(null)} />
       </Modal>
 

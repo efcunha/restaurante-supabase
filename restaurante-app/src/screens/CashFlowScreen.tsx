@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../config/SupabaseConfig';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Caixa } from '../types';
 import { colors } from '../theme/colors';
 interface CashFlowScreenProps {
@@ -24,6 +25,7 @@ interface Movimentacao {
 
 export default function CashFlowScreen({ caixa, onClose }: CashFlowScreenProps) {
     const { user } = useAuth();
+    const insets = useSafeAreaInsets();
     const [loading, setLoading] = useState<boolean>(true);
     const [movimentacoes, setMovimentacoes] = useState<Movimentacao[]>([]);
 
@@ -166,7 +168,7 @@ export default function CashFlowScreen({ caixa, onClose }: CashFlowScreenProps) 
 
     return (
         <View style={styles.container}>
-            <View style={styles.header}>
+            <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
                 <View style={styles.headerTop}>
                     <View style={styles.headerLeft}>
                         <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
@@ -225,9 +227,8 @@ const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.white }, // Branco para modal
     header: {
         backgroundColor: colors.primary,
-        paddingTop: 20, // Reduced top padding since it's a modal likely inside a safe area or centered
         paddingBottom: 20,
-        paddingHorizontal: 20,
+        paddingHorizontal: 12,
         borderBottomLeftRadius: 20,
         borderBottomRightRadius: 20,
         elevation: 8,
