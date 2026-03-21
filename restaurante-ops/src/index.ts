@@ -19,6 +19,7 @@ import {
   type KpiCounts,
 } from './modules/data.js';
 import { checkAllServices, type ServiceStatus } from './modules/service-status.js';
+import { getSupabaseMetrics, type SupabaseMetrics } from './modules/supabase-metrics.js';
 
 const env = buildEnv();
 
@@ -944,7 +945,7 @@ function renderMetricsPanel(user: OpsUser, metrics: SaasMetrics): string {
   );
 }
 
-function renderServiceStatusPanel(user: OpsUser, services: ServiceStatus[]): string {
+function renderServiceStatusPanel(user: OpsUser, services: ServiceStatus[], supabaseMetrics: SupabaseMetrics): string {
   const serviceRows = services
     .map(
       (svc) =>
@@ -956,6 +957,11 @@ function renderServiceStatusPanel(user: OpsUser, services: ServiceStatus[]): str
         </tr>`,
     )
     .join('');
+
+  const supabaseStatus = supabaseMetrics.status === 'online' ? '<span class="pill ok">Online</span>' : '<span class="pill error">Offline</span>';
+  const supabaseConnections = supabaseMetrics.activeConnections !== undefined ? `${supabaseMetrics.activeConnections} conexões` : '—';
+  const supabaseSize = supabaseMetrics.databaseSize ?? '—';
+  const supabaseTime = supabaseMetrics.responseTime ? `${supabaseMetrics.responseTime}ms` : '—';
 
   return renderQuickActionPanel(
     user,
@@ -975,15 +981,15 @@ function renderServiceStatusPanel(user: OpsUser, services: ServiceStatus[]): str
           <div class="metric-hint">Disponibilidade</div>
         </article>
         <article class="metric">
-          <div class="metric-label">Tipo</div>
-          <div class="metric-value"><span class="pill info">SaaS</span></div>
-          <div class="metric-hint">Backoffice operacional</div>
+          <div class="metric-label">Banco de dados</div>
+          <div class="metric-value">${supabaseStatus}</div>
+          <div class="metric-hint">Supabase Postgres</div>
         </article>
       </div>
     </section>
 
     <section class="panel">
-      <h2>Status de servicos</h2>
+      <h2>Status de servicos HTTP</h2>
       <table class="table">
         <thead>
           <tr><th>Servico</th><th>Status</th><th>Tempo de resposta</th><th>Healthz</th></tr>
@@ -992,6 +998,21 @@ function renderServiceStatusPanel(user: OpsUser, services: ServiceStatus[]): str
           ${serviceRows}
         </tbody>
       </table>
+    </section>
+
+    <section class="panel">
+      <h2>Metricas do banco de dados</h2>
+      <table class="table">
+        <thead>
+          <tr><th>Metrica</th><th>Valor</th><th>Tempo de resposta</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Status da conexao</td><td>${supabaseStatus}</td><td>${supabaseTime}</td></tr>
+          <tr><td>Conexoes ativas</td><td>${supabaseConnections}</td><td>—</td></tr>
+          <tr><td>Tamanho do banco</td><td>${supabaseSize}</td><td>—</td></tr>
+        </tbody>
+      </table>
+      ${supabaseMetrics.error ? `<p style="color:#dc2626;font-size:13px;margin-top:8px;">Erro: ${supabaseMetrics.error}</p>` : ''}
     </section>`,
   );
 }
@@ -1188,9 +1209,12 @@ function startServer() {
     if (path === '/service-status') {
       const user = await requireAuth(req, res);
       if (!user) return;
-      const services = await checkAllServices();
+      const [services, supabaseMetrics] = await Promise.all([
+        checkAllServices(),
+        getSupabaseMetrics(),
+      ]);
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-      res.end(renderServiceStatusPanel(user, services));
+      res.end(renderServiceStatusPanel(user, services, supabaseMetrics));
       return;
     }
 
