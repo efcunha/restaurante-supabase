@@ -187,7 +187,7 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
           .from('companies')
           .insert({
               name: restaurantName,
-              plan: 'free',
+              plan: 'trialing',
               active: true,
               document_type: documentType,
               document: docValidation.value,
@@ -242,9 +242,29 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
            }
       }
 
+      // 4. Create trial subscription row (30-day trial, no charge until D31)
+      const trialStartsAt = new Date();
+      const trialEndsAt = new Date(trialStartsAt);
+      trialEndsAt.setDate(trialEndsAt.getDate() + 30);
+
+      const { error: subError } = await supabase
+          .from('subscriptions')
+          .insert({
+              company_id: companyId,
+              status: 'trialing',
+              trial_starts_at: trialStartsAt.toISOString(),
+              trial_ends_at: trialEndsAt.toISOString(),
+              plan_amount: 14900,
+          });
+
+      if (subError) {
+          // Non-fatal: subscription row can be created by background job if insert fails
+          console.warn('[RegisterCompany] Subscription row creation failed:', subError.message);
+      }
+
       Alert.alert(
         'Sucesso',
-        'Conta criada com sucesso! Faça login para começar.',
+        'Conta criada com sucesso! Você tem 30 dias de acesso gratuito. Faça login para começar.',
         [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
       );
 

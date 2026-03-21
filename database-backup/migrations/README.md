@@ -9,6 +9,8 @@
 | `add_atomic_consume_function.sql` | Função | 2026-03-11 | RPC `adicionar_consumo_atomico` — fix de race condition |
 | `20260314164000_fix_atomic_consume_function_type_casts.sql` | Correção | 2026-03-14 | Corrige casts do RPC `adicionar_consumo_atomico` (`uuid/date/integer`) |
 | `20260314203000_add_unique_open_mesa_index.sql` | Índice | 2026-03-14 | Garante uma única comanda aberta por mesa (company + date + table_number) |
+| `20260321120000_create_billing_tables.sql` | Billing | 2026-03-21 | Cria tabelas de cobrança, RLS e RPCs de licença (`subscriptions`, `invoices`, etc.) |
+| `20260321130000_add_is_test_to_companies.sql` | Billing | 2026-03-21 | Adiciona `companies.is_test` e bypass de licença para empresa de teste |
 | `create_delivery_comanda_number_function.sql` | Função | anterior | Função de controle de número de comanda para delivery |
 
 ## Tabelas capturadas (27)
@@ -63,6 +65,33 @@ npx supabase db dump \
 ```
 
 > ⚠️ **Nota**: A senha pode conter `@` — encode como `%40` na URL.
+
+## Mantendo migrations sempre atualizadas (sem drift)
+
+### Fluxo recomendado (sempre)
+
+1. Crie migration antes de alterar o banco:
+
+```bash
+supabase migration new nome_da_mudanca_em_snake_case
+```
+
+2. Coloque o SQL no arquivo gerado em `migrations/`.
+3. Aplique via fluxo de migration (CLI ou MCP), nunca como SQL solto fora de migration.
+4. Faça commit do arquivo de migration no mesmo PR da feature.
+
+### Se precisar rodar SQL manual em produção (emergência)
+
+1. Rode o SQL manual.
+2. Crie imediatamente uma migration de reconciliação com o mesmo conteúdo/efeito.
+3. Registre a versão no histórico remoto (`supabase_migrations.schema_migrations`) para evitar reexecução futura.
+4. Commit e documente no changelog o motivo da execução manual.
+
+### Checklist anti-desalinhamento
+
+- Banco remoto e pasta `migrations/` devem ter as mesmas versões.
+- Não editar migration antiga já aplicada; crie uma nova migration incremental.
+- Evitar rodar DDL direto no painel SQL sem criar migration correspondente.
 
 ## Changelog de migrations críticas
 
