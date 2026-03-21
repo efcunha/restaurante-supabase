@@ -30,6 +30,8 @@ Operational reminders from recent incidents:
 - In `orders`, cancellation status is `cancelled`; keep `cancelada` semantics for comanda state only.
 - Avoid duplicate `.neq` filters for the same field in Supabase/PostgREST queries (can lead to 400).
 - If `webhook=200` but no payment row inserted, validate `code_delivery_payment` inputs and flow publish/enabled status.
+- Supabase CLI is installed via Scoop (`C:\Users\ECUNHA\scoop\shims\supabase.exe`); avoid `npm install -g supabase` (unsupported by Supabase).
+- Migration sync policy: whenever a new migration file is created, apply it to the target DB immediately and verify it appears in migration history.
 
 Maintenance policy for these instruction files:
 - Keep this file as orchestration/routing + concise guardrails.
@@ -285,6 +287,36 @@ Use this order to keep responses consistent with mandatory skill checks:
 3. Attach exactly one specialized Callstack skill matching the task type.
 4. Ask for a constrained output (plan, checklist, or implementation with no behavior change).
 5. Verify the response starts with the mandatory RN/CI checklist block.
+
+## Supabase Migration Workflow (Mandatory)
+
+Use this workflow for any schema/function/index change in Supabase to avoid drift between repository and database.
+
+1. Create migration first (before manual SQL in dashboard):
+
+```bash
+supabase migration new <migration_name_in_snake_case>
+```
+
+2. Add SQL to the generated file in `database-backup/migrations/`.
+3. Apply migration immediately to the target DB (same work session).
+4. Verify migration is registered in remote history (`supabase_migrations.schema_migrations` / `list_migrations`).
+5. Commit migration file in the same PR as the feature/fix.
+
+Fallback if `supabase` is not in PATH in a fresh terminal:
+
+```bash
+C:\Users\ECUNHA\scoop\shims\supabase.exe --version
+```
+
+### Emergency SQL Runbook (Manual SQL already executed)
+
+If SQL was applied manually in the database:
+
+1. Create a reconciliation migration file with the same intent.
+2. Register/sync its version in migration history when needed.
+3. Document why manual SQL was required.
+4. Confirm local migration list and remote migration history are aligned before merge/deploy.
 
 Task-to-skill quick map:
 

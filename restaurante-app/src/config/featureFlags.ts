@@ -40,6 +40,14 @@ export interface FeatureFlags {
   comandaGerenciamento_uiNext: boolean;
   /** AdminScreen: Card + Table from ui-next (disabled until wave completes) */
   admin_uiNext: boolean;
+
+  // Fase 6: Billing / Licensing
+  /** Master toggle: enables billing enforcement. Off = no LicenseGate, no subscription checks. */
+  billing_enabled: boolean;
+  /** Show LicenseGate overlay when subscription blocks operation */
+  billing_licenseGate: boolean;
+  /** Show billing management screen (plan, invoices, Pix regularization) */
+  billing_showBillingScreen: boolean;
 }
 
 /**
@@ -75,6 +83,11 @@ const defaultFlags: FeatureFlags = {
   pagamento_uiNext: true,
   comandaGerenciamento_uiNext: true,
   admin_uiNext: false,
+
+  // Fase 6: Billing (starts disabled — enable via env or after rollout validation)
+  billing_enabled: false,
+  billing_licenseGate: false,
+  billing_showBillingScreen: false,
 };
 
 /**
@@ -172,7 +185,18 @@ function loadFeatureFlagsFromEnv(): Partial<FeatureFlags> {
   if (process.env.EXPO_PUBLIC_FEATURE_ADMIN_UI_NEXT !== undefined) {
     envFlags.admin_uiNext = process.env.EXPO_PUBLIC_FEATURE_ADMIN_UI_NEXT === 'true';
   }
-  
+
+  // Fase 6: Billing
+  if (process.env.EXPO_PUBLIC_FEATURE_BILLING !== undefined) {
+    envFlags.billing_enabled = process.env.EXPO_PUBLIC_FEATURE_BILLING === 'true';
+  }
+  if (process.env.EXPO_PUBLIC_FEATURE_BILLING_LICENSE_GATE !== undefined) {
+    envFlags.billing_licenseGate = process.env.EXPO_PUBLIC_FEATURE_BILLING_LICENSE_GATE === 'true';
+  }
+  if (process.env.EXPO_PUBLIC_FEATURE_BILLING_SCREEN !== undefined) {
+    envFlags.billing_showBillingScreen = process.env.EXPO_PUBLIC_FEATURE_BILLING_SCREEN === 'true';
+  }
+
   return envFlags;
 }
 

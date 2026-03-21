@@ -21,6 +21,7 @@ database-backup/
 ├── backup.bat            # Script de backup (Windows)
 ├── restore.sh            # Script de restore (Linux/Mac)
 ├── restore.bat           # Script de restore (Windows)
+├── check-migration-sync.sh # Verifica drift de migrations (local x remoto)
 ├── backups/              # Pasta para armazenar backups (ignorada pelo Git)
 └── logs/                 # Logs de execução (ignorados pelo Git)
 ```
@@ -64,6 +65,18 @@ backup.bat
 REM Backup com nome customizado
 backup.bat meu_backup
 ```
+
+## 🔄 Verificar sincronização de migrations (anti-drift)
+
+Antes de deploy ou merge, execute:
+
+```bash
+./check-migration-sync.sh
+```
+
+Saída esperada:
+- `✓ Sem drift` -> versões locais e remotas alinhadas.
+- `✗ Drift detectado` -> há migrations faltando no banco ou no repositório.
 
 ## 🔄 Restore
 
