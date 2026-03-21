@@ -18,8 +18,6 @@ import { calcularPrecoItem } from '../utils/orderCalculator';
 import CancelOrderModal from '../components/comandas/CancelOrderModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { confirmLogout } from '../utils/appUtils';
-
 import PagamentosService from '../services/PagamentosService';
 import ComandasService from '../services/ComandasService';
 import PrinterService from '../services/PrinterService';
@@ -29,7 +27,6 @@ import { supabase } from '../config/SupabaseConfig';
 
 import { LayoutAnimation, Platform, UIManager } from 'react-native';
 import PDFService from '../services/PDFService';
-import { Button } from '../ui';
 import { isFeatureEnabled } from '../config/featureFlags';
 import { colors } from '../theme/colors';
 if (Platform.OS === 'android') {
@@ -39,8 +36,7 @@ if (Platform.OS === 'android') {
 }
 
 export default function ComandaGerenciamentoScreen(props: any) {
-  const useUiNextComanda = isFeatureEnabled('comandaGerenciamento_uiNext');
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { addOrder } = useOrders();
   const {
     activeTab, setActiveTab,
@@ -100,10 +96,6 @@ export default function ComandaGerenciamentoScreen(props: any) {
   const { showToast } = useToast();
 
   // --- Actions ---
-
-  const handleLogout = () => {
-    confirmLogout(logout);
-  };
 
   const handlePrint = async (comandaData: any) => {
     // Preparar dados para o formato esperado pelo PrinterService (itens)
@@ -485,15 +477,7 @@ export default function ComandaGerenciamentoScreen(props: any) {
           </View>
           {user && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
         </View>
-        <View style={styles.logoutBtn}>
-          {useUiNextComanda ? (
-            <Button label="Sair" onPress={handleLogout} size="sm" />
-          ) : (
-            <TouchableOpacity style={styles.logoutIconBtn} onPress={handleLogout}>
-              <Ionicons name="log-out-outline" size={24} color={colors.white} />
-            </TouchableOpacity>
-          )}
-        </View>
+        <View style={styles.logoutBtn} />
       </View>
 
       <View style={styles.tabs}>
@@ -605,12 +589,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'flex-end',
     justifyContent: 'center',
-  },
-  logoutIconBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 12,
-    backgroundColor: colors.logoutBg,
   },
   tabs: { flexDirection: 'row', padding: 10 },
   tab: {
