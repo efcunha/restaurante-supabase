@@ -1,10 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 import { buildEnv } from '../config/env.js';
+import { logWarn } from '../lib/logger.js';
 
 const env = buildEnv();
 
 /** Unica empresa autorizada a acessar o restaurante-ops */
 const OPS_ALLOWED_COMPANY_ID = 'f85bfdc2-982a-4cf7-b176-bce68426f861';
+const OPS_ALLOWED_ROLES = new Set(['admin', 'gerente']);
 
 /**
  * Cliente Supabase com service-role para operacoes internas do ops.
@@ -20,6 +22,56 @@ export interface OpsUser {
   full_name: string | null;
   role: string | null;
   company_id: string | null;
+}
+
+interface OpsProfile {
+  full_name: string | null;
+  role: string | null;
+  company_id: string | null;
+}
+
+function normalizeOpsRole(role: string | null | undefined): string | null {
+  const value = String(role || '').trim().toLowerCase();
+  if (!value) return null;
+  if (value === 'manager') return 'gerente';
+  return value;
+}
+
+function assertOpsAccess(profile: OpsProfile | null | undefined): OpsProfile {
+  if (!profile) {
+    throw new Error('Acesso negado: perfil do usuario nao encontrado.');
+  }
+
+  if (profile.company_id !== OPS_ALLOWED_COMPANY_ID) {
+    throw new Error('Acesso negado: usuario nao pertence a empresa autorizada.');
+  }
+
+  const normalizedRole = normalizeOpsRole(profile.role);
+  if (!normalizedRole || !OPS_ALLOWED_ROLES.has(normalizedRole)) {
+    throw new Error('Acesso negado: usuario sem permissao administrativa para o restaurante-ops.');
+  }
+
+  return {
+    ...profile,
+    role: normalizedRole,
+  };
+}
+
+async function fetchOpsProfile(userId: string): Promise<OpsProfile> {
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .select('full_name, role, company_id')
+    .eq('id', userId)
+    .single();
+
+  if (error) {
+    logWarn('auth.profile_lookup_failed', {
+      reason: error.message,
+    });
+    throw new Error('Acesso negado: nao foi possivel validar o perfil do usuario.');
+  }
+
+  return assertOpsAccess(profile);
 }
 
 /**
@@ -38,17 +90,7 @@ export async function signInWithPassword(
   const token = data.session.access_token;
   const userId = data.user.id;
 
-  // Busca perfil interno
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('full_name, role, company_id')
-    .eq('id', userId)
-    .single();
-
-  // Restringe acesso: somente usuarios da empresa autorizada
-  if (profile?.company_id !== OPS_ALLOWED_COMPANY_ID) {
-    throw new Error('Acesso negado: usuario nao pertence a empresa autorizada.');
-  }
+  const profile = await fetchOpsProfile(userId);
 
   return {
     token,
@@ -69,14 +111,12 @@ export async function getUserFromToken(token: string): Promise<OpsUser | null> {
   const { data, error } = await supabase.auth.getUser(token);
   if (error || !data.user) return null;
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('full_name, role, company_id')
-    .eq('id', data.user.id)
-    .single();
-
-  // Restringe acesso: somente usuarios da empresa autorizada
-  if (profile?.company_id !== OPS_ALLOWED_COMPANY_ID) return null;
+  let profile: OpsProfile;
+  try {
+    profile = await fetchOpsProfile(data.user.id);
+  } catch {
+    return null;
+  }
 
   return {
     id: data.user.id,
