@@ -88,7 +88,6 @@ async function auditLogEvent(
     await adminClient
       .from('billing_audit_log')
       .insert({
-        user_id: userId,
         company_id: companyId,
         event_type: eventType,
         actor_type: 'user',
@@ -211,7 +210,7 @@ export async function requireSecureAdmin(req: Request) {
   // Step 2: Load user profile and verify admin role
   const { data: profile, error: profileError } = await adminClient
     .from('profiles')
-    .select('id, company_id, role, full_name, email')
+    .select('id, company_id, role, full_name, email, cpf')
     .eq('id', userId)
     .single();
 
