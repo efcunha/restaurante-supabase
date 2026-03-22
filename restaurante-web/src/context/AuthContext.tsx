@@ -51,6 +51,8 @@ interface AuthContextType {
   loginWithBiometric: () => Promise<{ success: boolean; error?: string }>;
   biometricAvailable: boolean;
   biometricType?: string;
+  isPasswordRecovery: boolean;
+  clearPasswordRecovery: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -79,8 +81,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [biometricType, setBiometricType] = useState<string | undefined>(undefined);
   // Implementation note: MFA Resolver is less standard in Supabase than Firebase, keeping null for now
   const [mfaResolver, setMfaResolver] = useState<any | null>(null);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
 
   const isManualLoginRef = useRef<boolean>(false);
+  const passwordRecoveryModeRef = useRef<boolean>(false);
+
+  const setPasswordRecoveryMode = (enabled: boolean) => {
+    passwordRecoveryModeRef.current = enabled;
+    setIsPasswordRecovery(enabled);
+  };
+
+  const clearRecoveryHashInBrowser = () => {
+    if (typeof window === 'undefined' || !window.location.hash) {
+      return;
+    }
+
+    const cleanUrl = `${window.location.pathname}${window.location.search}`;
+    window.history.replaceState({}, document.title, cleanUrl);
+  };
+
+  const hasRecoveryHashInBrowser = () => {
+    return typeof window !== 'undefined' && window.location.hash.includes('type=recovery');
+  };
 
   // Check Biometrics on Mount
   useEffect(() => {
@@ -102,6 +124,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
          const { data: { session } } = await supabase.auth.getSession();
          
          if (session?.user) {
+             if (hasRecoveryHashInBrowser()) {
+             clearRecoveryHashInBrowser();
+                 setPasswordRecoveryMode(true);
+                 setLoading(false);
+                 return;
+             }
              console.log('[SupabaseAuth] Session restored', session.user.id);
            await reloadUserData(session.user, { rotateSessionKey: true });
          } else {
@@ -121,11 +149,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.log(`[SupabaseAuth] Auth event: ${event}`, session?.user?.id);
 
         if (event === 'SIGNED_OUT' || !session?.user) {
+          setPasswordRecoveryMode(false);
             setUser(null);
             setRole(null);
             setCustomClaims(null);
             setLoading(false);
             return;
+        }
+
+        if (event === 'PASSWORD_RECOVERY') {
+          clearRecoveryHashInBrowser();
+          setPasswordRecoveryMode(true);
+          setUser(null);
+          setRole(null);
+          setCustomClaims(null);
+          setLoading(false);
+          return;
+        }
+
+        if (passwordRecoveryModeRef.current) {
+          setLoading(false);
+          return;
         }
 
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
@@ -297,6 +341,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           console.error('[SupabaseAuth] Login error:', error);
           setLoading(false);
           isManualLoginRef.current = false;
+            setPasswordRecoveryMode(false);
           Alert.alert('Login Failed', error.message || 'Erro desconhecido');
           return false;
       }
@@ -306,6 +351,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       try {
           await supabase.auth.signOut();
           await AuthPersistenceService.clearAuthState();
+          setPasswordRecoveryMode(false);
           setUser(null);
           setRole(null);
           setCustomClaims(null);
@@ -377,6 +423,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
   };
 
+      const clearPasswordRecovery = async () => {
+        await logout();
+        setPasswordRecoveryMode(false);
+      };
+
   const getCustomClaims = () => customClaims;
 
   return (
@@ -396,7 +447,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setMfaResolver,
       loginWithBiometric,
       biometricAvailable,
-      biometricType
+      biometricType,
+      isPasswordRecovery,
+      clearPasswordRecovery
     }}>
       {children}
     </AuthContext.Provider>

@@ -7,6 +7,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { supabase } from '../config/SupabaseConfig';
+import { getPasswordResetRedirectUrl } from '../utils/authRedirect';
 import { getUserFriendlyMessage } from '../utils/errors';
 import { validateEmail } from '../utils/validation';
 import MFAVerificationModal from '../components/MFAVerificationModal';
@@ -180,7 +181,7 @@ export default function LoginScreen({ navigation }: Props) {
                         onPress: async () => {
                           try {
                             const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-                              redirectTo: 'your-app://reset-password',
+                              redirectTo: getPasswordResetRedirectUrl(),
                             });
                             if (error) throw error;
                             Alert.alert('Sucesso', 'Email enviado. Verifique sua caixa de entrada e spam para redefinir a senha.');

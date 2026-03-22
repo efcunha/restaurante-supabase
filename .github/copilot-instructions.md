@@ -10,6 +10,7 @@ When working in this repository, consult the relevant skill before proposing or 
 
 - `restaurante-app/` is the React Native and Expo mobile app.
 - `restaurante-web/` is the web project and may mirror some mobile flows, but React Native guidance should only be applied where relevant.
+- `restaurante-ops/` is the SaaS operations/admin service (auth, metrics, billing and operational reconciliation).
 - Prefer solutions that fit the current repository structure and existing patterns.
 
 ## Project Guardrails Snapshot (Synced from Skill)
@@ -21,6 +22,7 @@ Critical rules to always enforce in this repository:
 - Multi-tenant safety first: all data access must respect `company_id` and Supabase RLS.
 - Never hardcode secrets in source code (especially integration/webhook steps).
 - Protect critical flows (`Balcao`, `Mesa`, `Delivery`, `Montagem`) from behavior regressions.
+- Protect remuneration flows (`subscriptions`, `invoices`, `payment_methods`, `webhook_events`, `billing_audit_log`) from behavioral regressions.
 - Preserve app/web parity for mirrored modules; avoid one-sided refactors when both sides are equivalent.
 - For new UI, use design tokens and stable exports (`src/ui/`) instead of ad-hoc styling.
 - Use feature flags for rollout/rollback (`*_UI_NEXT`) and promote canary waves in order.
@@ -30,6 +32,8 @@ Operational reminders from recent incidents:
 - In `orders`, cancellation status is `cancelled`; keep `cancelada` semantics for comanda state only.
 - Avoid duplicate `.neq` filters for the same field in Supabase/PostgREST queries (can lead to 400).
 - If `webhook=200` but no payment row inserted, validate `code_delivery_payment` inputs and flow publish/enabled status.
+- In `restaurante-ops` reconcile flow, keep `public.reconcile_billing_event_atomic` as the single write path for invoice/subscription/webhook/audit updates.
+- In monorepo deploys for `restaurante-ops`, use `railway up --service restaurante-ops --path-as-root ./restaurante-ops` to avoid root autodetection failures.
 - Supabase CLI is installed via Scoop (`C:\Users\ECUNHA\scoop\shims\supabase.exe`); avoid `npm install -g supabase` (unsupported by Supabase).
 - Migration sync policy: whenever a new migration file is created, apply it to the target DB immediately and verify it appears in migration history.
 
