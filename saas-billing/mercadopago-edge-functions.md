@@ -8,6 +8,7 @@
 - `MERCADOPAGO_ACCESS_TOKEN`
 - `MERCADOPAGO_PUBLIC_KEY`
 - `MERCADOPAGO_WEBHOOK_SECRET`
+- `MERCADOPAGO_NOTIFICATION_URL` (optional, recommended for automatic Pix reconciliation)
 
 ## Secure Setup for Test Credentials
 
@@ -31,6 +32,7 @@ Operational note:
 
 - `MERCADOPAGO_PUBLIC_KEY` can be returned to the client only through secure backend contract (`billing-create-checkout`) and only for authenticated admin flow.
 - `MERCADOPAGO_ACCESS_TOKEN` and `MERCADOPAGO_WEBHOOK_SECRET` must remain server-side only.
+- `MERCADOPAGO_NOTIFICATION_URL` should target the future billing webhook endpoint and stay server-side.
 
 ## Deploy and Smoke Test Runbook
 
@@ -55,6 +57,7 @@ cd database-backup/supabase
 supabase functions deploy billing-provider-status
 supabase functions deploy billing-create-checkout
 supabase functions deploy billing-create-pix-fallback
+supabase functions deploy billing-webhook
 ```
 
 Quick post-deploy preflight:
@@ -102,11 +105,24 @@ curl -i "$SUPABASE_PROJECT_URL/functions/v1/billing-create-pix-fallback" \
 	-d '{}'
 ```
 
+Webhook smoke test (requires a valid MP test payment ID and configured `MERCADOPAGO_WEBHOOK_SECRET`):
+
+```bash
+# Simulates a payment.updated webhook — replace <ts>, <hmac>, <request-id>, and <payment_id>
+curl -i "$SUPABASE_PROJECT_URL/functions/v1/billing-webhook" \
+	-X POST \
+	-H "Content-Type: application/json" \
+	-H "x-signature: ts=<ts>,v1=<hmac>" \
+	-H "x-request-id: <request-id>" \
+	-d '{"action":"payment.updated","data":{"id":"<payment_id>"}}'
+```
+
 Expected outcomes:
 
 - `billing-provider-status`: returns provider readiness and subscription linkage metadata.
 - `billing-create-checkout`: returns `pending_client_tokenization` when provider is configured.
-- `billing-create-pix-fallback`: returns `pix_fallback_pending_provider_charge` when provider is configured.
+- `billing-create-pix-fallback`: returns `pix_ready` with `pixQrCode`, `pixQrCodeText`, `pixExpiresAt`, and persists the invoice when provider is configured.
+- `billing-webhook`: returns `{ ok: true }` for valid signatures; `401` for invalid/stale signatures.
 
 ### 4) Post-smoke verification in database
 
@@ -164,34 +180,67 @@ Purpose:
 
 ### `billing-create-checkout`
 
-Purpose:
+Purpose (two-mode endpoint):
 
+**Mode A** — no `cardToken` in body:
 - validate the authenticated admin
-- log the checkout/card-setup request
-- return the Mercado Pago public key when configured
-- establish the backend contract that the client will use for tokenization setup
+- return `MERCADOPAGO_PUBLIC_KEY` for client-side card tokenization via Mercado Pago.js SDK
 
-Current limitation:
+**Mode B** — `cardToken` in body:
+- validate the admin and multi-tenant context
+- upsert Mercado Pago Customer (creates if missing, reuses `subscriptions.mp_customer_id`)
+- store the card in MP Vault via `POST /v1/customers/{id}/cards`
+- persist display-safe fields to `payment_methods` (`last_four`, `brand`, `expiry_month`, `expiry_year`, `mp_card_id`)
+- mark the new card as default
+- return `{ status: 'card_saved', paymentMethodId, card: { brand, lastFour, expiryMonth, expiryYear } }`
 
-- card tokenization is not completed yet in the client flow
-- this function returns readiness metadata and audit trace, not a production checkout URL
+Security notes:
+
+- Card token is validated for format before calling MP; invalid formats return `400`
+- Token expired/invalid on MP side returns `422` so the client can re-tokenize
+- `mp_card_id` stored (durable reference); raw card token never logged or persisted
+- No CVV, no full PAN stored anywhere
 
 ### `billing-create-pix-fallback`
 
 Purpose:
 
-- validate the authenticated admin
-- register the intent to regularize through Pix
-- expose provider readiness and the next backend step
+- validate the authenticated admin with multi-tenant isolation
+- reuse an unexpired pending Pix invoice without calling Mercado Pago again
+- invalidate expired Pix invoices before reissue
+- issue a Pix charge to Mercado Pago and persist the invoice with QR and copia-e-cola data
+- return `pix_ready` with `pixQrCode`, `pixQrCodeText`, `pixExpiresAt`, and `invoiceId`
 
-Current limitation:
+Security notes:
 
-- Pix charge emission is not completed yet in provider integration
+- Fail-closed when `MERCADOPAGO_ACCESS_TOKEN` is absent
+- Fail-closed when payer email or fiscal document (CNPJ/CPF) is missing from `companies`/`profiles`
+- No payment state stored unless MP returns full QR data
+- `X-Idempotency-Key: billing-pix:{companyId}:{invoiceId}` prevents duplicate MP charges
+
+### `billing-webhook`
+
+Purpose:
+
+- receive Mercado Pago `payment.updated` and `payment.created` webhooks
+- verify HMAC-SHA256 signature from `x-signature` header (reject stale timestamps > 5 minutes)
+- fetch full payment details from MP API using the `data.id` field
+- map final MP statuses (`approved` → `paid`; `rejected`/`cancelled`/`refunded`/`charged_back` → `failed`)
+- call `reconcile_billing_event_atomic` as the single write path for all billing state transitions
+- handle idempotency automatically via `webhook_events` UNIQUE constraint inside the RPC
+- always return `200` for non-security errors to prevent infinite MP retries
+
+Security notes:
+
+- Requires `MERCADOPAGO_WEBHOOK_SECRET` — returns `503` if not configured (fail-closed)
+- Constant-time HMAC comparison to prevent timing attacks
+- Logs only `mpStatus`, action, and error codes — never logs payment amounts, PIX keys, or PII
+- `SYSTEM_ACTOR_ID` (`00000000-0000-0000-0000-000000000000`) used as actor for webhook-reconciled audit entries
 
 ## Next Backend Steps
 
-1. Add Mercado Pago customer upsert flow
-2. Add tokenized card setup persistence into `payment_methods`
-3. Add recurring subscription creation and update of `subscriptions.mp_*`
-4. Add Pix invoice generation and persistence into `invoices`
-5. Add webhook endpoint for payment and subscription events
+1. Deploy all four functions and run smoke tests
+2. Set `MERCADOPAGO_NOTIFICATION_URL` to the deployed `billing-webhook` URL
+3. Add tokenized card setup: Mercado Pago SDK client-side tokenization → `billing-create-checkout` persists token into `payment_methods`
+4. Add recurring subscription auto-charge flow (trial → active transition)
+5. Background job for grace period / suspension enforcement (trial expiry → status change)

@@ -19,6 +19,8 @@ export interface BillingInvoice {
   paid_at: string | null;
   payment_method_type: 'card' | 'pix' | null;
   mp_payment_id: string | null;
+  pix_qr_code: string | null;
+  pix_qr_code_text: string | null;
   pix_expires_at: string | null;
   created_at: string;
 }
@@ -41,6 +43,13 @@ export interface BillingActionResult {
   nextStep?: string;
   checkoutUrl?: string;
   publicKey?: string;
+  invoiceId?: string;
+  amount?: number;
+  dueDate?: string;
+  mpPaymentId?: string;
+  pixQrCode?: string | null;
+  pixQrCodeText?: string | null;
+  pixExpiresAt?: string | null;
 }
 
 function toErrorMessage(error: unknown, fallback: string): string {
@@ -84,7 +93,7 @@ export async function listBillingInvoices(companyId?: string): Promise<BillingIn
 
   const { data, error } = await supabase
     .from('invoices')
-    .select('id, status, amount, due_date, paid_at, payment_method_type, mp_payment_id, pix_expires_at, created_at')
+    .select('id, status, amount, due_date, paid_at, payment_method_type, mp_payment_id, pix_qr_code, pix_qr_code_text, pix_expires_at, created_at')
     .eq('company_id', companyId)
     .order('created_at', { ascending: false })
     .limit(10);
@@ -171,6 +180,74 @@ export async function requestBillingPixFallback(companyId?: string): Promise<Bil
 
   if (error) {
     throw new Error(toErrorMessage(error, 'Falha ao solicitar regularização via Pix.'));
+  }
+
+  return data as BillingActionResult;
+}
+
+export interface CardInput {
+  cardNumber: string;
+  expiryMonth: string;
+  expiryYear: string;
+  cvv: string;
+  cardholderName: string;
+}
+
+/**
+ * Tokenize a card directly with Mercado Pago public key.
+ * Card data is sent from the client straight to api.mercadopago.com —
+ * CVV and PAN never touch our Edge Functions.
+ */
+export async function tokenizeCardWithMp(publicKey: string, card: CardInput): Promise<string> {
+  const MP_TOKENIZE_URL = 'https://api.mercadopago.com/v1/card_tokens';
+
+  const response = await fetch(MP_TOKENIZE_URL, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${publicKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      card_number: card.cardNumber.replace(/\s/g, ''),
+      expiration_month: parseInt(card.expiryMonth, 10),
+      expiration_year: parseInt(
+        card.expiryYear.length === 2 ? `20${card.expiryYear}` : card.expiryYear,
+        10
+      ),
+      security_code: card.cvv,
+      cardholder: { name: card.cardholderName.trim().toUpperCase() },
+    }),
+  });
+
+  if (!response.ok) {
+    const errBody = await response.json().catch(() => ({ message: 'Tokenização falhou' })) as Record<string, unknown>;
+    const cause = Array.isArray(errBody.cause) ? (errBody.cause as Array<Record<string, unknown>>) : [];
+    const causeMsg = cause.length > 0 ? `: ${cause.map((c) => c.description ?? c.code).join(', ')}` : '';
+    const msg = typeof errBody.message === 'string' ? errBody.message : 'Dados do cartão inválidos';
+    throw new Error(`${msg}${causeMsg}`);
+  }
+
+  const tokenData = (await response.json()) as Record<string, unknown>;
+  const token = typeof tokenData.id === 'string' ? tokenData.id : '';
+
+  if (!token) {
+    throw new Error('Token de cartão ausente na resposta do provedor.');
+  }
+
+  return token;
+}
+
+/**
+ * Persist a tokenized card to the backend (billing-create-checkout Mode B).
+ * Only the opaque MP card token is sent — no card number, no CVV.
+ */
+export async function saveCardToken(companyId: string, cardToken: string): Promise<BillingActionResult> {
+  const { data, error } = await supabase.functions.invoke('billing-create-checkout', {
+    body: { companyId, cardToken },
+  });
+
+  if (error) {
+    throw new Error(toErrorMessage(error, 'Falha ao salvar o cartão.'));
   }
 
   return data as BillingActionResult;
