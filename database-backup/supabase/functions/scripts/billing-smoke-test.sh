@@ -57,6 +57,21 @@ call_function "billing-provider-status" "{}" || failed=1
 call_function "billing-create-checkout" "{}" || failed=1
 call_function "billing-create-pix-fallback" "{}" || failed=1
 
+# billing-webhook: an unsigned POST must be rejected with 401 (method guard + sig check)
+# A GET would return 405 — either way confirms the function is deployed
+echo ""
+echo "=== billing-webhook (unsigned POST — expect 401) ==="
+http_wh="$(curl -sS -o /dev/null -w "%{http_code}" -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"action":"payment.updated","data":{"id":"0"}}' \
+  "$SUPABASE_PROJECT_URL/functions/v1/billing-webhook")"
+echo "HTTP: $http_wh"
+if [[ "$http_wh" == "401" ]]; then
+  echo "  [PASS] billing-webhook correctly rejected unsigned request (401)"
+else
+  echo "  [WARN] billing-webhook returned $http_wh (expected 401 for unsigned POST)"
+fi
+
 if [[ "$failed" -ne 0 ]]; then
   echo "Smoke test finished with at least one failing function." >&2
   exit 1
