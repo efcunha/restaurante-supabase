@@ -6,6 +6,7 @@ export interface SupabaseMetrics {
   databaseSize?: string;
   responseTime?: number;
   error?: string;
+  detail?: string;
 }
 
 export async function getSupabaseMetrics(): Promise<SupabaseMetrics> {
@@ -22,6 +23,7 @@ export async function getSupabaseMetrics(): Promise<SupabaseMetrics> {
       return {
         status: 'offline',
         error: connError.message,
+        detail: 'Falha ao consultar companies',
         responseTime: Date.now() - start,
       };
     }
@@ -47,12 +49,14 @@ export async function getSupabaseMetrics(): Promise<SupabaseMetrics> {
       activeConnections,
       databaseSize,
       responseTime,
+      detail: 'Consulta simples ao Supabase concluida com sucesso',
     };
   } catch (err) {
     const error = err instanceof Error ? err.message : 'Unknown error';
     return {
       status: 'offline',
       error,
+      detail: 'Erro inesperado na coleta de metricas do banco',
       responseTime: Date.now() - start,
     };
   }
