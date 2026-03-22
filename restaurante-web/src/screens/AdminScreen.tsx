@@ -44,6 +44,7 @@ import AdminStatsCards from '../components/AdminStatsCards';
 import CaixaMenuModal from '../components/CaixaMenuModal';
 import { AdminActionCard, AdminBareModal, AdminCaixaModal, AdminSection, AdminSlideModal } from '../features/admin';
 import { TrialBanner } from '../components/LicenseGate';
+import { isFeatureEnabled } from '../config/featureFlags';
 // import PerformanceService from '../services/PerformanceService'; // Removed - Firebase specific
 
 // WhatsApp Integração
@@ -65,6 +66,7 @@ export default function AdminScreen() {
   const route = useRoute() as any;
   const params = route?.params;
   const navigation = useNavigation() as any;
+  const billingScreenEnabled = isFeatureEnabled('billing_showBillingScreen');
 
   useEffect(() => {
     if (params?.openConfigMesas) {
@@ -384,7 +386,7 @@ export default function AdminScreen() {
   ];
 
   const financialReports = [
-    { name: 'Assinatura SaaS', icon: '💳', action: () => setShowBillingScreen(true) },
+    ...(billingScreenEnabled ? [{ name: 'Assinatura SaaS', icon: '💳', action: () => setShowBillingScreen(true) }] : []),
     { name: 'Dashboard Financeiro', icon: '📊', action: () => setShowDashboard(true) },
     { name: 'Histórico de Caixas', icon: '📜', action: () => setShowCaixaHistorico(true) },
     { name: 'Config. Financeira', icon: '⚙️', action: () => setShowFinancialConfig(true) },
@@ -556,9 +558,11 @@ export default function AdminScreen() {
         <FinancialConfigScreen onClose={() => setShowFinancialConfig(false)} />
       </AdminBareModal>
 
-      <AdminBareModal visible={showBillingScreen} onClose={() => setShowBillingScreen(false)}>
-        <BillingScreen onClose={() => setShowBillingScreen(false)} />
-      </AdminBareModal>
+      {billingScreenEnabled && (
+        <AdminBareModal visible={showBillingScreen} onClose={() => setShowBillingScreen(false)}>
+          <BillingScreen onClose={() => setShowBillingScreen(false)} />
+        </AdminBareModal>
+      )}
 
       {/* Modal Dashboard Financeiro */}
       <AdminBareModal visible={showDashboard} onClose={() => setShowDashboard(false)}>

@@ -1,5 +1,5 @@
 import { corsHeaders } from '../_shared/cors.ts';
-import { HttpError, jsonResponse, requireAdmin } from '../_shared/auth.ts';
+import { HttpError, jsonResponse, requireSecureAdmin, validateCompanyContext } from '../_shared/auth-secure.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -7,12 +7,15 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { adminClient, profile } = await requireAdmin(req);
+    const { adminClient, profile, auditBillingEvent } = await requireSecureAdmin(req);
     const payload = await req.json().catch(() => ({}));
-    const companyId = payload.companyId || profile.company_id;
+    const companyId = typeof payload.companyId === 'string' ? payload.companyId : profile.company_id;
 
-    if (companyId !== profile.company_id) {
-      throw new HttpError(403, 'Billing company context mismatch.');
+    if (!validateCompanyContext(profile.company_id, companyId)) {
+      await auditBillingEvent('auth.multi_tenant_violation_attempt', {
+        requested_company_id: companyId,
+      });
+      throw new HttpError(403, 'Access denied.');
     }
 
     const [subscriptionResult, methodsResult] = await Promise.all([
@@ -43,6 +46,13 @@ Deno.serve(async (req) => {
     const hasPaymentMethod = (methodsResult.count || 0) > 0;
     const configured = accessTokenConfigured && publicKeyConfigured;
 
+    await auditBillingEvent('billing.provider_status.checked', {
+      provider: 'mercadopago',
+      configured,
+      has_payment_method: hasPaymentMethod,
+      has_provider_subscription: hasProviderSubscription,
+    });
+
     return jsonResponse(200, {
       provider: 'mercadopago',
       configured,
@@ -54,7 +64,15 @@ Deno.serve(async (req) => {
       message: configured
         ? 'Integração Mercado Pago configurada para iniciar o rollout controlado.'
         : 'Integração Mercado Pago ainda depende da configuração completa dos segredos do provider.',
-      subscription,
+      subscription: subscription
+        ? {
+            status: subscription.status,
+            trial_ends_at: subscription.trial_ends_at,
+            current_period_end: subscription.current_period_end,
+            grace_period_end: subscription.grace_period_end,
+            plan_amount: subscription.plan_amount,
+          }
+        : null,
     });
   } catch (error) {
     if (error instanceof HttpError) {
@@ -62,7 +80,7 @@ Deno.serve(async (req) => {
     }
 
     return jsonResponse(500, {
-      error: error instanceof Error ? error.message : 'Unexpected billing provider status error.',
+      error: 'Unexpected billing provider status error.',
     });
   }
 });

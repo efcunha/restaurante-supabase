@@ -1,5 +1,5 @@
 import { corsHeaders } from '../_shared/cors.ts';
-import { HttpError, jsonResponse, requireAdmin } from '../_shared/auth.ts';
+import { HttpError, jsonResponse, requireSecureAdmin, validateCompanyContext } from '../_shared/auth-secure.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -7,26 +7,24 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { adminClient, profile, user } = await requireAdmin(req);
+    const { profile, auditBillingEvent } = await requireSecureAdmin(req);
     const payload = await req.json().catch(() => ({}));
-    const companyId = payload.companyId || profile.company_id;
+    const companyId = typeof payload.companyId === 'string' ? payload.companyId : profile.company_id;
 
-    if (companyId !== profile.company_id) {
-      throw new HttpError(403, 'Billing company context mismatch.');
+    if (!validateCompanyContext(profile.company_id, companyId)) {
+      await auditBillingEvent('auth.multi_tenant_violation_attempt', {
+        requested_company_id: companyId,
+        operation: 'billing.pix.requested',
+      });
+      throw new HttpError(403, 'Access denied.');
     }
 
     const accessTokenConfigured = Boolean(Deno.env.get('MERCADOPAGO_ACCESS_TOKEN'));
 
-    await adminClient.from('billing_audit_log').insert({
-      company_id: companyId,
-      event_type: 'billing.pix.requested',
-      actor_type: 'user',
-      actor_id: user.id,
-      details: {
-        provider: 'mercadopago',
-        access_token_configured: accessTokenConfigured,
-        mode: 'pix_fallback',
-      },
+    await auditBillingEvent('billing.pix.requested', {
+      provider: 'mercadopago',
+      access_token_configured: accessTokenConfigured,
+      mode: 'pix_fallback',
     });
 
     if (!accessTokenConfigured) {
@@ -50,7 +48,7 @@ Deno.serve(async (req) => {
     }
 
     return jsonResponse(500, {
-      error: error instanceof Error ? error.message : 'Unexpected Pix fallback bootstrap error.',
+      error: 'Unexpected Pix fallback bootstrap error.',
     });
   }
 });
