@@ -1,5 +1,6 @@
 import 'react-native-url-polyfill/auto';
 import { createClient } from '@supabase/supabase-js';
+import { Platform } from 'react-native';
 import SecureStorageAdapter from '../utils/SecureStorageAdapter';
 
 // Credentials provided by environment variables
@@ -20,7 +21,7 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     storage: SecureStorageAdapter, // Use SecureStore on mobile
     autoRefreshToken: true,
     persistSession: true, // Enable persistence with secure storage
-    detectSessionInUrl: false,
+    detectSessionInUrl: Platform.OS === 'web',
   },
   db: {
     schema: 'public',

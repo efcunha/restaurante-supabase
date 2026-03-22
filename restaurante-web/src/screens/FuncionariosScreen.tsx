@@ -10,6 +10,7 @@ import { criarFuncionario, listarFuncionarios, deletarFuncionario, atualizarFunc
 import { supabase } from '../config/SupabaseConfig';
 import { ScreenScaffold } from '../layouts/ScreenScaffold';
 import { colors } from '../theme/colors';
+import { getPasswordResetRedirectUrl } from '../utils/authRedirect';
 interface Props {
   onClose?: () => void;
 }
@@ -582,7 +583,7 @@ export default function FuncionariosScreen({ onClose }: Props) {
                           onPress: async () => {
                             try {
                               const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-                                redirectTo: 'your-app://reset-password'
+                                redirectTo: getPasswordResetRedirectUrl()
                               });
                               if (error) throw error;
                               alert('✅ Email de redefinição enviado com sucesso!');

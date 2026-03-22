@@ -1,5 +1,15 @@
 import { supabase } from '../auth/supabase.js';
 
+interface ReconcileAtomicRpcResult {
+  ok?: boolean;
+  action?: string;
+  companyId?: string;
+  invoiceId?: string;
+  webhookEventId?: string;
+  subscriptionStatus?: string;
+  message?: string;
+  alreadyProcessed?: boolean;
+}
 type PaymentMethodType = 'card' | 'pix';
 type ReconcileStatus = 'paid' | 'failed';
 
@@ -59,6 +69,7 @@ export interface ReconcileInput {
 interface SubscriptionRow {
   id: string;
   status: string;
+  grace_period_end: string | null;
 }
 
 interface InvoiceRow {
@@ -66,6 +77,18 @@ interface InvoiceRow {
   company_id: string;
   status: string;
   retry_count: number;
+}
+
+export class BillingOperationError extends Error {
+  code: string;
+  statusCode: number;
+
+  constructor(message: string, code: string, statusCode = 400) {
+    super(message);
+    this.name = 'BillingOperationError';
+    this.code = code;
+    this.statusCode = statusCode;
+  }
 }
 
 function plusDaysIso(days: number): string {
@@ -77,12 +100,16 @@ function plusDaysIso(days: number): string {
 async function fetchCompanySubscription(companyId: string): Promise<SubscriptionRow> {
   const { data, error } = await supabase
     .from('subscriptions')
-    .select('id, status')
+    .select('id, status, grace_period_end')
     .eq('company_id', companyId)
     .single();
 
   if (error || !data) {
-    throw new Error('Assinatura nao encontrada para a empresa.');
+    throw new BillingOperationError(
+      'Assinatura nao encontrada para a empresa.',
+      'SUBSCRIPTION_NOT_FOUND',
+      404,
+    );
   }
 
   return data;
@@ -98,7 +125,11 @@ async function fetchInvoiceForAction(companyId: string, invoiceId?: string): Pro
       .single();
 
     if (error || !data) {
-      throw new Error('Invoice informada nao encontrada para a empresa.');
+      throw new BillingOperationError(
+        'Invoice informada nao encontrada para a empresa.',
+        'INVOICE_NOT_FOUND',
+        404,
+      );
     }
 
     return data;
@@ -110,13 +141,109 @@ async function fetchInvoiceForAction(companyId: string, invoiceId?: string): Pro
     .eq('company_id', companyId)
     .in('status', ['pending', 'failed'])
     .order('due_date', { ascending: true })
-    .limit(1)
-    .maybeSingle();
+    .limit(2);
 
-  if (error || !data) {
-    throw new Error('Nenhuma invoice pendente/falha encontrada para regularizacao.');
+  if (error || !data || data.length === 0) {
+    throw new BillingOperationError(
+      'Nenhuma invoice pendente/falha encontrada para regularizacao.',
+      'INVOICE_ACTION_TARGET_NOT_FOUND',
+      404,
+    );
   }
 
+  if (data.length > 1) {
+    throw new BillingOperationError(
+      'Multiplas invoices elegiveis encontradas. Informe invoiceId explicitamente.',
+      'INVOICE_ACTION_AMBIGUOUS',
+      409,
+    );
+  }
+
+  return data[0];
+}
+
+function assertInvoiceTransitionAllowed(currentStatus: string, paymentStatus: ReconcileStatus): void {
+  if (paymentStatus === 'paid') {
+    if (currentStatus === 'paid') {
+      throw new BillingOperationError(
+        'Invoice ja esta paga. Reconcile paid nao pode ser reaplicado com nova chave.',
+        'INVOICE_ALREADY_PAID',
+        409,
+      );
+    }
+
+    if (currentStatus === 'cancelled') {
+      throw new BillingOperationError(
+        'Invoice cancelada nao pode ser reconciliada como paga.',
+        'INVOICE_CANCELLED',
+        409,
+      );
+    }
+
+    return;
+  }
+
+  if (currentStatus === 'paid') {
+    throw new BillingOperationError(
+      'Invoice paga nao pode ser reconciliada como falha.',
+      'INVOICE_ALREADY_PAID',
+      409,
+    );
+  }
+
+  if (currentStatus === 'cancelled') {
+    throw new BillingOperationError(
+      'Invoice cancelada nao pode ser reconciliada como falha.',
+      'INVOICE_CANCELLED',
+      409,
+    );
+  }
+}
+
+function mapReconcileRpcError(message: string): BillingOperationError {
+  const [rawCode, ...rest] = message.split(':');
+  const code = rawCode?.trim() || 'RECONCILE_INTERNAL_ERROR';
+  const details = rest.join(':').trim() || message;
+
+  const statusMap: Record<string, number> = {
+    INVALID_PAYMENT_STATUS: 400,
+    INVALID_PAYMENT_METHOD: 400,
+    SUBSCRIPTION_NOT_FOUND: 404,
+    INVOICE_NOT_FOUND: 404,
+    INVOICE_ACTION_TARGET_NOT_FOUND: 404,
+    INVOICE_ACTION_AMBIGUOUS: 409,
+    INVOICE_ALREADY_PAID: 409,
+    INVOICE_CANCELLED: 409,
+    SUBSCRIPTION_CANCELLED_MANUAL_REACTIVATION_REQUIRED: 409,
+  };
+
+  return new BillingOperationError(details, code, statusMap[code] ?? 500);
+}
+
+export interface BillingAuditEntry {
+  id: string;
+  event_type: string;
+  actor_type: string;
+  actor_id: string | null;
+  old_status: string | null;
+  new_status: string | null;
+  details: Record<string, unknown>;
+  created_at: string;
+}
+
+export async function fetchBillingAudit(
+  companyId: string,
+  limit = 30,
+): Promise<BillingAuditEntry[]> {
+  const safeLimit = Math.max(1, Math.min(limit, 100));
+  const { data, error } = await supabase
+    .from('billing_audit_log')
+    .select('id, event_type, actor_type, actor_id, old_status, new_status, details, created_at')
+    .eq('company_id', companyId)
+    .order('created_at', { ascending: false })
+    .limit(safeLimit);
+
+  if (error || !data) return [];
   return data;
 }
 
@@ -266,158 +393,33 @@ export async function reconcileBillingEvent(
   input: ReconcileInput,
 ): Promise<BillingActionResult> {
   const { companyId, idempotencyKey, eventType, paymentStatus, paymentMethodType, mpPaymentId, errorCode, payload } = input;
-  const invoice = await fetchInvoiceForAction(companyId, input.invoiceId);
-  const sub = await fetchCompanySubscription(companyId);
 
-  const webhookInsert = await supabase
-    .from('webhook_events')
-    .insert({
-      provider: 'mercadopago',
-      event_type: eventType,
-      idempotency_key: idempotencyKey,
-      payload: payload ?? {},
-    })
-    .select('id')
-    .single();
+  const { data, error } = await supabase.rpc('reconcile_billing_event_atomic', {
+    p_company_id: companyId,
+    p_actor_id: actorId,
+    p_idempotency_key: idempotencyKey,
+    p_event_type: eventType,
+    p_payment_status: paymentStatus,
+    p_invoice_id: input.invoiceId ?? null,
+    p_mp_payment_id: mpPaymentId ?? null,
+    p_payment_method_type: paymentMethodType ?? null,
+    p_error_code: errorCode ?? null,
+    p_payload: payload ?? {},
+  });
 
-  if (webhookInsert.error) {
-    if (webhookInsert.error.code === '23505') {
-      return {
-        ok: true,
-        action: 'reconcile',
-        companyId,
-        invoiceId: invoice.id,
-        alreadyProcessed: true,
-        message: 'Evento de webhook ja processado para esta chave de idempotencia.',
-      };
-    }
-    throw new Error(`Falha ao registrar evento de webhook: ${webhookInsert.error.message}`);
+  if (error) {
+    throw mapReconcileRpcError(error.message || 'Falha ao reconciliar evento de billing');
   }
 
-  const webhookEventId = webhookInsert.data.id as string;
-
-  if (paymentStatus === 'paid') {
-    const nextStatus = ['past_due', 'grace_period', 'suspended'].includes(sub.status)
-      ? 'reactivated'
-      : 'active';
-
-    const [invoiceUpdate, subUpdate] = await Promise.all([
-      supabase
-        .from('invoices')
-        .update({
-          status: 'paid',
-          paid_at: new Date().toISOString(),
-          payment_method_type: paymentMethodType ?? 'card',
-          mp_payment_id: mpPaymentId ?? null,
-          mp_error_code: null,
-        })
-        .eq('id', invoice.id)
-        .eq('company_id', companyId),
-      supabase
-        .from('subscriptions')
-        .update({
-          status: nextStatus,
-          current_period_start: new Date().toISOString(),
-          current_period_end: plusDaysIso(30),
-          grace_period_end: null,
-        })
-        .eq('id', sub.id)
-        .eq('company_id', companyId),
-    ]);
-
-    if (invoiceUpdate.error || subUpdate.error) {
-      await supabase
-        .from('webhook_events')
-        .update({ processed_at: new Date().toISOString(), error_message: invoiceUpdate.error?.message ?? subUpdate.error?.message ?? 'reconcile_failed' })
-        .eq('id', webhookEventId);
-      throw new Error('Falha ao reconciliar pagamento aprovado.');
-    }
-
-    await insertAudit(
-      companyId,
-      'payment.succeeded',
-      actorId,
-      sub.status,
-      nextStatus,
-      {
-        invoice_id: invoice.id,
-        mp_payment_id: mpPaymentId ?? null,
-        event_type: eventType,
-      },
-    );
-
-    await supabase
-      .from('webhook_events')
-      .update({ processed_at: new Date().toISOString(), error_message: null })
-      .eq('id', webhookEventId);
-
-    return {
-      ok: true,
-      action: 'reconcile',
-      companyId,
-      invoiceId: invoice.id,
-      webhookEventId,
-      subscriptionStatus: nextStatus,
-      message: 'Pagamento reconciliado com sucesso e assinatura atualizada.',
-    };
-  }
-
-  const nextStatus = 'grace_period';
-  const [invoiceUpdate, subUpdate] = await Promise.all([
-    supabase
-      .from('invoices')
-      .update({
-        status: 'failed',
-        payment_method_type: paymentMethodType ?? 'card',
-        mp_payment_id: mpPaymentId ?? null,
-        mp_error_code: errorCode ?? 'payment_failed',
-      })
-      .eq('id', invoice.id)
-      .eq('company_id', companyId),
-    supabase
-      .from('subscriptions')
-      .update({
-        status: nextStatus,
-        grace_period_end: plusDaysIso(5),
-      })
-      .eq('id', sub.id)
-      .eq('company_id', companyId),
-  ]);
-
-  if (invoiceUpdate.error || subUpdate.error) {
-    await supabase
-      .from('webhook_events')
-      .update({ processed_at: new Date().toISOString(), error_message: invoiceUpdate.error?.message ?? subUpdate.error?.message ?? 'reconcile_failed' })
-      .eq('id', webhookEventId);
-    throw new Error('Falha ao reconciliar pagamento com erro.');
-  }
-
-  await insertAudit(
-    companyId,
-    'payment.failed',
-    actorId,
-    sub.status,
-    nextStatus,
-    {
-      invoice_id: invoice.id,
-      mp_payment_id: mpPaymentId ?? null,
-      mp_error_code: errorCode ?? null,
-      event_type: eventType,
-    },
-  );
-
-  await supabase
-    .from('webhook_events')
-    .update({ processed_at: new Date().toISOString(), error_message: null })
-    .eq('id', webhookEventId);
-
+  const rpc = (data ?? {}) as ReconcileAtomicRpcResult;
   return {
-    ok: true,
-    action: 'reconcile',
-    companyId,
-    invoiceId: invoice.id,
-    webhookEventId,
-    subscriptionStatus: nextStatus,
-    message: 'Falha de pagamento reconciliada e assinatura movida para grace_period.',
+    ok: Boolean(rpc.ok),
+    action: rpc.action ?? 'reconcile',
+    companyId: rpc.companyId ?? companyId,
+    invoiceId: rpc.invoiceId,
+    webhookEventId: rpc.webhookEventId,
+    subscriptionStatus: rpc.subscriptionStatus,
+    alreadyProcessed: rpc.alreadyProcessed,
+    message: rpc.message ?? 'Reconcile executado.',
   };
 }
