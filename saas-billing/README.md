@@ -45,6 +45,7 @@ Use test credentials only through environment management:
 2. Edge Functions:
 	- copy `database-backup/supabase/functions/.env.example` to `.env`
 	- set `MERCADOPAGO_PUBLIC_KEY`, `MERCADOPAGO_ACCESS_TOKEN`, and `MERCADOPAGO_WEBHOOK_SECRET`
+	- optionally set `MERCADOPAGO_NOTIFICATION_URL` to the future webhook endpoint for Pix reconciliation
 3. Hosted environments:
 	- set credentials with `supabase secrets set ...`
 	- never commit any provider key/token to git

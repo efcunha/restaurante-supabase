@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Linking, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenScaffold } from '../layouts/ScreenScaffold';
 import { useAuth } from '../context/AuthContext';
@@ -8,11 +8,14 @@ import {
   BillingInvoice,
   BillingPaymentMethod,
   BillingProviderStatus,
+  CardInput,
   getBillingProviderStatus,
   listBillingInvoices,
   listBillingPaymentMethods,
   requestBillingPixFallback,
+  saveCardToken,
   startBillingCheckout,
+  tokenizeCardWithMp,
 } from '../services/BillingService';
 import { colors } from '../theme/colors';
 
@@ -50,6 +53,21 @@ function formatDate(date?: string | Date | null) {
   });
 }
 
+function formatDateTime(date?: string | Date | null) {
+  if (!date) {
+    return '-';
+  }
+
+  return new Date(date).toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'America/Sao_Paulo',
+  });
+}
+
 function getMethodLabel(method: BillingPaymentMethod) {
   if (method.type === 'pix') {
     return 'Pix';
@@ -73,6 +91,23 @@ function getInvoiceStatusLabel(status: BillingInvoice['status']) {
   }
 }
 
+function getActivePixInvoice(invoices: BillingInvoice[]) {
+  const now = Date.now();
+
+  return invoices.find((invoice) => {
+    if (invoice.status !== 'pending' || invoice.payment_method_type !== 'pix' || !invoice.pix_qr_code_text) {
+      return false;
+    }
+
+    if (!invoice.pix_expires_at) {
+      return true;
+    }
+
+    const expiresAt = new Date(invoice.pix_expires_at).getTime();
+    return Number.isNaN(expiresAt) || expiresAt > now;
+  }) || null;
+}
+
 export default function BillingScreen({ onClose }: BillingScreenProps) {
   const { user } = useAuth();
   const { subscription, loadingBilling, reloadSubscription } = useBilling();
@@ -82,8 +117,20 @@ export default function BillingScreen({ onClose }: BillingScreenProps) {
   const [loadingData, setLoadingData] = useState(true);
   const [actionLoading, setActionLoading] = useState<'checkout' | 'pix' | null>(null);
 
+  // Card form modal
+  const [showCardModal, setShowCardModal] = useState(false);
+  const [pendingPublicKey, setPendingPublicKey] = useState<string | null>(null);
+  const [cardForm, setCardForm] = useState<CardInput>({
+    cardNumber: '',
+    expiryMonth: '',
+    expiryYear: '',
+    cvv: '',
+    cardholderName: '',
+  });
+
   const companyId = user?.companyId;
   const hasPaymentMethod = paymentMethods.length > 0;
+  const activePixInvoice = useMemo(() => getActivePixInvoice(invoices), [invoices]);
 
   const daysLeft = useMemo(() => {
     if (!subscription.trialEndsAt) {
@@ -140,11 +187,18 @@ export default function BillingScreen({ onClose }: BillingScreenProps) {
     try {
       const result = await startBillingCheckout(companyId);
 
+      if (result.status === 'ready_for_tokenization' && result.publicKey) {
+        setPendingPublicKey(result.publicKey);
+        setCardForm({ cardNumber: '', expiryMonth: '', expiryYear: '', cvv: '', cardholderName: '' });
+        setShowCardModal(true);
+        return;
+      }
+
       if (result.checkoutUrl) {
         await Linking.openURL(result.checkoutUrl);
       }
 
-      Alert.alert('Cobrança', result.message + (result.nextStep ? `\n\nPróximo passo: ${result.nextStep}` : ''));
+      Alert.alert('Cobrança', result.message);
       await handleRefresh();
     } catch (error) {
       Alert.alert('Cobrança', error instanceof Error ? error.message : 'Falha ao iniciar o cadastro do método de pagamento.');
@@ -152,6 +206,61 @@ export default function BillingScreen({ onClose }: BillingScreenProps) {
       setActionLoading(null);
     }
   }, [companyId, handleRefresh]);
+
+  const handleSaveCard = useCallback(async () => {
+    if (!companyId || !pendingPublicKey) {
+      return;
+    }
+
+    const { cardNumber, expiryMonth, expiryYear, cvv, cardholderName } = cardForm;
+    const digits = cardNumber.replace(/\s/g, '');
+
+    if (digits.length < 13 || digits.length > 19) {
+      Alert.alert('Cartão', 'Número do cartão inválido.');
+      return;
+    }
+
+    const month = parseInt(expiryMonth, 10);
+    if (!month || month < 1 || month > 12) {
+      Alert.alert('Cartão', 'Mês de validade inválido (01-12).');
+      return;
+    }
+
+    if (!expiryYear || expiryYear.length < 2) {
+      Alert.alert('Cartão', 'Ano de validade inválido.');
+      return;
+    }
+
+    if (cvv.length < 3) {
+      Alert.alert('Cartão', 'CVV inválido.');
+      return;
+    }
+
+    if (!cardholderName.trim()) {
+      Alert.alert('Cartão', 'Informe o nome impresso no cartão.');
+      return;
+    }
+
+    setActionLoading('checkout');
+    try {
+      const token = await tokenizeCardWithMp(pendingPublicKey, cardForm);
+      const result = await saveCardToken(companyId, token);
+
+      setShowCardModal(false);
+      setPendingPublicKey(null);
+
+      const cardLabel = result.card
+        ? ` (${(result.card as { brand?: string }).brand?.toUpperCase() || 'Cartão'} •••• ${(result.card as { lastFour?: string }).lastFour || ''})`
+        : '';
+
+      Alert.alert('Cartão salvo', `Cartão cadastrado com sucesso${cardLabel}.`);
+      await handleRefresh();
+    } catch (error) {
+      Alert.alert('Erro no cartão', error instanceof Error ? error.message : 'Falha ao salvar o cartão.');
+    } finally {
+      setActionLoading(null);
+    }
+  }, [companyId, pendingPublicKey, cardForm, handleRefresh]);
 
   const handlePixFallback = useCallback(async () => {
     if (!companyId) {
@@ -161,7 +270,10 @@ export default function BillingScreen({ onClose }: BillingScreenProps) {
     setActionLoading('pix');
     try {
       const result = await requestBillingPixFallback(companyId);
-      Alert.alert('Regularização via Pix', result.message + (result.nextStep ? `\n\nPróximo passo: ${result.nextStep}` : ''));
+      const pixSummary = result.pixQrCodeText
+        ? `\n\nPix disponível até ${formatDateTime(result.pixExpiresAt)}.`
+        : '';
+      Alert.alert('Regularização via Pix', result.message + pixSummary + (result.nextStep ? `\n\nPróximo passo: ${result.nextStep}` : ''));
       await handleRefresh();
     } catch (error) {
       Alert.alert('Cobrança', error instanceof Error ? error.message : 'Falha ao iniciar a regularização via Pix.');
@@ -182,6 +294,109 @@ export default function BillingScreen({ onClose }: BillingScreenProps) {
       scroll
       contentContainerStyle={styles.contentContainer}
     >
+      {/* Card tokenization modal */}
+      <Modal
+        visible={showCardModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => { setShowCardModal(false); setPendingPublicKey(null); }}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalContainer}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Cadastrar cartão</Text>
+            <TouchableOpacity onPress={() => { setShowCardModal(false); setPendingPublicKey(null); }}>
+              <Ionicons name="close" size={24} color={colors.text} />
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.modalSubtitle}>
+            Os dados do cartão são enviados diretamente ao Mercado Pago — nunca armazenamos número completo nem CVV.
+          </Text>
+
+          <View style={styles.formField}>
+            <Text style={styles.fieldLabel}>Número do cartão</Text>
+            <TextInput
+              style={styles.fieldInput}
+              placeholder="0000 0000 0000 0000"
+              keyboardType="number-pad"
+              maxLength={19}
+              value={cardForm.cardNumber}
+              onChangeText={(v) => {
+                const digits = v.replace(/\D/g, '').slice(0, 16);
+                const formatted = digits.replace(/(\d{4})(?=\d)/g, '$1 ').trim();
+                setCardForm((prev) => ({ ...prev, cardNumber: formatted }));
+              }}
+            />
+          </View>
+
+          <View style={styles.formRow}>
+            <View style={[styles.formField, { flex: 1 }]}>
+              <Text style={styles.fieldLabel}>Mês</Text>
+              <TextInput
+                style={styles.fieldInput}
+                placeholder="MM"
+                keyboardType="number-pad"
+                maxLength={2}
+                value={cardForm.expiryMonth}
+                onChangeText={(v) => setCardForm((prev) => ({ ...prev, expiryMonth: v.replace(/\D/g, '') }))}
+              />
+            </View>
+            <View style={[styles.formField, { flex: 1 }]}>
+              <Text style={styles.fieldLabel}>Ano</Text>
+              <TextInput
+                style={styles.fieldInput}
+                placeholder="AA"
+                keyboardType="number-pad"
+                maxLength={4}
+                value={cardForm.expiryYear}
+                onChangeText={(v) => setCardForm((prev) => ({ ...prev, expiryYear: v.replace(/\D/g, '') }))}
+              />
+            </View>
+            <View style={[styles.formField, { flex: 1 }]}>
+              <Text style={styles.fieldLabel}>CVV</Text>
+              <TextInput
+                style={styles.fieldInput}
+                placeholder="000"
+                keyboardType="number-pad"
+                maxLength={4}
+                secureTextEntry
+                value={cardForm.cvv}
+                onChangeText={(v) => setCardForm((prev) => ({ ...prev, cvv: v.replace(/\D/g, '') }))}
+              />
+            </View>
+          </View>
+
+          <View style={styles.formField}>
+            <Text style={styles.fieldLabel}>Nome no cartão</Text>
+            <TextInput
+              style={styles.fieldInput}
+              placeholder="NOME SOBRENOME"
+              autoCapitalize="characters"
+              value={cardForm.cardholderName}
+              onChangeText={(v) => setCardForm((prev) => ({ ...prev, cardholderName: v }))}
+            />
+          </View>
+
+          <TouchableOpacity
+            style={[styles.primaryButton, actionLoading === 'checkout' && styles.buttonDisabled]}
+            onPress={handleSaveCard}
+            disabled={actionLoading !== null}
+          >
+            {actionLoading === 'checkout' ? (
+              <ActivityIndicator color={colors.white} size="small" />
+            ) : (
+              <>
+                <Ionicons name="checkmark-circle-outline" size={18} color={colors.white} />
+                <Text style={styles.primaryButtonText}>Confirmar e salvar cartão</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </KeyboardAvoidingView>
+      </Modal>
+
       <View style={styles.heroCard}>
         <View style={styles.heroHeader}>
           <View>
@@ -271,6 +486,26 @@ export default function BillingScreen({ onClose }: BillingScreenProps) {
         )}
       </View>
 
+      {activePixInvoice && (
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Pix em aberto</Text>
+          <Text style={styles.providerMessage}>
+            Use este QR code para regularizar a assinatura. O código expira em {formatDateTime(activePixInvoice.pix_expires_at)}.
+          </Text>
+          {activePixInvoice.pix_qr_code ? (
+            <View style={styles.pixQrWrapper}>
+              <Image
+                source={{ uri: `data:image/png;base64,${activePixInvoice.pix_qr_code}` }}
+                style={styles.pixQrImage}
+                resizeMode="contain"
+              />
+            </View>
+          ) : null}
+          <Text style={styles.pixLabel}>Copia e cola</Text>
+          <Text style={styles.pixCode}>{activePixInvoice.pix_qr_code_text}</Text>
+        </View>
+      )}
+
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>Métodos cadastrados</Text>
         {loadingData ? (
@@ -306,6 +541,9 @@ export default function BillingScreen({ onClose }: BillingScreenProps) {
               <View style={styles.invoiceMain}>
                 <Text style={styles.listTitle}>{formatCurrency(invoice.amount)}</Text>
                 <Text style={styles.listSubtitle}>Vencimento {formatDate(invoice.due_date)}</Text>
+                {invoice.payment_method_type === 'pix' && invoice.pix_expires_at ? (
+                  <Text style={styles.invoiceDetail}>Expira em {formatDateTime(invoice.pix_expires_at)}</Text>
+                ) : null}
               </View>
               <View style={styles.invoiceMeta}>
                 <Text style={styles.invoiceStatus}>{getInvoiceStatusLabel(invoice.status)}</Text>
@@ -536,6 +774,39 @@ const styles = StyleSheet.create({
   invoiceMethod: {
     color: colors.textSecondary,
   },
+  invoiceDetail: {
+    marginTop: 4,
+    color: colors.textSecondary,
+    fontSize: 12,
+  },
+  pixQrWrapper: {
+    alignSelf: 'center',
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 12,
+    marginBottom: 16,
+  },
+  pixQrImage: {
+    width: 220,
+    height: 220,
+  },
+  pixLabel: {
+    fontSize: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    color: colors.textSecondary,
+    marginBottom: 8,
+  },
+  pixCode: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: colors.text,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 12,
+  },
   refreshLink: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -546,5 +817,49 @@ const styles = StyleSheet.create({
   refreshLinkText: {
     color: colors.primary,
     fontWeight: '700',
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: colors.white,
+    padding: 24,
+    gap: 16,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: colors.text,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.textSecondary,
+  },
+  formField: {
+    gap: 6,
+  },
+  formRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  fieldLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  fieldInput: {
+    height: 48,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    fontSize: 15,
+    color: colors.text,
+    backgroundColor: '#FAFAFA',
   },
 });
