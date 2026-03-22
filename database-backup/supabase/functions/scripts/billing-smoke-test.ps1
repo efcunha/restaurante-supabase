@@ -54,6 +54,15 @@ $functionNames = @(
 
 foreach ($fn in $functionNames) {
   $statusCode = Invoke-BillingFunction -FunctionName $fn -Payload '{}'
+
+  # billing-create-pix-fallback may return 409 when there is no active subscription yet.
+  if ($fn -eq 'billing-create-pix-fallback') {
+    if ($statusCode -ge 400 -and $statusCode -ne 409) {
+      $failed = $true
+    }
+    continue
+  }
+
   if ($statusCode -ge 400) {
     $failed = $true
   }
