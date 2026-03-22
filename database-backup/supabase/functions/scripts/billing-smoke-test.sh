@@ -26,6 +26,7 @@ fi
 call_function() {
   local fn_name="$1"
   local payload="${2:-{}}"
+  local allow_status_regex="${3:-}"
   local tmp_body
   local http
 
@@ -44,6 +45,10 @@ call_function() {
 
   rm -f "$tmp_body"
 
+  if [[ -n "$allow_status_regex" && "$http" =~ $allow_status_regex ]]; then
+    return 0
+  fi
+
   if [[ "$http" -ge 400 ]]; then
     return 1
   fi
@@ -55,7 +60,8 @@ failed=0
 
 call_function "billing-provider-status" "{}" || failed=1
 call_function "billing-create-checkout" "{}" || failed=1
-call_function "billing-create-pix-fallback" "{}" || failed=1
+# 409 for pix-fallback can be expected when no active subscription exists yet.
+call_function "billing-create-pix-fallback" "{}" "^(200|409)$" || failed=1
 
 # billing-webhook: an unsigned POST must be rejected with 401 (method guard + sig check)
 # A GET would return 405 — either way confirms the function is deployed
