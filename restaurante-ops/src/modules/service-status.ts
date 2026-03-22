@@ -7,6 +7,8 @@ export interface ServiceStatus {
   status: 'online' | 'offline' | 'unknown';
   responseTime?: number;
   url?: string;
+  statusCode?: number;
+  detail?: string;
 }
 
 async function checkServiceHealth(name: string, url: string): Promise<ServiceStatus> {
@@ -22,9 +24,17 @@ async function checkServiceHealth(name: string, url: string): Promise<ServiceSta
     
     const responseTime = Date.now() - start;
     const status = res.ok ? 'online' : 'offline';
-    return { name, status, responseTime, url };
+    const detail = res.ok
+      ? `HTTP ${res.status}`
+      : `HTTP ${res.status}${res.statusText ? ` ${res.statusText}` : ''}`;
+    return { name, status, responseTime, url, statusCode: res.status, detail };
   } catch (_err) {
-    return { name, status: 'offline', url };
+    const detail = _err instanceof Error && _err.name === 'AbortError'
+      ? 'Timeout apos 5000ms'
+      : _err instanceof Error
+        ? _err.message
+        : 'Falha desconhecida';
+    return { name, status: 'offline', url, detail };
   }
 }
 

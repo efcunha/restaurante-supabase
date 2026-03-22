@@ -9,17 +9,31 @@ import {
   fetchRecentCompanies,
   fetchInvoiceStats,
   fetchRecentInvoices,
+  fetchBillingOpsMetrics,
   fetchSaasMetrics,
+  fetchRevenueSeries,
+  fetchSubscriptionBreakdown,
   fetchKpiCounts,
   brl,
   type CompanyRow,
   type InvoiceRow,
   type InvoiceStats,
+  type BillingOpsMetrics,
   type SaasMetrics,
+  type RevenuePoint,
+  type SubscriptionBreakdown,
   type KpiCounts,
 } from './modules/data.js';
 import { checkAllServices, type ServiceStatus } from './modules/service-status.js';
 import { getSupabaseMetrics, type SupabaseMetrics } from './modules/supabase-metrics.js';
+import { logError, logInfo, logWarn } from './lib/logger.js';
+import {
+  fetchBillingSnapshot,
+  reconcileBillingEvent,
+  regularizeByCard,
+  regularizeByPix,
+  type ReconcileInput,
+} from './modules/billing-operations.js';
 
 const env = buildEnv();
 
@@ -722,6 +736,7 @@ function renderQuickActionPanel(
       .ok { background: #f0fdf4; color: #14532d; border: 1px solid #bbf7d0; }
       .warn { background: #fff7ed; color: #92400e; border: 1px solid #fde8c0; }
       .info { background: #eff8fc; color: #0a5063; border: 1px solid #b8e2f0; }
+      .error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
 
       .mono {
         margin-top: 10px;
@@ -850,6 +865,7 @@ function renderCustomersPanel(
 function renderBillingPanel(
   user: OpsUser,
   stats: InvoiceStats,
+  ops: BillingOpsMetrics,
   invoices: InvoiceRow[],
 ): string {
   const invPill = (s: string) => {
@@ -890,6 +906,37 @@ function renderBillingPanel(
           <div class="metric-value">${stats.overdue}</div>
           <div class="metric-hint">Vencimento expirado</div>
         </article>
+        <article class="metric">
+          <div class="metric-label">A vencer em 7 dias</div>
+          <div class="metric-value">${ops.dueSoonCount}</div>
+          <div class="metric-hint">Prevencao de inadimplencia</div>
+        </article>
+        <article class="metric">
+          <div class="metric-label">Eventos de falha</div>
+          <div class="metric-value">${ops.failedCount}</div>
+          <div class="metric-hint">failed + cancelled</div>
+        </article>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Exposicao financeira</h2>
+      <div class="grid">
+        <article class="metric">
+          <div class="metric-label">Valor pendente</div>
+          <div class="metric-value">${brl(ops.pendingAmount)}</div>
+          <div class="metric-hint">Saldo em aberto</div>
+        </article>
+        <article class="metric">
+          <div class="metric-label">Valor em atraso</div>
+          <div class="metric-value">${brl(ops.overdueAmount)}</div>
+          <div class="metric-hint">Risco imediato</div>
+        </article>
+        <article class="metric">
+          <div class="metric-label">Recebido no mes</div>
+          <div class="metric-value">${brl(ops.collectedThisMonth)}</div>
+          <div class="metric-hint">Faturas pagas no ciclo atual</div>
+        </article>
       </div>
     </section>
 
@@ -905,8 +952,18 @@ function renderBillingPanel(
   );
 }
 
-function renderMetricsPanel(user: OpsUser, metrics: SaasMetrics): string {
+function renderMetricsPanel(
+  user: OpsUser,
+  metrics: SaasMetrics,
+  breakdown: SubscriptionBreakdown,
+  revenueSeries: RevenuePoint[],
+): string {
   const mrrFmt = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(metrics.mrr);
+  const revenueRows = revenueSeries.length === 0
+    ? '<tr><td colspan="2" style="text-align:center;color:#516675;">Sem dados de receita no periodo.</td></tr>'
+    : revenueSeries
+      .map((point) => `<tr><td>${point.label}</td><td>${brl(point.amount)}</td></tr>`)
+      .join('');
 
   return renderQuickActionPanel(
     user,
@@ -941,6 +998,32 @@ function renderMetricsPanel(user: OpsUser, metrics: SaasMetrics): string {
           <div class="metric-hint">Status active</div>
         </article>
       </div>
+    </section>
+
+    <section class="panel">
+      <h2>Distribuicao de assinaturas</h2>
+      <table class="table">
+        <thead>
+          <tr><th>Status</th><th>Quantidade</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>active</td><td>${breakdown.active}</td></tr>
+          <tr><td>trialing</td><td>${breakdown.trialing}</td></tr>
+          <tr><td>past_due</td><td>${breakdown.pastDue}</td></tr>
+          <tr><td>suspended</td><td>${breakdown.suspended}</td></tr>
+          <tr><td>cancelled</td><td>${breakdown.cancelled}</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="panel">
+      <h2>Receita confirmada (ultimos 6 meses)</h2>
+      <table class="table">
+        <thead>
+          <tr><th>Mes</th><th>Valor recebido</th></tr>
+        </thead>
+        <tbody>${revenueRows}</tbody>
+      </table>
     </section>`,
   );
 }
@@ -953,7 +1036,8 @@ function renderServiceStatusPanel(user: OpsUser, services: ServiceStatus[], supa
           <td>${svc.name}</td>
           <td>${svc.status === 'online' ? '<span class="pill ok">Online</span>' : svc.status === 'offline' ? '<span class="pill error">Offline</span>' : '<span class="pill warn">Unknown</span>'}</td>
           <td>${svc.responseTime ? svc.responseTime + 'ms' : '—'}</td>
-          <td>${svc.url ? `<a href="${svc.url}" target="_blank">Check</a>` : '—'}</td>
+          <td>${svc.url ? `<a href="${svc.url}" target="_blank" rel="noreferrer">Check</a>` : '—'}</td>
+          <td>${svc.detail ?? '—'}</td>
         </tr>`,
     )
     .join('');
@@ -992,7 +1076,7 @@ function renderServiceStatusPanel(user: OpsUser, services: ServiceStatus[], supa
       <h2>Status de servicos HTTP</h2>
       <table class="table">
         <thead>
-          <tr><th>Servico</th><th>Status</th><th>Tempo de resposta</th><th>Healthz</th></tr>
+          <tr><th>Servico</th><th>Status</th><th>Tempo de resposta</th><th>Endpoint</th><th>Detalhe</th></tr>
         </thead>
         <tbody>
           ${serviceRows}
@@ -1012,6 +1096,7 @@ function renderServiceStatusPanel(user: OpsUser, services: ServiceStatus[], supa
           <tr><td>Tamanho do banco</td><td>${supabaseSize}</td><td>—</td></tr>
         </tbody>
       </table>
+      ${supabaseMetrics.detail ? `<p style="color:#516675;font-size:13px;margin-top:8px;">Detalhe: ${supabaseMetrics.detail}</p>` : ''}
       ${supabaseMetrics.error ? `<p style="color:#dc2626;font-size:13px;margin-top:8px;">Erro: ${supabaseMetrics.error}</p>` : ''}
     </section>`,
   );
@@ -1066,182 +1151,424 @@ function parseFormBody(raw: string): Record<string, string> {
   );
 }
 
+function parseJsonBody<T>(raw: string): T {
+  if (!raw || raw.trim() === '') return {} as T;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    throw new Error('JSON invalido no corpo da requisicao.');
+  }
+}
+
+function respondInternalError(req: IncomingMessage, res: import('node:http').ServerResponse): void {
+  logError('http.unhandled_error', {
+    method: req.method,
+    path: req.url,
+    statusCode: 500,
+  });
+
+  if (res.headersSent) {
+    res.end();
+    return;
+  }
+
+  const accept = req.headers.accept ?? '';
+  if (accept.includes('text/html')) {
+    res.writeHead(500, { 'content-type': 'text/html; charset=utf-8' });
+    res.end(renderBaseLayout('Erro interno', `
+      <section class="form-card" style="max-width:720px;margin:0 auto;">
+        <p class="form-eyebrow">restaurante-ops</p>
+        <h1 class="form-title">Erro interno</h1>
+        <p class="form-subtitle">Nao foi possivel concluir a solicitacao. Revise os logs do servidor para diagnostico.</p>
+      </section>
+    `));
+    return;
+  }
+
+  res.writeHead(500, { 'content-type': 'application/json; charset=utf-8' });
+  res.end(JSON.stringify({ error: 'Internal Server Error' }));
+}
+
 function startServer() {
   const server = createServer(async (req, res) => {
-    const url = new URL(req.url || '/', 'http://localhost');
-    const path = url.pathname;
+    try {
+      const url = new URL(req.url || '/', 'http://localhost');
+      const path = url.pathname;
 
-    // ---- Healthcheck / API status (publicos) ----
-    if (path === '/healthz') {
-      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify({ ok: true, service: 'restaurante-ops', env: env.OPS_ENV }));
-      return;
-    }
+      // ---- Healthcheck / API status (publicos) ----
+      if (path === '/healthz') {
+        res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ ok: true, service: 'restaurante-ops', env: env.OPS_ENV }));
+        return;
+      }
 
-    if (path === '/api/status') {
-      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
-      res.end(
-        JSON.stringify({
-          service: 'restaurante-ops',
-          modules: ['customers', 'billing', 'metrics'],
-          env: env.OPS_ENV,
-        }),
-      );
-      return;
-    }
+      if (path === '/api/status') {
+        res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+        res.end(
+          JSON.stringify({
+            service: 'restaurante-ops',
+            modules: ['customers', 'billing', 'metrics'],
+            env: env.OPS_ENV,
+          }),
+        );
+        return;
+      }
 
-    // ---- Telas publicas de auth ----
-    if (req.method === 'GET' && path === '/login') {
-      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-      res.end(renderLoginHtml());
-      return;
-    }
+      // ---- Telas publicas de auth ----
+      if (req.method === 'GET' && path === '/login') {
+        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+        res.end(renderLoginHtml());
+        return;
+      }
 
-    if (req.method === 'GET' && path === '/register') {
-      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-      res.end(renderRegisterHtml());
-      return;
-    }
+      if (req.method === 'GET' && path === '/register') {
+        logWarn('http.scaffold_route_blocked', {
+          method: req.method,
+          path,
+          statusCode: 302,
+          reason: 'register_ui_disabled',
+        });
+        res.writeHead(302, { Location: '/login' });
+        res.end();
+        return;
+      }
 
-    // ---- POST /auth/login — autenticacao real via Supabase ----
-    if (req.method === 'POST' && path === '/auth/login') {
-      try {
-        const raw = await readBody(req);
-        const body = parseFormBody(raw);
-        const { email, password } = body;
+      // ---- POST /auth/login — autenticacao real via Supabase ----
+      if (req.method === 'POST' && path === '/auth/login') {
+        try {
+          const raw = await readBody(req);
+          const body = parseFormBody(raw);
+          const { email, password } = body;
 
-        if (!email || !password) {
-          res.writeHead(400, { 'content-type': 'text/html; charset=utf-8' });
-          res.end(renderLoginHtml('Email e senha sao obrigatorios.'));
+          if (!email || !password) {
+            res.writeHead(400, { 'content-type': 'text/html; charset=utf-8' });
+            res.end(renderLoginHtml('Email e senha sao obrigatorios.'));
+            return;
+          }
+
+          const { token } = await signInWithPassword(
+            String(email).toLowerCase().trim(),
+            String(password),
+          );
+
+          logInfo('auth.login_success', {
+            method: req.method,
+            path,
+            email: String(email).toLowerCase().trim(),
+            statusCode: 302,
+          });
+
+          setSessionCookie(res, token);
+          res.writeHead(302, { Location: '/dashboard' });
+          res.end();
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : 'Erro ao fazer login';
+          logWarn('auth.login_failed', {
+            method: req.method,
+            path,
+            statusCode: 401,
+            reason: msg,
+          });
+          res.writeHead(401, { 'content-type': 'text/html; charset=utf-8' });
+          res.end(renderLoginHtml(msg));
+        }
+        return;
+      }
+
+      // ---- POST /auth/register — scaffold (integracao completa na proxima fase) ----
+      if (req.method === 'POST' && path === '/auth/register') {
+        logWarn('http.scaffold_route_blocked', {
+          method: req.method,
+          path,
+          statusCode: 404,
+          reason: 'register_endpoint_disabled',
+        });
+        res.writeHead(404, { 'content-type': 'application/json; charset=utf-8' });
+        res.end(
+          JSON.stringify({
+            error: 'Not Found',
+          }),
+        );
+        return;
+      }
+
+      // ---- GET /auth/logout ----
+      if (path === '/auth/logout') {
+        logInfo('auth.logout', {
+          method: req.method,
+          path,
+          statusCode: 302,
+        });
+        clearSessionCookie(res);
+        res.writeHead(302, { Location: '/login' });
+        res.end();
+        return;
+      }
+
+      // ---- GET / raiz — redireciona para dashboard (middleware valida sessao) ----
+      if (path === '/') {
+        res.writeHead(302, { Location: '/dashboard' });
+        res.end();
+        return;
+      }
+
+      // ---- GET /dashboard — protegido ----
+      if (path === '/dashboard') {
+        const user = await requireAuth(req, res);
+        if (!user) return;
+        const [kpis, companies] = await Promise.all([
+          fetchKpiCounts(),
+          fetchRecentCompanies(8),
+        ]);
+        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+        res.end(renderDashboardHtml(user, { kpis, companies }));
+        return;
+      }
+
+      // ---- Endpoints JSON administrativos (protegidos) ----
+      if (req.method === 'GET' && path === '/ops/customers') {
+        const user = await requireAuth(req, res);
+        if (!user) return;
+
+        const [kpis, companies] = await Promise.all([
+          fetchKpiCounts(),
+          fetchRecentCompanies(50),
+        ]);
+
+        res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({
+          ok: true,
+          generatedAt: new Date().toISOString(),
+          kpis,
+          companies,
+        }));
+        return;
+      }
+
+      if (req.method === 'GET' && path.startsWith('/ops/billing/company/')) {
+        const user = await requireAuth(req, res);
+        if (!user) return;
+
+        const snapshotMatch = path.match(/^\/ops\/billing\/company\/([^/]+)$/);
+        if (snapshotMatch) {
+          const companyId = snapshotMatch[1];
+          const snapshot = await fetchBillingSnapshot(companyId);
+          res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({
+            ok: true,
+            generatedAt: new Date().toISOString(),
+            snapshot,
+          }));
+          return;
+        }
+      }
+
+      if (req.method === 'POST' && path.startsWith('/ops/billing/company/')) {
+        const user = await requireAuth(req, res);
+        if (!user) return;
+
+        const cardMatch = path.match(/^\/ops\/billing\/company\/([^/]+)\/regularize\/card$/);
+        if (cardMatch) {
+          const companyId = cardMatch[1];
+          const body = parseJsonBody<{ invoiceId?: string }>(await readBody(req));
+          const result = await regularizeByCard(companyId, user.id, body.invoiceId);
+          res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify(result));
           return;
         }
 
-        const { token } = await signInWithPassword(
-          String(email).toLowerCase().trim(),
-          String(password),
-        );
-
-        setSessionCookie(res, token);
-        res.writeHead(302, { Location: '/dashboard' });
-        res.end();
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : 'Erro ao fazer login';
-        res.writeHead(401, { 'content-type': 'text/html; charset=utf-8' });
-        res.end(renderLoginHtml(msg));
+        const pixMatch = path.match(/^\/ops\/billing\/company\/([^/]+)\/regularize\/pix$/);
+        if (pixMatch) {
+          const companyId = pixMatch[1];
+          const body = parseJsonBody<{ invoiceId?: string }>(await readBody(req));
+          const result = await regularizeByPix(companyId, user.id, body.invoiceId);
+          res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify(result));
+          return;
+        }
       }
-      return;
-    }
 
-    // ---- POST /auth/register — scaffold (integracao completa na proxima fase) ----
-    if (req.method === 'POST' && path === '/auth/register') {
-      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
-      res.end(
-        JSON.stringify({
+      if (req.method === 'POST' && path === '/ops/billing/reconcile') {
+        const user = await requireAuth(req, res);
+        if (!user) return;
+
+        const body = parseJsonBody<Partial<ReconcileInput>>(await readBody(req));
+        if (!body.companyId || !body.idempotencyKey || !body.eventType || !body.paymentStatus) {
+          res.writeHead(400, { 'content-type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({
+            error: 'Campos obrigatorios: companyId, idempotencyKey, eventType, paymentStatus',
+          }));
+          return;
+        }
+
+        if (body.paymentStatus !== 'paid' && body.paymentStatus !== 'failed') {
+          res.writeHead(400, { 'content-type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({
+            error: 'paymentStatus deve ser "paid" ou "failed".',
+          }));
+          return;
+        }
+
+        const result = await reconcileBillingEvent(user.id, {
+          companyId: body.companyId,
+          idempotencyKey: body.idempotencyKey,
+          eventType: body.eventType,
+          paymentStatus: body.paymentStatus,
+          invoiceId: body.invoiceId,
+          mpPaymentId: body.mpPaymentId,
+          paymentMethodType: body.paymentMethodType,
+          errorCode: body.errorCode,
+          payload: body.payload,
+        });
+
+        res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify(result));
+        return;
+      }
+
+      if (req.method === 'GET' && path === '/ops/billing/summary') {
+        const user = await requireAuth(req, res);
+        if (!user) return;
+
+        const [stats, ops, recentInvoices] = await Promise.all([
+          fetchInvoiceStats(),
+          fetchBillingOpsMetrics(),
+          fetchRecentInvoices(20),
+        ]);
+
+        res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({
           ok: true,
-          message: 'Register endpoint em fase 2. Integrar fluxo de criacao de empresa no Supabase.',
-        }),
-      );
-      return;
-    }
+          generatedAt: new Date().toISOString(),
+          stats,
+          ops,
+          recentInvoices,
+        }));
+        return;
+      }
 
-    // ---- GET /auth/logout ----
-    if (path === '/auth/logout') {
-      clearSessionCookie(res);
-      res.writeHead(302, { Location: '/login' });
-      res.end();
-      return;
-    }
+      if (req.method === 'GET' && path === '/ops/metrics/portfolio') {
+        const user = await requireAuth(req, res);
+        if (!user) return;
 
-    // ---- GET / raiz — redireciona para dashboard (middleware valida sessao) ----
-    if (path === '/') {
-      res.writeHead(302, { Location: '/dashboard' });
-      res.end();
-      return;
-    }
+        const [metrics, breakdown, revenueSeries] = await Promise.all([
+          fetchSaasMetrics(),
+          fetchSubscriptionBreakdown(),
+          fetchRevenueSeries(6),
+        ]);
 
-    // ---- GET /dashboard — protegido ----
-    if (path === '/dashboard') {
-      const user = await requireAuth(req, res);
-      if (!user) return; // requireAuth ja redirecionou para /login
-      const [kpis, companies] = await Promise.all([
-        fetchKpiCounts(),
-        fetchRecentCompanies(8),
-      ]);
-      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-      res.end(renderDashboardHtml(user, { kpis, companies }));
-      return;
-    }
+        res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({
+          ok: true,
+          generatedAt: new Date().toISOString(),
+          metrics,
+          breakdown,
+          revenueSeries,
+        }));
+        return;
+      }
 
-    // ---- Rotas filhas protegidas (paineis de acoes rapidas) ----
-    if (path === '/customers') {
-      const user = await requireAuth(req, res);
-      if (!user) return;
-      const [kpis, companies] = await Promise.all([
-        fetchKpiCounts(),
-        fetchRecentCompanies(20),
-      ]);
-      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-      res.end(renderCustomersPanel(user, kpis, companies));
-      return;
-    }
+      // ---- Rotas filhas protegidas (paineis de acoes rapidas) ----
+      if (path === '/customers') {
+        const user = await requireAuth(req, res);
+        if (!user) return;
+        const [kpis, companies] = await Promise.all([
+          fetchKpiCounts(),
+          fetchRecentCompanies(20),
+        ]);
+        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+        res.end(renderCustomersPanel(user, kpis, companies));
+        return;
+      }
 
-    if (path === '/billing') {
-      const user = await requireAuth(req, res);
-      if (!user) return;
-      const [stats, invoices] = await Promise.all([
-        fetchInvoiceStats(),
-        fetchRecentInvoices(15),
-      ]);
-      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-      res.end(renderBillingPanel(user, stats, invoices));
-      return;
-    }
+      if (path === '/billing') {
+        const user = await requireAuth(req, res);
+        if (!user) return;
+        const [stats, ops, invoices] = await Promise.all([
+          fetchInvoiceStats(),
+          fetchBillingOpsMetrics(),
+          fetchRecentInvoices(15),
+        ]);
+        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+        res.end(renderBillingPanel(user, stats, ops, invoices));
+        return;
+      }
 
-    if (path === '/metrics') {
-      const user = await requireAuth(req, res);
-      if (!user) return;
-      const metrics = await fetchSaasMetrics();
-      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-      res.end(renderMetricsPanel(user, metrics));
-      return;
-    }
+      if (path === '/metrics') {
+        const user = await requireAuth(req, res);
+        if (!user) return;
+        const [metrics, breakdown, revenueSeries] = await Promise.all([
+          fetchSaasMetrics(),
+          fetchSubscriptionBreakdown(),
+          fetchRevenueSeries(6),
+        ]);
+        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+        res.end(renderMetricsPanel(user, metrics, breakdown, revenueSeries));
+        return;
+      }
 
-    if (path === '/service-status') {
-      const user = await requireAuth(req, res);
-      if (!user) return;
-      const [services, supabaseMetrics] = await Promise.all([
-        checkAllServices(),
-        getSupabaseMetrics(),
-      ]);
-      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-      res.end(renderServiceStatusPanel(user, services, supabaseMetrics));
-      return;
-    }
+      if (path === '/service-status') {
+        const user = await requireAuth(req, res);
+        if (!user) return;
+        const [services, supabaseMetrics] = await Promise.all([
+          checkAllServices(),
+          getSupabaseMetrics(),
+        ]);
+        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+        res.end(renderServiceStatusPanel(user, services, supabaseMetrics));
+        return;
+      }
 
-    if (path === '/api-status') {
-      const user = await requireAuth(req, res);
-      if (!user) return;
-      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-      res.end(renderApiStatusPanel(user));
-      return;
-    }
+      if (path === '/api-status') {
+        const user = await requireAuth(req, res);
+        if (!user) return;
+        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+        res.end(renderApiStatusPanel(user));
+        return;
+      }
 
-    // ---- Modo legacy: homepage publica ----
-    if (path === '/home') {
-      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-      res.end(renderHomeHtml());
-      return;
-    }
+      // ---- Modo legacy: homepage publica ----
+      if (path === '/home') {
+        logWarn('http.scaffold_route_blocked', {
+          method: req.method,
+          path,
+          statusCode: 302,
+          reason: 'legacy_home_disabled',
+        });
+        res.writeHead(302, { Location: '/login' });
+        res.end();
+        return;
+      }
 
-    res.writeHead(404, { 'content-type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify({ error: 'Not Found' }));
+      res.writeHead(404, { 'content-type': 'application/json; charset=utf-8' });
+      logWarn('http.not_found', {
+        method: req.method,
+        path,
+        statusCode: 404,
+      });
+      res.end(JSON.stringify({ error: 'Not Found' }));
+    } catch (err) {
+      logError('http.route_failed', {
+        method: req.method,
+        path: req.url,
+        statusCode: 500,
+        error: err instanceof Error ? err.message : 'Unknown error',
+      });
+      respondInternalError(req, res);
+    }
+  });
+
+  server.on('clientError', (err, socket) => {
+    logError('http.client_error', {
+      error: err.message,
+    });
+    socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
   });
 
   server.listen(env.OPS_PORT, () => {
-    console.log('[ops] web online', {
-      port: env.OPS_PORT,
-      env: env.OPS_ENV,
-      baseUrl: env.OPS_PUBLIC_BASE_URL || `http://localhost:${env.OPS_PORT}`,
+    logInfo('server.started', {
+      statusCode: 200,
+      detail: env.OPS_PUBLIC_BASE_URL || `http://localhost:${env.OPS_PORT}`,
     });
   });
 }
