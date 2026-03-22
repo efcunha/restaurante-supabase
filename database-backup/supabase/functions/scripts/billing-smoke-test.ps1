@@ -59,6 +59,25 @@ foreach ($fn in $functionNames) {
   }
 }
 
+# billing-webhook: an unsigned POST must return 401 (signature missing)
+Write-Host ''
+Write-Host '=== billing-webhook (unsigned POST --- expect 401) ==='
+$tmpWh = [System.IO.Path]::GetTempFileName()
+try {
+  $httpWh = [int](& curl.exe -sS -o $tmpWh -w '%{http_code}' -X POST `
+    -H 'Content-Type: application/json' `
+    -d '{"action":"payment.updated","data":{"id":"0"}}' `
+    "$SupabaseProjectUrl/functions/v1/billing-webhook")
+  Write-Host "HTTP: $httpWh"
+  if ($httpWh -eq 401) {
+    Write-Host '  [PASS] billing-webhook correctly rejected unsigned request (401)'
+  } else {
+    Write-Host "  [WARN] billing-webhook returned $httpWh (expected 401 for unsigned POST)"
+  }
+} finally {
+  Remove-Item -Force $tmpWh -ErrorAction SilentlyContinue
+}
+
 if ($failed) {
   Write-Error 'Smoke test finished with at least one failing function.'
   exit 1
