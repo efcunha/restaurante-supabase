@@ -33,9 +33,15 @@ SUPABASE_PROJECT_URL="${SUPABASE_PROJECT_URL:-}"
 SUPABASE_ANON_KEY="${SUPABASE_ANON_KEY:-}"
 USER_JWT="${USER_JWT:-}"
 MP_TEST_CARD="${MP_TEST_CARD:-mastercard}"
+MP_ACCESS_TOKEN="${MP_ACCESS_TOKEN:-}"
 
 if [[ -z "$SUPABASE_PROJECT_URL" ]] || [[ -z "$SUPABASE_ANON_KEY" ]] || [[ -z "$USER_JWT" ]]; then
   echo "ERROR: SUPABASE_PROJECT_URL, SUPABASE_ANON_KEY and USER_JWT must all be set." >&2
+  exit 1
+fi
+
+if [[ -z "$MP_ACCESS_TOKEN" ]]; then
+  echo "ERROR: MP_ACCESS_TOKEN must be set (requires Mercado Pago Access Token for card tokenization)." >&2
   exit 1
 fi
 
@@ -164,7 +170,7 @@ EOF
 TMP2="$(mktemp)"
 HTTP2="$(curl -sS -o "$TMP2" -w "%{http_code}" \
   "$MP_API/v1/card_tokens" \
-  -H "Authorization: Bearer $PUBLIC_KEY" \
+  -H "Authorization: Bearer $MP_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d "$TOKENIZE_PAYLOAD")"
 
@@ -205,6 +211,7 @@ HTTP3="$(curl -sS -o "$TMP3" -w "%{http_code}" \
 echo "HTTP: $HTTP3"
 cat "$TMP3"; echo ""
 
+PM_ID=""
 if [[ "$HTTP3" == "201" ]]; then
   SAVE_STATUS="$(json_eval "data.status ?? ''" "$TMP3")"
   PM_ID="$(json_eval "data.paymentMethodId ?? ''" "$TMP3")"
@@ -216,6 +223,11 @@ if [[ "$HTTP3" == "201" ]]; then
   else
     step_fail "Expected status=card_saved but got: $SAVE_STATUS"
   fi
+elif [[ "$HTTP3" == "409" ]]; then
+  ERROR_MSG="$(json_eval "data.error ?? ''" "$TMP3")"
+  echo "  [SKIP] Mode B returned 409 (no subscription yet): $ERROR_MSG"
+  echo "         STEP 3 and STEP 4 require an active subscription — set one up to fully validate."
+  rm -f "$TMP3"
 else
   ERROR_MSG="$(json_eval "data.error ?? ''" "$TMP3")"
   step_fail "billing-create-checkout Mode B returned HTTP $HTTP3: $ERROR_MSG"
@@ -230,6 +242,9 @@ rm -f "$TMP3"
 echo ""
 echo "=== STEP 4: Verify payment_methods row via REST ==="
 
+if [[ -z "$PM_ID" ]]; then
+  echo "  [SKIP] No paymentMethodId from STEP 3 — skipping REST verification."
+else
 TMP4="$(mktemp)"
 HTTP4="$(curl -sS -G -o "$TMP4" -w "%{http_code}" \
   "$SUPABASE_PROJECT_URL/rest/v1/payment_methods" \
@@ -255,6 +270,7 @@ else
   step_fail "REST query returned HTTP $HTTP4"
 fi
 rm -f "$TMP4"
+fi
 
 # ---------------------------------------------------------------------------
 # Summary

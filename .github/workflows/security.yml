@@ -1,0 +1,50 @@
+name: Security Audit Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+
+jobs:
+  security:
+    name: Security Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      # 🔍 Detectar secrets (senhas, tokens, etc.)
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+
+      # 🔍 Scan de dependências
+      - name: Snyk Scan
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+      # 🔍 Scan geral (Docker, libs, etc.)
+      - name: Run Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+
+      # 🔍 Lint + segurança básica
+      - name: Install deps
+        run: npm install
+
+      - name: Run audit
+        run: npm audit --audit-level=high
+
+  deploy:
+    name: Deploy to Railway
+    needs: security
+    runs-on: ubuntu-latest
+    if: success()
+
+    steps:
+      - name: Deploy
+        run: echo "Deploy liberado 🚀"
