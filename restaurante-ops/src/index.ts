@@ -28,6 +28,8 @@ import { checkAllServices, type ServiceStatus } from './modules/service-status.j
 import { getSupabaseMetrics, type SupabaseMetrics } from './modules/supabase-metrics.js';
 import { logError, logInfo, logWarn } from './lib/logger.js';
 import {
+  BillingOperationError,
+  fetchBillingAudit,
   fetchBillingSnapshot,
   reconcileBillingEvent,
   regularizeByCard,
@@ -1160,6 +1162,53 @@ function parseJsonBody<T>(raw: string): T {
   }
 }
 
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function validateReconcileInput(input: Partial<ReconcileInput>): string | null {
+  if (!input.companyId || !input.idempotencyKey || !input.eventType || !input.paymentStatus) {
+    return 'Campos obrigatorios: companyId, idempotencyKey, eventType, paymentStatus';
+  }
+
+  if (!isUuid(input.companyId)) {
+    return 'companyId invalido. Informe UUID valido.';
+  }
+
+  if (input.idempotencyKey.length < 8 || input.idempotencyKey.length > 120) {
+    return 'idempotencyKey deve ter entre 8 e 120 caracteres.';
+  }
+
+  if (input.paymentStatus !== 'paid' && input.paymentStatus !== 'failed') {
+    return 'paymentStatus deve ser "paid" ou "failed".';
+  }
+
+  if (input.paymentMethodType && input.paymentMethodType !== 'card' && input.paymentMethodType !== 'pix') {
+    return 'paymentMethodType deve ser "card" ou "pix".';
+  }
+
+  if (input.invoiceId && !isUuid(input.invoiceId)) {
+    return 'invoiceId invalido. Informe UUID valido.';
+  }
+
+  return null;
+}
+
+function respondBillingError(res: import('node:http').ServerResponse, err: unknown): void {
+  if (err instanceof BillingOperationError) {
+    res.writeHead(err.statusCode, { 'content-type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({
+      error: err.message,
+      code: err.code,
+    }));
+    return;
+  }
+
+  const message = err instanceof Error ? err.message : 'Erro inesperado no billing';
+  res.writeHead(500, { 'content-type': 'application/json; charset=utf-8' });
+  res.end(JSON.stringify({ error: message, code: 'BILLING_INTERNAL_ERROR' }));
+}
+
 function respondInternalError(req: IncomingMessage, res: import('node:http').ServerResponse): void {
   logError('http.unhandled_error', {
     method: req.method,
@@ -1349,9 +1398,39 @@ function startServer() {
         const user = await requireAuth(req, res);
         if (!user) return;
 
+        const auditMatch = path.match(/^\/ops\/billing\/company\/([^/]+)\/audit$/);
+        if (auditMatch) {
+          const companyId = auditMatch[1];
+          if (!isUuid(companyId)) {
+            res.writeHead(400, { 'content-type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ error: 'companyId invalido. Informe UUID valido.' }));
+            return;
+          }
+
+          const limitRaw = url.searchParams.get('limit');
+          const limit = limitRaw ? Number.parseInt(limitRaw, 10) : 30;
+          const entries = await fetchBillingAudit(companyId, Number.isNaN(limit) ? 30 : limit);
+
+          res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({
+            ok: true,
+            generatedAt: new Date().toISOString(),
+            companyId,
+            count: entries.length,
+            entries,
+          }));
+          return;
+        }
+
         const snapshotMatch = path.match(/^\/ops\/billing\/company\/([^/]+)$/);
         if (snapshotMatch) {
           const companyId = snapshotMatch[1];
+          if (!isUuid(companyId)) {
+            res.writeHead(400, { 'content-type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ error: 'companyId invalido. Informe UUID valido.' }));
+            return;
+          }
+
           const snapshot = await fetchBillingSnapshot(companyId);
           res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
           res.end(JSON.stringify({
@@ -1370,20 +1449,52 @@ function startServer() {
         const cardMatch = path.match(/^\/ops\/billing\/company\/([^/]+)\/regularize\/card$/);
         if (cardMatch) {
           const companyId = cardMatch[1];
+          if (!isUuid(companyId)) {
+            res.writeHead(400, { 'content-type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ error: 'companyId invalido. Informe UUID valido.' }));
+            return;
+          }
+
           const body = parseJsonBody<{ invoiceId?: string }>(await readBody(req));
-          const result = await regularizeByCard(companyId, user.id, body.invoiceId);
-          res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
-          res.end(JSON.stringify(result));
+          if (body.invoiceId && !isUuid(body.invoiceId)) {
+            res.writeHead(400, { 'content-type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ error: 'invoiceId invalido. Informe UUID valido.' }));
+            return;
+          }
+
+          try {
+            const result = await regularizeByCard(companyId, user.id, body.invoiceId);
+            res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify(result));
+          } catch (err) {
+            respondBillingError(res, err);
+          }
           return;
         }
 
         const pixMatch = path.match(/^\/ops\/billing\/company\/([^/]+)\/regularize\/pix$/);
         if (pixMatch) {
           const companyId = pixMatch[1];
+          if (!isUuid(companyId)) {
+            res.writeHead(400, { 'content-type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ error: 'companyId invalido. Informe UUID valido.' }));
+            return;
+          }
+
           const body = parseJsonBody<{ invoiceId?: string }>(await readBody(req));
-          const result = await regularizeByPix(companyId, user.id, body.invoiceId);
-          res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
-          res.end(JSON.stringify(result));
+          if (body.invoiceId && !isUuid(body.invoiceId)) {
+            res.writeHead(400, { 'content-type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ error: 'invoiceId invalido. Informe UUID valido.' }));
+            return;
+          }
+
+          try {
+            const result = await regularizeByPix(companyId, user.id, body.invoiceId);
+            res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify(result));
+          } catch (err) {
+            respondBillingError(res, err);
+          }
           return;
         }
       }
@@ -1393,36 +1504,33 @@ function startServer() {
         if (!user) return;
 
         const body = parseJsonBody<Partial<ReconcileInput>>(await readBody(req));
-        if (!body.companyId || !body.idempotencyKey || !body.eventType || !body.paymentStatus) {
+        const validationError = validateReconcileInput(body);
+        if (validationError) {
           res.writeHead(400, { 'content-type': 'application/json; charset=utf-8' });
           res.end(JSON.stringify({
-            error: 'Campos obrigatorios: companyId, idempotencyKey, eventType, paymentStatus',
+            error: validationError,
           }));
           return;
         }
 
-        if (body.paymentStatus !== 'paid' && body.paymentStatus !== 'failed') {
-          res.writeHead(400, { 'content-type': 'application/json; charset=utf-8' });
-          res.end(JSON.stringify({
-            error: 'paymentStatus deve ser "paid" ou "failed".',
-          }));
-          return;
+        try {
+          const result = await reconcileBillingEvent(user.id, {
+            companyId: body.companyId as string,
+            idempotencyKey: body.idempotencyKey as string,
+            eventType: body.eventType as string,
+            paymentStatus: body.paymentStatus as 'paid' | 'failed',
+            invoiceId: body.invoiceId,
+            mpPaymentId: body.mpPaymentId,
+            paymentMethodType: body.paymentMethodType,
+            errorCode: body.errorCode,
+            payload: body.payload,
+          });
+
+          res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify(result));
+        } catch (err) {
+          respondBillingError(res, err);
         }
-
-        const result = await reconcileBillingEvent(user.id, {
-          companyId: body.companyId,
-          idempotencyKey: body.idempotencyKey,
-          eventType: body.eventType,
-          paymentStatus: body.paymentStatus,
-          invoiceId: body.invoiceId,
-          mpPaymentId: body.mpPaymentId,
-          paymentMethodType: body.paymentMethodType,
-          errorCode: body.errorCode,
-          payload: body.payload,
-        });
-
-        res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify(result));
         return;
       }
 

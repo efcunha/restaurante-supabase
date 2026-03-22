@@ -26,6 +26,7 @@ import CozinhaScreen from './src/screens/CozinhaScreen';
 import PedidosProntosScreen from './src/screens/PedidosProntosScreen';
 import AdminScreen from './src/screens/AdminScreen';
 import LoginScreen from './src/screens/LoginScreen';
+import ResetPasswordScreen from './src/screens/ResetPasswordScreen';
 import DeliveryScreen from './src/screens/DeliveryScreen';
 import RotasDeliveryScreen from './src/screens/RotasDeliveryScreen';
 import ComandaGerenciamentoScreen from './src/screens/ComandaGerenciamentoScreen';
@@ -138,6 +139,7 @@ function AuthStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
       <Stack.Screen name="Register" component={RegisterCompanyScreen} />
       <Stack.Screen name="About" component={AboutScreen} />
     </Stack.Navigator>
@@ -145,7 +147,7 @@ function AuthStack() {
 }
 
 function AppContent() {
-  const { user, loading } = useAuth();
+  const { user, loading, isPasswordRecovery } = useAuth();
 
   // Tentar reconexao com impressora ao iniciar
   useEffect(() => {
@@ -162,6 +164,17 @@ function AppContent() {
             <ActivityIndicator size="large" color={colorSystem.primary} />
             <Text style={styles.loadingText}>Verificando acesso...</Text>
           </View>
+        </SafeAreaView>
+      </SafeAreaProvider>
+    );
+  }
+
+  if (isPasswordRecovery) {
+    return (
+      <SafeAreaProvider>
+        <StatusBar barStyle="dark-content" backgroundColor={colorSystem.background} translucent={false} />
+        <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+          <ResetPasswordScreen />
         </SafeAreaView>
       </SafeAreaProvider>
     );

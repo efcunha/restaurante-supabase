@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, useRef, ReactNode } from 'react';
-import { Alert } from 'react-native';
+import { Alert, Linking } from 'react-native';
 import { supabase } from '../config/SupabaseConfig';
 import { User } from '@supabase/supabase-js';
 
@@ -51,6 +51,8 @@ interface AuthContextType {
   loginWithBiometric: () => Promise<{ success: boolean; error?: string }>;
   biometricAvailable: boolean;
   biometricType?: string;
+  isPasswordRecovery: boolean;
+  clearPasswordRecovery: () => Promise<void>;
 
   // Debug / diagnostics — shows on-screen when initialization fails
   initError: string | null;
@@ -83,8 +85,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [biometricType, setBiometricType] = useState<string | undefined>(undefined);
   // Implementation note: MFA Resolver is less standard in Supabase than Firebase, keeping null for now
   const [mfaResolver, setMfaResolver] = useState<any | null>(null);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
 
   const isManualLoginRef = useRef<boolean>(false);
+  const passwordRecoveryModeRef = useRef<boolean>(false);
 
   // --- On-screen diagnostics ---
   const [initError, setInitError] = useState<string | null>(null);
@@ -92,6 +96,57 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const appendLog = (msg: string) => {
     const ts = new Date().toTimeString().slice(0, 8);
     setDebugLog(prev => [...prev.slice(-30), `${ts}  ${msg}`]);
+  };
+
+  const setPasswordRecoveryMode = (enabled: boolean) => {
+    passwordRecoveryModeRef.current = enabled;
+    setIsPasswordRecovery(enabled);
+  };
+
+  const extractRecoverySession = (url: string) => {
+    const [, hash = ''] = url.split('#');
+    const params = new URLSearchParams(hash);
+
+    return {
+      accessToken: params.get('access_token'),
+      refreshToken: params.get('refresh_token'),
+      type: params.get('type'),
+    };
+  };
+
+  const processRecoveryUrl = async (url?: string | null) => {
+    if (!url) {
+      return false;
+    }
+
+    const { accessToken, refreshToken, type } = extractRecoverySession(url);
+    if (type !== 'recovery' || !accessToken || !refreshToken) {
+      return false;
+    }
+
+    try {
+      appendLog('Recovery link detectado');
+      setPasswordRecoveryMode(true);
+      setLoading(true);
+
+      const { error } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      setLoading(false);
+      return true;
+    } catch (error: any) {
+      appendLog(`❌ Recovery link invalido: ${error?.message ?? String(error)}`);
+      setPasswordRecoveryMode(false);
+      setLoading(false);
+      Alert.alert('Recuperacao de senha', 'Nao foi possivel validar o link de redefinicao. Solicite um novo email.');
+      return false;
+    }
   };
 
   // Check Biometrics on Mount
@@ -102,6 +157,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setBiometricType(availability.biometricType);
     };
     checkBiometric();
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadInitialUrl = async () => {
+      try {
+        const initialUrl = await Linking.getInitialURL();
+        if (mounted) {
+          await processRecoveryUrl(initialUrl);
+        }
+      } catch (error) {
+        console.warn('[SupabaseAuth] Initial recovery URL failed', error);
+      }
+    };
+
+    loadInitialUrl();
+
+    const subscription = Linking.addEventListener('url', ({ url }) => {
+      processRecoveryUrl(url).catch((error) => {
+        console.warn('[SupabaseAuth] Recovery URL event failed', error);
+      });
+    });
+
+    return () => {
+      mounted = false;
+      subscription.remove();
+    };
   }, []);
 
   // Initialize Auth — uses onAuthStateChange only (Supabase v2 recommended pattern).
@@ -139,12 +222,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
           // No session or explicit logout → release loading so Login screen renders
           if (!session?.user || event === 'SIGNED_OUT') {
+              setPasswordRecoveryMode(false);
               setUser(null);
               setRole(null);
               setCustomClaims(null);
               setLoading(false);
               return;
           }
+
+            if (event === 'PASSWORD_RECOVERY') {
+              appendLog('Modo recuperacao de senha ativado');
+              setPasswordRecoveryMode(true);
+              setUser(null);
+              setRole(null);
+              setCustomClaims(null);
+              setLoading(false);
+              return;
+            }
+
+            if (passwordRecoveryModeRef.current) {
+              appendLog(`Sessao em recovery (${event})`);
+              setLoading(false);
+              return;
+            }
 
           // Session available — load profile data
             if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
@@ -332,6 +432,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           console.error('[SupabaseAuth] Login error:', error);
           setLoading(false);
           isManualLoginRef.current = false;
+            setPasswordRecoveryMode(false);
           Alert.alert('Login Failed', error.message || 'Erro desconhecido');
           return false;
       }
@@ -341,6 +442,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       try {
           await supabase.auth.signOut();
           await AuthPersistenceService.clearAuthState();
+          setPasswordRecoveryMode(false);
           setUser(null);
           setRole(null);
           setCustomClaims(null);
@@ -412,6 +514,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
   };
 
+      const clearPasswordRecovery = async () => {
+        await logout();
+        setPasswordRecoveryMode(false);
+      };
+
   const getCustomClaims = () => customClaims;
 
   return (
@@ -432,6 +539,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       loginWithBiometric,
       biometricAvailable,
       biometricType,
+      isPasswordRecovery,
+      clearPasswordRecovery,
       initError,
       debugLog,
     }}>

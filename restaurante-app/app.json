@@ -2,6 +2,7 @@
   "expo": {
     "name": "Restaurante",
     "slug": "comandapraia-dona-cida",
+    "scheme": "restaurante",
     "version": "1.0.1",
     "orientation": "default",
     "icon": "./imagem/icone.png",
