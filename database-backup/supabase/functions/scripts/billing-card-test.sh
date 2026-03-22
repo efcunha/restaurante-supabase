@@ -24,8 +24,8 @@ if ! command -v curl >/dev/null 2>&1; then
   exit 1
 fi
 
-if ! command -v jq >/dev/null 2>&1; then
-  echo "ERROR: jq is required (brew install jq / apt install jq)." >&2
+if ! command -v node >/dev/null 2>&1; then
+  echo "ERROR: node is required for JSON parsing in this script." >&2
   exit 1
 fi
 
@@ -87,6 +87,24 @@ FAIL=0
 step_pass() { echo "  [PASS] $1"; PASS=$((PASS + 1)); }
 step_fail() { echo "  [FAIL] $1"; FAIL=$((FAIL + 1)); }
 
+json_eval() {
+  local expr="$1"
+  local file="$2"
+  node -e "
+const fs = require('fs');
+const data = JSON.parse(fs.readFileSync(process.argv[1], 'utf8'));
+const fn = new Function('data', 'return (' + process.argv[2] + ');');
+const value = fn(data);
+if (value === undefined || value === null) {
+  process.stdout.write('');
+} else if (typeof value === 'object') {
+  process.stdout.write(JSON.stringify(value));
+} else {
+  process.stdout.write(String(value));
+}
+" "$file" "$expr"
+}
+
 # ---------------------------------------------------------------------------
 # STEP 1 — Get public key from billing-create-checkout (Mode A)
 # ---------------------------------------------------------------------------
@@ -104,8 +122,8 @@ echo "HTTP: $HTTP1"
 cat "$TMP1"; echo ""
 
 if [[ "$HTTP1" == "200" ]]; then
-  CHECKOUT_STATUS="$(jq -r '.status // empty' "$TMP1")"
-  PUBLIC_KEY="$(jq -r '.publicKey // empty' "$TMP1")"
+  CHECKOUT_STATUS="$(json_eval "data.status ?? ''" "$TMP1")"
+  PUBLIC_KEY="$(json_eval "data.publicKey ?? ''" "$TMP1")"
 
   if [[ "$CHECKOUT_STATUS" == "ready_for_tokenization" ]] && [[ -n "$PUBLIC_KEY" ]]; then
     step_pass "Mode A returned status=ready_for_tokenization with publicKey"
@@ -154,7 +172,7 @@ echo "HTTP: $HTTP2"
 cat "$TMP2"; echo ""
 
 if [[ "$HTTP2" == "200" ]] || [[ "$HTTP2" == "201" ]]; then
-  CARD_TOKEN="$(jq -r '.id // empty' "$TMP2")"
+  CARD_TOKEN="$(json_eval "data.id ?? ''" "$TMP2")"
   if [[ -n "$CARD_TOKEN" ]]; then
     step_pass "card_tokens returned token: ${CARD_TOKEN:0:12}..."
   else
@@ -163,7 +181,7 @@ if [[ "$HTTP2" == "200" ]] || [[ "$HTTP2" == "201" ]]; then
     exit 1
   fi
 else
-  ERROR_MSG="$(jq -r '.message // empty' "$TMP2")"
+  ERROR_MSG="$(json_eval "data.message ?? ''" "$TMP2")"
   step_fail "MP card_tokens returned HTTP $HTTP2: $ERROR_MSG"
   rm -f "$TMP2"
   exit 1
@@ -188,10 +206,10 @@ echo "HTTP: $HTTP3"
 cat "$TMP3"; echo ""
 
 if [[ "$HTTP3" == "201" ]]; then
-  SAVE_STATUS="$(jq -r '.status // empty' "$TMP3")"
-  PM_ID="$(jq -r '.paymentMethodId // empty' "$TMP3")"
-  CARD_BRAND="$(jq -r '.card.brand // empty' "$TMP3")"
-  CARD_LAST4="$(jq -r '.card.lastFour // empty' "$TMP3")"
+  SAVE_STATUS="$(json_eval "data.status ?? ''" "$TMP3")"
+  PM_ID="$(json_eval "data.paymentMethodId ?? ''" "$TMP3")"
+  CARD_BRAND="$(json_eval "(data.card && data.card.brand) ? data.card.brand : ''" "$TMP3")"
+  CARD_LAST4="$(json_eval "(data.card && data.card.lastFour) ? data.card.lastFour : ''" "$TMP3")"
 
   if [[ "$SAVE_STATUS" == "card_saved" ]] && [[ -n "$PM_ID" ]]; then
     step_pass "card_saved: brand=$CARD_BRAND lastFour=$CARD_LAST4 paymentMethodId=$PM_ID"
@@ -199,7 +217,7 @@ if [[ "$HTTP3" == "201" ]]; then
     step_fail "Expected status=card_saved but got: $SAVE_STATUS"
   fi
 else
-  ERROR_MSG="$(jq -r '.error // empty' "$TMP3")"
+  ERROR_MSG="$(json_eval "data.error ?? ''" "$TMP3")"
   step_fail "billing-create-checkout Mode B returned HTTP $HTTP3: $ERROR_MSG"
   rm -f "$TMP3"
   exit 1
@@ -224,11 +242,11 @@ echo "HTTP: $HTTP4"
 cat "$TMP4"; echo ""
 
 if [[ "$HTTP4" == "200" ]]; then
-  ROW_COUNT="$(jq '. | length' "$TMP4")"
+  ROW_COUNT="$(json_eval "Array.isArray(data) ? data.length : 0" "$TMP4")"
   if [[ "$ROW_COUNT" -ge 1 ]]; then
-    IS_DEFAULT="$(jq -r '.[0].is_default' "$TMP4")"
-    STORED_BRAND="$(jq -r '.[0].brand // empty' "$TMP4")"
-    MP_CARD_ID="$(jq -r '.[0].mp_card_id // empty' "$TMP4")"
+    IS_DEFAULT="$(json_eval "Array.isArray(data) && data[0] ? data[0].is_default : ''" "$TMP4")"
+    STORED_BRAND="$(json_eval "Array.isArray(data) && data[0] ? (data[0].brand ?? '') : ''" "$TMP4")"
+    MP_CARD_ID="$(json_eval "Array.isArray(data) && data[0] ? (data[0].mp_card_id ?? '') : ''" "$TMP4")"
     step_pass "payment_methods row found: brand=$STORED_BRAND is_default=$IS_DEFAULT mp_card_id=${MP_CARD_ID:0:8}..."
   else
     step_fail "payment_methods row not found for id=$PM_ID"

@@ -91,10 +91,10 @@ http_1="$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$URL" \
 echo "HTTP: $http_1"
 if [[ "$http_1" == "401" ]]; then
   echo "  [PASS] Unsigned request rejected with 401"
-  ((passed++))
+  passed=$((passed + 1))
 else
   echo "  [FAIL] Expected 401, got $http_1"
-  ((failed++))
+  failed=$((failed + 1))
 fi
 
 # --- Test 2: Wrong signature must return 401 ------------------------------
@@ -111,10 +111,10 @@ http_2="$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$URL" \
 echo "HTTP: $http_2"
 if [[ "$http_2" == "401" ]]; then
   echo "  [PASS] Tampered signature rejected with 401"
-  ((passed++))
+  passed=$((passed + 1))
 else
   echo "  [FAIL] Expected 401, got $http_2"
-  ((failed++))
+  failed=$((failed + 1))
 fi
 
 # --- Test 3: Replayed timestamp (>5 min old) must return 401 --------------
@@ -133,10 +133,10 @@ http_3="$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$URL" \
 echo "HTTP: $http_3"
 if [[ "$http_3" == "401" ]]; then
   echo "  [PASS] Replayed (stale) request rejected with 401"
-  ((passed++))
+  passed=$((passed + 1))
 else
   echo "  [FAIL] Expected 401, got $http_3"
-  ((failed++))
+  failed=$((failed + 1))
 fi
 
 # --- Test 4: Valid signed POST (will likely return 200 or payment-fetch error) ---
@@ -163,10 +163,10 @@ rm -f "$tmp_body_4"
 # 200 = processed; non-401 means the function accepted the signed request
 if [[ "$http_4" != "401" ]]; then
   echo "  [PASS] Signed request accepted (HTTP $http_4 — not a signature rejection)"
-  ((passed++))
+  passed=$((passed + 1))
 else
   echo "  [FAIL] Valid signature was rejected with 401"
-  ((failed++))
+  failed=$((failed + 1))
 fi
 
 # --- Summary ---------------------------------------------------------------
