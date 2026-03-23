@@ -43,9 +43,9 @@ class MFAService {
    * Check if MFA is required for a user based on their role
    */
   isRequiredForRole(role: string): boolean {
-    // MFA is required for admin and manager roles (case-insensitive)
+    // MFA is required for privileged roles, keeping legacy manager compatibility.
     const normalizedRole = role.toLowerCase().trim();
-    return normalizedRole === 'admin' || normalizedRole === 'manager';
+    return normalizedRole === 'admin' || normalizedRole === 'manager' || normalizedRole === 'gerente';
   }
 
   /**
