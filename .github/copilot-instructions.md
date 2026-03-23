@@ -177,6 +177,24 @@ Start with the main `SKILL.md` file, then open individual reference files for im
 
 For UI/UX workflow usage, explicitly reference `.github/prompts/ui-ux-pro-max/PROMPT.md` or invoke `/ui-ux-pro-max` in chat.
 
+## Context7 Skill Routing (Library Docs)
+
+For any request involving library/framework API docs, setup instructions, version-specific usage, or code generation based on external packages:
+
+- Prefer Context7 MCP tools first (`resolve-library-id` then `query-docs` / `get-library-docs`).
+- Resolve the library ID before querying docs unless the user already provides an explicit Context7 ID (`/org/project` or `/org/project/version`).
+- Favor Context7 output over memory-based API recall when there is potential version drift.
+- If Context7 is unavailable, state the limitation and provide conservative guidance.
+
+Prompt pattern to force Context7 usage:
+
+```text
+Use Context7 for this request.
+Library: <name>
+Task: <what you need>
+Version (optional): <x.y.z>
+```
+
 ## Mandatory Response Format (RN/CI)
 
 For RN/CI-related implementation guidance, start the response with a short checklist block before any recommendation:
