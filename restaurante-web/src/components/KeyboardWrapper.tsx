@@ -3,7 +3,8 @@ import {
   KeyboardAvoidingView, 
   Platform, 
   StyleSheet, 
-  Pressable, 
+  TouchableWithoutFeedback,
+  View,
   Keyboard, 
   ViewStyle,
   StyleProp
@@ -16,21 +17,30 @@ interface KeyboardWrapperProps {
 }
 
 export default function KeyboardWrapper({ children, style }: KeyboardWrapperProps) {
+  const isWeb = Platform.OS === 'web';
+
   return (
     <KeyboardAvoidingView
       style={[styles.container, style]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0} // Ajuste conforme necessário se houver header customizado
     >
-      <Pressable onPress={Keyboard.dismiss} style={{ flex: 1 }}>
-        {children}
-      </Pressable>
+      {isWeb ? (
+        <View style={styles.flex}>{children}</View>
+      ) : (
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <View style={styles.flex}>{children}</View>
+        </TouchableWithoutFeedback>
+      )}
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  flex: {
     flex: 1,
   },
 });
