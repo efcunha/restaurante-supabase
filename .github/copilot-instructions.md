@@ -36,6 +36,11 @@ Operational reminders from recent incidents:
 - In monorepo deploys for `restaurante-ops`, use `railway up --service restaurante-ops --path-as-root ./restaurante-ops` to avoid root autodetection failures.
 - Supabase CLI is installed via Scoop (`C:\Users\ECUNHA\scoop\shims\supabase.exe`); avoid `npm install -g supabase` (unsupported by Supabase).
 - Migration sync policy: whenever a new migration file is created, apply it to the target DB immediately and verify it appears in migration history.
+- Security docs generated on 2026-03-23: `SECURITY_AUDIT_REPORT_2026-03-23.md`, `REMEDIATION_PLAN_DETAILED.md`, `LGPD_COMPLIANCE_GUIDE.md`, `EXECUTIVE_SUMMARY_PT.md`, `SECURITY_DOCUMENTATION_INDEX.md`.
+- Secrets hardening implemented: use `database-backup/.env.local` (gitignored) + `database-backup/.env.example`; legacy `config.local.sh`/`config.example.sh` removed.
+- `profiles` hardening implemented in `database-backup/migrations/20260323183000_harden_profiles_rls_and_role_guardrails.sql` and applied remotely.
+- `public.profiles` now uses restrictive policies (self + admin/gerente same-company), no longer `SELECT USING (true)`.
+- `handle_new_user` and role checks were aligned to canonical roles (`admin`, `gerente`, `garcom`, `cozinheiro`, `montagem`, `entregador`, `caixa`) with legacy alias normalization.
 
 Maintenance policy for these instruction files:
 - Keep this file as orchestration/routing + concise guardrails.
@@ -306,6 +311,12 @@ supabase migration new <migration_name_in_snake_case>
 3. Apply migration immediately to the target DB (same work session).
 4. Verify migration is registered in remote history (`supabase_migrations.schema_migrations` / `list_migrations`).
 5. Commit migration file in the same PR as the feature/fix.
+6. For RLS/security changes, validate remote `pg_policies`, changed function definitions, and key constraints after apply.
+
+Remote-truth rule:
+
+- If local `schema_dump.sql` and production behavior diverge, validate against remote catalog (`pg_policies`, `pg_constraint`, `pg_proc`) before final recommendations.
+- Do not downgrade a confirmed remote risk to hypothetical based only on local dump files.
 
 Fallback if `supabase` is not in PATH in a fresh terminal:
 
