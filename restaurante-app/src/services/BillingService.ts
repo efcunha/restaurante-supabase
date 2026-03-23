@@ -117,9 +117,7 @@ export async function listBillingPaymentMethods(companyId?: string): Promise<Bil
       continue;
     }
 
-    const cardKey = method.mp_card_id
-      ? `card:mp:${method.mp_card_id}`
-      : `card:fingerprint:${(method.brand || '').toLowerCase()}:${method.last_four || ''}:${method.expiry_month || ''}:${method.expiry_year || ''}`;
+    const cardKey = `card:fingerprint:${(method.brand || '').toLowerCase()}:${method.last_four || ''}:${method.expiry_month || ''}:${method.expiry_year || ''}`;
 
     if (!dedupedByCard.has(cardKey)) {
       dedupedByCard.set(cardKey, method);
