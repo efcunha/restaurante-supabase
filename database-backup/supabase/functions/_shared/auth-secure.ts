@@ -105,19 +105,43 @@ async function auditLogEvent(
  * Remove sensitive data before storing in audit log
  */
 function sanitizeAuditDetails(details: Record<string, unknown>): Record<string, unknown> {
-  const sanitized = { ...details };
-  const sensitiveFields = [
-    'card_number', 'cvv', 'token', 'access_token', 'password',
-    'credit_card', 'card_data', 'pii', 'ssn', 'cpf', 'phone', 'email'
+  const blockedKeyPatterns = [
+    /token/i,
+    /secret/i,
+    /password/i,
+    /authorization/i,
+    /bearer/i,
+    /card/i,
+    /cvv/i,
+    /pan/i,
+    /pix/i,
+    /qr/i,
+    /cpf/i,
+    /cnpj/i,
+    /document/i,
+    /email/i,
+    /phone/i,
   ];
 
-  sensitiveFields.forEach(field => {
-    if (field in sanitized) {
-      delete sanitized[field];
+  const sanitizeValue = (value: unknown): unknown => {
+    if (Array.isArray(value)) {
+      return value.map(sanitizeValue);
     }
-  });
 
-  return sanitized;
+    if (value && typeof value === 'object') {
+      const obj = value as Record<string, unknown>;
+      const sanitizedEntries = Object.entries(obj)
+        .filter(([key]) => !blockedKeyPatterns.some((pattern) => pattern.test(key)))
+        .map(([key, childValue]) => [key, sanitizeValue(childValue)]);
+
+      return Object.fromEntries(sanitizedEntries);
+    }
+
+    return value;
+  };
+
+  const sanitized = sanitizeValue(details);
+  return (sanitized && typeof sanitized === 'object') ? sanitized as Record<string, unknown> : {};
 }
 
 /**
@@ -184,9 +208,17 @@ export async function requireSecureAdmin(req: Request) {
   });
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
+  const accessToken = authorization.replace(/^Bearer\s+/i, '').trim();
 
   // Step 1: Verify JWT and get authenticated user
-  const { data: userData, error: userError } = await userClient.auth.getUser();
+  let { data: userData, error: userError } = await userClient.auth.getUser();
+
+  // Fallback path: if anon-key validation fails in runtime, validate using service-role context.
+  if ((userError || !userData.user) && accessToken) {
+    const fallback = await adminClient.auth.getUser(accessToken);
+    userData = fallback.data;
+    userError = fallback.error;
+  }
 
   if (userError || !userData.user) {
     console.warn('[AUTH_FAILURE] User authentication failed', { code: userError?.code });
