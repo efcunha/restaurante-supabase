@@ -44,6 +44,7 @@ import { ToastProvider } from './src/context/ToastContext';
 import { canAccessScreen } from './src/auth/roles';
 import OfflineNotice from './src/components/OfflineNotice';
 import OfflineQueueManager from './src/components/OfflineQueueManager';
+import { LicenseGate } from './src/components/LicenseGate';
 import './src/services/MontagemSyncService';
 import PrinterService from './src/services/PrinterService';
 import { colorSystem } from './src/design-system';
@@ -54,6 +55,21 @@ import PagamentoScreen from './src/screens/PagamentoScreen';
 
 // Stack para Comandas (lista -> pagamento)
 const ComandaStack = createNativeStackNavigator();
+
+const withOperationalGate = (Component) => (props) => (
+  <LicenseGate>
+    <Component {...props} />
+  </LicenseGate>
+);
+
+const GuardedNovoPedidoScreen = withOperationalGate(NovoPedidoScreen);
+const GuardedMapaMesasScreen = withOperationalGate(MapaMesasScreen);
+const GuardedComandaStackScreen = withOperationalGate(ComandaStackScreen);
+const GuardedCozinhaScreen = withOperationalGate(CozinhaScreen);
+const GuardedMontagemScreen = withOperationalGate(MontagemScreen);
+const GuardedPedidosProntosScreen = withOperationalGate(PedidosProntosScreen);
+const GuardedRotasDeliveryScreen = withOperationalGate(RotasDeliveryScreen);
+const GuardedReservasScreen = withOperationalGate(ReservasScreen);
 
 function ComandaStackScreen() {
   return (
@@ -71,10 +87,10 @@ function MaisStackScreen() {
   return (
     <MaisStack.Navigator screenOptions={{ headerShown: false }}>
       <MaisStack.Screen name="OverflowMenu" component={OverflowMenuScreen} />
-      <MaisStack.Screen name="Montagem"     component={MontagemScreen} />
-      <MaisStack.Screen name="Prontos"      component={PedidosProntosScreen} />
-      <MaisStack.Screen name="RotasDelivery" component={RotasDeliveryScreen} />
-      <MaisStack.Screen name="Reservas"     component={ReservasScreen} />
+      <MaisStack.Screen name="Montagem"     component={GuardedMontagemScreen} />
+      <MaisStack.Screen name="Prontos"      component={GuardedPedidosProntosScreen} />
+      <MaisStack.Screen name="RotasDelivery" component={GuardedRotasDeliveryScreen} />
+      <MaisStack.Screen name="Reservas"     component={GuardedReservasScreen} />
       <MaisStack.Screen name="Admin"        component={AdminScreen} />
     </MaisStack.Navigator>
   );
@@ -117,32 +133,32 @@ function TabNavigator() {
     >
       {/* Abas primarias — max 5 destinos por papel */}
       {canAccessScreen(user?.funcao, 'Novo Pedido') && (
-        <Tab.Screen name="Novo Pedido" component={NovoPedidoScreen} />
+        <Tab.Screen name="Novo Pedido" component={GuardedNovoPedidoScreen} />
       )}
       {canAccessScreen(user?.funcao, 'Mapa') && (
-        <Tab.Screen name="Mapa" component={MapaMesasScreen} />
+        <Tab.Screen name="Mapa" component={GuardedMapaMesasScreen} />
       )}
       {canAccessScreen(user?.funcao, 'Comandas') && (
-        <Tab.Screen name="Comandas" component={ComandaStackScreen} />
+        <Tab.Screen name="Comandas" component={GuardedComandaStackScreen} />
       )}
       {canAccessScreen(user?.funcao, 'Cozinha') && (
-        <Tab.Screen name="Cozinha" component={CozinhaScreen} />
+        <Tab.Screen name="Cozinha" component={GuardedCozinhaScreen} />
       )}
       {/* Abas single-role: permanecem primarias para seus respectivos papeis */}
       {canAccessScreen(user?.funcao, 'Montagem') && (
-        <Tab.Screen name="Montagem" component={MontagemScreen} />
+        <Tab.Screen name="Montagem" component={GuardedMontagemScreen} />
       )}
       {canAccessScreen(user?.funcao, 'Prontos') && (
         <Tab.Screen
           name="Prontos"
-          component={PedidosProntosScreen}
+          component={GuardedPedidosProntosScreen}
           options={{ tabBarLabel: 'Entrega Salao' }}
         />
       )}
       {canAccessScreen(user?.funcao, 'RotasDelivery') && (
         <Tab.Screen
           name="RotasDelivery"
-          component={RotasDeliveryScreen}
+          component={GuardedRotasDeliveryScreen}
           options={{ tabBarLabel: 'Rotas Delivery' }}
         />
       )}
