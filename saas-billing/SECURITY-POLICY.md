@@ -83,9 +83,11 @@ Esta função garante:
 - ✅ Usuário ID (UUID)
 - ✅ Transaction ID (hash)
 - ✅ Status de pagamento (pendente, aprovado, rejeitado)
-- ✅ Último 4 dígitos do cartão (com prefixo *)
+- ✅ Último 4 dígitos do cartão apenas em resposta operacional/UI controlada
+- ❌ Último 4 dígitos do cartão em audit log
 - ✅ Tipo de cartão (Visa, Mastercard, etc.)
 - ✅ Data de expiração (MÊS/ANO, nunca dia exato)
+- ❌ QR code Pix / copia-e-cola em logs ou audit log
 
 ---
 
@@ -145,10 +147,13 @@ await auditBillingEvent('billing.checkout.requested', {
 
 ### 4.2 O QUE NUNCA LOGAR
 - ❌ Card numbers (nenhum dígito)
+- ❌ Últimos 4 dígitos em audit log
 - ❌ Tokens de autenticação completos
 - ❌ Senhas
 - ❌ CPF/CNPJ/RG completos
 - ❌ Emails completos (usar prefix truncated)
+- ❌ `pix_qr_code`, `pix_qr_code_text`, `pixQrCode`, `pixQrCodeText`
+- ❌ `mp_payment_id`, `mp_card_id` quando não forem estritamente necessários para operação humana imediata
 
 ### 4.3 Eventos Críticos a Logar
 ```
@@ -239,6 +244,16 @@ const userId = req.body.user_id; // NUNCA!
 const userId = profile.id; // ✅ CORRETO (do JWT)
 ```
 
+### 6.3 Gateway JWT vs Autenticação Interna
+- Padrão preferencial: `verify_jwt` habilitado no gateway da Edge Function.
+- Exceção controlada: se o gateway da plataforma rejeitar JWTs válidos do projeto, a função pode ser deployada com `--no-verify-jwt` SOMENTE quando:
+  - usa `requireSecureAdmin()` no início da execução
+  - não possui caminho anônimo alternativo
+  - valida role `admin`
+  - valida `company_id` com `validateCompanyContext()`
+  - retorna apenas dados sanitizados
+- Nessa exceção, a autenticação obrigatória passa a ser responsabilidade integral da função; qualquer bypass adicional é proibido.
+
 ---
 
 ## 7. CHECKLIST DE SEGURANÇA PRÉ-DEPLOY
@@ -257,6 +272,8 @@ const userId = profile.id; // ✅ CORRETO (do JWT)
 - [ ] Stack traces nunca são expostos ao cliente
 - [ ] Usou `jsonResponse()` com headers de segurança corretos
 - [ ] Testou acesso multi-tenant (user A não vê dados de user B)
+- [ ] Confirmou ausência de `card_last_four`, `pix_qr_code`, `pix_qr_code_text`, `mp_payment_id`, `token` em `billing_audit_log`
+- [ ] Rotacionou segredos se algum token/chave apareceu em chat, terminal, screenshot ou log
 
 ---
 
