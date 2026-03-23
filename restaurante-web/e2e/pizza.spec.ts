@@ -6,8 +6,8 @@ test('Pedido de Pizza - Estável Final', async ({ page }) => {
   // 1. Login
   console.log('Realizando login...');
   await page.goto('/');
-  await page.getByPlaceholder('seu@email.com').fill('lu@m.com');
-  await page.getByPlaceholder('••••••••').fill('mudar123');
+  await page.getByPlaceholder('seu@email.com').fill(process.env.PLAYWRIGHT_TEST_EMAIL!);
+  await page.getByPlaceholder('••••••••').fill(process.env.PLAYWRIGHT_TEST_PASSWORD!);
   await page.getByText('ENTRAR', { exact: true }).click();
 
   // 2. Dash e Identificação

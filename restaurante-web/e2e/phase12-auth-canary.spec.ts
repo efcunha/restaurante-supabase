@@ -40,8 +40,8 @@ test.describe('Phase 12 Canary Auth', () => {
   test('deve autenticar e chegar na home', async ({ page }) => {
     await ensureLoginScreen(page);
 
-    await page.getByPlaceholder('seu@email.com').fill('lu@m.com');
-    await page.getByPlaceholder('••••••••').fill('mudar123');
+    await page.getByPlaceholder('seu@email.com').fill(process.env.PLAYWRIGHT_TEST_EMAIL!);
+    await page.getByPlaceholder('••••••••').fill(process.env.PLAYWRIGHT_TEST_PASSWORD!);
     await page.getByText('ENTRAR').first().click();
 
     await waitAnyVisible([
