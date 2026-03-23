@@ -15,6 +15,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { SUPPORTED_UNITS } from '../utils/unitConversion';
 import { ScreenScaffold } from '../layouts/ScreenScaffold';
 import { colors } from '../theme/colors';
+import {
+  LEGACY_MENU_CATEGORIES,
+  MenuCategory,
+  getOrCreateMenuCategories,
+  isEspetinhoCategorySlug,
+  normalizeCategorySlug,
+  slugifyCategoryName,
+  toCategoryOption,
+} from '../utils/menuCategories';
 // Componente para cada item de variação
 interface VariacaoItemProps {
   variacao: Product;
@@ -82,6 +91,11 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
   const [criarVariacoes, setCriarVariacoes] = useState(false);
   const [precosVariacoes, setPrecosVariacoes] = useState<Record<string, string>>({});
   const [variacoesEspetinho, setVariacoesEspetinho] = useState<string[]>(['Simples', 'com Arroz', 'com Macaxeira', 'Completo']);
+  const [companySettings, setCompanySettings] = useState<Record<string, any>>({});
+  const [menuCategories, setMenuCategories] = useState<MenuCategory[]>(LEGACY_MENU_CATEGORIES);
+  const [categoryNameInput, setCategoryNameInput] = useState('');
+  const [categorySlugInput, setCategorySlugInput] = useState('');
+  const [editingCategorySlug, setEditingCategorySlug] = useState<string | null>(null);
 
   // Estados para listagem
   const [produtos, setProdutos] = useState<Product[]>([]);
@@ -168,16 +182,160 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
     } as any));
   };
 
-  const categorias = [
-    { value: 'caldo', label: '🍲 Caldos' },
-    { value: 'espetinho-simples', label: '🔥 Espetinho Simples' },
-    { value: 'espetinho-especial', label: '🌟 Espetinho Especial' },
-    { value: 'porcao', label: '🍟 Porção' },
-    { value: 'bebida', label: '🥤 Bebida' },
-    { value: 'comida', label: '🍽️ Comida' },
-    { value: 'pizza', label: '🍕 Pizza' },
-    { value: 'outro', label: '📦 Outro' }
-  ];
+  const categorias = React.useMemo(
+    () => menuCategories.filter((item) => item.active).sort((a, b) => a.order - b.order).map(toCategoryOption),
+    [menuCategories]
+  );
+
+  const buildCategoryOrder = (categoriesList: MenuCategory[]) =>
+    categoriesList.reduce<Record<string, number>>((acc, item, index) => {
+      acc[item.slug] = index + 1;
+      return acc;
+    }, {});
+
+  const persistCompanySettings = async (partial: Record<string, any>, baseSettings?: Record<string, any>) => {
+    if (!user?.companyId) return null;
+    const base = baseSettings ?? companySettings ?? {};
+    const mergedSettings = { ...base, ...partial };
+    const { error } = await supabase
+      .from('companies')
+      .update({ settings: mergedSettings })
+      .eq('id', user.companyId);
+
+    if (error) {
+      throw error;
+    }
+
+    setCompanySettings(mergedSettings);
+    return mergedSettings;
+  };
+
+  const saveMenuCategories = async (nextList: MenuCategory[], baseSettings?: Record<string, any>) => {
+    const normalized = nextList
+      .map((item, index) => ({
+        ...item,
+        slug: normalizeCategorySlug(item.slug),
+        name: item.name.trim(),
+        order: index + 1,
+      }))
+      .filter((item) => item.slug && item.name);
+
+    setMenuCategories(normalized);
+
+    await persistCompanySettings(
+      {
+        categories: normalized,
+        categoryOrder: buildCategoryOrder(normalized),
+      },
+      baseSettings
+    );
+  };
+
+  const resetCategoryForm = () => {
+    setCategoryNameInput('');
+    setCategorySlugInput('');
+    setEditingCategorySlug(null);
+  };
+
+  const handleSaveCategory = async () => {
+    const name = categoryNameInput.trim();
+    const slug = normalizeCategorySlug((categorySlugInput || slugifyCategoryName(name)).trim());
+
+    if (!name || !slug) {
+      Alert.alert('Atenção', 'Informe nome e slug da categoria');
+      return;
+    }
+
+    const slugExists = menuCategories.some((item) => item.slug === slug && item.slug !== editingCategorySlug);
+    if (slugExists) {
+      Alert.alert('Atenção', 'Já existe uma categoria com este slug');
+      return;
+    }
+
+    try {
+      let next = [...menuCategories];
+
+      if (editingCategorySlug) {
+        next = next.map((item) =>
+          item.slug === editingCategorySlug
+            ? { ...item, slug, name }
+            : item
+        );
+
+        if (categoria === editingCategorySlug) setCategoria(slug);
+        if (editCategoria === editingCategorySlug) setEditCategoria(slug);
+      } else {
+        next.push({
+          slug,
+          name,
+          active: true,
+          order: next.length + 1,
+        });
+      }
+
+      await saveMenuCategories(next);
+      resetCategoryForm();
+    } catch (error) {
+      console.error('Erro ao salvar categoria:', error);
+      Alert.alert('Erro', 'Não foi possível salvar a categoria');
+    }
+  };
+
+  const handleEditCategory = (category: MenuCategory) => {
+    setEditingCategorySlug(category.slug);
+    setCategoryNameInput(category.name);
+    setCategorySlugInput(category.slug);
+  };
+
+  const handleToggleCategory = async (slug: string) => {
+    const target = menuCategories.find((item) => item.slug === slug);
+    if (!target) return;
+
+    const activeCount = menuCategories.filter((item) => item.active).length;
+    if (target.active && activeCount <= 1) {
+      Alert.alert('Atenção', 'Mantenha ao menos uma categoria ativa');
+      return;
+    }
+
+    try {
+      const next = menuCategories.map((item) =>
+        item.slug === slug ? { ...item, active: !item.active } : item
+      );
+      await saveMenuCategories(next);
+    } catch (error) {
+      console.error('Erro ao alternar categoria:', error);
+      Alert.alert('Erro', 'Não foi possível atualizar a categoria');
+    }
+  };
+
+  const handleMoveCategory = async (slug: string, direction: 'up' | 'down') => {
+    const idx = menuCategories.findIndex((item) => item.slug === slug);
+    if (idx === -1) return;
+
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= menuCategories.length) return;
+
+    try {
+      const next = [...menuCategories];
+      const temp = next[idx];
+      next[idx] = next[swapIdx];
+      next[swapIdx] = temp;
+      await saveMenuCategories(next);
+    } catch (error) {
+      console.error('Erro ao reordenar categorias:', error);
+      Alert.alert('Erro', 'Não foi possível reordenar');
+    }
+  };
+
+  useEffect(() => {
+    if (!categorias.length) return;
+    if (!categorias.some((cat) => cat.value === categoria)) {
+      setCategoria(categorias[0].value);
+    }
+    if (editCategoria && !categorias.some((cat) => cat.value === editCategoria)) {
+      setEditCategoria(categorias[0].value);
+    }
+  }, [categorias, categoria, editCategoria]);
 
   useEffect(() => {
     carregarProdutos();
@@ -199,6 +357,22 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
         console.warn('Erro ao carregar configurações (Supabase):', error);
       } else if (data && data.settings) {
         const settings = data.settings;
+        setCompanySettings(settings);
+
+        const { categories, createdFromLegacy } = getOrCreateMenuCategories(settings);
+        const normalizedCategories = categories.map((item, index) => ({ ...item, order: index + 1 }));
+        setMenuCategories(normalizedCategories);
+
+        if (createdFromLegacy) {
+          await persistCompanySettings(
+            {
+              categories: normalizedCategories,
+              categoryOrder: buildCategoryOrder(normalizedCategories),
+            },
+            settings
+          );
+        }
+
         if (settings.temperosCaldos) setTemperosCaldos(settings.temperosCaldos);
         if (settings.temperosComidas) setTemperosComidas(settings.temperosComidas);
         if (settings.variacoesEspetinho) setVariacoesEspetinho(settings.variacoesEspetinho);
@@ -212,11 +386,11 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
 
           // OPTIONAL: Save defaults to DB immediately so it's not "hardcoded" next time
           // We can do this silently
-          const newSettings = { ...settings, ingredientesPizza: defaultIngredients };
-          supabase.from('companies').update({ settings: newSettings }).eq('id', user.companyId).then(({ error }) => {
-            if (error) console.error('Error saving default ingredients:', error);
-            else console.log('Default ingredients saved to DB');
-          });
+          try {
+            await persistCompanySettings({ ingredientesPizza: defaultIngredients }, settings);
+          } catch (persistError) {
+            console.error('Error saving default ingredients:', persistError);
+          }
         }
 
         if (settings.pizzaConfig) {
@@ -234,6 +408,17 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
           setPizzaSizes(defaultSizes);
         }
       } else {
+        const normalizedCategories = LEGACY_MENU_CATEGORIES.map((item, index) => ({ ...item, order: index + 1 }));
+        setMenuCategories(normalizedCategories);
+        try {
+          await persistCompanySettings({
+            categories: normalizedCategories,
+            categoryOrder: buildCategoryOrder(normalizedCategories),
+          }, {});
+        } catch (persistError) {
+          console.error('Erro ao criar categorias iniciais:', persistError);
+        }
+
         // Defaults if no settings found
         const defaultSizes = [
           { name: 'Fatia', maxFlavors: 1 },
@@ -325,8 +510,8 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
 
     if (!user?.companyId) return;
 
-    if (criarVariacoes && (categoria === 'espetinho-simples' || categoria === 'espetinho-especial')) {
-      const algumVazio = variacoesEspetinho.some(v => !precosVariacoes[v]);
+    if (criarVariacoes && isEspetinhoCategorySlug(categoria)) {
+      const algumVazio = variacoesEspetinho.some(v => !precosVariacoes[v] || precosVariacoes[v] === '');
       if (algumVazio) {
         Alert.alert('Atenção', 'Preencha todos os preços das variações');
         return;
@@ -493,21 +678,14 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
 
     // Let's assume the state variables (temperosCaldos etc) are up to date.
 
-    const newSettings = {
-      temperosCaldos: novaListaCaldos !== undefined ? novaListaCaldos : temperosCaldos,
-      temperosComidas: novaListaComidas !== undefined ? novaListaComidas : temperosComidas,
-      variacoesEspetinho: novaListaVariacoes !== undefined ? novaListaVariacoes : variacoesEspetinho,
-      ingredientesPizza: novaListaPizzas !== undefined ? novaListaPizzas : ingredientesPizza,
-      pizzaConfig: { ...pizzaConfig, sizes: pizzaSizes }
-    };
-
     try {
-      const { error } = await supabase
-        .from('companies')
-        .update({ settings: newSettings })
-        .eq('id', user.companyId);
-
-      if (error) throw error;
+      await persistCompanySettings({
+        temperosCaldos: novaListaCaldos !== undefined ? novaListaCaldos : temperosCaldos,
+        temperosComidas: novaListaComidas !== undefined ? novaListaComidas : temperosComidas,
+        variacoesEspetinho: novaListaVariacoes !== undefined ? novaListaVariacoes : variacoesEspetinho,
+        ingredientesPizza: novaListaPizzas !== undefined ? novaListaPizzas : ingredientesPizza,
+        pizzaConfig: { ...pizzaConfig, sizes: pizzaSizes },
+      });
     } catch (e) {
       console.error('Erro ao salvar configurações:', e);
       Alert.alert('Erro', 'Falha ao salvar configurações');
@@ -576,7 +754,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
 
     if (!editando || !user?.companyId) return;
 
-    const isPizza = editCategoria?.toLowerCase().includes('pizza');
+    const isPizza = normalizeCategorySlug(editCategoria).includes('pizza');
 
     // Validation for non-pizza products
     if (!isPizza) {
@@ -802,17 +980,8 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
     // Let's manually trigger update:
 
     if (user?.companyId) {
-      const newSettings = {
-        temperosCaldos,
-        temperosComidas,
-        variacoesEspetinho,
-        ingredientesPizza,
-        pizzaConfig: { ...pizzaConfig, sizes: novos }
-      };
-
       try {
-        const { error } = await supabase.from('companies').update({ settings: newSettings }).eq('id', user.companyId);
-        if (error) throw error;
+        await persistCompanySettings({ pizzaConfig: { ...pizzaConfig, sizes: novos } });
       } catch (e) {
         console.error('Erro salvando tamanho pizza:', e);
         Alert.alert('Erro ao salvar');
@@ -842,15 +1011,8 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
     setPizzaSizes(novos);
 
     if (user?.companyId) {
-      const newSettings = {
-        temperosCaldos,
-        temperosComidas,
-        variacoesEspetinho,
-        ingredientesPizza,
-        pizzaConfig: { ...pizzaConfig, sizes: novos }
-      };
       try {
-        await supabase.from('companies').update({ settings: newSettings }).eq('id', user.companyId);
+        await persistCompanySettings({ pizzaConfig: { ...pizzaConfig, sizes: novos } });
       } catch (e) { console.error(e); }
     }
   };
@@ -862,15 +1024,8 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
 
 
     if (user?.companyId) {
-      const newSettings = {
-        temperosCaldos,
-        temperosComidas,
-        variacoesEspetinho,
-        ingredientesPizza,
-        pizzaConfig: { ...pizzaConfig, sizes: novos }
-      };
       try {
-        await supabase.from('companies').update({ settings: newSettings }).eq('id', user.companyId);
+        await persistCompanySettings({ pizzaConfig: { ...pizzaConfig, sizes: novos } });
       } catch (e) { console.error(e); }
     }
   };
@@ -1122,7 +1277,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                   ]}
                   onPress={() => {
                     setCategoria(cat.value);
-                    if (cat.value === 'espetinho-simples' || cat.value === 'espetinho-especial') {
+                    if (isEspetinhoCategorySlug(cat.value)) {
                       setCriarVariacoes(true);
                     } else {
                       setCriarVariacoes(false);
@@ -1139,7 +1294,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
               ))}
             </View>
 
-            {(categoria === 'espetinho-simples' || categoria === 'espetinho-especial') && (
+            {isEspetinhoCategorySlug(categoria) && (
               <TouchableOpacity
                 style={styles.variacaoToggle}
                 onPress={() => setCriarVariacoes(!criarVariacoes)}
@@ -1153,7 +1308,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
               </TouchableOpacity>
             )}
 
-            {criarVariacoes && (categoria === 'espetinho-simples' || categoria === 'espetinho-especial') ? (
+            {criarVariacoes && isEspetinhoCategorySlug(categoria) ? (
               <>
                 <Text style={styles.label}>Preços das variações:</Text>
                 <View style={styles.variacoesGrid}>
@@ -1278,6 +1433,68 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                 {loading ? 'Cadastrando...' : criarVariacoes ? 'CADASTRAR 4 VARIAÇÕES' : 'CADASTRAR PRODUTO'}
               </Text>
             </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>🗂️ Gerenciar Categorias</Text>
+          <View style={styles.form}>
+            <Text style={styles.label}>Nome da categoria</Text>
+            <TextInput
+              style={styles.input}
+              value={categoryNameInput}
+              onChangeText={(text) => {
+                setCategoryNameInput(text);
+                if (!editingCategorySlug) {
+                  setCategorySlugInput(slugifyCategoryName(text));
+                }
+              }}
+              placeholder="Ex: Sobremesa"
+              placeholderTextColor={colors.textSecondary}
+            />
+
+            <Text style={styles.label}>Slug</Text>
+            <TextInput
+              style={styles.input}
+              value={categorySlugInput}
+              onChangeText={setCategorySlugInput}
+              placeholder="Ex: sobremesa"
+              placeholderTextColor={colors.textSecondary}
+              autoCapitalize="none"
+            />
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={[styles.modalBtn, styles.saveBtn]} onPress={handleSaveCategory}>
+                <Text style={styles.saveBtnText}>{editingCategorySlug ? 'Atualizar Categoria' : 'Criar Categoria'}</Text>
+              </TouchableOpacity>
+              {editingCategorySlug && (
+                <TouchableOpacity style={[styles.modalBtn, styles.cancelBtn]} onPress={resetCategoryForm}>
+                  <Text style={styles.cancelBtnText}>Cancelar</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <View style={styles.listaTemperos}>
+              {[...menuCategories].sort((a, b) => a.order - b.order).map((item, index) => (
+                <View key={item.slug} style={styles.temperoRow}>
+                  <Text style={styles.temperoText}>{toCategoryOption(item).label}</Text>
+                  <View style={{ flexDirection: 'row' }}>
+                    <TouchableOpacity onPress={() => handleMoveCategory(item.slug, 'up')} style={{ marginRight: 10 }} disabled={index === 0}>
+                      <Ionicons name="arrow-up" size={18} color={index === 0 ? colors.textSecondary : colors.text} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => handleMoveCategory(item.slug, 'down')} style={{ marginRight: 10 }} disabled={index === menuCategories.length - 1}>
+                      <Ionicons name="arrow-down" size={18} color={index === menuCategories.length - 1 ? colors.textSecondary : colors.text} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => handleEditCategory(item)} style={{ marginRight: 10 }}>
+                      <Ionicons name="pencil" size={18} color={colors.text} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => handleToggleCategory(item.slug)}>
+                      <Ionicons name={item.active ? 'eye' : 'eye-off'} size={18} color={item.active ? colors.success : colors.textSecondary} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
+            </View>
           </View>
         </View>
 

@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, StyleSheet, Alert, ActivityIndicator, Switch } from 'react-native';
 import { ProductFormData, ProductFormProps } from './types';
 import { colors } from '../../../theme/colors';
+import { isEspetinhoCategorySlug } from '../../../utils/menuCategories';
 export default function ProductForm({
   visible,
   onClose,
@@ -75,7 +76,7 @@ export default function ProductForm({
              return Alert.alert('Atenção', 'Preencha pelo menos um preço');
           }
           data.prices = pricesMap;
-      } else if (createVariations && (category === 'espetinho-simples' || category === 'espetinho-especial')) {
+    } else if (createVariations && isEspetinhoCategorySlug(category)) {
           const pricesMap: Record<string, number> = {};
           let allFilled = true;
           effectiveVariationNames.forEach(v => {
@@ -95,7 +96,7 @@ export default function ProductForm({
       await onSave(data);
   };
 
-  const isEspetinho = category === 'espetinho-simples' || category === 'espetinho-especial';
+    const isEspetinho = isEspetinhoCategorySlug(category);
 
   return (
     <Modal visible={visible} animationType="slide" transparent={true}>
