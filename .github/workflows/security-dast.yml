@@ -8,7 +8,15 @@ on:
     paths:
       - 'restaurante-ops/src/**'
       - 'database-backup/supabase/functions/**'
+      - 'database-backup/migrations/**'
       - '.github/workflows/security-dast.yml'
+      - '.zap/**'
+  workflow_dispatch:
+    inputs:
+      target_env:
+        description: 'Target environment (staging or production)'
+        required: false
+        default: 'staging'
   schedule:
     # Run nightly scan on main branch
     - cron: '0 2 * * *'
