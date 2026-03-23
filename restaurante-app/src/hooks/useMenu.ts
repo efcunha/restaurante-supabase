@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/AuthContext';
 import { Product, Cardapio } from '../types';
 import type { MenuItem } from '../types/index';
+import { getOrCreateMenuCategories, normalizeCategorySlug } from '../utils/menuCategories';
 
 const CARDAPIO_CACHE_KEY = '@cardapio_cache';
 
@@ -22,26 +23,31 @@ export function useMenu() {
                 return;
             }
 
-            // Fetch Products
-            const { data: productsData, error } = await supabase
-                .from('products')
-                .select('*')
-                .eq('company_id', user.companyId)
-                .eq('available', true);
+            const [productsResult, companyResult] = await Promise.all([
+                supabase
+                    .from('products')
+                    .select('*')
+                    .eq('company_id', user.companyId)
+                    .eq('available', true),
+                supabase
+                    .from('companies')
+                    .select('settings')
+                    .eq('id', user.companyId)
+                    .single(),
+            ]);
 
+            const { data: productsData, error } = productsResult;
             if (error) throw error;
 
-            // Processamento em buckets (similar ao useNovoPedido)
-            const buckets: Record<string, Product[]> = {
-                caldo: [],
-                comida: [],
-                bebida: [],
-                porcao: [],
-                outro: [],
-                'espetinho-simples': [],
-                'espetinho-especial': [],
-                'pizza': []
-            };
+            const settings = companyResult.data?.settings || {};
+            const { categories } = getOrCreateMenuCategories(settings);
+            const validCategorySlugs = new Set(categories.map((item) => item.slug));
+
+            const bucketSlugs = Array.from(new Set([...validCategorySlugs, 'outro']));
+            const buckets: Record<string, Product[]> = bucketSlugs.reduce((acc, slug) => {
+                acc[slug] = [];
+                return acc;
+            }, {} as Record<string, Product[]>);
 
             const flatItems: MenuItem[] = [];
 
@@ -62,10 +68,8 @@ export function useMenu() {
                     price: item.price ?? 0
                 });
 
-                let cat = item.category?.toLowerCase() || 'outro';
-                if (cat === 'outros') cat = 'outro';
-                if (cat.includes('espetinho') && cat.includes('simples')) cat = 'espetinho-simples';
-                if (cat.includes('espetinho') && cat.includes('especial')) cat = 'espetinho-especial';
+                let cat = normalizeCategorySlug(item.category);
+                if (!validCategorySlugs.has(cat)) cat = 'outro';
 
                 if (buckets[cat]) {
                     buckets[cat].push(item);
@@ -79,16 +83,22 @@ export function useMenu() {
 
             const sortFn = (a: Product, b: Product) => a.name.localeCompare(b.name);
 
+            const sortedBuckets = Object.keys(buckets).reduce((acc, slug) => {
+                acc[slug] = (buckets[slug] || []).sort(sortFn);
+                return acc;
+            }, {} as Record<string, Product[]>);
+
             const novoCardapio: Cardapio = {
-                caldos: (buckets.caldo || []).sort(sortFn),
-                comidas: (buckets.comida || []).sort(sortFn),
-                bebidas: (buckets.bebida || []).sort(sortFn),
-                porcoes: (buckets.porcao || []).sort(sortFn),
-                outros: (buckets.outro || []).sort(sortFn),
+                ...sortedBuckets,
+                caldos: sortedBuckets.caldo || [],
+                comidas: sortedBuckets.comida || [],
+                bebidas: sortedBuckets.bebida || [],
+                porcoes: sortedBuckets.porcao || [],
+                outros: sortedBuckets.outro || [],
                 espetinhos: [],
-                espetinhosSimples: (buckets['espetinho-simples'] || []).sort(sortFn),
-                espetinhosEspeciais: (buckets['espetinho-especial'] || []).sort(sortFn),
-                pizzas: (buckets['pizza'] || []).sort(sortFn)
+                espetinhosSimples: sortedBuckets['espetinho-simples'] || [],
+                espetinhosEspeciais: sortedBuckets['espetinho-especial'] || [],
+                pizzas: sortedBuckets['pizza'] || []
             };
 
             setCardapio(novoCardapio);

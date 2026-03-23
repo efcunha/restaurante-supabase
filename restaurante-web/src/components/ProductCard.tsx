@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { colors } from '../theme/colors';
+import { normalizeCategorySlug } from '../utils/menuCategories';
 interface ProductCardProps {
   product: {
     id: string;
@@ -77,17 +78,14 @@ const ProductCard = React.memo<ProductCardProps>(
 ProductCard.displayName = 'ProductCard';
 
 function getCategoryLabel(category: string): string {
-  const labels: Record<string, string> = {
-    'caldo': '🍲 Caldos',
-    'espetinho-simples': '🔥 Espetinho',
-    'espetinho-especial': '🌟 Especial',
-    'porcao': '🍟 Porção',
-    'bebida': '🥤 Bebida',
-    'comida': '🍽️ Comida',
-    'pizza': '🍕 Pizza',
-    'outro': '📦 Outro',
-  };
-  return labels[category] || category;
+  const normalized = normalizeCategorySlug(category);
+  if (!normalized) return 'Outro';
+
+  return normalized
+    .split('-')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
 }
 
 const styles = StyleSheet.create({
