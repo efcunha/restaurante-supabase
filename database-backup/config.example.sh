@@ -16,7 +16,7 @@ export SOURCE_DB_HOST="aws-0-us-west-2.pooler.supabase.com"
 export SOURCE_DB_PORT="5432"
 export SOURCE_DB_USER="postgres.ykalocfhnetxenvmtlcn"
 export SOURCE_DB_NAME="postgres"
-export SOURCE_DB_PASSWORD="Sua senha aqui"
+export SOURCE_DB_PASSWORD="A13546289b@P@ssw0rd"
 
 # ============================================================================
 # BANCO DE DESTINO (TARGET) - Para onde fazer restore

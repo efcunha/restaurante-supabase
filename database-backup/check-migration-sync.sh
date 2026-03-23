@@ -52,6 +52,9 @@ fi
 TMP_DIR="$(mktemp -d)"
 LOCAL_FILE="$TMP_DIR/local_versions.txt"
 REMOTE_FILE="$TMP_DIR/remote_versions.txt"
+REMOTE_EFFECTIVE_FILE="$TMP_DIR/remote_versions_effective.txt"
+IGNORED_REMOTE_FILE="$TMP_DIR/ignored_remote_versions.txt"
+REMOTE_IGNORE_LIST_FILE="./known-remote-only-versions.txt"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
 # Coleta versões locais: apenas migrations versionadas por timestamp (14 dígitos)
@@ -87,11 +90,24 @@ mv "$REMOTE_FILE.cleaned" "$REMOTE_FILE"
 
 sort -u -o "$REMOTE_FILE" "$REMOTE_FILE"
 
+cp "$REMOTE_FILE" "$REMOTE_EFFECTIVE_FILE"
+: > "$IGNORED_REMOTE_FILE"
+
+if [ -f "$REMOTE_IGNORE_LIST_FILE" ]; then
+  sed -nE 's/^([0-9]{14}).*$/\1/p' "$REMOTE_IGNORE_LIST_FILE" | sort -u > "$TMP_DIR/remote_ignore_list_clean.txt"
+
+  if [ -s "$TMP_DIR/remote_ignore_list_clean.txt" ]; then
+    comm -12 "$REMOTE_EFFECTIVE_FILE" "$TMP_DIR/remote_ignore_list_clean.txt" > "$IGNORED_REMOTE_FILE"
+    comm -23 "$REMOTE_EFFECTIVE_FILE" "$TMP_DIR/remote_ignore_list_clean.txt" > "$TMP_DIR/remote_effective_clean.txt"
+    mv "$TMP_DIR/remote_effective_clean.txt" "$REMOTE_EFFECTIVE_FILE"
+  fi
+fi
+
 ONLY_LOCAL="$TMP_DIR/only_local.txt"
 ONLY_REMOTE="$TMP_DIR/only_remote.txt"
 
-comm -23 "$LOCAL_FILE" "$REMOTE_FILE" > "$ONLY_LOCAL"
-comm -13 "$LOCAL_FILE" "$REMOTE_FILE" > "$ONLY_REMOTE"
+comm -23 "$LOCAL_FILE" "$REMOTE_EFFECTIVE_FILE" > "$ONLY_LOCAL"
+comm -13 "$LOCAL_FILE" "$REMOTE_EFFECTIVE_FILE" > "$ONLY_REMOTE"
 
 echo ""
 echo -e "${BLUE}============================================${NC}"
@@ -99,6 +115,10 @@ echo -e "${BLUE}  Verificação de Sincronização de Migrations${NC}"
 echo -e "${BLUE}============================================${NC}"
 echo -e "Local:  $(wc -l < "$LOCAL_FILE") versões"
 echo -e "Remoto: $(wc -l < "$REMOTE_FILE") versões"
+
+if [ -s "$IGNORED_REMOTE_FILE" ]; then
+  echo -e "Ignoradas (legadas): $(wc -l < "$IGNORED_REMOTE_FILE") versões"
+fi
 
 drift=0
 
@@ -114,6 +134,12 @@ if [ -s "$ONLY_REMOTE" ]; then
   echo ""
   echo -e "${YELLOW}⚠ Versões remotas que NÃO existem em ./migrations:${NC}"
   cat "$ONLY_REMOTE" | sed 's/^/  - /'
+fi
+
+if [ -s "$IGNORED_REMOTE_FILE" ]; then
+  echo ""
+  echo -e "${BLUE}ℹ Versões remotas legadas ignoradas por known-remote-only-versions.txt:${NC}"
+  cat "$IGNORED_REMOTE_FILE" | sed 's/^/  - /'
 fi
 
 if [ "$drift" -eq 0 ]; then
