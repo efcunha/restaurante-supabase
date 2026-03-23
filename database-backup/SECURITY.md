@@ -7,7 +7,7 @@ Este documento contém diretrizes de segurança para uso dos scripts de backup e
 ### 🚫 NUNCA Faça Isso
 
 1. **NUNCA commite credenciais no Git**
-   - ❌ `config.local.sh` com senhas
+   - ❌ `.env.local` com senhas
    - ❌ Arquivos `.dump` com dados reais
    - ❌ Logs com informações sensíveis
 
@@ -93,7 +93,7 @@ aws s3 cp backups/backup_latest.dump \
 #### Permissões de Arquivo
 ```bash
 # Apenas owner pode ler/escrever
-chmod 600 config.local.sh
+chmod 600 .env.local
 chmod 600 backups/*.dump
 
 # Scripts executáveis apenas pelo owner
@@ -138,7 +138,7 @@ sudo ausearch -f /path/to/backups/ -i
 #!/bin/bash
 NEW_PASSWORD=$(openssl rand -base64 32)
 psql -c "ALTER USER postgres PASSWORD '$NEW_PASSWORD';"
-echo "export SOURCE_DB_PASSWORD='$NEW_PASSWORD'" > config.local.sh
+awk -F= 'BEGIN{OFS="="} /^SOURCE_DB_PASSWORD=/{print "SOURCE_DB_PASSWORD", "'"$NEW_PASSWORD"'"; next} {print}' .env.local > .env.local.tmp && mv .env.local.tmp .env.local
 ```
 
 ## 🛡️ Proteção Contra Ameaças
@@ -162,7 +162,7 @@ echo "export SOURCE_DB_PASSWORD='$NEW_PASSWORD'" > config.local.sh
 
 Antes de usar em produção, verifique:
 
-- [ ] `config.local.sh` está no `.gitignore`
+- [ ] `.env.local` está no `.gitignore`
 - [ ] Permissões de arquivo corretas (600/700)
 - [ ] SSL/TLS habilitado
 - [ ] Backups criptografados

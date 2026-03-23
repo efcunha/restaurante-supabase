@@ -107,22 +107,24 @@ sync_forward_migrations_if_needed() {
 
     echo "⚠ Drift detectado. Tentando sincronizar migrations incrementais pendentes..."
 
-    if [ ! -f "$DB_BACKUP_DIR/config.local.sh" ]; then
-        echo "❌ Arquivo não encontrado: $DB_BACKUP_DIR/config.local.sh"
-        echo "Dica: copie config.example.sh para config.local.sh e configure as credenciais."
+    if [ ! -f "$DB_BACKUP_DIR/.env.local" ]; then
+        echo "❌ Arquivo não encontrado: $DB_BACKUP_DIR/.env.local"
+        echo "Dica: copie .env.example para .env.local e configure as credenciais."
         exit 1
     fi
 
     # shellcheck disable=SC1091
-    source "$DB_BACKUP_DIR/config.local.sh"
+    set -a
+    source "$DB_BACKUP_DIR/.env.local"
+    set +a
 
-    if [ -z "${SOURCE_DB_PASSWORD:-}" ] || [ "$SOURCE_DB_PASSWORD" = "Sua senha aqui" ]; then
-        echo "❌ SOURCE_DB_PASSWORD inválida em config.local.sh"
+    if [ -z "${SOURCE_DB_PASSWORD:-}" ] || [ "$SOURCE_DB_PASSWORD" = "CHANGE_ME_SOURCE_DB_PASSWORD" ]; then
+        echo "❌ SOURCE_DB_PASSWORD inválida em .env.local"
         exit 1
     fi
 
     if [ -z "${SOURCE_DB_HOST:-}" ] || [ -z "${SOURCE_DB_USER:-}" ] || [ -z "${SOURCE_DB_NAME:-}" ]; then
-        echo "❌ Variáveis SOURCE_DB_* incompletas em config.local.sh"
+        echo "❌ Variáveis SOURCE_DB_* incompletas em .env.local"
         exit 1
     fi
 
@@ -158,7 +160,7 @@ sync_forward_migrations_if_needed() {
         > "$remote_versions_file"; then
         unset PGPASSWORD
         echo "⚠ Falha ao autenticar/consultar banco remoto para sync automático de migrations."
-        echo "⚠ Verifique SOURCE_DB_HOST/SOURCE_DB_USER/SOURCE_DB_PASSWORD em database-backup/config.local.sh."
+        echo "⚠ Verifique SOURCE_DB_HOST/SOURCE_DB_USER/SOURCE_DB_PASSWORD em database-backup/.env.local."
         echo "⚠ Deploy seguirá sem auto-sync. Para bypass explícito, use --skip-sync."
         return 0
     fi
