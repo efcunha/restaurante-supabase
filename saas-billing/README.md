@@ -104,3 +104,4 @@ Security notes:
 - Keep test and production credentials strictly separated by environment.
 - Prefer rotating exposed test access tokens before shared QA runs.
 - Never store provider secrets in migration files or source-controlled `.env.example` files.
+- If any Mercado Pago or Supabase credential appears in chat, terminal output, screenshots, or logs, rotate it immediately and rerun the billing smoke checks before continuing QA.
