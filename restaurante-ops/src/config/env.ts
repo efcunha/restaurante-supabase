@@ -3,6 +3,9 @@ export interface OpsEnv {
   SUPABASE_SERVICE_ROLE_KEY: string;
   OPS_PORT: number;
   OPS_ENV: string;
+  OPS_ALLOWED_COMPANY_ID?: string;
+  AUTH_RATE_LIMIT_MAX_ATTEMPTS: number;
+  AUTH_RATE_LIMIT_WINDOW_MS: number;
   OPS_PUBLIC_BASE_URL?: string;
   WEB_BASE_URL?: string;
   ACTIVEPIECES_BASE_URL?: string;
@@ -19,12 +22,17 @@ function required(name: string): string {
 
 export function buildEnv(): OpsEnv {
   const resolvedPort = Number(process.env.PORT || process.env.OPS_PORT || '4040');
+  const parsedMaxAttempts = Number(process.env.AUTH_RATE_LIMIT_MAX_ATTEMPTS || '8');
+  const parsedWindowMs = Number(process.env.AUTH_RATE_LIMIT_WINDOW_MS || String(15 * 60 * 1000));
 
   return {
     SUPABASE_URL: required('SUPABASE_URL'),
     SUPABASE_SERVICE_ROLE_KEY: required('SUPABASE_SERVICE_ROLE_KEY'),
     OPS_PORT: Number.isFinite(resolvedPort) ? resolvedPort : 4040,
     OPS_ENV: process.env.OPS_ENV || 'development',
+    OPS_ALLOWED_COMPANY_ID: process.env.OPS_ALLOWED_COMPANY_ID,
+    AUTH_RATE_LIMIT_MAX_ATTEMPTS: Number.isFinite(parsedMaxAttempts) ? parsedMaxAttempts : 8,
+    AUTH_RATE_LIMIT_WINDOW_MS: Number.isFinite(parsedWindowMs) ? parsedWindowMs : 15 * 60 * 1000,
     OPS_PUBLIC_BASE_URL: process.env.OPS_PUBLIC_BASE_URL,
     WEB_BASE_URL: process.env.WEB_BASE_URL,
     ACTIVEPIECES_BASE_URL: process.env.ACTIVEPIECES_BASE_URL,
