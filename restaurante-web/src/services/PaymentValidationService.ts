@@ -281,5 +281,5 @@ export function canModifyPaymentStatus(userRole?: string): boolean {
     return false;
   }
   
-  return ['admin', 'manager'].includes(userRole.toLowerCase());
+  return ['admin', 'manager', 'gerente'].includes(userRole.toLowerCase().trim());
 }
