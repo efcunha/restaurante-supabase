@@ -7,6 +7,7 @@ export interface BillingPaymentMethod {
   brand: string | null;
   expiry_month: number | null;
   expiry_year: number | null;
+  mp_card_id?: string | null;
   is_default: boolean;
   created_at: string;
 }
@@ -98,7 +99,7 @@ export async function listBillingPaymentMethods(companyId?: string): Promise<Bil
 
   const { data, error } = await supabase
     .from('payment_methods')
-    .select('id, type, last_four, brand, expiry_month, expiry_year, is_default, created_at')
+    .select('id, type, last_four, brand, expiry_month, expiry_year, mp_card_id, is_default, created_at')
     .eq('company_id', companyId)
     .order('is_default', { ascending: false })
     .order('created_at', { ascending: false });
@@ -107,7 +108,25 @@ export async function listBillingPaymentMethods(companyId?: string): Promise<Bil
     throw new Error(error.message);
   }
 
-  return (data || []) as BillingPaymentMethod[];
+  const methods = (data || []) as BillingPaymentMethod[];
+  const dedupedByCard = new Map<string, BillingPaymentMethod>();
+
+  for (const method of methods) {
+    if (method.type !== 'card') {
+      dedupedByCard.set(`other:${method.id}`, method);
+      continue;
+    }
+
+    const cardKey = method.mp_card_id
+      ? `card:mp:${method.mp_card_id}`
+      : `card:fingerprint:${(method.brand || '').toLowerCase()}:${method.last_four || ''}:${method.expiry_month || ''}:${method.expiry_year || ''}`;
+
+    if (!dedupedByCard.has(cardKey)) {
+      dedupedByCard.set(cardKey, method);
+    }
+  }
+
+  return Array.from(dedupedByCard.values());
 }
 
 export async function listBillingInvoices(companyId?: string): Promise<BillingInvoice[]> {
