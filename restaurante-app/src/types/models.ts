@@ -148,6 +148,15 @@ export interface Company {
 
 export interface CompanySettings {
   businessDayCutoff?: number; // Hora do corte (0-23), default 6
+  categories?: MenuCategorySetting[];
+  categoryOrder?: Record<string, number>;
+}
+
+export interface MenuCategorySetting {
+  slug: string;
+  name: string;
+  order: number;
+  active: boolean;
 }
 
 // ============================================================================

@@ -16,6 +16,7 @@ import { confirmLogout } from '../utils/appUtils';
 import InventoryService from '../services/InventoryService';
 import { listarFuncionarios } from '../services/FuncionariosService';
 import { Product, Cardapio, PizzaConfig, Funcionario } from '../types';
+import { getOrCreateMenuCategories, normalizeCategorySlug } from '../utils/menuCategories';
 
 const CARDAPIO_CACHE_KEY = '@cardapio_cache_v2';
 const MENU_REFRESH_WINDOW_MS = 30 * 60 * 1000;
@@ -158,6 +159,10 @@ export function useNovoPedido(): UseNovoPedidoReturn {
             const { data: productsData, error } = productsResult;
             if (error) throw error;
 
+            const settingsFromCompany = companyResult.data?.settings || {};
+            const { categories } = getOrCreateMenuCategories(settingsFromCompany);
+            const validCategorySlugs = new Set(categories.map((item) => item.slug));
+
             console.log('Products fetched:', productsData?.length);
 
             // Debug: Log pizza products specifically
@@ -167,17 +172,11 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                 console.log(`  - ${p.name} (active: ${p.active}, subcategory: ${p.subcategory})`);
             });
 
-            // OTIMIZAÇÃO: Processamento em único loop (Single Pass)
-            const buckets: Record<string, Product[]> = {
-                caldo: [],
-                comida: [],
-                bebida: [],
-                porcao: [],
-                outro: [],
-                'espetinho-simples': [],
-                'espetinho-especial': [],
-                'pizza': []
-            };
+            const bucketSlugs = Array.from(new Set([...validCategorySlugs, 'outro']));
+            const buckets: Record<string, Product[]> = bucketSlugs.reduce((acc, slug) => {
+                acc[slug] = [];
+                return acc;
+            }, {} as Record<string, Product[]>);
 
             productsData?.forEach((data: any) => {
                 // Client-side Active Filter
@@ -201,12 +200,8 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                 };
 
                 // Normalizar categoria para o bucket correto
-                let cat = item.category?.toLowerCase() || 'outro';
-                if (cat === 'outros') cat = 'outro';
-
-                // Compatibilidade para Espetinhos (hifen ou espaço)
-                if (cat.includes('espetinho') && cat.includes('simples')) cat = 'espetinho-simples';
-                if (cat.includes('espetinho') && cat.includes('especial')) cat = 'espetinho-especial';
+                let cat = normalizeCategorySlug(item.category);
+                if (!validCategorySlugs.has(cat)) cat = 'outro';
 
                 if (buckets[cat]) {
                     buckets[cat].push(item);
@@ -226,24 +221,31 @@ export function useNovoPedido(): UseNovoPedidoReturn {
             // Ordenação local (Client-Side)
             const sortFn = (a: Product, b: Product) => a.name.localeCompare(b.name);
 
+            const sortedBuckets = Object.keys(buckets).reduce((acc, slug) => {
+                acc[slug] = (buckets[slug] || []).sort(sortFn);
+                return acc;
+            }, {} as Record<string, Product[]>);
+
             const novoCardapio: Cardapio = {
-                caldos: (buckets.caldo || []).sort(sortFn),
-                comidas: (buckets.comida || []).sort(sortFn),
-                bebidas: (buckets.bebida || []).sort(sortFn),
-                porcoes: (buckets.porcao || []).sort(sortFn),
-                outros: (buckets.outro || []).sort(sortFn),
+                ...sortedBuckets,
+                caldos: sortedBuckets.caldo || [],
+                comidas: sortedBuckets.comida || [],
+                bebidas: sortedBuckets.bebida || [],
+                porcoes: sortedBuckets.porcao || [],
+                outros: sortedBuckets.outro || [],
                 espetinhos: [],
-                espetinhosSimples: (buckets['espetinho-simples'] || []).sort(sortFn),
-                espetinhosEspeciais: (buckets['espetinho-especial'] || []).sort(sortFn),
-                pizzas: (buckets['pizza'] || []).sort(sortFn)
+                espetinhosSimples: sortedBuckets['espetinho-simples'] || [],
+                espetinhosEspeciais: sortedBuckets['espetinho-especial'] || [],
+                pizzas: sortedBuckets['pizza'] || []
             };
 
             // Load Pizza Config from company settings (already fetched in parallel)
             const { data: companyData, error: companyError } = companyResult;
+            const companySettings = companyData?.settings || {};
 
             let newPizzaConfig = null;
-            if (!companyError && companyData?.settings?.pizzaConfig?.sizes?.length > 0) {
-                newPizzaConfig = companyData.settings.pizzaConfig;
+            if (!companyError && companySettings?.pizzaConfig?.sizes?.length > 0) {
+                newPizzaConfig = companySettings.pizzaConfig;
                 setPizzaConfig(newPizzaConfig);
             } else {
                 // Fallback to defaults if not configured
