@@ -69,8 +69,8 @@ test.describe('Race Condition - Cross-Marking Bug', () => {
     ]);
 
     if (await loginEmail.isVisible()) {
-      await loginEmail.fill('lu@m.com');
-      await page.getByPlaceholder('••••••••').fill('mudar123');
+      await loginEmail.fill(process.env.PLAYWRIGHT_TEST_EMAIL!);
+      await page.getByPlaceholder('••••••••').fill(process.env.PLAYWRIGHT_TEST_PASSWORD!);
       await page.getByText('ENTRAR').click();
       await expect(homeIndicator).toBeVisible({ timeout: 30000 });
     }
