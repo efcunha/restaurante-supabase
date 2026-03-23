@@ -99,8 +99,8 @@ test.describe('Race Condition - Comanda Grouping Bug', () => {
     try {
       const emailInput = page.locator('input[placeholder="seu@email.com"]');
       await emailInput.waitFor({ state: 'visible', timeout: 8000 });
-      await emailInput.fill('lu@m.com');
-      await page.locator('input[placeholder="••••••••"]').fill('mudar123');
+      await emailInput.fill(process.env.PLAYWRIGHT_TEST_EMAIL!);
+      await page.locator('input[placeholder="••••••••"]').fill(process.env.PLAYWRIGHT_TEST_PASSWORD!);
       await page.locator('text=ENTRAR').click();
       await expect(page.locator('text=Novo Pedido').first()).toBeVisible({ timeout: 15000 });
     } catch {

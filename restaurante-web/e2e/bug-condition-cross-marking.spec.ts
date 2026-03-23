@@ -15,15 +15,12 @@ import * as fc from 'fast-check';
  */
 
 test.describe('Bug Condition Exploration - Cross-marking Delivery Items', () => {
-    const testCompanyCode = 'TEST_DELIVERY_BUG';
-
     test.beforeEach(async ({ page }) => {
         // Login to the system
         await page.goto('http://localhost:8081');
-        await page.fill('input[placeholder="Código da Empresa"]', testCompanyCode);
-        await page.fill('input[placeholder="Usuário"]', 'admin');
-        await page.fill('input[placeholder="Senha"]', 'admin');
-        await page.click('text=Entrar');
+        await page.fill('input[placeholder="seu@email.com"]', (process.env.PLAYWRIGHT_TEST_EMAIL || ''));
+        await page.fill('input[placeholder="••••••••"]', (process.env.PLAYWRIGHT_TEST_PASSWORD || ''));
+        await page.click('text=ENTRAR');
         await expect(page.locator('text=Configurações')).toBeVisible({ timeout: 10000 });
     });
 

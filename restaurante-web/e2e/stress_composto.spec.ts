@@ -13,8 +13,8 @@ test.describe('Stress Test - Fluxos Combinados', () => {
             const loginBtn = page.getByText('ENTRAR').first();
 
             await loginEmail.waitFor({ state: 'visible', timeout: 5000 });
-            await loginEmail.fill('lu@m.com');
-            await loginPass.fill('mudar123');
+            await loginEmail.fill(process.env.PLAYWRIGHT_TEST_EMAIL!);
+            await loginPass.fill(process.env.PLAYWRIGHT_TEST_PASSWORD!);
             await loginBtn.click();
             await page.waitForLoadState('networkidle');
         } catch (e) {

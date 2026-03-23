@@ -20,8 +20,8 @@ async function loginIfNeeded(page: Page) {
   ]);
 
   if (await loginEmail.isVisible()) {
-    await loginEmail.fill('lu@m.com');
-    await page.getByPlaceholder('••••••••').fill('mudar123');
+    await loginEmail.fill(process.env.PLAYWRIGHT_TEST_EMAIL!);
+    await page.getByPlaceholder('••••••••').fill(process.env.PLAYWRIGHT_TEST_PASSWORD!);
     await page.getByText('ENTRAR').first().click();
     await waitAnyVisible(homeHints, 30000);
   }
