@@ -28,6 +28,42 @@ supabase secrets set MERCADOPAGO_PUBLIC_KEY=... MERCADOPAGO_ACCESS_TOKEN=... MER
 4. Validate readiness by invoking `billing-provider-status` from app/web BillingScreen.
 5. Keep production and test credentials in separate environments (never shared across staging/prod).
 
+### Secret Rotation Runbook
+
+Rotate immediately if any key/token appears in chat, terminal output, screenshots, logs, or a committed file.
+
+Rotation order:
+
+1. Generate new Mercado Pago sandbox or live credentials in the provider console.
+2. Update hosted Supabase secrets first:
+
+```bash
+cd database-backup
+supabase secrets set MERCADOPAGO_PUBLIC_KEY="<new_public_key>" MERCADOPAGO_ACCESS_TOKEN="<new_access_token>" MERCADOPAGO_WEBHOOK_SECRET="<new_webhook_secret>"
+```
+
+3. Redeploy billing functions after secret update:
+
+```bash
+cd database-backup
+supabase functions deploy billing-provider-status --no-verify-jwt
+supabase functions deploy billing-create-checkout --no-verify-jwt
+supabase functions deploy billing-create-pix-fallback --no-verify-jwt
+supabase functions deploy billing-webhook
+```
+
+4. Only after successful validation, revoke old Mercado Pago credentials in the provider console.
+5. Remove any local temporary files, shell history snippets, or copied payloads containing the exposed values.
+
+Post-rotation validation:
+
+1. `billing-provider-status` returns `configured=true`.
+2. `billing-create-checkout` returns `ready_for_tokenization`.
+3. Card save flow returns `card_saved`.
+4. `billing-create-pix-fallback` returns `pix_ready`.
+5. `billing-webhook` validates with the new secret.
+6. `billing_audit_log` does not contain raw token, QR, or card-last-four artifacts.
+
 Operational note:
 
 - `MERCADOPAGO_PUBLIC_KEY` can be returned to the client only through secure backend contract (`billing-create-checkout`) and only for authenticated admin flow.
@@ -59,6 +95,12 @@ supabase functions deploy billing-create-checkout
 supabase functions deploy billing-create-pix-fallback
 supabase functions deploy billing-webhook
 ```
+
+Current project operational note:
+
+- `billing-provider-status`, `billing-create-checkout`, and `billing-create-pix-fallback` may be deployed with `--no-verify-jwt` when the platform gateway rejects otherwise valid project JWTs.
+- In this mode, `requireSecureAdmin()` remains mandatory and is the real auth barrier.
+- `billing-webhook` must keep provider-signature auth and does not use JWT.
 
 Quick post-deploy preflight:
 
