@@ -67,6 +67,30 @@ function toErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
+async function invokeBillingFunction<T>(
+  functionName: string,
+  body: Record<string, unknown>,
+  fallbackMessage: string
+): Promise<T> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const accessToken = sessionData.session?.access_token;
+
+  const { data, error } = await supabase.functions.invoke(functionName, {
+    body,
+    headers: accessToken
+      ? {
+          Authorization: `Bearer ${accessToken}`,
+        }
+      : undefined,
+  });
+
+  if (error) {
+    throw new Error(toErrorMessage(error, fallbackMessage));
+  }
+
+  return data as T;
+}
+
 export async function listBillingPaymentMethods(companyId?: string): Promise<BillingPaymentMethod[]> {
   if (!companyId) {
     return [];
@@ -120,13 +144,11 @@ export async function getBillingProviderStatus(companyId?: string): Promise<Bill
   }
 
   try {
-    const { data, error } = await supabase.functions.invoke('billing-provider-status', {
-      body: { companyId },
-    });
-
-    if (error) {
-      throw error;
-    }
+    const data = await invokeBillingFunction<Partial<BillingProviderStatus>>(
+      'billing-provider-status',
+      { companyId },
+      'Não foi possível consultar a integração de billing.'
+    );
 
     return {
       provider: 'mercadopago',
@@ -158,15 +180,11 @@ export async function startBillingCheckout(companyId?: string): Promise<BillingA
     throw new Error('Empresa não identificada para iniciar o checkout.');
   }
 
-  const { data, error } = await supabase.functions.invoke('billing-create-checkout', {
-    body: { companyId },
-  });
-
-  if (error) {
-    throw new Error(toErrorMessage(error, 'Falha ao iniciar o checkout de billing.'));
-  }
-
-  return data as BillingActionResult;
+  return invokeBillingFunction<BillingActionResult>(
+    'billing-create-checkout',
+    { companyId },
+    'Falha ao iniciar o checkout de billing.'
+  );
 }
 
 export async function requestBillingPixFallback(companyId?: string): Promise<BillingActionResult> {
@@ -174,15 +192,11 @@ export async function requestBillingPixFallback(companyId?: string): Promise<Bil
     throw new Error('Empresa não identificada para solicitar Pix.');
   }
 
-  const { data, error } = await supabase.functions.invoke('billing-create-pix-fallback', {
-    body: { companyId },
-  });
-
-  if (error) {
-    throw new Error(toErrorMessage(error, 'Falha ao solicitar regularização via Pix.'));
-  }
-
-  return data as BillingActionResult;
+  return invokeBillingFunction<BillingActionResult>(
+    'billing-create-pix-fallback',
+    { companyId },
+    'Falha ao solicitar regularização via Pix.'
+  );
 }
 
 export interface CardInput {
@@ -242,13 +256,9 @@ export async function tokenizeCardWithMp(publicKey: string, card: CardInput): Pr
  * Only the opaque MP card token is sent — no card number, no CVV.
  */
 export async function saveCardToken(companyId: string, cardToken: string): Promise<BillingActionResult> {
-  const { data, error } = await supabase.functions.invoke('billing-create-checkout', {
-    body: { companyId, cardToken },
-  });
-
-  if (error) {
-    throw new Error(toErrorMessage(error, 'Falha ao salvar o cartão.'));
-  }
-
-  return data as BillingActionResult;
+  return invokeBillingFunction<BillingActionResult>(
+    'billing-create-checkout',
+    { companyId, cardToken },
+    'Falha ao salvar o cartão.'
+  );
 }
