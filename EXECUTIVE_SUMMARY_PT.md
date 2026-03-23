@@ -14,14 +14,14 @@
 
 ## 5 VULNERABILIDADES CRÍTICAS (7 DIAS)
 
-### 1. 🔴 Senhas de Banco de Dados Expostas em Arquivos Públicos
+### 1. ✅ Senhas de Banco de Dados Expostas em Arquivos Públicos
 - **Localizações:** `backup.bat`, `restore.bat`, `.env.local` (quando versionado por engano)
 - **Impacto:** Acesso total ao banco de dados de produção
 - **Ação:** Remover + rotate credenciais + limpar histórico Git
 - **Tempo:** 2 horas
 - **Responsável:** DevOps
 
-### 2. 🔴 RLS Policy Permissiva em Profiles
+### 2. ✅ RLS Policy Permissiva em Profiles
 - **Problema:** O banco remoto confirma que `authenticated_pull_profiles` está ativa com `USING (true)`, permitindo leitura ampla de `profiles` por usuários autenticados.
 - **Localização:** Banco remoto (`pg_policies`) e snapshot base `20260311161100_schema_dump.sql`
 - **Observação:** A validação remota também confirmou drift de modelagem: `profiles_role_check` ainda aceita apenas `admin`, `manager`, `waiter` e `kitchen`.
