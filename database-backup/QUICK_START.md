@@ -7,15 +7,15 @@ Guia rápido para começar a usar os scripts de backup e restore.
 ### 1. Copiar arquivo de configuração
 ```bash
 cd database-backup
-cp config.example.sh config.local.sh
+cp .env.example .env.local
 ```
 
 ### 2. Editar credenciais
 ```bash
-nano config.local.sh  # ou use seu editor preferido
+nano .env.local  # ou use seu editor preferido
 ```
 
-Substitua `SUA_SENHA_AQUI` pelas senhas reais:
+Substitua os placeholders `CHANGE_ME_*` pelas senhas reais:
 - `SOURCE_DB_PASSWORD` - Senha do banco de origem (backup)
 - `TARGET_DB_PASSWORD` - Senha do banco de destino (restore)
 
@@ -69,7 +69,7 @@ restore.bat backups\backup_2026-02-11_150000.dump
 
 1. **Teste primeiro em desenvolvimento!**
 2. **Faça backup antes de fazer restore!**
-3. **Nunca commite config.local.sh no Git!**
+3. **Nunca commite .env.local no Git!**
 4. **Mantenha backups em local seguro!**
 
 ## 📝 Comandos Úteis
@@ -102,7 +102,7 @@ find backups/ -name "*.dump" -mtime +7 -delete
 ## 🆘 Problemas Comuns
 
 ### "password authentication failed"
-- Verifique se editou config.local.sh
+- Verifique se editou `.env.local`
 - Confirme que as senhas estão corretas
 
 ### "connection refused"

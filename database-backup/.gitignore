@@ -21,7 +21,8 @@
 .env.local
 .env.production
 credentials.txt
-config.local.sh
+!*.example
+!.env.example
 
 # Ignorar logs
 *.log
@@ -40,4 +41,4 @@ Thumbs.db
 !restore.bat
 !README.md
 !.gitignore
-!config.example.sh
+!.env.example

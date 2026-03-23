@@ -136,14 +136,14 @@ Antes de executar o restore, CERTIFIQUE-SE de:
 pg_restore -l backups/backup_latest.dump | head -20
 
 # 3. TESTAR EM STAGING PRIMEIRO
-# Editar config.local.sh para apontar para staging
+# Editar .env.local para apontar para staging
 ./restore.sh backups/backup_latest.dump
 
 # 4. VALIDAR DADOS EM STAGING
 psql -h staging-host -U user -d postgres -c "SELECT COUNT(*) FROM orders;"
 
 # 5. SE TUDO OK, FAZER EM PRODUÇÃO
-# Editar config.local.sh para produção
+# Editar .env.local para produção
 ./restore.sh backups/backup_latest.dump
 
 # 6. VALIDAR DADOS EM PRODUÇÃO

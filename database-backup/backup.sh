@@ -19,12 +19,15 @@ NC='\033[0m' # No Color
 # Carregar configurações
 # ============================================================================
 
-if [ -f "config.local.sh" ]; then
-  source config.local.sh
-  echo -e "${GREEN}✓ Configurações carregadas de config.local.sh${NC}"
+if [ -f ".env.local" ]; then
+  set -a
+  # shellcheck disable=SC1091
+  source .env.local
+  set +a
+  echo -e "${GREEN}✓ Configurações carregadas de .env.local${NC}"
 else
-  echo -e "${RED}✗ Arquivo config.local.sh não encontrado!${NC}"
-  echo -e "${YELLOW}Execute: cp config.example.sh config.local.sh${NC}"
+  echo -e "${RED}✗ Arquivo .env.local não encontrado!${NC}"
+  echo -e "${YELLOW}Execute: cp .env.example .env.local${NC}"
   exit 1
 fi
 
@@ -32,8 +35,8 @@ fi
 # Validar variáveis obrigatórias
 # ============================================================================
 
-if [ -z "$SOURCE_DB_PASSWORD" ] || [ "$SOURCE_DB_PASSWORD" = "SUA_SENHA_AQUI" ]; then
-  echo -e "${RED}✗ Senha não configurada em config.local.sh${NC}"
+if [ -z "$SOURCE_DB_PASSWORD" ] || [ "$SOURCE_DB_PASSWORD" = "CHANGE_ME_SOURCE_DB_PASSWORD" ]; then
+  echo -e "${RED}✗ Senha não configurada em .env.local${NC}"
   exit 1
 fi
 

@@ -20,12 +20,14 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-if [ -f "config.local.sh" ]; then
+if [ -f ".env.local" ]; then
+  set -a
   # shellcheck disable=SC1091
-  source config.local.sh
+  source .env.local
+  set +a
 else
-  echo -e "${RED}✗ Arquivo config.local.sh não encontrado!${NC}"
-  echo -e "${YELLOW}Execute: cp config.example.sh config.local.sh${NC}"
+  echo -e "${RED}✗ Arquivo .env.local não encontrado!${NC}"
+  echo -e "${YELLOW}Execute: cp .env.example .env.local${NC}"
   exit 1
 fi
 
@@ -39,13 +41,13 @@ else
   exit 1
 fi
 
-if [ -z "${SOURCE_DB_PASSWORD:-}" ] || [ "${SOURCE_DB_PASSWORD}" = "Sua senha aqui" ]; then
-  echo -e "${RED}✗ SOURCE_DB_PASSWORD não configurada em config.local.sh${NC}"
+if [ -z "${SOURCE_DB_PASSWORD:-}" ] || [ "${SOURCE_DB_PASSWORD}" = "Sua senha aqui" ] || [ "${SOURCE_DB_PASSWORD}" = "CHANGE_ME_SOURCE_DB_PASSWORD" ]; then
+  echo -e "${RED}✗ SOURCE_DB_PASSWORD não configurada em .env.local${NC}"
   exit 1
 fi
 
 if [ -z "${SOURCE_DB_HOST:-}" ] || [ -z "${SOURCE_DB_USER:-}" ] || [ -z "${SOURCE_DB_NAME:-}" ]; then
-  echo -e "${RED}✗ Variáveis SOURCE_DB_* incompletas em config.local.sh${NC}"
+  echo -e "${RED}✗ Variáveis SOURCE_DB_* incompletas em .env.local${NC}"
   exit 1
 fi
 

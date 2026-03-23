@@ -8,16 +8,33 @@ REM ============================================================================
 setlocal enabledelayedexpansion
 
 REM ============================================================================
-REM Configurações (EDITE AQUI)
+REM Carregar configuracoes
 REM ============================================================================
 
-set TARGET_DB_HOST=aws-1-us-east-2.pooler.supabase.com
-set TARGET_DB_PORT=5432
-set TARGET_DB_USER=postgres.bqeemgkbzshupjrjxmuv
-set TARGET_DB_NAME=postgres
-set TARGET_DB_PASSWORD=A13546289b@P@ssw0rd
+set "ENV_FILE=.env.local"
 
-set BACKUP_SCHEMA=public
+if not exist "%ENV_FILE%" (
+  echo [ERROR] Arquivo %ENV_FILE% nao encontrado!
+  echo Execute: copy .env.example .env.local
+  pause
+  exit /b 1
+)
+
+for /f "usebackq tokens=1,* delims==" %%A in ("%ENV_FILE%") do (
+  set "k=%%A"
+  set "v=%%B"
+  if not "!k!"=="" if not "!k:~0,1!"=="#" (
+    if "!v:~0,1!"=="\"" set "v=!v:~1!"
+    if "!v:~-1!"=="\"" set "v=!v:~0,-1!"
+    set "!k!=!v!"
+  )
+)
+
+if "%TARGET_DB_PASSWORD%"=="" (
+  echo [ERROR] TARGET_DB_PASSWORD nao configurado em %ENV_FILE%
+  pause
+  exit /b 1
+)
 
 REM ============================================================================
 REM Preparação

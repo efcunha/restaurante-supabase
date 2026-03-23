@@ -11,29 +11,34 @@ REM ============================================================================
 REM Carregar configurações
 REM ============================================================================
 
-if not exist "config.local.sh" (
-  echo [ERROR] Arquivo config.local.sh nao encontrado!
-  echo Execute: copy config.example.sh config.local.sh
+set "ENV_FILE=.env.local"
+
+if not exist "%ENV_FILE%" (
+  echo [ERROR] Arquivo %ENV_FILE% nao encontrado!
+  echo Execute: copy .env.example .env.local
   pause
   exit /b 1
 )
 
-REM Ler configurações do arquivo (simplificado para Windows)
-REM NOTA: Para produção, considere usar um arquivo .bat de configuração
+for /f "usebackq tokens=1,* delims==" %%A in ("%ENV_FILE%") do (
+  set "k=%%A"
+  set "v=%%B"
+  if not "!k!"=="" if not "!k:~0,1!"=="#" (
+    if "!v:~0,1!"=="\"" set "v=!v:~1!"
+    if "!v:~-1!"=="\"" set "v=!v:~0,-1!"
+    set "!k!=!v!"
+  )
+)
 
 REM ============================================================================
-REM Configurações (EDITE AQUI ou use config.local.sh)
+REM Configurações
 REM ============================================================================
 
-set SOURCE_DB_HOST=aws-0-us-west-2.pooler.supabase.com
-set SOURCE_DB_PORT=5432
-set SOURCE_DB_USER=postgres.ykalocfhnetxenvmtlcn
-set SOURCE_DB_NAME=postgres
-set SOURCE_DB_PASSWORD=A13546289b@P@ssw0rd
-
-set BACKUP_SCHEMA=public
-set BACKUP_FORMAT=c
-set COMPRESSION_LEVEL=6
+if "%SOURCE_DB_PASSWORD%"=="" (
+  echo [ERROR] SOURCE_DB_PASSWORD nao configurado em %ENV_FILE%
+  pause
+  exit /b 1
+)
 
 REM ============================================================================
 REM Preparação
