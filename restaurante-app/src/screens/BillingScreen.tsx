@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Linking, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenScaffold } from '../layouts/ScreenScaffold';
 import { useAuth } from '../context/AuthContext';
@@ -286,6 +287,19 @@ export default function BillingScreen({ onClose }: BillingScreenProps) {
     }
   }, [companyId, handleRefresh]);
 
+  const handleCopyPixCode = useCallback(async () => {
+    if (!activePixInvoice?.pix_qr_code_text) {
+      return;
+    }
+
+    try {
+      await Clipboard.setStringAsync(activePixInvoice.pix_qr_code_text);
+      Alert.alert('Pix copiado', 'O código copia e cola foi enviado para a área de transferência.');
+    } catch (error) {
+      Alert.alert('Pix', error instanceof Error ? error.message : 'Falha ao copiar o código Pix.');
+    }
+  }, [activePixInvoice]);
+
   const statusLabel = statusLabels[subscription.status || 'trialing'] || 'Assinatura';
   const subtitle = user ? `Operador: ${user.nome || user.name || user.email || 'admin'}` : 'Assinatura e regularização';
 
@@ -505,6 +519,10 @@ export default function BillingScreen({ onClose }: BillingScreenProps) {
           ) : null}
           <Text style={styles.pixLabel}>Copia e cola</Text>
           <Text style={styles.pixCode}>{activePixInvoice.pix_qr_code_text}</Text>
+          <TouchableOpacity style={styles.pixCopyButton} onPress={handleCopyPixCode}>
+            <Ionicons name="copy-outline" size={16} color={colors.primary} />
+            <Text style={styles.pixCopyButtonText}>Copiar código Pix</Text>
+          </TouchableOpacity>
         </View>
       )}
 
@@ -808,6 +826,23 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8FAFC',
     borderRadius: 12,
     padding: 12,
+  },
+  pixCopyButton: {
+    marginTop: 12,
+    alignSelf: 'flex-start',
+    minHeight: 40,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.white,
+  },
+  pixCopyButtonText: {
+    color: colors.primary,
+    fontWeight: '700',
   },
   refreshLink: {
     flexDirection: 'row',
