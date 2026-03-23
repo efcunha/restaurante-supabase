@@ -91,7 +91,9 @@ export function normalizeRole(roleValue) {
 
   // Legacy aliases
   if (v === 'churrasqueiro') return Roles.COZINHEIRO;
+  if (v === 'cozinha' || v === 'kitchen') return Roles.COZINHEIRO;
   if (v === 'manager') return Roles.GERENTE;
+  if (v === 'waiter') return Roles.GARCOM;
   if (v === 'motoboy' || v === 'motorista') return Roles.ENTREGADOR;
 
   if (Object.values(Roles).includes(v)) return v;
