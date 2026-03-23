@@ -93,6 +93,7 @@ e2e/*
 *.tmp
 *.temp
 *.bak
+*.bundle
 *Zone.Identifier
 .cache/
 __pycache__/
