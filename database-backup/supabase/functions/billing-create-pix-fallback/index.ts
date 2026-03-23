@@ -54,7 +54,6 @@ function sanitizeProviderError(errorBody: unknown) {
   return {
     status: payload.status,
     error: payload.error,
-    message: payload.message,
     cause: Array.isArray(payload.cause)
       ? payload.cause.map((entry) => {
           if (!entry || typeof entry !== 'object') {
@@ -64,7 +63,6 @@ function sanitizeProviderError(errorBody: unknown) {
           const causeEntry = entry as Record<string, unknown>;
           return {
             code: causeEntry.code,
-            description: causeEntry.description,
           };
         }).filter(Boolean)
       : undefined,
