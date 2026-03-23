@@ -91,6 +91,7 @@ export const BillingProvider: React.FC<BillingProviderProps> = ({ children }) =>
   const [loadingBilling, setLoadingBilling] = useState<boolean>(true);
 
   const billingEnabled = isFeatureEnabled('billing_enabled');
+  const billingForceBlock = isFeatureEnabled('billing_forceBlock');
 
   const fetchSubscriptionState = useCallback(async (companyId: string) => {
     try {
@@ -128,16 +129,35 @@ export const BillingProvider: React.FC<BillingProviderProps> = ({ children }) =>
 
   const reloadSubscription = useCallback(async () => {
     if (!billingEnabled) return;
+    if (billingForceBlock) {
+      setSubscription({
+        ...DEFAULT_STATE,
+        status: 'suspended',
+        canOperate: false,
+      });
+      setLoadingBilling(false);
+      return;
+    }
     const companyId = user?.companyId;
     if (!companyId) return;
     setLoadingBilling(true);
     await fetchSubscriptionState(companyId);
     setLoadingBilling(false);
-  }, [user?.companyId, billingEnabled, fetchSubscriptionState]);
+  }, [user?.companyId, billingEnabled, billingForceBlock, fetchSubscriptionState]);
 
   useEffect(() => {
     if (!billingEnabled) {
       setSubscription({ ...DEFAULT_STATE, status: 'trialing', canOperate: true });
+      setLoadingBilling(false);
+      return;
+    }
+
+    if (billingForceBlock) {
+      setSubscription({
+        ...DEFAULT_STATE,
+        status: 'suspended',
+        canOperate: false,
+      });
       setLoadingBilling(false);
       return;
     }
@@ -150,7 +170,7 @@ export const BillingProvider: React.FC<BillingProviderProps> = ({ children }) =>
 
     setLoadingBilling(true);
     fetchSubscriptionState(companyId).finally(() => setLoadingBilling(false));
-  }, [user?.companyId, billingEnabled, fetchSubscriptionState]);
+  }, [user?.companyId, billingEnabled, billingForceBlock, fetchSubscriptionState]);
 
   return (
     <BillingContext.Provider value={{ subscription, loadingBilling, reloadSubscription }}>
