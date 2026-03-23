@@ -213,12 +213,13 @@ export interface CardInput {
  * CVV and PAN never touch our Edge Functions.
  */
 export async function tokenizeCardWithMp(publicKey: string, card: CardInput): Promise<string> {
-  const MP_TOKENIZE_URL = 'https://api.mercadopago.com/v1/card_tokens';
+  // MP card_tokens CORS policy disallows the Authorization header from browsers.
+  // Client-side tokenization must use the public_key query parameter instead.
+  const MP_TOKENIZE_URL = `https://api.mercadopago.com/v1/card_tokens?public_key=${encodeURIComponent(publicKey)}`;
 
   const response = await fetch(MP_TOKENIZE_URL, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${publicKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
