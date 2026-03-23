@@ -48,6 +48,8 @@ export interface FeatureFlags {
   billing_licenseGate: boolean;
   /** Show billing management screen (plan, invoices, Pix regularization) */
   billing_showBillingScreen: boolean;
+  /** QA toggle: force operational block locally without changing DB subscription state */
+  billing_forceBlock: boolean;
 }
 
 /**
@@ -88,6 +90,7 @@ const defaultFlags: FeatureFlags = {
   billing_enabled: false,
   billing_licenseGate: false,
   billing_showBillingScreen: false,
+  billing_forceBlock: false,
 };
 
 /**
@@ -195,6 +198,9 @@ function loadFeatureFlagsFromEnv(): Partial<FeatureFlags> {
   }
   if (process.env.EXPO_PUBLIC_FEATURE_BILLING_SCREEN !== undefined) {
     envFlags.billing_showBillingScreen = process.env.EXPO_PUBLIC_FEATURE_BILLING_SCREEN === 'true';
+  }
+  if (process.env.EXPO_PUBLIC_FEATURE_BILLING_FORCE_BLOCK !== undefined) {
+    envFlags.billing_forceBlock = process.env.EXPO_PUBLIC_FEATURE_BILLING_FORCE_BLOCK === 'true';
   }
 
   return envFlags;
