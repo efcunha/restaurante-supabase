@@ -82,6 +82,13 @@ run_check_sync() {
     )
 }
 
+cleanup_tmp_dir() {
+    local dir_path="${1:-}"
+    if [ -n "$dir_path" ] && [ -d "$dir_path" ]; then
+        rm -rf "$dir_path"
+    fi
+}
+
 sync_forward_migrations_if_needed() {
     echo ""
     echo "🔎 Verificando sincronização de migrations antes do deploy..."
@@ -127,12 +134,13 @@ sync_forward_migrations_if_needed() {
 
     local tmp_dir
     tmp_dir="$(mktemp -d)"
-    trap 'rm -rf "$tmp_dir"' EXIT
+    trap 'cleanup_tmp_dir "${tmp_dir:-}"' EXIT
 
     local local_versions_file="$tmp_dir/local_versions.txt"
     local remote_versions_file="$tmp_dir/remote_versions.txt"
     local only_local_file="$tmp_dir/only_local.txt"
     local forward_pending_file="$tmp_dir/forward_pending.txt"
+    local backfill_pending_file="$tmp_dir/backfill_pending.txt"
 
     find "$MIGRATIONS_DIR" -maxdepth 1 -type f -name '*.sql' \
         | sed -E 's#^.*/##' \
@@ -140,14 +148,20 @@ sync_forward_migrations_if_needed() {
         | sort -u > "$local_versions_file"
 
     export PGPASSWORD="$SOURCE_DB_PASSWORD"
-    "$psql_bin" \
+    if ! "$psql_bin" \
         -h "$SOURCE_DB_HOST" \
         -p "${SOURCE_DB_PORT:-5432}" \
         -U "$SOURCE_DB_USER" \
         -d "$SOURCE_DB_NAME" \
         -At \
         -c "SELECT version FROM supabase_migrations.schema_migrations ORDER BY version" \
-        > "$remote_versions_file"
+        > "$remote_versions_file"; then
+        unset PGPASSWORD
+        echo "⚠ Falha ao autenticar/consultar banco remoto para sync automático de migrations."
+        echo "⚠ Verifique SOURCE_DB_HOST/SOURCE_DB_USER/SOURCE_DB_PASSWORD em database-backup/config.local.sh."
+        echo "⚠ Deploy seguirá sem auto-sync. Para bypass explícito, use --skip-sync."
+        return 0
+    fi
     unset PGPASSWORD
 
     tr -d '\r' < "$remote_versions_file" > "$remote_versions_file.cleaned"
@@ -161,13 +175,14 @@ sync_forward_migrations_if_needed() {
 
     if [ -z "$remote_max" ]; then
         cp "$only_local_file" "$forward_pending_file"
+        : > "$backfill_pending_file"
     else
         awk -v max="$remote_max" '$1 > max {print $1}' "$only_local_file" > "$forward_pending_file"
+        awk -v max="$remote_max" '$1 <= max {print $1}' "$only_local_file" > "$backfill_pending_file"
     fi
 
-    if [ ! -s "$forward_pending_file" ]; then
-        echo "ℹ Não há migrations incrementais novas para aplicar automaticamente."
-        echo "ℹ Drift histórico detectado. Deploy continuará, mas recomenda-se reconciliação posterior."
+    if [ ! -s "$forward_pending_file" ] && [ ! -s "$backfill_pending_file" ]; then
+        echo "ℹ Não há migrations pendentes para sincronização automática."
         return 0
     fi
 
@@ -201,6 +216,34 @@ sync_forward_migrations_if_needed() {
 
         echo "✅ Migration registrada: $version"
     done < "$forward_pending_file"
+
+    if [ -s "$backfill_pending_file" ]; then
+        echo ""
+        echo "🧩 Registrando versões históricas ausentes no remoto (sem executar SQL)..."
+
+        while IFS= read -r version; do
+            migration_file="$(find "$MIGRATIONS_DIR" -maxdepth 1 -type f -name "${version}_*.sql" | head -n 1)"
+
+            if [ -z "$migration_file" ]; then
+                echo "❌ Arquivo da migration não encontrado para versão: $version"
+                exit 1
+            fi
+
+            echo "➡ Registrando histórico: $(basename "$migration_file")"
+
+            export PGPASSWORD="$SOURCE_DB_PASSWORD"
+            "$psql_bin" \
+                -h "$SOURCE_DB_HOST" \
+                -p "${SOURCE_DB_PORT:-5432}" \
+                -U "$SOURCE_DB_USER" \
+                -d "$SOURCE_DB_NAME" \
+                -v ON_ERROR_STOP=1 \
+                -c "INSERT INTO supabase_migrations.schema_migrations (version, name, created_by, statements) SELECT '$version', '$(basename "$migration_file" .sql)', 'deploy-railway.sh/backfill', ARRAY['-- historical backfill registration only; SQL execution intentionally skipped']::text[] WHERE NOT EXISTS (SELECT 1 FROM supabase_migrations.schema_migrations WHERE version = '$version');"
+            unset PGPASSWORD
+
+            echo "✅ Histórico registrado: $version"
+        done < "$backfill_pending_file"
+    fi
 
     echo ""
     echo "🔁 Revalidando sincronização após auto-sync..."
