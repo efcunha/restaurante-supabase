@@ -117,7 +117,7 @@ scripts/debug/
 # Database backups (NEVER commit these)
 database-backup/backups/
 database-backup/logs/
-database-backup/config.local.sh
+database-backup/.env.local
 database-backup/*.dump
 database-backup/*.sql
 database-backup/*.backup

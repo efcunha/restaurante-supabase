@@ -151,11 +151,11 @@ Quando você lista o conteúdo do backup, verá algo como:
 
 ## 🎯 Configuração Atual
 
-No arquivo `config.example.sh`:
+No arquivo `.env.example`:
 
 ```bash
 # Schema a ser incluído no backup (padrão: public)
-export BACKUP_SCHEMA="public"
+BACKUP_SCHEMA=public
 ```
 
 No comando `pg_dump` (backup.sh):
@@ -166,7 +166,7 @@ pg_dump \
   -p $SOURCE_DB_PORT \
   -U $SOURCE_DB_USER \
   -d $SOURCE_DB_NAME \
-  -n public \              # ← APENAS schema public
+   -n $BACKUP_SCHEMA \       # ← padrão atual: public
   -Fc \                    # Formato custom (comprimido)
   -Z 6 \                   # Compressão nível 6
   -f $BACKUP_FILE

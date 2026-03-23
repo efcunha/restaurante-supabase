@@ -16,7 +16,7 @@ Esta pasta contém scripts para manipular dados sensíveis do banco de dados:
 database-backup/
 ├── README.md              # Este arquivo
 ├── .gitignore            # Protege arquivos sensíveis
-├── config.example.sh     # Exemplo de configuração
+├── .env.example          # Exemplo de configuração local
 ├── backup.sh             # Script de backup (Linux/Mac)
 ├── backup.bat            # Script de backup (Windows)
 ├── restore.sh            # Script de restore (Linux/Mac)
@@ -30,12 +30,12 @@ database-backup/
 
 ### 1. Copiar arquivo de configuração
 ```bash
-cp config.example.sh config.local.sh
+cp .env.example .env.local
 ```
 
-### 2. Editar config.local.sh com suas credenciais
+### 2. Editar .env.local com suas credenciais
 ```bash
-nano config.local.sh  # ou use seu editor preferido
+nano .env.local  # ou use seu editor preferido
 ```
 
 ### 3. Dar permissão de execução (Linux/Mac)
@@ -210,7 +210,7 @@ dropdb test_restore
 ## 🆘 Troubleshooting
 
 ### Erro: "password authentication failed"
-- Verifique se a senha está correta em config.local.sh
+- Verifique se a senha está correta em `.env.local`
 - Certifique-se de que PGPASSWORD está exportado
 
 ### Erro: "connection refused"
