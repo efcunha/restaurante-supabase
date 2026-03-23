@@ -39,6 +39,74 @@ import {
 
 const env = buildEnv();
 
+interface LoginAttemptState {
+  count: number;
+  windowStart: number;
+}
+
+const loginAttempts = new Map<string, LoginAttemptState>();
+
+function getRequestIp(req: IncomingMessage): string {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (typeof forwarded === 'string' && forwarded.length > 0) {
+    return forwarded.split(',')[0].trim();
+  }
+
+  if (Array.isArray(forwarded) && forwarded.length > 0) {
+    return forwarded[0].split(',')[0].trim();
+  }
+
+  return req.socket.remoteAddress || 'unknown';
+}
+
+function isRateLimitBlocked(rateKey: string, nowMs: number): boolean {
+  const state = loginAttempts.get(rateKey);
+  if (!state) return false;
+
+  if (nowMs - state.windowStart >= env.AUTH_RATE_LIMIT_WINDOW_MS) {
+    loginAttempts.delete(rateKey);
+    return false;
+  }
+
+  return state.count >= env.AUTH_RATE_LIMIT_MAX_ATTEMPTS;
+}
+
+function recordLoginFailure(rateKey: string, nowMs: number): void {
+  const existing = loginAttempts.get(rateKey);
+
+  if (!existing || nowMs - existing.windowStart >= env.AUTH_RATE_LIMIT_WINDOW_MS) {
+    loginAttempts.set(rateKey, { count: 1, windowStart: nowMs });
+    return;
+  }
+
+  existing.count += 1;
+  loginAttempts.set(rateKey, existing);
+}
+
+function clearLoginFailures(rateKey: string): void {
+  loginAttempts.delete(rateKey);
+}
+
+function getRetryAfterSeconds(rateKey: string, nowMs: number): number {
+  const state = loginAttempts.get(rateKey);
+  if (!state) return 1;
+
+  const elapsed = nowMs - state.windowStart;
+  const remainingMs = Math.max(0, env.AUTH_RATE_LIMIT_WINDOW_MS - elapsed);
+  return Math.max(1, Math.ceil(remainingMs / 1000));
+}
+
+function applySecurityHeaders(res: import('node:http').ServerResponse): void {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'same-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+
+  if (env.OPS_ENV === 'production') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+}
+
 function renderBaseLayout(title: string, body: string): string {
   return `<!doctype html>
 <html lang="pt-BR">
@@ -1148,9 +1216,29 @@ function readBody(req: IncomingMessage): Promise<string> {
 
 /** Parseia application/x-www-form-urlencoded simples. */
 function parseFormBody(raw: string): Record<string, string> {
-  return Object.fromEntries(
-    raw.split('&').map((pair) => pair.split('=').map(decodeURIComponent)),
-  );
+  if (!raw || raw.trim() === '') {
+    return {};
+  }
+
+  const entries: Array<[string, string]> = [];
+
+  for (const pair of raw.split('&')) {
+    if (!pair) continue;
+
+    const eqIndex = pair.indexOf('=');
+    const keyPart = eqIndex === -1 ? pair : pair.slice(0, eqIndex);
+    const valuePart = eqIndex === -1 ? '' : pair.slice(eqIndex + 1);
+
+    try {
+      const key = decodeURIComponent(keyPart.replace(/\+/g, '%20'));
+      const value = decodeURIComponent(valuePart.replace(/\+/g, '%20'));
+      entries.push([key, value]);
+    } catch {
+      throw new Error('Form body invalido no corpo da requisicao.');
+    }
+  }
+
+  return Object.fromEntries(entries);
 }
 
 function parseJsonBody<T>(raw: string): T {
@@ -1241,6 +1329,7 @@ function respondInternalError(req: IncomingMessage, res: import('node:http').Ser
 function startServer() {
   const server = createServer(async (req, res) => {
     try {
+      applySecurityHeaders(res);
       const url = new URL(req.url || '/', 'http://localhost');
       const path = url.pathname;
 
@@ -1284,10 +1373,29 @@ function startServer() {
 
       // ---- POST /auth/login — autenticacao real via Supabase ----
       if (req.method === 'POST' && path === '/auth/login') {
+        let rateKey = '';
         try {
           const raw = await readBody(req);
           const body = parseFormBody(raw);
           const { email, password } = body;
+          const normalizedEmail = String(email || '').toLowerCase().trim();
+          const clientIp = getRequestIp(req);
+          const nowMs = Date.now();
+          rateKey = `${clientIp}:${normalizedEmail}`;
+
+          if (isRateLimitBlocked(rateKey, nowMs)) {
+            const retryAfter = getRetryAfterSeconds(rateKey, nowMs);
+            logWarn('auth.login_rate_limited', {
+              method: req.method,
+              path,
+              statusCode: 429,
+              reason: `retry_after=${retryAfter}`,
+            });
+            res.setHeader('Retry-After', String(retryAfter));
+            res.writeHead(429, { 'content-type': 'text/html; charset=utf-8' });
+            res.end(renderLoginHtml('Muitas tentativas de login. Aguarde alguns minutos e tente novamente.'));
+            return;
+          }
 
           if (!email || !password) {
             res.writeHead(400, { 'content-type': 'text/html; charset=utf-8' });
@@ -1296,14 +1404,16 @@ function startServer() {
           }
 
           const { token } = await signInWithPassword(
-            String(email).toLowerCase().trim(),
+            normalizedEmail,
             String(password),
           );
+
+          clearLoginFailures(rateKey);
 
           logInfo('auth.login_success', {
             method: req.method,
             path,
-            email: String(email).toLowerCase().trim(),
+            email: normalizedEmail,
             statusCode: 302,
           });
 
@@ -1311,6 +1421,10 @@ function startServer() {
           res.writeHead(302, { Location: '/dashboard' });
           res.end();
         } catch (err: unknown) {
+          if (rateKey) {
+            recordLoginFailure(rateKey, Date.now());
+          }
+
           const msg = err instanceof Error ? err.message : 'Erro ao fazer login';
           logWarn('auth.login_failed', {
             method: req.method,

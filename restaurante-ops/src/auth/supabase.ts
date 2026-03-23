@@ -5,8 +5,16 @@ import { logWarn } from '../lib/logger.js';
 const env = buildEnv();
 
 /** Unica empresa autorizada a acessar o restaurante-ops */
-const OPS_ALLOWED_COMPANY_ID = 'f85bfdc2-982a-4cf7-b176-bce68426f861';
+const DEFAULT_OPS_ALLOWED_COMPANY_ID = 'f85bfdc2-982a-4cf7-b176-bce68426f861';
+const OPS_ALLOWED_COMPANY_ID = env.OPS_ALLOWED_COMPANY_ID || DEFAULT_OPS_ALLOWED_COMPANY_ID;
 const OPS_ALLOWED_ROLES = new Set(['admin', 'gerente']);
+
+if (!env.OPS_ALLOWED_COMPANY_ID) {
+  logWarn('auth.ops_allowed_company_default', {
+    reason: 'OPS_ALLOWED_COMPANY_ID not configured',
+    detail: 'Using fallback tenant allowlist. Configure OPS_ALLOWED_COMPANY_ID in production.',
+  });
+}
 
 /**
  * Cliente Supabase com service-role para operacoes internas do ops.
