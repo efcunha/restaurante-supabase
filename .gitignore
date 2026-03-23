@@ -39,11 +39,13 @@ GoogleService-Info.plist
 
 # Environment keys
 .env
-.env.local
-.env.staging
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+!.env.example
+!.env.*.example
+
+# Sensitive local scripts (never commit)
+test-evo-api.js
+fetch-instances.js
 
 # IDE / tooling
 .idea/
@@ -91,6 +93,7 @@ e2e/*
 *.tmp
 *.temp
 *.bak
+*Zone.Identifier
 .cache/
 __pycache__/
 *.pyc
@@ -98,6 +101,9 @@ tmp/*
 recovered/*
 *output*.txt
 *results*.txt
+
+# Local automation/snapshots
+.playwright-mcp/
 
 # Snyk
 .snyk

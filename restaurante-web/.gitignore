@@ -36,11 +36,8 @@ firebase-adminsdk-*.json
 # Environment keys
 .env
 .env.*
-.env.test
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+!.env.example
+!.env.*.example
 serviceAccountKey.json
 
 # IDE/Editor
