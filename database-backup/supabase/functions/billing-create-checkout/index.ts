@@ -54,8 +54,7 @@ async function upsertMpCustomer(
   });
 
   if (!res.ok) {
-    const errBody = await res.text().catch(() => '');
-    console.error('[CHECKOUT] MP customer creation failed', { httpStatus: res.status, body: errBody.slice(0, 200) });
+    console.error('[CHECKOUT] MP customer creation failed', { httpStatus: res.status });
     throw new HttpError(502, 'Falha ao criar perfil de pagamento. Tente novamente.');
   }
 
@@ -95,8 +94,7 @@ async function storeCardInVault(
   }
 
   if (!res.ok) {
-    const errBody = await res.text().catch(() => '');
-    console.error('[CHECKOUT] MP card vault failed', { httpStatus: res.status, body: errBody.slice(0, 200) });
+    console.error('[CHECKOUT] MP card vault failed', { httpStatus: res.status });
     throw new HttpError(502, 'Falha ao salvar cartão. Tente novamente.');
   }
 
@@ -190,10 +188,10 @@ Deno.serve(async (req) => {
       throw new HttpError(409, 'Assinatura não encontrada para esta empresa.');
     }
 
-    // Load company info for MP customer (email + name)
+    // Load company display name for MP customer; e-mail comes from the authenticated profile.
     const { data: company, error: companyError } = await adminClient
       .from('companies')
-      .select('name, email')
+      .select('name')
       .eq('id', companyId)
       .single();
 
@@ -201,7 +199,7 @@ Deno.serve(async (req) => {
       throw new HttpError(500, 'Erro ao carregar dados da empresa.');
     }
 
-    const payerEmail = company.email || profile.email;
+    const payerEmail = profile.email;
 
     if (!payerEmail) {
       throw new HttpError(409, 'E-mail da empresa não cadastrado. Configure antes de salvar cartão.');
@@ -275,7 +273,6 @@ Deno.serve(async (req) => {
       payment_method_id: newMethod.id,
       card_brand: brand,
       // NOTE: last_four is safe for audit — it's a display field, not full PAN
-      card_last_four: lastFour,
     });
 
     return jsonResponse(201, {
