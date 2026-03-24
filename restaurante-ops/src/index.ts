@@ -27,6 +27,8 @@ import {
 import { checkAllServices, type ServiceStatus } from './modules/service-status.js';
 import { getSupabaseMetrics, type SupabaseMetrics } from './modules/supabase-metrics.js';
 import { logError, logInfo, logWarn } from './lib/logger.js';
+import { initRedis, checkRedisHealth } from './lib/redis.js';
+import { checkRateLimit, resetRateLimit } from './lib/rate-limiter.js';
 import {
   BillingOperationError,
   fetchBillingAudit,
@@ -39,13 +41,6 @@ import {
 
 const env = buildEnv();
 
-interface LoginAttemptState {
-  count: number;
-  windowStart: number;
-}
-
-const loginAttempts = new Map<string, LoginAttemptState>();
-
 function getRequestIp(req: IncomingMessage): string {
   const forwarded = req.headers['x-forwarded-for'];
   if (typeof forwarded === 'string' && forwarded.length > 0) {
@@ -57,43 +52,6 @@ function getRequestIp(req: IncomingMessage): string {
   }
 
   return req.socket.remoteAddress || 'unknown';
-}
-
-function isRateLimitBlocked(rateKey: string, nowMs: number): boolean {
-  const state = loginAttempts.get(rateKey);
-  if (!state) return false;
-
-  if (nowMs - state.windowStart >= env.AUTH_RATE_LIMIT_WINDOW_MS) {
-    loginAttempts.delete(rateKey);
-    return false;
-  }
-
-  return state.count >= env.AUTH_RATE_LIMIT_MAX_ATTEMPTS;
-}
-
-function recordLoginFailure(rateKey: string, nowMs: number): void {
-  const existing = loginAttempts.get(rateKey);
-
-  if (!existing || nowMs - existing.windowStart >= env.AUTH_RATE_LIMIT_WINDOW_MS) {
-    loginAttempts.set(rateKey, { count: 1, windowStart: nowMs });
-    return;
-  }
-
-  existing.count += 1;
-  loginAttempts.set(rateKey, existing);
-}
-
-function clearLoginFailures(rateKey: string): void {
-  loginAttempts.delete(rateKey);
-}
-
-function getRetryAfterSeconds(rateKey: string, nowMs: number): number {
-  const state = loginAttempts.get(rateKey);
-  if (!state) return 1;
-
-  const elapsed = nowMs - state.windowStart;
-  const remainingMs = Math.max(0, env.AUTH_RATE_LIMIT_WINDOW_MS - elapsed);
-  return Math.max(1, Math.ceil(remainingMs / 1000));
 }
 
 function applySecurityHeaders(res: import('node:http').ServerResponse): void {
@@ -1327,6 +1285,16 @@ function respondInternalError(req: IncomingMessage, res: import('node:http').Ser
 }
 
 function startServer() {
+  // Initialize Redis before starting server
+  initRedis(env.REDIS_URL)
+    .then(async () => {
+      const redisHealth = await checkRedisHealth();
+      logInfo('redis.initialized', { detail: `${redisHealth.status}: ${redisHealth.message}` });
+    })
+    .catch((err) => {
+      logWarn('redis.init_failed', { detail: err instanceof Error ? err.message : String(err) });
+    });
+
   const server = createServer(async (req, res) => {
     try {
       applySecurityHeaders(res);
@@ -1380,11 +1348,17 @@ function startServer() {
           const { email, password } = body;
           const normalizedEmail = String(email || '').toLowerCase().trim();
           const clientIp = getRequestIp(req);
-          const nowMs = Date.now();
-          rateKey = `${clientIp}:${normalizedEmail}`;
+          rateKey = `login:${clientIp}:${normalizedEmail}`;
 
-          if (isRateLimitBlocked(rateKey, nowMs)) {
-            const retryAfter = getRetryAfterSeconds(rateKey, nowMs);
+          // Check rate limit
+          const rateLimitResult = await checkRateLimit(
+            rateKey,
+            env.AUTH_RATE_LIMIT_MAX_ATTEMPTS,
+            env.AUTH_RATE_LIMIT_WINDOW_MS,
+          );
+
+          if (!rateLimitResult.allowed) {
+            const retryAfter = rateLimitResult.retryAfterSeconds || 1;
             logWarn('auth.login_rate_limited', {
               method: req.method,
               path,
@@ -1392,6 +1366,8 @@ function startServer() {
               reason: `retry_after=${retryAfter}`,
             });
             res.setHeader('Retry-After', String(retryAfter));
+            res.setHeader('X-RateLimit-Remaining', String(rateLimitResult.remaining));
+            res.setHeader('X-RateLimit-Reset', rateLimitResult.resetAt.toISOString());
             res.writeHead(429, { 'content-type': 'text/html; charset=utf-8' });
             res.end(renderLoginHtml('Muitas tentativas de login. Aguarde alguns minutos e tente novamente.'));
             return;
@@ -1408,7 +1384,8 @@ function startServer() {
             String(password),
           );
 
-          clearLoginFailures(rateKey);
+          // Reset rate limit on successful login
+          await resetRateLimit(rateKey);
 
           logInfo('auth.login_success', {
             method: req.method,
@@ -1421,10 +1398,6 @@ function startServer() {
           res.writeHead(302, { Location: '/dashboard' });
           res.end();
         } catch (err: unknown) {
-          if (rateKey) {
-            recordLoginFailure(rateKey, Date.now());
-          }
-
           const msg = err instanceof Error ? err.message : 'Erro ao fazer login';
           logWarn('auth.login_failed', {
             method: req.method,
@@ -1560,6 +1533,35 @@ function startServer() {
         const user = await requireAuth(req, res);
         if (!user) return;
 
+        // Apply rate limiting to billing operations
+        const billingRateKey = `billing:${user.id}`;
+        const billingRateLimit = await checkRateLimit(
+          billingRateKey,
+          env.RATE_LIMIT_BILLING_MAX_ATTEMPTS,
+          env.RATE_LIMIT_BILLING_WINDOW_MS,
+        );
+
+        if (!billingRateLimit.allowed) {
+          const retryAfter = billingRateLimit.retryAfterSeconds || 1;
+          logWarn('billing.operation_rate_limited', {
+            method: req.method,
+            path,
+            statusCode: 429,
+            reason: `billing_rate_limit_exceeded for ${user.id}`,
+          });
+          res.setHeader('Retry-After', String(retryAfter));
+          res.setHeader('X-RateLimit-Remaining', String(billingRateLimit.remaining));
+          res.setHeader('X-RateLimit-Reset', billingRateLimit.resetAt.toISOString());
+          res.writeHead(429, { 'content-type': 'application/json; charset=utf-8' });
+          res.end(
+            JSON.stringify({
+              error: 'Muitas operacoes de cobranca. Aguarde um minuto e tente novamente.',
+              retryAfter,
+            }),
+          );
+          return;
+        }
+
         const cardMatch = path.match(/^\/ops\/billing\/company\/([^/]+)\/regularize\/card$/);
         if (cardMatch) {
           const companyId = cardMatch[1];
@@ -1616,6 +1618,35 @@ function startServer() {
       if (req.method === 'POST' && path === '/ops/billing/reconcile') {
         const user = await requireAuth(req, res);
         if (!user) return;
+
+        // Apply rate limiting to billing operations
+        const billingRateKey = `billing:${user.id}`;
+        const billingRateLimit = await checkRateLimit(
+          billingRateKey,
+          env.RATE_LIMIT_BILLING_MAX_ATTEMPTS,
+          env.RATE_LIMIT_BILLING_WINDOW_MS,
+        );
+
+        if (!billingRateLimit.allowed) {
+          const retryAfter = billingRateLimit.retryAfterSeconds || 1;
+          logWarn('billing.operation_rate_limited', {
+            method: req.method,
+            path,
+            statusCode: 429,
+            reason: `billing_rate_limit_exceeded for ${user.id}`,
+          });
+          res.setHeader('Retry-After', String(retryAfter));
+          res.setHeader('X-RateLimit-Remaining', String(billingRateLimit.remaining));
+          res.setHeader('X-RateLimit-Reset', billingRateLimit.resetAt.toISOString());
+          res.writeHead(429, { 'content-type': 'application/json; charset=utf-8' });
+          res.end(
+            JSON.stringify({
+              error: 'Muitas operacoes de cobranca. Aguarde um minuto e tente novamente.',
+              retryAfter,
+            }),
+          );
+          return;
+        }
 
         const body = parseJsonBody<Partial<ReconcileInput>>(await readBody(req));
         const validationError = validateReconcileInput(body);
