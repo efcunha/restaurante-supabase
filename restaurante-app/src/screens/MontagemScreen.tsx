@@ -12,12 +12,75 @@ import CaixaService from '../services/CaixaService';
 import offlineQueueService from '../services/OfflineQueueService';
 import { persistMontagemToggleItems } from '../services/MontagemSyncService';
 import { colors } from '../theme/colors';
-// Verificar se pedido é urgente (mais de 15 minutos)
-const isUrgent = (timestamp: string) => {
-  const orderTime = new Date(timestamp);
-  const now = new Date();
-  const diffMinutes = (now.getTime() - orderTime.getTime()) / 1000 / 60;
+
+const formatClockLabel = (value?: string | null) => {
+  if (!value) return '--:--';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '--:--';
+
+  return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+};
+
+const getOrderTimeReference = (order: any) => (
+  order.displayTimeReference
+  || order.timeInMontagem
+  || order.time_in_montagem
+  || order.timestamp
+  || order.createdAt
+  || order.created_at
+  || null
+);
+
+const getElapsedTimeLabel = (reference: string | null | undefined, nowMs: number) => {
+  if (!reference) return '--:--';
+
+  const date = new Date(reference);
+  if (Number.isNaN(date.getTime())) return '--:--';
+
+  const diffMinutes = Math.max(0, Math.floor((nowMs - date.getTime()) / 60000));
+  if (diffMinutes < 60) return `${diffMinutes}m`;
+
+  const hours = Math.floor(diffMinutes / 60);
+  const minutes = diffMinutes % 60;
+  return `${hours}h${String(minutes).padStart(2, '0')}`;
+};
+
+const isUrgent = (reference: string | null | undefined, nowMs: number) => {
+  if (!reference) return false;
+
+  const date = new Date(reference);
+  if (Number.isNaN(date.getTime())) return false;
+
+  const diffMinutes = (nowMs - date.getTime()) / 1000 / 60;
   return diffMinutes > 15;
+};
+
+const appendUniqueText = (items: string[] | undefined, value?: string | null) => {
+  if (!value) return items || [];
+
+  const normalizedValue = String(value).trim();
+  if (!normalizedValue) return items || [];
+
+  const nextItems = items ? [...items] : [];
+  if (!nextItems.includes(normalizedValue)) {
+    nextItems.push(normalizedValue);
+  }
+
+  return nextItems;
+};
+
+const getEarlierTime = (left?: string | null, right?: string | null) => {
+  if (!left) return right || null;
+  if (!right) return left;
+
+  const leftDate = new Date(left);
+  const rightDate = new Date(right);
+
+  if (Number.isNaN(leftDate.getTime())) return right;
+  if (Number.isNaN(rightDate.getTime())) return left;
+
+  return leftDate.getTime() <= rightDate.getTime() ? left : right;
 };
 
 const getItemUiKey = (orderId: string, itemId: string, itemIndex: number) => (
@@ -33,10 +96,12 @@ interface OrderCardProps {
   order: any;
   onToggleItem: (orderId: string, itemIds: string | string[], status: string) => void;
   onMarkReady: (order: any) => void;
+  nowMs: number;
 }
 
-const OrderCard = memo(({ order, onToggleItem, onMarkReady }: OrderCardProps) => {
-  const urgent = isUrgent(order.timestamp);
+const OrderCard = memo(({ order, onToggleItem, onMarkReady, nowMs }: OrderCardProps) => {
+  const timeReference = getOrderTimeReference(order);
+  const urgent = isUrgent(timeReference, nowMs);
   const allItemsDone = order.itemsWithStatus && order.itemsWithStatus.length > 0
     ? order.itemsWithStatus.every((item: any) => item.checked === true)
     : true;
@@ -48,10 +113,13 @@ const OrderCard = memo(({ order, onToggleItem, onMarkReady }: OrderCardProps) =>
   const orderComandasLabel = order.isMesaGroup && order.allComandas && order.allComandas.length > 0
     ? `Comandas: ${order.allComandas.join(', ')}`
     : null;
-  const orderTimeLabel = order.horarioCriacao
-    || (order.timestamp
-      ? new Date(order.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-      : '--:--');
+  const orderTimeLabel = getElapsedTimeLabel(timeReference, nowMs);
+  const createdByLabel = order.allCreatorNames?.length
+    ? order.allCreatorNames.join(', ')
+    : (order.criadoPorNome || order.createdByName || '');
+  const receivedFromLabel = order.allMovedByNames?.length
+    ? order.allMovedByNames.join(', ')
+    : (order.movidoParaMontagemPorNome || '');
 
   const handleReadyPress = useCallback((e: any) => {
     e.stopPropagation();
@@ -72,12 +140,13 @@ const OrderCard = memo(({ order, onToggleItem, onMarkReady }: OrderCardProps) =>
         <Text style={styles.orderTime}>{orderTimeLabel}</Text>
       </View>
       <Text style={styles.orderClient}>{order.client}</Text>
-      {!!(order.criadoPorNome || order.createdByName) && (
-        <Text style={styles.garcomText}>👤 Garçom: {order.criadoPorNome || order.createdByName}</Text>
+      {!!createdByLabel && (
+        <Text style={styles.garcomText}>👤 Pedido por: {createdByLabel}</Text>
       )}
-      {!!order.movidoParaMontagemPorNome && (
-        <Text style={styles.movimentadoPorText}>🔧 Recebido de: {order.movidoParaMontagemPorNome}</Text>
+      {!!receivedFromLabel && (
+        <Text style={styles.movimentadoPorText}>🔧 Recebido de: {receivedFromLabel}</Text>
       )}
+      <Text style={styles.orderTimeHint}>Entrada: {formatClockLabel(timeReference)}</Text>
       {!!order.observations && (
         <Text style={styles.orderObs}>📝 Obs: {order.observations}</Text>
       )}
@@ -159,6 +228,7 @@ export default function MontagemScreen() {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const [allOrders, setAllOrders] = useState<any[]>([]);
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
   // ✅ Guarda IDs marcados como prontos nesta sessão para proteger contra race condition do Realtime
   const locallyMarkedReady = useRef<Set<string>>(new Set());
@@ -166,6 +236,14 @@ export default function MontagemScreen() {
   const fetchSeq = useRef(0);
   // ✅ Preserva toggle otimista por item durante a janela inicial de realtime/fetch concorrente
   const pendingItemOverrides = useRef<Map<string, { checked: boolean; timestamp: string; mutationId: string; queueOperationId?: string }>>(new Map());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNowMs(Date.now());
+    }, 30000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   // Initial fetch — busca APENAS pedidos em 'preparing' para evitar race conditions
   const fetchOrders = useCallback(async () => {
@@ -177,7 +255,12 @@ export default function MontagemScreen() {
 
     const { data, error } = await supabase
       .from('orders')
-      .select('*')
+      .select(`
+        *,
+        profiles:created_by (
+          full_name
+        )
+      `)
       .eq('company_id', user.companyId)
       .eq('date_key', today)
       .eq('status', 'preparing'); // ✅ CRITICAL FIX: filtrar no banco, não só no cliente
@@ -186,9 +269,38 @@ export default function MontagemScreen() {
     if (seq !== fetchSeq.current) return;
 
     if (!error && data) {
+      const comandaNumbers = Array.from(new Set(
+        data
+          .map(order => Number(order.comanda_number))
+          .filter(value => Number.isFinite(value) && value > 0)
+      ));
+
+      const comandaCreatorsMap = new Map<string, string>();
+      if (comandaNumbers.length > 0) {
+        const { data: comandasData, error: comandasError } = await supabase
+          .from('comandas')
+          .select('date_key, comanda_number, opened_by_name')
+          .eq('company_id', user.companyId)
+          .eq('date_key', today)
+          .in('comanda_number', comandaNumbers);
+
+        if (seq !== fetchSeq.current) return;
+
+        if (!comandasError && comandasData) {
+          comandasData.forEach(comanda => {
+            comandaCreatorsMap.set(`${comanda.date_key}:${comanda.comanda_number}`, comanda.opened_by_name || '');
+          });
+        }
+      }
+
       const mappedOrders = data
         .filter(order => !locallyMarkedReady.current.has(order.id))
-        .map(order => ({
+        .map(order => {
+          const timeReference = order.time_in_montagem || order.created_at || null;
+          const fallbackCreatorName = comandaCreatorsMap.get(`${order.date_key || today}:${order.comanda_number}`) || '';
+          const createdByName = order.profiles?.full_name || fallbackCreatorName || '';
+
+          return {
           ...order,
           // ✅ ID COMPOSTO: garante unicidade por pedido, evitando colisão em delivery
           itemsWithStatus: (order.items_with_status || []).map((item: any, itemIndex: number) => {
@@ -227,8 +339,19 @@ export default function MontagemScreen() {
           mesa: (order.table_number && order.table_number !== 0) ? order.table_number.toString() : '',
           comandaStatus: order.comanda_status,
           orderType: order.order_type || order.orderType || 'local',
-          client: order.client_name || order.client || 'Cliente'
-        }));
+          client: order.client_name || order.client || 'Cliente',
+          timestamp: timeReference,
+          createdAt: order.created_at,
+          horarioCriacao: formatClockLabel(timeReference),
+          timeInMontagem: order.time_in_montagem || null,
+          createdByName,
+          criadoPorNome: createdByName,
+          movidoParaMontagemPorNome: order.movido_para_montagem_por_nome || order.movidoParaMontagemPorNome || null,
+          displayTimeReference: timeReference,
+          allCreatorNames: createdByName ? [createdByName] : [],
+          allMovedByNames: order.movido_para_montagem_por_nome ? [order.movido_para_montagem_por_nome] : []
+        };
+        });
       
       // DEBUG: Log delivery orders to check comanda_number
       const deliveryOrders = mappedOrders.filter(o => o.orderType === 'delivery');
@@ -333,6 +456,11 @@ export default function MontagemScreen() {
         const existing = comandasMap.get(groupKey);
         existing.itemsWithStatus.push(...itemsParaMontar);
         existing.items.push(...itemsParaMontar.map((i: any) => i.name));
+        existing.allCreatorNames = appendUniqueText(existing.allCreatorNames, order.criadoPorNome || order.createdByName);
+        existing.allMovedByNames = appendUniqueText(existing.allMovedByNames, order.movidoParaMontagemPorNome);
+        existing.displayTimeReference = getEarlierTime(existing.displayTimeReference, getOrderTimeReference(order));
+        existing.timestamp = existing.displayTimeReference;
+        existing.horarioCriacao = formatClockLabel(existing.displayTimeReference);
         if (!existing.allOrderIds.includes(order.id)) {
           existing.allOrderIds.push(order.id);
         }
@@ -347,7 +475,10 @@ export default function MontagemScreen() {
           itemsWithStatus: [...itemsParaMontar],
           items: itemsParaMontar.map((i: any) => i.name),
           allOrderIds: [order.id],
-          allComandas: (order.comandaNumber && order.comandaNumber !== 0) ? [order.comandaNumber] : []
+          allComandas: (order.comandaNumber && order.comandaNumber !== 0) ? [order.comandaNumber] : [],
+          allCreatorNames: appendUniqueText([], order.criadoPorNome || order.createdByName),
+          allMovedByNames: appendUniqueText([], order.movidoParaMontagemPorNome),
+          displayTimeReference: getOrderTimeReference(order)
         });
       }
     });
@@ -642,8 +773,9 @@ export default function MontagemScreen() {
       order={item}
       onToggleItem={handleToggleItem}
       onMarkReady={handleMarkReady}
+      nowMs={nowMs}
     />
-  ), [handleToggleItem, handleMarkReady]);
+  ), [handleToggleItem, handleMarkReady, nowMs]);
 
   // KeyExtractor memoizado
   const keyExtractor = useCallback((item: any) => item.id, []);
@@ -812,7 +944,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: colors.text,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   garcomText: {
     fontSize: 13,
@@ -824,6 +956,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.warning,
     fontStyle: 'italic',
+    marginBottom: 6,
+  },
+  orderTimeHint: {
+    fontSize: 12,
+    color: colors.textSecondary,
     marginBottom: 8,
   },
   orderObs: {
