@@ -56,6 +56,22 @@ Centralizar gestao de clientes, contratos, metricas de uso e operacao financeira
 
 Arquivo de deploy: `railway.json`.
 
+## Validacao de Rate Limiting
+
+Para validar rapidamente respostas `429`/`503` nas rotas protegidas:
+
+```bash
+cd restaurante-ops
+chmod +x scripts/rate-limit-smoke.sh
+BASE_URL=http://localhost:4040 ATTEMPTS=10 ./scripts/rate-limit-smoke.sh
+```
+
+Checklist completo de rollout:
+- `docs/RATE_LIMIT_STRICT_ROLLOUT_CHECKLIST.md`
+
+Template para consolidar evidencias de auditoria:
+- `docs/RATE_LIMIT_EVIDENCE_TEMPLATE.md`
+
 ## Dependencias com o ecossistema atual
 
 - Supabase (mesmo backend multitenant)

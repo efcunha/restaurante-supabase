@@ -9,6 +9,11 @@ export interface RateLimitResult {
   remaining: number;
   resetAt: Date;
   retryAfterSeconds?: number;
+  unavailableReason?: string;
+}
+
+export interface CheckRateLimitOptions {
+  allowMemoryFallback?: boolean;
 }
 
 /**
@@ -29,8 +34,10 @@ export async function checkRateLimit(
   key: string,
   maxAttempts: number,
   windowMs: number,
+  options: CheckRateLimitOptions = {},
 ): Promise<RateLimitResult> {
   const now = Date.now();
+  const allowMemoryFallback = options.allowMemoryFallback ?? true;
 
   // Try Redis first if available
   if (isRedisReady()) {
@@ -58,7 +65,27 @@ export async function checkRateLimit(
     } catch (error) {
       // Fall through to memory fallback
       logWarn(`Redis rate limit check failed: ${error instanceof Error ? error.message : String(error)}`);
+
+      if (!allowMemoryFallback) {
+        return {
+          allowed: false,
+          remaining: 0,
+          resetAt: new Date(now),
+          retryAfterSeconds: 1,
+          unavailableReason: 'redis_error',
+        };
+      }
     }
+  }
+
+  if (!allowMemoryFallback) {
+    return {
+      allowed: false,
+      remaining: 0,
+      resetAt: new Date(now),
+      retryAfterSeconds: 1,
+      unavailableReason: 'redis_unavailable',
+    };
   }
 
   // Fallback to in-memory storage

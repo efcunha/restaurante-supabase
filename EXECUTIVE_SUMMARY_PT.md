@@ -79,13 +79,13 @@ Cenário 3: DoS attack derruba sistema
 
 | Dia | Task | Owner | Status |
 |-----|------|-------|--------|
-| **Seg** | Rotate DB password + remove hardcoded secrets | DevOps | 🔲 |
-| **Ter** | Fix RLS policy + test | DB Admin | 🔲 |
-| **Qua** | Rate limiting implementation | Backend | 🔲 |
-| **Qua** | CORS whitelist | Backend | 🔲 |
-| **Qui** | E2E secrets + env vars | QA | 🔲 |
-| **Sex** | Full stack testing | QA | 🔲 |
-| **Sex** | Deploy to production | DevOps | 🔲 |
+| **Seg** | Rotate DB password + remove hardcoded secrets | DevOps | ✅ |
+| **Ter** | Fix RLS policy + test | DB Admin | ✅ |
+| **Qua** | Rate limiting implementation | Backend | ✅ |
+| **Qua** | CORS whitelist | Backend | ✅ |
+| **Qui** | E2E secrets + env vars | QA | ✅ |
+| **Sex** | Full stack testing | QA | 🟡 |
+| **Sex** | Deploy to production | DevOps | 🟡 |
 
 ---
 
@@ -165,11 +165,11 @@ KPIs:
 
 ## PRÓXIMO PASSO
 
-**Hoje:** Aprovar plano + designar ownership
+**Hoje:** Concluir validação full stack pós-hardening (incluindo cenários 429/503 no `restaurante-ops`)
 
-**Segunda-feira:** Kick-off meeting + start remediação
+**Próximo deploy:** Publicar com `RATE_LIMIT_FALLBACK_ENABLED=false` e monitorar disponibilidade Redis
 
-**Próxima segunda:** Status check + deploy
+**Após deploy:** Rodar smoke checks dos fluxos críticos (Balcao, Mesa, Delivery, Montagem) + billing
 
 ---
 
