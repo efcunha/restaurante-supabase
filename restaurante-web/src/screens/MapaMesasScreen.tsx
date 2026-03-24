@@ -39,6 +39,44 @@ export default function MapaMesasScreen({ navigation, route }: any) {
     const [selectedTableNumber, setSelectedTableNumber] = useState<string | null>(null);
     const [modalVisible, setModalVisible] = useState(false);
 
+    const applyActiveOrdersFilter = React.useCallback(async (orders: Order[]) => {
+        if (!user?.companyId) {
+            setActiveOrders([]);
+            return;
+        }
+
+        const { data: canceledComandas } = await supabase
+            .from('comandas')
+            .select('comanda_number')
+            .eq('company_id', user.companyId)
+            .eq('date_key', getTodayKey())
+            .eq('status', 'cancelada');
+
+        const canceledComandaSet = new Set(
+            (canceledComandas || []).map((c: any) => String(c.comanda_number || ''))
+        );
+
+        const active = orders.filter(o =>
+            o.status !== 'cancelada' &&
+            o.status !== 'cancelled' &&
+            o.comandaStatus !== 'cancelada' &&
+            !canceledComandaSet.has(String(o.comandaNumber || '')) &&
+            !o.isPago
+        );
+
+        setActiveOrders(active);
+    }, [user?.companyId]);
+
+    const refreshActiveOrders = React.useCallback(async () => {
+        if (!user?.companyId) {
+            setActiveOrders([]);
+            return;
+        }
+
+        const orders = await SupabaseOrderService.fetchActiveOrders(user.companyId, getTodayKey());
+        await applyActiveOrdersFilter(orders);
+    }, [applyActiveOrdersFilter, user?.companyId]);
+
     // Load Environments and Tables
     const loadStructure = async () => {
         if (!user?.companyId) return;
@@ -88,8 +126,9 @@ export default function MapaMesasScreen({ navigation, route }: any) {
         React.useCallback(() => {
             if (user?.companyId) {
                 loadStructure();
+                refreshActiveOrders();
             }
-        }, [user?.companyId])
+        }, [refreshActiveOrders, user?.companyId])
     );
 
     // Real-time Orders Listener
@@ -97,40 +136,13 @@ export default function MapaMesasScreen({ navigation, route }: any) {
         if (!user?.companyId) return;
 
         const unsubscribe = SupabaseOrderService.listenToActiveOrders(user.companyId, async ({ orders }) => {
-            const { data: canceledComandas } = await supabase
-                .from('comandas')
-                .select('comanda_number')
-                .eq('company_id', user.companyId)
-                .eq('date_key', getTodayKey())
-                .eq('status', 'cancelada');
-
-            const canceledComandaSet = new Set(
-                (canceledComandas || []).map((c: any) => String(c.comanda_number || ''))
-            );
-
-            // Filter only truly active orders (not paid/delivered if we want strict "occupied")
-            // For now, let's consider anything not 'delivered' 'cancelled' or 'paid' as active on table
-            // Or maybe 'isPago' means table is free?
-            // Usually table is occupied until client leaves. 'isPago' might mean they just paid.
-            // Let's filter out 'cancelled' and maybe 'delivered' if delivered means "done".
-            // But in restaurants, delivered means food is on table. Table is still occupied.
-            // So mainly filter 'cancelled' and potentially 'closed' (if we had closed status).
-            // Assuming 'isPago' + 'delivered' might mean ready to leave.
-            // For simplicity: Show all non-cancelled, non-paid orders.
-            const active = orders.filter(o =>
-                o.status !== 'cancelada' &&
-                o.status !== 'cancelled' &&
-                o.comandaStatus !== 'cancelada' &&
-                !canceledComandaSet.has(String(o.comandaNumber || '')) &&
-                !o.isPago
-            );
-            setActiveOrders(active);
+            await applyActiveOrdersFilter(orders);
         });
 
         return () => {
             if (unsubscribe) unsubscribe();
         };
-    }, [user?.companyId]);
+    }, [applyActiveOrdersFilter, user?.companyId]);
 
     // Derived state: Tables with status
     const tablesWithStatus = useMemo(() => {
