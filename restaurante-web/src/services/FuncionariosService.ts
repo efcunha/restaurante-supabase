@@ -25,6 +25,38 @@ interface CreateFuncionarioData {
   phone?: string;
 }
 
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+
+function getProjectRefFromSupabaseUrl(url: string): string | null {
+  const match = url.match(/^https:\/\/([a-z0-9-]+)\.supabase\.co/i);
+  return match?.[1] ?? null;
+}
+
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+
+  const atobFn = typeof globalThis.atob === 'function' ? globalThis.atob : null;
+  if (!atobFn) return null;
+
+  try {
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
+    const json = atobFn(padded);
+    return JSON.parse(json) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function getProjectRefFromJwtIssuer(token: string): string | null {
+  const payload = decodeJwtPayload(token);
+  const iss = typeof payload?.iss === 'string' ? payload.iss : '';
+  const match = iss.match(/^https:\/\/([a-z0-9-]+)\.supabase\.co\/auth\/v1/i);
+  return match?.[1] ?? null;
+}
+
 function toErrorMessage(error: unknown, fallback: string): string {
   // FunctionsHttpError is an Error subclass with .message already populated
   if (error instanceof Error && error.message) {
@@ -44,39 +76,140 @@ function toErrorMessage(error: unknown, fallback: string): string {
 async function extractFunctionErrorMessage(error: unknown, fallback: string): Promise<string> {
   if (typeof error === 'object' && error !== null && 'context' in error) {
     const context = (error as { context?: unknown }).context;
-    if (context instanceof Response) {
-      // Use clone() so reading the body doesn't consume the original
-      const body = await context.clone().json().catch(() => null) as { error?: string } | null;
-      if (body?.error) {
-        return body.error;
+    // Duck-type check: avoids instanceof failures across polyfill/env boundaries (RN, Expo)
+    if (context != null && typeof context === 'object' && typeof (context as { text?: unknown }).text === 'function') {
+      try {
+        const text = await (context as { text(): Promise<string> }).text();
+        if (text?.trim()) {
+          try {
+            const parsed = JSON.parse(text) as { error?: string; message?: string; msg?: string } | null;
+            const extracted = parsed?.error || parsed?.message || parsed?.msg;
+            if (extracted) return extracted;
+          } catch {
+            return text.trim();
+          }
+        }
+      } catch {
+        // ignore read/parsing issues and continue with fallback logic
+      }
+
+      const status = (context as { status?: number }).status;
+      if (status === 401) {
+        return 'Sessão inválida ou expirada. Faça login novamente e tente outra vez.';
+      }
+      if (status === 403) {
+        return 'Sem permissão para cadastrar funcionários.';
       }
     }
   }
 
-  // FunctionsHttpError.message is already the parsed error string from the response body
-  return toErrorMessage(error, fallback);
+  const msg = toErrorMessage(error, '');
+  // Filter the generic Supabase internal message — it has no useful info for the user
+  if (msg && msg !== 'Edge Function returned a non-2xx status code') {
+    return msg;
+  }
+
+  return fallback;
+}
+
+async function getValidAccessToken(): Promise<string | null> {
+  const jwtLike = /^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+$/;
+
+  // Always try a refresh first to avoid stale/invalid cached sessions.
+  const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+  if (!refreshError && refreshed.session?.access_token) {
+    const token = refreshed.session.access_token.trim();
+    if (jwtLike.test(token)) {
+      return token;
+    }
+  }
+
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) return null;
+
+  const token = session.access_token.trim();
+  return jwtLike.test(token) ? token : null;
 }
 
 async function invokeCreateEmployeeFunction(dados: CreateFuncionarioData) {
-  const { data: sessionData } = await supabase.auth.getSession();
-  const accessToken = sessionData.session?.access_token;
+  const accessToken = await getValidAccessToken();
 
-  const { data, error } = await supabase.functions.invoke('create-company-employee', {
-    body: dados,
-    headers: accessToken
-      ? {
-          Authorization: `Bearer ${accessToken}`,
-        }
-      : undefined,
-  });
-
-  if (error) {
-    throw new Error(
-      await extractFunctionErrorMessage(error, 'Não foi possível criar o funcionário.')
-    );
+  if (!accessToken) {
+    throw new Error('Sessão inválida. Faça logout/login novamente para renovar o token.');
   }
 
-  return data as {
+  const expectedProjectRef = getProjectRefFromSupabaseUrl(SUPABASE_URL);
+  const tokenProjectRef = getProjectRefFromJwtIssuer(accessToken);
+  if (expectedProjectRef && tokenProjectRef && expectedProjectRef !== tokenProjectRef) {
+    throw new Error('JWT inválido para este ambiente. O token pertence a outro projeto Supabase. Faça logout/login e valide EXPO_PUBLIC_SUPABASE_URL/EXPO_PUBLIC_SUPABASE_ANON_KEY.');
+  }
+
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    throw new Error('Configuração Supabase ausente no ambiente (URL/ANON_KEY).');
+  }
+
+  // Validate token directly against Auth API before invoking the function.
+  const authCheck = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    method: 'GET',
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!authCheck.ok) {
+    const authBodyText = await authCheck.text().catch(() => '');
+    let authMessage = '';
+    if (authBodyText) {
+      try {
+        const parsed = JSON.parse(authBodyText) as { error?: string; message?: string; msg?: string };
+        authMessage = parsed.error || parsed.message || parsed.msg || '';
+      } catch {
+        authMessage = authBodyText;
+      }
+    }
+
+    throw new Error(authMessage || 'Sessão inválida para este projeto Supabase. Faça logout/login novamente.');
+  }
+
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/create-company-employee`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(dados),
+  });
+
+  const responseText = await response.text().catch(() => '');
+  let payload: any = null;
+  if (responseText) {
+    try {
+      payload = JSON.parse(responseText);
+    } catch {
+      payload = null;
+    }
+  }
+
+  if (!response.ok) {
+    const message =
+      payload?.error ||
+      payload?.message ||
+      payload?.msg ||
+      responseText ||
+      `Falha ao criar funcionário (HTTP ${response.status}).`;
+
+    console.error('[criarFuncionario] Edge Function HTTP error:', {
+      status: response.status,
+      message,
+      tokenProjectRef,
+      expectedProjectRef,
+    });
+    throw new Error(message);
+  }
+
+  return payload as {
     success: boolean;
     funcionarioId: string;
     funcionario: Funcionario;
