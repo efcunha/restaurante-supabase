@@ -155,7 +155,6 @@ Deno.serve(async (req) => {
         await auditBillingEvent('billing.pix.reused', {
           provider: 'mercadopago',
           invoice_id: pendingInvoice.id,
-          mp_payment_id: pendingInvoice.mp_payment_id,
         });
 
         return jsonResponse(200, {
@@ -260,7 +259,6 @@ Deno.serve(async (req) => {
       await auditBillingEvent('billing.pix.provider_payload_invalid', {
         provider: 'mercadopago',
         company_id: companyId,
-        mp_payment_id: mpPaymentId,
       });
       throw new HttpError(502, 'O provider não retornou os dados necessários para o Pix. Tente novamente.');
     }
@@ -285,7 +283,6 @@ Deno.serve(async (req) => {
       await auditBillingEvent('billing.pix.invoice_persist_failed', {
         provider: 'mercadopago',
         invoice_id: invoiceId,
-        mp_payment_id: mpPaymentId,
         error_code: insertInvoiceError.code,
       });
       throw new HttpError(500, 'Falha ao persistir a cobrança Pix.', insertInvoiceError.message);
@@ -294,7 +291,6 @@ Deno.serve(async (req) => {
     await auditBillingEvent('billing.pix.issued', {
       provider: 'mercadopago',
       invoice_id: invoiceId,
-      mp_payment_id: mpPaymentId,
       due_date: dueDate,
       amount_cents: subscription.plan_amount,
       has_notification_url: Boolean(notificationUrl),

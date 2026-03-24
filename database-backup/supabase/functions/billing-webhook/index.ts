@@ -56,14 +56,14 @@ async function verifySignature(
   if (!webhookSecret) {
     // Secret not configured: reject all webhooks to prevent unsigned requests from slipping through
     console.error('[WEBHOOK_SECURITY] MERCADOPAGO_WEBHOOK_SECRET not configured');
-    throw new HttpError(503, 'Webhook signature verification not available.');
+    throw new HttpError(503, 'Webhook temporarily unavailable.');
   }
 
   const xSignature = req.headers.get('x-signature');
   const xRequestId = req.headers.get('x-request-id') || '';
 
   if (!xSignature) {
-    throw new HttpError(401, 'Missing webhook signature.');
+    throw new HttpError(401, 'Unauthorized webhook request.');
   }
 
   // Parse "ts=<timestamp>,v1=<hmac>" from x-signature header
@@ -78,7 +78,7 @@ async function verifySignature(
   const { ts, v1 } = parts;
 
   if (!ts || !v1) {
-    throw new HttpError(401, 'Malformed webhook signature.');
+    throw new HttpError(401, 'Unauthorized webhook request.');
   }
 
   // Reject stale webhooks (replay attack prevention)
@@ -86,7 +86,7 @@ async function verifySignature(
   const nowSeconds = Math.floor(Date.now() / 1000);
 
   if (isNaN(tsSeconds) || Math.abs(nowSeconds - tsSeconds) > WEBHOOK_TIMESTAMP_TOLERANCE_SECONDS) {
-    throw new HttpError(401, 'Webhook timestamp outside acceptable window.');
+    throw new HttpError(401, 'Unauthorized webhook request.');
   }
 
   // Compute expected HMAC: HMAC-SHA256("id:<data.id>;request-id:<xRequestId>;ts:<ts>")
@@ -112,7 +112,7 @@ async function verifySignature(
 
   // Constant-time comparison to prevent timing attacks
   if (computedHmac.length !== v1.length) {
-    throw new HttpError(401, 'Invalid webhook signature.');
+    throw new HttpError(401, 'Unauthorized webhook request.');
   }
 
   let diff = 0;
@@ -121,7 +121,7 @@ async function verifySignature(
   }
 
   if (diff !== 0) {
-    throw new HttpError(401, 'Invalid webhook signature.');
+    throw new HttpError(401, 'Unauthorized webhook request.');
   }
 }
 
@@ -169,9 +169,8 @@ Deno.serve(async (req) => {
 
     if (!accessToken || !supabaseUrl || !serviceRoleKey) {
       console.error('[WEBHOOK] Missing required environment variables');
-      // Return 200 to prevent MP retries — this is a configuration issue
-      return new Response(JSON.stringify({ ok: true, error: 'config_incomplete' }), {
-        status: 200,
+      return new Response(JSON.stringify({ error: 'temporarily_unavailable' }), {
+        status: 503,
         headers: { 'Content-Type': 'application/json' },
       });
     }
@@ -190,8 +189,8 @@ Deno.serve(async (req) => {
     if (!mpRes.ok) {
       // Log minimal info — do not log full MP response (may contain sensitive data)
       console.error('[WEBHOOK] MP payment fetch failed', { httpStatus: mpRes.status, dataId: dataId.slice(0, 20) });
-      return new Response(JSON.stringify({ ok: true, error: 'mp_fetch_failed' }), {
-        status: 200,
+      return new Response(JSON.stringify({ error: 'temporarily_unavailable' }), {
+        status: 502,
         headers: { 'Content-Type': 'application/json' },
       });
     }
@@ -288,7 +287,7 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     if (error instanceof HttpError) {
-      // Security/auth errors: return proper HTTP status code to signal MP should not retry
+      // Security/auth errors return sanitized messages only.
       console.warn('[WEBHOOK_SECURITY]', { status: error.status, message: error.message });
       return new Response(JSON.stringify({ error: error.message }), {
         status: error.status,
@@ -296,10 +295,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Unexpected errors: return 200 to avoid infinite MP retries
+    // Unexpected errors should remain retryable until investigated.
     console.error('[WEBHOOK] Unexpected error', error instanceof Error ? error.message : 'unknown');
-    return new Response(JSON.stringify({ ok: true, error: 'unexpected' }), {
-      status: 200,
+    return new Response(JSON.stringify({ error: 'temporarily_unavailable' }), {
+      status: 500,
       headers: { 'Content-Type': 'application/json' },
     });
   }
