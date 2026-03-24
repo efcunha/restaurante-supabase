@@ -120,8 +120,8 @@ export default function CozinhaScreen() {
           ? OrderService.isKitchenCategory(item.category, item.name)
           : OrderService.extractBebidas([item.name]).length === 0;
 
-        // ✅ CORREÇÃO: Verificar AMBOS status e checked
-        const shouldShow = item.status !== 'pronto' && item.checked !== true && !seenItemIds.has(item.id) && isKitchenItem;
+        // ✅ CORREÇÃO: Verificar status (não pronto, não cancelado), checked e dedup
+        const shouldShow = item.status !== 'pronto' && item.status !== 'cancelled' && item.checked !== true && !seenItemIds.has(item.id) && isKitchenItem;
 
         if (shouldShow) {
           seenItemIds.add(item.id);

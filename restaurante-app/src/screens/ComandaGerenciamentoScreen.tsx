@@ -326,6 +326,45 @@ export default function ComandaGerenciamentoScreen(props: any) {
     }
   };
 
+  const handleCancelItem = async (pedido: any, itemId: string, itemName: string) => {
+    try {
+      if (!user?.companyId || !pedido) return;
+
+      const OrderService = require('../services/OrderService').default;
+      const ComandasService = require('../services/ComandasService').default;
+
+      // 1. Cancelar o item no pedido
+      const cancelledOrder = OrderService.cancelItem(pedido, itemId);
+
+      // 2. Atualizar o pedido no banco
+      const { error: updateError } = await supabase
+        .from('orders')
+        .update({ items_with_status: cancelledOrder.itemsWithStatus })
+        .eq('id', pedido.id);
+
+      if (updateError) throw updateError;
+
+      // 3. Recalcular totais da comanda
+      await ComandasService.recalcularTotalComandaAposItemCancelado(user.companyId, selectedComanda.comandaNumber);
+
+      // 4. Atualizar a seleção da comanda e recarregar
+      showToast(`${itemName} cancelado!`, 'success');
+      await carregarComandas(true);
+
+      // Reabrir a comanda selecionada
+      const updatedComanda = comandasAbertas.find((c: any) => 
+        c.comandaNumber === selectedComanda.comandaNumber
+      );
+      if (updatedComanda) {
+        setSelectedComanda(updatedComanda);
+      }
+
+    } catch (e: any) {
+      console.error('Erro ao cancelar item:', e);
+      showToast(e.message, 'error');
+    }
+  };
+
   const handleAddItems = async (items: string[]) => {
     const comanda = selectedComanda;
     if (!comanda) {
@@ -446,6 +485,7 @@ export default function ComandaGerenciamentoScreen(props: any) {
               returnScreen: 'ComandaGerenciamento' // Explicit origin to prevent stale params
             });
           }}
+          onCancelItem={handleCancelItem}
         />
 
         <AddItemsModal

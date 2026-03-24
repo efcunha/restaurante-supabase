@@ -29,6 +29,9 @@ export type AuditEventType =
   | 'order.deleted'
   | 'order.payment_changed'
   | 'order.status_changed'
+  | 'order.item_cancelled'
+  // Comandas
+  | 'comanda.cancelled'
   // Usuários
   | 'user.created'
   | 'user.updated'
@@ -48,18 +51,22 @@ export type AuditEventType =
   | 'permission.granted'
   // Sistema
   | 'system.error'
-  | 'system.warning';
+  | 'system.warning'
+  // Relatorios
+  | 'report.cancellation_generated';
 
 /**
  * Tipos de recursos auditáveis
  */
 export type ResourceType = 
   | 'order' 
+  | 'comanda'
   | 'user' 
   | 'product' 
   | 'company' 
   | 'payment'
-  | 'settings';
+  | 'settings'
+  | 'report';
 
 /**
  * Severidade do evento
@@ -460,6 +467,7 @@ export class AuditService {
     // Eventos críticos
     if (
       eventType === 'order.payment_changed' ||
+      eventType === 'comanda.cancelled' ||
       eventType === 'user.role_changed' ||
       eventType === 'permission.denied' ||
       eventType === 'auth.failed_login' ||
@@ -480,6 +488,8 @@ export class AuditService {
     // Eventos de média severidade
     if (
       eventType.includes('updated') ||
+      eventType === 'order.item_cancelled' ||
+      eventType === 'report.cancellation_generated' ||
       eventType.includes('changed')
     ) {
       return 'medium';

@@ -341,6 +341,54 @@ class OrderService {
   }
 
   /**
+   * Cancela um item individual dentro do pedido
+   * Regra: só pode cancelar se o item ainda não foi entregue (delivered !== true)
+   * Recalcula o total do pedido após cancelamento
+   */
+  cancelItem(order: Order, itemId: string): Order {
+    if (!order.itemsWithStatus) {
+      throw new Error('Pedido não possui itemsWithStatus');
+    }
+
+    const itemToCancel = order.itemsWithStatus.find(item => item.id === itemId);
+    if (!itemToCancel) {
+      throw new Error(`Item ${itemId} não encontrado no pedido`);
+    }
+
+    // 🔒 Bloquear cancelamento de item já entregue
+    if (itemToCancel.delivered === true) {
+      throw new Error('Não é possível cancelar item já entregue');
+    }
+
+    const now = new Date().toISOString();
+    const updatedItems = order.itemsWithStatus.map(item =>
+      item.id === itemId
+        ? {
+          ...item,
+          status: 'cancelled',
+          timestamp: now
+        }
+        : item
+    );
+
+    // Recalcular total do pedido excluindo itens cancelados
+    const activeItems = updatedItems.filter(item => item.status !== 'cancelled');
+    let newTotal = 0;
+    if (activeItems.length > 0) {
+      newTotal = activeItems.reduce((sum, item) => {
+        const itemPrice = (item.unitPrice || 0) * (item.quantity || 1);
+        return sum + itemPrice;
+      }, 0);
+    }
+
+    return {
+      ...order,
+      itemsWithStatus: updatedItems,
+      totalPrice: newTotal
+    };
+  }
+
+  /**
    * Verifica se todos os itens do pedido estão prontos
    */
   allItemsReady(order: Order): boolean {

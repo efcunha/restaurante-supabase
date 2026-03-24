@@ -311,6 +311,35 @@ class ComandasService {
       updated_at: new Date().toISOString()
     }).eq('id', comanda.id);
   }
+
+  /**
+   * Recalcula o total consumido da comanda após cancelamento de item e sincroniza.
+   * Busca todos os pedidos ativos (não cancelados) e soma seus valores.
+   */
+  async recalcularTotalComandaAposItemCancelado(companyId: string, comandaNumber: string | number) {
+    if (!companyId) return;
+    const dateK = todayKey();
+
+    // Buscar todos os pedidos da comanda (excluindo cancelados no nível do pedido)
+    const { data: orders, error } = await supabase
+      .from('orders')
+      .select('total_amount')
+      .eq('company_id', companyId)
+      .eq('comanda_number', String(comandaNumber))
+      .eq('date_key', dateK)
+      .neq('status', 'cancelled');
+
+    if (error) {
+      console.error('[ComandasService] Erro ao buscar pedidos para recalcular:', error);
+      return;
+    }
+
+    // Somar total dos pedidos ativos
+    const totalReal = orders?.reduce((sum, order) => sum + Number(order.total_amount || 0), 0) || 0;
+
+    // Sincronizar comanda com novo total
+    await this.sincronizarTotalComanda(companyId, comandaNumber, totalReal);
+  }
 }
 
 export default new ComandasService();

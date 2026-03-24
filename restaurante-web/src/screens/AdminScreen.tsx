@@ -37,6 +37,7 @@ import FinancialDashboardScreen from './FinancialDashboardScreen';
 // @ts-ignore
 import OperationalSettingsScreen from './OperationalSettingsScreen';
 import BillingScreen from './BillingScreen';
+import CancellationReportScreen from './CancellationReportScreen';
 import BiometricSetupModal from '../components/BiometricSetupModal';
 import MFASetupModal from '../components/MFASetupModal';
 import AdminHeader from '../components/AdminHeader';
@@ -99,6 +100,7 @@ export default function AdminScreen() {
   const [showConfiguracaoMesas, setShowConfiguracaoMesas] = useState(false);
   const [showOperationalSettings, setShowOperationalSettings] = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);
+  const [showCancellationReport, setShowCancellationReport] = useState(false);
   const [showBillingScreen, setShowBillingScreen] = useState(false);
   const [showBiometricSetup, setShowBiometricSetup] = useState(false);
   const [showMFASetup, setShowMFASetup] = useState(false);
@@ -369,7 +371,6 @@ export default function AdminScreen() {
 
   const reports = [
     { name: 'Gerenciar Funcionários', icon: '👥', action: () => setShowFuncionarios(true) },
-    { name: 'Caixa', icon: '💰', action: () => setShowCaixaMenu(true) },
     { name: 'Estatísticas dos Garçons', icon: '📊', action: () => setShowComandasVisualizacao(true) },
     { name: 'Gerenciar Entregas/Despacho', icon: '🛵', action: () => navigation.navigate('Entregas') },
     { name: 'Ocorrencias de Entrega', icon: '⚠️', action: () => setShowDeliveryOcorrencias(true) },
@@ -387,7 +388,9 @@ export default function AdminScreen() {
 
   const financialReports = [
     ...(billingScreenEnabled ? [{ name: 'Assinatura SaaS', icon: '💳', action: () => setShowBillingScreen(true) }] : []),
+    { name: 'Caixa', icon: '💰', action: () => setShowCaixaMenu(true) },
     { name: 'Dashboard Financeiro', icon: '📊', action: () => setShowDashboard(true) },
+    { name: 'Relatório de Cancelamentos', icon: '🧾', action: () => setShowCancellationReport(true) },
     { name: 'Histórico de Caixas', icon: '📜', action: () => setShowCaixaHistorico(true) },
     { name: 'Config. Financeira', icon: '⚙️', action: () => setShowFinancialConfig(true) },
   ];
@@ -567,6 +570,11 @@ export default function AdminScreen() {
       {/* Modal Dashboard Financeiro */}
       <AdminBareModal visible={showDashboard} onClose={() => setShowDashboard(false)}>
         <FinancialDashboardScreen onClose={() => setShowDashboard(false)} />
+      </AdminBareModal>
+
+      {/* Modal Relatório de Cancelamentos */}
+      <AdminBareModal visible={showCancellationReport} onClose={() => setShowCancellationReport(false)}>
+        <CancellationReportScreen onClose={() => setShowCancellationReport(false)} />
       </AdminBareModal>
 
       <StatusBar style="light" />
