@@ -1,13 +1,13 @@
-import { Redis } from '@upstash/redis';
-import { logInfo, logWarn, logError } from './logger.js';
+import { createClient, type RedisClientType } from 'redis';
+import { logInfo, logWarn } from './logger.js';
 
-let redisInstance: Redis | null = null;
+let redisInstance: RedisClientType | null = null;
 let redisReady = false;
 let redisError: Error | null = null;
 
 /**
- * Initialize Redis client from REDIS_URL env var
- * Uses Upstash Redis client for distributed rate limiting
+ * Initialize Redis client from REDIS_URL env var.
+ * Compatible with Railway Redis URLs (redis://user:password@host:port).
  */
 export async function initRedis(redisUrl?: string): Promise<void> {
   const url = redisUrl || process.env.REDIS_URL;
@@ -19,32 +19,31 @@ export async function initRedis(redisUrl?: string): Promise<void> {
   }
 
   try {
-    // Upstash Redis client initialization
-    // REDIS_URL format: redis://:token@host:port
-    // Extract token from URL for Upstash
-    const urlObj = new URL(url);
-    const token = urlObj.password || '';
-
-    redisInstance = new Redis({
-      url,
-      token: token || undefined,
+    redisInstance = createClient({ url });
+    redisInstance.on('error', (err: Error) => {
+      redisReady = false;
+      redisError = err;
+      logWarn('redis.runtime_error', { detail: err.message });
     });
+
+    await redisInstance.connect();
 
     // Test connection
     await redisInstance.ping();
     redisReady = true;
-    logInfo('Redis connected successfully');
+    redisError = null;
+    logInfo('redis.connected');
   } catch (error) {
     redisReady = false;
     redisError = error instanceof Error ? error : new Error(String(error));
-    logWarn(`Redis connection failed: ${redisError.message}`);
+    logWarn('redis.connection_failed', { detail: redisError.message });
   }
 }
 
 /**
  * Get Redis client instance
  */
-export function getRedisClient(): Redis | null {
+export function getRedisClient(): RedisClientType | null {
   return redisInstance;
 }
 
