@@ -4,26 +4,65 @@ declare const Deno: {
   };
 };
 
-function resolveAllowOrigin(): string {
+const DEFAULT_ALLOWED_HEADERS = 'authorization, x-client-info, apikey, content-type';
+const DEFAULT_ALLOWED_METHODS = 'POST, OPTIONS';
+
+function normalizeOrigin(value: string | null | undefined): string | null {
+  const trimmed = (value || '').trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  try {
+    return new URL(trimmed).origin;
+  } catch {
+    return trimmed.replace(/\/+$/, '') || null;
+  }
+}
+
+function resolveAllowedOrigins(): string[] {
   const rawOrigins = Deno.env.get('CORS_ALLOWED_ORIGINS') || '';
   const origins = rawOrigins
     .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean);
+    .map((item) => normalizeOrigin(item))
+    .filter((item): item is string => Boolean(item));
 
-  if (origins.length === 1) {
-    return origins[0];
-  }
-
-  if (origins.length > 1) {
-    console.warn('[CORS] Multiple origins configured. Using wildcard fallback until per-request origin handling is enabled.');
-  }
-
-  return '*';
+  return [...new Set(origins)];
 }
 
-export const corsHeaders = {
-  'Access-Control-Allow-Origin': resolveAllowOrigin(),
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
+function resolveRequestOrigin(req: Request): string | null {
+  return normalizeOrigin(req.headers.get('Origin'));
+}
+
+export function getCorsHeaders(req: Request): Record<string, string> {
+  const requestOrigin = resolveRequestOrigin(req);
+  const allowedOrigins = resolveAllowedOrigins();
+  const headers: Record<string, string> = {
+    'Access-Control-Allow-Headers': DEFAULT_ALLOWED_HEADERS,
+    'Access-Control-Allow-Methods': DEFAULT_ALLOWED_METHODS,
+  };
+
+  if (!requestOrigin) {
+    return headers;
+  }
+
+  headers.Vary = 'Origin';
+
+  if (allowedOrigins.includes(requestOrigin)) {
+    headers['Access-Control-Allow-Origin'] = requestOrigin;
+    return headers;
+  }
+
+  if (allowedOrigins.length === 0) {
+    console.warn('[CORS] Request blocked because CORS_ALLOWED_ORIGINS is not configured.', { origin: requestOrigin });
+  } else {
+    console.warn('[CORS] Request blocked for origin outside whitelist.', { origin: requestOrigin });
+  }
+
+  return headers;
+}
+
+export function buildCorsPreflightResponse(req: Request): Response {
+  return new Response('ok', { headers: getCorsHeaders(req) });
+}

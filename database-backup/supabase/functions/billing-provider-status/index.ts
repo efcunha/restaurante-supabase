@@ -1,9 +1,9 @@
-import { corsHeaders } from '../_shared/cors.ts';
+import { buildCorsPreflightResponse } from '../_shared/cors.ts';
 import { HttpError, jsonResponse, requireSecureAdmin, validateCompanyContext } from '../_shared/auth-secure.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return buildCorsPreflightResponse(req);
   }
 
   try {
@@ -73,14 +73,14 @@ Deno.serve(async (req) => {
             plan_amount: subscription.plan_amount,
           }
         : null,
-    });
+    }, req);
   } catch (error) {
     if (error instanceof HttpError) {
-      return jsonResponse(error.status, { error: error.message });
+      return jsonResponse(error.status, { error: error.message }, req);
     }
 
     return jsonResponse(500, {
       error: 'Unexpected billing provider status error.',
-    });
+    }, req);
   }
 });

@@ -1,5 +1,5 @@
 // @ts-ignore Supabase Edge resolves npm specifiers at runtime.
-import { corsHeaders } from '../_shared/cors.ts';
+import { buildCorsPreflightResponse } from '../_shared/cors.ts';
 import { HttpError, jsonResponse, requireSecureAdmin, validateCompanyContext } from '../_shared/auth-secure.ts';
 
 /**
@@ -115,7 +115,7 @@ async function storeCardInVault(
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return buildCorsPreflightResponse(req);
   }
 
   try {
@@ -148,14 +148,14 @@ Deno.serve(async (req) => {
           status: 'provider_not_ready',
           provider: 'mercadopago',
           message: 'Mercado Pago ainda não está totalmente configurado neste ambiente.',
-        });
+        }, req);
       }
 
       return jsonResponse(200, {
         status: 'ready_for_tokenization',
         provider: 'mercadopago',
         publicKey,
-      });
+      }, req);
     }
 
     // ── MODE B: persist tokenized card to MP Vault and payment_methods ────────
@@ -284,15 +284,15 @@ Deno.serve(async (req) => {
         expiryMonth,
         expiryYear,
       },
-    });
+    }, req);
   } catch (error) {
     if (error instanceof HttpError) {
-      return jsonResponse(error.status, { error: error.message });
+      return jsonResponse(error.status, { error: error.message }, req);
     }
 
     return jsonResponse(500, {
       error: 'Unexpected checkout error.',
-    });
+    }, req);
   }
 });
 

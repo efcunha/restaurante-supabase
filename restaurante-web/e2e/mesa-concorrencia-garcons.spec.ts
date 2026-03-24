@@ -1,23 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { SUPABASE_ANON_KEY, SUPABASE_URL, getRequiredEnv } from './supabase-env';
 
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 const TODAY_KEY = new Date().toISOString().slice(0, 10);
 const MESA_TESTE = '10';
 
-function getRequiredEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Variavel de ambiente obrigatoria ausente: ${name}`);
-  }
-  return value;
-}
-
 function buildHeaders(accessToken: string) {
-  if (!SUPABASE_ANON_KEY) {
-    throw new Error('Variavel EXPO_PUBLIC_SUPABASE_ANON_KEY ausente.');
-  }
-
   return {
     apikey: SUPABASE_ANON_KEY,
     Authorization: `Bearer ${accessToken}`,

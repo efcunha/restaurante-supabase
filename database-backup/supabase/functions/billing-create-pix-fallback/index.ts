@@ -1,4 +1,4 @@
-import { corsHeaders } from '../_shared/cors.ts';
+import { buildCorsPreflightResponse } from '../_shared/cors.ts';
 import { HttpError, jsonResponse, requireSecureAdmin, validateCompanyContext } from '../_shared/auth-secure.ts';
 
 const MP_API_BASE_URL = Deno.env.get('MERCADOPAGO_API_BASE_URL') || 'https://api.mercadopago.com';
@@ -71,7 +71,7 @@ function sanitizeProviderError(errorBody: unknown) {
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return buildCorsPreflightResponse(req);
   }
 
   try {
@@ -102,7 +102,7 @@ Deno.serve(async (req) => {
         provider: 'mercadopago',
         message: 'O fallback por Pix ainda depende da configuração completa do provider neste ambiente.',
         nextStep: 'Configurar MERCADOPAGO_ACCESS_TOKEN para liberar a emissão segura da cobrança Pix.',
-      });
+      }, req);
     }
 
     const [subscriptionResult, companyResult, pendingInvoiceResult] = await Promise.all([
@@ -169,7 +169,7 @@ Deno.serve(async (req) => {
           pixQrCodeText: pendingInvoice.pix_qr_code_text,
           pixExpiresAt: pendingInvoice.pix_expires_at,
           mpPaymentId: pendingInvoice.mp_payment_id,
-        });
+        }, req);
       }
 
       await adminClient
@@ -312,14 +312,14 @@ Deno.serve(async (req) => {
       pixQrCodeText,
       pixExpiresAt,
       mpPaymentId,
-    });
+    }, req);
   } catch (error) {
     if (error instanceof HttpError) {
-      return jsonResponse(error.status, { error: error.message });
+      return jsonResponse(error.status, { error: error.message }, req);
     }
 
     return jsonResponse(500, {
       error: 'Unexpected Pix fallback bootstrap error.',
-    });
+    }, req);
   }
 });
