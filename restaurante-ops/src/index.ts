@@ -1355,7 +1355,20 @@ function startServer() {
             rateKey,
             env.AUTH_RATE_LIMIT_MAX_ATTEMPTS,
             env.AUTH_RATE_LIMIT_WINDOW_MS,
+            { allowMemoryFallback: env.RATE_LIMIT_FALLBACK_ENABLED },
           );
+
+          if (rateLimitResult.unavailableReason) {
+            logError('auth.rate_limit_unavailable', {
+              method: req.method,
+              path,
+              statusCode: 503,
+              reason: rateLimitResult.unavailableReason,
+            });
+            res.writeHead(503, { 'content-type': 'text/html; charset=utf-8' });
+            res.end(renderLoginHtml('Servico temporariamente indisponivel. Tente novamente em instantes.'));
+            return;
+          }
 
           if (!rateLimitResult.allowed) {
             const retryAfter = rateLimitResult.retryAfterSeconds || 1;
@@ -1539,7 +1552,24 @@ function startServer() {
           billingRateKey,
           env.RATE_LIMIT_BILLING_MAX_ATTEMPTS,
           env.RATE_LIMIT_BILLING_WINDOW_MS,
+          { allowMemoryFallback: env.RATE_LIMIT_FALLBACK_ENABLED },
         );
+
+        if (billingRateLimit.unavailableReason) {
+          logError('billing.rate_limit_unavailable', {
+            method: req.method,
+            path,
+            statusCode: 503,
+            reason: billingRateLimit.unavailableReason,
+          });
+          res.writeHead(503, { 'content-type': 'application/json; charset=utf-8' });
+          res.end(
+            JSON.stringify({
+              error: 'Servico temporariamente indisponivel. Tente novamente em instantes.',
+            }),
+          );
+          return;
+        }
 
         if (!billingRateLimit.allowed) {
           const retryAfter = billingRateLimit.retryAfterSeconds || 1;
@@ -1625,7 +1655,24 @@ function startServer() {
           billingRateKey,
           env.RATE_LIMIT_BILLING_MAX_ATTEMPTS,
           env.RATE_LIMIT_BILLING_WINDOW_MS,
+          { allowMemoryFallback: env.RATE_LIMIT_FALLBACK_ENABLED },
         );
+
+        if (billingRateLimit.unavailableReason) {
+          logError('billing.rate_limit_unavailable', {
+            method: req.method,
+            path,
+            statusCode: 503,
+            reason: billingRateLimit.unavailableReason,
+          });
+          res.writeHead(503, { 'content-type': 'application/json; charset=utf-8' });
+          res.end(
+            JSON.stringify({
+              error: 'Servico temporariamente indisponivel. Tente novamente em instantes.',
+            }),
+          );
+          return;
+        }
 
         if (!billingRateLimit.allowed) {
           const retryAfter = billingRateLimit.retryAfterSeconds || 1;

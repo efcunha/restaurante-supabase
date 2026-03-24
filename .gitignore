@@ -99,6 +99,7 @@ e2e/*
 __pycache__/
 *.pyc
 tmp/*
+restaurante-ops/tmp/*
 recovered/*
 *output*.txt
 *results*.txt
