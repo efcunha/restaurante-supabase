@@ -29,7 +29,7 @@
 - **Tempo:** 1 hora + tests
 - **Responsável:** Database Admin
 
-### 3. 🔴 Falta de Rate Limiting no Servidor
+### 3. ✅ Falta de Rate Limiting no Servidor
 - **Consequência:** Vulnerável a DoS, ataque de força bruta em login
 - **Solução:** Implementar rate limiting com Redis (Upstash)
 - **Tempo:** 6 horas
