@@ -2,9 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { test, expect } from '@playwright/test';
+import { SUPABASE_ANON_KEY, SUPABASE_URL } from './supabase-env';
 
-const SUPABASE_URL = 'https://ykalocfhnetxenvmtlcn.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_sUAhOXyPkUhEb4tpbVU8wQ_71qyFI3x';
 const TODAY_KEY = new Date().toISOString().slice(0, 10);
 const LOCK_DIR = path.join(os.tmpdir(), 'playwright-mesa-locks');
 const MESA_POOL = ['6', '7', '8', '9', '10'];

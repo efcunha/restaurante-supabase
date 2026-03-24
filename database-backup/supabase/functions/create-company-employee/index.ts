@@ -7,7 +7,7 @@ declare const Deno: {
 
 // @ts-ignore Supabase Edge resolves npm specifiers at runtime.
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { corsHeaders } from '../_shared/cors.ts';
+import { buildCorsPreflightResponse } from '../_shared/cors.ts';
 import { HttpError, jsonResponse } from '../_shared/auth-secure.ts';
 
 // This function is deployed with --no-verify-jwt and performs JWT validation
@@ -168,11 +168,11 @@ function mapAdminCreateUserError(error: { message?: string } | null): HttpError 
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return buildCorsPreflightResponse(req);
   }
 
   if (req.method !== 'POST') {
-    return jsonResponse(405, { success: false, error: 'Método não permitido.' });
+    return jsonResponse(405, { success: false, error: 'Método não permitido.' }, req);
   }
 
   let createdUserId: string | null = null;
@@ -259,7 +259,7 @@ Deno.serve(async (req) => {
         ativo: savedProfile.active !== false,
         criadoEm: savedProfile.created_at || new Date().toISOString(),
       },
-    });
+    }, req);
   } catch (error) {
     if (createdUserId) {
       const supabaseUrl = Deno.env.get('EDGE_SUPABASE_URL') || Deno.env.get('SUPABASE_URL');
@@ -272,11 +272,11 @@ Deno.serve(async (req) => {
     }
 
     if (error instanceof HttpError) {
-      return jsonResponse(error.status, { success: false, error: error.message });
+      return jsonResponse(error.status, { success: false, error: error.message }, req);
     }
 
     // Keep internal details in logs only; return a stable generic client message.
     console.error('[create-company-employee] Unexpected error:', error);
-    return jsonResponse(500, { success: false, error: 'Erro interno ao criar funcionário.' });
+    return jsonResponse(500, { success: false, error: 'Erro interno ao criar funcionário.' }, req);
   }
 });

@@ -35,14 +35,14 @@
 - **Tempo:** 6 horas
 - **Responsável:** Backend Team
 
-### 4. 🟠 CORS com Wildcard Fallback
+### 4. ✅ CORS com Wildcard Fallback
 - **Risco:** CSRF attacks de qualquer origem
 - **Localização:** `cors.ts`
 - **Ação:** Whitelist rigorosa de origens
 - **Tempo:** 2 horas
 - **Responsável:** Backend Team
 
-### 5. 🟠 Chaves de API Hardcodeadas em E2E Tests
+### 5. ✅ Chaves de API Hardcodeadas em E2E Tests
 - **Problema:** Supabase anon key exposta (less critical, but still issue)
 - **Localizações:** `*.spec.ts` (4 arquivos)
 - **Ação:** Mover para variáveis de ambiente

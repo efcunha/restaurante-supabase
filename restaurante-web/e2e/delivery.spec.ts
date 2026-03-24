@@ -1,7 +1,5 @@
 import { test, expect } from '@playwright/test';
-
-const SUPABASE_URL = 'https://ykalocfhnetxenvmtlcn.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_sUAhOXyPkUhEb4tpbVU8wQ_71qyFI3x';
+import { SUPABASE_ANON_KEY, SUPABASE_URL } from './supabase-env';
 
 test.describe('Fluxo de Pedido Delivery', () => {
   test.setTimeout(120000);
