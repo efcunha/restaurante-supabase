@@ -57,61 +57,6 @@ function getProjectRefFromJwtIssuer(token: string): string | null {
   return match?.[1] ?? null;
 }
 
-function toErrorMessage(error: unknown, fallback: string): string {
-  // FunctionsHttpError is an Error subclass with .message already populated
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-
-  if (typeof error === 'object' && error && 'message' in error) {
-    const message = (error as { message?: string }).message;
-    if (message) {
-      return message;
-    }
-  }
-
-  return fallback;
-}
-
-async function extractFunctionErrorMessage(error: unknown, fallback: string): Promise<string> {
-  if (typeof error === 'object' && error !== null && 'context' in error) {
-    const context = (error as { context?: unknown }).context;
-    // Duck-type check: avoids instanceof failures across polyfill/env boundaries (RN, Expo)
-    if (context != null && typeof context === 'object' && typeof (context as { text?: unknown }).text === 'function') {
-      try {
-        const text = await (context as { text(): Promise<string> }).text();
-        if (text?.trim()) {
-          try {
-            const parsed = JSON.parse(text) as { error?: string; message?: string; msg?: string } | null;
-            const extracted = parsed?.error || parsed?.message || parsed?.msg;
-            if (extracted) return extracted;
-          } catch {
-            return text.trim();
-          }
-        }
-      } catch {
-        // ignore read/parsing issues and continue with fallback logic
-      }
-
-      const status = (context as { status?: number }).status;
-      if (status === 401) {
-        return 'Sessão inválida ou expirada. Faça login novamente e tente outra vez.';
-      }
-      if (status === 403) {
-        return 'Sem permissão para cadastrar funcionários.';
-      }
-    }
-  }
-
-  const msg = toErrorMessage(error, '');
-  // Filter the generic Supabase internal message — it has no useful info for the user
-  if (msg && msg !== 'Edge Function returned a non-2xx status code') {
-    return msg;
-  }
-
-  return fallback;
-}
-
 async function getValidAccessToken(): Promise<string | null> {
   const jwtLike = /^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+$/;
 
@@ -200,12 +145,6 @@ async function invokeCreateEmployeeFunction(dados: CreateFuncionarioData) {
       responseText ||
       `Falha ao criar funcionário (HTTP ${response.status}).`;
 
-    console.error('[criarFuncionario] Edge Function HTTP error:', {
-      status: response.status,
-      message,
-      tokenProjectRef,
-      expectedProjectRef,
-    });
     throw new Error(message);
   }
 

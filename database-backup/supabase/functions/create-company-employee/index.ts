@@ -10,6 +10,9 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 import { HttpError, jsonResponse } from '../_shared/auth-secure.ts';
 
+// This function is deployed with --no-verify-jwt and performs JWT validation
+// internally via auth.getUser() to avoid gateway false negatives seen in web clients.
+
 type EmployeeRole = 'admin' | 'gerente' | 'garcom' | 'cozinheiro' | 'montagem' | 'entregador' | 'caixa';
 
 interface CreateEmployeePayload {
@@ -93,8 +96,6 @@ async function requireCompanyAdmin(req: Request) {
   const authorization = req.headers.get('Authorization');
   if (!authorization || !authorization.toLowerCase().startsWith('bearer ')) {
     throw new HttpError(401, 'Authorization header inválido ou ausente.');
-    console.log('[create-company-employee] Auth header present, token prefix:',
-      authorization.substring(0, 15) + '...');
   }
 
   const userClient = createClient(supabaseUrl, supabaseAnonKey, {
@@ -109,14 +110,10 @@ async function requireCompanyAdmin(req: Request) {
   const accessToken = authorization.replace(/^Bearer\s+/i, '').trim();
 
   let { data: userData, error: userError } = await userClient.auth.getUser();
-    console.log('[create-company-employee] userClient.getUser result:',
-      userError ? `error: ${userError.message}` : `user: ${userData.user?.id ?? 'null'}`);
   if ((userError || !userData.user) && accessToken) {
     const fallback = await adminClient.auth.getUser(accessToken);
     userData = fallback.data;
     userError = fallback.error;
-    console.log('[create-company-employee] final user after fallback:',
-      userError ? `error: ${userError.message}` : `user: ${userData.user?.id ?? 'null'}`);
   }
 
   if (userError || !userData.user) {
@@ -278,7 +275,8 @@ Deno.serve(async (req) => {
       return jsonResponse(error.status, { success: false, error: error.message });
     }
 
-    const message = error instanceof Error ? error.message : 'Erro interno ao criar funcionário.';
-    return jsonResponse(500, { success: false, error: message });
+    // Keep internal details in logs only; return a stable generic client message.
+    console.error('[create-company-employee] Unexpected error:', error);
+    return jsonResponse(500, { success: false, error: 'Erro interno ao criar funcionário.' });
   }
 });
