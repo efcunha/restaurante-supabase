@@ -3,7 +3,8 @@ import path from 'path';
 import os from 'os';
 import { test, expect } from '@playwright/test';
 
-const LOCK_DIR = path.join(os.tmpdir(), 'playwright-mesa-locks-garcom02');
+const LOCK_DIR = path.join(os.tmpdir(), 'playwright-mesa-locks');
+const MESA_POOL = ['6', '7', '8', '9', '10'];
 
 const SUPABASE_URL = 'https://ykalocfhnetxenvmtlcn.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_sUAhOXyPkUhEb4tpbVU8wQ_71qyFI3x';
@@ -93,8 +94,8 @@ async function lockMesa(): Promise<string> {
 
   const maxRetries = 30;
   for (let attempt = 0; attempt < maxRetries; attempt++) {
-    for (let i = 1; i <= 10; i++) {
-      const lockFile = path.join(LOCK_DIR, `mesa-${i}.lock`);
+    for (const mesa of MESA_POOL) {
+      const lockFile = path.join(LOCK_DIR, `mesa-${mesa}.lock`);
       try {
         if (fs.existsSync(lockFile)) {
           const stats = fs.statSync(lockFile);
@@ -105,7 +106,7 @@ async function lockMesa(): Promise<string> {
 
         const fd = fs.openSync(lockFile, 'wx');
         fs.closeSync(fd);
-        return String(i);
+        return mesa;
       } catch (e: any) {
         if (e.code === 'EEXIST') continue;
         throw e;
@@ -115,7 +116,7 @@ async function lockMesa(): Promise<string> {
     await new Promise(resolve => setTimeout(resolve, 1000));
   }
 
-  throw new Error('Timeout: Nenhuma mesa de 1 a 10 ficou livre a tempo. Garanda que o reset do db está limpo.');
+  throw new Error(`Timeout: Nenhuma mesa do pool [${MESA_POOL.join(', ')}] ficou livre a tempo. Garanta que o reset do db está limpo.`);
 }
 
 function unlockMesa(mesa: string) {
