@@ -91,6 +91,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsPasswordRecovery(enabled);
   };
 
+  const mapLoginErrorMessage = (error: unknown): string => {
+    const raw = error instanceof Error ? error.message : String(error || '');
+    const normalized = raw.toLowerCase();
+
+    if (normalized.includes('invalid login credentials')) {
+      return 'Email ou senha inválidos';
+    }
+
+    if (normalized.includes('email not confirmed')) {
+      return 'Email ainda não confirmado. Verifique sua caixa de entrada.';
+    }
+
+    if (normalized.includes('too many requests') || normalized.includes('rate limit')) {
+      return 'Muitas tentativas de login. Aguarde alguns minutos e tente novamente.';
+    }
+
+    return raw || 'Erro desconhecido';
+  };
+
   const clearRecoveryHashInBrowser = () => {
     if (typeof window === 'undefined' || !window.location.hash) {
       return;
@@ -342,7 +361,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setLoading(false);
           isManualLoginRef.current = false;
             setPasswordRecoveryMode(false);
-          Alert.alert('Login Failed', error.message || 'Erro desconhecido');
+          Alert.alert('Erro no Login', mapLoginErrorMessage(error));
           return false;
       }
   };
