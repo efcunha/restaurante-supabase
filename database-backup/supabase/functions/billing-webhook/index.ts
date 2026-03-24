@@ -218,8 +218,8 @@ Deno.serve(async (req) => {
 
     if (invoiceError) {
       console.error('[WEBHOOK] Invoice lookup error', { code: invoiceError.code });
-      return new Response(JSON.stringify({ ok: true, error: 'db_error' }), {
-        status: 200,
+      return new Response(JSON.stringify({ error: 'temporarily_unavailable' }), {
+        status: 503,
         headers: { 'Content-Type': 'application/json' },
       });
     }
@@ -265,8 +265,8 @@ Deno.serve(async (req) => {
     if (reconcileError) {
       // Log minimal error context — reconcile RPC handles already-processed idempotency internally
       console.error('[WEBHOOK] Reconciliation RPC error', { code: reconcileError.code, hint: reconcileError.hint?.slice(0, 100) });
-      return new Response(JSON.stringify({ ok: true, error: 'reconcile_error' }), {
-        status: 200,
+      return new Response(JSON.stringify({ error: 'temporarily_unavailable' }), {
+        status: 503,
         headers: { 'Content-Type': 'application/json' },
       });
     }
