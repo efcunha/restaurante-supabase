@@ -31,6 +31,8 @@ interface CreateFuncionarioData {
  * @returns {Promise<Object>} {success, funcionarioId, error}
  */
 export const criarFuncionario = async (dados: CreateFuncionarioData) => {
+  let adminSession: { access_token: string; refresh_token: string } | null = null;
+
   try {
     setIgnorarMudancaAuth(true);
 
@@ -40,6 +42,15 @@ export const criarFuncionario = async (dados: CreateFuncionarioData) => {
 
     if (!dados.companyId) {
       throw new Error("Company ID é obrigatório para criar funcionário.");
+    }
+
+    // Preserve the current admin session. signUp may switch auth user in the client.
+    const { data: { session: currentSession } } = await supabase.auth.getSession();
+    if (currentSession?.access_token && currentSession?.refresh_token) {
+      adminSession = {
+        access_token: currentSession.access_token,
+        refresh_token: currentSession.refresh_token,
+      };
     }
 
     // 1. Criar usuário no Supabase Auth
@@ -59,8 +70,17 @@ export const criarFuncionario = async (dados: CreateFuncionarioData) => {
 
     const uid = authData.user.id;
 
+    // signUp can replace the authenticated user on the current client.
+    // Restore admin session so RLS for admin update remains valid.
+    if (adminSession) {
+      const { error: restoreError } = await supabase.auth.setSession(adminSession);
+      if (restoreError) {
+        throw new Error(`Falha ao restaurar sessão do administrador: ${restoreError.message}`);
+      }
+    }
+
     // 2. Atualizar profile com dados completos do funcionário
-    const { error: profileError } = await supabase
+    const { data: updatedProfile, error: profileError } = await supabase
       .from('profiles')
       .update({
         company_id: dados.companyId,
@@ -74,18 +94,18 @@ export const criarFuncionario = async (dados: CreateFuncionarioData) => {
         hire_date: new Date().toISOString().split('T')[0],
         updated_at: new Date().toISOString()
       })
-      .eq('id', uid);
+      .eq('id', uid)
+      .select('id, company_id')
+      .single();
 
     if (profileError) {
       console.error('Erro ao atualizar profile:', profileError);
-      // Tentar deletar o usuário criado
-      await supabase.auth.admin.deleteUser(uid).catch(console.error);
       throw profileError;
     }
 
-    // 3. Fazer logout (se estava logado como admin)
-    // Nota: Em Supabase, signUp não faz login automático se emailConfirmRequired = true
-    await supabase.auth.signOut();
+    if (!updatedProfile || updatedProfile.company_id !== dados.companyId) {
+      throw new Error('Funcionário criado no Auth, mas o vínculo com a empresa não foi aplicado no profile.');
+    }
 
     setIgnorarMudancaAuth(false);
 
@@ -108,6 +128,11 @@ export const criarFuncionario = async (dados: CreateFuncionarioData) => {
     };
   } catch (error: any) {
     setIgnorarMudancaAuth(false);
+
+    // Best effort: if signUp switched session, attempt to return to admin session.
+    if (adminSession) {
+      await supabase.auth.setSession(adminSession).catch(() => undefined);
+    }
 
     let errorMessage = 'Erro: ' + error.message;
 
