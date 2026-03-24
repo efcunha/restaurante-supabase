@@ -25,14 +25,70 @@ interface CreateFuncionarioData {
   phone?: string;
 }
 
+function toErrorMessage(error: unknown, fallback: string): string {
+  // FunctionsHttpError is an Error subclass with .message already populated
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  if (typeof error === 'object' && error && 'message' in error) {
+    const message = (error as { message?: string }).message;
+    if (message) {
+      return message;
+    }
+  }
+
+  return fallback;
+}
+
+async function extractFunctionErrorMessage(error: unknown, fallback: string): Promise<string> {
+  if (typeof error === 'object' && error !== null && 'context' in error) {
+    const context = (error as { context?: unknown }).context;
+    if (context instanceof Response) {
+      // Use clone() so reading the body doesn't consume the original
+      const body = await context.clone().json().catch(() => null) as { error?: string } | null;
+      if (body?.error) {
+        return body.error;
+      }
+    }
+  }
+
+  // FunctionsHttpError.message is already the parsed error string from the response body
+  return toErrorMessage(error, fallback);
+}
+
+async function invokeCreateEmployeeFunction(dados: CreateFuncionarioData) {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const accessToken = sessionData.session?.access_token;
+
+  const { data, error } = await supabase.functions.invoke('create-company-employee', {
+    body: dados,
+    headers: accessToken
+      ? {
+          Authorization: `Bearer ${accessToken}`,
+        }
+      : undefined,
+  });
+
+  if (error) {
+    throw new Error(
+      await extractFunctionErrorMessage(error, 'Não foi possível criar o funcionário.')
+    );
+  }
+
+  return data as {
+    success: boolean;
+    funcionarioId: string;
+    funcionario: Funcionario;
+  };
+}
+
 /**
  * Cria um novo funcionário no Supabase Auth e profiles
  * @param {Object} dados - {nome, cpf, funcao, email, senha, companyId, phone}
  * @returns {Promise<Object>} {success, funcionarioId, error}
  */
 export const criarFuncionario = async (dados: CreateFuncionarioData) => {
-  let adminSession: { access_token: string; refresh_token: string } | null = null;
-
   try {
     setIgnorarMudancaAuth(true);
 
@@ -44,106 +100,31 @@ export const criarFuncionario = async (dados: CreateFuncionarioData) => {
       throw new Error("Company ID é obrigatório para criar funcionário.");
     }
 
-    // Preserve the current admin session. signUp may switch auth user in the client.
-    const { data: { session: currentSession } } = await supabase.auth.getSession();
-    if (currentSession?.access_token && currentSession?.refresh_token) {
-      adminSession = {
-        access_token: currentSession.access_token,
-        refresh_token: currentSession.refresh_token,
-      };
-    }
-
-    // 1. Criar usuário no Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: dados.email.toLowerCase().trim(),
-      password: dados.senha,
-      options: {
-        data: {
-          full_name: dados.nome.trim(),
-          role: dados.funcao,
-        }
-      }
-    });
-
-    if (authError) throw authError;
-    if (!authData.user) throw new Error('Falha ao criar usuário');
-
-    const uid = authData.user.id;
-
-    // signUp can replace the authenticated user on the current client.
-    // Restore admin session so RLS for admin update remains valid.
-    if (adminSession) {
-      const { error: restoreError } = await supabase.auth.setSession(adminSession);
-      if (restoreError) {
-        throw new Error(`Falha ao restaurar sessão do administrador: ${restoreError.message}`);
-      }
-    }
-
-    // 2. Atualizar profile com dados completos do funcionário
-    const { data: updatedProfile, error: profileError } = await supabase
-      .from('profiles')
-      .update({
-        company_id: dados.companyId,
-        full_name: dados.nome.trim(),
-        email: dados.email.toLowerCase().trim(),
-        role: dados.funcao,
-        cpf: dados.cpf.trim(),
-        phone: dados.phone || null,
-        funcao: dados.funcao, // Legacy field for compatibility
-        active: true,
-        hire_date: new Date().toISOString().split('T')[0],
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', uid)
-      .select('id, company_id')
-      .single();
-
-    if (profileError) {
-      console.error('Erro ao atualizar profile:', profileError);
-      throw profileError;
-    }
-
-    if (!updatedProfile || updatedProfile.company_id !== dados.companyId) {
-      throw new Error('Funcionário criado no Auth, mas o vínculo com a empresa não foi aplicado no profile.');
-    }
+    const result = await invokeCreateEmployeeFunction(dados);
 
     setIgnorarMudancaAuth(false);
-
-    const funcionario: Funcionario = {
-      id: uid,
-      uid,
-      nome: dados.nome.trim(),
-      cpf: dados.cpf.trim(),
-      funcao: dados.funcao,
-      email: dados.email.toLowerCase().trim(),
-      companyId: dados.companyId,
-      ativo: true,
-      criadoEm: new Date().toISOString(),
-    };
 
     return {
       success: true,
-      funcionarioId: uid,
-      funcionario
+      funcionarioId: result.funcionarioId,
+      funcionario: result.funcionario
     };
   } catch (error: any) {
     setIgnorarMudancaAuth(false);
-
-    // Best effort: if signUp switched session, attempt to return to admin session.
-    if (adminSession) {
-      await supabase.auth.setSession(adminSession).catch(() => undefined);
-    }
 
     let errorMessage = 'Erro: ' + error.message;
 
     // Mapear erros do Supabase
     if (error.message?.includes('already registered') || error.message?.includes('already exists')) {
       errorMessage = 'Email já cadastrado';
+    } else if (error.message?.includes('rate limit exceeded')) {
+      errorMessage = 'Limite de tentativas de cadastro/email excedido no Supabase. Aguarde alguns minutos antes de tentar novamente.';
     } else if (error.message?.includes('Password')) {
       errorMessage = 'Senha muito fraca (mínimo 6 caracteres)';
-    } else if (error.message?.includes('email')) {
-      errorMessage = 'Email inválido';
+    } else if (error.message?.includes('invalid format') || error.message?.includes('invalid email')) {
+      errorMessage = 'Email inválido (formato incorreto)';
     }
+    // Nota: outros erros relacionados a email, como domínio bloqueado, mostram a mensagem real do Supabase.
 
     return {
       success: false,
