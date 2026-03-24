@@ -1,242 +1,142 @@
-# Billing — Checklist de Promoção Segura (Staging → Produção)
+# Billing - Checklist de Liberacao Segura (Producao sem staging)
 
-> Smoke test local concluído em 23/03/2026.  
-> Bugs corrigidos nesta sessão: `billing-create-checkout` 401 (token explícito), CORS `tokenizeCardWithMp` (public_key query param).  
-> Metro cache note: o dev server precisa de `--reset-cache` para refletir as alterações em BillingService.ts.
+Contexto atual:
+- Nao existe ambiente de staging dedicado neste projeto.
+- Billing esta em producao com credenciais Mercado Pago de teste (prefixo TEST-).
+- A troca para APP_USR so pode acontecer apos gate completo de compliance e operacao.
 
----
+Projeto e escopo:
+- Projeto Supabase: ykalocfhnetxenvmtlcn
+- Fluxos criticos: checkout cartao, pix fallback, webhook e reconciliacao atomica
 
-## FASE 1 — Pré-requisitos (local / now)
+## FASE 1 - Gate de compliance (obrigatorio antes de APP_USR)
 
-- [x] `EXPO_PUBLIC_FEATURE_BILLING=true` adicionado em `.env` e `.env.staging` (app + web)
-- [x] `EXPO_PUBLIC_FEATURE_BILLING_LICENSE_GATE=true` nos 4 arquivos .env
-- [x] `EXPO_PUBLIC_FEATURE_BILLING_SCREEN=true` nos 4 arquivos .env
-- [x] `BillingService.ts` (app + web): `invokeBillingFunction` helper com Authorization header explícito
-- [x] `tokenizeCardWithMp` usa `?public_key=` em vez de `Authorization: Bearer` (CORS fix)
-- [ ] Limpar cards duplicados em `payment_methods` (5 entradas para a mesma empresa; manter apenas o VISA ••••5682 cadastrado no smoke test + 1 MASTER de referência)
+### 1.1 Hardening de funcoes e erros
 
----
+- [x] billing-provider-status sem vazamento de erro interno ao cliente
+- [x] billing-webhook com resposta generica para falha de assinatura
+- [x] billing-webhook retorna 5xx em falhas criticas de provider/config/reconcile (nao 200 de falso sucesso)
+- [x] Sem bypass de teste por header em funcoes de billing
 
-## FASE 2 — Staging (deploy de teste)
+### 1.2 Higiene de auditoria (dados sensiveis)
 
-### 2.1 Edge Functions — garantir deploy atual
+- [x] Sanitizacao de audit details bloqueia campos sensiveis (ex.: token, card, last_four, mp_payment_id)
+- [x] billing-create-pix-fallback nao grava mp_payment_id em audit log de aplicacao
+- [x] billing-create-checkout usa campo payment_brand em vez de card_brand no audit
+- [x] reconcile_billing_event_atomic nao grava mp_payment_id em billing_audit_log.details
+- [x] Migration 20260324210000 registrada no remoto
 
-```bash
-# Subir todas as edge functions de billing para o projeto Supabase
-supabase functions deploy billing-create-checkout --project-ref ykalocfhnetxenvmtlcn
-supabase functions deploy billing-create-pix-fallback --project-ref ykalocfhnetxenvmtlcn
-supabase functions deploy billing-provider-status --project-ref ykalocfhnetxenvmtlcn
-```
+### 1.3 Isolamento multi-tenant e auth
 
-Verificar que o código deployado inclui:
-- [x] `requireSecureAdmin` lendo o header `Authorization` corretamente
-- [x] Mode A retorna `publicKey` (sem cardToken no body)
-- [x] Mode B valida formato do cardToken com regex antes de chamar a vault
+- [x] Todas as rotas de billing usam requireSecureAdmin
+- [x] Fluxos respeitam company_id e invariantes de assinatura/invoice
+- [x] Reconciliacao de webhook mantem idempotencia por idempotency_key
 
-### 2.2 Secrets — Mercado Pago (STAGING)
+## FASE 2 - Validacao controlada em producao com TEST-
 
-> ⚠️ Os secrets abaixo devem ser chaves SANDBOX (prefixo `TEST-`).
-> Não usar chaves de produção em staging.
+Objetivo:
+- Validar comportamento end-to-end sem habilitar APP_USR.
 
-```bash
-# Verificar secrets configurados
+### 2.1 Pre-check de secrets (continuar em TEST-)
+
+- [ ] Confirmar MERCADOPAGO_PUBLIC_KEY com prefixo TEST-
+- [ ] Confirmar MERCADOPAGO_ACCESS_TOKEN com prefixo TEST-
+- [ ] Confirmar MERCADOPAGO_WEBHOOK_SECRET configurado
+- [ ] Confirmar MERCADOPAGO_NOTIFICATION_URL apontando para billing-webhook
+
+Comando util:
+
 supabase secrets list --project-ref ykalocfhnetxenvmtlcn
 
-# Se não estiverem configurados:
-supabase secrets set \
-  MERCADOPAGO_PUBLIC_KEY="TEST-xxxxxxxx..." \
-  MERCADOPAGO_ACCESS_TOKEN="TEST-xxxxxxxx..." \
-  MERCADOPAGO_WEBHOOK_SECRET="<webhook_secret_staging>" \
-  MERCADOPAGO_NOTIFICATION_URL="https://ykalocfhnetxenvmtlcn.supabase.co/functions/v1/billing-webhook" \
-  --project-ref ykalocfhnetxenvmtlcn
-```
+### 2.2 Smoke funcional minimo
 
-Validar via `billing-provider-status`:
-```json
-{ "public_key": "OK", "access_token": "OK", "webhook": "OK", "saved_method": "Sim" }
-```
+- [ ] Abrir tela de assinatura e carregar estado sem erro de auth
+- [ ] Gerar PIX e validar criacao de invoice
+- [ ] Cadastrar cartao TEST e validar persistencia segura
+- [ ] Simular webhook e validar reconciliacao idempotente
+- [ ] Confirmar ausencia de regressao em bloqueio de license gate
 
-### 2.3 Build de Staging
+### 2.3 Validacao SQL de evidencias
 
-```bash
-# Web (Railway)
-cd restaurante-web
-npx expo export -p web --clear
-# Confirmar que o bundle gerado tem:
-#   public_key= na URL de card_tokens (não Authorization header)
-#   EXPO_PUBLIC_FEATURE_BILLING=true compilado no bundle
+- [ ] invoices: transicoes coerentes (pending/failed/paid)
+- [ ] webhook_events: sem fila acumulada nao processada
+- [ ] billing_audit_log: sem campos sensiveis em details
 
-# Deploy Railway staging
-railway up --service restaurante-web --environment staging
-```
+Consultas sugeridas:
 
-### 2.4 Testes manuais em Staging
+SELECT COUNT(*) FROM webhook_events
+WHERE processed_at IS NULL
+  AND created_at > NOW() - INTERVAL '2 hours';
 
-| Fluxo | Esperado | Status |
-|-------|----------|--------|
-| Login > Admin > Assinatura SaaS | Modal abre, status trial, R$149 | ☐ |
-| Solicitar Pix | QR gerado, edge function retorna 200, invoice criada | ☐ |
-| Copiar código Pix | Código copiado para clipboard | ☐ |
-| Cadastrar cartão (Visa TEST) | Tokenização MP 201, billing-create-checkout 201, card aparece na lista | ☐ |
-| Reload da página | Sessão restaurada sem 401, UI carrega normalmente | ☐ |
-| LicenseGate (billing_licenseGate=true) | Telas críticas bloqueadas sem assinatura ativa | ☐ |
-| Webhook MP | Simular evento payment.created via CLI do MP ou curl | ☐ |
+SELECT id, event_type, details
+FROM billing_audit_log
+WHERE created_at > NOW() - INTERVAL '24 hours'
+  AND (
+    details ? 'mp_payment_id'
+    OR details ? 'mp_card_id'
+    OR details ? 'last_four'
+  )
+LIMIT 20;
 
-### 2.5 Validação de banco
+## FASE 3 - Gate de liberacao APP_USR (go/no-go)
 
-```sql
--- Confirmar que a empresa de teste tem assinatura
-SELECT id, company_id, status, mp_customer_id, trial_ends_at
-FROM subscriptions
-WHERE company_id = '<test_company_id>';
+Todos os itens abaixo precisam estar concluídos para GO:
 
--- Confirmar payment_methods sem duplicatas
-SELECT brand, last_four, expiry_month, expiry_year, is_default, created_at
-FROM payment_methods
-WHERE company_id = '<test_company_id>'
-ORDER BY created_at DESC;
+- [ ] Security gate completo da Fase 1 confirmado
+- [ ] Smoke da Fase 2 aprovado sem 5xx anormal
+- [ ] Evidencias operacionais registradas (queries + logs + horario da janela)
+- [ ] Plano de rollback validado e responsavel de plantao definido
+- [ ] Comunicacao de ativacao e monitoramento das primeiras 48h combinada
 
--- Confirmar invoices geradas corretamente
-SELECT id, status, amount, payment_method_type, pix_expires_at
-FROM invoices
-WHERE company_id = '<test_company_id>'
-ORDER BY created_at DESC LIMIT 5;
-```
+Regra de bloqueio:
+- Se qualquer item falhar, manter TEST- e status NO-GO.
 
----
+## FASE 4 - Troca de secrets para APP_USR (somente em janela aprovada)
 
-## FASE 3 — Produção
+Acao sensivel e irreversivel para o ciclo de cobranca:
 
-### 3.1 Secrets — Mercado Pago (PRODUÇÃO)
+- [ ] Substituir MERCADOPAGO_PUBLIC_KEY para APP_USR_
+- [ ] Substituir MERCADOPAGO_ACCESS_TOKEN para APP_USR_
+- [ ] Validar billing-provider-status imediatamente apos troca
+- [ ] Executar smoke curto com conta controlada
 
-> ⚠️ AÇÃO IRREVERSÍVEL — revisar antes de executar.
-> Usar chaves de PRODUÇÃO (prefixo `APP_USR_`).
+Comando de referencia:
 
-```bash
 supabase secrets set \
   MERCADOPAGO_PUBLIC_KEY="APP_USR_<public_key_prod>" \
   MERCADOPAGO_ACCESS_TOKEN="APP_USR_<access_token_prod>" \
   MERCADOPAGO_WEBHOOK_SECRET="<webhook_secret_prod>" \
-  MERCADOPAGO_NOTIFICATION_URL="https://app.seudominio.com.br/api/webhook/billing" \
+  MERCADOPAGO_NOTIFICATION_URL="https://ykalocfhnetxenvmtlcn.supabase.co/functions/v1/billing-webhook" \
   --project-ref ykalocfhnetxenvmtlcn
-```
 
-Após configurar, validar `billing-provider-status` em produção antes de ativar as flags.
+## FASE 5 - Monitoramento pos-ativacao (48h)
 
-### 3.2 Feature Flags — Ativação gradual
+- [ ] Taxa de erro de funcoes de billing abaixo de 1%
+- [ ] Webhook sem backlog crescente
+- [ ] Inadimplencia e retries dentro do esperado
+- [ ] Nenhum vazamento de dado sensivel em logs/auditoria
 
-**Canary wave 1 (10% empresas)**
-- Ativar apenas `billing_enabled=true` + `billing_showBillingScreen=true`
-- LicenseGate permanece `false`
-- Monitorar por 48h: erros de 401/403/422 nas Edge Functions, abandono do modal
+Consultas sugeridas:
 
-**Canary wave 2 (50% empresas)**
-- Manter flags iguais, aumentar audiência
-- Verificar que webhook do MP está processando corretamente
-
-**Wave 3 — Full rollout**
-- Ativar `billing_licenseGate=true`
-- Bloqueio operacional entra em vigência para empresas inadimplentes após fim do trial
-- Comunicar com 7 dias de antecedência (e-mail/WhatsApp)
-
-### 3.3 Build de Produção (Railway)
-
-```bash
-# Reiniciar Metro com cache limpo antes do build final
-cd restaurante-web
-npx expo start --web --reset-cache  # testar local
-# Confirmar que BillingService.ts com public_key fix está no bundle
-
-# Export + deploy
-npx expo export -p web --clear
-railway up --service restaurante-web --environment production
-```
-
-### 3.4 Variables de ambiente (Railway — produção)
-
-Confirmar que as variáveis abaixo estão configuradas no serviço Railway de produção (não em arquivo — nunca commitar chaves de produção):
-
-```
-EXPO_PUBLIC_FEATURE_BILLING=true
-EXPO_PUBLIC_FEATURE_BILLING_LICENSE_GATE=false  ← começa false, ativar na wave 3
-EXPO_PUBLIC_FEATURE_BILLING_SCREEN=true
-EXPO_PUBLIC_SUPABASE_URL=https://ykalocfhnetxenvmtlcn.supabase.co
-EXPO_PUBLIC_SUPABASE_ANON_KEY=<anon_key_prod>
-```
-
-> As chaves Mercado Pago ficam APENAS nos secrets do Supabase Edge Functions, nunca no Railway.
-
----
-
-## FASE 4 — Pós-deploy (Monitoramento)
-
-### 4.1 Alertas obrigatórios
-
-```sql
--- Invoices com status 'failed' na última hora
 SELECT COUNT(*) FROM invoices
-WHERE status = 'failed' AND created_at > NOW() - INTERVAL '1 hour';
+WHERE status = 'failed'
+  AND created_at > NOW() - INTERVAL '1 hour';
 
--- Checkout events sem card_saved
-SELECT * FROM billing_audit_log
-WHERE event_type = 'billing.checkout.card_save_requested'
-AND created_at > NOW() - INTERVAL '24 hours';
-
--- Webhook events não processados
 SELECT COUNT(*) FROM webhook_events
-WHERE status != 'processed' AND created_at > NOW() - INTERVAL '2 hours';
-```
+WHERE processed_at IS NULL
+  AND created_at > NOW() - INTERVAL '2 hours';
 
-### 4.2 KPIs a acompanhar nas primeiras 48h
+## Rollback rapido
 
-- Taxa de conversão trial → cartão cadastrado
-- Erros 4xx/5xx nas Edge Functions de billing (< 1% aceitável)
-- Tempo médio de tokenização MP (< 3s aceitável)
-- Pix gerados vs. Pix aprovados pelo webhook
+Se houver regressao critica:
 
-### 4.3 Revisão de duplicatas em payment_methods
+1. Reverter secrets para TEST- no Supabase.
+2. Manter billing_licenseGate desativado ate estabilizar.
+3. Reexecutar smoke minimo para confirmar retorno seguro.
+4. Registrar incidente e causa raiz antes de nova tentativa de APP_USR.
 
-```sql
--- Detectar empresas com mais de 1 cartão (avaliar limpeza)
-SELECT company_id, COUNT(*) as cards
-FROM payment_methods
-GROUP BY company_id
-HAVING COUNT(*) > 3;
-```
+## Status atual
 
----
-
-## ROLLBACK
-
-Se houver regressão crítica em produção:
-
-```bash
-# 1. Desativar billing via Railway environment variables (sem redeploy)
-EXPO_PUBLIC_FEATURE_BILLING=false
-EXPO_PUBLIC_FEATURE_BILLING_LICENSE_GATE=false
-EXPO_PUBLIC_FEATURE_BILLING_SCREEN=false
-# Rebuild Railway triggers com as novas vars
-
-# 2. Edge Functions: reverter última versão
-supabase functions deploy billing-create-checkout --project-ref ykalocfhnetxenvmtlcn
-# <aponta para commit anterior>
-```
-
-O LicenseGate com `billing_licenseGate=false` garante que nenhuma empresa seja bloqueada operacionalmente durante rollback.
-
----
-
-## Resumo dos bugs corrigidos nesta sessão
-
-| Bug | Arquivo(s) | Causa | Fix |
-|-----|-----------|-------|-----|
-| `billing-create-checkout` 401 | `BillingService.ts` (app + web) | `functions.invoke()` não enviava Bearer token | `invokeBillingFunction()` lê sessão explicitamente |
-| CORS em `card_tokens` | `BillingService.ts` (app + web) | Header `Authorization` bloqueado pelo CORS da MP | URL com `?public_key=<key>` sem header Authorization |
-
-## Metro cache note (dev)
-
-O Metro bundler em modo dev mantém cache persistente. Após as correções em `BillingService.ts`, reiniciar com:
-```bash
-npx expo start --web --reset-cache --port 19008
-```
-para garantir que o bundle servido inclua as correções.
+- Billing em producao: SIM
+- Credenciais Mercado Pago live (APP_USR): NAO
+- Pronto para APP_USR hoje: pendente de gate final Fase 2 e aprovacao GO/NO-GO
