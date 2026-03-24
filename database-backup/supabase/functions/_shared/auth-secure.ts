@@ -6,7 +6,7 @@ declare const Deno: {
 
 // @ts-ignore Supabase Edge resolves npm specifiers at runtime.
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { corsHeaders } from './cors.ts';
+import { getCorsHeaders } from './cors.ts';
 
 /**
  * SECURITY-HARDENED BILLING AUTHENTICATION
@@ -48,8 +48,14 @@ export class HttpError extends Error {
 export function jsonResponse(
   status: number,
   body: Record<string, unknown>,
-  securityContext?: SecurityContext
+  requestOrSecurityContext?: Request | SecurityContext,
+  maybeSecurityContext?: SecurityContext
 ) {
+  const request = requestOrSecurityContext instanceof Request ? requestOrSecurityContext : undefined;
+  const securityContext = request
+    ? maybeSecurityContext
+    : requestOrSecurityContext as SecurityContext | undefined;
+
   // Log security events server-side before responding
   if (securityContext) {
     const logLevel = securityContext.severity === 'critical' ? 'error' : 'warn';
@@ -62,7 +68,7 @@ export function jsonResponse(
   return new Response(JSON.stringify(body), {
     status,
     headers: {
-      ...corsHeaders,
+      ...(request ? getCorsHeaders(request) : {}),
       'Content-Type': 'application/json; charset=utf-8',
       'X-Content-Type-Options': 'nosniff',
       'X-Frame-Options': 'DENY',
