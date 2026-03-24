@@ -4,6 +4,7 @@ import os from 'os';
 import { test, expect } from '@playwright/test';
 
 const LOCK_DIR = path.join(os.tmpdir(), 'playwright-mesa-locks');
+const MESA_POOL = ['1', '2', '3', '4', '5'];
 
 const SUPABASE_URL = 'https://ykalocfhnetxenvmtlcn.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_sUAhOXyPkUhEb4tpbVU8wQ_71qyFI3x';
@@ -87,7 +88,7 @@ async function cancelActiveOrdersForMesa(mesaNumber: string, accessToken: string
 }
 
 /**
- * Pega a próxima mesa disponível de 1 a 10 sincronizando terminais
+ * Pega a próxima mesa disponível do pool sincronizando terminais
  * pelo sistema de arquivos. 'wx' é atômico no Windows/Linux/Mac e 
  * não tem falha de concorrência.
  */
@@ -98,8 +99,8 @@ async function lockMesa(): Promise<string> {
 
   const maxRetries = 30; // 30 tentativas = ~30s esperando
   for (let attempt = 0; attempt < maxRetries; attempt++) {
-    for (let i = 1; i <= 10; i++) {
-      const lockFile = path.join(LOCK_DIR, `mesa-${i}.lock`);
+    for (const mesa of MESA_POOL) {
+      const lockFile = path.join(LOCK_DIR, `mesa-${mesa}.lock`);
       try {
         // Se a trava for de um terminal que crachou (mais antiga que 2 minutos), apagamos.
         if (fs.existsSync(lockFile)) {
@@ -111,7 +112,7 @@ async function lockMesa(): Promise<string> {
 
         const fd = fs.openSync(lockFile, 'wx'); // Atômico
         fs.closeSync(fd);
-        return String(i);
+        return mesa;
       } catch (e: any) {
         if (e.code === 'EEXIST') continue; // Mesa em uso
         throw e;
@@ -122,7 +123,7 @@ async function lockMesa(): Promise<string> {
     await new Promise(resolve => setTimeout(resolve, 1000));
   }
 
-  throw new Error('Timeout: Nenhuma mesa de 1 a 10 ficou livre a tempo. Garanta que o reset do db está limpo.');
+  throw new Error(`Timeout: Nenhuma mesa do pool [${MESA_POOL.join(', ')}] ficou livre a tempo. Garanta que o reset do db está limpo.`);
 }
 
 function unlockMesa(mesa: string) {

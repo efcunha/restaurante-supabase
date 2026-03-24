@@ -7,6 +7,7 @@ const SUPABASE_URL = 'https://ykalocfhnetxenvmtlcn.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_sUAhOXyPkUhEb4tpbVU8wQ_71qyFI3x';
 const TODAY_KEY = new Date().toISOString().slice(0, 10);
 const LOCK_DIR = path.join(os.tmpdir(), 'playwright-mesa-locks');
+const MESA_POOL = ['1', '2', '3', '4', '5'];
 
 async function isMesaLivreNoBanco(mesa: string, accessToken: string): Promise<boolean> {
   try {
@@ -52,8 +53,7 @@ async function lockMesa(accessToken: string, excluded: string[] = []): Promise<s
   const excludedSet = new Set(excluded.map(String));
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
-    for (let i = 1; i <= 10; i++) {
-      const mesa = String(i);
+    for (const mesa of MESA_POOL) {
       if (excludedSet.has(mesa)) continue;
 
       const lockFile = path.join(LOCK_DIR, `mesa-${mesa}.lock`);
@@ -84,7 +84,7 @@ async function lockMesa(accessToken: string, excluded: string[] = []): Promise<s
     await new Promise(resolve => setTimeout(resolve, 1000));
   }
 
-  throw new Error('Timeout: Nenhuma mesa livre disponível para o teste de consolidação');
+  throw new Error(`Timeout: Nenhuma mesa livre disponível no pool [${MESA_POOL.join(', ')}] para o teste de consolidação`);
 }
 
 function unlockMesa(mesa: string | null | undefined) {
