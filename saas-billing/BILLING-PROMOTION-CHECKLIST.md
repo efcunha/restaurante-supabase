@@ -41,8 +41,11 @@ Objetivo:
 
 - [ ] Confirmar MERCADOPAGO_PUBLIC_KEY com prefixo TEST-
 - [ ] Confirmar MERCADOPAGO_ACCESS_TOKEN com prefixo TEST-
-- [ ] Confirmar MERCADOPAGO_WEBHOOK_SECRET configurado
-- [ ] Confirmar MERCADOPAGO_NOTIFICATION_URL apontando para billing-webhook
+- [x] Confirmar MERCADOPAGO_WEBHOOK_SECRET configurado
+- [x] Confirmar MERCADOPAGO_NOTIFICATION_URL configurada
+
+Observacao operacional:
+- O comando de listagem de secrets retorna apenas digests (nao retorna valor), entao nao permite atestar prefixo TEST- ou APP_USR_ sem validacao manual controlada no painel/secret manager.
 
 Comando util:
 
@@ -59,8 +62,8 @@ supabase secrets list --project-ref ykalocfhnetxenvmtlcn
 ### 2.3 Validacao SQL de evidencias
 
 - [ ] invoices: transicoes coerentes (pending/failed/paid)
-- [ ] webhook_events: sem fila acumulada nao processada
-- [ ] billing_audit_log: sem campos sensiveis em details
+- [x] webhook_events: sem fila acumulada nao processada
+- [x] billing_audit_log: sem campos sensiveis em details
 
 Consultas sugeridas:
 
@@ -139,4 +142,11 @@ Se houver regressao critica:
 
 - Billing em producao: SIM
 - Credenciais Mercado Pago live (APP_USR): NAO
-- Pronto para APP_USR hoje: pendente de gate final Fase 2 e aprovacao GO/NO-GO
+- Pronto para APP_USR hoje: NAO (NO-GO)
+
+## Evidencias desta verificacao (2026-03-24)
+
+- webhook backlog 2h: 0 eventos nao processados
+- audit log 24h: 0 ocorrencias com keys sensiveis (mp_payment_id, mp_card_id, last_four)
+- invoices 24h: sem registros no recorte consultado (nao houve base para validar transicoes)
+- secrets do projeto: presentes para MERCADOPAGO_PUBLIC_KEY, MERCADOPAGO_ACCESS_TOKEN, MERCADOPAGO_WEBHOOK_SECRET e MERCADOPAGO_NOTIFICATION_URL
