@@ -15,6 +15,7 @@ Check Rate Limit (Redis or Memory Fallback)
     ↓
 ✅ Allowed → Process Request
 ❌ Blocked → Return 429 Too Many Requests
+⚠️ Limiter unavailable in strict mode → Return 503 Service Unavailable
 ```
 
 ## Protected Endpoints
@@ -22,7 +23,9 @@ Check Rate Limit (Redis or Memory Fallback)
 ### Authentication (`POST /auth/login`)
 - **Limit**: 8 attempts per 15 minutes
 - **Key**: `login:{clientIp}:{normalizedEmail}`
-- **Response**: 429 with `Retry-After` header
+- **Response**:
+  - `429` when limit is exceeded (with `Retry-After`)
+  - `503` when limiter is unavailable and strict mode is enabled
 
 ### Billing Operations
 - **Endpoints**:
@@ -31,7 +34,9 @@ Check Rate Limit (Redis or Memory Fallback)
   - `POST /ops/billing/reconcile`
 - **Limit**: 30 requests per 1 minute (per authenticated user)
 - **Key**: `billing:{userId}`
-- **Response**: 429 with `Retry-After` header and JSON error
+- **Response**:
+  - `429` when limit is exceeded (with `Retry-After`)
+  - `503` when limiter is unavailable and strict mode is enabled
 
 ## Configuration
 
@@ -51,6 +56,7 @@ RATE_LIMIT_BILLING_WINDOW_MS=60000       # Default: 1 min
 
 # Fallback Strategy
 RATE_LIMIT_FALLBACK_ENABLED=true         # Degrade to memory if Redis unavailable
+# RATE_LIMIT_FALLBACK_ENABLED=false      # Strict mode: fail-closed with 503 if Redis unavailable
 ```
 
 ## Local Development Setup
@@ -182,11 +188,16 @@ All rate-limited responses include:
 
 If Redis is unavailable:
 - `RATE_LIMIT_FALLBACK_ENABLED=true` (default): Continues with in-memory fallback
-- `RATE_LIMIT_FALLBACK_ENABLED=false`: Rejects all requests (fail-closed)
+- `RATE_LIMIT_FALLBACK_ENABLED=false`: Rejects protected requests with `503` (fail-closed)
+
+Strict mode behavior details:
+- Login path returns HTML with HTTP `503`.
+- Billing paths return JSON with HTTP `503`.
+- Both paths log availability events (`auth.rate_limit_unavailable` and `billing.rate_limit_unavailable`).
 
 **Recommendations**:
 - Development: Use `true` (easier debugging)
-- Production: Use `false` (security-first) or monitor Redis availability
+- Production: Use `false` (security-first fail-closed) and monitor Redis availability
 
 ## Railway Deployment
 
@@ -213,7 +224,7 @@ AUTH_RATE_LIMIT_MAX_ATTEMPTS=8
 AUTH_RATE_LIMIT_WINDOW_MS=900000
 RATE_LIMIT_BILLING_MAX_ATTEMPTS=30
 RATE_LIMIT_BILLING_WINDOW_MS=60000
-RATE_LIMIT_FALLBACK_ENABLED=true
+RATE_LIMIT_FALLBACK_ENABLED=false
 ```
 
 ### Deploy
@@ -239,6 +250,19 @@ Rate limit events are logged as JSON:
 }
 ```
 
+Limiter unavailability in strict mode is also logged:
+```json
+{
+  "ts": "2026-03-24T12:35:00.000Z",
+  "level": "error",
+  "event": "billing.rate_limit_unavailable",
+  "method": "POST",
+  "path": "/ops/billing/reconcile",
+  "statusCode": 503,
+  "reason": "redis_unavailable"
+}
+```
+
 ### Health Check
 
 Redis connection status is logged on startup:
@@ -256,6 +280,11 @@ Redis connection status is logged on startup:
 ### "Redis not initialized; using memory fallback"
 - This is expected if `REDIS_URL` is not set
 - In production, verify `REDIS_URL` is correctly configured in Railway
+
+### HTTP 503 on protected endpoints
+- If `RATE_LIMIT_FALLBACK_ENABLED=false`, `503` means the rate limiter backend (Redis) is unavailable.
+- Verify `REDIS_URL` and Redis health before re-enabling traffic.
+- If temporary degradation is acceptable, set `RATE_LIMIT_FALLBACK_ENABLED=true` until Redis is restored.
 
 ### Rate limit not working
 1. Verify `REDIS_URL` is correctly formatted: `redis://:password@host:port`

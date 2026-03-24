@@ -216,6 +216,12 @@ gh pr create --title "🔒 Fix: Profiles RLS Security" \
 
 ## ALTA #3: Rate Limiting no Servidor ⏱️ 6 HORAS
 
+### Status Atual
+- ✅ Implementado no `restaurante-ops` para `POST /auth/login` e rotas de billing críticas.
+- ✅ Suporte a Redis distribuído com fallback em memória para desenvolvimento.
+- ✅ Modo estrito (fail-closed) aplicado: `RATE_LIMIT_FALLBACK_ENABLED=false` retorna `503` quando Redis indisponível.
+- 🟡 Pendente operacional: ativar flag estrita em produção + monitorar Redis no rollout.
+
 ### 1. Problema
 - Client-side rate limiting é apenas cosmético
 - Nenhum `billing-create-checkout` tem rate limiting
