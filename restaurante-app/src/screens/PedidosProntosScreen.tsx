@@ -150,6 +150,8 @@ export default function PedidosProntosScreen() {
   churrasqueiraOrders.forEach(order => {
     if (order.itemsWithStatus && order.itemsWithStatus.length > 0) {
       order.itemsWithStatus.forEach((item: any) => {
+        // 🔒 Excluir itens cancelados
+        if (item.status === 'cancelled') return;
         // Item é considerado pronto se: Status 'pronto' OU item checado OU pedido todo pronto
         const isItemReady = item.status === 'pronto' || item.checked === true || order.status === 'ready';
 
