@@ -66,11 +66,8 @@ chmod +x scripts/rate-limit-smoke.sh
 BASE_URL=http://localhost:4040 ATTEMPTS=10 ./scripts/rate-limit-smoke.sh
 ```
 
-Checklist completo de rollout:
-- `docs/RATE_LIMIT_STRICT_ROLLOUT_CHECKLIST.md`
-
-Template para consolidar evidencias de auditoria:
-- `docs/RATE_LIMIT_EVIDENCE_TEMPLATE.md`
+Diretrizes consolidadas de rollout e evidencias:
+- `.github/copilot-instructions.md`
 
 ## Dependencias com o ecossistema atual
 
