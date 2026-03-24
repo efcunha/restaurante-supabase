@@ -304,7 +304,7 @@ export default function BillingScreen({ onClose }: BillingScreenProps) {
       title="Assinatura e Cobrança"
       subtitle={subtitle}
       titleIcon={<Ionicons name="card-outline" size={22} color={colors.white} />}
-      leftAction={onClose ? { label: 'Fechar', onPress: onClose } : undefined}
+      leftAction={onClose ? { label: 'Voltar', onPress: onClose } : undefined}
       scroll
       contentContainerStyle={styles.contentContainer}
     >

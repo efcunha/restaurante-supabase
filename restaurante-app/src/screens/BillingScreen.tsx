@@ -307,7 +307,7 @@ export default function BillingScreen({ onClose }: BillingScreenProps) {
     <ScreenScaffold
       title="Assinatura e Cobrança"
       subtitle={subtitle}
-      leftAction={onClose ? { label: 'Fechar', onPress: onClose } : undefined}
+      leftAction={onClose ? { label: 'Voltar', onPress: onClose } : undefined}
       scroll
       contentContainerStyle={styles.contentContainer}
     >

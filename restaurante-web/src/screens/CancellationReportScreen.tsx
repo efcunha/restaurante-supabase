@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { getDateKeyRange, Period } from '../utils/dateUtils';
 import { colors } from '../theme/colors';
 import { auditService } from '../services/AuditService';
+import { ScreenScaffold } from '../layouts/ScreenScaffold';
 
 type OperatorSummary = {
   operatorName: string;
@@ -186,101 +187,99 @@ export default function CancellationReportScreen({ onClose }: Props) {
   }, [periodo, user?.companyId]);
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Relatório de Cancelamentos</Text>
-        <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-          <Text style={styles.closeButtonText}>Fechar</Text>
-        </TouchableOpacity>
-      </View>
+    <ScreenScaffold
+      title="Relatório de Cancelamentos"
+      leftAction={{ label: 'Voltar', onPress: onClose }}
+    >
+      <View style={styles.container}>
+        <View style={styles.periodRow}>
+          {PERIOD_OPTIONS.map((option) => (
+            <TouchableOpacity
+              key={option.key}
+              style={[styles.periodButton, periodo === option.key && styles.periodButtonActive]}
+              onPress={() => setPeriodo(option.key)}
+            >
+              <Text style={[styles.periodButtonText, periodo === option.key && styles.periodButtonTextActive]}>
+                {option.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
 
-      <View style={styles.periodRow}>
-        {PERIOD_OPTIONS.map((option) => (
-          <TouchableOpacity
-            key={option.key}
-            style={[styles.periodButton, periodo === option.key && styles.periodButtonActive]}
-            onPress={() => setPeriodo(option.key)}
-          >
-            <Text style={[styles.periodButtonText, periodo === option.key && styles.periodButtonTextActive]}>
-              {option.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
-        {loading && (
-          <View style={styles.centeredState}>
-            <ActivityIndicator color={colors.primary} size="large" />
-            <Text style={styles.centeredText}>Carregando relatório...</Text>
-          </View>
-        )}
-
-        {!loading && error && (
-          <View style={styles.centeredState}>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-        )}
-
-        {!loading && !error && (
-          <>
-            <View style={styles.kpiGrid}>
-              <View style={styles.kpiCard}>
-                <Text style={styles.kpiLabel}>Comandas canceladas</Text>
-                <Text style={styles.kpiValue}>{totalComandasCanceladas}</Text>
-              </View>
-              <View style={styles.kpiCard}>
-                <Text style={styles.kpiLabel}>Valor em comandas</Text>
-                <Text style={styles.kpiValue}>{formatCurrency(totalValorComandas)}</Text>
-              </View>
-              <View style={styles.kpiCard}>
-                <Text style={styles.kpiLabel}>Itens cancelados</Text>
-                <Text style={styles.kpiValue}>{totalItensCancelados}</Text>
-              </View>
-              <View style={styles.kpiCard}>
-                <Text style={styles.kpiLabel}>Valor em itens</Text>
-                <Text style={styles.kpiValue}>{formatCurrency(totalValorItensCancelados)}</Text>
-              </View>
+        <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+          {loading && (
+            <View style={styles.centeredState}>
+              <ActivityIndicator color={colors.primary} size="large" />
+              <Text style={styles.centeredText}>Carregando relatório...</Text>
             </View>
+          )}
 
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Por operador</Text>
-              {byOperator.length === 0 && <Text style={styles.emptyText}>Sem cancelamentos no período.</Text>}
-              {byOperator.map((op) => (
-                <View key={op.operatorName} style={styles.operatorRow}>
-                  <View style={styles.operatorHeader}>
-                    <Text style={styles.operatorName}>{op.operatorName}</Text>
-                    <Text style={styles.operatorTotal}>
-                      {formatCurrency(op.valorComandasCanceladas + op.valorItensCancelados)}
+          {!loading && error && (
+            <View style={styles.centeredState}>
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          )}
+
+          {!loading && !error && (
+            <>
+              <View style={styles.kpiGrid}>
+                <View style={styles.kpiCard}>
+                  <Text style={styles.kpiLabel}>Comandas canceladas</Text>
+                  <Text style={styles.kpiValue}>{totalComandasCanceladas}</Text>
+                </View>
+                <View style={styles.kpiCard}>
+                  <Text style={styles.kpiLabel}>Valor em comandas</Text>
+                  <Text style={styles.kpiValue}>{formatCurrency(totalValorComandas)}</Text>
+                </View>
+                <View style={styles.kpiCard}>
+                  <Text style={styles.kpiLabel}>Itens cancelados</Text>
+                  <Text style={styles.kpiValue}>{totalItensCancelados}</Text>
+                </View>
+                <View style={styles.kpiCard}>
+                  <Text style={styles.kpiLabel}>Valor em itens</Text>
+                  <Text style={styles.kpiValue}>{formatCurrency(totalValorItensCancelados)}</Text>
+                </View>
+              </View>
+
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Por operador</Text>
+                {byOperator.length === 0 && <Text style={styles.emptyText}>Sem cancelamentos no período.</Text>}
+                {byOperator.map((op) => (
+                  <View key={op.operatorName} style={styles.operatorRow}>
+                    <View style={styles.operatorHeader}>
+                      <Text style={styles.operatorName}>{op.operatorName}</Text>
+                      <Text style={styles.operatorTotal}>
+                        {formatCurrency(op.valorComandasCanceladas + op.valorItensCancelados)}
+                      </Text>
+                    </View>
+                    <Text style={styles.operatorDetail}>
+                      Comandas: {op.comandasCanceladas} ({formatCurrency(op.valorComandasCanceladas)})
+                    </Text>
+                    <Text style={styles.operatorDetail}>
+                      Itens: {op.itensCancelados} ({formatCurrency(op.valorItensCancelados)})
                     </Text>
                   </View>
-                  <Text style={styles.operatorDetail}>
-                    Comandas: {op.comandasCanceladas} ({formatCurrency(op.valorComandasCanceladas)})
-                  </Text>
-                  <Text style={styles.operatorDetail}>
-                    Itens: {op.itensCancelados} ({formatCurrency(op.valorItensCancelados)})
-                  </Text>
-                </View>
-              ))}
-            </View>
+                ))}
+              </View>
 
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Últimas comandas canceladas</Text>
-              {comandas.slice(0, 20).map((row, idx) => (
-                <View key={`${row.comanda_number}-${idx}`} style={styles.listRow}>
-                  <Text style={styles.listTitle}>Comanda #{row.comanda_number}</Text>
-                  <Text style={styles.listMeta}>
-                    {row.canceled_by_name || 'Não identificado'} • {row.canceled_at ? new Date(row.canceled_at).toLocaleString('pt-BR') : 'Sem data'}
-                  </Text>
-                  <Text style={styles.listValue}>{formatCurrency(Number(row.total_consumed || 0))}</Text>
-                </View>
-              ))}
-              {comandas.length === 0 && <Text style={styles.emptyText}>Nenhuma comanda cancelada no período.</Text>}
-            </View>
-          </>
-        )}
-      </ScrollView>
-    </View>
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Últimas comandas canceladas</Text>
+                {comandas.slice(0, 20).map((row, idx) => (
+                  <View key={`${row.comanda_number}-${idx}`} style={styles.listRow}>
+                    <Text style={styles.listTitle}>Comanda #{row.comanda_number}</Text>
+                    <Text style={styles.listMeta}>
+                      {row.canceled_by_name || 'Não identificado'} • {row.canceled_at ? new Date(row.canceled_at).toLocaleString('pt-BR') : 'Sem data'}
+                    </Text>
+                    <Text style={styles.listValue}>{formatCurrency(Number(row.total_consumed || 0))}</Text>
+                  </View>
+                ))}
+                {comandas.length === 0 && <Text style={styles.emptyText}>Nenhuma comanda cancelada no período.</Text>}
+              </View>
+            </>
+          )}
+        </ScrollView>
+      </View>
+    </ScreenScaffold>
   );
 }
 
@@ -289,28 +288,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
     paddingHorizontal: 16,
-    paddingTop: 14,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  closeButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
-  closeButtonText: {
-    color: colors.white,
-    fontWeight: '700',
+    paddingTop: 12,
   },
   periodRow: {
     flexDirection: 'row',
