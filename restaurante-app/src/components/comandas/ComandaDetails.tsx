@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { fixDecimal, MenuItem } from '../../utils/orderCalculator';
 import { Comanda } from '../../types';
 
@@ -16,6 +16,7 @@ interface ComandaDetailsProps {
     onAddItems: () => void;
     onShare?: () => void;
     onFullPayment?: () => void;
+    onCancelItem?: (pedido: any, itemId: string, itemName: string) => void;
 }
 
 interface ItemResumo {
@@ -26,7 +27,7 @@ interface ItemResumo {
     precoUnit: number;
 }
 
-export default function ComandaDetails({ comanda, cardapioDin, onClose, onPay, onPrint, onCancel, onAddItems, onShare, onFullPayment }: ComandaDetailsProps) {
+export default function ComandaDetails({ comanda, cardapioDin, onClose, onPay, onPrint, onCancel, onAddItems, onShare, onFullPayment, onCancelItem }: ComandaDetailsProps) {
     // Calcular Saldo devedor (with safe defaults)
     const saldoDevedor = useMemo(() => {
         const totalConsumido = Number(comanda.totalConsumido) || 0;
@@ -369,6 +370,66 @@ export default function ComandaDetails({ comanda, cardapioDin, onClose, onPay, o
                         <Text style={styles.totalValueLarge}>R$ {(Number(saldoDevedor) || 0).toFixed(2)}</Text>
                     </View>
                 </View>
+
+                {/* 🔒 SEÇÃO DE CANCELAMENTO DE ITENS - Apenas se comanda está aberta */}
+                {shouldShowActions() && comanda.pedidos?.some((p: any) => 
+                    p.itemsWithStatus?.some((item: any) => item.delivered !== true && item.status !== 'cancelled')
+                ) && (
+                    <View style={[styles.paperReceipt, { marginTop: 20, borderTopColor: colors.danger }]}>
+                        <Text style={[styles.receiptTitle, { color: colors.danger }]}>CANCELAR ITENS</Text>
+                        <View style={styles.divider} />
+                        
+                        {comanda.pedidos?.map((pedido: any, pedidoIdx: number) => {
+                            const itemsNaoEntregues = pedido.itemsWithStatus?.filter(
+                                (item: any) => item.delivered !== true && item.status !== 'cancelled'
+                            ) || [];
+                            
+                            if (itemsNaoEntregues.length === 0) return null;
+                            
+                            return (
+                                <View key={pedidoIdx} style={{ marginBottom: 15 }}>
+                                    {itemsNaoEntregues.map((item: any, itemIdx: number) => (
+                                        <View key={itemIdx} style={[styles.itemRow, { alignItems: 'center' }]}>
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={styles.itemName}>{item.name}</Text>
+                                                <Text style={styles.itemQty}>
+                                                    {item.quantity}x R$ {(item.unitPrice || 0).toFixed(2)}
+                                                </Text>
+                                            </View>
+                                            <TouchableOpacity
+                                                style={{
+                                                    backgroundColor: colors.danger,
+                                                    paddingHorizontal: 12,
+                                                    paddingVertical: 6,
+                                                    borderRadius: 4,
+                                                    marginLeft: 10
+                                                }}
+                                                onPress={() => {
+                                                    if (onCancelItem) {
+                                                        Alert.alert(
+                                                            'Cancelar Item',
+                                                            `Deseja cancelar ${item.quantity}x ${item.name}?`,
+                                                            [
+                                                                { text: 'Não', style: 'cancel' },
+                                                                {
+                                                                    text: 'Sim, cancelar',
+                                                                    style: 'destructive',
+                                                                    onPress: () => onCancelItem(pedido, item.id, item.name)
+                                                                }
+                                                            ]
+                                                        );
+                                                    }
+                                                }}
+                                            >
+                                                <Text style={{ color: colors.white, fontWeight: 'bold', fontSize: 12 }}>✕</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    ))}
+                                </View>
+                            );
+                        })}
+                    </View>
+                )}
 
                 {/* AREA DE AÇÕES */}
                 {shouldShowActions() && (

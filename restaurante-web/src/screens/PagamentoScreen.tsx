@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 // @ts-ignore
 import PagamentosService from '../services/PagamentosService';
+// @ts-ignore
+import OrderService from '../services/OrderService';
 import { getTodayKey } from '../utils/dateUtils';
 import { supabase } from '../config/SupabaseConfig';
 import SplitPaymentModal from '../components/SplitPaymentModal';
@@ -11,6 +13,7 @@ import { calcularPrecoItem, MenuItem } from '../utils/orderCalculator';
 import { ScreenScaffold } from '../layouts/ScreenScaffold';
 import { PaymentActionPanel, PaymentComandaSummary, PaymentOrderSummary, PaymentStepIndicator } from '../features/payments';
 import { isFeatureEnabled } from '../config/featureFlags';
+import { auditService } from '../services/AuditService';
 
 // Usar função centralizada para consistência de data local
 const todayKey = getTodayKey;
@@ -237,14 +240,84 @@ export default function PagamentoScreen({ route, navigation }: any) {
     setIsSplitModalVisible(false);
   };
 
-  const pagar = async () => {
+  const cancelUndeliveredAndRetryPayment = async (undeliveredItems: any[], valorPago: number) => {
     try {
-      if (!valor || parseFloat(valor) <= 0) {
+      if (!user?.companyId) return;
+      const dateKey = todayKey();
+      
+      // 🔄 Cancelar cada item não entregue
+      for (const item of undeliveredItems) {
+        const order = orders.find(o => o.itemsWithStatus?.some((it: any) => it.id === item.id));
+        if (order) {
+          const previousItem = order.itemsWithStatus?.find((it: any) => it.id === item.id);
+          const cancelledOrder = OrderService.cancelItem(order, item.id);
+          
+          // Atualizar no banco
+          const { error: updateError } = await supabase
+            .from('orders')
+            .update({ items_with_status: cancelledOrder.itemsWithStatus })
+            .eq('id', order.id);
+          
+          if (updateError) {
+            throw new Error(`Erro ao cancelar item ${item.name}: ${updateError.message}`);
+          }
+
+          await auditService.log({
+            eventType: 'order.item_cancelled',
+            resourceType: 'order',
+            resourceId: String(order.id),
+            companyId: user.companyId,
+            metadata: {
+              source: 'payment_undelivered_confirmation',
+              comandaNumber: comanda,
+              orderId: order.id,
+              itemId: item.id,
+              itemName: item.name,
+              quantity: Number(previousItem?.quantity || item.quantity || 1),
+              estimatedValue: Number(previousItem?.unitPrice || 0) * Number(previousItem?.quantity || item.quantity || 1),
+            },
+          });
+        }
+      }
+      
+      // 🔄 Recalcular totais da comanda
+      const ComandasService = require('../services/ComandasService').default;
+      await ComandasService.recalcularTotalComandaAposItemCancelado(user.companyId, comanda);
+      
+      // ✅ Tentar pagamento novamente
+      await PagamentosService.registrarPagamento({
+        companyId: user.companyId,
+        dateKey: dateKey,
+        comandaNumber: comanda,
+        forma,
+        valor: valorPago,
+        usuarioId: user?.id || '',
+        usuarioNome: user?.nome || 'Usuário',
+        paidItemsIds: paidItemsIds.length > 0 ? paidItemsIds : undefined
+      });
+      
+      setPaidItemsIds([]);
+      await new Promise(resolve => setTimeout(resolve, 200));
+      await carregarDadosComanda();
+      setValor('');
+      
+      Alert.alert(
+        'Sucesso',
+        `${undeliveredItems.length} item(ns) cancelado(s) e pagamento registrado! Saldo atualizado.`
+      );
+    } catch (e: any) {
+      Alert.alert('Erro ao cancelar e pagar', e.message);
+    }
+  };
+
+  const pagar = async () => {
+    const valorPago = parseFloat(valor || '0');
+
+    try {
+      if (!valor || valorPago <= 0) {
         Alert.alert('Erro', 'Informe um valor válido.');
         return;
       }
-
-      const valorPago = parseFloat(valor);
 
       await PagamentosService.registrarPagamento({
         companyId: user?.companyId || '',
@@ -266,7 +339,28 @@ export default function PagamentoScreen({ route, navigation }: any) {
       Alert.alert('Sucesso', 'Pagamento registrado! Saldo atualizado.');
 
     } catch (e: any) {
-      Alert.alert('Erro', e.message);
+      // 🔒 TRATAMENTO ESPECIAL: Itens não entregues
+      if (e.code === 'UNDELIVERED_ITEMS' && e.undeliveredItems) {
+        const itemsList = e.undeliveredItems
+          .map((item: any) => `• ${item.name || item.id} (${item.quantity}x)`)
+          .join('\n');
+        
+        Alert.alert(
+          'Itens não entregues',
+          `Existem itens não entregues nesta comanda:\n\n${itemsList}\n\nDeseja cancelá-los para prosseguir com o pagamento?`,
+          [
+            { text: 'Cancelar', onPress: () => {}, style: 'cancel' },
+            {
+              text: 'Cancelar itens e pagar',
+              onPress: () => cancelUndeliveredAndRetryPayment(e.undeliveredItems, valorPago),
+              style: 'default'
+            }
+          ]
+        );
+      } else {
+        // Erro genérico
+        Alert.alert('Erro', e.message);
+      }
     }
   };
 

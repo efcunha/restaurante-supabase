@@ -79,6 +79,43 @@ class PagamentosService {
     const safeUsuarioNome = usuarioNome || 'Sistema';
     const safeUsuarioId = usuarioId || null; // ✅ NULL instead of 'system' for UUID field
     
+    // 🔒 VALIDAÇÃO DE ITENS NÃO ENTREGUES: Antes de qualquer outra validação
+    // Se existem itens não entregues, retorna erro estruturado para UX pedir confirmação
+    const { data: ordersToCheck, error: ordersCheckError } = await supabase
+      .from('orders')
+      .select('items_with_status')
+      .eq('company_id', companyId)
+      .eq('comanda_number', String(comandaNumber))
+      .eq('date_key', dateKey)
+      .neq('status', 'cancelled');
+
+    if (!ordersCheckError && ordersToCheck) {
+      const undeliveredItems: any[] = [];
+      ordersToCheck.forEach(order => {
+        if (order.items_with_status && Array.isArray(order.items_with_status)) {
+          order.items_with_status.forEach((item: any) => {
+            // Listar itens que: NÃO foram entregues E NÃO foram cancelados
+            if (item.delivered !== true && item.status !== 'cancelled') {
+              undeliveredItems.push({
+                id: item.id,
+                name: item.name,
+                quantity: item.quantity || 1,
+                delivered: item.delivered
+              });
+            }
+          });
+        }
+      });
+
+      // Se existem itens não entregues, bloquear pagamento e retornar para UX resolver
+      if (undeliveredItems.length > 0) {
+        const error: any = new Error('Existem itens não entregues na comanda. Cancele-os para prosseguir com o pagamento.');
+        error.code = 'UNDELIVERED_ITEMS';
+        error.undeliveredItems = undeliveredItems; // Para UX exibir a lista
+        throw error;
+      }
+    }
+    
     // 🔒 SEGURANÇA: Validação RIGOROSA de valor
     const valorNum = typeof valor === 'string' ? parseFloat(valor) : valor;
     if (isNaN(valorNum) || valorNum <= 0) {

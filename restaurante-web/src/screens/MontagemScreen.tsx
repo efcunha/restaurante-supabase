@@ -150,7 +150,7 @@ const OrderCard = memo(({ order, onToggleItem, onMarkReady, nowMs }: OrderCardPr
       )}
       <View style={styles.orderItems}>
         {order.itemsWithStatus && order.itemsWithStatus.length > 0 ? (
-          order.itemsWithStatus.map((item: any) => {
+          order.itemsWithStatus.filter((item: any) => item.status !== 'cancelled').map((item: any) => {
             const parts = item.name.split(' + ');
             const mainName = parts[0];
             const extras = parts.length > 1 ? parts.slice(1).join(' + ') : null;

@@ -369,7 +369,6 @@ export default function AdminScreen() {
 
   const reports = [
     { name: 'Gerenciar Funcionários', icon: '👥', action: () => setShowFuncionarios(true) },
-    { name: 'Caixa', icon: '💰', action: () => setShowCaixaMenu(true) },
     { name: 'Estatísticas dos Garçons', icon: '📊', action: () => setShowComandasVisualizacao(true) },
     { name: 'Ocorrencias de Entrega', icon: '⚠️', action: () => setShowDeliveryOcorrencias(true) },
     { name: 'Gerenciar Estoque', icon: '📦', action: () => setShowEstoque(true) },
@@ -385,6 +384,7 @@ export default function AdminScreen() {
 
   const financialReports = [
     ...(billingScreenEnabled ? [{ name: 'Assinatura SaaS', icon: '💳', action: () => setShowBillingScreen(true) }] : []),
+    { name: 'Caixa', icon: '💰', action: () => setShowCaixaMenu(true) },
     { name: 'Dashboard Financeiro', icon: '📊', action: () => setShowDashboard(true) },
     { name: 'Histórico de Caixas', icon: '📜', action: () => setShowCaixaHistorico(true) },
     { name: 'Config. Financeira', icon: '⚙️', action: () => setShowFinancialConfig(true) },

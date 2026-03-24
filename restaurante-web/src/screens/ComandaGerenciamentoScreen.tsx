@@ -29,6 +29,7 @@ import PDFService from '../services/PDFService';
 import { Button } from '../ui';
 import { isFeatureEnabled } from '../config/featureFlags';
 import { colors } from '../theme/colors';
+import { auditService } from '../services/AuditService';
 if (Platform.OS === 'android') {
   if (UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -317,12 +318,86 @@ export default function ComandaGerenciamentoScreen(props: any) {
         if (fallbackOrdersUpdateError) throw fallbackOrdersUpdateError;
       }
 
+      await auditService.log({
+        eventType: 'comanda.cancelled',
+        resourceType: 'comanda',
+        resourceId: String(comanda.id || comanda.comandaNumber),
+        companyId: user?.companyId || '',
+        metadata: {
+          comandaNumber: comanda.comandaNumber,
+          tableNumber: comanda.mesa || null,
+          reason: reason.trim(),
+          cancelledOrdersCount: updatedTodayOrders?.length || 0,
+        },
+      });
+
       showToast('Comanda cancelada', 'info');
       setSelectedComanda(null);
       setShowCancelModal(false);
       carregarComandas(true);
     } catch (e: any) {
       console.error('[ComandaGerenciamento] ❌ Erro ao cancelar:', e);
+      showToast(e.message, 'error');
+    }
+  };
+
+  const handleCancelItem = async (pedido: any, itemId: string, itemName: string) => {
+    try {
+      if (!user?.companyId || !pedido) return;
+      const currentComanda = selectedComanda;
+      if (!currentComanda) return;
+
+      const OrderService = require('../services/OrderService').default;
+      const ComandasService = require('../services/ComandasService').default;
+
+      // 1. Cancelar o item no pedido
+      const previousItem = pedido.itemsWithStatus?.find((item: any) => item.id === itemId);
+      const cancelledOrder = OrderService.cancelItem(pedido, itemId);
+
+      // 2. Atualizar o pedido no banco
+      const { error: updateError } = await supabase
+        .from('orders')
+        .update({ items_with_status: cancelledOrder.itemsWithStatus })
+        .eq('id', pedido.id);
+
+      if (updateError) throw updateError;
+
+      // 3. Recalcular totais da comanda
+      await ComandasService.recalcularTotalComandaAposItemCancelado(user.companyId, currentComanda.comandaNumber);
+
+      const itemQty = Number(previousItem?.quantity || 1);
+      const itemUnitPrice = Number(previousItem?.unitPrice || 0);
+
+      await auditService.log({
+        eventType: 'order.item_cancelled',
+        resourceType: 'order',
+        resourceId: String(pedido.id),
+        companyId: user.companyId,
+        metadata: {
+          source: 'manual_comanda_management',
+          comandaNumber: currentComanda.comandaNumber,
+          orderId: pedido.id,
+          itemId,
+          itemName,
+          quantity: itemQty,
+          estimatedValue: itemQty * itemUnitPrice,
+        },
+      });
+
+      // 4. Atualizar a seleção da comanda e recarregar
+      showToast(`${itemName} cancelado!`, 'success');
+      await carregarComandas(true);
+
+      // Reabrir a comanda selecionada
+      const updatedComanda = comandasAbertas.find((c: any) => 
+        c.comandaNumber === currentComanda.comandaNumber
+      );
+      if (updatedComanda) {
+        setSelectedComanda(updatedComanda);
+      }
+
+    } catch (e: any) {
+      console.error('Erro ao cancelar item:', e);
       showToast(e.message, 'error');
     }
   };
@@ -449,6 +524,7 @@ export default function ComandaGerenciamentoScreen(props: any) {
               returnScreen: 'ComandaGerenciamento' // Explicit origin to prevent stale params
             });
           }}
+          onCancelItem={handleCancelItem}
         />
 
         <AddItemsModal
