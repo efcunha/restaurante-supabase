@@ -136,6 +136,21 @@ export default function PedidoDetalhesModal({ visible, orderId, orderIds = [], t
     return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   };
 
+  const getUniqueNames = (values: Array<string | null | undefined>) => (
+    Array.from(new Set(values.map(value => String(value || '').trim()).filter(Boolean)))
+  );
+
+  const getOldestTimestamp = (values: Array<string | null | undefined>) => {
+    const validDates = values
+      .filter(Boolean)
+      .map(value => new Date(String(value)))
+      .filter(date => !Number.isNaN(date.getTime()));
+
+    if (validDates.length === 0) return null;
+
+    return validDates.sort((left, right) => left.getTime() - right.getTime())[0].toISOString();
+  };
+
   const handleEdit = () => {
     if (!order) return;
     if (isEditing) {
@@ -182,6 +197,11 @@ export default function PedidoDetalhesModal({ visible, orderId, orderIds = [], t
   const canEdit = !isTableAggregate && order.status === 'preparing';
   const canPay = !isTableAggregate;
   const viewModeLabel = isTableAggregate ? 'Modo: Mesa consolidada' : 'Modo: Pedido individual';
+  const creatorNames = getUniqueNames(resolvedOrders.map((currentOrder: any) => currentOrder.criadoPorNome || currentOrder.createdByName));
+  const movedByNames = getUniqueNames(resolvedOrders.map((currentOrder: any) => currentOrder.movidoParaMontagemPorNome));
+  const createdAtReference = getOldestTimestamp(resolvedOrders.map((currentOrder: any) => currentOrder.createdAt || currentOrder.timestamp));
+  const montagemReference = getOldestTimestamp(resolvedOrders.map((currentOrder: any) => currentOrder.timeInMontagem || currentOrder.time_in_montagem));
+  const prontosReference = getOldestTimestamp(resolvedOrders.map((currentOrder: any) => currentOrder.timeInProntos || currentOrder.time_in_prontos));
 
   return (
     <>
@@ -243,10 +263,24 @@ export default function PedidoDetalhesModal({ visible, orderId, orderIds = [], t
                 </View>
               </View>
 
-              {!isTableAggregate && order.createdByName && (
+              {(creatorNames.length > 0 || movedByNames.length > 0 || createdAtReference || montagemReference || prontosReference) && (
                 <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>Garçom</Text>
-                  <Text style={styles.clientName}>{order.createdByName}</Text>
+                  <Text style={styles.sectionTitle}>Origem do Pedido</Text>
+                  {creatorNames.length > 0 && (
+                    <Text style={styles.clientName}>Pedido por: {creatorNames.join(', ')}</Text>
+                  )}
+                  {movedByNames.length > 0 && (
+                    <Text style={styles.metaText}>Recebido de: {movedByNames.join(', ')}</Text>
+                  )}
+                  {createdAtReference && (
+                    <Text style={styles.metaText}>Criado em: {formatDate(createdAtReference)}</Text>
+                  )}
+                  {montagemReference && (
+                    <Text style={styles.metaText}>Entrou na montagem: {formatDate(montagemReference)}</Text>
+                  )}
+                  {prontosReference && (
+                    <Text style={styles.metaText}>Ficou pronto: {formatDate(prontosReference)}</Text>
+                  )}
                 </View>
               )}
 
@@ -661,6 +695,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: colors.text,
+  },
+  metaText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginTop: 4,
   },
   input: {
     backgroundColor: colors.background,

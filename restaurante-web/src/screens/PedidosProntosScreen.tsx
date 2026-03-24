@@ -10,12 +10,44 @@ import { supabase } from '../config/SupabaseConfig';
 import { getLocalDateKey } from '../utils/dateUtils';
 import OptimizedFlatList from '../components/OptimizedFlatList';
 import { colors } from '../theme/colors';
+
+const formatClockLabel = (value?: string | null) => {
+  if (!value) return '--:--';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '--:--';
+
+  return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+};
+
+const getElapsedTimeLabel = (reference?: string | null, nowMs: number = Date.now()) => {
+  if (!reference) return '--:--';
+
+  const date = new Date(reference);
+  if (Number.isNaN(date.getTime())) return '--:--';
+
+  const diffMinutes = Math.max(0, Math.floor((nowMs - date.getTime()) / 60000));
+  if (diffMinutes < 60) return `${diffMinutes}m`;
+
+  const hours = Math.floor(diffMinutes / 60);
+  const minutes = diffMinutes % 60;
+  return `${hours}h${String(minutes).padStart(2, '0')}`;
+};
 export default function PedidosProntosScreen() {
   const { user } = useAuth();
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [processingItems, setProcessingItems] = useState(new Set()); // Loading state
   const [allOrders, setAllOrders] = useState<any[]>([]);
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNowMs(Date.now());
+    }, 30000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   // ✅ TEMPO REAL: Listener para multi-usuários
   useEffect(() => {
@@ -27,20 +59,54 @@ export default function PedidosProntosScreen() {
     const fetchOrders = async () => {
       const { data, error } = await supabase
         .from('orders')
-        .select('*')
+        .select(`
+          *,
+          profiles:created_by (
+            full_name
+          )
+        `)
         .eq('company_id', user.companyId)
         .eq('date_key', today)
         .in('status', ['preparing', 'ready'])
         .neq('order_type', 'delivery');
 
       if (!error && data) {
+        const comandaNumbers = Array.from(new Set(
+          data
+            .map(order => Number(order.comanda_number))
+            .filter(value => Number.isFinite(value) && value > 0)
+        ));
+
+        const comandaCreatorsMap = new Map<string, string>();
+        if (comandaNumbers.length > 0) {
+          const { data: comandasData, error: comandasError } = await supabase
+            .from('comandas')
+            .select('date_key, comanda_number, opened_by_name')
+            .eq('company_id', user.companyId)
+            .eq('date_key', today)
+            .in('comanda_number', comandaNumbers);
+
+          if (!comandasError && comandasData) {
+            comandasData.forEach(comanda => {
+              comandaCreatorsMap.set(`${comanda.date_key}:${comanda.comanda_number}`, comanda.opened_by_name || '');
+            });
+          }
+        }
+
         // Map snake_case to camelCase
         const mappedOrders = data.map(order => ({
           ...order,
           itemsWithStatus: order.items_with_status || [],
           comandaNumber: order.comanda_number,
           mesa: order.table_number?.toString() || '',
-          comandaStatus: order.comanda_status
+          comandaStatus: order.comanda_status,
+          client: order.client_name || order.client || 'Cliente',
+          createdAt: order.created_at,
+          timestamp: order.created_at,
+          timeInProntos: order.time_in_prontos || null,
+          timeInMontagem: order.time_in_montagem || null,
+          createdByName: order.profiles?.full_name || comandaCreatorsMap.get(`${order.date_key || today}:${order.comanda_number}`) || '',
+          criadoPorNome: order.profiles?.full_name || comandaCreatorsMap.get(`${order.date_key || today}:${order.comanda_number}`) || ''
         }));
         setAllOrders(mappedOrders);
       }
@@ -97,6 +163,7 @@ export default function PedidosProntosScreen() {
               mesa: order.mesa, // ✅ Propagar mesa
               observations: order.observations, // ✅ Propagar observações
               criadoPorNome: order.criadoPorNome || order.createdByName,
+              prontoDesde: order.timeInProntos || order.time_in_prontos || order.timestamp || order.createdAt,
               orderTimestamp: order.timestamp || order.createdAt
             });
           }
@@ -215,11 +282,14 @@ export default function PedidosProntosScreen() {
     return (
       <View style={styles.itemCard}>
         <View style={styles.itemHeader}>
-          <Text style={styles.comandaNumber}>
-            Comanda {item.comandaNumber || '?'}
-            {item.mesa ? ` - Mesa ${item.mesa}` : ''}
-          </Text>
-          <Text style={styles.clientName}>{item.client}</Text>
+          <View style={{ flex: 1, paddingRight: 8 }}>
+            <Text style={styles.comandaNumber}>
+              Comanda {item.comandaNumber || '?'}
+              {item.mesa ? ` - Mesa ${item.mesa}` : ''}
+            </Text>
+            <Text style={styles.clientName}>{item.client}</Text>
+          </View>
+          <Text style={styles.readyTime}>{getElapsedTimeLabel(item.prontoDesde, nowMs)}</Text>
         </View>
 
         {!!item.observations && (
@@ -241,8 +311,9 @@ export default function PedidosProntosScreen() {
         </View>
 
         {!!item.criadoPorNome && (
-          <Text style={styles.garcomText}>👤 Garçom: {item.criadoPorNome}</Text>
+          <Text style={styles.garcomText}>👤 Pedido por: {item.criadoPorNome}</Text>
         )}
+        <Text style={styles.timeHint}>Pronto desde: {formatClockLabel(item.prontoDesde)}</Text>
 
         <TouchableOpacity
           style={styles.deliverBtn}
@@ -257,7 +328,7 @@ export default function PedidosProntosScreen() {
         </TouchableOpacity>
       </View>
     );
-  }, [handleDeliver, processingItems]);
+  }, [handleDeliver, nowMs, processingItems]);
 
   const keyExtractor = useCallback((item: any) => `${item.orderId}-${item.id}`, []);
 
@@ -421,6 +492,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     fontWeight: '600',
+    marginTop: 2,
+  },
+  readyTime: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.white,
+    backgroundColor: colors.success,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
   },
   itemBody: {
     flexDirection: 'row',
@@ -481,6 +562,11 @@ const styles = StyleSheet.create({
     color: colors.secondary,
     fontWeight: '600',
     marginBottom: 6,
+  },
+  timeHint: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginBottom: 8,
   },
   finalizadoPorText: {
     fontSize: 13,
