@@ -41,6 +41,15 @@ Operational reminders from recent incidents:
 - `profiles` hardening implemented in `database-backup/migrations/20260323183000_harden_profiles_rls_and_role_guardrails.sql` and applied remotely.
 - `public.profiles` now uses restrictive policies (self + admin/gerente same-company), no longer `SELECT USING (true)`.
 - `handle_new_user` and role checks were aligned to canonical roles (`admin`, `gerente`, `garcom`, `cozinheiro`, `montagem`, `entregador`, `caixa`) with legacy alias normalization.
+- Environment policy: there is currently no dedicated staging environment; deployments and validations run directly in production.
+- Production-only rule: for sensitive changes (security, auth, billing, RLS, CORS, rate limiting), require guarded rollout, smoke tests, and explicit evidence docs update in the same work cycle.
+
+Consolidated security hardening snapshot (2026-03-24):
+- CORS hardening applied in Supabase Edge Functions: request-scoped allowlist, no wildcard fallback.
+- E2E secret hardening applied: removed hardcoded Supabase keys/URLs from tests and switched to env-based resolution.
+- `restaurante-ops` rate limiting hardening applied: Redis-first limiter, strict fail-closed option (`RATE_LIMIT_FALLBACK_ENABLED=false`) and explicit 503 handling when limiter backend is unavailable.
+- Production validation completed for login path on `https://ops.restaurante-web.app.br`: threshold enforcement confirmed with HTTP 429 + required headers.
+- Billing remains not live in production; billing-specific 429/503 validation is required in staging-equivalent controlled checks before production go-live.
 
 Maintenance policy for these instruction files:
 - Keep this file as orchestration/routing + concise guardrails.
