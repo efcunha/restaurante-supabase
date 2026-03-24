@@ -127,6 +127,9 @@ function sanitizeAuditDetails(details: Record<string, unknown>): Record<string, 
     /document/i,
     /email/i,
     /phone/i,
+    /mp_payment_id/i,
+    /mp_card_id/i,
+    /last[_-]?four/i,
   ];
 
   const sanitizeValue = (value: unknown): unknown => {

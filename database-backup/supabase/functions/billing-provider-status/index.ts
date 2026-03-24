@@ -31,11 +31,17 @@ Deno.serve(async (req) => {
     ]);
 
     if (subscriptionResult.error) {
-      throw new HttpError(500, subscriptionResult.error.message);
+      console.error('[BILLING_PROVIDER_STATUS] Subscription lookup failed', {
+        code: subscriptionResult.error.code,
+      });
+      throw new HttpError(500, 'Não foi possível carregar o status do provider de billing.');
     }
 
     if (methodsResult.error) {
-      throw new HttpError(500, methodsResult.error.message);
+      console.error('[BILLING_PROVIDER_STATUS] Payment methods lookup failed', {
+        code: methodsResult.error.code,
+      });
+      throw new HttpError(500, 'Não foi possível carregar o status do provider de billing.');
     }
 
     const subscription = subscriptionResult.data;

@@ -271,8 +271,7 @@ Deno.serve(async (req) => {
     await auditBillingEvent('billing.checkout.card_saved', {
       provider: 'mercadopago',
       payment_method_id: newMethod.id,
-      card_brand: brand,
-      // NOTE: last_four is safe for audit — it's a display field, not full PAN
+      payment_brand: brand,
     });
 
     return jsonResponse(201, {
