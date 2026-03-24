@@ -6,7 +6,8 @@ import { test, expect } from '@playwright/test';
 const SUPABASE_URL = 'https://ykalocfhnetxenvmtlcn.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_sUAhOXyPkUhEb4tpbVU8wQ_71qyFI3x';
 const TODAY_KEY = new Date().toISOString().slice(0, 10);
-const LOCK_DIR = path.join(os.tmpdir(), 'playwright-mesa-locks-consolidacao-garcom02');
+const LOCK_DIR = path.join(os.tmpdir(), 'playwright-mesa-locks');
+const MESA_POOL = ['6', '7', '8', '9', '10'];
 
 async function isMesaLivreNoBanco(mesa: string, accessToken: string): Promise<boolean> {
   try {
@@ -52,8 +53,7 @@ async function lockMesa(accessToken: string, excluded: string[] = []): Promise<s
   const excludedSet = new Set(excluded.map(String));
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
-    for (let i = 1; i <= 10; i++) {
-      const mesa = String(i);
+    for (const mesa of MESA_POOL) {
       if (excludedSet.has(mesa)) continue;
 
       const lockFile = path.join(LOCK_DIR, `mesa-${mesa}.lock`);
@@ -84,7 +84,7 @@ async function lockMesa(accessToken: string, excluded: string[] = []): Promise<s
     await new Promise(resolve => setTimeout(resolve, 1000));
   }
 
-  throw new Error('Timeout: Nenhuma mesa livre disponível para o teste de consolidação');
+  throw new Error(`Timeout: Nenhuma mesa livre disponível no pool [${MESA_POOL.join(', ')}] para o teste de consolidação`);
 }
 
 function unlockMesa(mesa: string | null | undefined) {
@@ -116,6 +116,26 @@ async function listOpenComandasByMesa(mesa: string, accessToken: string) {
   }
 
   return await res.json();
+}
+
+async function waitForOpenComandaCountByMesa(
+  mesa: string,
+  accessToken: string,
+  expectedCount: number,
+  timeoutMs = 12000,
+): Promise<any[]> {
+  const start = Date.now();
+
+  while (Date.now() - start < timeoutMs) {
+    const list = await listOpenComandasByMesa(mesa, accessToken);
+    if (Array.isArray(list) && list.length === expectedCount) {
+      return list;
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 350));
+  }
+
+  return await listOpenComandasByMesa(mesa, accessToken);
 }
 
 async function cancelOpenComandasByMesa(mesa: string, accessToken: string) {
@@ -305,12 +325,12 @@ test.describe('Consolidacao Mesa -> Comanda Canônica - Garcom 02', () => {
       await createSimpleMesaOrder(page, sourceMesa, 'PW Consolidacao Origem G02');
       await createSimpleMesaOrder(page, targetMesa, 'PW Consolidacao Destino G02');
 
-      const initialOpenSource = await listOpenComandasByMesa(sourceMesa, accessToken);
+      const initialOpenSource = await waitForOpenComandaCountByMesa(sourceMesa, accessToken, 1);
       expect(Array.isArray(initialOpenSource)).toBeTruthy();
       expect(initialOpenSource.length).toBe(1);
       const sourceComanda = String(initialOpenSource[0].comanda_number);
 
-      const initialOpenTarget = await listOpenComandasByMesa(targetMesa, accessToken);
+      const initialOpenTarget = await waitForOpenComandaCountByMesa(targetMesa, accessToken, 1);
       expect(Array.isArray(initialOpenTarget)).toBeTruthy();
       const canonicalTargetComanda = initialOpenTarget.length > 0
         ? String(initialOpenTarget[0].comanda_number)
@@ -376,14 +396,14 @@ test.describe('Consolidacao Mesa -> Comanda Canônica - Garcom 02', () => {
 
       await page.waitForTimeout(1200);
 
-      const openTarget = await listOpenComandasByMesa(targetMesa, accessToken);
+      const openTarget = await waitForOpenComandaCountByMesa(targetMesa, accessToken, 1);
       expect(Array.isArray(openTarget)).toBeTruthy();
       expect(openTarget.length).toBe(1);
 
       const canonicalTarget = String(openTarget[0].comanda_number);
       expect(canonicalTarget).toBeTruthy();
 
-      const openSource = await listOpenComandasByMesa(sourceMesa, accessToken);
+      const openSource = await waitForOpenComandaCountByMesa(sourceMesa, accessToken, 0);
       expect(openSource.length).toBe(0);
 
       const ordersTargetRes = await fetch(
