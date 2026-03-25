@@ -364,6 +364,7 @@ export default function BillingScreen({ onClose }: BillingScreenProps) {
   }, [companyId, cardMethods.length, loadData]);
 
   const statusLabel = statusLabels[subscription.status || 'trialing'] || 'Assinatura';
+  const subtitle = subscription.trialEndsAt ? `Trial até ${formatDate(subscription.trialEndsAt)}` : undefined;
 
   return (
     <ScreenScaffold
