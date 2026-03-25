@@ -63,7 +63,7 @@ const DEFAULT_STATE: SubscriptionState = {
   currentPeriodStart: null,
   currentPeriodEnd: null,
   gracePeriodEnd: null,
-  planAmount: 14900,
+  planAmount: 0,
   canOperate: true,
 };
 
@@ -118,7 +118,7 @@ export const BillingProvider: React.FC<BillingProviderProps> = ({ children }) =>
         currentPeriodStart: row.current_period_start ? new Date(row.current_period_start) : null,
         currentPeriodEnd: row.current_period_end ? new Date(row.current_period_end) : null,
         gracePeriodEnd: row.grace_period_end ? new Date(row.grace_period_end) : null,
-        planAmount: row.plan_amount ?? 14900,
+        planAmount: row.plan_amount ?? 0,
         canOperate: Boolean(row.can_operate),
       });
     } catch (e: any) {

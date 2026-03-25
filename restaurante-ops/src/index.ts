@@ -36,8 +36,18 @@ import {
   reconcileBillingEvent,
   regularizeByCard,
   regularizeByPix,
+  checkInvoiceAmountDivergence,
   type ReconcileInput,
 } from './modules/billing-operations.js';
+import {
+  PlanConfigOperationError,
+  fetchActivePlanConfig,
+  fetchPlanConfigHistory,
+  fetchPlanConfigAudit,
+  activatePlanConfig,
+  validateActivatePlanConfigInput,
+  type ActivatePlanConfigInput,
+} from './modules/billing-plan-config-operations.js';
 
 const env = buildEnv();
 
@@ -806,6 +816,7 @@ function renderQuickActionPanel(
         <a class="nav-link" href="/dashboard">Voltar ao dashboard</a>
         <a class="nav-link" href="/customers">Gerenciar clientes</a>
         <a class="nav-link" href="/billing">Faturamento e invoices</a>
+        <a class="nav-link" href="/billing/plan-config">Preço do plano</a>
         <a class="nav-link" href="/metrics">Metricas SaaS</a>
         <a class="nav-link" href="/service-status">Estado do servico</a>
         <a class="nav-link" href="/api-status">API status JSON</a>
@@ -975,6 +986,197 @@ function renderBillingPanel(
           <tr><th>Empresa</th><th>Valor</th><th>Status</th><th>Vencimento</th><th>Pago em</th></tr>
         </thead>
         <tbody>${rows}</tbody>
+      </table>
+    </section>`,
+  );
+}
+
+function renderPlanConfigPanel(
+  user: OpsUser,
+  active: import('./modules/billing-plan-config-operations.js').ActivePlanConfig | null,
+  history: import('./modules/billing-plan-config-operations.js').ActivePlanConfig[],
+  audit: import('./modules/billing-plan-config-operations.js').PlanConfigAuditEntry[],
+): string {
+  const isAdmin = user.role === 'admin';
+
+  const activeBrl = active
+    ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(active.amount_cents / 100)
+    : '—';
+
+  const histRows = history.length === 0
+    ? '<tr><td colspan="4" style="text-align:center;color:#516675;">Sem histórico disponível.</td></tr>'
+    : history.map((row) => `
+        <tr>
+          <td>${brl(row.amount_cents)}</td>
+          <td>${row.currency}</td>
+          <td>${row.trial_days} dias</td>
+          <td>${fmtDate(row.effective_from)}</td>
+        </tr>`).join('');
+
+  const auditRows = audit.length === 0
+    ? '<tr><td colspan="4" style="text-align:center;color:#516675;">Sem eventos de auditoria.</td></tr>'
+    : audit.map((a) => `
+        <tr>
+          <td>${a.action}</td>
+          <td>${brl((a.after_snapshot as any)?.amount_cents ?? 0)}</td>
+          <td>${a.changed_by}</td>
+          <td>${fmtDate(a.created_at)}</td>
+        </tr>`).join('');
+
+  const formHtml = isAdmin ? `
+    <section class="panel">
+      <h2>Alterar preço do plano</h2>
+      <p style="margin-bottom:14px;color:#516675;font-size:14px;">
+        Somente administradores podem alterar o preço. A alteração tem efeito imediato nas próximas cobranças.
+        O histórico completo é mantido para auditoria.
+      </p>
+      <form id="plan-config-form" style="display:grid;gap:12px;max-width:520px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div>
+            <label style="font-size:13px;font-weight:700;color:#2f4353;" for="amount_brl">Valor (R$)</label>
+            <input id="amount_brl" name="amount_brl" type="number" min="1" max="100000" step="0.01"
+              placeholder="Ex: 149.00"
+              style="display:block;width:100%;margin-top:4px;padding:9px 10px;border:1px solid #c8d7e1;border-radius:8px;font-size:15px;" />
+          </div>
+          <div>
+            <label style="font-size:13px;font-weight:700;color:#2f4353;" for="trial_days">Dias de trial</label>
+            <input id="trial_days" name="trial_days" type="number" min="0" max="365" value="30"
+              style="display:block;width:100%;margin-top:4px;padding:9px 10px;border:1px solid #c8d7e1;border-radius:8px;font-size:15px;" />
+          </div>
+        </div>
+        <div>
+          <label style="font-size:13px;font-weight:700;color:#2f4353;" for="effective_from">Vigência a partir de (ISO 8601)</label>
+          <input id="effective_from" name="effective_from" type="datetime-local"
+            style="display:block;width:100%;margin-top:4px;padding:9px 10px;border:1px solid #c8d7e1;border-radius:8px;font-size:15px;" />
+        </div>
+        <div>
+          <label style="font-size:13px;font-weight:700;color:#2f4353;" for="change_reason">Motivo da alteração (5–500 caracteres)</label>
+          <textarea id="change_reason" name="change_reason" rows="2" placeholder="Ex: Reajuste de tabela — Jan/2026"
+            style="display:block;width:100%;margin-top:4px;padding:9px 10px;border:1px solid #c8d7e1;border-radius:8px;font-size:15px;resize:vertical;"></textarea>
+        </div>
+        <div id="plan-form-msg" style="display:none;padding:10px;border-radius:8px;font-size:14px;font-weight:700;"></div>
+        <button id="plan-submit-btn" type="submit"
+          style="align-self:start;padding:10px 24px;background:#0c7a96;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;">
+          Confirmar alteração
+        </button>
+      </form>
+      <script>
+        (function () {
+          const form = document.getElementById('plan-config-form');
+          const msg = document.getElementById('plan-form-msg');
+          const btn = document.getElementById('plan-submit-btn');
+
+          // Default effective_from to now
+          const now = new Date();
+          now.setSeconds(0, 0);
+          document.getElementById('effective_from').value = now.toISOString().slice(0, 16);
+
+          form.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const amountBrl = parseFloat(document.getElementById('amount_brl').value);
+            const trialDays = parseInt(document.getElementById('trial_days').value, 10);
+            const effectiveFrom = document.getElementById('effective_from').value;
+            const changeReason = document.getElementById('change_reason').value.trim();
+
+            if (!amountBrl || amountBrl <= 0) {
+              showMsg('error', 'Informe um valor válido (maior que zero).');
+              return;
+            }
+            if (!changeReason || changeReason.length < 5) {
+              showMsg('error', 'Informe o motivo da alteração (mínimo 5 caracteres).');
+              return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Enviando...';
+
+            try {
+              const resp = await fetch('/ops/billing/plan-config/activate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  plan_code: 'default_monthly',
+                  amount_cents: Math.round(amountBrl * 100),
+                  currency: 'BRL',
+                  trial_days: isNaN(trialDays) ? 30 : trialDays,
+                  effective_from: new Date(effectiveFrom).toISOString(),
+                  change_reason: changeReason,
+                }),
+              });
+              const data = await resp.json();
+              if (resp.ok && data.ok) {
+                showMsg('ok', 'Plano atualizado com sucesso. Recarregando em 2s...');
+                setTimeout(() => window.location.reload(), 2000);
+              } else {
+                showMsg('error', data.error || 'Erro desconhecido ao ativar configuração.');
+              }
+            } catch (err) {
+              showMsg('error', 'Erro de rede. Verifique a conexão e tente novamente.');
+            } finally {
+              btn.disabled = false;
+              btn.textContent = 'Confirmar alteração';
+            }
+          });
+
+          function showMsg(type, text) {
+            msg.style.display = 'block';
+            msg.className = 'pill ' + (type === 'ok' ? 'ok' : 'error');
+            msg.style.padding = '10px';
+            msg.textContent = text;
+          }
+        })();
+      </script>
+    </section>` : `
+    <section class="panel">
+      <p style="color:#516675;font-size:14px;">
+        <strong>Somente administradores</strong> podem alterar o preço do plano. Entre em contato com um admin para solicitar alterações.
+      </p>
+    </section>`;
+
+  return renderQuickActionPanel(
+    user,
+    'Configuração de Preço do Plano',
+    'Gerencie o valor do plano mensal cobrado aos restaurantes. Alterações têm efeito imediato nas próximas cobranças.',
+    `<section class="panel">
+      <h2>Configuração ativa</h2>
+      <div class="grid">
+        <article class="metric">
+          <div class="metric-label">Valor atual</div>
+          <div class="metric-value">${activeBrl}</div>
+          <div class="metric-hint">${active ? `${active.currency} — ${active.amount_cents} centavos` : 'Nenhuma configuração ativa'}</div>
+        </article>
+        <article class="metric">
+          <div class="metric-label">Trial padrão</div>
+          <div class="metric-value">${active?.trial_days ?? '—'} dias</div>
+          <div class="metric-hint">Período de avaliação gratuita</div>
+        </article>
+        <article class="metric">
+          <div class="metric-label">Vigente desde</div>
+          <div class="metric-value" style="font-size:18px;">${active ? fmtDate(active.effective_from) : '—'}</div>
+          <div class="metric-hint">Data de ativação da configuração atual</div>
+        </article>
+      </div>
+    </section>
+
+    ${formHtml}
+
+    <section class="panel">
+      <h2>Histórico de preços</h2>
+      <table class="table">
+        <thead>
+          <tr><th>Valor</th><th>Moeda</th><th>Trial</th><th>Vigente desde</th></tr>
+        </thead>
+        <tbody>${histRows}</tbody>
+      </table>
+    </section>
+
+    <section class="panel">
+      <h2>Auditoria de alterações</h2>
+      <table class="table">
+        <thead>
+          <tr><th>Ação</th><th>Novo valor</th><th>Alterado por</th><th>Data</th></tr>
+        </thead>
+        <tbody>${auditRows}</tbody>
       </table>
     </section>`,
   );
@@ -1726,6 +1928,162 @@ function startServer() {
         return;
       }
 
+      // ---- Billing Invoice Divergence Check ----
+      if (req.method === 'POST' && path === '/ops/billing/invoice-divergence') {
+        const user = await requireAuth(req, res);
+        if (!user) return;
+
+        const body = parseJsonBody<{ companyId?: string; invoiceId?: string }>(await readBody(req));
+        if (!body.companyId || !body.invoiceId) {
+          res.writeHead(400, { 'content-type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ error: 'companyId e invoiceId sao obrigatorios.' }));
+          return;
+        }
+
+        try {
+          const result = await checkInvoiceAmountDivergence(body.companyId, body.invoiceId, user.id);
+          res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ ok: true, ...result }));
+        } catch (err) {
+          respondBillingError(res, err);
+        }
+        return;
+      }
+
+      // ---- Billing Plan Config — GET active / history / audit ----
+      if (req.method === 'GET' && path === '/ops/billing/plan-config') {
+        const user = await requireAuth(req, res);
+        if (!user) return;
+
+        try {
+          const [active, history, audit] = await Promise.all([
+            fetchActivePlanConfig(),
+            fetchPlanConfigHistory('default_monthly', 20),
+            fetchPlanConfigAudit('default_monthly', 30),
+          ]);
+
+          res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({
+            ok: true,
+            generatedAt: new Date().toISOString(),
+            active,
+            history,
+            audit,
+          }));
+        } catch (err) {
+          if (err instanceof PlanConfigOperationError) {
+            res.writeHead(err.statusCode, { 'content-type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ error: err.message, code: err.code }));
+          } else {
+            res.writeHead(500, { 'content-type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ error: 'Erro ao carregar configuração de plano.' }));
+          }
+        }
+        return;
+      }
+
+      // ---- Billing Plan Config — POST activate (admin only) ----
+      if (req.method === 'POST' && path === '/ops/billing/plan-config/activate') {
+        const user = await requireAuth(req, res);
+        if (!user) return;
+
+        // RBAC: only 'admin' role may change plan pricing (not gerente)
+        if (user.role !== 'admin') {
+          logWarn('billing.plan_config.unauthorized_attempt', {
+            actor_id: user.id,
+            actor_role: user.role,
+            path,
+          });
+          res.writeHead(403, { 'content-type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({
+            error: 'Acesso negado. Alteracao de preco exige perfil admin.',
+            code: 'PLAN_CONFIG_FORBIDDEN',
+          }));
+          return;
+        }
+
+        // Rate limiting — reuse billing rate limit bucket
+        const rlKey = `billing:${user.id}`;
+        const rl = await checkRateLimit(
+          rlKey,
+          env.RATE_LIMIT_BILLING_MAX_ATTEMPTS,
+          env.RATE_LIMIT_BILLING_WINDOW_MS,
+          { allowMemoryFallback: env.RATE_LIMIT_FALLBACK_ENABLED },
+        );
+
+        if (rl.unavailableReason) {
+          res.writeHead(503, { 'content-type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ error: 'Servico temporariamente indisponivel.' }));
+          return;
+        }
+
+        if (!rl.allowed) {
+          const retryAfter = rl.retryAfterSeconds || 1;
+          res.setHeader('Retry-After', String(retryAfter));
+          res.writeHead(429, { 'content-type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ error: 'Muitas tentativas. Aguarde e tente novamente.', retryAfter }));
+          return;
+        }
+
+        const raw = await readBody(req);
+        const body = parseJsonBody<Partial<ActivatePlanConfigInput>>(raw);
+
+        const validationError = validateActivatePlanConfigInput(body);
+        if (validationError) {
+          res.writeHead(400, { 'content-type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ error: validationError, code: 'PLAN_CONFIG_INVALID_INPUT' }));
+          return;
+        }
+
+        logInfo('billing.plan_config.activate_requested', {
+          actor_id: user.id,
+          plan_code: body.plan_code,
+          amount_cents: body.amount_cents,
+          currency: body.currency,
+          trial_days: body.trial_days,
+          effective_from: body.effective_from,
+        });
+
+        try {
+          const result = await activatePlanConfig({
+            plan_code: body.plan_code as string,
+            amount_cents: body.amount_cents as number,
+            currency: body.currency as string,
+            trial_days: body.trial_days as number,
+            effective_from: body.effective_from as string,
+            change_reason: body.change_reason as string,
+            changed_by: user.id,
+          });
+
+          logInfo('billing.plan_config.activated', {
+            actor_id: user.id,
+            new_config_id: result.new_config_id,
+            amount_cents: body.amount_cents,
+            effective_from: body.effective_from,
+          });
+
+          res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({
+            ok: true,
+            new_config_id: result.new_config_id,
+            message: 'Nova configuração de plano ativada com sucesso. Efeito imediato nas proximas cobranças.',
+          }));
+        } catch (err) {
+          if (err instanceof PlanConfigOperationError) {
+            res.writeHead(err.statusCode, { 'content-type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ error: err.message, code: err.code }));
+          } else {
+            logError('billing.plan_config.activate_error', {
+              actor_id: user.id,
+              error: err instanceof Error ? err.message : String(err),
+            });
+            res.writeHead(500, { 'content-type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ error: 'Erro interno ao ativar configuração de plano.' }));
+          }
+        }
+        return;
+      }
+
       if (req.method === 'GET' && path === '/ops/billing/summary') {
         const user = await requireAuth(req, res);
         if (!user) return;
@@ -1791,6 +2149,24 @@ function startServer() {
         ]);
         res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
         res.end(renderBillingPanel(user, stats, ops, invoices));
+        return;
+      }
+
+      if (path === '/billing/plan-config') {
+        const user = await requireAuth(req, res);
+        if (!user) return;
+        try {
+          const [active, history, audit] = await Promise.all([
+            fetchActivePlanConfig(),
+            fetchPlanConfigHistory('default_monthly', 20),
+            fetchPlanConfigAudit('default_monthly', 50),
+          ]);
+          res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+          res.end(renderPlanConfigPanel(user, active, history, audit));
+        } catch (err) {
+          res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+          res.end(renderPlanConfigPanel(user, null, [], []));
+        }
         return;
       }
 
