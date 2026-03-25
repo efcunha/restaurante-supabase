@@ -119,6 +119,12 @@ export const LazyPagamentoScreen = createLazyScreen(
   'Carregando pagamento...'
 );
 
+// Cardápio Público (QR)
+export const LazyPublicMenuScreen = createLazyScreen(
+  () => import('../screens/PublicMenuScreen'),
+  'Carregando cardápio...'
+);
+
 /**
  * Preload commonly accessed screens
  * Call this function after the app has loaded to preload screens

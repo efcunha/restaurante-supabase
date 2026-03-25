@@ -35,6 +35,7 @@ import ReservasScreen from './src/screens/ReservasScreen';
 
 import RegisterCompanyScreen from './src/screens/RegisterCompanyScreen';
 import AboutScreen from './src/screens/AboutScreen';
+import PublicMenuScreen from './src/screens/PublicMenuScreen';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { OrderProvider } from './src/context/OrderContext';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
@@ -163,6 +164,22 @@ function AuthStack() {
   );
 }
 
+// Stack raiz que inclui a rota publica /menu/:slug (sem autenticacao)
+const RootStack = createNativeStackNavigator();
+
+function RootNavigator({ children }) {
+  return (
+    <RootStack.Navigator screenOptions={{ headerShown: false }}>
+      <RootStack.Screen name="App" children={children} />
+      <RootStack.Screen
+        name="PublicMenu"
+        component={PublicMenuScreen}
+        options={{ title: 'Cardápio', headerShown: false }}
+      />
+    </RootStack.Navigator>
+  );
+}
+
 function AppContent() {
   const { user, loading, isPasswordRecovery } = useAuth();
 
@@ -197,13 +214,33 @@ function AppContent() {
     );
   }
 
-  // SEM USUARIO = AUTH STACK (Login/Register)
+  // SEM USUARIO = AUTH STACK (Login/Register) + rota publica de cardapio
   if (!user) {
     return (
       <SafeAreaProvider>
         <StatusBar barStyle="dark-content" backgroundColor={colorSystem.background} translucent={false} />
-        <NavigationContainer documentTitle={{ formatter: () => 'Restaurante Web' }}>
-          <AuthStack />
+        <NavigationContainer
+          documentTitle={{ formatter: (opts) => opts?.route?.name === 'PublicMenu' ? 'Cardápio' : 'Restaurante Web' }}
+          linking={{
+            prefixes: ['/'],
+            config: {
+              screens: {
+                App: {
+                  screens: {
+                    Login: 'login',
+                    Register: 'register',
+                    ResetPassword: 'reset-password',
+                    About: 'sobre',
+                  },
+                },
+                PublicMenu: 'menu/:slug',
+              },
+            },
+          }}
+        >
+          <RootNavigator>
+            {() => <AuthStack />}
+          </RootNavigator>
         </NavigationContainer>
       </SafeAreaProvider>
     );

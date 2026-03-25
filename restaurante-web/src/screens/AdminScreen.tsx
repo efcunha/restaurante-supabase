@@ -51,6 +51,7 @@ import { isFeatureEnabled } from '../config/featureFlags';
 // WhatsApp Integração
 import ConfiguracoesWhatsApp from './ConfiguracoesWhatsApp';
 import DeliveryOcorrenciasScreen from './DeliveryOcorrenciasScreen';
+import QRCardapioModal from '../components/QRCardapioModal';
 import { colors } from '../theme/colors';
 import { layout, spacing } from '../design-system';
 /**
@@ -92,6 +93,7 @@ export default function AdminScreen() {
   const [showCaixaHistorico, setShowCaixaHistorico] = useState(false);
   const [showComandasVisualizacao, setShowComandasVisualizacao] = useState(false);
   const [showGerenciarCardapio, setShowGerenciarCardapio] = useState(false);
+  const [showQRCardapio, setShowQRCardapio] = useState(false);
   const [showEstoque, setShowEstoque] = useState(false);
   const [showExtrasConfig, setShowExtrasConfig] = useState(false);
   const [showPrinterConfig, setShowPrinterConfig] = useState(false);
@@ -376,6 +378,7 @@ export default function AdminScreen() {
     { name: 'Ocorrencias de Entrega', icon: '⚠️', action: () => setShowDeliveryOcorrencias(true) },
     { name: 'Gerenciar Estoque', icon: '📦', action: () => setShowEstoque(true) },
     { name: 'Gerenciar Cardápio', icon: '🍴', action: () => setShowGerenciarCardapio(true) },
+    { name: 'Cardápio Digital (QR)', icon: '📱', action: () => setShowQRCardapio(true) },
     { name: 'Configurar Mesas e Ambientes', icon: '🪑', action: () => setShowConfiguracaoMesas(true) },
     { name: 'Configurações Operacionais', icon: '🕐', action: () => setShowOperationalSettings(true) },
     { name: 'Configurações do WhatsApp', icon: '💬', action: () => setShowConfiguracoesWhatsApp(true) },
@@ -528,6 +531,13 @@ export default function AdminScreen() {
       <AdminSlideModal visible={showGerenciarCardapio} onClose={() => setShowGerenciarCardapio(false)}>
         <GerenciarCardapioScreen onClose={() => setShowGerenciarCardapio(false)} />
       </AdminSlideModal>
+
+      {/* Modal Cardápio Digital QR */}
+      <QRCardapioModal
+        visible={showQRCardapio}
+        onClose={() => setShowQRCardapio(false)}
+        companyId={user?.company_id}
+      />
 
       {/* Modal Gerenciar Estoque */}
       <AdminSlideModal visible={showEstoque} onClose={() => setShowEstoque(false)}>
