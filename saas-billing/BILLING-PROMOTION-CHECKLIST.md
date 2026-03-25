@@ -118,6 +118,22 @@ Regra de bloqueio:
 Bloqueador atual (2026-03-25):
 - Nenhum bloqueador tecnico em S4; pendencia remanescente para GO fica restrita ao S5 (license gate) e aprovacao operacional final.
 
+Artefato de garantia para promocao APP_USR (GO condicionado):
+
+- [ ] S5 concluido com evidencias (bloqueio sem assinatura + acesso com assinatura)
+- [ ] Troca de secrets APP_USR aplicada e validada em `billing-provider-status`
+- [ ] Canario de producao com 1 cobranca controlada reconciliada fim a fim
+- [ ] Janela de 15 min sem backlog webhook e sem 5xx anormal
+- [ ] Plano de rollback validado com responsavel on-call definido
+
+Rollback imediato (executar sem espera se houver regressao):
+
+1. Reverter secrets para TEST- no Supabase
+2. Confirmar `billing-provider-status` e smoke curto (auth + billing screen)
+3. Verificar `webhook_events` backlog e estabilizacao de erros
+4. Registrar incidente com timeline e evidencias SQL/logs
+5. Suspender nova tentativa APP_USR ate acao corretiva concluida
+
 ## FASE 4 - Troca de secrets para APP_USR (somente em janela aprovada)
 
 Acao sensivel e irreversivel para o ciclo de cobranca:

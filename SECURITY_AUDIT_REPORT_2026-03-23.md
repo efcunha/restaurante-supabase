@@ -4,7 +4,18 @@
 **Data:** 23 de março de 2026  
 **Auditor:** GitHub Copilot (AppSec Expert)  
 **Escopo:** Web + Mobile + Backend + DevOps + LGPD  
-**Status:** CRÍTICO - Ações imediatas requeridas
+**Status:** Auditoria histórica usada como baseline de remediação
+
+> Atualização de status em 25 de março de 2026
+>
+> Este documento registra os achados da auditoria original de 23/03. Parte dos itens críticos já foi mitigada no código e nas migrations desde então.
+>
+> Estado consolidado para billing / Mercado Pago em 25/03:
+> - Segredos operacionais de backup/restore: mitigados com `database-backup/.env.local` gitignored e templates seguros.
+> - `public.profiles` RLS: corrigido por migration de hardening com políticas restritivas para self + admin/gerente da mesma empresa.
+> - CORS das Edge Functions: corrigido com allowlist por origem, sem fallback wildcard.
+> - Rate limiting de `restaurante-ops`: implementado com modo estrito fail-closed (`503` quando o limiter estiver indisponível).
+> - Billing Mercado Pago: sem bloqueador estrutural aberto de segurança/compliance; decisão de produção depende da execução e aprovação do smoke funcional S1-S5.
 
 ---
 
@@ -16,11 +27,12 @@
 **Quick Wins:** 4
 
 ### Riscos Imediatos
-1. ❌ **CRÍTICO**: Senhas de banco de dados hardcodeadas em arquivos públicos
-2. ❌ **CRÍTICO**: Chaves de API Supabase expostas em e2e tests
-3. ⚠️ **ALTA**: CORS com wildcard fallback (`*`)
-4. ⚠️ **ALTA**: Banco remoto confirma RLS permissiva em `profiles`
-5. ⚠️ **ALTA**: Falta de proteção absoluta de webhook signatures
+1. ✅ **MITIGADO**: Segredos operacionais movidos para fluxo seguro fora de versionamento
+2. ✅ **MITIGADO EM E2E**: Chaves Supabase deixaram de ficar hardcoded nos specs; uso padronizado por variáveis de ambiente
+3. ✅ **MITIGADO**: CORS sem wildcard fallback (`*`), agora com allowlist explícita
+4. ✅ **MITIGADO**: `public.profiles` deixou de usar RLS permissiva em produção
+5. ✅ **MITIGADO**: Webhook de billing exige assinatura HMAC válida com proteção contra replay
+6. ⏳ **PENDENTE DE GO/NO-GO**: Smoke funcional S1-S5 do billing antes de promover APP_USR em produção
 
 ---
 
@@ -86,7 +98,7 @@ Mobile/Web → Supabase Auth (OAuth/Email)
 
 ### A01 - Broken Access Control
 
-#### ❌ CRÍTICO: RLS Permissiva em `profiles` confirmada no banco remoto
+#### ❌ CRÍTICO (histórico, mitigado em 2026-03-23/24): RLS Permissiva em `profiles` confirmada no banco remoto
 **Localização:** Banco remoto (`pg_policies`) e `database-backup/migrations/20260311161100_schema_dump.sql:2602-2609`
 ```sql
 CREATE POLICY "authenticated_pull_profiles" ON "public"."profiles"
@@ -104,6 +116,8 @@ FOR SELECT TO "authenticated" USING (true);  -- ← QUALQUER usuário autenticad
 CREATE POLICY "authenticated_pull_own_profile" ON "public"."profiles"
 FOR SELECT TO "authenticated" USING (auth.uid() = id);
 ```
+
+**Atualização 25/03/2026:** item mitigado. A migration `20260323183000_harden_profiles_rls_and_role_guardrails.sql` substituiu a policy permissiva por políticas restritivas para leitura própria e administração da mesma empresa.
 
 #### ⚠️ ALTA: Falta de Validação de company_id em Algumas Operações
 **Localização:** `restaurante-app/scripts/fix-permissions.sql` (grant all to service_role)
@@ -126,7 +140,7 @@ if (profile.company_id !== OPS_ALLOWED_COMPANY_ID) {
 
 ### A02 - Cryptographic Failures / Sensitive Data Exposure
 
-#### ❌ CRÍTICO: Senhas de Banco de Dados Hardcodeadas
+#### ❌ CRÍTICO (histórico, mitigado): Senhas de Banco de Dados Hardcodeadas
 
 **Localização 1:** `database-backup/backup.bat:32`
 ```batch
@@ -142,6 +156,8 @@ set TARGET_DB_PASSWORD=REDACTED_DB_PASSWORD
 ```bash
 SOURCE_DB_PASSWORD=REDACTED_DB_PASSWORD
 ```
+
+**Atualização 25/03/2026:** o fluxo recomendado passou a usar `database-backup/.env.local` gitignored e `database-backup/.env.example`. Os arquivos legados `config.local.sh` e `config.example.sh` saíram do fluxo operacional.
 
 **Impacto:** MÁXIMO - Acesso total ao banco de dados de produção/staging
 
@@ -261,7 +277,7 @@ try {
 
 ### A04 - Insecure Design
 
-#### ⚠️ ALTA: Falta de Rate Limiting em Operações Críticas
+#### ⚠️ ALTA (histórico, mitigado em restaurante-ops): Falta de Rate Limiting em Operações Críticas
 **Localização:** `restaurante-web/src/services/RateLimiterService.ts` (implementado, mas...)
 
 **Problema:** Rate limiter está em memória no cliente JavaScript
@@ -278,7 +294,9 @@ if (count > 5) {  // Max 5 checkouts/minuto/usuário
 await redis.expire(rateLimitKey, 60);
 ```
 
-#### ⚠️ ALTA: CORS Configuration com Wildcard Fallback
+**Atualização 25/03/2026:** `restaurante-ops` já aplica rate limiting em login e em rotas críticas de billing, com suporte a modo estrito fail-closed quando Redis/limiter estiver indisponível.
+
+#### ⚠️ ALTA (histórico, mitigado): CORS Configuration com Wildcard Fallback
 **Localização:** `database-backup/supabase/functions/_shared/cors.ts:9-22`
 ```typescript
 export const corsHeaders = {
@@ -308,6 +326,8 @@ if (!allowedOrigins.includes(origin)) {
   return ''; // Nega CORS
 }
 ```
+
+**Atualização 25/03/2026:** o helper compartilhado de CORS agora responde apenas para origens presentes em `CORS_ALLOWED_ORIGINS` e bloqueia origens fora da allowlist, sem fallback permissivo.
 
 ---
 
@@ -1056,35 +1076,42 @@ Components:
 
 ## 🎯 TOP RISCOS CRÍTICOS
 
-### 1️⃣ 🔴 Senhas de Banco de Dados Expostas em Arquivos Públicos
+### 1️⃣ 🔴 Segredos operacionais em scripts e backups
 - **Severidade:** CRÍTICA
 - **Impacto:** RCE + data breach total
 - **Localizações:** backup.bat, restore.bat, .env.local (se versionado)
-- **Ação Imediata:** Remover + rotate credenciais + PR + commit history clean
+- **Status 25/03:** mitigado no repositório; manter rotação e garantir que `.env.local` continue fora de versionamento
 - **Tempo Estimado:** 2 horas
 
-### 2️⃣ 🔴 RLS permissiva em `profiles` confirmada
+### 2️⃣ 🔴 RLS permissiva em `profiles`
 - **Severidade:** CRÍTICA
 - **Impacto:** User enumeration + profile disclosure
 - **Localização:** Banco remoto e 20260311161100_schema_dump.sql
-- **Ação Imediata:** Corrigir para `auth.uid() = id` com exceções administrativas explícitas, além de alinhar o modelo de roles do banco ao app atual
+- **Status 25/03:** mitigado por migration de hardening aplicada; manter validação remota de `pg_policies` como evidência de produção
 - **Tempo Estimado:** 30 minutos + migration + test
 
-### 3️⃣ 🔴 Falta de Rate Limiting no Servidor
+### 3️⃣ 🔴 Rate limiting em operações críticas de billing
 - **Severidade:** ALTA
 - **Impacto:** DoS/spam attacks
 - **Localização:** Edge Functions (billing, webhooks)
-- **Ação Imediata:** Implementar rate limiting baseado em Redis/Durable Objects
+- **Status 25/03:** mitigado em `restaurante-ops`; manter `RATE_LIMIT_FALLBACK_ENABLED=false` em produção e evidência de `429/503`
 - **Tempo Estimado:** 4-6 horas
 
 ### 4️⃣ 🟠 CORS com Wildcard Fallback
 - **Severidade:** ALTA
 - **Impacto:** CSRF + cross-origin attacks
 - **Localização:** cors.ts
-- **Ação Imediata:** Implementar whitelist + origin validation
+- **Status 25/03:** mitigado com allowlist por origem e bloqueio explícito fora da whitelist
 - **Tempo Estimado:** 2 horas
 
-### 5️⃣ 🟠 Falta de MFA para Admins
+### 5️⃣ 🟠 Gate restante para billing Mercado Pago
+- **Severidade:** ALTA OPERACIONAL
+- **Impacto:** promoção sem evidência funcional end-to-end
+- **Localização:** fluxo S1-S5 em `saas-billing/SMOKE-TEST-26MAR-EXECUTION-PLAN.md`
+- **Ação Imediata:** executar smoke funcional controlado e registrar decisão GO/NO-GO ao final de S5
+- **Tempo Estimado:** 2-3 horas
+
+### 6️⃣ 🟠 Falta de MFA para Admins
 - **Severidade:** ALTA
 - **Impacto:** Account takeover
 - **Solução:** Supabase Auth MFA + enforcement policy
