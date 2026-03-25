@@ -36,6 +36,16 @@ const statusLabels: Record<string, string> = {
   cancelled: 'Assinatura cancelada',
 };
 
+const heroMessages: Record<string, string> = {
+  trialing: 'O cadastro da empresa continua com trial de 30 dias. A regularização do método de pagamento precisa ser concluída antes do vencimento para evitar bloqueio operacional.',
+  active: 'Assinatura regularizada e ativa. Obrigado! O próximo ciclo de cobrança será processado automaticamente.',
+  reactivated: 'Conta reativada com sucesso. A cobrança voltará ao ciclo normal no próximo vencimento.',
+  past_due: 'Há uma cobrança pendente. Regularize o pagamento para evitar suspensão do acesso operacional.',
+  grace_period: 'A assinatura está em período de tolerância. Realize o pagamento o quanto antes para manter o acesso.',
+  suspended: 'Conta suspensa por falta de pagamento. Regularize para restaurar o acesso.',
+  cancelled: 'Assinatura cancelada. Entre em contato para reativar o plano.',
+};
+
 function formatCurrency(cents: number) {
   return (cents / 100).toLocaleString('pt-BR', {
     style: 'currency',
@@ -481,7 +491,7 @@ export default function BillingScreen({ onClose }: BillingScreenProps) {
         </View>
 
         <Text style={styles.heroMessage}>
-          O cadastro da empresa continua com trial de 30 dias. A regularização do método de pagamento precisa ser concluída antes do vencimento para evitar bloqueio operacional.
+          {heroMessages[subscription.status || 'trialing'] ?? heroMessages.trialing}
         </Text>
 
         <View style={styles.heroMetaRow}>
