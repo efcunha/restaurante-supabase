@@ -220,6 +220,69 @@ export default function QRCardapioModal({ visible, onClose, companyId }: Props) 
     setSlugError('');
   };
 
+  const handlePrint = useCallback(() => {
+    if (!menuUrl || Platform.OS !== 'web') return;
+
+    const restaurantName = company?.name || '';
+
+    const openPrintWindow = (svgDataUrl: string) => {
+      const win = (window as any).open('', '_blank', 'width=800,height=600');
+      if (!win) {
+        Alert.alert('Pop-up bloqueado', 'Permita pop-ups neste site para imprimir os QR codes.');
+        return;
+      }
+      const cell = `<div class="qr-cell">
+        <img src="${svgDataUrl}" alt="QR Code" />
+        <p class="name">${restaurantName}</p>
+        <p class="sub">Escaneie para ver o card&#225;pio</p>
+      </div>`;
+      win.document.write(`<!DOCTYPE html><html lang="pt-BR"><head>
+        <meta charset="utf-8"/>
+        <title>QR Card&#225;pio &#8211; ${restaurantName}</title>
+        <style>
+          @page { size: A4 portrait; margin: 15mm; }
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body { font-family: Arial, sans-serif; background: #fff; }
+          .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10mm; }
+          .qr-cell {
+            display: flex; flex-direction: column; align-items: center;
+            border: 1.5px dashed #ccc; border-radius: 8px;
+            padding: 10mm 6mm; text-align: center; page-break-inside: avoid;
+          }
+          .qr-cell img { width: 140px; height: 140px; }
+          .name { font-size: 13px; font-weight: 700; margin-top: 8px; color: #111; }
+          .sub { font-size: 10px; color: #555; margin-top: 3px; }
+        </style>
+      </head><body>
+        <div class="grid">${Array(6).fill(cell).join('')}</div>
+        <script>setTimeout(function(){ window.print(); }, 400);</script>
+      </body></html>`);
+      win.document.close();
+    };
+
+    // Tenta toDataURL (API do react-native-qrcode-svg)
+    if (qrRef.current && typeof (qrRef.current as any).toDataURL === 'function') {
+      (qrRef.current as any).toDataURL((dataUrl: string) => openPrintWindow(dataUrl));
+      return;
+    }
+
+    // Fallback: serializa o elemento SVG do DOM (web)
+    try {
+      const svgEl = qrRef.current as unknown as SVGSVGElement | null;
+      if (svgEl && svgEl.tagName?.toLowerCase() === 'svg') {
+        const serializer = new XMLSerializer();
+        const svgStr = serializer.serializeToString(svgEl);
+        const encoded = btoa(unescape(encodeURIComponent(svgStr)));
+        openPrintWindow(`data:image/svg+xml;base64,${encoded}`);
+        return;
+      }
+    } catch {
+      // ignore
+    }
+
+    Alert.alert('Erro', 'N\u00e3o foi poss\u00edvel gerar o QR para impress\u00e3o. Tente salvar primeiro.');
+  }, [menuUrl, company?.name]);
+
   return (
     <Modal
       visible={visible}
@@ -408,6 +471,13 @@ export default function QRCardapioModal({ visible, onClose, companyId }: Props) 
                     <TouchableOpacity style={styles.actionBtn} onPress={handleShare}>
                       <Ionicons name="share-social-outline" size={18} color={colors.primary} />
                       <Text style={styles.actionBtnText}>Compartilhar</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {Platform.OS === 'web' && (
+                    <TouchableOpacity style={styles.actionBtn} onPress={handlePrint}>
+                      <Ionicons name="print-outline" size={18} color={colors.primary} />
+                      <Text style={styles.actionBtnText}>Imprimir</Text>
                     </TouchableOpacity>
                   )}
                 </View>
