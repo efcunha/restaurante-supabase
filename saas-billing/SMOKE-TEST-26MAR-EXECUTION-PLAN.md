@@ -1,6 +1,6 @@
 # Smoke Test de Billing — Plano de Execução (26 mar)
 
-**Objetivo:** Validar fluxo end-to-end de billing em produção com TEST- credentials antes de decisão GO/NO-GO para APP_USR.
+**Objetivo:** Validar o gate final de billing em produção com TEST- credentials antes da decisão GO/NO-GO para APP_USR.
 
 **Timeline:** ~2-3 horas (7h00–10h00 recomendado)
 
@@ -18,9 +18,16 @@
 ✅ **E2 (Webhook backlog):** VALIDADO (0 eventos pendentes > 2h)  
 ✅ **E3 (Audit log clean):** VALIDADO (0 campos sensíveis detectados)  
 
-⏳ **S1-S5 (Smoke funcional):** PENDENTE (executar 26 mar, 7h00–10h00)  
+▶️ **S1-S4:** já validados em checks controlados de 25 mar  
+⏳ **S5 + decisão final GO/NO-GO:** pendentes para a janela de 26 mar  
 
-**Impacto:** Infraestrutura de segurança, compliance e auditing está **100% operacional**. Pronto para smoke test funcional.
+**Impacto:** Infraestrutura de segurança, compliance e auditing está **100% operacional**. A janela de 26 mar deve se concentrar em confirmar ausência de regressão no license gate, revalidar rapidamente o fluxo com evidência mínima e formalizar a decisão.
+
+**Leitura operacional correta deste plano:**
+- usar S1-S4 como baseline já evidenciada
+- executar S5 obrigatoriamente na janela
+- repetir S1-S4 apenas como rechecagem rápida se houver necessidade de confiança adicional ou se o ambiente tiver mudado
+- registrar GO/NO-GO somente ao final, com base na checklist operacional
 
 ---
 
@@ -80,6 +87,8 @@ Timestamp validação: 2026-03-24
 
 ### S1: Tela de assinatura carrega sem erro auth (30 min)
 
+**Status atual:** ✅ validado em 2026-03-25. Repetição em 26 mar é opcional como smoke curto.
+
 **Setup:**
 - Abra navegador em: `https://restaurante-web.app.br/` (frontend do cliente)
 - Credenciais de teste: use conta de cliente TEST (nao conta do ops)
@@ -105,6 +114,8 @@ Erro observado (se houver): nenhum erro 401/403 reportado em console/rede
 ---
 
 ### S2: Gerar PIX e validar criação de invoice (45 min)
+
+**Status atual:** ✅ validado em 2026-03-25. Repetição em 26 mar é opcional como smoke curto se a janela permitir.
 
 **Exec:**
 1. Na tela de assinatura, selecionar **Novo Plano** ou **Criar PIX** (conforme fluxo)
@@ -136,6 +147,8 @@ Observações: invoice criada com status=pending, payment_method_type=pix, amoun
 ---
 
 ### S3: Cadastrar cartão TEST e validar persistência (30 min)
+
+**Status atual:** ✅ validado em 2026-03-25. Repetição em 26 mar é opcional; se repetir, manter foco em ausência de vazamento no `billing_audit_log`.
 
 **Credenciais de teste Mercado Pago:**
 - Número: `4235647728025682`
@@ -192,6 +205,8 @@ Data/Hora: 2026-03-25
 ---
 
 ### S4: Simular webhook e validar reconciliação idempotente (30 min)
+
+**Status atual:** ✅ PASS no ciclo atual. Em 26 mar, não é necessário reabrir investigação de assinatura; basta confirmar que o estado permanece consistente se houver mudança de ambiente entre a validação e a janela.
 
 **Setup:**
 - Use o script já versionado para validação de assinatura e aceite do webhook.
@@ -277,7 +292,8 @@ Data/Hora: [preenchido na execução]
 
 **Implicação para smoke test:**
 - Fluxo atual de teste (PIX pending + card vault) não garante evento final automático
-- Simulador de webhook do MP nao envia assinatura compatível e retorna 401 por design de segurança do endpoint
+- Simulador de webhook do MP não envia assinatura compatível e retorna 401 por design de segurança do endpoint
+- Para a decisão de 26 mar, tratar S4 como evidência já consolidada, salvo mudança de secret, deploy ou comportamento observado na janela
 - Idempotencia pode ser validada de forma equivalente no core transacional (`reconcile_billing_event_atomic`)
 
 **Conclusao S4 (2026-03-25):**
@@ -294,10 +310,16 @@ Data/Hora: [preenchido na execução]
 
 **Objetivo:** Confirmar que bloqueio de acesso por licença/assinatura continua funcionando.
 
+**Este é o item obrigatório restante para fechar a decisão de produção.**
+
 **Exec:**
-1. Criar conta de teste **sem** assinatura ativa
-2. Tentar acessar a app (ex.: `restaurante-app` ou `restaurante-web`) com ela
-3. Confirmar que é redirecionado para tela de assinatura bloqueado
+1. Garantir que as flags de billing estejam ativas no ambiente alvo
+2. Entrar com uma conta/empresa de teste sem assinatura ativa ou com bloqueio operacional equivalente
+3. Tentar acessar o produto alvo (`restaurante-web` preferencialmente)
+4. Confirmar bloqueio operacional ou redirecionamento para tela de assinatura
+5. Repetir com empresa/usuário elegível e confirmar acesso permitido
+
+**Ambiguidade resolvida:** não usar `EXPO_PUBLIC_FEATURE_BILLING_FORCE_BLOCK=true` como evidência de produção. Esse flag serve para QA local e não substitui validação com estado real de assinatura.
 
 **Validação em logs/função:**
 
@@ -314,6 +336,7 @@ LIMIT 10;
 **Esperado:**
 - Usuário sem assinatura bloqueado
 - Usuário com assinatura ativa permitido
+- Sem bypass por refresh, navegação direta ou reload da sessão
 
 **Registro:**
 ```
@@ -430,7 +453,7 @@ Observação: Nenhum vazamento de dados sensíveis em audit_log observado.
 
 ### Status Pré-requisitos (P-gates): ✅ 100% VALIDADO
 ### Status Evidências (E-gates): ✅ 100% VALIDADO
-### Status Smoke Funcional (S-gates): ▶️ EM EXECUCAO (S1 concluido; S2-S5 pendentes)
+### Status Smoke Funcional (S-gates): ▶️ EM EXECUÇÃO (S1-S4 já evidenciados; S5 pendente)
 
 **Decisão:**
 
@@ -452,6 +475,26 @@ Se NO-GO:
 Observações:
 [preenchido na execução]
 ```
+
+### GO condicionado (aceite tecnico-operacional)
+
+Pode seguir para APP_USR somente se todos os itens abaixo estiverem OK no mesmo ciclo:
+
+1. S5 validado com evidência real (bloqueio sem assinatura + permissão com assinatura, sem usar `billing_forceBlock` como substituto)
+2. Troca de secrets concluída sem erro e `billing-provider-status` respondendo com saúde esperada
+3. Canário de produção com 1 cobrança controlada concluído (invoice + webhook + reconcile)
+4. Monitoramento de 15 minutos pós-troca sem backlog em `webhook_events` e sem 5xx anormal
+5. Rollback pronto e testado por comando (procedimento documentado e responsável definido)
+
+### Critério de rollback imediato (5 itens)
+
+Executar rollback para TEST- se qualquer um ocorrer:
+
+1. Falha de autenticação/assinatura persistente no webhook em produção
+2. Backlog crescente em `webhook_events` por mais de 10 minutos
+3. Erros 5xx recorrentes em funções de billing no período de canário
+4. Reconcile inconsistente (invoice/subscription divergentes) em cobrança controlada
+5. Evidência de regressão de license gate ou risco de operação bloqueada indevidamente
 
 ---
 
@@ -486,6 +529,8 @@ curl https://ykalocfhnetxenvmtlcn.supabase.co/functions/v1/billing-provider-stat
 
 - **Supabase Dashboard SQL Editor:** https://app.supabase.com/project/ykalocfhnetxenvmtlcn/sql/new
 - **Checklist master:** `saas-billing/BILLING-PROMOTION-CHECKLIST.md`
+- **Checklist operacional:** `saas-billing/BILLING-GO-NO-GO-CHECKLIST-26MAR.md`
+- **Roteiro de comandos:** `saas-billing/BILLING-OPERATOR-COMMANDS-26MAR.md`
 - **Migration aplicada:** `database-backup/migrations/20260324210000_remove_mp_payment_id_from_billing_audit_reconcile_function.sql`
 - **Teste webhook assinado:** `database-backup/supabase/functions/scripts/billing-webhook-test.ps1`
 - **Rollback rápido:** Ver seção "Rollback rápido" em `saas-billing/BILLING-PROMOTION-CHECKLIST.md`

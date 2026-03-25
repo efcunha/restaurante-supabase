@@ -3,11 +3,36 @@
 
 ---
 
+## 📌 STATUS CONSOLIDADO EM 2026-03-25
+
+Este índice descreve o pacote documental da auditoria de 23/03, mas o estado do projeto evoluiu desde então.
+
+**Mitigado no código / banco até 25/03:**
+- ✅ Hardening de segredos operacionais de backup/restore
+- ✅ RLS restritiva em `public.profiles`
+- ✅ CORS com allowlist explícita nas Edge Functions
+- ✅ Rate limiting em `restaurante-ops` com modo estrito fail-closed
+- ✅ Webhook Mercado Pago com assinatura HMAC + proteção contra replay + idempotência
+
+**Ainda pendente para fechar billing em produção:**
+- ⏳ Executar smoke funcional S1-S5
+- ⏳ Registrar decisão formal GO/NO-GO ao final de S5
+- ⏳ Promover APP_USR somente após evidência funcional controlada
+
+**Documento operacional de referência para essa fase:**
+- `saas-billing/PRE-VALIDACAO-SUMMARY-25MAR.md`
+- `saas-billing/SMOKE-TEST-26MAR-EXECUTION-PLAN.md`
+- `saas-billing/BILLING-GO-NO-GO-CHECKLIST-26MAR.md`
+
+---
+
 ## 📋 DOCUMENTOS CRIADOS
 
 ### 1. 🔴 **SECURITY_AUDIT_REPORT_2026-03-23.md** (Principal)
 **Público:** Desenvolvedores, Arquitetos, CTO  
 **Tamanho:** ~50+ páginas (resumido)
+
+**Leitura correta em 25/03:** baseline da auditoria + histórico de remediação. Não tratar sozinho como foto atual de produção sem cruzar com os artefatos de pré-validação de billing.
 
 **Seções:**
 - ✅ Mapeamento Inicial (tipo de app, stack, fluxos)
@@ -40,6 +65,8 @@
 ### 2. 🔧 **REMEDIATION_PLAN_DETAILED.md** (Ação)
 **Público:** DevOps, Backend, Database Admin  
 **Responsabilidade:** Implementar as correções
+
+**Leitura correta em 25/03:** a maior parte dos itens críticos desta trilha já foi executada. Usar hoje principalmente como histórico do que foi remediado e como runbook de rollback/validação.
 
 **Seções:**
 - ✅ CRÍTICO #1: Senhas BD (remove + rotate + git clean)
@@ -206,11 +233,17 @@ HOJE (Seg 23 de março):
   └─ Kick-off meeting
 
 SEMANA 1 (7 dias):
-  ├─ CRÍTICO #1: Senhas (2h)
-  ├─ CRÍTICO #2: RLS (1h)
-  ├─ ALTA #3: Rate limiting (6h)
-  ├─ ALTA #4: CORS (2h)
-  └─ Deploy Friday
+  ├─ CRÍTICO #1: Senhas (2h) — concluído
+  ├─ CRÍTICO #2: RLS (1h) — concluído
+  ├─ ALTA #3: Rate limiting (6h) — concluído
+  ├─ ALTA #4: CORS (2h) — concluído
+  └─ Deploy Friday — concluído
+
+25-26 MAR (gate de billing):
+  ├─ Pré-validação de segurança/compliance — concluída
+  ├─ Smoke funcional S1-S5 — pendente de execução/control room
+  ├─ Registro de evidências — obrigatório
+  └─ Decisão GO/NO-GO — somente após S5
 
 SEMANA 2-3:
   ├─ MFA para admins
@@ -260,17 +293,14 @@ Code review security        Tech Lead            4h
 
 ---
 
-## 📝 CHECKLIST: ANTES DE USAR DOCUMENTOS
+## 📝 CHECKLIST: ANTES DE FECHAR BILLING EM PRODUÇÃO
 
-- [ ] Distribuir EXECUTIVE_SUMMARY_PT.md para decisão
-- [ ] Aguardar aprovação do CTO/Board
-- [ ] Designar DPO (pessoa responsável por LGPD)
-- [ ] Criar task force de segurança (3-5 pessoas)
-- [ ] Schedule kick-off meeting
-- [ ] Assign ownership por tarefa
-- [ ] Setup tracking (Jira/Linear/GitHub Projects)
-- [ ] Comunicar deadline (7 dias para críticos)
-- [ ] Iniciar remediação segundo plano
+- [ ] Confirmar leitura de `saas-billing/PRE-VALIDACAO-SUMMARY-25MAR.md`
+- [ ] Executar S1-S5 em `saas-billing/SMOKE-TEST-26MAR-EXECUTION-PLAN.md`
+- [ ] Registrar evidências mínimas em `saas-billing/BILLING-GO-NO-GO-CHECKLIST-26MAR.md`
+- [ ] Validar logs, invoices, `webhook_events` e `billing_audit_log` durante a janela
+- [ ] Registrar responsável pela execução e responsável pela aprovação
+- [ ] Marcar GO/NO-GO somente ao final de S5
 
 ---
 
@@ -284,7 +314,10 @@ d:\restaurante-supabase\
 │  ├─ LGPD-DATA-RETENTION-POLICY.md
 │  └─ INCIDENT-RESPONSE-PLAN.md
 ├─ saas-billing/
-│  └─ SECURITY-POLICY.md (detailed billing security)
+│  ├─ SECURITY-POLICY.md (detailed billing security)
+│  ├─ PRE-VALIDACAO-SUMMARY-25MAR.md
+│  ├─ SMOKE-TEST-26MAR-EXECUTION-PLAN.md
+│  └─ BILLING-GO-NO-GO-CHECKLIST-26MAR.md
 ├─ database-backup/
 │  ├─ README.md (backup procedures)
 │  └─ QUICK_START.md
@@ -302,17 +335,16 @@ d:\restaurante-supabase\
 
 ## 🚀 PRÓXIMA AÇÃO
 
-**Imediato:**
-1. Ler: EXECUTIVE_SUMMARY_PT.md
-2. Decidir: Aprovar plano + investimento
-3. Agir: Start Remediation_Plan dia seguinte
+**Imediato (25/03):**
+1. Ler: `saas-billing/PRE-VALIDACAO-SUMMARY-25MAR.md`
+2. Executar: `saas-billing/SMOKE-TEST-26MAR-EXECUTION-PLAN.md`
+3. Registrar: `saas-billing/BILLING-GO-NO-GO-CHECKLIST-26MAR.md`
+4. Decidir: GO/NO-GO apenas ao final de S5
 
-**Delegado:**
-- DevOps: CRÍTICO #1 (senhas)
-- DB Admin: CRÍTICO #2 (RLS)
-- Backend: ALTA #3 + #4 (rate limiting + CORS)
-- Legal: Review LGPD_COMPLIANCE_GUIDE
-- DPO: Setup DSAR + breach notification
+**Delegado (estado atual):**
+- Operação/Tech Lead: executar S1-S5 e consolidar evidências
+- Backend/Ops: acompanhar logs, invoices, `webhook_events` e `billing_audit_log` durante a janela
+- Legal/DPO: sem bloqueio imediato para smoke; manter trilha LGPD e incident response prontas
 
 ---
 
