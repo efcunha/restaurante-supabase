@@ -1,14 +1,14 @@
 # Design System Master File
 
-> **LOGIC:** When building a specific page, first check `design-system/pages/[page-name].md`.
+> **LOGIC:** When building a specific page, first check `docs/design-system/pages/[page-name].md`.
 > If that file exists, its rules **override** this Master file.
 > If not, strictly follow the rules below.
 
 ---
 
-**Project:** Restaurante Web Admin
-**Generated:** 2026-03-18 18:42:01
-**Category:** Restaurante Admin Operations (Web)
+**Project:** Restaurante Web Delivery
+**Generated:** 2026-03-18 17:13:32
+**Category:** Restaurante Delivery Checkout (Web)
 
 ---
 
@@ -21,8 +21,10 @@
 | Primary | `#2563EB` | `--color-primary` |
 | Secondary | `#3B82F6` | `--color-secondary` |
 | CTA/Accent | `#F97316` | `--color-cta` |
-| Background | `#F8FAFC` | `--color-background` |
-| Text | `#1E293B` | `--color-text` |
+| Background | `#EFF6FF` | `--color-background` |
+| Text | `#1E40AF` | `--color-text` |
+
+**Color Notes:** Azul para confianca no fluxo, laranja para acao principal e feedback de entrega.
 
 ### Typography
 
@@ -97,7 +99,7 @@
 
 ```css
 .card {
-  background: #F8FAFC;
+  background: #EFF6FF;
   border-radius: 12px;
   padding: 24px;
   box-shadow: var(--shadow-md);
@@ -151,30 +153,30 @@
 
 ## Style Guidelines
 
-**Style:** Operational Dashboard Clarity
+**Style:** Operational Clarity + Accessible Checkout
 
-**Keywords:** escaneabilidade, priorizacao de tarefas, blocos operacionais, feedback de estado, consistencia entre secoes
+**Keywords:** checkout de baixa friccao, formulario progressivo, resumo persistente, estados claros, foco em conclusao
 
-**Best For:** painel administrativo de restaurante, operacao diaria, atalhos de alta frequencia, acompanhamento de status
+**Best For:** fluxo de pedido delivery, pagamento rapido, operacao em pico, validacao de endereco
 
-**Key Effects:** feedback visual curto (150-250ms), cards com hierarquia clara, estados loading/erro/vazio consistentes
+**Key Effects:** recalculo em tempo real do resumo, feedback imediato de validacao, transicoes curtas (150-250ms)
 
 ### Page Pattern
 
-**Pattern Name:** Priority-Based Admin Grid
+**Pattern Name:** Two-Column Checkout with Sticky Summary
 
-- **CTA Placement:** acoes criticas no primeiro bloco visual, sem depender de scroll longo
-- **Section Order:** Resumo operacional > Atalhos criticos > Secoes de gestao > Configuracoes e suporte
-- **Primary Success Metric:** reduzir tempo para executar tarefas administrativas frequentes
+- **CTA Placement:** fixo no resumo (desktop) e fixo no rodape (mobile)
+- **Section Order:** Cliente > Endereco > Pagamento > Itens/Observacoes > Resumo e Confirmacao
+- **Primary Success Metric:** reduzir abandono no checkout e tempo ate confirmacao
 
 ---
 
 ## Anti-Patterns (Do NOT Use)
 
-- ❌ Ordem de secoes sem prioridade operacional
-- ❌ Cards sem descricao clara de impacto
-- ❌ Acoes criticas escondidas em menus secundarios
-- ❌ Estados de erro/loading inconsistentes entre blocos
+- ❌ CTA principal fora da area visivel
+- ❌ Validacao bloqueante cedo demais (antes da digitacao terminar)
+- ❌ Perda do resumo ao rolar a pagina
+- ❌ Erros sem mensagem acionavel para o operador/cliente
 
 ### Additional Forbidden Patterns
 
@@ -201,5 +203,5 @@ Before delivering any UI code, verify:
 - [ ] Responsive: 375px, 768px, 1024px, 1440px
 - [ ] No content hidden behind fixed navbars
 - [ ] No horizontal scroll on mobile
-- [ ] Atalhos de maior frequencia visiveis sem scroll em desktop
-- [ ] Cada secao possui estado loading, vazio e erro com mensagem acionavel
+- [ ] Resumo mostra subtotal, taxa, desconto e total sem inconsistencias
+- [ ] Erros de endereco e pagamento sao exibidos perto do campo correspondente

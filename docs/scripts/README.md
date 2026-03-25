@@ -4,8 +4,8 @@ Este diretório concentra scripts utilitários de nível monorepo que não perte
 
 ## Convenção
 
-- `scripts/security/`: utilitários de auditoria, CVE, hardening e verificações de segurança do monorepo
-- `scripts/utils/`: utilitários ad hoc de diagnóstico e manutenção que não pertencem a um subprojeto específico
+- `docs/scripts/security/`: utilitários de auditoria, CVE, hardening e verificações de segurança do monorepo
+- `docs/scripts/utils/`: utilitários ad hoc de diagnóstico e manutenção que não pertencem a um subprojeto específico
 - `database-backup/supabase/functions/scripts/`: smoke tests e utilitários operacionais das Edge Functions de billing
 - `database-backup/`: scripts de backup/restore e sincronização de migrations
 - `restaurante-app/scripts/`: scripts específicos do app mobile

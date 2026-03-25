@@ -5,8 +5,8 @@
 - Fora de escopo: alteracoes de regras de preco/fiscal e integracoes externas
 
 ## Referencias de design
-- Master: design-system/restaurante-app-novo-pedido/MASTER.md
-- Override: design-system/restaurante-app-novo-pedido/pages/novo-pedido-screen.md
+- Master: docs/design-system/restaurante-app-novo-pedido/MASTER.md
+- Override: docs/design-system/restaurante-app-novo-pedido/pages/novo-pedido-screen.md
 
 ## Mudancas visuais e de UX
 1. Reorganizacao mobile-first para manter contexto do pedido e reduzir trocas de foco.

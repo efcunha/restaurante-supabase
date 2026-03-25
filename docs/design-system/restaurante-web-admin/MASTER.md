@@ -1,14 +1,14 @@
 # Design System Master File
 
-> **LOGIC:** When building a specific page, first check `design-system/pages/[page-name].md`.
+> **LOGIC:** When building a specific page, first check `docs/design-system/pages/[page-name].md`.
 > If that file exists, its rules **override** this Master file.
 > If not, strictly follow the rules below.
 
 ---
 
-**Project:** Restaurante App Novo Pedido
-**Generated:** 2026-03-18 17:13:35
-**Category:** Restaurante PDV - Novo Pedido (App)
+**Project:** Restaurante Web Admin
+**Generated:** 2026-03-18 18:42:01
+**Category:** Restaurante Admin Operations (Web)
 
 ---
 
@@ -18,19 +18,23 @@
 
 | Role | Hex | CSS Variable |
 |------|-----|--------------|
-| Primary | `#0891B2` | `--color-primary` |
-| Secondary | `#22D3EE` | `--color-secondary` |
-| CTA/Accent | `#059669` | `--color-cta` |
-| Background | `#ECFEFF` | `--color-background` |
-| Text | `#164E63` | `--color-text` |
-
-**Color Notes:** Ciano para navegacao operacional, verde para confirmacao/continuidade de pedido.
+| Primary | `#2563EB` | `--color-primary` |
+| Secondary | `#3B82F6` | `--color-secondary` |
+| CTA/Accent | `#F97316` | `--color-cta` |
+| Background | `#F8FAFC` | `--color-background` |
+| Text | `#1E293B` | `--color-text` |
 
 ### Typography
 
-- **Heading Font:** Inter
-- **Body Font:** Inter
-- **Mood:** Readable + Large type (16px+)
+- **Heading Font:** Plus Jakarta Sans
+- **Body Font:** Plus Jakarta Sans
+- **Mood:** friendly, modern, saas, clean, approachable, professional
+- **Google Fonts:** [Plus Jakarta Sans + Plus Jakarta Sans](https://fonts.google.com/share?selection.family=Plus+Jakarta+Sans:wght@300;400;500;600;700)
+
+**CSS Import:**
+```css
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+```
 
 ### Spacing Variables
 
@@ -62,7 +66,7 @@
 ```css
 /* Primary Button */
 .btn-primary {
-  background: #059669;
+  background: #F97316;
   color: white;
   padding: 12px 24px;
   border-radius: 8px;
@@ -79,8 +83,8 @@
 /* Secondary Button */
 .btn-secondary {
   background: transparent;
-  color: #0891B2;
-  border: 2px solid #0891B2;
+  color: #2563EB;
+  border: 2px solid #2563EB;
   padding: 12px 24px;
   border-radius: 8px;
   font-weight: 600;
@@ -93,7 +97,7 @@
 
 ```css
 .card {
-  background: #ECFEFF;
+  background: #F8FAFC;
   border-radius: 12px;
   padding: 24px;
   box-shadow: var(--shadow-md);
@@ -119,9 +123,9 @@
 }
 
 .input:focus {
-  border-color: #0891B2;
+  border-color: #2563EB;
   outline: none;
-  box-shadow: 0 0 0 3px #0891B220;
+  box-shadow: 0 0 0 3px #2563EB20;
 }
 ```
 
@@ -147,31 +151,30 @@
 
 ## Style Guidelines
 
-**Style:** Accessible & Ethical
+**Style:** Operational Dashboard Clarity
 
-**Keywords:** operacao de balcao, velocidade com precisao, alvos de toque grandes, feedback imediato, estados claros
+**Keywords:** escaneabilidade, priorizacao de tarefas, blocos operacionais, feedback de estado, consistencia entre secoes
 
-**Best For:** abertura rapida de pedido, adicao de itens em sequencia, fluxo de pagamento sem perda de contexto
+**Best For:** painel administrativo de restaurante, operacao diaria, atalhos de alta frequencia, acompanhamento de status
 
-**Key Effects:** atualizacao instantanea de quantidade/total, barra inferior persistente, confirmacoes visuais curtas
+**Key Effects:** feedback visual curto (150-250ms), cards com hierarquia clara, estados loading/erro/vazio consistentes
 
 ### Page Pattern
 
-**Pattern Name:** Mobile First POS Flow
+**Pattern Name:** Priority-Based Admin Grid
 
-- **Conversion Strategy:** minimizar toques e reduzir tempo ate avancar para pagamento
-- **CTA Placement:** barra inferior persistente do carrinho
-- **Section Order:** Contexto do pedido > Busca/Filtros > Lista de produtos > Itens selecionados > Avancar para pagamento
-- **Primary Success Metric:** tempo medio para montar pedido e taxa de erro operacional
+- **CTA Placement:** acoes criticas no primeiro bloco visual, sem depender de scroll longo
+- **Section Order:** Resumo operacional > Atalhos criticos > Secoes de gestao > Configuracoes e suporte
+- **Primary Success Metric:** reduzir tempo para executar tarefas administrativas frequentes
 
 ---
 
 ## Anti-Patterns (Do NOT Use)
 
-- ❌ Modais desnecessarios para tarefas frequentes
-- ❌ Acoes importantes fora da zona de alcance do polegar
-- ❌ Falta de feedback ao adicionar/remover item
-- ❌ Total do carrinho desatualizado apos alterar quantidade
+- ❌ Ordem de secoes sem prioridade operacional
+- ❌ Cards sem descricao clara de impacto
+- ❌ Acoes criticas escondidas em menus secundarios
+- ❌ Estados de erro/loading inconsistentes entre blocos
 
 ### Additional Forbidden Patterns
 
@@ -198,6 +201,5 @@ Before delivering any UI code, verify:
 - [ ] Responsive: 375px, 768px, 1024px, 1440px
 - [ ] No content hidden behind fixed navbars
 - [ ] No horizontal scroll on mobile
-- [ ] Alvos de toque com minimo de 44px em acoes principais
-- [ ] Barra do carrinho mostra quantidade, total e CTA sem obstrucao
-- [ ] Fluxo de edicao de quantidade nao remove contexto do operador
+- [ ] Atalhos de maior frequencia visiveis sem scroll em desktop
+- [ ] Cada secao possui estado loading, vazio e erro com mensagem acionavel

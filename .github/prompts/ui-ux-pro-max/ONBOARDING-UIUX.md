@@ -34,9 +34,9 @@ Cada pacote tem um `MASTER.md` com regras globais e overrides por tela em `pages
 
 | Contexto | MASTER | Override de tela |
 |---|---|---|
-| Web — Delivery Checkout | [restaurante-web-delivery/MASTER.md](../../../design-system/restaurante-web-delivery/MASTER.md) | [pages/delivery-screen.md](../../../design-system/restaurante-web-delivery/pages/delivery-screen.md) |
-| App — Novo Pedido (PDV) | [restaurante-app-novo-pedido/MASTER.md](../../../design-system/restaurante-app-novo-pedido/MASTER.md) | [pages/novo-pedido-screen.md](../../../design-system/restaurante-app-novo-pedido/pages/novo-pedido-screen.md) |
-| Web — Admin Operations | [restaurante-web-admin/MASTER.md](../../../design-system/restaurante-web-admin/MASTER.md) | [pages/admin-screen.md](../../../design-system/restaurante-web-admin/pages/admin-screen.md) |
+| Web — Delivery Checkout | [restaurante-web-delivery/MASTER.md](../../../docs/design-system/restaurante-web-delivery/MASTER.md) | [pages/delivery-screen.md](../../../docs/design-system/restaurante-web-delivery/pages/delivery-screen.md) |
+| App — Novo Pedido (PDV) | [restaurante-app-novo-pedido/MASTER.md](../../../docs/design-system/restaurante-app-novo-pedido/MASTER.md) | [pages/novo-pedido-screen.md](../../../docs/design-system/restaurante-app-novo-pedido/pages/novo-pedido-screen.md) |
+| Web — Admin Operations | [restaurante-web-admin/MASTER.md](../../../docs/design-system/restaurante-web-admin/MASTER.md) | [pages/admin-screen.md](../../../docs/design-system/restaurante-web-admin/pages/admin-screen.md) |
 
 ### Camada 3 — Exemplos de PR preenchidos
 
@@ -76,9 +76,9 @@ Revise esta tela e gere um relatório de design e UX focado em PDV de balcão mo
 
 Antes de implementar qualquer mudança visual, consulte o MASTER e o override correspondente ao contexto da tela.
 
-- Tela de checkout delivery → [restaurante-web-delivery/MASTER.md](../../../design-system/restaurante-web-delivery/MASTER.md)
-- Tela de pedido no app → [restaurante-app-novo-pedido/MASTER.md](../../../design-system/restaurante-app-novo-pedido/MASTER.md)
-- Tela admin web → [restaurante-web-admin/MASTER.md](../../../design-system/restaurante-web-admin/MASTER.md)
+- Tela de checkout delivery → [restaurante-web-delivery/MASTER.md](../../../docs/design-system/restaurante-web-delivery/MASTER.md)
+- Tela de pedido no app → [restaurante-app-novo-pedido/MASTER.md](../../../docs/design-system/restaurante-app-novo-pedido/MASTER.md)
+- Tela admin web → [restaurante-web-admin/MASTER.md](../../../docs/design-system/restaurante-web-admin/MASTER.md)
 
 ### Passo 3 — Abrir PR
 
@@ -102,8 +102,8 @@ python .github/prompts/ui-ux-pro-max/scripts/search.py \
 ```
 
 **Saída esperada:**
-- `design-system/<projeto-slug>/MASTER.md`
-- `design-system/<projeto-slug>/pages/<tela-slug>.md`
+- `docs/design-system/<projeto-slug>/MASTER.md`
+- `docs/design-system/<projeto-slug>/pages/<tela-slug>.md`
 
 > **Atenção:** O gerador pode produzir conteúdo genérico na primeira versão. Revise os arquivos gerados e ajuste para o contexto real do restaurante. Consulte os MASTER files existentes como referência de padrão.
 
@@ -143,7 +143,7 @@ O workflow UI/UX Pro Max é invocado via `/ui-ux-pro-max <pedido>` no Copilot Ch
     EXEMPLO-PR-NOVOPEDIDO.md       ← exemplo de PR preenchido (app PDV)
     EXEMPLO-PR-ADMINSCREEN-WEB.md  ← exemplo de PR preenchido (web admin)
 
-design-system/
+docs/design-system/
   restaurante-web-delivery/
     MASTER.md                      ← regras globais para contexto delivery web
     pages/

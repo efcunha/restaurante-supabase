@@ -1,0 +1,258 @@
+{
+  "name": "Pedidos WhatsApp (Base)",
+  "summary": "Template base para migracao n8n -> Activepieces (pedidos)",
+  "description": "Importavel no Activepieces. Usa trigger vazio e roteamento equivalente para facilitar configuracao final.",
+  "tags": [],
+  "blogUrl": "",
+  "metadata": null,
+  "author": "Restaurante Supabase",
+  "categories": [],
+  "pieces": [],
+  "type": "CUSTOM",
+  "status": "PUBLISHED",
+  "flows": [
+    {
+      "displayName": "Pedidos - Notificacoes WhatsApp",
+      "valid": true,
+      "schemaVersion": null,
+      "description": "Configure o trigger de webhook e substitua os steps de codigo por HTTP quando desejar",
+      "notes": [],
+      "trigger": {
+        "name": "trigger",
+        "displayName": "Configure Webhook Trigger",
+        "valid": true,
+        "lastUpdatedDate": "2026-03-17T00:00:00.000Z",
+        "type": "EMPTY",
+        "settings": {},
+        "nextAction": {
+          "name": "route_order_type",
+          "displayName": "Rotear: Salao vs Delivery",
+          "valid": true,
+          "lastUpdatedDate": "2026-03-17T00:00:00.000Z",
+          "type": "ROUTER",
+          "settings": {
+            "executionType": "EXECUTE_FIRST_MATCH",
+            "branches": [
+              {
+                "branchType": "CONDITION",
+                "branchName": "Pedido Local",
+                "conditions": [
+                  [
+                    {
+                      "firstValue": "{{trigger.body.order_type}}",
+                      "secondValue": "local",
+                      "operator": "TEXT_EXACTLY_MATCHES",
+                      "caseSensitive": false
+                    }
+                  ]
+                ]
+              },
+              {
+                "branchType": "FALLBACK",
+                "branchName": "Delivery"
+              }
+            ]
+          },
+          "children": [
+            {
+              "name": "route_local_status",
+              "displayName": "Status Pedido Local",
+              "valid": true,
+              "lastUpdatedDate": "2026-03-17T00:00:00.000Z",
+              "type": "ROUTER",
+              "settings": {
+                "executionType": "EXECUTE_FIRST_MATCH",
+                "branches": [
+                  {
+                    "branchType": "CONDITION",
+                    "branchName": "Preparing",
+                    "conditions": [
+                      [
+                        {
+                          "firstValue": "{{trigger.body.status_novo}}",
+                          "secondValue": "preparing",
+                          "operator": "TEXT_EXACTLY_MATCHES",
+                          "caseSensitive": false
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "branchType": "CONDITION",
+                    "branchName": "Delivered",
+                    "conditions": [
+                      [
+                        {
+                          "firstValue": "{{trigger.body.status_novo}}",
+                          "secondValue": "delivered",
+                          "operator": "TEXT_EXACTLY_MATCHES",
+                          "caseSensitive": false
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "branchType": "FALLBACK",
+                    "branchName": "Ignorar"
+                  }
+                ]
+              },
+              "children": [
+                {
+                  "name": "code_local_preparing",
+                  "displayName": "Payload WhatsApp Local Preparing",
+                  "valid": true,
+                  "lastUpdatedDate": "2026-03-17T00:00:00.000Z",
+                  "type": "CODE",
+                  "settings": {
+                    "sourceCode": {
+                      "packageJson": "{}",
+                      "code": "export const code = async (inputs) => {\n  const phone = String(inputs.customer_phone || '').replace(/\\D/g, '');\n  return {\n    endpoint: `https://evolution-api-production-9ac1.up.railway.app/message/sendText/${inputs.company_id}`,\n    method: 'POST',\n    headers: { apikey: 'TROCAR_APIKEY' },\n    body: {\n      number: `55${phone}`,\n      textMessage: {\n        text: `Ola ${inputs.cliente_nome}! Seu pedido da comanda ${inputs.comanda_numero} esta EM PREPARO e logo ira para sua mesa/entrega!`\n      }\n    }\n  };\n};"
+                    },
+                    "input": {
+                      "company_id": "{{trigger.body.company_id}}",
+                      "customer_phone": "{{trigger.body.customer_phone}}",
+                      "cliente_nome": "{{trigger.body.cliente_nome}}",
+                      "comanda_numero": "{{trigger.body.comanda_numero}}"
+                    }
+                  }
+                },
+                {
+                  "name": "code_local_delivered",
+                  "displayName": "Payload WhatsApp Local Delivered",
+                  "valid": true,
+                  "lastUpdatedDate": "2026-03-17T00:00:00.000Z",
+                  "type": "CODE",
+                  "settings": {
+                    "sourceCode": {
+                      "packageJson": "{}",
+                      "code": "export const code = async (inputs) => {\n  const phone = String(inputs.customer_phone || '').replace(/\\D/g, '');\n  return {\n    endpoint: `https://evolution-api-production-9ac1.up.railway.app/message/sendText/${inputs.company_id}`,\n    method: 'POST',\n    headers: { apikey: 'TROCAR_APIKEY' },\n    body: {\n      number: `55${phone}`,\n      textMessage: {\n        text: `Opa ${inputs.cliente_nome}. Seu pedido da comanda ${inputs.comanda_numero} foi entregue! Bom apetite!`\n      }\n    }\n  };\n};"
+                    },
+                    "input": {
+                      "company_id": "{{trigger.body.company_id}}",
+                      "customer_phone": "{{trigger.body.customer_phone}}",
+                      "cliente_nome": "{{trigger.body.cliente_nome}}",
+                      "comanda_numero": "{{trigger.body.comanda_numero}}"
+                    }
+                  }
+                },
+                {
+                  "name": "code_local_ignore",
+                  "displayName": "Ignorar Status Local",
+                  "valid": true,
+                  "lastUpdatedDate": "2026-03-17T00:00:00.000Z",
+                  "type": "CODE",
+                  "settings": {
+                    "sourceCode": {
+                      "packageJson": "{}",
+                      "code": "export const code = async () => ({ ignored: true });"
+                    },
+                    "input": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "route_delivery_status",
+              "displayName": "Status Pedido Delivery",
+              "valid": true,
+              "lastUpdatedDate": "2026-03-17T00:00:00.000Z",
+              "type": "ROUTER",
+              "settings": {
+                "executionType": "EXECUTE_FIRST_MATCH",
+                "branches": [
+                  {
+                    "branchType": "CONDITION",
+                    "branchName": "Dispatched",
+                    "conditions": [
+                      [
+                        {
+                          "firstValue": "{{trigger.body.status_novo}}",
+                          "secondValue": "dispatched",
+                          "operator": "TEXT_EXACTLY_MATCHES",
+                          "caseSensitive": false
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "branchType": "CONDITION",
+                    "branchName": "Delivered",
+                    "conditions": [
+                      [
+                        {
+                          "firstValue": "{{trigger.body.status_novo}}",
+                          "secondValue": "delivered",
+                          "operator": "TEXT_EXACTLY_MATCHES",
+                          "caseSensitive": false
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "branchType": "FALLBACK",
+                    "branchName": "Ignorar"
+                  }
+                ]
+              },
+              "children": [
+                {
+                  "name": "code_delivery_dispatched",
+                  "displayName": "Payload WhatsApp Delivery Dispatched",
+                  "valid": true,
+                  "lastUpdatedDate": "2026-03-17T00:00:00.000Z",
+                  "type": "CODE",
+                  "settings": {
+                    "sourceCode": {
+                      "packageJson": "{}",
+                      "code": "export const code = async (inputs) => {\n  const phone = String(inputs.customer_phone || '').replace(/\\D/g, '');\n  return {\n    endpoint: `https://evolution-api-production-9ac1.up.railway.app/message/sendText/${inputs.company_id}`,\n    method: 'POST',\n    headers: { apikey: 'TROCAR_APIKEY' },\n    body: {\n      number: `55${phone}`,\n      textMessage: {\n        text: `Ola ${inputs.cliente_nome}! O motoboy saiu com sua entrega da comanda ${inputs.comanda_number}.`\n      }\n    }\n  };\n};"
+                    },
+                    "input": {
+                      "company_id": "{{trigger.body.company_id}}",
+                      "customer_phone": "{{trigger.body.customer_phone}}",
+                      "cliente_nome": "{{trigger.body.cliente_nome}}",
+                      "comanda_number": "{{trigger.body.comanda_number}}"
+                    }
+                  }
+                },
+                {
+                  "name": "code_delivery_payment",
+                  "displayName": "Payload Inserir Pagamento Supabase",
+                  "valid": true,
+                  "lastUpdatedDate": "2026-03-17T00:00:00.000Z",
+                  "type": "CODE",
+                  "settings": {
+                    "sourceCode": {
+                      "packageJson": "{}",
+                      "code": "export const code = async (inputs) => ({\n  endpoint: 'SUA_SUPABASE_URL/rest/v1/NOME_DA_TABELA_DE_PAGAMENTOS',\n  method: 'POST',\n  headers: {\n    apikey: 'SUA_SUPABASE_SERVICE_ROLE_KEY',\n    Authorization: 'Bearer SUA_SUPABASE_SERVICE_ROLE_KEY',\n    'Content-Type': 'application/json',\n    Prefer: 'return=minimal'\n  },\n  body: {\n    company_id: inputs.company_id,\n    comanda_number: inputs.comanda_number,\n    total_amount: inputs.total_amount,\n    payment_method: inputs.payment_method,\n    status: 'paid'\n  }\n});"
+                    },
+                    "input": {
+                      "company_id": "{{trigger.body.company_id}}",
+                      "comanda_number": "{{trigger.body.comanda_number}}",
+                      "total_amount": "{{trigger.body.total_amount}}",
+                      "payment_method": "{{trigger.body.payment_method}}"
+                    }
+                  }
+                },
+                {
+                  "name": "code_delivery_ignore",
+                  "displayName": "Ignorar Status Delivery",
+                  "valid": true,
+                  "lastUpdatedDate": "2026-03-17T00:00:00.000Z",
+                  "type": "CODE",
+                  "settings": {
+                    "sourceCode": {
+                      "packageJson": "{}",
+                      "code": "export const code = async () => ({ ignored: true });"
+                    },
+                    "input": {}
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
