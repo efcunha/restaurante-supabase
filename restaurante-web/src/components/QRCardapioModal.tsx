@@ -25,6 +25,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
+import { ScreenScaffold } from '../layouts/ScreenScaffold';
 import * as Clipboard from 'expo-clipboard';
 import { supabase } from '../config/SupabaseConfig';
 import { colors } from '../theme/colors';
@@ -226,16 +227,10 @@ export default function QRCardapioModal({ visible, onClose, companyId }: Props) 
       onRequestClose={onClose}
       statusBarTranslucent
     >
-      <View style={styles.root}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={onClose} style={styles.backBtn} hitSlop={8}>
-            <Ionicons name="arrow-back" size={22} color={colors.white} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Cardápio Digital (QR)</Text>
-          <View style={styles.headerSpacer} />
-        </View>
-
+      <ScreenScaffold
+        title="Cardápio Digital (QR)"
+        leftAction={{ label: 'Voltar', onPress: onClose }}
+      >
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={colors.primary} />
@@ -445,38 +440,12 @@ export default function QRCardapioModal({ visible, onClose, companyId }: Props) 
             )}
           </ScrollView>
         )}
-      </View>
+      </ScreenScaffold>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: '#F7F8FA',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.primary,
-    paddingTop: Platform.OS === 'ios' ? 50 : 16,
-    paddingBottom: 14,
-    paddingHorizontal: 16,
-    gap: 12,
-  },
-  backBtn: {
-    padding: 4,
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.white,
-    textAlign: 'center',
-  },
-  headerSpacer: {
-    width: 30,
-  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
