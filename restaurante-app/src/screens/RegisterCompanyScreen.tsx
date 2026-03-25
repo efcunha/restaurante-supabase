@@ -254,7 +254,6 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
               status: 'trialing',
               trial_starts_at: trialStartsAt.toISOString(),
               trial_ends_at: trialEndsAt.toISOString(),
-              plan_amount: 14900,
           });
 
       if (subError) {

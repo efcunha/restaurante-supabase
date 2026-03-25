@@ -423,3 +423,107 @@ export async function reconcileBillingEvent(
     message: rpc.message ?? 'Reconcile executado.',
   };
 }
+
+// ---------------------------------------------------------------------------
+// Plan amount divergence check
+// ---------------------------------------------------------------------------
+
+export interface InvoiceDivergenceResult {
+  divergent: boolean;
+  invoiceId: string;
+  invoiceAmount: number;
+  configuredAmount: number | null;
+  divergenceCents: number | null;
+}
+
+/**
+ * Compares the amount on a paid invoice against the plan config active at the
+ * time of payment.  If they differ, writes a divergence event to billing_audit_log.
+ *
+ * Uses `get_billing_plan_config_at` (historical lookup) so the check is safe to
+ * run retroactively on already-closed invoices.
+ */
+export async function checkInvoiceAmountDivergence(
+  companyId: string,
+  invoiceId: string,
+  actorId: string,
+): Promise<InvoiceDivergenceResult> {
+  // 1. Fetch the invoice
+  const { data: invoice, error: invError } = await supabase
+    .from('invoices')
+    .select('id, amount, paid_at, company_id')
+    .eq('id', invoiceId)
+    .eq('company_id', companyId)
+    .maybeSingle();
+
+  if (invError) {
+    throw new Error(`Falha ao buscar fatura: ${invError.message}`);
+  }
+  if (!invoice) {
+    throw new Error(`Fatura ${invoiceId} nao encontrada para empresa ${companyId}`);
+  }
+
+  const paidAt = invoice.paid_at ?? new Date().toISOString();
+
+  // 2. Resolve the plan config active at the time of payment
+  const { data: configRow, error: configError } = await supabase
+    .rpc('get_billing_plan_config_at', {
+      p_at: paidAt,
+      p_plan_code: 'default_monthly',
+    });
+
+  if (configError) {
+    // Non-fatal: log and return without divergence flag
+    console.warn('[checkInvoiceAmountDivergence] Could not resolve plan config at payment time:', configError.message);
+    return {
+      divergent: false,
+      invoiceId,
+      invoiceAmount: invoice.amount,
+      configuredAmount: null,
+      divergenceCents: null,
+    };
+  }
+
+  const configuredAmount: number | null = configRow?.amount_cents ?? null;
+
+  if (configuredAmount === null) {
+    return {
+      divergent: false,
+      invoiceId,
+      invoiceAmount: invoice.amount,
+      configuredAmount: null,
+      divergenceCents: null,
+    };
+  }
+
+  const divergenceCents = invoice.amount - configuredAmount;
+  const divergent = divergenceCents !== 0;
+
+  // 3. Write divergence event if needed
+  if (divergent) {
+    await supabase.from('billing_audit_log').insert({
+      company_id: companyId,
+      event_type: 'billing.plan_amount_divergence',
+      actor_type: 'system',
+      actor_id: actorId,
+      old_status: null,
+      new_status: null,
+      details: {
+        invoice_id: invoiceId,
+        invoice_amount_cents: invoice.amount,
+        configured_amount_cents: configuredAmount,
+        divergence_cents: divergenceCents,
+        evaluated_at: paidAt,
+        plan_code: 'default_monthly',
+      },
+    });
+  }
+
+  return {
+    divergent,
+    invoiceId,
+    invoiceAmount: invoice.amount,
+    configuredAmount,
+    divergenceCents,
+  };
+}
