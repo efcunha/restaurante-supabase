@@ -139,6 +139,12 @@ export default function ComandaGerenciamentoScreen(props: any) {
       itens: itensParaImprimir
     };
 
+    if (Platform.OS === 'web') {
+      const dados = prepareDataForExport(comandaData);
+      PDFService.printOnWeb(dados, user?.company as any);
+      return;
+    }
+
     const sucesso = await PrinterService.printComanda(dadosImpressao);
     if (!sucesso) {
       Alert.alert('Erro', 'Falha ao conectar na impressora. Verifique se o Bluetooth está ligado e a impressora configurada.');
@@ -502,7 +508,7 @@ export default function ComandaGerenciamentoScreen(props: any) {
           onCancel={handleCancel}
           onAddItems={() => setShowAddModal(true)}
           onPrint={() => handlePrint(comandaSelecionada)}
-          onShare={() => handleShare(comandaSelecionada)}
+          onShare={Platform.OS !== 'web' ? () => handleShare(comandaSelecionada) : undefined}
           onFullPayment={() => {
             const comandaNum = comandaSelecionada.comandaNumber;
             const isDelivery = comandaSelecionada.pedidos?.some((p: any) => p.order_type === 'delivery' || p.orderType === 'delivery') || String(comandaNum) === '0';

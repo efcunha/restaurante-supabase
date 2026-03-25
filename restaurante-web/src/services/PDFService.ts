@@ -49,6 +49,22 @@ class PDFService {
     }
   }
 
+  printOnWeb(comandaData: ComandaData, companyData: CompanyData) {
+    const html = this.buildHtml(comandaData, companyData);
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      Alert.alert('Pop-up bloqueado', 'Permita pop-ups para este site e tente novamente, ou use CTRL+P para imprimir.');
+      return;
+    }
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.addEventListener('load', () => {
+      printWindow.print();
+      printWindow.close();
+    });
+  }
+
   buildHtml(comanda: ComandaData, companyData: CompanyData) {
     const itensHtml = (comanda.itens || []).map(item => `
       <tr>
