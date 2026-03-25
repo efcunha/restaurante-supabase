@@ -82,19 +82,19 @@ Preencher **SMOKE-TEST-26MAR-EXECUTION-PLAN.md** campo por campo conforme vai te
 ## Arquivos de Referência
 
 **Plano detalhado:**  
-`saas-billing/SMOKE-TEST-26MAR-EXECUTION-PLAN.md`
+`saas-billing/operations/SMOKE-TEST-26MAR-EXECUTION-PLAN.md`
 
 **Histórico de compliance:**  
-`saas-billing/BILLING-PROMOTION-CHECKLIST.md`
+`saas-billing/operations/BILLING-PROMOTION-CHECKLIST.md`
 
 **Script de teste webhook (se necessário):**  
 `database-backup/supabase/functions/scripts/billing-webhook-test.ps1`
 
 **Queries SQL pré-prontas:**  
-`saas-billing/SQL-QUERIES-EVIDENCE-COLLECTION.sql`
+`saas-billing/operations/SQL-QUERIES-EVIDENCE-COLLECTION.sql`
 
 **Teste E2E opcional (TypeScript/Playwright):**  
-`saas-billing/SMOKE-TEST-PLAYWRIGHT-SCRIPT.ts`
+`saas-billing/operations/SMOKE-TEST-PLAYWRIGHT-SCRIPT.ts`
 
 ---
 
@@ -107,7 +107,7 @@ Preencher **SMOKE-TEST-26MAR-EXECUTION-PLAN.md** campo por campo conforme vai te
 4. Notifique tech lead e operations
 
 **Rollback rápido (se necessário):**  
-Ver seção "Rollback" em `saas-billing/BILLING-PROMOTION-CHECKLIST.md`
+Ver seção "Rollback" em `saas-billing/operations/BILLING-PROMOTION-CHECKLIST.md`
 
 ---
 
