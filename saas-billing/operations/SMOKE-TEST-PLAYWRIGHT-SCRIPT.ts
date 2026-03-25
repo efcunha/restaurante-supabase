@@ -2,7 +2,7 @@
  * Smoke Test Automation para Billing (Fase 2)
  * 
  * Objetivo: Validar fluxo end-to-end de assinatura com TEST- credentials
- * Uso: npx playwright test SMOKE-TEST-PLAYWRIGHT-SCRIPT.ts --project=chromium
+ * Uso: npx playwright test saas-billing/operations/SMOKE-TEST-PLAYWRIGHT-SCRIPT.ts --project=chromium
  * 
  * Docs: https://playwright.dev
  */
@@ -228,7 +228,7 @@ curl -X POST "${OPS_URL}/functions/v1/billing-webhook" \\
  *    export TEST_PASSWORD=sua-senha
  * 
  * 2. Execute:
- *    npx playwright test SMOKE-TEST-PLAYWRIGHT-SCRIPT.ts --project=chromium
+ *    npx playwright test saas-billing/operations/SMOKE-TEST-PLAYWRIGHT-SCRIPT.ts --project=chromium
  * 
  * 3. Monitore output e ajuste seletores conforme seu UI
  * 

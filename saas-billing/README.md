@@ -15,7 +15,35 @@ This folder centralizes the implementation plan, architectural boundaries, and o
 - Admin entry point for subscription management
 - Billing communication in login and registration flows
 - Mercado Pago Edge Function scaffolding
-- Root-level documentation for rollout and architecture
+- Billing-domain documentation for rollout, architecture, security and operations
+
+## Documentation Layout
+
+- Core domain and architecture docs stay in `saas-billing/`
+- Time-sensitive runbooks, smoke plans, checklists and evidence helpers stay in `saas-billing/operations/`
+- Security/LGPD audit package lives in `docs/security/`
+
+### Core docs in `saas-billing/`
+
+- `README.md`
+- `architecture.md`
+- `rollout-plan.md`
+- `restaurante-ops-blueprint.md`
+- `mercadopago-edge-functions.md`
+- `SECURITY-POLICY.md`
+- `BILLING_PRODUCAO_PROMPT.md`
+
+### Operational docs in `saas-billing/operations/`
+
+- `PRE-VALIDACAO-SUMMARY-25MAR.md`
+- `SMOKE-TEST-26MAR-EXECUTION-PLAN.md`
+- `BILLING-GO-NO-GO-CHECKLIST-26MAR.md`
+- `BILLING-OPERATOR-COMMANDS-26MAR.md`
+- `BILLING-PROMOTION-CHECKLIST.md`
+- `ROADMAP-EXECUCAO-26MAR-TLDR.md`
+- `SECRETS-VALIDATION-MANUAL.md`
+- `SQL-QUERIES-EVIDENCE-COLLECTION.sql`
+- `SMOKE-TEST-PLAYWRIGHT-SCRIPT.ts`
 
 ## Operational Rule
 
