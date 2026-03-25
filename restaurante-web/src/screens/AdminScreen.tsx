@@ -536,7 +536,7 @@ export default function AdminScreen() {
       <QRCardapioModal
         visible={showQRCardapio}
         onClose={() => setShowQRCardapio(false)}
-        companyId={user?.company_id}
+        companyId={user?.companyId}
       />
 
       {/* Modal Gerenciar Estoque */}

@@ -67,7 +67,11 @@ export default function QRCardapioModal({ visible, onClose, companyId }: Props) 
     : null;
 
   const loadCompany = useCallback(async () => {
-    if (!companyId) return;
+    if (!companyId) {
+      setLoading(false);
+      Alert.alert('Erro', 'ID da empresa não encontrado. Tente relogar.');
+      return;
+    }
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -93,6 +97,8 @@ export default function QRCardapioModal({ visible, onClose, companyId }: Props) 
       setSaveState('idle');
       setSlugError('');
       setCopied(false);
+    } else if (visible && !companyId) {
+      loadCompany(); // will set loading=false and show alert
     }
   }, [visible, companyId, loadCompany]);
 
