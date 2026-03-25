@@ -16,6 +16,38 @@
 > - CORS das Edge Functions: corrigido com allowlist por origem, sem fallback wildcard.
 > - Rate limiting de `restaurante-ops`: implementado com modo estrito fail-closed (`503` quando o limiter estiver indisponível).
 > - Billing Mercado Pago: sem bloqueador estrutural aberto de segurança/compliance; decisão de produção depende da execução e aprovação do smoke funcional S1-S5.
+>
+> ---
+> ### ⚠️ NOVOS ACHADOS CRÍTICOS — Cardápio Digital (2026-03-25)
+>
+> A criação das rotas públicas do cardápio QR expôs superfície de ataque nova. Quatro vulnerabilidades críticas identificadas e migration de correção criada:
+>
+> **🔴 CRÍTICO-C1 — execute_sql callable por `anon` (RCE/SQLi)**
+> - `public.execute_sql(query text, params jsonb)` é `SECURITY DEFINER` (roda como postgres) e estava concedida ao role `anon`.
+> - Via `/rest/v1/rpc/execute_sql`, qualquer visitante do cardápio público podia executar SQL arbitrário com privilégios de superusuário, bypassando todo RLS.
+> - **Correção**: `REVOKE ALL ON FUNCTION execute_sql FROM anon, authenticated` em `20260325180000_harden_anon_function_grants_cardapio.sql`.
+>
+> **🔴 CRÍTICO-C2 — Funções financeiras/operacionais callable por `anon`**
+> - `registrar_pagamento_comanda`, `close_cash_register`, `close_comanda`, `adicionar_consumo_atomico` estavam concedidas a `anon` (todas SECURITY DEFINER).
+> - Um visitante do cardápio podia registrar pagamentos falsos, fechar comandas e caixas de qualquer empresa.
+> - **Correção**: `REVOKE ALL ON FUNCTION ... FROM anon` para cada função na mesma migration.
+>
+> **🔴 CRÍTICO-C3 — DEFAULT PRIVILEGES concedem ALL ON FUNCTIONS a `anon`**
+> - `ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON FUNCTIONS TO anon` estava ativo no schema dump.
+> - Toda nova função criada herdava automaticamente acesso anon, incluindo futuras funções do cardápio (upload, checkout, etc).
+> - **Correção**: `ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE ALL ON FUNCTIONS FROM anon` + `REVOKE ALL ON TABLES FROM anon`.
+>
+> **🟠 ALTO-C4 — public_menu_company_read expõe colunas sensíveis (LGPD)**
+> - A RLS policy `public_menu_company_read` permitia `SELECT *` em `companies` para empresas publicadas.
+> - Colunas expostas indevidamente: `cnpj`, `document`, `plan`, `settings` (jsonb interno), `contact_name`.
+> - **Correção**: Policy removida; criada VIEW `public_menu_companies` com apenas os 9 campos públicos necessários; `GRANT SELECT ON VIEW TO anon`.
+>
+> **🟠 ALTO-C5 — get_company_by_menu_slug SECURITY DEFINER sem SET search_path**
+> - Função SECURITY DEFINER sem `SET search_path` é vulnerável a search path injection.
+> - **Correção**: Função recriada com `SET search_path = public` na mesma migration.
+>
+> Migration gerada: `database-backup/migrations/20260325180000_harden_anon_function_grants_cardapio.sql`
+> **Aplicar imediatamente antes de habilitar qualquer rota pública do cardápio.**
 
 ---
 
