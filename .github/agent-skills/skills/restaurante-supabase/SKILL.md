@@ -17,7 +17,7 @@ Guiar implementacoes e reviews no projeto com foco em:
 - `restaurante-app/`: app React Native + Expo
 - `restaurante-web/`: web (Expo Web) + testes E2E Playwright
 - `restaurante-ops/`: servico operacional/admin de SaaS (auth, metrics, billing, health)
-- `saas-billing/`: artefatos auxiliares do dominio de cobranca/remuneracao
+- `docs/saas-billing/`: artefatos auxiliares do dominio de cobranca/remuneracao
 - Backend: Supabase (PostgreSQL + Auth + Realtime)
 - Integracoes: Edge Functions (delivery) e Activepieces (automacoes WhatsApp)
 

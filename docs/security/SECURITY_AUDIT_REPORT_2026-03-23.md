@@ -1139,7 +1139,7 @@ Components:
 ### 5️⃣ 🟠 Gate restante para billing Mercado Pago
 - **Severidade:** ALTA OPERACIONAL
 - **Impacto:** promoção sem evidência funcional end-to-end
-- **Localização:** fluxo S1-S5 em `saas-billing/operations/SMOKE-TEST-26MAR-EXECUTION-PLAN.md`
+- **Localização:** fluxo S1-S5 em `docs/saas-billing/operations/SMOKE-TEST-26MAR-EXECUTION-PLAN.md`
 - **Ação Imediata:** executar smoke funcional controlado e registrar decisão GO/NO-GO ao final de S5
 - **Tempo Estimado:** 2-3 horas
 

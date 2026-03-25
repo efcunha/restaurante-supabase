@@ -1,14 +1,14 @@
 # Design System Master File
 
-> **LOGIC:** When building a specific page, first check `design-system/pages/[page-name].md`.
+> **LOGIC:** When building a specific page, first check `docs/design-system/pages/[page-name].md`.
 > If that file exists, its rules **override** this Master file.
 > If not, strictly follow the rules below.
 
 ---
 
-**Project:** Restaurante Web Delivery
-**Generated:** 2026-03-18 17:13:32
-**Category:** Restaurante Delivery Checkout (Web)
+**Project:** Restaurante App Novo Pedido
+**Generated:** 2026-03-18 17:13:35
+**Category:** Restaurante PDV - Novo Pedido (App)
 
 ---
 
@@ -18,25 +18,19 @@
 
 | Role | Hex | CSS Variable |
 |------|-----|--------------|
-| Primary | `#2563EB` | `--color-primary` |
-| Secondary | `#3B82F6` | `--color-secondary` |
-| CTA/Accent | `#F97316` | `--color-cta` |
-| Background | `#EFF6FF` | `--color-background` |
-| Text | `#1E40AF` | `--color-text` |
+| Primary | `#0891B2` | `--color-primary` |
+| Secondary | `#22D3EE` | `--color-secondary` |
+| CTA/Accent | `#059669` | `--color-cta` |
+| Background | `#ECFEFF` | `--color-background` |
+| Text | `#164E63` | `--color-text` |
 
-**Color Notes:** Azul para confianca no fluxo, laranja para acao principal e feedback de entrega.
+**Color Notes:** Ciano para navegacao operacional, verde para confirmacao/continuidade de pedido.
 
 ### Typography
 
-- **Heading Font:** Plus Jakarta Sans
-- **Body Font:** Plus Jakarta Sans
-- **Mood:** friendly, modern, saas, clean, approachable, professional
-- **Google Fonts:** [Plus Jakarta Sans + Plus Jakarta Sans](https://fonts.google.com/share?selection.family=Plus+Jakarta+Sans:wght@300;400;500;600;700)
-
-**CSS Import:**
-```css
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
-```
+- **Heading Font:** Inter
+- **Body Font:** Inter
+- **Mood:** Readable + Large type (16px+)
 
 ### Spacing Variables
 
@@ -68,7 +62,7 @@
 ```css
 /* Primary Button */
 .btn-primary {
-  background: #F97316;
+  background: #059669;
   color: white;
   padding: 12px 24px;
   border-radius: 8px;
@@ -85,8 +79,8 @@
 /* Secondary Button */
 .btn-secondary {
   background: transparent;
-  color: #2563EB;
-  border: 2px solid #2563EB;
+  color: #0891B2;
+  border: 2px solid #0891B2;
   padding: 12px 24px;
   border-radius: 8px;
   font-weight: 600;
@@ -99,7 +93,7 @@
 
 ```css
 .card {
-  background: #EFF6FF;
+  background: #ECFEFF;
   border-radius: 12px;
   padding: 24px;
   box-shadow: var(--shadow-md);
@@ -125,9 +119,9 @@
 }
 
 .input:focus {
-  border-color: #2563EB;
+  border-color: #0891B2;
   outline: none;
-  box-shadow: 0 0 0 3px #2563EB20;
+  box-shadow: 0 0 0 3px #0891B220;
 }
 ```
 
@@ -153,30 +147,31 @@
 
 ## Style Guidelines
 
-**Style:** Operational Clarity + Accessible Checkout
+**Style:** Accessible & Ethical
 
-**Keywords:** checkout de baixa friccao, formulario progressivo, resumo persistente, estados claros, foco em conclusao
+**Keywords:** operacao de balcao, velocidade com precisao, alvos de toque grandes, feedback imediato, estados claros
 
-**Best For:** fluxo de pedido delivery, pagamento rapido, operacao em pico, validacao de endereco
+**Best For:** abertura rapida de pedido, adicao de itens em sequencia, fluxo de pagamento sem perda de contexto
 
-**Key Effects:** recalculo em tempo real do resumo, feedback imediato de validacao, transicoes curtas (150-250ms)
+**Key Effects:** atualizacao instantanea de quantidade/total, barra inferior persistente, confirmacoes visuais curtas
 
 ### Page Pattern
 
-**Pattern Name:** Two-Column Checkout with Sticky Summary
+**Pattern Name:** Mobile First POS Flow
 
-- **CTA Placement:** fixo no resumo (desktop) e fixo no rodape (mobile)
-- **Section Order:** Cliente > Endereco > Pagamento > Itens/Observacoes > Resumo e Confirmacao
-- **Primary Success Metric:** reduzir abandono no checkout e tempo ate confirmacao
+- **Conversion Strategy:** minimizar toques e reduzir tempo ate avancar para pagamento
+- **CTA Placement:** barra inferior persistente do carrinho
+- **Section Order:** Contexto do pedido > Busca/Filtros > Lista de produtos > Itens selecionados > Avancar para pagamento
+- **Primary Success Metric:** tempo medio para montar pedido e taxa de erro operacional
 
 ---
 
 ## Anti-Patterns (Do NOT Use)
 
-- ❌ CTA principal fora da area visivel
-- ❌ Validacao bloqueante cedo demais (antes da digitacao terminar)
-- ❌ Perda do resumo ao rolar a pagina
-- ❌ Erros sem mensagem acionavel para o operador/cliente
+- ❌ Modais desnecessarios para tarefas frequentes
+- ❌ Acoes importantes fora da zona de alcance do polegar
+- ❌ Falta de feedback ao adicionar/remover item
+- ❌ Total do carrinho desatualizado apos alterar quantidade
 
 ### Additional Forbidden Patterns
 
@@ -203,5 +198,6 @@ Before delivering any UI code, verify:
 - [ ] Responsive: 375px, 768px, 1024px, 1440px
 - [ ] No content hidden behind fixed navbars
 - [ ] No horizontal scroll on mobile
-- [ ] Resumo mostra subtotal, taxa, desconto e total sem inconsistencias
-- [ ] Erros de endereco e pagamento sao exibidos perto do campo correspondente
+- [ ] Alvos de toque com minimo de 44px em acoes principais
+- [ ] Barra do carrinho mostra quantidade, total e CTA sem obstrucao
+- [ ] Fluxo de edicao de quantidade nao remove contexto do operador

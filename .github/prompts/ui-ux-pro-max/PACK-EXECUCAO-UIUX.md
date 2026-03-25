@@ -23,8 +23,8 @@ Objetivo: direcao visual e interacao com consistencia do design system.
 ```text
 #file:D:\restaurante-supabase\.github\agent-skills\skills\restaurante-supabase\SKILL.md
 #file:.github/prompts/ui-ux-pro-max/PROMPT.md
-#file:design-system/<pacote>/MASTER.md
-#file:design-system/<pacote>/pages/<tela>.md
+#file:docs/design-system/<pacote>/MASTER.md
+#file:docs/design-system/<pacote>/pages/<tela>.md
 #file:<arquivo-da-tela>
 
 /ui-ux-pro-max aplique os tokens e regras do master/override nesta tela. Entregue: estrutura visual, hierarquia, estados (default/hover/focus/error/loading) e notas de acessibilidade.
@@ -37,8 +37,8 @@ Objetivo: plano tecnico executavel sem regressao funcional.
 ```text
 #file:D:\restaurante-supabase\.github\agent-skills\skills\restaurante-supabase\SKILL.md
 #file:.github/prompts/ui-ux-pro-max/PROMPT.md
-#file:design-system/<pacote>/MASTER.md
-#file:design-system/<pacote>/pages/<tela>.md
+#file:docs/design-system/<pacote>/MASTER.md
+#file:docs/design-system/<pacote>/pages/<tela>.md
 #file:<arquivo-da-tela>
 
 /ui-ux-pro-max gere plano de implementacao incremental para esta tela com: diff por componente, risco de regressao, estrategia de testes e criterios objetivos para pronto.
@@ -74,8 +74,8 @@ Exemplo preenchido (AdminScreen Web): `.github/prompts/ui-ux-pro-max/EXEMPLO-PR-
 - Escopo: <o que muda / o que nao muda>
 
 ## Referencias de design
-- Master: design-system/<pacote>/MASTER.md
-- Override: design-system/<pacote>/pages/<tela>.md
+- Master: docs/design-system/<pacote>/MASTER.md
+- Override: docs/design-system/<pacote>/pages/<tela>.md
 
 ## Mudancas visuais e de UX
 1. <mudanca 1>

@@ -5,8 +5,8 @@
 - Fora de escopo: alteracoes de regra fiscal, logica de precificacao e integracoes externas
 
 ## Referencias de design
-- Master: design-system/restaurante-web-delivery/MASTER.md
-- Override: design-system/restaurante-web-delivery/pages/delivery-screen.md
+- Master: docs/design-system/restaurante-web-delivery/MASTER.md
+- Override: docs/design-system/restaurante-web-delivery/pages/delivery-screen.md
 
 ## Mudancas visuais e de UX
 1. Estruturacao do checkout em 2 colunas no desktop (formulario + resumo persistente) e 1 coluna no mobile com resumo colapsavel no rodape.

@@ -1,0 +1,205 @@
+{
+  "name": "Reservas WhatsApp (Base)",
+  "summary": "Template base para migracao n8n -> Activepieces (reservas)",
+  "description": "Importavel no Activepieces. Usa trigger vazio e roteamento equivalente para facilitar configuracao final.",
+  "tags": [],
+  "blogUrl": "",
+  "metadata": null,
+  "author": "Restaurante Supabase",
+  "categories": [],
+  "pieces": [],
+  "type": "CUSTOM",
+  "status": "PUBLISHED",
+  "flows": [
+    {
+      "displayName": "Reservas - Notificacoes WhatsApp",
+      "valid": true,
+      "schemaVersion": null,
+      "description": "Configure o trigger de webhook do Supabase e substitua os steps de codigo por HTTP quando desejar",
+      "notes": [],
+      "trigger": {
+        "name": "trigger",
+        "displayName": "Configure Webhook Trigger",
+        "valid": true,
+        "lastUpdatedDate": "2026-03-17T00:00:00.000Z",
+        "type": "EMPTY",
+        "settings": {},
+        "nextAction": {
+          "name": "route_has_phone",
+          "displayName": "Tem Telefone?",
+          "valid": true,
+          "lastUpdatedDate": "2026-03-17T00:00:00.000Z",
+          "type": "ROUTER",
+          "settings": {
+            "executionType": "EXECUTE_FIRST_MATCH",
+            "branches": [
+              {
+                "branchType": "CONDITION",
+                "branchName": "Com Telefone",
+                "conditions": [
+                  [
+                    {
+                      "firstValue": "{{trigger.body.record.telefone_cliente}}",
+                      "operator": "EXISTS"
+                    }
+                  ]
+                ]
+              },
+              {
+                "branchType": "FALLBACK",
+                "branchName": "Sem Telefone"
+              }
+            ]
+          },
+          "children": [
+            {
+              "name": "route_reserva_status",
+              "displayName": "Status da Reserva",
+              "valid": true,
+              "lastUpdatedDate": "2026-03-17T00:00:00.000Z",
+              "type": "ROUTER",
+              "settings": {
+                "executionType": "EXECUTE_FIRST_MATCH",
+                "branches": [
+                  {
+                    "branchType": "CONDITION",
+                    "branchName": "Pendente",
+                    "conditions": [
+                      [
+                        {
+                          "firstValue": "{{trigger.body.record.status}}",
+                          "secondValue": "pendente",
+                          "operator": "TEXT_EXACTLY_MATCHES",
+                          "caseSensitive": false
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "branchType": "CONDITION",
+                    "branchName": "Confirmada",
+                    "conditions": [
+                      [
+                        {
+                          "firstValue": "{{trigger.body.record.status}}",
+                          "secondValue": "confirmada",
+                          "operator": "TEXT_EXACTLY_MATCHES",
+                          "caseSensitive": false
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "branchType": "CONDITION",
+                    "branchName": "Cancelada",
+                    "conditions": [
+                      [
+                        {
+                          "firstValue": "{{trigger.body.record.status}}",
+                          "secondValue": "cancelada",
+                          "operator": "TEXT_EXACTLY_MATCHES",
+                          "caseSensitive": false
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "branchType": "FALLBACK",
+                    "branchName": "Ignorar"
+                  }
+                ]
+              },
+              "children": [
+                {
+                  "name": "code_reserva_pendente",
+                  "displayName": "Payload Reserva Pendente",
+                  "valid": true,
+                  "lastUpdatedDate": "2026-03-17T00:00:00.000Z",
+                  "type": "CODE",
+                  "settings": {
+                    "sourceCode": {
+                      "packageJson": "{}",
+                      "code": "export const code = async (inputs) => {\n  const phone = String(inputs.telefone || '').replace(/\\D/g, '');\n  return {\n    endpoint: `https://evolution-api-production-9ac1.up.railway.app/message/sendText/${inputs.company_id}`,\n    method: 'POST',\n    headers: { apikey: 'TROCAR_APIKEY' },\n    body: {\n      number: `55${phone}`,\n      textMessage: { text: `Ola ${inputs.nome}! Sua solicitacao de mesa para ${inputs.pessoas} pessoas esta em analise.` }\n    }\n  };\n};"
+                    },
+                    "input": {
+                      "company_id": "{{trigger.body.record.company_id}}",
+                      "telefone": "{{trigger.body.record.telefone_cliente}}",
+                      "nome": "{{trigger.body.record.nome_cliente}}",
+                      "pessoas": "{{trigger.body.record.quantidade_pessoas}}"
+                    }
+                  }
+                },
+                {
+                  "name": "code_reserva_confirmada",
+                  "displayName": "Payload Reserva Confirmada",
+                  "valid": true,
+                  "lastUpdatedDate": "2026-03-17T00:00:00.000Z",
+                  "type": "CODE",
+                  "settings": {
+                    "sourceCode": {
+                      "packageJson": "{}",
+                      "code": "export const code = async (inputs) => {\n  const phone = String(inputs.telefone || '').replace(/\\D/g, '');\n  const dt = new Date(inputs.data_hora).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });\n  return {\n    endpoint: `https://evolution-api-production-9ac1.up.railway.app/message/sendText/${inputs.company_id}`,\n    method: 'POST',\n    headers: { apikey: 'TROCAR_APIKEY' },\n    body: {\n      number: `55${phone}`,\n      textMessage: { text: `Ola ${inputs.nome}! Sua mesa para ${inputs.pessoas} pessoas no dia ${dt} foi confirmada.` }\n    }\n  };\n};"
+                    },
+                    "input": {
+                      "company_id": "{{trigger.body.record.company_id}}",
+                      "telefone": "{{trigger.body.record.telefone_cliente}}",
+                      "nome": "{{trigger.body.record.nome_cliente}}",
+                      "pessoas": "{{trigger.body.record.quantidade_pessoas}}",
+                      "data_hora": "{{trigger.body.record.data_hora_reserva}}"
+                    }
+                  }
+                },
+                {
+                  "name": "code_reserva_cancelada",
+                  "displayName": "Payload Reserva Cancelada",
+                  "valid": true,
+                  "lastUpdatedDate": "2026-03-17T00:00:00.000Z",
+                  "type": "CODE",
+                  "settings": {
+                    "sourceCode": {
+                      "packageJson": "{}",
+                      "code": "export const code = async (inputs) => {\n  const phone = String(inputs.telefone || '').replace(/\\D/g, '');\n  return {\n    endpoint: `https://evolution-api-production-9ac1.up.railway.app/message/sendText/${inputs.company_id}`,\n    method: 'POST',\n    headers: { apikey: 'TROCAR_APIKEY' },\n    body: {\n      number: `55${phone}`,\n      textMessage: { text: `Ola ${inputs.nome}, infelizmente sua reserva precisou ser cancelada.` }\n    }\n  };\n};"
+                    },
+                    "input": {
+                      "company_id": "{{trigger.body.record.company_id}}",
+                      "telefone": "{{trigger.body.record.telefone_cliente}}",
+                      "nome": "{{trigger.body.record.nome_cliente}}"
+                    }
+                  }
+                },
+                {
+                  "name": "code_reserva_ignore",
+                  "displayName": "Ignorar Status",
+                  "valid": true,
+                  "lastUpdatedDate": "2026-03-17T00:00:00.000Z",
+                  "type": "CODE",
+                  "settings": {
+                    "sourceCode": {
+                      "packageJson": "{}",
+                      "code": "export const code = async () => ({ ignored: true });"
+                    },
+                    "input": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "code_sem_telefone",
+              "displayName": "Sem Telefone - Ignorar",
+              "valid": true,
+              "lastUpdatedDate": "2026-03-17T00:00:00.000Z",
+              "type": "CODE",
+              "settings": {
+                "sourceCode": {
+                  "packageJson": "{}",
+                  "code": "export const code = async () => ({ skipped: 'sem_telefone' });"
+                },
+                "input": {}
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

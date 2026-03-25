@@ -14,4 +14,4 @@ Este diretório centraliza a documentação de auditoria, remediação e complia
 
 1. Começar por `SECURITY_DOCUMENTATION_INDEX.md`
 2. Usar `SECURITY_AUDIT_REPORT_2026-03-23.md` como baseline histórica
-3. Cruzas com `saas-billing/operations/` quando a decisão envolver rollout operacional de billing
+3. Cruzas com `docs/saas-billing/operations/` quando a decisão envolver rollout operacional de billing
