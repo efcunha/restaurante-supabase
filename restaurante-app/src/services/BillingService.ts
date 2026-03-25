@@ -280,3 +280,36 @@ export async function saveCardToken(companyId: string, cardToken: string): Promi
     'Falha ao salvar o cartão.'
   );
 }
+
+export async function deletePaymentMethod(companyId: string, methodId: string): Promise<void> {
+  const { error } = await supabase
+    .from('payment_methods')
+    .delete()
+    .eq('id', methodId)
+    .eq('company_id', companyId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export async function setDefaultPaymentMethod(companyId: string, methodId: string): Promise<void> {
+  const { error: clearError } = await supabase
+    .from('payment_methods')
+    .update({ is_default: false })
+    .eq('company_id', companyId);
+
+  if (clearError) {
+    throw new Error(clearError.message);
+  }
+
+  const { error: setError } = await supabase
+    .from('payment_methods')
+    .update({ is_default: true })
+    .eq('id', methodId)
+    .eq('company_id', companyId);
+
+  if (setError) {
+    throw new Error(setError.message);
+  }
+}
