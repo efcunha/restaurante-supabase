@@ -10,6 +10,7 @@ interface LogContext {
   service?: string;
   durationMs?: number;
   error?: string;
+  [key: string]: unknown;
 }
 
 function writeLog(level: LogLevel, event: string, context: LogContext = {}): void {
