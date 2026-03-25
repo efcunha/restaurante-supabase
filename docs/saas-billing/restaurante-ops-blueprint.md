@@ -8,7 +8,7 @@ A camada SaaS (clientes, contratos, metricas e cobranca) precisa evoluir com gov
 
 - `restaurante-ops/` (novo projeto)
 - `database-backup/supabase/functions/` (edge orchestration)
-- `saas-billing/` (estrategia e rollout)
+- `docs/saas-billing/` (estrategia e rollout)
 
 ## Integration points
 

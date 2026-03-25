@@ -5,8 +5,8 @@
 - Fora de escopo: mudanca de permissoes, regras de negocio de caixa/estoque e integracoes externas
 
 ## Referencias de design
-- Master: design-system/restaurante-web-admin/MASTER.md
-- Override: design-system/restaurante-web-admin/pages/admin-screen.md
+- Master: docs/design-system/restaurante-web-admin/MASTER.md
+- Override: docs/design-system/restaurante-web-admin/pages/admin-screen.md
 
 ## Mudancas visuais e de UX
 1. Reorganizacao da home admin por blocos de prioridade operacional (alta frequencia primeiro).
