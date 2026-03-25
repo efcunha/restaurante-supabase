@@ -1066,10 +1066,16 @@ function renderPlanConfigPanel(
           const msg = document.getElementById('plan-form-msg');
           const btn = document.getElementById('plan-submit-btn');
 
-          // Default effective_from to now
+          // Default effective_from to now — must use LOCAL time string for datetime-local input.
+          // toISOString() returns UTC; datetime-local inputs without timezone are parsed as LOCAL
+          // time by the browser on submit, which would shift the value by the UTC offset (e.g. -3h
+          // for Brasília), causing effective_from to land in the future and the config to be inactive.
           const now = new Date();
           now.setSeconds(0, 0);
-          document.getElementById('effective_from').value = now.toISOString().slice(0, 16);
+          const pad = function(n) { return String(n).padStart(2, '0'); };
+          const localIso = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate())
+            + 'T' + pad(now.getHours()) + ':' + pad(now.getMinutes());
+          document.getElementById('effective_from').value = localIso;
 
           form.addEventListener('submit', async function (e) {
             e.preventDefault();
