@@ -10,11 +10,13 @@ import {
   BillingPaymentMethod,
   BillingProviderStatus,
   CardInput,
+  deletePaymentMethod,
   getBillingProviderStatus,
   listBillingInvoices,
   listBillingPaymentMethods,
   requestBillingPixFallback,
   saveCardToken,
+  setDefaultPaymentMethod,
   startBillingCheckout,
   tokenizeCardWithMp,
 } from '../services/BillingService';
@@ -117,6 +119,8 @@ export default function BillingScreen({ onClose }: BillingScreenProps) {
   const [providerStatus, setProviderStatus] = useState<BillingProviderStatus | null>(null);
   const [loadingData, setLoadingData] = useState(true);
   const [actionLoading, setActionLoading] = useState<'checkout' | 'pix' | null>(null);
+  const [deletingCardId, setDeletingCardId] = useState<string | null>(null);
+  const [settingDefaultId, setSettingDefaultId] = useState<string | null>(null);
 
   // Card form modal
   const [showCardModal, setShowCardModal] = useState(false);
@@ -131,6 +135,8 @@ export default function BillingScreen({ onClose }: BillingScreenProps) {
 
   const companyId = user?.companyId;
   const hasPaymentMethod = paymentMethods.length > 0;
+  const cardMethods = useMemo(() => paymentMethods.filter((m) => m.type === 'card'), [paymentMethods]);
+  const hasCards = cardMethods.length > 0;
   const activePixInvoice = useMemo(() => getActivePixInvoice(invoices), [invoices]);
 
   const daysLeft = useMemo(() => {
@@ -296,8 +302,58 @@ export default function BillingScreen({ onClose }: BillingScreenProps) {
     }
   }, [activePixInvoice]);
 
+  const handleSetDefaultCard = useCallback(async (methodId: string) => {
+    if (!companyId) {
+      return;
+    }
+
+    setSettingDefaultId(methodId);
+    try {
+      await setDefaultPaymentMethod(companyId, methodId);
+      await loadData();
+    } catch (error) {
+      Alert.alert('Cartão', error instanceof Error ? error.message : 'Falha ao definir cartão padrão.');
+    } finally {
+      setSettingDefaultId(null);
+    }
+  }, [companyId, loadData]);
+
+  const handleDeleteCard = useCallback((method: BillingPaymentMethod) => {
+    if (!companyId) {
+      return;
+    }
+
+    const label = getMethodLabel(method);
+    const isLast = cardMethods.length === 1;
+    const warningMsg = isLast
+      ? '\n\nAtenção: este é o último cartão. Após excluir, pagamento ficará disponível somente via Pix.'
+      : '';
+
+    Alert.alert(
+      'Excluir cartão',
+      `Deseja excluir o cartão ${label}?${warningMsg}`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: async () => {
+            setDeletingCardId(method.id);
+            try {
+              await deletePaymentMethod(companyId, method.id);
+              await loadData();
+            } catch (err) {
+              Alert.alert('Cartão', err instanceof Error ? err.message : 'Falha ao excluir o cartão.');
+            } finally {
+              setDeletingCardId(null);
+            }
+          },
+        },
+      ]
+    );
+  }, [companyId, cardMethods.length, loadData]);
+
   const statusLabel = statusLabels[subscription.status || 'trialing'] || 'Assinatura';
-  const subtitle = user ? `Empresa ${user.company?.id || user.companyId || ''}` : 'Assinatura e regularização';
 
   return (
     <ScreenScaffold
@@ -442,11 +498,13 @@ export default function BillingScreen({ onClose }: BillingScreenProps) {
         </View>
       </View>
 
-      {!hasPaymentMethod && !loadingData && (
+      {!hasCards && !loadingData && (
         <View style={styles.warningCard}>
           <Ionicons name="alert-circle-outline" size={18} color={colors.warning} />
           <Text style={styles.warningText}>
-            Nenhum método de pagamento salvo. O método se torna obrigatório antes do fim do trial.
+            {hasPaymentMethod
+              ? 'Nenhum cartão cadastrado. Pagamento disponível somente via Pix.'
+              : 'Nenhum método de pagamento salvo. Cadastre um cartão ou solicite Pix antes do fim do trial.'}
           </Text>
         </View>
       )}
@@ -533,13 +591,41 @@ export default function BillingScreen({ onClose }: BillingScreenProps) {
         ) : (
           paymentMethods.map((method) => (
             <View key={method.id} style={styles.listRow}>
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={styles.listTitle}>{getMethodLabel(method)}</Text>
                 <Text style={styles.listSubtitle}>
                   {method.type === 'card'
                     ? `Validade ${String(method.expiry_month || '').padStart(2, '0')}/${method.expiry_year || '--'}`
                     : 'Regularização por Pix'}
                 </Text>
+                {method.type === 'card' && (
+                  <View style={styles.cardActionsRow}>
+                    {cardMethods.length > 1 && !method.is_default && (
+                      <TouchableOpacity
+                        style={styles.cardActionBtnOutline}
+                        onPress={() => handleSetDefaultCard(method.id)}
+                        disabled={settingDefaultId !== null || deletingCardId !== null}
+                      >
+                        {settingDefaultId === method.id ? (
+                          <ActivityIndicator size="small" color={colors.primary} />
+                        ) : (
+                          <Text style={styles.cardActionBtnOutlineText}>Usar este</Text>
+                        )}
+                      </TouchableOpacity>
+                    )}
+                    <TouchableOpacity
+                      style={styles.cardActionBtnDanger}
+                      onPress={() => handleDeleteCard(method)}
+                      disabled={deletingCardId !== null || settingDefaultId !== null}
+                    >
+                      {deletingCardId === method.id ? (
+                        <ActivityIndicator size="small" color={colors.danger} />
+                      ) : (
+                        <Text style={styles.cardActionBtnDangerText}>Excluir</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
               {method.is_default && <Text style={styles.defaultBadge}>Padrão</Text>}
             </View>
@@ -896,5 +982,40 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.text,
     backgroundColor: '#FAFAFA',
+  },
+  cardActionsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  cardActionBtnOutline: {
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    minWidth: 80,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardActionBtnOutlineText: {
+    color: colors.primary,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  cardActionBtnDanger: {
+    borderWidth: 1,
+    borderColor: colors.danger,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    minWidth: 65,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardActionBtnDangerText: {
+    color: colors.danger,
+    fontSize: 13,
+    fontWeight: '600',
   },
 });
