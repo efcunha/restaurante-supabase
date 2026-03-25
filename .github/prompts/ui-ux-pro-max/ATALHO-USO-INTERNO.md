@@ -11,7 +11,7 @@ Use sempre com contexto de arquivo + pedido claro.
 
 ### Web - tela real
 ```text
-#file:c:\Users\ECUNHA\.copilot\skills\restaurante-supabase\SKILL.md
+#file:D:\restaurante-supabase\.github\agent-skills\skills\restaurante-supabase\SKILL.md
 #file:.github/prompts/ui-ux-pro-max/PROMPT.md
 #file:restaurante-web/src/screens/DeliveryScreen.tsx
 
@@ -20,7 +20,7 @@ Use sempre com contexto de arquivo + pedido claro.
 
 ### App - tela real
 ```text
-#file:c:\Users\ECUNHA\.copilot\skills\restaurante-supabase\SKILL.md
+#file:D:\restaurante-supabase\.github\agent-skills\skills\restaurante-supabase\SKILL.md
 #file:.github/prompts/ui-ux-pro-max/PROMPT.md
 #file:restaurante-app/src/screens/NovoPedidoScreen.tsx
 
@@ -57,7 +57,7 @@ python .github/prompts/ui-ux-pro-max/scripts/search.py "restaurante-web Delivery
 ## 4) Modelo rapido para qualquer tela
 
 ```text
-#file:c:\Users\ECUNHA\.copilot\skills\restaurante-supabase\SKILL.md
+#file:D:\restaurante-supabase\.github\agent-skills\skills\restaurante-supabase\SKILL.md
 #file:.github/prompts/ui-ux-pro-max/PROMPT.md
 #file:<caminho-da-tela>
 
