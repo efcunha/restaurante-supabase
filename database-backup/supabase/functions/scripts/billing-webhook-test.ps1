@@ -108,7 +108,7 @@ try {
   Get-Content -Raw $tmpT4 | Write-Host
   Write-Host ''
   # Any non-401 means the signature layer was bypassed successfully
-  if ($http4 -ne 401) { Write-Host "  [PASS] Signed request accepted (HTTP $http4 — not a signature rejection)"; $passed++ }
+  if ($http4 -ne 401) { Write-Host "  [PASS] Signed request accepted (HTTP $http4 - not a signature rejection)"; $passed++ }
   else                 { Write-Host '  [FAIL] Valid signature was rejected with 401'; $failed++ }
 } finally { Remove-Item -Force $tmpT4 -ErrorAction SilentlyContinue }
 
