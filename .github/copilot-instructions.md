@@ -1,7 +1,7 @@
 # Agent Skills for GitHub Copilot
 
 This workspace includes the Callstack Agent Skills repository at `.github/agent-skills`.
-This setup also uses a local project-specific skill at `c:\Users\ECUNHA\.copilot\skills\restaurante-supabase\SKILL.md`.
+This setup also uses a local project-specific skill at `.github\agent-skills\skills\restaurante-supabase\SKILL.md`.
 This workspace also includes the UI/UX Pro Max Copilot workflow at `.github/prompts/ui-ux-pro-max/PROMPT.md`.
 
 When working in this repository, consult the relevant skill before proposing or implementing changes.
@@ -16,7 +16,7 @@ When working in this repository, consult the relevant skill before proposing or 
 ## Project Guardrails Snapshot (Synced from Skill)
 
 Source of truth:
-- `c:\Users\ECUNHA\.copilot\skills\restaurante-supabase\SKILL.md`
+- `.github/agent-skills/skills/restaurante-supabase/SKILL.md`
 
 Critical rules to always enforce in this repository:
 - Multi-tenant safety first: all data access must respect `company_id` and Supabase RLS.
@@ -62,7 +62,7 @@ Maintenance policy for these instruction files:
 
 For any task in this repository, start with:
 
-- `c:\Users\ECUNHA\.copilot\skills\restaurante-supabase\SKILL.md`
+- `.github\agent-skills\skills\restaurante-supabase\SKILL.md`
 
 Use this as the main source for domain rules, architecture, naming, and feature-specific constraints for this project.
 
@@ -80,13 +80,13 @@ For UI/UX design direction, visual exploration, design system generation, or int
 
 Usage rules:
 
-- Keep `c:\Users\ECUNHA\.copilot\skills\restaurante-supabase\SKILL.md` as the source for repository architecture and domain constraints.
+- Keep `.github\agent-skills\skills\restaurante-supabase\SKILL.md` as the source for repository architecture and domain constraints.
 - Use the UI/UX Pro Max prompt to generate design-system recommendations and UI/UX guardrails for app or web surfaces.
 - If both apply, combine them: repository skill first for constraints, then `/ui-ux-pro-max` for visual/design workflow.
 
 #### Mandatory enforcement
 
-- For any code change proposal, review, or implementation in this repository, consult `c:\Users\ECUNHA\.copilot\skills\restaurante-supabase\SKILL.md` first.
+- For any code change proposal, review, or implementation in this repository, consult `\SKILL.md` first.
 - Do not provide project-specific implementation guidance until this primary skill has been considered.
 - If the task is specialized, combine the primary skill with the relevant Callstack skill.
 - In case of conflict, prioritize the project-specific skill (`restaurante-supabase`) for domain and architecture decisions, and use Callstack skills as complementary technical references.
@@ -96,7 +96,7 @@ Usage rules:
 
 For tasks involving React Native, Expo, performance, upgrades, GitHub Actions, CI pipelines, build artifacts, PR workflow, branching, or `gh` CLI operations:
 
-1. First consult `c:\Users\ECUNHA\.copilot\skills\restaurante-supabase\SKILL.md`.
+1. First consult `.github\agent-skills\skills\restaurante-supabase\SKILL.md`.
 2. Then consult the corresponding Callstack skill:
 	- RN performance/rendering/bundle/profiling -> `.github/agent-skills/skills/react-native-best-practices/SKILL.md`
 	- RN/Expo upgrade path -> `.github/agent-skills/skills/upgrading-react-native/SKILL.md`
@@ -210,7 +210,7 @@ For RN/CI-related implementation guidance, start the response with a short check
 
 ```text
 Skills consulted:
-- c:\Users\ECUNHA\.copilot\skills\restaurante-supabase\SKILL.md
+- .github\agent-skills\skills\restaurante-supabase\SKILL.md
 - <one relevant Callstack SKILL.md path>
 
 Scope:
@@ -224,7 +224,7 @@ If a required skill file is not accessible, replace the checklist with:
 
 ```text
 Skills consulted:
-- c:\Users\ECUNHA\.copilot\skills\restaurante-supabase\SKILL.md (status: OK/FAILED)
+- .github\agent-skills\skills\restaurante-supabase\SKILL.md (status: OK/FAILED)
 - <required Callstack SKILL.md path> (status: FAILED)
 
 Limitation:
@@ -239,7 +239,7 @@ Fallback:
 Use these prompts in Copilot Chat to force explicit skill context:
 
 ```text
-#file:c:\Users\ECUNHA\.copilot\skills\restaurante-supabase\SKILL.md
+#file:.github/agent-skills/skills/restaurante-supabase/SKILL.md
 #file:.github/agent-skills/skills/react-native-best-practices/SKILL.md
 #file:restaurante-app/src/screens/NovoPedidoScreen.tsx
 
@@ -247,28 +247,28 @@ Profile this screen and propose a measured optimization plan with no behavior ch
 ```
 
 ```text
-#file:c:\Users\ECUNHA\.copilot\skills\restaurante-supabase\SKILL.md
+#file:.github/agent-skills/skills/restaurante-supabase/SKILL.md
 #file:.github/agent-skills/skills/upgrading-react-native/SKILL.md
 
 Plan an Expo SDK + React Native upgrade path for this repository with risk checklist and verification gates.
 ```
 
 ```text
-#file:c:\Users\ECUNHA\.copilot\skills\restaurante-supabase\SKILL.md
+#file:.github/agent-skills/skills/restaurante-supabase/SKILL.md
 #file:.github/agent-skills/skills/github-actions/SKILL.md
 
 Create a GitHub Actions workflow to build Android emulator APK and iOS simulator artifacts and document download commands.
 ```
 
 ```text
-#file:c:\Users\ECUNHA\.copilot\skills\restaurante-supabase\SKILL.md
+#file:.github/agent-skills/skills/restaurante-supabase/SKILL.md
 #file:.github/agent-skills/skills/github/SKILL.md
 
 Propose a safe stacked PR merge plan with gh CLI commands for this branch chain.
 ```
 
 ```text
-#file:c:\Users\ECUNHA\.copilot\skills\restaurante-supabase\SKILL.md
+#file:.github/agent-skills/skills/restaurante-supabase/SKILL.md
 #file:.github/agent-skills/skills/react-native-brownfield-migration/SKILL.md
 
 Design a phased brownfield integration plan for adding Expo features into an existing native app path.
@@ -281,7 +281,7 @@ Use these variants when you want explicit scope by codebase area.
 ### Mobile app (`restaurante-app`)
 
 ```text
-#file:c:\Users\ECUNHA\.copilot\skills\restaurante-supabase\SKILL.md
+#file:.github/agent-skills/skills/restaurante-supabase/SKILL.md
 #file:.github/agent-skills/skills/react-native-best-practices/SKILL.md
 #file:restaurante-app/src/screens/NovoPedidoScreen.tsx
 
@@ -289,7 +289,7 @@ Review this screen for render bottlenecks, propose measured optimizations, and k
 ```
 
 ```text
-#file:c:\Users\ECUNHA\.copilot\skills\restaurante-supabase\SKILL.md
+#file:.github/agent-skills/skills/restaurante-supabase/SKILL.md
 #file:.github/agent-skills/skills/upgrading-react-native/SKILL.md
 #file:restaurante-app/package.json
 
@@ -299,7 +299,7 @@ Plan a safe Expo SDK + React Native upgrade path for this app with risks, checkp
 ### Web app (`restaurante-web`)
 
 ```text
-#file:c:\Users\ECUNHA\.copilot\skills\restaurante-supabase\SKILL.md
+#file:.github/agent-skills/skills/restaurante-supabase/SKILL.md
 #file:.github/agent-skills/skills/github-actions/SKILL.md
 #file:restaurante-web/playwright.config.ts
 
@@ -307,7 +307,7 @@ Propose CI changes to build and publish emulator/simulator artifacts and include
 ```
 
 ```text
-#file:c:\Users\ECUNHA\.copilot\skills\restaurante-supabase\SKILL.md
+#file:.github/agent-skills/skills/restaurante-supabase/SKILL.md
 #file:.github/agent-skills/skills/github/SKILL.md
 #file:restaurante-web/e2e/delivery.spec.ts
 
@@ -319,7 +319,7 @@ Create a safe stacked PR plan for this area, including gh CLI commands and merge
 Use this order to keep responses consistent with mandatory skill checks:
 
 1. Choose scope first (`restaurante-app` or `restaurante-web`) and attach one real target file.
-2. Attach the primary project skill: `#file:c:\Users\ECUNHA\.copilot\skills\restaurante-supabase\SKILL.md`.
+2. Attach the primary project skill: `#file:.github/agent-skills/skills/restaurante-supabase/SKILL.md`.
 3. Attach exactly one specialized Callstack skill matching the task type.
 4. Ask for a constrained output (plan, checklist, or implementation with no behavior change).
 5. Verify the response starts with the mandatory RN/CI checklist block.

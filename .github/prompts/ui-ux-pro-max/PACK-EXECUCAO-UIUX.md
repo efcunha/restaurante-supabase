@@ -9,7 +9,7 @@ Este pack padroniza como Produto, Design e Dev usam o workflow UI/UX Pro Max no 
 Objetivo: validar impacto de negocio, risco e criterio de sucesso.
 
 ```text
-#file:c:\Users\ECUNHA\.copilot\skills\restaurante-supabase\SKILL.md
+#file:D:\restaurante-supabase\.github\agent-skills\skills\restaurante-supabase\SKILL.md
 #file:.github/prompts/ui-ux-pro-max/PROMPT.md
 #file:<arquivo-da-tela>
 
@@ -21,7 +21,7 @@ Objetivo: validar impacto de negocio, risco e criterio de sucesso.
 Objetivo: direcao visual e interacao com consistencia do design system.
 
 ```text
-#file:c:\Users\ECUNHA\.copilot\skills\restaurante-supabase\SKILL.md
+#file:D:\restaurante-supabase\.github\agent-skills\skills\restaurante-supabase\SKILL.md
 #file:.github/prompts/ui-ux-pro-max/PROMPT.md
 #file:design-system/<pacote>/MASTER.md
 #file:design-system/<pacote>/pages/<tela>.md
@@ -35,7 +35,7 @@ Objetivo: direcao visual e interacao com consistencia do design system.
 Objetivo: plano tecnico executavel sem regressao funcional.
 
 ```text
-#file:c:\Users\ECUNHA\.copilot\skills\restaurante-supabase\SKILL.md
+#file:D:\restaurante-supabase\.github\agent-skills\skills\restaurante-supabase\SKILL.md
 #file:.github/prompts/ui-ux-pro-max/PROMPT.md
 #file:design-system/<pacote>/MASTER.md
 #file:design-system/<pacote>/pages/<tela>.md
