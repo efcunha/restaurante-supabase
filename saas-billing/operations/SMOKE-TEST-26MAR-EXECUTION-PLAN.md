@@ -528,12 +528,12 @@ curl https://ykalocfhnetxenvmtlcn.supabase.co/functions/v1/billing-provider-stat
 ## Referências rápidas
 
 - **Supabase Dashboard SQL Editor:** https://app.supabase.com/project/ykalocfhnetxenvmtlcn/sql/new
-- **Checklist master:** `saas-billing/BILLING-PROMOTION-CHECKLIST.md`
-- **Checklist operacional:** `saas-billing/BILLING-GO-NO-GO-CHECKLIST-26MAR.md`
-- **Roteiro de comandos:** `saas-billing/BILLING-OPERATOR-COMMANDS-26MAR.md`
+- **Checklist master:** `saas-billing/operations/BILLING-PROMOTION-CHECKLIST.md`
+- **Checklist operacional:** `saas-billing/operations/BILLING-GO-NO-GO-CHECKLIST-26MAR.md`
+- **Roteiro de comandos:** `saas-billing/operations/BILLING-OPERATOR-COMMANDS-26MAR.md`
 - **Migration aplicada:** `database-backup/migrations/20260324210000_remove_mp_payment_id_from_billing_audit_reconcile_function.sql`
 - **Teste webhook assinado:** `database-backup/supabase/functions/scripts/billing-webhook-test.ps1`
-- **Rollback rápido:** Ver seção "Rollback rápido" em `saas-billing/BILLING-PROMOTION-CHECKLIST.md`
+- **Rollback rápido:** Ver seção "Rollback rápido" em `saas-billing/operations/BILLING-PROMOTION-CHECKLIST.md`
 
 ---
 

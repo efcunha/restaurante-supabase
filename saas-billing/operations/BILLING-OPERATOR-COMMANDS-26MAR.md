@@ -266,7 +266,7 @@ Parar imediatamente e registrar `NO-GO` se ocorrer qualquer um abaixo:
 
 ## 11. Arquivos que o operador deve manter abertos
 
-- `saas-billing/SMOKE-TEST-26MAR-EXECUTION-PLAN.md`
-- `saas-billing/BILLING-GO-NO-GO-CHECKLIST-26MAR.md`
-- `saas-billing/BILLING-OPERATOR-COMMANDS-26MAR.md`
-- `saas-billing/SQL-QUERIES-EVIDENCE-COLLECTION.sql`
+- `saas-billing/operations/SMOKE-TEST-26MAR-EXECUTION-PLAN.md`
+- `saas-billing/operations/BILLING-GO-NO-GO-CHECKLIST-26MAR.md`
+- `saas-billing/operations/BILLING-OPERATOR-COMMANDS-26MAR.md`
+- `saas-billing/operations/SQL-QUERIES-EVIDENCE-COLLECTION.sql`

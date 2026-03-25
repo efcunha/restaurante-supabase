@@ -20,9 +20,9 @@ Este índice descreve o pacote documental da auditoria de 23/03, mas o estado do
 - ⏳ Promover APP_USR somente após evidência funcional controlada
 
 **Documento operacional de referência para essa fase:**
-- `saas-billing/PRE-VALIDACAO-SUMMARY-25MAR.md`
-- `saas-billing/SMOKE-TEST-26MAR-EXECUTION-PLAN.md`
-- `saas-billing/BILLING-GO-NO-GO-CHECKLIST-26MAR.md`
+- `saas-billing/operations/PRE-VALIDACAO-SUMMARY-25MAR.md`
+- `saas-billing/operations/SMOKE-TEST-26MAR-EXECUTION-PLAN.md`
+- `saas-billing/operations/BILLING-GO-NO-GO-CHECKLIST-26MAR.md`
 
 ---
 
@@ -295,9 +295,9 @@ Code review security        Tech Lead            4h
 
 ## 📝 CHECKLIST: ANTES DE FECHAR BILLING EM PRODUÇÃO
 
-- [ ] Confirmar leitura de `saas-billing/PRE-VALIDACAO-SUMMARY-25MAR.md`
-- [ ] Executar S1-S5 em `saas-billing/SMOKE-TEST-26MAR-EXECUTION-PLAN.md`
-- [ ] Registrar evidências mínimas em `saas-billing/BILLING-GO-NO-GO-CHECKLIST-26MAR.md`
+- [ ] Confirmar leitura de `saas-billing/operations/PRE-VALIDACAO-SUMMARY-25MAR.md`
+- [ ] Executar S1-S5 em `saas-billing/operations/SMOKE-TEST-26MAR-EXECUTION-PLAN.md`
+- [ ] Registrar evidências mínimas em `saas-billing/operations/BILLING-GO-NO-GO-CHECKLIST-26MAR.md`
 - [ ] Validar logs, invoices, `webhook_events` e `billing_audit_log` durante a janela
 - [ ] Registrar responsável pela execução e responsável pela aprovação
 - [ ] Marcar GO/NO-GO somente ao final de S5
@@ -312,23 +312,26 @@ d:\restaurante-supabase\
 │  ├─ LGPD-PRIVACY-NOTICE.md
 │  ├─ LGPD-DSAR-OPERATIONAL-GUIDE.md
 │  ├─ LGPD-DATA-RETENTION-POLICY.md
-│  └─ INCIDENT-RESPONSE-PLAN.md
+│  ├─ INCIDENT-RESPONSE-PLAN.md
+│  └─ security/
+│     ├─ SECURITY_AUDIT_REPORT_2026-03-23.md
+│     ├─ REMEDIATION_PLAN_DETAILED.md
+│     ├─ LGPD_COMPLIANCE_GUIDE.md
+│     ├─ EXECUTIVE_SUMMARY_PT.md
+│     └─ SECURITY_DOCUMENTATION_INDEX.md
 ├─ saas-billing/
 │  ├─ SECURITY-POLICY.md (detailed billing security)
-│  ├─ PRE-VALIDACAO-SUMMARY-25MAR.md
-│  ├─ SMOKE-TEST-26MAR-EXECUTION-PLAN.md
-│  └─ BILLING-GO-NO-GO-CHECKLIST-26MAR.md
+│  └─ operations/
+│     ├─ PRE-VALIDACAO-SUMMARY-25MAR.md
+│     ├─ SMOKE-TEST-26MAR-EXECUTION-PLAN.md
+│     └─ BILLING-GO-NO-GO-CHECKLIST-26MAR.md
 ├─ database-backup/
 │  ├─ README.md (backup procedures)
 │  └─ QUICK_START.md
 ├─ .github/
 │  ├─ copilot-instructions.md
 │  └─ workflows/security.yml (CI/CD security)
-└─ (NOVOS)
-   ├─ SECURITY_AUDIT_REPORT_2026-03-23.md
-   ├─ REMEDIATION_PLAN_DETAILED.md
-   ├─ LGPD_COMPLIANCE_GUIDE.md
-   └─ EXECUTIVE_SUMMARY_PT.md
+└─ recovered/
 ```
 
 ---
@@ -336,9 +339,9 @@ d:\restaurante-supabase\
 ## 🚀 PRÓXIMA AÇÃO
 
 **Imediato (25/03):**
-1. Ler: `saas-billing/PRE-VALIDACAO-SUMMARY-25MAR.md`
-2. Executar: `saas-billing/SMOKE-TEST-26MAR-EXECUTION-PLAN.md`
-3. Registrar: `saas-billing/BILLING-GO-NO-GO-CHECKLIST-26MAR.md`
+1. Ler: `saas-billing/operations/PRE-VALIDACAO-SUMMARY-25MAR.md`
+2. Executar: `saas-billing/operations/SMOKE-TEST-26MAR-EXECUTION-PLAN.md`
+3. Registrar: `saas-billing/operations/BILLING-GO-NO-GO-CHECKLIST-26MAR.md`
 4. Decidir: GO/NO-GO apenas ao final de S5
 
 **Delegado (estado atual):**
