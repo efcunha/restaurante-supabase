@@ -10,3 +10,5 @@
 20260319110127
 20260319111314
 20260319115856
+# Duplicata remota de 20260325150000_add_public_menu_slug.sql (mesmo nome, registrada duas vezes)
+20260325215952
