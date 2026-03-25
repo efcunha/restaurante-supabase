@@ -1,5 +1,6 @@
 import { buildCorsPreflightResponse } from '../_shared/cors.ts';
 import { HttpError, jsonResponse, requireSecureAdmin, validateCompanyContext } from '../_shared/auth-secure.ts';
+import { getActivePlanConfig, PlanConfigError } from '../_shared/billing-plan-config.ts';
 
 const MP_API_BASE_URL = Deno.env.get('MERCADOPAGO_API_BASE_URL') || 'https://api.mercadopago.com';
 const PIX_EXPIRATION_MINUTES = 30;
@@ -145,6 +146,17 @@ Deno.serve(async (req) => {
       throw new HttpError(409, 'Assinatura não encontrada para emitir cobrança Pix.');
     }
 
+    // Fail-closed: resolve price from dynamic plan config — no hardcoded fallback allowed.
+    const planConfig = await getActivePlanConfig(adminClient);
+
+    await auditBillingEvent('billing.pix.plan_config_resolved', {
+      provider: 'mercadopago',
+      plan_code: planConfig.plan_code,
+      amount_cents: planConfig.amount_cents,
+      currency: planConfig.currency,
+      config_id: planConfig.id,
+    });
+
     const company = companyResult.data;
     const pendingInvoice = pendingInvoiceResult.data;
     const now = new Date();
@@ -196,7 +208,7 @@ Deno.serve(async (req) => {
     const dueAt = buildDueDate(subscription);
     const dueDate = formatInvoiceDate(new Date(dueAt));
     const expiresAt = new Date(now.getTime() + PIX_EXPIRATION_MINUTES * 60 * 1000).toISOString();
-    const amount = Number((subscription.plan_amount / 100).toFixed(2));
+    const amount = Number((planConfig.amount_cents / 100).toFixed(2));
     const idempotencyKey = `billing-pix:${companyId}:${invoiceId}`;
     const description = `Assinatura SaaS Restaurante - ${company.name}`;
 
@@ -270,7 +282,7 @@ Deno.serve(async (req) => {
         company_id: companyId,
         subscription_id: subscription.id,
         status: 'pending',
-        amount: subscription.plan_amount,
+        amount: planConfig.amount_cents,
         due_date: dueDate,
         payment_method_type: 'pix',
         mp_payment_id: mpPaymentId,
@@ -292,7 +304,8 @@ Deno.serve(async (req) => {
       provider: 'mercadopago',
       invoice_id: invoiceId,
       due_date: dueDate,
-      amount_cents: subscription.plan_amount,
+      amount_cents: planConfig.amount_cents,
+      plan_config_id: planConfig.id,
       has_notification_url: Boolean(notificationUrl),
     });
 
@@ -302,7 +315,7 @@ Deno.serve(async (req) => {
       message: 'Cobrança Pix emitida com sucesso. Use o QR code ou o código copia-e-cola antes do vencimento.',
       nextStep: 'Após o pagamento, a reconciliação automática dependerá do webhook Mercado Pago ou de verificação operacional.',
       invoiceId,
-      amount: subscription.plan_amount,
+      amount: planConfig.amount_cents,
       dueDate,
       pixQrCode,
       pixQrCodeText,
@@ -310,6 +323,10 @@ Deno.serve(async (req) => {
       mpPaymentId,
     }, req);
   } catch (error) {
+    if (error instanceof PlanConfigError) {
+      return jsonResponse(error.status, { error: error.message }, req);
+    }
+
     if (error instanceof HttpError) {
       return jsonResponse(error.status, { error: error.message }, req);
     }

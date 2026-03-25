@@ -1,5 +1,6 @@
 import { buildCorsPreflightResponse } from '../_shared/cors.ts';
 import { HttpError, jsonResponse, requireSecureAdmin, validateCompanyContext } from '../_shared/auth-secure.ts';
+import { getActivePlanConfigSafe } from '../_shared/billing-plan-config.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -45,6 +46,8 @@ Deno.serve(async (req) => {
     }
 
     const subscription = subscriptionResult.data;
+    // Fail-open: provider-status is a display endpoint; plan config unavailability is surfaced but non-blocking.
+    const activePlanConfig = await getActivePlanConfigSafe(adminClient);
     const accessTokenConfigured = Boolean(Deno.env.get('MERCADOPAGO_ACCESS_TOKEN'));
     const publicKeyConfigured = Boolean(Deno.env.get('MERCADOPAGO_PUBLIC_KEY'));
     const webhookSecretConfigured = Boolean(Deno.env.get('MERCADOPAGO_WEBHOOK_SECRET'));
@@ -70,13 +73,21 @@ Deno.serve(async (req) => {
       message: configured
         ? 'Integração Mercado Pago configurada para iniciar o rollout controlado.'
         : 'Integração Mercado Pago ainda depende da configuração completa dos segredos do provider.',
+      plan_config: activePlanConfig
+        ? {
+            amount_cents: activePlanConfig.amount_cents,
+            currency: activePlanConfig.currency,
+            trial_days: activePlanConfig.trial_days,
+            effective_from: activePlanConfig.effective_from,
+          }
+        : null,
       subscription: subscription
         ? {
             status: subscription.status,
             trial_ends_at: subscription.trial_ends_at,
             current_period_end: subscription.current_period_end,
             grace_period_end: subscription.grace_period_end,
-            plan_amount: subscription.plan_amount,
+            plan_amount: activePlanConfig?.amount_cents ?? subscription.plan_amount,
           }
         : null,
     }, req);
