@@ -225,14 +225,14 @@ export default function QRCardapioModal({ visible, onClose, companyId }: Props) 
 
     const restaurantName = company?.name || '';
 
-    const openPrintWindow = (svgDataUrl: string) => {
+    const openPrintWindow = (qrImageSrc: string) => {
       const win = (window as any).open('', '_blank', 'width=800,height=600');
       if (!win) {
         Alert.alert('Pop-up bloqueado', 'Permita pop-ups neste site para imprimir os QR codes.');
         return;
       }
       const cell = `<div class="qr-cell">
-        <img src="${svgDataUrl}" alt="QR Code" />
+        <img src="${qrImageSrc}" alt="QR Code" />
         <p class="name">${restaurantName}</p>
         <p class="sub">Escaneie para ver o card&#225;pio</p>
       </div>`;
@@ -254,15 +254,52 @@ export default function QRCardapioModal({ visible, onClose, companyId }: Props) 
           .sub { font-size: 10px; color: #555; margin-top: 3px; }
         </style>
       </head><body>
-        <div class="grid">${Array(6).fill(cell).join('')}</div>
-        <script>setTimeout(function(){ window.print(); }, 400);</script>
+        <div class="grid">${Array(9).fill(cell).join('')}</div>
+        <script>
+          (function() {
+            const qrImages = Array.from(document.querySelectorAll('.qr-cell img'));
+            if (!qrImages.length) {
+              setTimeout(function(){ window.print(); }, 400);
+              return;
+            }
+
+            let pending = qrImages.length;
+            const tryPrint = function() {
+              pending -= 1;
+              if (pending <= 0) {
+                setTimeout(function(){ window.print(); }, 250);
+              }
+            };
+
+            qrImages.forEach(function(img) {
+              if (img.complete) {
+                tryPrint();
+                return;
+              }
+              img.addEventListener('load', tryPrint, { once: true });
+              img.addEventListener('error', tryPrint, { once: true });
+            });
+
+            setTimeout(function(){
+              if (pending > 0) {
+                window.print();
+              }
+            }, 1500);
+          })();
+        </script>
       </body></html>`);
       win.document.close();
     };
 
     // Tenta toDataURL (API do react-native-qrcode-svg)
     if (qrRef.current && typeof (qrRef.current as any).toDataURL === 'function') {
-      (qrRef.current as any).toDataURL((dataUrl: string) => openPrintWindow(dataUrl));
+      (qrRef.current as any).toDataURL((rawBase64: string) => {
+        if (!rawBase64) {
+          Alert.alert('Erro', 'Não foi possível gerar a imagem do QR para impressão.');
+          return;
+        }
+        openPrintWindow(`data:image/png;base64,${rawBase64}`);
+      });
       return;
     }
 
