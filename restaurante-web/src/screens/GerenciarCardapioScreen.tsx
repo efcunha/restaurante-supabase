@@ -125,6 +125,8 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
   const [tipoTemperoAtivo, setTipoTemperoAtivo] = useState<'caldos' | 'comidas' | 'variacoes' | 'pizza' | 'pizzaCategorias' | 'tamanhos'>('caldos');
   const [novoTempero, setNovoTempero] = useState('');
   const [editTemperoIndex, setEditTemperoIndex] = useState(-1);
+  const [pizzaSubcategoryInput, setPizzaSubcategoryInput] = useState('');
+  const [editPizzaSubcategoryIndex, setEditPizzaSubcategoryIndex] = useState(-1);
   const [loadingTemperos, setLoadingTemperos] = useState(true);
 
   // Estados para Pizza
@@ -1140,6 +1142,82 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
     setEditTemperoIndex(-1);
   };
 
+  const salvarPizzaSubcategorias = async (lista: string[]) => {
+    const sanitized = lista
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0)
+      .filter((item, index, arr) => arr.indexOf(item) === index);
+
+    setPizzaSubcategories(sanitized);
+    if (subcategoria && !sanitized.includes(subcategoria)) {
+      setSubcategoria(sanitized[0] || '');
+    }
+
+    await salvarListas(undefined, undefined, undefined, undefined, sanitized);
+  };
+
+  const salvarPizzaSubcategoria = async () => {
+    const value = pizzaSubcategoryInput.trim();
+    if (!value) {
+      Alert.alert('Atenção', 'Digite o nome da subcategoria da pizza');
+      return;
+    }
+
+    const duplicateIndex = pizzaSubcategories.findIndex((item) => item.toLowerCase() === value.toLowerCase());
+    if (duplicateIndex >= 0 && duplicateIndex !== editPizzaSubcategoryIndex) {
+      Alert.alert('Atenção', 'Esta subcategoria já existe');
+      return;
+    }
+
+    try {
+      const updated = [...pizzaSubcategories];
+      if (editPizzaSubcategoryIndex >= 0) {
+        const previous = updated[editPizzaSubcategoryIndex];
+        updated[editPizzaSubcategoryIndex] = value;
+        if (subcategoria === previous) {
+          setSubcategoria(value);
+        }
+      } else {
+        updated.push(value);
+      }
+
+      await salvarPizzaSubcategorias(updated);
+      setPizzaSubcategoryInput('');
+      setEditPizzaSubcategoryIndex(-1);
+    } catch (error) {
+      console.error('Erro ao salvar subcategoria de pizza:', error);
+      Alert.alert('Erro', 'Não foi possível salvar a subcategoria da pizza');
+    }
+  };
+
+  const editarPizzaSubcategoria = (index: number) => {
+    setPizzaSubcategoryInput(pizzaSubcategories[index] || '');
+    setEditPizzaSubcategoryIndex(index);
+  };
+
+  const cancelarEdicaoPizzaSubcategoria = () => {
+    setPizzaSubcategoryInput('');
+    setEditPizzaSubcategoryIndex(-1);
+  };
+
+  const removerPizzaSubcategoria = async (index: number) => {
+    const toRemove = pizzaSubcategories[index];
+    const updated = pizzaSubcategories.filter((_, idx) => idx !== index);
+
+    try {
+      await salvarPizzaSubcategorias(updated);
+      if (subcategoria === toRemove) {
+        setSubcategoria(updated[0] || '');
+      }
+      if (editPizzaSubcategoryIndex === index) {
+        cancelarEdicaoPizzaSubcategoria();
+      }
+    } catch (error) {
+      console.error('Erro ao remover subcategoria de pizza:', error);
+      Alert.alert('Erro', 'Não foi possível remover a subcategoria da pizza');
+    }
+  };
+
   const adicionarTamanhoPizza = async () => {
     if (!novoTamanho.trim() || !novosSaboresMax) {
       Alert.alert('Erro', 'Preencha nome e quantidades de sabores.');
@@ -1759,6 +1837,49 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                   </View>
                 </View>
               ))}
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>🍕 Gerenciar Subcategorias da Pizza</Text>
+          <View style={styles.form}>
+            <Text style={styles.label}>Subcategoria da Pizza</Text>
+            <View style={styles.addTemperoRow}>
+              <TextInput
+                style={styles.inputTempero}
+                placeholder={editPizzaSubcategoryIndex >= 0 ? 'Editar subcategoria...' : 'Ex: Tradicional'}
+                placeholderTextColor={colors.textSecondary}
+                value={pizzaSubcategoryInput}
+                onChangeText={setPizzaSubcategoryInput}
+              />
+              <TouchableOpacity style={styles.addBtn} onPress={salvarPizzaSubcategoria}>
+                <Ionicons name={editPizzaSubcategoryIndex >= 0 ? 'checkmark' : 'add'} size={24} color={colors.white} />
+              </TouchableOpacity>
+              {editPizzaSubcategoryIndex >= 0 && (
+                <TouchableOpacity style={[styles.addBtn, { backgroundColor: colors.textSecondary }]} onPress={cancelarEdicaoPizzaSubcategoria}>
+                  <Ionicons name="close" size={24} color={colors.white} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <View style={styles.listaTemperos}>
+              {pizzaSubcategories.map((item, index) => (
+                <View key={`${item}-${index}`} style={styles.temperoRow}>
+                  <Text style={styles.temperoText}>{item}</Text>
+                  <View style={{ flexDirection: 'row' }}>
+                    <TouchableOpacity onPress={() => editarPizzaSubcategoria(index)} style={{ marginRight: 10 }}>
+                      <Ionicons name="pencil" size={20} color={colors.text} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => removerPizzaSubcategoria(index)}>
+                      <Ionicons name="trash-outline" size={20} color={colors.danger} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
+              {pizzaSubcategories.length === 0 && (
+                <Text style={styles.loadingText}>Nenhuma subcategoria cadastrada.</Text>
+              )}
             </View>
           </View>
         </View>
