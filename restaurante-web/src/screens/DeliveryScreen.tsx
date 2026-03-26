@@ -442,7 +442,14 @@ export default function DeliveryScreen() {
         acc[current] = [];
         return acc;
       }, {} as Record<string, Product[]>);
-      uniquePizzas.forEach(pizza => { catmap[pizza.subcategory || 'Outras'].push(pizza); });
+      uniquePizzas.forEach(pizza => {
+        const normalizedSubcategory = (pizza.subcategory || '').trim();
+        const targetKey = normalizedSubcategory || 'Outras';
+        if (!catmap[targetKey]) {
+          catmap[targetKey] = [];
+        }
+        catmap[targetKey].push(pizza);
+      });
       categoryOrder.forEach(cat => {
         if (catmap[cat].length > 0) sectionsData.push({ title: `🍕 PIZZAS ${cat.toUpperCase()}`, data: catmap[cat], type: 'pizzas-v2' });
       });
