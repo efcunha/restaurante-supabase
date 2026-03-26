@@ -78,7 +78,6 @@ interface GerenciarCardapioScreenProps {
 }
 
 export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioScreenProps) {
-  const defaultPizzaSubcategories = React.useMemo(() => ['Tradicional', 'Especiais', 'Doces'], []);
   const { user } = useAuth();
   const { isTablet, horizontalPadding, modalWidth, modalMaxWidth, inputMaxWidth } = useResponsive();
 
@@ -404,12 +403,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
         if (Array.isArray(settings.pizzaSubcategories) && settings.pizzaSubcategories.length > 0) {
           setPizzaSubcategories(settings.pizzaSubcategories.filter((item: any) => typeof item === 'string' && item.trim() !== ''));
         } else {
-          setPizzaSubcategories(defaultPizzaSubcategories);
-          try {
-            await persistCompanySettings({ pizzaSubcategories: defaultPizzaSubcategories }, settings);
-          } catch (persistError) {
-            console.error('Error saving default pizza categories:', persistError);
-          }
+          setPizzaSubcategories([]);
         }
 
         if (settings.pizzaConfig) {
@@ -445,7 +439,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
           { name: 'Média', maxFlavors: 2 },
           { name: 'Grande/Família', maxFlavors: 4 }
         ];
-        setPizzaSubcategories(defaultPizzaSubcategories);
+        setPizzaSubcategories([]);
         setPizzaConfig({ sizes: defaultSizes, pricingMode: 'HIGHER' });
         setPizzaSizes(defaultSizes);
       }
