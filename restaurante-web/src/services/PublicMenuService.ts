@@ -15,6 +15,7 @@ export interface PublicCompany {
   menu_banner_url: string | null;
   menu_logo_url: string | null;
   menu_primary_color: string | null;
+  settings?: Record<string, any> | null;
 }
 
 export interface PublicProduct {
@@ -43,19 +44,50 @@ export interface PublicMenu {
   categories: PublicMenuCategory[];
 }
 
-function buildCategoryLabel(slug: string): string {
-  const labels: Record<string, string> = {
-    pizza: 'Pizzas',
-    caldo: 'Caldos',
-    comida: 'Comidas',
-    bebida: 'Bebidas',
-    espetinho: 'Espetinhos',
-    porcao: 'Porções',
-    sobremesa: 'Sobremesas',
-    outros: 'Outros',
-  };
-  const key = slug.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  return labels[key] || slug.charAt(0).toUpperCase() + slug.slice(1);
+interface CompanyMenuCategorySetting {
+  slug: string;
+  name?: string;
+  label?: string;
+  active?: boolean;
+  order?: number;
+}
+
+function prettyLabelFromSlug(slug: string): string {
+  return slug
+    .replace(/[-_]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function normalizeCategorySlug(value?: string | null): string {
+  return (value || 'outro')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+}
+
+function getCompanyCategoryOrder(settings?: Record<string, any> | null): Map<string, { label: string; order: number }> {
+  const list = Array.isArray(settings?.categories)
+    ? (settings!.categories as CompanyMenuCategorySetting[])
+    : [];
+
+  const map = new Map<string, { label: string; order: number }>();
+
+  list
+    .filter((item) => item && item.active !== false && item.slug)
+    .sort((a, b) => (a.order ?? 999) - (b.order ?? 999))
+    .forEach((item, index) => {
+      const slug = normalizeCategorySlug(item.slug);
+      const label = (item.name || item.label || prettyLabelFromSlug(slug)).trim();
+      map.set(slug, {
+        label,
+        order: Number.isFinite(item.order) ? Number(item.order) : index,
+      });
+    });
+
+  return map;
 }
 
 /**
@@ -68,7 +100,20 @@ export async function fetchPublicCompanyBySlug(slug: string): Promise<PublicComp
   });
 
   if (error || !data || data.length === 0) return null;
-  return data[0] as PublicCompany;
+
+  const base = data[0] as PublicCompany;
+
+  // Busca settings por canal seguro (view pública) para obter ordem/label das categorias.
+  const { data: companySettingsRow } = await anonClient
+    .from('public_menu_companies')
+    .select('settings')
+    .eq('id', base.id)
+    .maybeSingle();
+
+  return {
+    ...base,
+    settings: (companySettingsRow as any)?.settings ?? null,
+  };
 }
 
 /**
@@ -100,25 +145,34 @@ export async function fetchPublicMenu(slug: string): Promise<PublicMenu | null> 
   if (!company) return null;
 
   const products = await fetchPublicProducts(company.id);
+  const categoryMeta = getCompanyCategoryOrder(company.settings);
 
-  // Agrupar por categoria mantendo ordem de insercao (ja vem ordenado do banco)
+  // Agrupar apenas categorias que possuem itens ativos/disponíveis (já filtrados no fetch).
   const categoryMap = new Map<string, PublicMenuCategory>();
 
   for (const product of products) {
-    const categoryKey = product.category || 'outros';
+    const categoryKey = normalizeCategorySlug(product.category || 'outro');
     if (!categoryMap.has(categoryKey)) {
+      const configured = categoryMeta.get(categoryKey);
       categoryMap.set(categoryKey, {
         slug: categoryKey,
-        label: buildCategoryLabel(categoryKey),
+        label: configured?.label || prettyLabelFromSlug(categoryKey),
         products: [],
       });
     }
     categoryMap.get(categoryKey)!.products.push(product);
   }
 
+  const categories = Array.from(categoryMap.values()).sort((a, b) => {
+    const orderA = categoryMeta.get(a.slug)?.order ?? Number.MAX_SAFE_INTEGER;
+    const orderB = categoryMeta.get(b.slug)?.order ?? Number.MAX_SAFE_INTEGER;
+    if (orderA !== orderB) return orderA - orderB;
+    return a.label.localeCompare(b.label);
+  });
+
   return {
     company,
-    categories: Array.from(categoryMap.values()),
+    categories,
   };
 }
 
