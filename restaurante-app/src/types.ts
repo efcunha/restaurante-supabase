@@ -95,6 +95,7 @@ export interface Product {
   createdAt: number;
   description?: string;
   image?: string;
+  image_url?: string;
   prices?: Record<string, number>;
   ingredients?: string[]; // Para pizza
   customIngredients?: string; // Para pizza

@@ -86,6 +86,9 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
   const [categoria, setCategoria] = useState('caldo');
   const [subcategoria, setSubcategoria] = useState<string>(''); // For pizza categories
   const [loading, setLoading] = useState(false);
+  const [newProductImageUrl, setNewProductImageUrl] = useState<string | null>(null);
+  const [newProductImageFile, setNewProductImageFile] = useState<File | null>(null);
+  const [newProductImagePreview, setNewProductImagePreview] = useState<string | null>(null);
 
   // Estados para cadastro com variações (espetinhos)
   const [criarVariacoes, setCriarVariacoes] = useState(false);
@@ -531,7 +534,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
           available: true // DB Column is available
         }));
 
-        const { error } = await supabase.from('products').insert(variacoes);
+        const { data, error } = await supabase.from('products').insert(variacoes).select('id');
 
         if (error) {
           const errorMsg = handleDatabaseError(error, nome.trim());
@@ -539,9 +542,21 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
           return;
         }
 
+        if (newProductImageUrl && data?.length) {
+          for (const created of data) {
+            const uploadedUrl = await uploadImageForCreatedProduct(created.id);
+            if (uploadedUrl) {
+              await supabase.from('products').update({ image_url: uploadedUrl }).eq('id', created.id);
+            }
+          }
+        }
+
         Alert.alert('Sucesso', 'Cadastrado com sucesso!');
         setNome('');
         setPrecosVariacoes({});
+        setNewProductImageUrl(null);
+        setNewProductImageFile(null);
+        setNewProductImagePreview(null);
         carregarProdutos();
       } catch (error) {
         const errorMsg = handleDatabaseError(error, nome.trim());
@@ -591,11 +606,18 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
           custom_ingredients: ingredientesPersonalizados // string field in DB
         };
 
-        const { error } = await supabase.from('products').insert(novoProduto);
+        const { data, error } = await supabase.from('products').insert(novoProduto).select('id').single();
         if (error) {
           const errorMsg = handleDatabaseError(error, nome.trim());
           Alert.alert('Erro', errorMsg);
           return;
+        }
+
+        if (newProductImageUrl && data?.id) {
+          const uploadedUrl = await uploadImageForCreatedProduct(data.id);
+          if (uploadedUrl) {
+            await supabase.from('products').update({ image_url: uploadedUrl }).eq('id', data.id);
+          }
         }
 
         Alert.alert('Sucesso', 'Pizza cadastrada!');
@@ -604,6 +626,9 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
         setPrecosPizza({});
         setIngredientesSelecionados([]);
         setIngredientesPersonalizados('');
+        setNewProductImageUrl(null);
+        setNewProductImageFile(null);
+        setNewProductImagePreview(null);
         carregarProdutos();
       } catch (error) {
         const errorMsg = handleDatabaseError(error, nome.trim());
@@ -628,7 +653,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
           available: true // DB Column is available
         };
 
-        const { error } = await supabase.from('products').insert(novoProduto);
+        const { data, error } = await supabase.from('products').insert(novoProduto).select('id').single();
 
         if (error) {
           const errorMsg = handleDatabaseError(error, nome.trim());
@@ -636,9 +661,19 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
           return;
         }
 
+        if (newProductImageUrl && data?.id) {
+          const uploadedUrl = await uploadImageForCreatedProduct(data.id);
+          if (uploadedUrl) {
+            await supabase.from('products').update({ image_url: uploadedUrl }).eq('id', data.id);
+          }
+        }
+
         Alert.alert('Sucesso', 'Produto cadastrado!');
         setNome('');
         setPreco('');
+        setNewProductImageUrl(null);
+        setNewProductImageFile(null);
+        setNewProductImagePreview(null);
         carregarProdutos();
       } catch (error) {
         const errorMsg = handleDatabaseError(error, nome.trim());
@@ -754,6 +789,52 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
         } finally {
           setUploadingImage(false);
         }
+      };
+      input.click();
+    });
+  };
+
+  const uploadImageForCreatedProduct = async (productId: string): Promise<string | null> => {
+    if (!newProductImageFile || !user?.companyId) return null;
+    setUploadingImage(true);
+    try {
+      const ext = newProductImageFile.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const path = `${user.companyId}/${productId}/foto.${ext}`;
+      const { error: upError } = await supabase.storage
+        .from('menu-images')
+        .upload(path, newProductImageFile, { upsert: true, contentType: newProductImageFile.type });
+      if (upError) {
+        Alert.alert('Erro', 'Falha ao enviar imagem: ' + upError.message);
+        return null;
+      }
+      const { data: urlData } = supabase.storage.from('menu-images').getPublicUrl(path);
+      return urlData.publicUrl;
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const pickNewProductImage = (): Promise<void> => {
+    if (Platform.OS !== 'web') return Promise.resolve();
+    return new Promise((resolve) => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/jpeg,image/jpg,image/png,image/webp';
+      input.onchange = () => {
+        const file = input.files?.[0];
+        if (!file) {
+          resolve();
+          return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+          Alert.alert('Erro', 'Imagem muito grande. Máximo 5 MB.');
+          resolve();
+          return;
+        }
+        setNewProductImageFile(file);
+        setNewProductImagePreview(URL.createObjectURL(file));
+        setNewProductImageUrl('pending-upload');
+        resolve();
       };
       input.click();
     });
@@ -1479,6 +1560,47 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
               />
             )}
 
+            <Text style={styles.label}>Foto do produto:</Text>
+            <Text style={{ fontSize: 11, color: colors.textSecondary, marginBottom: 8, marginTop: -4 }}>
+              {'📐 Ideal: 800×600 px, formato 4:3  •  JPEG ou WebP  •  Máx 5 MB\n'}
+              {'💡 Comprima antes de enviar: tinypng.com ou squoosh.app'}
+            </Text>
+            {newProductImagePreview ? (
+              <View style={{ marginBottom: 12 }}>
+                {/* @ts-ignore — web-only src */}
+                <img
+                  src={newProductImagePreview}
+                  alt="Prévia da foto do novo produto"
+                  style={{ width: 120, height: 90, objectFit: 'cover', borderRadius: 8, marginBottom: 6 }}
+                />
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <TouchableOpacity
+                    style={[styles.salvarBtn, { flex: 1, paddingVertical: 8, marginTop: 0, backgroundColor: colors.secondary }]}
+                    onPress={pickNewProductImage}
+                  >
+                    <Text style={[styles.salvarBtnText, { fontSize: 13 }]}>🔄 Trocar foto</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.salvarBtn, { flex: 1, paddingVertical: 8, marginTop: 0, backgroundColor: '#D32F2F' }]}
+                    onPress={() => {
+                      setNewProductImageUrl(null);
+                      setNewProductImageFile(null);
+                      setNewProductImagePreview(null);
+                    }}
+                  >
+                    <Text style={[styles.salvarBtnText, { fontSize: 13 }]}>🗑️ Remover</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={[styles.salvarBtn, { paddingVertical: 10, marginTop: 0, marginBottom: 12, backgroundColor: colors.secondary }]}
+                onPress={pickNewProductImage}
+              >
+                <Text style={[styles.salvarBtnText, { fontSize: 13 }]}>📷 Selecionar foto</Text>
+              </TouchableOpacity>
+            )}
+
             <TouchableOpacity
               style={[styles.cadastrarBtn, loading && styles.cadastrarBtnDisabled]}
               onPress={cadastrarProduto}
@@ -2034,6 +2156,10 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
 
               {/* ── FOTO DO PRODUTO ── */}
               <Text style={styles.label}>Foto do produto:</Text>
+              <Text style={{ fontSize: 11, color: colors.textSecondary, marginBottom: 8, marginTop: -4 }}>
+                {'📐 Ideal: 800×600 px, formato 4:3  •  JPEG ou WebP  •  Máx 5 MB\n'}
+                {'💡 Comprima antes de enviar: tinypng.com ou squoosh.app'}
+              </Text>
               {editImageUrl ? (
                 <View style={{ marginBottom: 12 }}>
                   {/* @ts-ignore — web-only src */}
@@ -2439,6 +2565,38 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 1,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 10,
+    marginBottom: 15,
+  },
+  modalBtn: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveBtn: {
+    backgroundColor: colors.primary,
+  },
+  saveBtnText: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  cancelBtn: {
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  cancelBtnText: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '600',
   },
   filtros: {
     flexDirection: 'row',
