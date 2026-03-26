@@ -2,7 +2,6 @@ import React, {
   useState,
   useEffect,
   useRef,
-  useCallback,
   useMemo,
 } from 'react';
 import {
@@ -17,7 +16,6 @@ import {
   Dimensions,
   Platform,
   SectionList,
-  Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -46,10 +44,9 @@ interface Props {
 interface ProductCardProps {
   product: PublicProduct;
   primaryColor: string;
-  onAdd: (product: PublicProduct) => void;
 }
 
-function ProductCard({ product, primaryColor, onAdd }: ProductCardProps) {
+function ProductCard({ product, primaryColor }: ProductCardProps) {
   const [imgLoaded, setImgLoaded] = useState(false);
   const [imgError, setImgError] = useState(false);
 
@@ -103,14 +100,6 @@ function ProductCard({ product, primaryColor, onAdd }: ProductCardProps) {
           <Text style={[styles.cardPrice, { color: primaryColor }]}>
             {formatPrice(product)}
           </Text>
-          <TouchableOpacity
-            style={[styles.addButton, { backgroundColor: primaryColor }]}
-            onPress={() => onAdd(product)}
-            accessibilityLabel={`Adicionar ${product.name}`}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.addButtonText}>+</Text>
-          </TouchableOpacity>
         </View>
       </View>
     </View>
@@ -158,9 +147,6 @@ export default function PublicMenuScreen({ slug, route }: Props) {
   const [notFound, setNotFound] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('');
-  const [cartCount, setCartCount] = useState(0);
-  const [cartSubtotal, setCartSubtotal] = useState(0);
-  const cartBarAnim = useRef(new Animated.Value(0)).current;
 
   const sectionListRef = useRef<SectionList>(null);
   const chipScrollRef = useRef<ScrollView>(null);
@@ -186,16 +172,6 @@ export default function PublicMenuScreen({ slug, route }: Props) {
     });
   }, [resolvedSlug]);
 
-  // Animar barra do carrinho
-  useEffect(() => {
-    Animated.spring(cartBarAnim, {
-      toValue: cartCount > 0 ? 1 : 0,
-      useNativeDriver: true,
-      tension: 80,
-      friction: 10,
-    }).start();
-  }, [cartCount]);
-
   const primaryColor = menu?.company?.menu_primary_color || '#E85D04';
 
   // Categorias filtradas por busca
@@ -216,15 +192,6 @@ export default function PublicMenuScreen({ slug, route }: Props) {
     slug: cat.slug,
     data: cat.products,
   }));
-
-  const handleAddToCart = useCallback((product: PublicProduct) => {
-    const itemPrice =
-      product.prices && Object.keys(product.prices).length > 0
-        ? Math.min(...Object.values(product.prices).filter((v) => v > 0))
-        : product.price || 0;
-    setCartCount((c) => c + 1);
-    setCartSubtotal((s) => s + itemPrice);
-  }, []);
 
   const handleCategoryChip = (slug: string) => {
     setActiveCategory(slug);
@@ -371,7 +338,7 @@ export default function PublicMenuScreen({ slug, route }: Props) {
           extraData={primaryColor}
           contentContainerStyle={[
             styles.listContent,
-            { paddingBottom: cartCount > 0 ? 80 + insets.bottom : 24 + insets.bottom },
+            { paddingBottom: 24 + insets.bottom },
           ]}
           stickySectionHeadersEnabled={false}
           onViewableItemsChanged={({ viewableItems }) => {
@@ -404,7 +371,6 @@ export default function PublicMenuScreen({ slug, route }: Props) {
                   <ProductCard
                     product={item}
                     primaryColor={primaryColor}
-                    onAdd={handleAddToCart}
                   />
                 </View>
                 <View style={styles.cardCell}>
@@ -412,7 +378,6 @@ export default function PublicMenuScreen({ slug, route }: Props) {
                     <ProductCard
                       product={next}
                       primaryColor={primaryColor}
-                      onAdd={handleAddToCart}
                     />
                   ) : (
                     <View style={styles.cardPlaceholder} />
@@ -423,34 +388,6 @@ export default function PublicMenuScreen({ slug, route }: Props) {
           }}
         />
       )}
-
-      {/* ── CARRINHO FLUTUANTE ── */}
-      <Animated.View
-        style={[
-          styles.cartBar,
-          { bottom: insets.bottom + 8, backgroundColor: primaryColor },
-          {
-            transform: [
-              {
-                translateY: cartBarAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [100, 0],
-                }),
-              },
-            ],
-            opacity: cartBarAnim,
-          },
-        ]}
-        pointerEvents={cartCount > 0 ? 'auto' : 'none'}
-      >
-        <Text style={styles.cartBarText}>
-          🛒 {cartCount} {cartCount === 1 ? 'item' : 'itens'}
-        </Text>
-        <Text style={styles.cartBarSubtotal}>R$ {cartSubtotal.toFixed(2)}</Text>
-        <TouchableOpacity style={styles.cartBarButton} activeOpacity={0.85}>
-          <Text style={styles.cartBarButtonText}>Ver carrinho →</Text>
-        </TouchableOpacity>
-      </Animated.View>
     </View>
   );
 }
