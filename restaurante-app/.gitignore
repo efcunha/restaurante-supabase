@@ -40,6 +40,9 @@ firebase-adminsdk-*.json
 !.env.*.example
 serviceAccountKey.json
 
+# Maestro E2E
+.maestro/.env.maestro
+
 # IDE/Editor
 .idea/
 .vscode/

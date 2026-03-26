@@ -1,0 +1,39 @@
+# Equivalente a: restaurante-web/e2e/pizza-garcom02.spec.ts
+# Fluxo: Login Garcom 02 -> Novo Pedido -> Pizza + itens padrão (Balcão, sem mesa)
+#
+# Pré-requisito: .env.maestro com PLAYWRIGHT_TEST_EMAIL_GARCOM02 e PLAYWRIGHT_TEST_PASSWORD_GARCOM02
+# Execução: maestro test .maestro/pizza_garcom02.yaml
+appId: com.comandapraia.donacida
+name: "Fluxo Pizza - Garcom 02"
+env:
+  PLAYWRIGHT_TEST_EMAIL_GARCOM02: ""
+  PLAYWRIGHT_TEST_PASSWORD_GARCOM02: ""
+---
+# ── 1. Login Garcom 02 ────────────────────────────────────────────────────────
+- runFlow:
+    file: _subflows/login.yaml
+    env:
+      TEST_EMAIL: ${PLAYWRIGHT_TEST_EMAIL_GARCOM02}
+      TEST_PASSWORD: ${PLAYWRIGHT_TEST_PASSWORD_GARCOM02}
+
+# ── 2. Navega para Novo Pedido ────────────────────────────────────────────────
+- tapOn: "Novo Pedido"
+- assertVisible:
+    text: "Digite o nome"
+    timeout: 15000
+
+# ── 3. Preenche nome do cliente ───────────────────────────────────────────────
+- tapOn: "Digite o nome"
+- inputText: "Pedido Pizza G02 Maestro"
+
+# ── 4. Configura Pizza Grande/Família (Calabresa + Chocolate com Morango + Bacon)
+- runFlow: _subflows/add_pizza.yaml
+
+# ── 5. Adiciona itens padrão (Chopp x3, Risoto x1, Caldo x3) ─────────────────
+- runFlow: _subflows/add_itens_padrao.yaml
+
+# ── 6. Cria pedido e valida toast de sucesso ──────────────────────────────────
+- tapOn: "Criar Pedido"
+- assertVisible:
+    text: "Pedido criado! Comanda"
+    timeout: 15000
