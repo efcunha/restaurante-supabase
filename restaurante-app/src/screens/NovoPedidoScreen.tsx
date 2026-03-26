@@ -545,12 +545,12 @@ export default function NovoPedidoScreen({ route }: any) {
       }, {} as Record<string, Product[]>);
 
       uniquePizzas.forEach(pizza => {
-        const subcategory = pizza.subcategory || 'Outras';
-        if (pizzasByCategory[subcategory]) {
-          pizzasByCategory[subcategory].push(pizza);
-        } else {
-          pizzasByCategory['Outras'].push(pizza);
+        const normalizedSubcategory = (pizza.subcategory || '').trim();
+        const targetKey = normalizedSubcategory || 'Outras';
+        if (!pizzasByCategory[targetKey]) {
+          pizzasByCategory[targetKey] = [];
         }
+        pizzasByCategory[targetKey].push(pizza);
       });
 
       // Add sections for each category that has pizzas
