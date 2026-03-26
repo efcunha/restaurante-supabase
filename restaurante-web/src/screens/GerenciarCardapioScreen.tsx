@@ -78,6 +78,7 @@ interface GerenciarCardapioScreenProps {
 }
 
 export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioScreenProps) {
+  const defaultPizzaSubcategories = React.useMemo(() => ['Tradicional', 'Especiais', 'Doces'], []);
   const { user } = useAuth();
   const { isTablet, horizontalPadding, modalWidth, modalMaxWidth, inputMaxWidth } = useResponsive();
 
@@ -122,7 +123,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
   // Estados para Temperos/Opções
   const [temperosCaldos, setTemperosCaldos] = useState<string[]>([]);
   const [temperosComidas, setTemperosComidas] = useState<string[]>([]);
-  const [tipoTemperoAtivo, setTipoTemperoAtivo] = useState<'caldos' | 'comidas' | 'variacoes' | 'pizza' | 'tamanhos'>('caldos');
+  const [tipoTemperoAtivo, setTipoTemperoAtivo] = useState<'caldos' | 'comidas' | 'variacoes' | 'pizza' | 'pizzaCategorias' | 'tamanhos'>('caldos');
   const [novoTempero, setNovoTempero] = useState('');
   const [editTemperoIndex, setEditTemperoIndex] = useState(-1);
   const [loadingTemperos, setLoadingTemperos] = useState(true);
@@ -135,6 +136,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
   const [editTamanhoIndex, setEditTamanhoIndex] = useState(-1); // TRACK EDIT INDEX
   const [precosPizza, setPrecosPizza] = useState<Record<string, string | number>>({}); // { 'Fatia': '5.00', 'Grande': '40.00' }
   const [ingredientesPizza, setIngredientesPizza] = useState<string[]>([]); // from config
+  const [pizzaSubcategories, setPizzaSubcategories] = useState<string[]>([]); // from company settings
   const [ingredientesSelecionados, setIngredientesSelecionados] = useState<string[]>([]); // for current product
   const [ingredientesPersonalizados, setIngredientesPersonalizados] = useState(''); // text field
   const [novoIngrediente, setNovoIngrediente] = useState(''); // for adding new ingredient
@@ -399,6 +401,17 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
           }
         }
 
+        if (Array.isArray(settings.pizzaSubcategories) && settings.pizzaSubcategories.length > 0) {
+          setPizzaSubcategories(settings.pizzaSubcategories.filter((item: any) => typeof item === 'string' && item.trim() !== ''));
+        } else {
+          setPizzaSubcategories(defaultPizzaSubcategories);
+          try {
+            await persistCompanySettings({ pizzaSubcategories: defaultPizzaSubcategories }, settings);
+          } catch (persistError) {
+            console.error('Error saving default pizza categories:', persistError);
+          }
+        }
+
         if (settings.pizzaConfig) {
           setPizzaConfig(settings.pizzaConfig);
           if (settings.pizzaConfig.sizes) setPizzaSizes(settings.pizzaConfig.sizes);
@@ -432,6 +445,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
           { name: 'Média', maxFlavors: 2 },
           { name: 'Grande/Família', maxFlavors: 4 }
         ];
+        setPizzaSubcategories(defaultPizzaSubcategories);
         setPizzaConfig({ sizes: defaultSizes, pricingMode: 'HIGHER' });
         setPizzaSizes(defaultSizes);
       }
@@ -441,6 +455,13 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
       setLoadingTemperos(false);
     }
   };
+
+  useEffect(() => {
+    if (categoria !== 'pizza') return;
+    if (subcategoria) return;
+    if (pizzaSubcategories.length === 0) return;
+    setSubcategoria(pizzaSubcategories[0]);
+  }, [categoria, pizzaSubcategories, subcategoria]);
 
   const carregarProdutos = async () => {
     try {
@@ -700,6 +721,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
     if (tipoTemperoAtivo === 'caldos') return temperosCaldos || [];
     if (tipoTemperoAtivo === 'comidas') return temperosComidas || [];
     if (tipoTemperoAtivo === 'pizza') return ingredientesPizza || [];
+    if (tipoTemperoAtivo === 'pizzaCategorias') return pizzaSubcategories || [];
     return variacoesEspetinho || [];
   };
 
@@ -707,7 +729,8 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
     novaListaCaldos?: string[],
     novaListaComidas?: string[],
     novaListaVariacoes?: string[],
-    novaListaPizzas?: string[]
+    novaListaPizzas?: string[],
+    novaListaPizzaSubcategorias?: string[]
   ) => {
     if (!user?.companyId) return;
 
@@ -717,6 +740,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
     if (novaListaComidas !== undefined) updates.temperosComidas = novaListaComidas;
     if (novaListaVariacoes !== undefined) updates.variacoesEspetinho = novaListaVariacoes;
     if (novaListaPizzas !== undefined) updates.ingredientesPizza = novaListaPizzas;
+    if (novaListaPizzaSubcategorias !== undefined) updates.pizzaSubcategories = novaListaPizzaSubcategorias;
 
     // Always include pizzaConfig to persist size changes if any
     updates.pizzaConfig = { ...pizzaConfig, sizes: pizzaSizes };
@@ -734,6 +758,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
         temperosComidas: novaListaComidas !== undefined ? novaListaComidas : temperosComidas,
         variacoesEspetinho: novaListaVariacoes !== undefined ? novaListaVariacoes : variacoesEspetinho,
         ingredientesPizza: novaListaPizzas !== undefined ? novaListaPizzas : ingredientesPizza,
+        pizzaSubcategories: novaListaPizzaSubcategorias !== undefined ? novaListaPizzaSubcategorias : pizzaSubcategories,
         pizzaConfig: { ...pizzaConfig, sizes: pizzaSizes },
       });
     } catch (e) {
@@ -1047,7 +1072,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
         novos.push(novoTempero.trim());
       }
 
-      const args: [string[] | undefined, string[] | undefined, string[] | undefined, string[] | undefined] = [undefined, undefined, undefined, undefined];
+      const args: [string[] | undefined, string[] | undefined, string[] | undefined, string[] | undefined, string[] | undefined] = [undefined, undefined, undefined, undefined, undefined];
 
       if (tipoTemperoAtivo === 'caldos') {
         setTemperosCaldos(novos);
@@ -1058,6 +1083,12 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
       } else if (tipoTemperoAtivo === 'pizza') {
         setIngredientesPizza(novos);
         args[3] = novos;
+      } else if (tipoTemperoAtivo === 'pizzaCategorias') {
+        setPizzaSubcategories(novos);
+        args[4] = novos;
+        if (subcategoria && !novos.includes(subcategoria)) {
+          setSubcategoria(novos[0] || '');
+        }
       } else {
         setVariacoesEspetinho(novos);
         args[2] = novos;
@@ -1078,7 +1109,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
     const novos = listaAtual.filter((_, i) => i !== index);
 
     try {
-      const args: [string[] | undefined, string[] | undefined, string[] | undefined, string[] | undefined] = [undefined, undefined, undefined, undefined];
+      const args: [string[] | undefined, string[] | undefined, string[] | undefined, string[] | undefined, string[] | undefined] = [undefined, undefined, undefined, undefined, undefined];
       if (tipoTemperoAtivo === 'caldos') {
         setTemperosCaldos(novos);
         args[0] = novos;
@@ -1088,6 +1119,12 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
       } else if (tipoTemperoAtivo === 'pizza') {
         setIngredientesPizza(novos);
         args[3] = novos;
+      } else if (tipoTemperoAtivo === 'pizzaCategorias') {
+        setPizzaSubcategories(novos);
+        args[4] = novos;
+        if (subcategoria && !novos.includes(subcategoria)) {
+          setSubcategoria(novos[0] || '');
+        }
       } else {
         setVariacoesEspetinho(novos);
         args[2] = novos;
@@ -1488,7 +1525,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
               <>
                 <Text style={styles.label}>Categoria da Pizza:</Text>
                 <View style={styles.categoriaButtons}>
-                  {['Tradicional', 'Especiais', 'Doces'].map(cat => (
+                  {pizzaSubcategories.map(cat => (
                     <TouchableOpacity
                       key={cat}
                       style={[
@@ -1762,6 +1799,15 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
               >
                 <Text style={[styles.filtroBtnText, tipoTemperoAtivo === 'pizza' && styles.filtroBtnTextActive]}>
                   Ingredientes Pizza
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.filtroBtn, tipoTemperoAtivo === 'pizzaCategorias' && styles.filtroBtnActive]}
+                onPress={() => { setTipoTemperoAtivo('pizzaCategorias'); setEditTemperoIndex(-1); setNovoTempero(''); }}
+              >
+                <Text style={[styles.filtroBtnText, tipoTemperoAtivo === 'pizzaCategorias' && styles.filtroBtnTextActive]}>
+                  Categorias Pizza
                 </Text>
               </TouchableOpacity>
 
@@ -2069,48 +2115,23 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                   {/* Pizza Subcategory */}
                   <Text style={styles.label}>Categoria da Pizza:</Text>
                   <View style={styles.categoriaButtons}>
-                    <TouchableOpacity
-                      style={[
-                        styles.categoriaBtn,
-                        subcategoria === 'Tradicional' && styles.categoriaBtnActive
-                      ]}
-                      onPress={() => setSubcategoria('Tradicional')}
-                    >
-                      <Text style={[
-                        styles.categoriaBtnText,
-                        subcategoria === 'Tradicional' && styles.categoriaBtnTextActive
-                      ]}>
-                        🍅 Tradicional
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.categoriaBtn,
-                        subcategoria === 'Especiais' && styles.categoriaBtnActive
-                      ]}
-                      onPress={() => setSubcategoria('Especiais')}
-                    >
-                      <Text style={[
-                        styles.categoriaBtnText,
-                        subcategoria === 'Especiais' && styles.categoriaBtnTextActive
-                      ]}>
-                        🍄 Especiais
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.categoriaBtn,
-                        subcategoria === 'Doces' && styles.categoriaBtnActive
-                      ]}
-                      onPress={() => setSubcategoria('Doces')}
-                    >
-                      <Text style={[
-                        styles.categoriaBtnText,
-                        subcategoria === 'Doces' && styles.categoriaBtnTextActive
-                      ]}>
-                        🍫 Doces
-                      </Text>
-                    </TouchableOpacity>
+                    {pizzaSubcategories.map((item) => (
+                      <TouchableOpacity
+                        key={item}
+                        style={[
+                          styles.categoriaBtn,
+                          subcategoria === item && styles.categoriaBtnActive
+                        ]}
+                        onPress={() => setSubcategoria(item)}
+                      >
+                        <Text style={[
+                          styles.categoriaBtnText,
+                          subcategoria === item && styles.categoriaBtnTextActive
+                        ]}>
+                          {item}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
                   </View>
 
                   {/* Ingredients */}
