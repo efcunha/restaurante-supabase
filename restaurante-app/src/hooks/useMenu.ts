@@ -28,7 +28,7 @@ export function useMenu() {
                     .from('products')
                     .select('*')
                     .eq('company_id', user.companyId)
-                    .eq('available', true),
+                    .eq('active', true),
                 supabase
                     .from('companies')
                     .select('settings')

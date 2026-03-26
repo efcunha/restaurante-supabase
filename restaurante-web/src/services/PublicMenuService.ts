@@ -61,11 +61,18 @@ function prettyLabelFromSlug(slug: string): string {
 }
 
 function normalizeCategorySlug(value?: string | null): string {
-  return (value || 'outro')
+  if (!value) return 'outro';
+  let slug = value
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .trim();
+
+  if (slug === 'outros') slug = 'outro';
+  if (slug.includes('espetinho') && slug.includes('simples')) return 'espetinho-simples';
+  if (slug.includes('espetinho') && slug.includes('especial')) return 'espetinho-especial';
+
+  return slug;
 }
 
 function getCompanyCategoryOrder(settings?: Record<string, any> | null): Map<string, { label: string; order: number }> {
@@ -118,7 +125,7 @@ export async function fetchPublicCompanyBySlug(slug: string): Promise<PublicComp
 
 /**
  * Busca todos os produtos disponiveis de uma empresa para o cardapio publico.
- * Ja filtrado por available=true e active=true via RLS anonima.
+ * Filtra apenas por active=true; available é sempre sincronizado via constraint CHECK.
  */
 export async function fetchPublicProducts(companyId: string): Promise<PublicProduct[]> {
   const { data, error } = await anonClient
@@ -127,7 +134,6 @@ export async function fetchPublicProducts(companyId: string): Promise<PublicProd
       'id, name, description, price, prices, category, subcategory, image_url, photo_alt, display_order, tags, ingredients'
     )
     .eq('company_id', companyId)
-    .eq('available', true)
     .eq('active', true)
     .order('category', { ascending: true })
     .order('display_order', { ascending: true })
