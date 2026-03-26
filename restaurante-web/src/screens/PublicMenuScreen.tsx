@@ -90,7 +90,11 @@ function ProductCard({ product, primaryColor }: ProductCardProps) {
         <Text style={styles.cardName} numberOfLines={2}>
           {product.name}
         </Text>
-        {product.description ? (
+        {product.ingredients && product.ingredients.length > 0 ? (
+          <Text style={styles.cardDescription} numberOfLines={2}>
+            {product.ingredients.join(", ")}
+          </Text>
+        ) : product.description ? (
           <Text style={styles.cardDescription} numberOfLines={1}>
             {product.description}
           </Text>
