@@ -843,7 +843,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
       const ids = variacoes.map(v => v.id);
       const { error } = await supabase
         .from('products')
-        .update({ available: !todosAtivos }) // DB Column is available
+        .update({ active: !todosAtivos, available: !todosAtivos })
         .in('id', ids);
 
       if (error) throw error;
