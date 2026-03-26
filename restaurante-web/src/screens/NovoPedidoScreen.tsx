@@ -116,6 +116,13 @@ const CaldoRow = memo(({ caldoBase, cardapioCaldos, produtos, onIncrement, onDec
   return (
     <View style={styles.caldoCard}>
       <Text style={styles.produtoName}>{caldoBase}</Text>
+      {(() => {
+        const source = item300 || item180;
+        const ingList = source?.ingredients;
+        return ingList && ingList.length > 0 ? (
+          <Text style={styles.pizzaIngredientsText}>{ingList.join(', ')}</Text>
+        ) : null;
+      })()}
 
       {/* 300ml Section */}
       {item300 && (
@@ -176,6 +183,9 @@ const StandardRow = memo(({ item, produtos, onIncrement, onDecrement, type, temp
         <View style={styles.produtoRow}>
           <View style={styles.produtoInfo}>
             <Text style={styles.produtoName}>{item.name}</Text>
+            {item.ingredients && item.ingredients.length > 0 && (
+              <Text style={styles.pizzaIngredientsText}>{item.ingredients.join(', ')}</Text>
+            )}
             <Text style={styles.produtoPrice}>R$ {item.price?.toFixed(2)}</Text>
           </View>
         </View>
