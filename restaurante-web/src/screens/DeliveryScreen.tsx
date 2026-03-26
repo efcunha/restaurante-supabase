@@ -258,7 +258,7 @@ export default function DeliveryScreen() {
     user, loadingCardapio, cardapio, produtos,
     clientName, setClientName,
     updateProduto, total, selectedItems, handleRemoveItem,
-    handleLogout, temperosCaldos, temperosComidas, variacoesEspetinho, pizzaConfig, addPizzaToOrder,
+    handleLogout, temperosCaldos, temperosComidas, variacoesEspetinho, pizzaSubcategories, pizzaConfig, addPizzaToOrder,
     carregarCardapio, extras, resetForm
   } = useNovoPedido();
 
@@ -434,9 +434,16 @@ export default function DeliveryScreen() {
         const n = p.name ? p.name.trim().toLowerCase() : '';
         if (n && !seenNames.has(n)) { seenNames.add(n); uniquePizzas.push(p); }
       });
-      const catmap: Record<string, Product[]> = { 'Tradicional': [], 'Especiais': [], 'Doces': [], 'Outras': [] };
+      const configuredPizzaSubcategories = (pizzaSubcategories || [])
+        .map((item) => (item || '').trim())
+        .filter((item, index, arr) => item.length > 0 && arr.indexOf(item) === index);
+      const categoryOrder = [...configuredPizzaSubcategories, 'Outras'];
+      const catmap: Record<string, Product[]> = categoryOrder.reduce((acc, current) => {
+        acc[current] = [];
+        return acc;
+      }, {} as Record<string, Product[]>);
       uniquePizzas.forEach(pizza => { catmap[pizza.subcategory || 'Outras'].push(pizza); });
-      ['Tradicional', 'Especiais', 'Doces', 'Outras'].forEach(cat => {
+      categoryOrder.forEach(cat => {
         if (catmap[cat].length > 0) sectionsData.push({ title: `🍕 PIZZAS ${cat.toUpperCase()}`, data: catmap[cat], type: 'pizzas-v2' });
       });
     }
@@ -479,7 +486,7 @@ export default function DeliveryScreen() {
     if (cardapio.bebidas && cardapio.bebidas.length > 0) sectionsData.push({ title: '🥤 Bebidas', data: cardapio.bebidas.filter(isActive), type: 'bebidas' });
 
     return sectionsData;
-  }, [cardapio, variacoesEspetinho]);
+  }, [cardapio, variacoesEspetinho, pizzaSubcategories]);
 
   const filteredSections = React.useMemo(() => {
     if (!searchQuery.trim()) return sections;
