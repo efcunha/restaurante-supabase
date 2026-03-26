@@ -735,10 +735,10 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
   const toggleGrupoAtivo = async (variacoes: Product[], todosAtivos: boolean) => {
     try {
       const ids = variacoes.map(v => v.id);
-      // Update active; available is automatically synchronized by constraint
+      // Keep active and available synchronized at write time to satisfy DB constraint.
       const { error } = await supabase
         .from('products')
-        .update({ active: !todosAtivos })
+        .update({ active: !todosAtivos, available: !todosAtivos })
         .in('id', ids);
 
       if (error) throw error;
