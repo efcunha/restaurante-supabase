@@ -452,9 +452,10 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
       console.log('Fetching products from Supabase for Manage Menu...');
 
       // Optimized query: select only needed fields instead of SELECT *
+      // Note: available column now always mirrors active (enforced by constraint)
       const { data, error } = await supabase
         .from('products')
-        .select('id, name, description, price, category, subcategory, available, active, created_at, prices, ingredients, custom_ingredients, inventory_items, image_url')
+        .select('id, name, description, price, category, subcategory, active, created_at, prices, ingredients, custom_ingredients, inventory_items, image_url')
         .eq('company_id', user.companyId)
         .order('category', { ascending: true })
         .order('name', { ascending: true });
@@ -471,7 +472,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
         price: Number(p.price),
         category: p.category,
         subcategory: p.subcategory || null,
-        active: p.available !== undefined ? p.available : p.active, // Map available -> active
+        active: p.active, // available is now always synchronized to active via constraint
         createdAt: new Date(p.created_at).getTime(),
         prices: p.prices || {},
         ingredients: p.ingredients || [],
@@ -734,9 +735,10 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
   const toggleGrupoAtivo = async (variacoes: Product[], todosAtivos: boolean) => {
     try {
       const ids = variacoes.map(v => v.id);
+      // Update active; available is automatically synchronized by constraint
       const { error } = await supabase
         .from('products')
-        .update({ available: !todosAtivos }) // DB Column is available
+        .update({ active: !todosAtivos })
         .in('id', ids);
 
       if (error) throw error;
