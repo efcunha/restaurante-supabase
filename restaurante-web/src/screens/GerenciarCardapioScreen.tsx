@@ -108,6 +108,8 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
   const [editNome, setEditNome] = useState('');
   const [editPreco, setEditPreco] = useState('');
   const [editCategoria, setEditCategoria] = useState('');
+  const [editImageUrl, setEditImageUrl] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   // Estados para edição de grupo de variações
   const [showVariacoesModal, setShowVariacoesModal] = useState(false);
@@ -449,7 +451,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
       // Optimized query: select only needed fields instead of SELECT *
       const { data, error } = await supabase
         .from('products')
-        .select('id, name, price, category, subcategory, available, active, created_at, prices, ingredients, custom_ingredients, inventory_items')
+        .select('id, name, description, price, category, subcategory, available, active, created_at, prices, ingredients, custom_ingredients, inventory_items, image_url')
         .eq('company_id', user.companyId)
         .order('category', { ascending: true })
         .order('name', { ascending: true });
@@ -462,6 +464,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
       const produtosData = (data || []).map((p: any) => ({
         id: p.id,
         name: p.name,
+        description: p.description || '',
         price: Number(p.price),
         category: p.category,
         subcategory: p.subcategory || null,
@@ -470,7 +473,8 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
         prices: p.prices || {},
         ingredients: p.ingredients || [],
         customIngredients: p.custom_ingredients || '',
-        inventoryItems: p.inventory_items || []
+        inventoryItems: p.inventory_items || [],
+        image_url: p.image_url || null,
       })) as Product[];
 
       console.log(`[GerenciarCardapio] Fetched ${produtosData.length} products total.`);
@@ -708,6 +712,53 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
     }
   };
 
+  /**
+   * Abre o seletor de arquivo (web) e faz upload para Supabase Storage.
+   * Retorna a URL pública ou null em caso de erro/cancelamento.
+   * Path: menu-images/{company_id}/{product_id}/foto.{ext}
+   */
+  const uploadProductImage = (productId: string): Promise<string | null> => {
+    if (Platform.OS !== 'web') {
+      Alert.alert('Info', 'Upload de imagem disponível apenas na versão web.');
+      return Promise.resolve(null);
+    }
+    return new Promise((resolve) => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/jpeg,image/jpg,image/png,image/webp';
+      input.onchange = async () => {
+        const file = input.files?.[0];
+        if (!file) { resolve(null); return; }
+        if (file.size > 5 * 1024 * 1024) {
+          Alert.alert('Erro', 'Imagem muito grande. Máximo 5 MB.');
+          resolve(null);
+          return;
+        }
+        setUploadingImage(true);
+        try {
+          const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+          const path = `${user!.companyId}/${productId}/foto.${ext}`;
+          const { error: upError } = await supabase.storage
+            .from('menu-images')
+            .upload(path, file, { upsert: true, contentType: file.type });
+          if (upError) {
+            Alert.alert('Erro', 'Falha ao enviar imagem: ' + upError.message);
+            resolve(null);
+            return;
+          }
+          const { data: urlData } = supabase.storage.from('menu-images').getPublicUrl(path);
+          resolve(urlData.publicUrl);
+        } catch (e) {
+          Alert.alert('Erro', 'Falha ao enviar imagem.');
+          resolve(null);
+        } finally {
+          setUploadingImage(false);
+        }
+      };
+      input.click();
+    });
+  };
+
   const abrirEdicao = (produto: Product) => {
     setEditando(produto);
     setEditNome(produto.name);
@@ -743,6 +794,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
       setEditPreco(produto.price?.toString() || '0');
     }
 
+    setEditImageUrl(produto.image_url || null);
     setShowEditModal(true);
   };
 
@@ -810,6 +862,9 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
         const val = parseFloat(sanitizedPreco);
         updateData.price = val;
       }
+
+      // Persist image_url (null clears it, string saves it)
+      updateData.image_url = editImageUrl;
 
       const { error } = await supabase
         .from('products')
@@ -1976,6 +2031,54 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                   </TouchableOpacity>
                 ))}
               </View>
+
+              {/* ── FOTO DO PRODUTO ── */}
+              <Text style={styles.label}>Foto do produto:</Text>
+              {editImageUrl ? (
+                <View style={{ marginBottom: 12 }}>
+                  {/* @ts-ignore — web-only src */}
+                  <img
+                    src={editImageUrl}
+                    alt="Foto do produto"
+                    style={{ width: 120, height: 90, objectFit: 'cover', borderRadius: 8, marginBottom: 6 }}
+                  />
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <TouchableOpacity
+                      style={[styles.salvarBtn, { flex: 1, paddingVertical: 8, marginTop: 0, backgroundColor: colors.secondary }]}
+                      onPress={async () => {
+                        if (!editando) return;
+                        const url = await uploadProductImage(editando.id);
+                        if (url) setEditImageUrl(url);
+                      }}
+                      disabled={uploadingImage}
+                    >
+                      <Text style={[styles.salvarBtnText, { fontSize: 13 }]}>
+                        {uploadingImage ? 'Enviando...' : '🔄 Trocar foto'}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.salvarBtn, { flex: 1, paddingVertical: 8, marginTop: 0, backgroundColor: '#D32F2F' }]}
+                      onPress={() => setEditImageUrl(null)}
+                    >
+                      <Text style={[styles.salvarBtnText, { fontSize: 13 }]}>🗑️ Remover</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.salvarBtn, { paddingVertical: 10, marginTop: 0, marginBottom: 12, backgroundColor: colors.secondary }]}
+                  onPress={async () => {
+                    if (!editando) return;
+                    const url = await uploadProductImage(editando.id);
+                    if (url) setEditImageUrl(url);
+                  }}
+                  disabled={uploadingImage}
+                >
+                  <Text style={[styles.salvarBtnText, { fontSize: 13 }]}>
+                    {uploadingImage ? 'Enviando...' : '📷 Adicionar foto'}
+                  </Text>
+                </TouchableOpacity>
+              )}
 
               <TouchableOpacity
                 style={[styles.salvarBtn, loading && styles.salvarBtnDisabled, { marginTop: 10 }]}
