@@ -1,0 +1,44 @@
+# Subflow: add_itens_padrao.yaml
+# Adiciona via busca: Chopp x3, Risoto x1, Caldo x3
+# Requer: estar na tela Novo Pedido com o campo de busca visível
+#
+# Nota: o botão "+" usa <Text>+</Text> (roundBtnText em NovoPedidoScreen).
+# Se houver múltiplos resultados na busca, index: 0 seleciona o primeiro.
+# Para determinismo máximo, adicione testID nos botões de incremento da tela.
+---
+# ── Chopp x3 ────────────────────────────────────────────────────────────────
+- repeat:
+    times: 3
+    commands:
+      - tapOn: "Buscar item do cardápio..."
+      - eraseText: 50
+      - inputText: "chopp"
+      - waitForAnimationToEnd
+      - tapOn:
+          text: "+"
+          index: 0
+
+# ── Risoto x1 ────────────────────────────────────────────────────────────────
+- tapOn: "Buscar item do cardápio..."
+- eraseText: 50
+- inputText: "risoto"
+- waitForAnimationToEnd
+- tapOn:
+    text: "+"
+    index: 0
+
+# ── Caldo x3 ────────────────────────────────────────────────────────────────
+- repeat:
+    times: 3
+    commands:
+      - tapOn: "Buscar item do cardápio..."
+      - eraseText: 50
+      - inputText: "caldo"
+      - waitForAnimationToEnd
+      - tapOn:
+          text: "+"
+          index: 0
+
+# ── Limpa busca ─────────────────────────────────────────────────────────────
+- tapOn: "Buscar item do cardápio..."
+- eraseText: 50
