@@ -251,9 +251,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
             const configuredPizzaSubcategories = Array.isArray(companySettings?.pizzaSubcategories)
                 ? companySettings.pizzaSubcategories.filter((item: any) => typeof item === 'string' && item.trim() !== '')
                 : [];
-            const resolvedPizzaSubcategories = configuredPizzaSubcategories.length > 0
-                ? configuredPizzaSubcategories
-                : ['Tradicional', 'Especiais', 'Doces'];
+            const resolvedPizzaSubcategories = configuredPizzaSubcategories;
             setPizzaSubcategories(resolvedPizzaSubcategories);
 
             let newPizzaConfig = null;
