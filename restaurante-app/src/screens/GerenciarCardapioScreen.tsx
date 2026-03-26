@@ -21,6 +21,7 @@ import {
   MenuCategory,
   getOrCreateMenuCategories,
   isEspetinhoCategorySlug,
+  isIngredientsCategorySlug,
   normalizeCategorySlug,
   slugifyCategoryName,
   toCategoryOption,
@@ -752,13 +753,18 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
 
       try {
         setLoading(true);
-        const novoProduto = {
+        const novoProduto: any = {
           company_id: user.companyId,
           name: nome.trim(),
           price: parseFloat(preco.toString().replace(',', '.')) || 0,
           category: categoria,
           available: true // DB Column is available
         };
+
+        if (isIngredientsCategorySlug(categoria)) {
+          novoProduto.ingredients = ingredientesSelecionados;
+          novoProduto.custom_ingredients = ingredientesPersonalizados;
+        }
 
         const { data, error } = await supabase.from('products').insert(novoProduto).select('id').single();
 
@@ -778,6 +784,10 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
         Alert.alert('Sucesso', 'Produto cadastrado!');
         setNome('');
         setPreco('');
+        if (isIngredientsCategorySlug(categoria)) {
+          setIngredientesSelecionados([]);
+          setIngredientesPersonalizados('');
+        }
         setNewProductImageUrl(null);
         setNewProductImageAsset(null);
         setNewProductImagePreview(null);
@@ -885,8 +895,13 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
     } else {
       setPrecosPizza({});
       setSubcategoria('');
-      setIngredientesSelecionados([]);
-      setIngredientesPersonalizados('');
+      if (isIngredientsCategorySlug(produto.category)) {
+        setIngredientesSelecionados(produto.ingredients || []);
+        setIngredientesPersonalizados(produto.customIngredients || '');
+      } else {
+        setIngredientesSelecionados([]);
+        setIngredientesPersonalizados('');
+      }
       setEditPreco(produto.price?.toString() || '0');
     }
 
@@ -956,6 +971,10 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
         const sanitizedPreco = editPreco?.toString().replace(',', '.');
         const val = parseFloat(sanitizedPreco);
         updateData.price = val;
+        if (isIngredientsCategorySlug(editCategoria)) {
+          updateData.ingredients = ingredientesSelecionados;
+          updateData.custom_ingredients = ingredientesPersonalizados;
+        }
       }
 
       updateData.image_url = editImageUrl;
@@ -1571,14 +1590,50 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                 </View>
               </>
             ) : (
-              <TextInput
-                style={styles.input}
-                placeholder="Preço (ex: 12.00)"
-                placeholderTextColor={colors.textSecondary}
-                value={preco}
-                onChangeText={setPreco}
-                keyboardType="numeric"
-              />
+              <>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Preço (ex: 12.00)"
+                  placeholderTextColor={colors.textSecondary}
+                  value={preco}
+                  onChangeText={setPreco}
+                  keyboardType="numeric"
+                />
+                {isIngredientsCategorySlug(categoria) && (
+                  <>
+                    <Text style={styles.label}>Ingredientes:</Text>
+                    <View style={styles.ingredientesContainer}>
+                      {ingredientesSelecionados.map((ing, idx) => (
+                        <View key={idx} style={styles.ingredienteChip}>
+                          <Text style={styles.ingredienteText}>{ing}</Text>
+                          <TouchableOpacity onPress={() => setIngredientesSelecionados(prev => prev.filter((_, i) => i !== idx))}>
+                            <Text style={styles.ingredienteRemove}>×</Text>
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                    </View>
+                    <View style={styles.addTemperoRow}>
+                      <TextInput
+                        style={styles.inputTempero}
+                        placeholder="Adicionar ingrediente..."
+                        value={novoIngrediente}
+                        onChangeText={setNovoIngrediente}
+                      />
+                      <TouchableOpacity
+                        style={styles.addBtn}
+                        onPress={() => {
+                          if (novoIngrediente.trim()) {
+                            setIngredientesSelecionados(prev => [...prev, novoIngrediente.trim()]);
+                            setNovoIngrediente('');
+                          }
+                        }}
+                      >
+                        <Ionicons name="add" size={24} color={colors.white} />
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                )}
+              </>
             )}
 
             <Text style={styles.label}>Foto do produto:</Text>
@@ -1910,6 +1965,12 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                             {primeiraVariacao.customIngredients ? ' | ' + primeiraVariacao.customIngredients : ''}
                           </Text>
                         )}
+                        {/* Display ingredients for caldo/comida products */}
+                        {isIngredientsCategorySlug(primeiraVariacao.category) && primeiraVariacao.ingredients && primeiraVariacao.ingredients.length > 0 && (
+                          <Text style={styles.produtoIngredientes}>
+                            {primeiraVariacao.ingredients.join(', ')}
+                          </Text>
+                        )}
                       </View>
                     </View>
 
@@ -2205,6 +2266,44 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                     onChangeText={setEditPreco}
                     keyboardType="numeric"
                   />
+
+                  {isIngredientsCategorySlug(editCategoria) && (
+                    <>
+                      <Text style={styles.label}>Ingredientes:</Text>
+                      <View style={styles.ingredientesContainer}>
+                        {ingredientesSelecionados.map((ing, idx) => (
+                          <View key={idx} style={styles.ingredienteChip}>
+                            <Text style={styles.ingredienteText}>{ing}</Text>
+                            <TouchableOpacity
+                              onPress={() => setIngredientesSelecionados(prev => prev.filter((_, i) => i !== idx))}
+                            >
+                              <Text style={styles.ingredienteRemove}>×</Text>
+                            </TouchableOpacity>
+                          </View>
+                        ))}
+                      </View>
+                      <View style={{ flexDirection: 'row', marginBottom: 15 }}>
+                        <TextInput
+                          style={[styles.input, { flex: 1, marginRight: 8, maxWidth: inputMaxWidth }]}
+                          placeholder="Adicionar ingrediente..."
+                          placeholderTextColor={colors.textSecondary}
+                          value={novoIngrediente}
+                          onChangeText={setNovoIngrediente}
+                        />
+                        <TouchableOpacity
+                          style={styles.addIngredienteBtn}
+                          onPress={() => {
+                            if (novoIngrediente.trim()) {
+                              setIngredientesSelecionados(prev => [...prev, novoIngrediente.trim()]);
+                              setNovoIngrediente('');
+                            }
+                          }}
+                        >
+                          <Text style={styles.addIngredienteBtnText}>+</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </>
+                  )}
                 </>
               )}
 

@@ -119,3 +119,11 @@ export function isEspetinhoCategorySlug(slug?: string | null): boolean {
   const normalized = normalizeCategorySlug(slug);
   return normalized === 'espetinho-simples' || normalized === 'espetinho-especial';
 }
+
+/**
+ * Returns true for categories that support the ingredients field (Caldos and Comidas).
+ */
+export function isIngredientsCategorySlug(slug?: string | null): boolean {
+  const normalized = normalizeCategorySlug(slug);
+  return normalized === 'caldo' || normalized === 'comida';
+}
