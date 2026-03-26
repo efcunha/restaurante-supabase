@@ -49,6 +49,7 @@ interface UseNovoPedidoReturn {
     temperosCaldos: string[];
     temperosComidas: string[];
     variacoesEspetinho: string[];
+    pizzaSubcategories: string[];
     pizzaConfig: PizzaConfig | null;
     addPizzaToOrder: (sizeName: string, flavors: Product[], selectedBorda?: any, selectedAdicionais?: any[]) => void;
     carregarCardapio: () => Promise<void>;
@@ -76,6 +77,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
     const [temperosCaldos] = useState(['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada']);
     const [temperosComidas] = useState(['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada']);
     const [variacoesEspetinho] = useState(['Simples', 'com Arroz', 'com Macaxeira', 'Completo']);
+    const [pizzaSubcategories, setPizzaSubcategories] = useState<string[]>([]);
     const [pizzaConfig, setPizzaConfig] = useState<PizzaConfig | null>(null);
     const [customPrices, setCustomPrices] = useState<Record<string, number>>({}); // { 'Pizza Grande (Calabresa)': 40.00 }
     const [loadingCardapio, setLoadingCardapio] = useState(true);
@@ -108,10 +110,13 @@ export function useNovoPedido(): UseNovoPedidoReturn {
         }
     }, [user, waiters, waiterId]);
 
-    const applyCachedCardapio = useCallback((parsedCache: { data: Cardapio; pizzaConfig?: PizzaConfig | null; extras?: any[] }) => {
+    const applyCachedCardapio = useCallback((parsedCache: { data: Cardapio; pizzaConfig?: PizzaConfig | null; pizzaSubcategories?: string[]; extras?: any[] }) => {
         setCardapio(parsedCache.data);
         if (parsedCache.pizzaConfig) {
             setPizzaConfig(parsedCache.pizzaConfig);
+        }
+        if (Array.isArray(parsedCache.pizzaSubcategories)) {
+            setPizzaSubcategories(parsedCache.pizzaSubcategories);
         }
         setExtras(parsedCache.extras || []);
         cardapioLoadedRef.current = true;
@@ -243,6 +248,14 @@ export function useNovoPedido(): UseNovoPedidoReturn {
             const { data: companyData, error: companyError } = companyResult;
             const companySettings = companyData?.settings || {};
 
+            const configuredPizzaSubcategories = Array.isArray(companySettings?.pizzaSubcategories)
+                ? companySettings.pizzaSubcategories.filter((item: any) => typeof item === 'string' && item.trim() !== '')
+                : [];
+            const resolvedPizzaSubcategories = configuredPizzaSubcategories.length > 0
+                ? configuredPizzaSubcategories
+                : ['Tradicional', 'Especiais', 'Doces'];
+            setPizzaSubcategories(resolvedPizzaSubcategories);
+
             let newPizzaConfig = null;
             if (!companyError && companySettings?.pizzaConfig?.sizes?.length > 0) {
                 newPizzaConfig = companySettings.pizzaConfig;
@@ -292,6 +305,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
             await AsyncStorage.setItem(CARDAPIO_CACHE_KEY, JSON.stringify({
                 data: novoCardapio,
                 pizzaConfig: newPizzaConfig, // Cache config too
+                pizzaSubcategories: resolvedPizzaSubcategories,
                 extras: currentExtras,       // FIX: Use the loaded array instead of the stale state component `extras` variable
                 timestamp: Date.now(),       // When we fetched
                 lastUpdated: maxUpdatedAt    // The max server timestamp
@@ -869,6 +883,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
         temperosCaldos,
         temperosComidas,
         variacoesEspetinho,
+        pizzaSubcategories,
         pizzaConfig,
         addPizzaToOrder,
         carregarCardapio,
