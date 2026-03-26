@@ -12,3 +12,5 @@
 20260319115856
 # Duplicata remota de 20260325150000_add_public_menu_slug.sql (mesmo nome, registrada duas vezes)
 20260325215952
+# Duplicata remota de 20260326140000_enforce_available_equals_active_constraint.sql (criada via MCP apply_migration)
+20260326162433
