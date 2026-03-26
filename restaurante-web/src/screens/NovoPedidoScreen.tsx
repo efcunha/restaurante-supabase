@@ -455,6 +455,7 @@ export default function NovoPedidoScreen({ route }: any) {
     temperosCaldos,
     temperosComidas,
     variacoesEspetinho,
+    pizzaSubcategories,
     pizzaConfig,
     addPizzaToOrder,
     carregarCardapio,
@@ -544,13 +545,17 @@ export default function NovoPedidoScreen({ route }: any) {
         }
       });
 
+      const configuredPizzaSubcategories = (pizzaSubcategories || [])
+        .map((item) => (item || '').trim())
+        .filter((item, index, arr) => item.length > 0 && arr.indexOf(item) === index);
+
+      const categoryOrder = [...configuredPizzaSubcategories, 'Outras'];
+
       // Group pizzas by subcategory
-      const pizzasByCategory: Record<string, Product[]> = {
-        'Tradicional': [],
-        'Especiais': [],
-        'Doces': [],
-        'Outras': []
-      };
+      const pizzasByCategory: Record<string, Product[]> = categoryOrder.reduce((acc, current) => {
+        acc[current] = [];
+        return acc;
+      }, {} as Record<string, Product[]>);
 
       uniquePizzas.forEach(pizza => {
         const subcategory = pizza.subcategory || 'Outras';
@@ -562,7 +567,6 @@ export default function NovoPedidoScreen({ route }: any) {
       });
 
       // Add sections for each category that has pizzas
-      const categoryOrder = ['Tradicional', 'Especiais', 'Doces', 'Outras'];
       categoryOrder.forEach(category => {
         if (pizzasByCategory[category].length > 0) {
           sectionsData.push({
@@ -654,7 +658,7 @@ export default function NovoPedidoScreen({ route }: any) {
     }
 
     return sectionsData;
-  }, [cardapio, variacoesEspetinho]);
+  }, [cardapio, variacoesEspetinho, pizzaSubcategories]);
 
   // Filter sections based on search query
   const filteredSections = React.useMemo(() => {
