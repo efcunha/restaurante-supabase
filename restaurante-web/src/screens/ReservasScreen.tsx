@@ -110,19 +110,24 @@ export default function ReservasScreen({ navigation: _navigation }: any) {
 
   const alterarStatus = async (id: string, novoStatus: string) => {
     try {
+      setReservas((prev) => prev.map((reserva) => (
+        reserva.id === id ? { ...reserva, status: novoStatus } : reserva
+      )));
+
       const { error } = await supabase
         .from('agendamentos')
         .update({ status: novoStatus })
         .eq('id', id);
-        
+
       if (error) throw error;
 
       await carregarReservas();
-      
+
       Alert.alert('Sucesso', `Reserva atualizada para ${novoStatus}.`);
     } catch (error) {
       console.error('Erro ao atualizar status:', error);
       Alert.alert('Erro', 'Não foi possível atualizar a reserva.');
+      await carregarReservas();
     }
   };
 
