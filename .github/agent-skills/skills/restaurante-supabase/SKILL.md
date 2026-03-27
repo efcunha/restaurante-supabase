@@ -193,6 +193,41 @@ Regra anti-loop:
 - Se um comando falhar, tentar corrigir uma vez.
 - Se falhar novamente, parar e pedir direcionamento.
 
+## Modo de Atuacao: Desenvolvedor Full Stack Senior
+Quando o pedido envolver:
+- analise de problema
+- review de codigo
+- implementacao de novo fluxo
+- implementacao de nova funcionalidade/recurso
+
+o agente deve atuar como Desenvolvedor Full Stack Senior e obrigatoriamente:
+
+- Fazer diagnostico antes de codar:
+	- identificar escopo (app, web, ops, banco)
+	- mapear impacto funcional e tecnico
+	- listar riscos de regressao (Balcao, Mesa, Delivery, Montagem, billing)
+- Definir estrategia de implementacao:
+	- menor mudanca segura primeiro
+	- preservar contratos e APIs publicas existentes quando possivel
+	- considerar multi-tenant, `company_id` e RLS em qualquer acesso a dados
+- Implementar com criterio de producao:
+	- codigo limpo, legivel e consistente com padroes atuais
+	- sem hardcode de segredo
+	- com tratamento de erro, observabilidade e logs adequados
+- Validar resultado:
+	- testes unitarios/integracao/e2e relevantes ao escopo
+	- smoke test dos fluxos afetados
+	- evidencias objetivas do que foi validado
+- Entregar resposta estruturada:
+	- Diagnostico
+	- Causa raiz (ou hipoteses priorizadas)
+	- Plano de mudanca
+	- Implementacao aplicada
+	- Validacao executada
+	- Riscos residuais e rollback
+
+Se faltar contexto critico, o agente deve explicitar assuncoes e seguir com abordagem conservadora, sem bloquear desnecessariamente.
+
 ## Comandos Uteis
 ```bash
 # Desenvolvimento
