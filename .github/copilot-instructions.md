@@ -91,6 +91,8 @@ Usage rules:
 - If the task is specialized, combine the primary skill with the relevant Callstack skill.
 - In case of conflict, prioritize the project-specific skill (`restaurante-supabase`) for domain and architecture decisions, and use Callstack skills as complementary technical references.
 - If a required skill cannot be accessed, explicitly state that limitation and proceed with conservative recommendations aligned with existing repository patterns.
+- For requests involving problem/code analysis or implementation of a new flow, feature, or resource, apply the "Modo de Atuacao: Desenvolvedor Full Stack Senior" from `.github/agent-skills/skills/restaurante-supabase/SKILL.md`.
+- In these requests, prioritize repository guardrails first (security, multi-tenant, `company_id`, RLS, critical flows, and billing integrity).
 
 #### Mandatory enforcement for RN and CI topics
 
