@@ -113,6 +113,7 @@ export default function ReservasScreen() {
 
   const alterarStatus = async (id: string, novoStatus: string) => {
     const reservaAtual = reservas.find((reserva) => reserva.id === id);
+    const companyId = user?.companyId;
 
     try {
       setReservas((prev) => prev.map((reserva) => (
@@ -128,7 +129,7 @@ export default function ReservasScreen() {
 
               let notificationFailed = false;
               const shouldNotify = Boolean(
-                user?.companyId &&
+                companyId &&
                 reservaAtual?.telefone_cliente &&
                 (novoStatus === 'confirmada' || novoStatus === 'cancelada')
               );
@@ -136,7 +137,7 @@ export default function ReservasScreen() {
               if (shouldNotify) {
                 try {
                   await EvolutionApiService.sendReservationStatusNotification({
-                    companyId: user!.companyId,
+                    companyId,
                     phone: reservaAtual.telefone_cliente,
                     nome: reservaAtual.nome_cliente,
                     quantidadePessoas: Number(reservaAtual.quantidade_pessoas || 0),
