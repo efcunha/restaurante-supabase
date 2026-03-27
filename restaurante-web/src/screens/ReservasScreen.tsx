@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, TextInput, Alert, ScrollView, ActivityIndicator, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../config/SupabaseConfig';
@@ -18,7 +18,7 @@ export default function ReservasScreen({ navigation: _navigation }: any) {
   const [pessoas, setPessoas] = useState('2');
   const [observacoes, setObservacoes] = useState('');
 
-  const carregarReservas = async () => {
+  const carregarReservas = useCallback(async () => {
     if (!user?.companyId) return;
     
     try {
@@ -43,29 +43,29 @@ export default function ReservasScreen({ navigation: _navigation }: any) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filterStatus, user?.companyId]);
 
   useEffect(() => {
     carregarReservas();
-    
+
     if (!user?.companyId) return;
 
     const channel = supabase
-      .channel('agendamentos_changes')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
+      .channel(`agendamentos_changes_${user.companyId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
         table: 'agendamentos',
         filter: `company_id=eq.${user.companyId}`
       }, () => {
         carregarReservas();
       })
       .subscribe();
-      
+
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [filterStatus]);
+  }, [carregarReservas, user?.companyId]);
 
   const salvarReserva = async () => {
     if (!nome || !dataHora || !pessoas) {
@@ -86,6 +86,8 @@ export default function ReservasScreen({ navigation: _navigation }: any) {
       });
       
       if (error) throw error;
+
+      await carregarReservas();
       
       Alert.alert('Sucesso', 'Reserva criada com sucesso!');
       setModalVisible(false);
@@ -114,6 +116,8 @@ export default function ReservasScreen({ navigation: _navigation }: any) {
         .eq('id', id);
         
       if (error) throw error;
+
+      await carregarReservas();
       
       Alert.alert('Sucesso', `Reserva atualizada para ${novoStatus}.`);
     } catch (error) {
