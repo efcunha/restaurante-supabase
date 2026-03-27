@@ -6,6 +6,16 @@
 const EVO_API_URL = 'https://evolution-api-production-9ac1.up.railway.app';
 const EVO_API_KEY = 'Lueed28@13546289b@P@ssw0rd'.trim();
 
+export interface ConnectionStateResponse {
+  instance?: {
+    instanceName?: string;
+    state?: string;
+  };
+  state?: string;
+  statusString?: string;
+  error?: string;
+}
+
 type ReservationNotificationStatus = 'pendente' | 'confirmada' | 'cancelada';
 
 function normalizeBrazilPhone(phone: string): string {
@@ -47,6 +57,32 @@ function buildReservationNotificationText(params: {
 }
 
 export const EvolutionApiService = {
+  async getConnectionState(companyId: string): Promise<ConnectionStateResponse> {
+    try {
+      const response = await fetch(`${EVO_API_URL}/instance/connectionState/${companyId}`, {
+        method: 'GET',
+        headers: {
+          apikey: EVO_API_KEY,
+        },
+      });
+
+      if (response.status === 404) {
+        return { instance: { state: 'not_created' } };
+      }
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data.message || data.error || 'Erro ao buscar estado da conexão');
+      }
+
+      return data as ConnectionStateResponse;
+    } catch (error: any) {
+      console.error('[EvolutionApiService] getConnectionState error:', error);
+      throw error;
+    }
+  },
+
   async sendTextMessage(companyId: string, phone: string, text: string): Promise<any> {
     try {
       const response = await fetch(`${EVO_API_URL}/message/sendText/${companyId}`, {

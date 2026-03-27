@@ -5,11 +5,14 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../config/SupabaseConfig';
 import { getLocalDateKey } from '../utils/dateUtils';
+import { EvolutionApiService } from '../services/EvolutionApiService';
 import OptimizedFlatList from '../components/OptimizedFlatList';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 
 type DeliveryStatus = 'dispatched' | 'delivered' | 'failed_delivery' | 'returned' | 'refused';
+
+const DELIVERY_NOTIFICATION_STATUSES: DeliveryStatus[] = ['dispatched', 'delivered'];
 
 export default function RotasDeliveryScreen() {
   const { user } = useAuth();
@@ -18,6 +21,30 @@ export default function RotasDeliveryScreen() {
   const [loading, setLoading] = useState(true);
   const [deliveryOrders, setDeliveryOrders] = useState<any[]>([]);
   const [processingItems, setProcessingItems] = useState(new Set());
+
+  const ensureWhatsAppConnectionForDelivery = useCallback(async (status: DeliveryStatus) => {
+    if (!user?.companyId || !DELIVERY_NOTIFICATION_STATUSES.includes(status)) {
+      return true;
+    }
+
+    try {
+      const stateData = await EvolutionApiService.getConnectionState(user.companyId);
+      const instanceState = String((stateData as any)?.instance?.state || stateData?.state || '').toLowerCase();
+
+      if (!instanceState || instanceState === 'open' || instanceState === 'connected') {
+        return true;
+      }
+
+      Alert.alert(
+        'Aviso de notificação',
+        `A instância do WhatsApp não está conectada${instanceState ? ` (${instanceState})` : ''}. O pedido será atualizado normalmente, mas a notificação automática pode falhar.`
+      );
+      return true;
+    } catch (error) {
+      console.warn('[RotasDelivery] Falha ao verificar conexão WhatsApp:', error);
+      return true;
+    }
+  }, [user?.companyId]);
 
   const fetchDeliveryOrders = useCallback(async () => {
     try {
@@ -192,6 +219,9 @@ export default function RotasDeliveryScreen() {
     reasonText?: string
     ) => {
       try {
+        const shouldProceed = await ensureWhatsAppConnectionForDelivery(novoStatus);
+        if (!shouldProceed) return;
+
         setProcessingItems(prev => new Set([...prev, orderId]));
         
         const nowIso = new Date().toISOString();
