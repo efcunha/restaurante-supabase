@@ -6,9 +6,69 @@ import { realTimeListenerManager } from '../optimization/RealTimeListenerManager
 import type { Subscription } from '../optimization/RealTimeListenerManager';
 import { CompanySettingsService } from '../CompanySettingsService';
 import { getBusinessDayStart, getTodayKey } from '../../utils/dateUtils';
+import ComandasService from '../ComandasService';
+import { getNextComandaNumber } from '../ComandaNumberService';
 
 class SupabaseOrderService {
   private _subscription: Subscription | null = null;
+
+  private async _recalculateComandaTotals(companyId: string, dateKey: string, comandaNumbers: Array<number | string | null | undefined>) {
+    const targets = [...new Set(
+      comandaNumbers
+        .map((value) => Number(value))
+        .filter((value) => Number.isFinite(value) && value > 0)
+    )];
+
+    for (const comandaNumber of targets) {
+      const { data: activeOrders, error: ordersError } = await supabase
+        .from('orders')
+        .select('total_amount')
+        .eq('company_id', companyId)
+        .eq('date_key', dateKey)
+        .eq('comanda_number', comandaNumber)
+        .not('status', 'eq', 'cancelled')
+        .not('status', 'eq', 'cancelada');
+
+      if (ordersError) {
+        console.warn(`[SupabaseOrderService] Failed to recalculate comanda ${comandaNumber}:`, ordersError.message);
+        continue;
+      }
+
+      const totalConsumed = (activeOrders || []).reduce((sum, order) => sum + Number(order.total_amount || 0), 0);
+
+      const { data: comandasRows, error: comandasError } = await supabase
+        .from('comandas')
+        .select('id,total_paid')
+        .eq('company_id', companyId)
+        .eq('date_key', dateKey)
+        .eq('comanda_number', comandaNumber);
+
+      if (comandasError || !comandasRows) {
+        if (comandasError) {
+          console.warn(`[SupabaseOrderService] Failed to read comandas ${comandaNumber}:`, comandasError.message);
+        }
+        continue;
+      }
+
+      for (const comanda of comandasRows) {
+        const totalPaid = Number(comanda.total_paid || 0);
+        const openBalance = Math.max(0, totalConsumed - totalPaid);
+
+        const { error: updateError } = await supabase
+          .from('comandas')
+          .update({
+            total_consumed: totalConsumed,
+            open_balance: openBalance,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', comanda.id);
+
+        if (updateError) {
+          console.warn(`[SupabaseOrderService] Failed to update comanda ${comandaNumber}:`, updateError.message);
+        }
+      }
+    }
+  }
 
   /**
    * Converte linha do banco para objeto Order local
@@ -292,38 +352,43 @@ class SupabaseOrderService {
    * Salva um pedido completo
    */
   async saveOrder(companyId: string, order: Order): Promise<string> {
-    // ✅ AUTO-GENERATE DELIVERY COMANDA NUMBER WITH TRANSACTION LOCK
-    // Se for pedido delivery sem comanda_number, gerar automaticamente (D1, D2, D3...)
-    let comandaNumber = parseInt(order.comandaNumber || '0');
-    
-    if (order.orderType === 'delivery' && (!order.comandaNumber || order.comandaNumber === '0')) {
-      // ✅ CRITICAL: Use RPC function with transaction lock to prevent race conditions
-      // This ensures two simultaneous delivery orders get different numbers
-      const { data: rpcResult, error: rpcError } = await supabase
-        .rpc('get_next_delivery_comanda_number', {
-          p_company_id: companyId,
-          p_date_key: getTodayKey()
-        });
-      
-      if (rpcError) {
-        console.error('[SupabaseOrderService] ❌ Erro ao gerar comanda_number:', rpcError);
-        // Fallback: buscar manualmente (pode ter race condition, mas melhor que falhar)
-        const { data: maxComanda } = await supabase
-          .from('orders')
-          .select('comanda_number')
-          .eq('company_id', companyId)
-          .eq('date_key', getTodayKey())
-          .eq('order_type', 'delivery')
-          .order('comanda_number', { ascending: false })
-          .limit(1)
+    const dateKey = getTodayKey();
+    const orderType = (order.orderType || 'local').toLowerCase();
+    let comandaNumber = parseInt(String(order.comandaNumber || '0').replace(/\D/g, ''), 10);
+
+    // Para delivery, usar a mesma fonte de verdade da tabela comandas para evitar colisões entre fluxos.
+    if (orderType === 'delivery' && (!comandaNumber || comandaNumber <= 0)) {
+      comandaNumber = await getNextComandaNumber();
+      console.log(`[SupabaseOrderService] 🚚 Gerado comanda_number unificada para delivery: ${comandaNumber}`);
+    }
+
+    if (!Number.isFinite(comandaNumber) || comandaNumber <= 0) {
+      throw new Error('Número de comanda inválido para salvar pedido');
+    }
+
+    if (orderType === 'delivery') {
+      const authUser = (await supabase.auth.getUser()).data.user;
+      const actorId = authUser?.id || order.createdBy || 'sistema';
+
+      let actorName = 'Sistema';
+      if (authUser?.id) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('full_name,email')
+          .eq('id', authUser.id)
           .maybeSingle();
-        
-        comandaNumber = (maxComanda?.comanda_number || 0) + 1;
-      } else {
-        comandaNumber = rpcResult;
+
+        actorName = profile?.full_name || profile?.email || actorName;
       }
-      
-      console.log(`[SupabaseOrderService] 🚚 Gerado comanda_number para delivery: ${comandaNumber}`);
+
+      await ComandasService.ensureComandaAberta(
+        companyId,
+        String(comandaNumber),
+        actorId,
+        actorName,
+        '',
+        order.client || 'Cliente Delivery'
+      );
     }
     
     const { data, error } = await supabase
@@ -339,7 +404,7 @@ class SupabaseOrderService {
         total_amount: order.totalPrice,
         is_paid: order.isPago || false,
         created_by: order.createdBy,
-        date_key: getTodayKey(),
+        date_key: dateKey,
         comanda_status: 'aberta',
         items_with_status: order.itemsWithStatus || [],
         order_type: order.orderType || 'local',
@@ -351,6 +416,16 @@ class SupabaseOrderService {
       .single();
 
     if (error) throw error;
+
+    if (orderType === 'delivery') {
+      try {
+        await ComandasService.adicionarConsumo(companyId, String(comandaNumber), Number(order.totalPrice || 0));
+      } catch (consumeError: any) {
+        console.warn('[SupabaseOrderService] adicionarConsumo falhou para delivery, aplicando recálculo de segurança:', consumeError?.message || consumeError);
+        await this._recalculateComandaTotals(companyId, dateKey, [comandaNumber]);
+      }
+    }
+
     return data.id;
   }
 
@@ -456,6 +531,9 @@ class SupabaseOrderService {
           console.warn('[SupabaseOrderService] Merge finalization skipped:', mergeStepError?.message || mergeStepError);
         }
       }
+
+      // 2.2 Recalcular totais para garantir consistência entre orders e comandas após a consolidação.
+      await this._recalculateComandaTotals(companyId, dateK, [sourceComanda, canonicalComanda]);
 
       // 3. Log the transfer
       const { error: logError } = await supabase
