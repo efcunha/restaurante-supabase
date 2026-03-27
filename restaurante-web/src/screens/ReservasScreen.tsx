@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, TextInput, A
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../config/SupabaseConfig';
 import { useAuth } from '../context/AuthContext';
+import { EvolutionApiService } from '../services/EvolutionApiService';
 import { colors } from '../theme/colors';
 export default function ReservasScreen({ navigation: _navigation }: any) {
   const { user } = useAuth();
@@ -109,6 +110,8 @@ export default function ReservasScreen({ navigation: _navigation }: any) {
   };
 
   const alterarStatus = async (id: string, novoStatus: string) => {
+    const reservaAtual = reservas.find((reserva) => reserva.id === id);
+
     try {
       setReservas((prev) => prev.map((reserva) => (
         reserva.id === id ? { ...reserva, status: novoStatus } : reserva
@@ -121,7 +124,35 @@ export default function ReservasScreen({ navigation: _navigation }: any) {
 
       if (error) throw error;
 
+      let notificationFailed = false;
+      const shouldNotify = Boolean(
+        user?.companyId &&
+        reservaAtual?.telefone_cliente &&
+        (novoStatus === 'confirmada' || novoStatus === 'cancelada')
+      );
+
+      if (shouldNotify) {
+        try {
+          await EvolutionApiService.sendReservationStatusNotification({
+            companyId: user!.companyId,
+            phone: reservaAtual.telefone_cliente,
+            nome: reservaAtual.nome_cliente,
+            quantidadePessoas: Number(reservaAtual.quantidade_pessoas || 0),
+            dataHoraReserva: reservaAtual.data_hora_reserva,
+            status: novoStatus as 'confirmada' | 'cancelada',
+          });
+        } catch (notificationError) {
+          notificationFailed = true;
+          console.error('Erro ao enviar notificacao de reserva:', notificationError);
+        }
+      }
+
       await carregarReservas();
+
+      if (notificationFailed) {
+        Alert.alert('Sucesso parcial', `Reserva atualizada para ${novoStatus}, mas o WhatsApp não pôde ser enviado.`);
+        return;
+      }
 
       Alert.alert('Sucesso', `Reserva atualizada para ${novoStatus}.`);
     } catch (error) {
