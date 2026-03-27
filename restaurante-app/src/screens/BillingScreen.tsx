@@ -372,7 +372,7 @@ export default function BillingScreen({ onClose }: BillingScreenProps) {
 
   return (
     <ScreenScaffold
-      title="Assinatura e Cobrança"
+      title="Assinatura SaaS"
       subtitle={subtitle}
       leftAction={onClose ? { label: 'Voltar', onPress: onClose } : undefined}
       scroll
