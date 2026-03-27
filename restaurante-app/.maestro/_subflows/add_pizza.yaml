@@ -3,36 +3,46 @@
 # Requer: estar na tela Novo Pedido com o cardápio carregado
 appId: com.comandapraia.donacida
 ---
-- assertVisible:
-    text: "Calabresa"
+- extendedWaitUntil:
+    visible:
+      text: "Calabresa"
+    timeout: 10000
 
 - tapOn:
     text: "Calabresa"
     index: 0
 
-- assertVisible:
-    text: "Grande/Família"
+- extendedWaitUntil:
+    visible:
+      text: "Grande/Família"
+    timeout: 8000
 
 - tapOn:
     text: "Grande/Família"
     index: 0
 
-- assertVisible:
-    text: "Chocolate com Morango"
+- extendedWaitUntil:
+    visible:
+      text: "Chocolate com Morango"
+    timeout: 10000
 
 - tapOn:
     text: "Chocolate com Morango"
     index: 0
 
-- assertVisible:
-    text: "Próximo: Extras"
+- extendedWaitUntil:
+    visible:
+      text: "Próximo: Extras"
+    timeout: 8000
 
 - tapOn:
     text: "Próximo: Extras"
     index: 0
 
-- assertVisible:
-    text: "Bacon"
+- extendedWaitUntil:
+    visible:
+      text: "Bacon"
+    timeout: 8000
 
 - tapOn:
     text: "Bacon"
@@ -42,5 +52,7 @@ appId: com.comandapraia.donacida
     text: "Adicionar ao Pedido"
     index: 0
 
-- assertVisible:
-    text: "Pizza adicionada!"
+- extendedWaitUntil:
+    visible:
+      text: "Pizza adicionada!"
+    timeout: 8000

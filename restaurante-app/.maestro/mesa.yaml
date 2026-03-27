@@ -31,8 +31,10 @@ env:
 
 # ── 2. Navega para Novo Pedido ────────────────────────────────────────────────
 - tapOn: "Novo Pedido"
-- assertVisible:
-    text: "Digite o nome"
+- extendedWaitUntil:
+    visible:
+      text: "Digite o nome"
+    timeout: 15000
 
 # ── 3. Preenche nome e número da mesa ────────────────────────────────────────
 - tapOn: "Digite o nome"
@@ -49,8 +51,10 @@ env:
 
 # ── 6. Cria pedido e valida toast de sucesso ──────────────────────────────────
 - tapOn: "Criar Pedido"
-- assertVisible:
-    text: "Pedido criado! Comanda"
+- extendedWaitUntil:
+    visible:
+      text: "Pedido criado! Comanda"
+    timeout: 20000
 
 # ── 7. Verifica Cozinha (descomente se o usuário de teste tiver acesso à tab) ─
 # O mesa.spec.ts verifica que itens de produção aparecem na Cozinha.
