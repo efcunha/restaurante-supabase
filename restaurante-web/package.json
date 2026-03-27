@@ -16,6 +16,7 @@
     "lint:fix": "eslint src --fix",
     "format": "prettier --write .",
     "test:e2e": "playwright test",
+    "audit:e2e:integrity": "node scripts/audit-e2e-integrity.js",
     "test:e2e:mesa:concurrency": "playwright test e2e/mesa-concorrencia-garcons.spec.ts --workers=1",
     "test:e2e:mesa:critical": "playwright test e2e/mesa.spec.ts e2e/mesa-consolidacao.spec.ts e2e/mesa-concorrencia-garcons.spec.ts --workers=1",
     "test:stress": "playwright test e2e/stress.spec.ts",
