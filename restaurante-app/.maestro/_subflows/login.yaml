@@ -11,8 +11,9 @@ appId: com.comandapraia.donacida
 - launchApp:
     clearState: true
 
-- assertVisible:
-    text: "seu@email.com"
+- extendedWaitUntil:
+    visible:
+      text: "seu@email.com"
     timeout: 15000
 
 - tapOn: "seu@email.com"
@@ -23,6 +24,7 @@ appId: com.comandapraia.donacida
 
 - tapOn: "ENTRAR"
 
-- assertVisible:
-    text: "Novo Pedido"
+- extendedWaitUntil:
+    visible:
+      text: "Novo Pedido"
     timeout: 15000
