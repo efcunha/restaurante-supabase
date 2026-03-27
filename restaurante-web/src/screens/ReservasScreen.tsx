@@ -125,7 +125,7 @@ export default function ReservasScreen({ navigation: _navigation }: any) {
 
       if (error) throw error;
 
-      let notificationFailed = false;
+      let notificationWarning: string | null = null;
       const shouldNotify = Boolean(
         companyId &&
         reservaAtual?.telefone_cliente &&
@@ -134,6 +134,12 @@ export default function ReservasScreen({ navigation: _navigation }: any) {
 
       if (shouldNotify) {
         try {
+          const stateData = await EvolutionApiService.getConnectionState(companyId);
+          const instanceState = String((stateData as any)?.instance?.state || stateData?.state || '').toLowerCase();
+
+          if (instanceState && instanceState !== 'open' && instanceState !== 'connected') {
+            notificationWarning = `A reserva foi atualizada para ${novoStatus}, mas o WhatsApp não está conectado (${instanceState}).`;
+          } else {
           await EvolutionApiService.sendReservationStatusNotification({
             companyId,
             phone: reservaAtual.telefone_cliente,
@@ -142,20 +148,20 @@ export default function ReservasScreen({ navigation: _navigation }: any) {
             dataHoraReserva: reservaAtual.data_hora_reserva,
             status: novoStatus as 'confirmada' | 'cancelada',
           });
+          }
         } catch (notificationError) {
-          notificationFailed = true;
+          notificationWarning = `A reserva foi atualizada para ${novoStatus}, mas o WhatsApp não pôde ser enviado.`;
           console.error('Erro ao enviar notificacao de reserva:', notificationError);
         }
       }
 
       await carregarReservas();
 
-      if (notificationFailed) {
-        Alert.alert('Sucesso parcial', `Reserva atualizada para ${novoStatus}, mas o WhatsApp não pôde ser enviado.`);
-        return;
+      if (notificationWarning) {
+        Alert.alert('Sucesso', notificationWarning);
+      } else {
+        Alert.alert('Sucesso', `Reserva atualizada para ${novoStatus}.`);
       }
-
-      Alert.alert('Sucesso', `Reserva atualizada para ${novoStatus}.`);
     } catch (error) {
       console.error('Erro ao atualizar status:', error);
       Alert.alert('Erro', 'Não foi possível atualizar a reserva.');
