@@ -5,6 +5,7 @@
 # Nota: o botão "+" usa <Text>+</Text> (roundBtnText em NovoPedidoScreen).
 # Se houver múltiplos resultados na busca, index: 0 seleciona o primeiro.
 # Para determinismo máximo, adicione testID nos botões de incremento da tela.
+appId: com.comandapraia.donacida
 ---
 # ── Chopp x3 ────────────────────────────────────────────────────────────────
 - repeat:
