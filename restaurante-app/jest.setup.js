@@ -14,10 +14,11 @@ import 'react-native-gesture-handler/jestSetup';
 // Mock Supabase config to use test client
 jest.mock('./src/config/SupabaseConfig', () => {
     const { createClient } = require('@supabase/supabase-js');
-    const supabaseUrl = process.env.TEST_SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.TEST_SUPABASE_SERVICE_ROLE_KEY || 
-                        process.env.TEST_SUPABASE_ANON_KEY || 
-                        process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+    const supabaseUrl = process.env.TEST_SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://test-placeholder.supabase.co';
+    const supabaseKey = process.env.TEST_SUPABASE_SERVICE_ROLE_KEY ||
+                        process.env.TEST_SUPABASE_ANON_KEY ||
+                        process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
+                        'placeholder-anon-key-for-unit-tests';
     
     return {
         supabase: createClient(supabaseUrl, supabaseKey, {
