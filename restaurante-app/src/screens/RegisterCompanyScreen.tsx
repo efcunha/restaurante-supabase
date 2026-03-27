@@ -285,12 +285,13 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
       <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: 100, paddingHorizontal: horizontalPadding }]}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={colors.primary} />
+          <Text style={styles.backBtnText}>Voltar</Text>
         </TouchableOpacity>
 
         <View style={styles.header}>
           <View style={styles.titleRow}>
             <Ionicons name="business-outline" size={24} color={colors.primary} style={styles.titleIcon} />
-            <Text style={styles.title}>Crie sua conta</Text>
+            <Text style={styles.title}>Cadastre seu restaurante</Text>
           </View>
           <Text style={styles.subtitle}>Gerencie seu restaurante de forma inteligente</Text>
         </View>
@@ -537,8 +538,21 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    backgroundColor: colors.surfaceMuted,
     marginBottom: 20,
     marginTop: 10,
+  },
+  backBtnText: {
+    color: colors.primary,
+    fontSize: 14,
+    fontWeight: '700',
+    marginLeft: 8,
   },
   header: {
     marginBottom: 30,
@@ -554,7 +568,6 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
     color: colors.primary,
-    marginBottom: 10,
   },
   billingCallout: {
     marginTop: 18,
