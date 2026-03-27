@@ -17,6 +17,7 @@ import { useAuth } from '../context/AuthContext';
 import { useResponsive } from '../hooks/useResponsive';
 import { Button, FormInput } from '../components/ui-next';
 import { isFeatureEnabled } from '../config/featureFlags';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 // @ts-ignore
 import { validateCPF, validateCNPJ } from '../utils/validation';
 // @ts-ignore
@@ -32,6 +33,8 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
   // Actually, context 'register' wraps firebase. We should use direct supabase here or update context register?
   // Context register in our new Supabase Auth Context DOES use supabase.auth.signUp.
   const { isTablet, horizontalPadding } = useResponsive();
+  const insets = useSafeAreaInsets();
+  const insets = useSafeAreaInsets();
   
   const [restaurantName, setRestaurantName] = useState('');
   const [adminName, setAdminName] = useState('');
@@ -278,23 +281,27 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
-      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: 100, paddingHorizontal: horizontalPadding }]}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={colors.primary} />
-          <Text style={styles.backBtnText}>Voltar</Text>
-        </TouchableOpacity>
-
-        <View style={styles.header}>
-          <View style={styles.titleRow}>
-            <Ionicons name="business-outline" size={24} color={colors.primary} style={styles.titleIcon} />
-            <Text style={styles.title}>Cadastre seu restaurante</Text>
+    <View style={styles.container}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
+        <View style={styles.headerLeft} />
+        <View style={styles.headerCenter}>
+          <View style={styles.headerTitleRow}>
+            <Ionicons name="business-outline" size={24} color={colors.white} style={styles.headerIcon} />
+            <Text style={styles.headerTitle}>Cadastre seu restaurante</Text>
           </View>
-          <Text style={styles.subtitle}>Gerencie seu restaurante de forma inteligente</Text>
         </View>
+        <View style={styles.headerRight}>
+          <TouchableOpacity style={styles.logoutBtn} onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back-outline" size={24} color={colors.white} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardAvoid}
+      >
+        <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: 100, paddingHorizontal: horizontalPadding }]}>
 
         <View style={[styles.billingCallout, { maxWidth: isTablet ? 700 : '100%', alignSelf: 'center', width: '100%' }]}>
           <View style={styles.billingCalloutIconWrap}>
@@ -525,7 +532,8 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
           )}
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -534,43 +542,59 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  keyboardAvoid: {
+    flex: 1,
+  },
   scrollContent: {
     flexGrow: 1,
   },
-  backBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 999,
-    backgroundColor: colors.surfaceMuted,
-    marginBottom: 20,
-    marginTop: 10,
-  },
-  backBtnText: {
-    color: colors.primary,
-    fontSize: 14,
-    fontWeight: '700',
-    marginLeft: 8,
-  },
   header: {
-    marginBottom: 30,
+    backgroundColor: colors.primary,
+    paddingBottom: 15,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    zIndex: 10,
+    elevation: 8,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
   },
-  titleRow: {
+  headerLeft: {
+    flex: 1,
+  },
+  headerCenter: {
+    flex: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  titleIcon: {
-    marginRight: 8,
+  headerIcon: {
+    marginRight: 6,
   },
-  title: {
-    fontSize: 28,
+  headerTitle: {
+    color: colors.white,
+    fontSize: 18,
     fontWeight: 'bold',
-    color: colors.primary,
+    textAlign: 'center',
+  },
+  headerRight: {
+    flex: 1,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  logoutBtn: {
+    padding: 8,
   },
   billingCallout: {
-    marginTop: 18,
+    marginTop: 30,
     marginBottom: 12,
     backgroundColor: '#EFF7FB',
     borderRadius: 16,
@@ -603,10 +627,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
-  subtitle: {
-    fontSize: 16,
-    color: colors.textSecondary,
-  },
+
   form: {
     backgroundColor: colors.white,
     padding: 20,
