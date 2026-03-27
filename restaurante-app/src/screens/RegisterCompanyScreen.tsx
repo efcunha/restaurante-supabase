@@ -34,8 +34,7 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
   // Context register in our new Supabase Auth Context DOES use supabase.auth.signUp.
   const { isTablet, horizontalPadding } = useResponsive();
   const insets = useSafeAreaInsets();
-  const insets = useSafeAreaInsets();
-  
+
   const [restaurantName, setRestaurantName] = useState('');
   const [adminName, setAdminName] = useState('');
   const [email, setEmail] = useState('');
