@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, TextInput, Alert, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../config/SupabaseConfig';
@@ -24,7 +24,7 @@ export default function ReservasScreen() {
   const [pessoas, setPessoas] = useState('2');
   const [observacoes, setObservacoes] = useState('');
 
-  const carregarReservas = async () => {
+  const carregarReservas = useCallback(async () => {
     if (!user?.companyId) return;
     
     try {
@@ -43,30 +43,30 @@ export default function ReservasScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.companyId]);
 
   useEffect(() => {
     carregarReservas();
-    
+
     if (!user?.companyId) return;
 
     // Subscribe to changes
     const channel = supabase
-      .channel('agendamentos_changes')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
+      .channel(`agendamentos_changes_${user.companyId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
         table: 'agendamentos',
         filter: `company_id=eq.${user.companyId}`
       }, () => {
         carregarReservas();
       })
       .subscribe();
-      
+
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [carregarReservas, user?.companyId]);
 
   const salvarReserva = async () => {
     if (!nome || !dataHora || !pessoas) {
@@ -82,10 +82,13 @@ export default function ReservasScreen() {
         data_hora_reserva: new Date(dataHora).toISOString(),
         quantidade_pessoas: parseInt(pessoas, 10),
         observacoes: observacoes,
-        created_by: user?.uid || user?.id
+        created_by: user?.uid || user?.id,
+        status: 'pendente'
       });
       
       if (error) throw error;
+
+      await carregarReservas();
       
       Alert.alert('Sucesso', 'Reserva criada com sucesso!');
       setModalVisible(false);
@@ -109,15 +112,22 @@ export default function ReservasScreen() {
 
   const alterarStatus = async (id: string, novoStatus: string) => {
     try {
+      setReservas((prev) => prev.map((reserva) => (
+        reserva.id === id ? { ...reserva, status: novoStatus } : reserva
+      )));
+
       const { error } = await supabase
         .from('agendamentos')
         .update({ status: novoStatus })
         .eq('id', id);
         
       if (error) throw error;
+
+      await carregarReservas();
     } catch (error) {
       console.error('Erro ao atualizar status:', error);
       Alert.alert('Erro', 'Não foi possível atualizar a reserva.');
+      await carregarReservas();
     }
   };
 
