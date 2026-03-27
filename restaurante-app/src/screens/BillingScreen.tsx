@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Linking, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Linking, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View, ScrollView } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
-import { ScreenScaffold } from '../layouts/ScreenScaffold';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { useBilling } from '../context/BillingContext';
 import {
@@ -122,6 +122,7 @@ function getActivePixInvoice(invoices: BillingInvoice[]) {
 }
 
 export default function BillingScreen({ onClose }: BillingScreenProps) {
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { subscription, loadingBilling, reloadSubscription } = useBilling();
   const [paymentMethods, setPaymentMethods] = useState<BillingPaymentMethod[]>([]);
@@ -368,16 +369,27 @@ export default function BillingScreen({ onClose }: BillingScreenProps) {
   }, [companyId, cardMethods.length, loadData]);
 
   const statusLabel = statusLabels[subscription.status || 'trialing'] || 'Assinatura';
-  const subtitle = subscription.trialEndsAt ? `Trial até ${formatDate(subscription.trialEndsAt)}` : undefined;
 
   return (
-    <ScreenScaffold
-      title="Assinatura SaaS"
-      subtitle={subtitle}
-      leftAction={onClose ? { label: 'Voltar', onPress: onClose } : undefined}
-      scroll
-      contentContainerStyle={styles.contentContainer}
-    >
+    <View style={styles.container}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
+        <View style={styles.headerLeft} />
+        <View style={styles.headerCenter}>
+          <View style={styles.headerTitleRow}>
+            <Ionicons name="card-outline" size={24} color={colors.white} style={styles.headerIcon} />
+            <Text style={styles.headerTitle}>Assinatura SaaS</Text>
+          </View>
+        </View>
+        <View style={styles.headerRight}>
+          {!!onClose && (
+            <TouchableOpacity style={styles.logoutBtn} onPress={onClose}>
+              <Ionicons name="arrow-back-outline" size={24} color={colors.white} />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      <ScrollView contentContainerStyle={styles.contentContainer}>
       {/* Card tokenization modal */}
       <Modal
         visible={showCardModal}
@@ -675,14 +687,65 @@ export default function BillingScreen({ onClose }: BillingScreenProps) {
         <Ionicons name="refresh-outline" size={16} color={colors.primary} />
         <Text style={styles.refreshLinkText}>Atualizar dados de assinatura</Text>
       </TouchableOpacity>
-    </ScreenScaffold>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  header: {
+    backgroundColor: colors.primary,
+    paddingBottom: 15,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    zIndex: 10,
+    elevation: 8,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  headerCenter: {
+    flex: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerIcon: {
+    marginRight: 6,
+  },
+  headerTitle: {
+    color: colors.white,
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  headerRight: {
+    flex: 1,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  logoutBtn: {
+    padding: 8,
+  },
   contentContainer: {
     padding: 20,
     gap: 16,
+    paddingBottom: 40,
   },
   heroCard: {
     backgroundColor: '#F6F9FB',
