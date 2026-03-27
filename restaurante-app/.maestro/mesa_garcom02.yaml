@@ -33,7 +33,6 @@ env:
 - tapOn: "Novo Pedido"
 - assertVisible:
     text: "Digite o nome"
-    timeout: 15000
 
 # ── 3. Preenche nome e número da mesa ────────────────────────────────────────
 - tapOn: "Digite o nome"
@@ -52,4 +51,3 @@ env:
 - tapOn: "Criar Pedido"
 - assertVisible:
     text: "Pedido criado! Comanda"
-    timeout: 20000

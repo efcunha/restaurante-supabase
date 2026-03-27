@@ -33,7 +33,6 @@ env:
 - tapOn: "Novo Pedido"
 - assertVisible:
     text: "Digite o nome"
-    timeout: 15000
 
 # ── 3. Preenche nome e número da mesa ────────────────────────────────────────
 - tapOn: "Digite o nome"
@@ -52,7 +51,6 @@ env:
 - tapOn: "Criar Pedido"
 - assertVisible:
     text: "Pedido criado! Comanda"
-    timeout: 20000
 
 # ── 7. Verifica Cozinha (descomente se o usuário de teste tiver acesso à tab) ─
 # O mesa.spec.ts verifica que itens de produção aparecem na Cozinha.
