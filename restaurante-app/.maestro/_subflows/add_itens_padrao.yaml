@@ -1,5 +1,6 @@
 # Subflow: add_itens_padrao.yaml
-# Adiciona via busca: Chopp x3, Risoto x1, Caldo x3
+# Adiciona via busca: Chopp x3, Risoto x1, Caldo x3, Espetinho Simples x1,
+# Espetinho Especial x1, Porção x1
 # Requer: estar na tela Novo Pedido com o campo de busca visível
 #
 # Nota: o botão "+" usa <Text>+</Text> (roundBtnText em NovoPedidoScreen).
@@ -19,6 +20,32 @@ appId: com.comandapraia.donacida
       - tapOn:
           text: "+"
           index: 0
+
+# ── Espetinho Simples x1 (Frango Simples) ───────────────────────────────────
+- tapOn: "Buscar item do cardápio..."
+- eraseText: 50
+- inputText: "frango"
+- waitForAnimationToEnd
+- hideKeyboard
+- tapOn: "Simples"
+
+# ── Espetinho Especial x1 (Cupim Simples) ───────────────────────────────────
+- tapOn: "Buscar item do cardápio..."
+- eraseText: 50
+- inputText: "cupim"
+- waitForAnimationToEnd
+- hideKeyboard
+- tapOn: "Simples"
+
+# ── Porção x1 (Batata Frita) ────────────────────────────────────────────────
+- tapOn: "Buscar item do cardápio..."
+- eraseText: 50
+- inputText: "batata frita"
+- waitForAnimationToEnd
+- hideKeyboard
+- tapOn:
+    text: "+"
+    index: 0
 
 # ── Risoto x1 ────────────────────────────────────────────────────────────────
 - tapOn: "Buscar item do cardápio..."
