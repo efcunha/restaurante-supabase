@@ -17,10 +17,10 @@ appId: com.comandapraia.donacida
     timeout: 15000
 
 - tapOn: "seu@email.com"
-- inputText: "${TEST_EMAIL}"
+- inputText: "${PLAYWRIGHT_TEST_EMAIL}"
 
 - tapOn: "••••••••"
-- inputText: "${TEST_PASSWORD}"
+- inputText: "${PLAYWRIGHT_TEST_PASSWORD}"
 
 - tapOn: "ENTRAR"
 
