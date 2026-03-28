@@ -8,7 +8,10 @@ import { usePerformanceMonitor } from '../hooks/usePerformanceMonitor';
 import { Button } from '../ui';
 import { useFocusEffect } from '@react-navigation/native';
 import PizzaBuilderModal from '../components/PizzaBuilderModal';
+import AdicionaisPickerModal from '../components/AdicionaisPickerModal';
 import { Product } from '../types';
+import { ProductAdicional, SelectedAdicional } from '../types/models';
+import AdicionaisService from '../services/AdicionaisService';
 import { KeyboardAvoidingView } from 'react-native';
 import supabaseOrderService from '../services/supabase/SupabaseOrderService';
 import OrderService from '../services/OrderService';
@@ -113,7 +116,15 @@ const areStandardPropsEqual = (prev: any, next: any) => {
     }
     return true;
   }
-  return prev.produtos[prev.item.name] === next.produtos[next.item.name];
+  // For porcoes: sum all variant keys (base + base + adicionais combinations)
+  const prefix = prev.item.name;
+  const prevTotal = Object.entries(prev.produtos)
+    .filter(([k]) => k === prefix || k.startsWith(prefix + ' + '))
+    .reduce((s, [, v]) => s + v, 0);
+  const nextTotal = Object.entries(next.produtos)
+    .filter(([k]) => k === prefix || k.startsWith(prefix + ' + '))
+    .reduce((s, [, v]) => s + v, 0);
+  return prevTotal === nextTotal;
 };
 
 const StandardRow = memo(({ item, produtos, onIncrement, onDecrement, type, temperos }: any) => {
@@ -142,7 +153,9 @@ const StandardRow = memo(({ item, produtos, onIncrement, onDecrement, type, temp
     );
   }
 
-  const qty = produtos[item.name] || 0;
+  const qty = Object.entries(produtos)
+    .filter(([k]) => k === item.name || k.startsWith(item.name + ' + '))
+    .reduce((sum, [, v]) => sum + v, 0);
   const handleInc = useCallback(() => onIncrement(item.name), [onIncrement, item.name]);
   const handleDec = useCallback(() => onDecrement(item.name), [onDecrement, item.name]);
 
@@ -259,8 +272,12 @@ export default function DeliveryScreen() {
     clientName, setClientName,
     updateProduto, total, selectedItems, handleRemoveItem,
     handleLogout, temperosCaldos, temperosComidas, variacoesEspetinho, pizzaSubcategories, pizzaConfig, addPizzaToOrder,
+    addPorcaoWithAdicionais,
     carregarCardapio, extras, resetForm
   } = useNovoPedido();
+
+  const [adicionaisMap, setAdicionaisMap] = useState<Record<string, ProductAdicional[]>>({});
+  const [adicionaisPickerProduct, setAdicionaisPickerProduct] = useState<(Product & { price: number }) | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -512,6 +529,31 @@ export default function DeliveryScreen() {
   const handleIncrement = useCallback((itemName: string) => { updateProdutoAnimated(itemName, 1); }, [updateProdutoAnimated]);
   const handleDecrement = useCallback((itemName: string) => { updateProdutoAnimated(itemName, -1); }, [updateProdutoAnimated]);
 
+  // Load adicionais for all porcoes
+  React.useEffect(() => {
+    if (!cardapio.porcoes || cardapio.porcoes.length === 0) return;
+    const ids = cardapio.porcoes.map((p: Product) => p.id).filter(Boolean);
+    if (ids.length === 0) return;
+    Promise.all(ids.map((id: string) => AdicionaisService.fetchByProduct(id).then((list: ProductAdicional[]) => ({ id, list }))))
+      .then((results: { id: string; list: ProductAdicional[] }[]) => {
+        const map: Record<string, ProductAdicional[]> = {};
+        for (const { id, list } of results) {
+          if (list.length > 0) map[id] = list;
+        }
+        setAdicionaisMap(map);
+      })
+      .catch((err: any) => console.warn('[DeliveryScreen] Failed to load adicionais:', err));
+  }, [cardapio.porcoes]);
+
+  const handlePorcaoIncrement = useCallback((product: Product & { price: number }) => {
+    const adicionais = adicionaisMap[product.id] || [];
+    if (adicionais.length > 0) {
+      setAdicionaisPickerProduct(product);
+    } else {
+      updateProdutoAnimated(product.name, 1);
+    }
+  }, [adicionaisMap, updateProdutoAnimated]);
+
   const keyExtractor = useCallback((item: any, index: number) => {
     if (typeof item === 'string') return item;
     return item.id ? String(item.id) : item.name || `item-${index}`;
@@ -526,8 +568,9 @@ export default function DeliveryScreen() {
     if (section.type === 'pizzas-v2') return <PizzaRow item={item} onPress={handlePizzaPress} />;
     if (section.type === 'caldos') return <CaldoRow caldoBase={item} cardapioCaldos={section.original || []} produtos={produtos} onIncrement={handleIncrement} onDecrement={handleDecrement} temperos={temperosCaldos} />;
     if (section.type === 'espetinhos-simples' || section.type === 'espetinhos-especiais') return <EspetinhoRow baseName={item} cardapioEspetinhos={section.original || []} produtos={produtos} onIncrement={handleIncrement} onDecrement={handleDecrement} variacoes={variacoesEspetinho} />;
+    if (section.type === 'porcoes') return <StandardRow item={item} produtos={produtos} onIncrement={() => handlePorcaoIncrement(item as Product & { price: number })} onDecrement={handleDecrement} type={section.type} temperos={temperosComidas} />;
     return <StandardRow item={item} produtos={produtos} onIncrement={handleIncrement} onDecrement={handleDecrement} type={section.type} temperos={temperosComidas} />;
-  }, [produtos, temperosCaldos, temperosComidas, variacoesEspetinho, handleIncrement, handleDecrement]);
+  }, [produtos, temperosCaldos, temperosComidas, variacoesEspetinho, handleIncrement, handleDecrement, handlePorcaoIncrement]);
 
   if (loadingCardapio) {
     return (
@@ -621,6 +664,19 @@ export default function DeliveryScreen() {
         /* @ts-ignore */
         initialFlavor={selectedPizza} extras={extras}
       />
+
+      {adicionaisPickerProduct && (
+        <AdicionaisPickerModal
+          visible={adicionaisPickerProduct != null}
+          onClose={() => setAdicionaisPickerProduct(null)}
+          onConfirm={(selected: SelectedAdicional[]) => {
+            addPorcaoWithAdicionais(adicionaisPickerProduct.name, adicionaisPickerProduct.price, selected);
+            setAdicionaisPickerProduct(null);
+          }}
+          product={{ id: adicionaisPickerProduct.id, name: adicionaisPickerProduct.name, price: adicionaisPickerProduct.price }}
+          adicionais={adicionaisMap[adicionaisPickerProduct.id] || []}
+        />
+      )}
       <StatusBar style="dark" />
     </KeyboardAvoidingView>
   );
