@@ -11,7 +11,7 @@ import PizzaBuilderModal from '../components/PizzaBuilderModal';
 import AdicionaisPickerModal from '../components/AdicionaisPickerModal';
 import { Product } from '../types';
 import { ProductAdicional, SelectedAdicional } from '../types/models';
-import AdicionaisService from '../services/AdicionaisService';
+import { AdicionaisService } from '../services/AdicionaisService';
 import { KeyboardAvoidingView } from 'react-native';
 import supabaseOrderService from '../services/supabase/SupabaseOrderService';
 import OrderService from '../services/OrderService';
@@ -531,10 +531,14 @@ export default function DeliveryScreen() {
 
   // Load adicionais for all porcoes
   React.useEffect(() => {
+    if (!user?.companyId) {
+      setAdicionaisMap({});
+      return;
+    }
     if (!cardapio.porcoes || cardapio.porcoes.length === 0) return;
     const ids = cardapio.porcoes.map((p: Product) => p.id).filter(Boolean);
     if (ids.length === 0) return;
-    Promise.all(ids.map((id: string) => AdicionaisService.fetchByProduct(id).then((list: ProductAdicional[]) => ({ id, list }))))
+    Promise.all(ids.map((id: string) => AdicionaisService.fetchByProduct(id, user.companyId).then((list: ProductAdicional[]) => ({ id, list }))))
       .then((results: { id: string; list: ProductAdicional[] }[]) => {
         const map: Record<string, ProductAdicional[]> = {};
         for (const { id, list } of results) {
@@ -543,7 +547,7 @@ export default function DeliveryScreen() {
         setAdicionaisMap(map);
       })
       .catch((err: any) => console.warn('[DeliveryScreen] Failed to load adicionais:', err));
-  }, [cardapio.porcoes]);
+  }, [cardapio.porcoes, user?.companyId]);
 
   const handlePorcaoIncrement = useCallback((product: Product & { price: number }) => {
     const adicionais = adicionaisMap[product.id] || [];
