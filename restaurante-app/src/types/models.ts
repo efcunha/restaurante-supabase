@@ -419,6 +419,33 @@ export interface SelectedExtra {
 }
 
 // ============================================================================
+// PRODUCT ADICIONAIS MODELS
+// ============================================================================
+
+export interface ProductAdicional {
+  id: string;
+  companyId: string;
+  productId: string;
+  name: string;
+  description?: string;
+  price: number;
+  category: 'molhos' | 'extras' | 'toppings';
+  selectionType: 'unico' | 'multiplo';
+  maxChoices?: number;
+  displayOrder: number;
+  active: boolean;
+  createdAt: Date;
+  updatedAt?: Date;
+}
+
+export interface SelectedAdicional {
+  adicionalId: string;
+  name: string;
+  price: number;
+  category: string;
+}
+
+// ============================================================================
 // ARCHIVE MODELS
 // ============================================================================
 
