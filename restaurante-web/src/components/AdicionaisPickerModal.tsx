@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   Modal,
   View,
@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { colors } from '../theme/colors';
 import { ProductAdicional, SelectedAdicional } from '../types/models';
+import { AdicionaisService } from '../services/AdicionaisService';
 
 // ─── props ─────────────────────────────────────────────────────────────────────
 interface Props {
@@ -17,7 +18,9 @@ interface Props {
   onClose: () => void;
   onConfirm: (selected: SelectedAdicional[]) => void;
   product: { id: string; name: string; price: number };
-  adicionais: ProductAdicional[];
+  companyId: string;
+  /** Adicionais pré-carregados (otimização). Se vazio, o modal carrega do DB. */
+  adicionais?: ProductAdicional[];
 }
 
 // ─── helper: agrupar por categoria ─────────────────────────────────────────────
@@ -41,8 +44,27 @@ function groupByCategory(items: ProductAdicional[]): Array<{ category: string; l
 }
 
 // ─── componente ────────────────────────────────────────────────────────────────
-export default function AdicionaisPickerModal({ visible, onClose, onConfirm, product, adicionais }: Props) {
+export default function AdicionaisPickerModal({ visible, onClose, onConfirm, product, companyId, adicionais: adicionaisProp }: Props) {
   const [selected, setSelected] = useState<Record<string, boolean>>({});
+  const [adicionais, setAdicionais] = useState<ProductAdicional[]>(adicionaisProp ?? []);
+  const [loading, setLoading] = useState(false);
+
+  // Ao abrir: se não vieram adicionais pré-carregados, busca do DB
+  useEffect(() => {
+    if (!visible) return;
+    setSelected({});
+    const initial = adicionaisProp ?? [];
+    if (initial.length > 0) {
+      setAdicionais(initial);
+      return;
+    }
+    if (!product.id || !companyId) return;
+    setLoading(true);
+    AdicionaisService.fetchByProduct(product.id, companyId)
+      .then(data => setAdicionais(data))
+      .catch(() => setAdicionais([]))
+      .finally(() => setLoading(false));
+  }, [visible, product.id, companyId, adicionaisProp]);
 
   const groups = groupByCategory(adicionais);
 
@@ -116,8 +138,10 @@ export default function AdicionaisPickerModal({ visible, onClose, onConfirm, pro
           </View>
 
           <ScrollView contentContainerStyle={styles.scroll}>
-            {adicionais.length === 0 ? (
+            {loading ? (
               <ActivityIndicator color={colors.primary} style={{ marginVertical: 30 }} />
+            ) : adicionais.length === 0 ? (
+              <Text style={styles.emptyText}>Nenhum adicional configurado para esta porção.{`\n`}Toque em "Adicionar" para incluir sem extras.</Text>
             ) : (
               groups.map(group => (
                 <View key={group.category} style={styles.group}>
@@ -222,6 +246,7 @@ const styles = StyleSheet.create({
   closeBtn: { padding: 6 },
   closeBtnText: { fontSize: 20, color: colors.textSecondary || '#888' },
   scroll: { padding: 16, paddingBottom: 8 },
+  emptyText: { color: colors.textSecondary || '#888', textAlign: 'center', marginVertical: 24, fontSize: 14, lineHeight: 22 },
   group: { marginBottom: 20 },
   groupTitle: {
     fontSize: 14,

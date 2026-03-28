@@ -678,6 +678,7 @@ export default function DeliveryScreen() {
             setAdicionaisPickerProduct(null);
           }}
           product={{ id: adicionaisPickerProduct.id, name: adicionaisPickerProduct.name, price: adicionaisPickerProduct.price }}
+          companyId={user?.companyId || ''}
           adicionais={adicionaisMap[adicionaisPickerProduct.id] || []}
         />
       )}
