@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AdicionaisConfigModal from './admin/menu/AdicionaisConfigModal';
 import { View, Text, StyleSheet, Alert, ActivityIndicator, Platform, TouchableOpacity, ScrollView, TextInput, Modal, Image } from 'react-native';
 // @ts-ignore
 import KeyboardWrapper from '../components/KeyboardWrapper';
@@ -147,6 +148,10 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
   // Estados para Ficha Técnica (Estoque)
   const [showStockModal, setShowStockModal] = useState(false);
   const [currentProductForStock, setCurrentProductForStock] = useState<Product | null>(null);
+
+  // Estados para Adicionais
+  const [showAdicionaisModal, setShowAdicionaisModal] = useState(false);
+  const [productForAdicionais, setProductForAdicionais] = useState<{ id: string; name: string } | null>(null);
   const [stockItems, setStockItems] = useState<{ id: string; nome: string; unidadeOriginal: string; }[]>([]);
   // Form Ficha Técnica
   const [selectedStockId, setSelectedStockId] = useState('');
@@ -2152,6 +2157,19 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                         <Text style={styles.stockBtnText}>Ficha T.</Text>
                       </TouchableOpacity>
 
+                      {/* Adicionais — apenas para porções */}
+                      {normalizeCategorySlug(primeiraVariacao.category) === 'porcao' && (
+                        <TouchableOpacity
+                          style={styles.adicionaisBtn}
+                          onPress={() => {
+                            setProductForAdicionais({ id: primeiraVariacao.id, name: primeiraVariacao.name });
+                            setShowAdicionaisModal(true);
+                          }}
+                        >
+                          <Text style={styles.adicionaisBtnText}>Adicionais</Text>
+                        </TouchableOpacity>
+                      )}
+
                       {/* Show Variações button for pizzas and espetinhos with multiple variations */}
                       {(isPizzaProduct(primeiraVariacao) || variacoes.length > 1) && (
                         <TouchableOpacity
@@ -2566,6 +2584,16 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
         </View>
       </Modal>
 
+      {/* MODAL ADICIONAIS */}
+      {productForAdicionais && (
+        <AdicionaisConfigModal
+          visible={showAdicionaisModal}
+          onClose={() => { setShowAdicionaisModal(false); setProductForAdicionais(null); }}
+          product={productForAdicionais}
+          companyId={user?.companyId || ''}
+        />
+      )}
+
       {/* MODAL FICHA TÉCNICA */}
       <Modal visible={showStockModal} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
@@ -2963,6 +2991,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   stockBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.white,
+  },
+  adicionaisBtn: {
+    backgroundColor: '#5c6bc0',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  adicionaisBtnText: {
     fontSize: 12,
     fontWeight: '700',
     color: colors.white,
