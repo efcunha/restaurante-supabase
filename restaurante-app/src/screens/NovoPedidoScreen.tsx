@@ -501,15 +501,7 @@ export default function NovoPedidoScreen({ route }: any) {
     return () => { cancelled = true; };
   }, [cardapio?.porcoes, user?.companyId]);
 
-  const handlePorcaoIncrement = useCallback((itemName: string) => {
-    const porcoes = cardapio?.porcoes || [];
-    const product = porcoes.find(p => p.name === itemName);
-    if (product && adicionaisMap[product.id]?.length > 0) {
-      setAdicionaisPickerProduct(product as Product & { price: number });
-    } else {
-      updateProdutoAnimated(itemName, 1);
-    }
-  }, [cardapio?.porcoes, adicionaisMap, updateProdutoAnimated]);  const [showRefreshSuccess, setShowRefreshSuccess] = useState(false);
+  const [showRefreshSuccess, setShowRefreshSuccess] = useState(false);
   const refreshSuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isInitialFocusRef = useRef(true);

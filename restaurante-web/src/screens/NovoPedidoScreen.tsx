@@ -14,7 +14,7 @@ import PizzaBuilderModal from '../components/PizzaBuilderModal';
 import AdicionaisPickerModal from '../components/AdicionaisPickerModal';
 import { Product } from '../types';
 import { ProductAdicional, SelectedAdicional } from '../types/models';
-import AdicionaisService from '../services/AdicionaisService';
+import { AdicionaisService } from '../services/AdicionaisService';
 import { NewOrderCartFooter, NewOrderHeaderForm, NewOrderListFooter, PizzaProductCard } from '../features/new-order';
 // KeyboardWrapper removed to prevent touch stealing
 import { KeyboardAvoidingView } from 'react-native';
@@ -510,10 +510,14 @@ export default function NovoPedidoScreen({ route }: any) {
 
   // Load adicionais for all porcoes on mount
   useEffect(() => {
+    if (!user?.companyId) {
+      setAdicionaisMap({});
+      return;
+    }
     if (!cardapio.porcoes || cardapio.porcoes.length === 0) return;
     const ids = cardapio.porcoes.map(p => p.id).filter(Boolean);
     if (ids.length === 0) return;
-    Promise.all(ids.map(id => AdicionaisService.fetchByProduct(id).then(list => ({ id, list }))))
+    Promise.all(ids.map(id => AdicionaisService.fetchByProduct(id, user.companyId).then(list => ({ id, list }))))
       .then(results => {
         const map: Record<string, ProductAdicional[]> = {};
         for (const { id, list } of results) {
@@ -522,7 +526,7 @@ export default function NovoPedidoScreen({ route }: any) {
         setAdicionaisMap(map);
       })
       .catch(err => console.warn('[NovoPedidoScreen] Failed to load adicionais:', err));
-  }, [cardapio.porcoes]);
+  }, [cardapio.porcoes, user?.companyId]);
 
   const handleHeaderRefresh = useCallback(async () => {
     if (isRefreshingCardapio) return;
