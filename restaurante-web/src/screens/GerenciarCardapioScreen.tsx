@@ -697,7 +697,8 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
           }
         }
 
-        Alert.alert('Sucesso', 'Produto cadastrado!');
+        const _nomeSalvo = nome.trim();
+        const _idSalvo = data?.id;
         setNome('');
         setPreco('');
         if (isIngredientsCategorySlug(categoria)) {
@@ -708,6 +709,12 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
         setNewProductImageFile(null);
         setNewProductImagePreview(null);
         carregarProdutos();
+        if (normalizeCategorySlug(categoria) === 'porcao' && _idSalvo) {
+          setProductForAdicionais({ id: _idSalvo, name: _nomeSalvo });
+          setShowAdicionaisModal(true);
+        } else {
+          Alert.alert('Sucesso', 'Produto cadastrado!');
+        }
       } catch (error) {
         const errorMsg = handleDatabaseError(error, nome.trim());
         Alert.alert('Erro', errorMsg);
@@ -1694,6 +1701,11 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                   onChangeText={setPreco}
                   keyboardType="numeric"
                 />
+                {normalizeCategorySlug(categoria) === 'porcao' && (
+                  <Text style={{ fontSize: 12, color: colors.primary, marginBottom: 8, marginTop: 4, backgroundColor: '#E8F5E9', padding: 8, borderRadius: 6 }}>
+                    🍟 Após cadastrar, o modal de adicionais abrirá automaticamente para você configurar os extras desta porção.
+                  </Text>
+                )}
                 {isIngredientsCategorySlug(categoria) && (
                   <>
                     <Text style={styles.label}>Ingredientes:</Text>
