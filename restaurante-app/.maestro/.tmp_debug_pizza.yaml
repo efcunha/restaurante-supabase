@@ -1,0 +1,26 @@
+appId: com.comandapraia.donacida
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      text: "seu@email.com"
+    timeout: 15000
+- tapOn: "seu@email.com"
+- inputText: "${PLAYWRIGHT_TEST_EMAIL}"
+- tapOn: "••••••••"
+- inputText: "${PLAYWRIGHT_TEST_PASSWORD}"
+- tapOn: "ENTRAR"
+- extendedWaitUntil:
+    visible:
+      text: "Novo Pedido"
+    timeout: 15000
+- tapOn: "Novo Pedido"
+- extendedWaitUntil:
+    visible:
+      text: "Calabresa"
+    timeout: 10000
+- tapOn:
+    text: "Calabresa"
+    index: 0
+- assertVisible: "FAIL_MARKER_TO_SEE_SCREEN"
