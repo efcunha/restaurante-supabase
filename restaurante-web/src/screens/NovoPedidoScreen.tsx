@@ -735,15 +735,10 @@ export default function NovoPedidoScreen({ route }: any) {
     updateProdutoAnimated(itemName, -1);
   }, [updateProdutoAnimated]);
 
-  // Open adicionais picker for porcoes that have adicionais configured
+  // Open adicionais picker for porcoes — always show picker
   const handlePorcaoIncrement = useCallback((product: Product & { price: number }) => {
-    const adicionais = adicionaisMap[product.id] || [];
-    if (adicionais.length > 0) {
-      setAdicionaisPickerProduct(product);
-    } else {
-      updateProdutoAnimated(product.name, 1);
-    }
-  }, [adicionaisMap, updateProdutoAnimated]);
+    setAdicionaisPickerProduct(product);
+  }, []);
   
   // Memoized keyExtractor for stable keys
   const keyExtractor = useCallback((item: SectionItem, index: number) => {
@@ -979,6 +974,7 @@ export default function NovoPedidoScreen({ route }: any) {
             setAdicionaisPickerProduct(null);
           }}
           product={{ id: adicionaisPickerProduct.id, name: adicionaisPickerProduct.name, price: adicionaisPickerProduct.price }}
+          companyId={user?.companyId || ''}
           adicionais={adicionaisMap[adicionaisPickerProduct.id] || []}
         />
       )}
