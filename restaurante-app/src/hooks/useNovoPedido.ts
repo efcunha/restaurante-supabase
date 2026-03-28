@@ -11,8 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getLocalDateKey } from '../utils/dateUtils';
 // @ts-ignore
 import { confirmLogout } from '../utils/appUtils';
-// @ts-ignore
-// @ts-ignore
+import { SelectedAdicional } from '../types/models';
 import InventoryService from '../services/InventoryService';
 import { listarFuncionarios } from '../services/FuncionariosService';
 import { Product, Cardapio, PizzaConfig, Funcionario } from '../types';
@@ -52,6 +51,7 @@ interface UseNovoPedidoReturn {
     pizzaSubcategories: string[];
     pizzaConfig: PizzaConfig | null;
     addPizzaToOrder: (sizeName: string, flavors: Product[], selectedBorda?: any, selectedAdicionais?: any[]) => void;
+    addPorcaoWithAdicionais: (baseName: string, basePrice: number, selectedAdicionais: SelectedAdicional[]) => void;
     carregarCardapio: () => Promise<void>;
     refreshCardapio: () => Promise<void>;
     isRefreshingCardapio: boolean;
@@ -646,6 +646,37 @@ export function useNovoPedido(): UseNovoPedidoReturn {
         showToast('Pizza adicionada!', 'success');
     }, [showToast]);
 
+    const addPorcaoWithAdicionais = useCallback((
+        baseName: string,
+        basePrice: number,
+        selectedAdicionais: SelectedAdicional[]
+    ) => {
+        const adicionaisPrice = selectedAdicionais.reduce((sum, a) => sum + (a.price || 0), 0);
+        const finalPrice = basePrice + adicionaisPrice;
+
+        let itemName = baseName;
+        if (selectedAdicionais.length > 0) {
+            itemName = `${baseName} + ${selectedAdicionais.map(a => a.name).join(', ')}`;
+        }
+
+        setCustomPrices(prev => ({
+            ...prev,
+            [itemName]: finalPrice,
+        }));
+
+        setProdutos(prev => ({
+            ...prev,
+            [itemName]: (prev[itemName] || 0) + 1,
+        }));
+
+        showToast(
+            selectedAdicionais.length > 0
+                ? `${baseName} + adicionais adicionado!`
+                : `${baseName} adicionado!`,
+            'success'
+        );
+    }, [showToast]);
+
     const resetForm = useCallback(() => {
         console.log('🧹 [useNovoPedido] Resetting form state...');
         setClientName('');
@@ -890,6 +921,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
         pizzaSubcategories,
         pizzaConfig,
         addPizzaToOrder,
+        addPorcaoWithAdicionais,
         carregarCardapio,
         refreshCardapio,
         isRefreshingCardapio,

@@ -11,7 +11,10 @@ import { isFeatureEnabled } from '../config/featureFlags';
 import { useFocusEffect } from '@react-navigation/native';
 // @ts-ignore
 import PizzaBuilderModal from '../components/PizzaBuilderModal';
+import AdicionaisPickerModal from '../components/AdicionaisPickerModal';
 import { Product } from '../types';
+import { ProductAdicional, SelectedAdicional } from '../types/models';
+import AdicionaisService from '../services/AdicionaisService';
 import { NewOrderCartFooter, NewOrderHeaderForm, NewOrderListFooter, PizzaProductCard } from '../features/new-order';
 // KeyboardWrapper removed to prevent touch stealing
 import { KeyboardAvoidingView } from 'react-native';
@@ -168,8 +171,15 @@ const areStandardPropsEqual = (prev: StandardRowProps, next: StandardRowProps) =
     }
     return true;
   } else {
-    // Simple check
-    return prev.produtos[prev.item.name] === next.produtos[next.item.name];
+    // For porcoes: sum all variant keys (base + base + adicionais combinations)
+    const prefix = prev.item.name;
+    const prevTotal = Object.entries(prev.produtos)
+      .filter(([k]) => k === prefix || k.startsWith(prefix + ' + '))
+      .reduce((s, [, v]) => s + v, 0);
+    const nextTotal = Object.entries(next.produtos)
+      .filter(([k]) => k === prefix || k.startsWith(prefix + ' + '))
+      .reduce((s, [, v]) => s + v, 0);
+    return prevTotal === nextTotal;
   }
 };
 
@@ -219,7 +229,9 @@ const StandardRow = memo(({ item, produtos, onIncrement, onDecrement, type, temp
   }
 
   // Simple item (Bebida/Porcao)
-  const qty = produtos[item.name] || 0;
+  const qty = Object.entries(produtos)
+    .filter(([k]) => k === item.name || k.startsWith(item.name + ' + '))
+    .reduce((sum, [, v]) => sum + v, 0);
   
   const handleInc = useCallback(() => onIncrement(item.name), [onIncrement, item.name]);
   const handleDec = useCallback(() => onDecrement(item.name), [onDecrement, item.name]);
@@ -458,11 +470,15 @@ export default function NovoPedidoScreen({ route }: any) {
     pizzaSubcategories,
     pizzaConfig,
     addPizzaToOrder,
+    addPorcaoWithAdicionais,
     carregarCardapio,
     refreshCardapio,
     isRefreshingCardapio,
     extras
   } = useNovoPedido();
+
+  const [adicionaisMap, setAdicionaisMap] = useState<Record<string, ProductAdicional[]>>({});
+  const [adicionaisPickerProduct, setAdicionaisPickerProduct] = useState<(Product & { price: number }) | null>(null);
 
   const [isRefreshHovered, setIsRefreshHovered] = useState(false);
   const [isRefreshFocused, setIsRefreshFocused] = useState(false);
@@ -491,6 +507,22 @@ export default function NovoPedidoScreen({ route }: any) {
       }
     };
   }, []);
+
+  // Load adicionais for all porcoes on mount
+  useEffect(() => {
+    if (!cardapio.porcoes || cardapio.porcoes.length === 0) return;
+    const ids = cardapio.porcoes.map(p => p.id).filter(Boolean);
+    if (ids.length === 0) return;
+    Promise.all(ids.map(id => AdicionaisService.fetchByProduct(id).then(list => ({ id, list }))))
+      .then(results => {
+        const map: Record<string, ProductAdicional[]> = {};
+        for (const { id, list } of results) {
+          if (list.length > 0) map[id] = list;
+        }
+        setAdicionaisMap(map);
+      })
+      .catch(err => console.warn('[NovoPedidoScreen] Failed to load adicionais:', err));
+  }, [cardapio.porcoes]);
 
   const handleHeaderRefresh = useCallback(async () => {
     if (isRefreshingCardapio) return;
@@ -698,6 +730,16 @@ export default function NovoPedidoScreen({ route }: any) {
   const handleDecrement = useCallback((itemName: string) => {
     updateProdutoAnimated(itemName, -1);
   }, [updateProdutoAnimated]);
+
+  // Open adicionais picker for porcoes that have adicionais configured
+  const handlePorcaoIncrement = useCallback((product: Product & { price: number }) => {
+    const adicionais = adicionaisMap[product.id] || [];
+    if (adicionais.length > 0) {
+      setAdicionaisPickerProduct(product);
+    } else {
+      updateProdutoAnimated(product.name, 1);
+    }
+  }, [adicionaisMap, updateProdutoAnimated]);
   
   // Memoized keyExtractor for stable keys
   const keyExtractor = useCallback((item: SectionItem, index: number) => {
@@ -768,8 +810,11 @@ export default function NovoPedidoScreen({ route }: any) {
         />
       );
     }
+    if (section.type === 'porcoes') {
+      return <StandardRow item={item as Product} produtos={produtos} onIncrement={() => handlePorcaoIncrement(item as Product & { price: number })} onDecrement={handleDecrement} type={section.type} temperos={temperosComidas} />;
+    }
     return <StandardRow item={item as Product} produtos={produtos} onIncrement={handleIncrement} onDecrement={handleDecrement} type={section.type} temperos={temperosComidas} />;
-  }, [produtos, temperosCaldos, temperosComidas, variacoesEspetinho, handleIncrement, handleDecrement]);
+  }, [produtos, temperosCaldos, temperosComidas, variacoesEspetinho, handleIncrement, handleDecrement, handlePorcaoIncrement]);
 
   if (loadingCardapio) {
     return (
@@ -920,6 +965,19 @@ export default function NovoPedidoScreen({ route }: any) {
         initialFlavor={selectedPizza}
         extras={extras}
       />
+
+      {adicionaisPickerProduct && (
+        <AdicionaisPickerModal
+          visible={adicionaisPickerProduct != null}
+          onClose={() => setAdicionaisPickerProduct(null)}
+          onConfirm={(selected: SelectedAdicional[]) => {
+            addPorcaoWithAdicionais(adicionaisPickerProduct.name, adicionaisPickerProduct.price, selected);
+            setAdicionaisPickerProduct(null);
+          }}
+          product={{ id: adicionaisPickerProduct.id, name: adicionaisPickerProduct.name, price: adicionaisPickerProduct.price }}
+          adicionais={adicionaisMap[adicionaisPickerProduct.id] || []}
+        />
+      )}
 
       <StatusBar style="dark" />
     </KeyboardAvoidingView>

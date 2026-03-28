@@ -8,7 +8,10 @@ import { usePerformanceMonitor } from '../hooks/usePerformanceMonitor';
 import { useFocusEffect } from '@react-navigation/native';
 // @ts-ignore
 import PizzaBuilderModal from '../components/PizzaBuilderModal';
+import AdicionaisPickerModal from '../components/AdicionaisPickerModal';
 import { Product } from '../types';
+import { ProductAdicional, SelectedAdicional } from '../types/models';
+import { AdicionaisService } from '../services/AdicionaisService';
 import { NewOrderCartFooter, NewOrderHeaderForm, NewOrderListFooter, PizzaProductCard } from '../features/new-order';
 // KeyboardWrapper removed to prevent touch stealing
 import { KeyboardAvoidingView } from 'react-native';
@@ -165,8 +168,13 @@ const areStandardPropsEqual = (prev: StandardRowProps, next: StandardRowProps) =
     }
     return true;
   } else {
-    // Simple check
-    return prev.produtos[prev.item.name] === next.produtos[next.item.name];
+    // For porcoes: count all variant keys (base + "base + ...") to detect changes
+    const prefix = prev.item.name;
+    const sumQty = (produtos: Record<string, number>) =>
+      Object.entries(produtos)
+        .filter(([k]) => k === prefix || k.startsWith(prefix + ' + '))
+        .reduce((s, [, v]) => s + v, 0);
+    return sumQty(prev.produtos) === sumQty(next.produtos);
   }
 };
 
@@ -216,7 +224,10 @@ const StandardRow = memo(({ item, produtos, onIncrement, onDecrement, type, temp
   }
 
   // Simple item (Bebida/Porcao)
-  const qty = produtos[item.name] || 0;
+  // For porcoes, sum base qty + all variant qtys ("Item + Extra1, Extra2")
+  const qty = Object.entries(produtos)
+    .filter(([k]) => k === item.name || k.startsWith(item.name + ' + '))
+    .reduce((sum, [, v]) => sum + v, 0);
   
   const handleInc = useCallback(() => onIncrement(item.name), [onIncrement, item.name]);
   const handleDec = useCallback(() => onDecrement(item.name), [onDecrement, item.name]);
@@ -455,13 +466,50 @@ export default function NovoPedidoScreen({ route }: any) {
     pizzaSubcategories,
     pizzaConfig,
     addPizzaToOrder,
+    addPorcaoWithAdicionais,
     carregarCardapio,
     refreshCardapio,
     isRefreshingCardapio,
     extras
   } = useNovoPedido();
 
-  const [showRefreshSuccess, setShowRefreshSuccess] = useState(false);
+  // ─── Adicionais para porções ──────────────────────────────────────────────
+  const [adicionaisMap, setAdicionaisMap] = useState<Record<string, ProductAdicional[]>>({});
+  const [adicionaisPickerProduct, setAdicionaisPickerProduct] = useState<(Product & { price: number }) | null>(null);
+
+  useEffect(() => {
+    const porcoes = cardapio?.porcoes;
+    if (!porcoes || !user?.companyId) return;
+    let cancelled = false;
+
+    const loadAdicionais = async () => {
+      const map: Record<string, ProductAdicional[]> = {};
+      await Promise.all(
+        porcoes.map(async (p) => {
+          try {
+            const adics = await AdicionaisService.fetchByProduct(p.id, user.companyId);
+            if (adics.length > 0) map[p.id] = adics;
+          } catch {
+            // silencioso: se falhar, comporta como sem adicionais
+          }
+        })
+      );
+      if (!cancelled) setAdicionaisMap(map);
+    };
+
+    loadAdicionais();
+    return () => { cancelled = true; };
+  }, [cardapio?.porcoes, user?.companyId]);
+
+  const handlePorcaoIncrement = useCallback((itemName: string) => {
+    const porcoes = cardapio?.porcoes || [];
+    const product = porcoes.find(p => p.name === itemName);
+    if (product && adicionaisMap[product.id]?.length > 0) {
+      setAdicionaisPickerProduct(product as Product & { price: number });
+    } else {
+      updateProdutoAnimated(itemName, 1);
+    }
+  }, [cardapio?.porcoes, adicionaisMap, updateProdutoAnimated]);  const [showRefreshSuccess, setShowRefreshSuccess] = useState(false);
   const refreshSuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isInitialFocusRef = useRef(true);
@@ -707,6 +755,16 @@ export default function NovoPedidoScreen({ route }: any) {
   const handleDecrement = useCallback((itemName: string) => {
     updateProdutoAnimated(itemName, -1);
   }, [updateProdutoAnimated]);
+
+  const handlePorcaoIncrement = useCallback((itemName: string) => {
+    const porcoes = cardapio?.porcoes || [];
+    const product = porcoes.find(p => p.name === itemName);
+    if (product && adicionaisMap[product.id]?.length > 0) {
+      setAdicionaisPickerProduct(product as Product & { price: number });
+    } else {
+      updateProdutoAnimated(itemName, 1);
+    }
+  }, [cardapio?.porcoes, adicionaisMap, updateProdutoAnimated]);
   
   // Memoized keyExtractor for stable keys
   const keyExtractor = useCallback((item: SectionItem, index: number) => {
@@ -791,8 +849,8 @@ export default function NovoPedidoScreen({ route }: any) {
         />
       );
     }
-    return <StandardRow item={item as Product} produtos={produtos} onIncrement={handleIncrement} onDecrement={handleDecrement} type={section.type} temperos={temperosComidas} />;
-  }, [produtos, temperosCaldos, temperosComidas, variacoesEspetinho, handleIncrement, handleDecrement]);
+    return <StandardRow item={item as Product} produtos={produtos} onIncrement={section.type === 'porcoes' ? handlePorcaoIncrement : handleIncrement} onDecrement={handleDecrement} type={section.type} temperos={temperosComidas} />;
+  }, [produtos, temperosCaldos, temperosComidas, variacoesEspetinho, handleIncrement, handleDecrement, handlePorcaoIncrement]);
 
   if (loadingCardapio) {
     return (
@@ -924,6 +982,27 @@ export default function NovoPedidoScreen({ route }: any) {
         initialFlavor={selectedPizza}
         extras={extras}
       />
+
+      {adicionaisPickerProduct && (
+        <AdicionaisPickerModal
+          visible={!!adicionaisPickerProduct}
+          onClose={() => setAdicionaisPickerProduct(null)}
+          onConfirm={(selectedAdicionais: SelectedAdicional[]) => {
+            addPorcaoWithAdicionais(
+              adicionaisPickerProduct.name,
+              adicionaisPickerProduct.price || 0,
+              selectedAdicionais
+            );
+            setAdicionaisPickerProduct(null);
+          }}
+          product={{
+            id: adicionaisPickerProduct.id,
+            name: adicionaisPickerProduct.name,
+            price: adicionaisPickerProduct.price || 0,
+          }}
+          adicionais={adicionaisMap[adicionaisPickerProduct.id] || []}
+        />
+      )}
 
       <StatusBar style="dark" />
     </KeyboardAvoidingView>
