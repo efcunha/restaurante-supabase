@@ -5,16 +5,9 @@
 # Execução: maestro test .maestro/pizza.yaml
 appId: com.comandapraia.donacida
 name: "Fluxo Pizza - Garcom 01"
-env:
-  PLAYWRIGHT_TEST_EMAIL: ""
-  PLAYWRIGHT_TEST_PASSWORD: ""
 ---
 # ── 1. Login ─────────────────────────────────────────────────────────────────
-- runFlow:
-    file: _subflows/login.yaml
-    env:
-      TEST_EMAIL: ${PLAYWRIGHT_TEST_EMAIL}
-      TEST_PASSWORD: ${PLAYWRIGHT_TEST_PASSWORD}
+- runFlow: _subflows/login.yaml
 
 # ── 2. Navega para Novo Pedido ────────────────────────────────────────────────
 - tapOn: "Novo Pedido"

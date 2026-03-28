@@ -1,0 +1,25 @@
+# Subflow: login_garcom02.yaml
+# Variáveis lidas do ambiente: PLAYWRIGHT_TEST_EMAIL_GARCOM02, PLAYWRIGHT_TEST_PASSWORD_GARCOM02
+# Defina em .maestro/.env.maestro ou passe via -e
+appId: com.comandapraia.donacida
+---
+- launchApp:
+    clearState: true
+
+- extendedWaitUntil:
+    visible:
+      text: "seu@email.com"
+    timeout: 15000
+
+- tapOn: "seu@email.com"
+- inputText: "${PLAYWRIGHT_TEST_EMAIL_GARCOM02}"
+
+- tapOn: "••••••••"
+- inputText: "${PLAYWRIGHT_TEST_PASSWORD_GARCOM02}"
+
+- tapOn: "ENTRAR"
+
+- extendedWaitUntil:
+    visible:
+      text: "Novo Pedido"
+    timeout: 15000
