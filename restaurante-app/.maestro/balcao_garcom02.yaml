@@ -18,8 +18,7 @@ name: "Fluxo Balcão - Garcom 02"
 
 # ── 3. Preenche nome do cliente (Balcão: sem número de mesa) ─────────────────
 - tapOn: "Digite o nome"
-- inputText: "Cliente Balcao G02 Maestro"
-
+- inputText: "Cliente Balcao G02 Maestro"- hideKeyboard
 # ── 4. Adiciona pizza Grande/Família ─────────────────────────────────────────
 - runFlow: _subflows/add_pizza.yaml
 
