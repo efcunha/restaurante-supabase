@@ -5,16 +5,9 @@
 # Execução: maestro test .maestro/balcao_garcom02.yaml
 appId: com.comandapraia.donacida
 name: "Fluxo Balcão - Garcom 02"
-env:
-  PLAYWRIGHT_TEST_EMAIL_GARCOM02: ""
-  PLAYWRIGHT_TEST_PASSWORD_GARCOM02: ""
 ---
-# ── 1. Login Garcom 02 ────────────────────────────────────────────────────────
-- runFlow:
-    file: _subflows/login.yaml
-    env:
-      TEST_EMAIL: ${PLAYWRIGHT_TEST_EMAIL_GARCOM02}
-      TEST_PASSWORD: ${PLAYWRIGHT_TEST_PASSWORD_GARCOM02}
+# ── 1. Login Garcom 02 ────────────────────────────────────────────────────────────────
+- runFlow: _subflows/login_garcom02.yaml
 
 # ── 2. Navega para Novo Pedido ────────────────────────────────────────────────
 - tapOn: "Novo Pedido"

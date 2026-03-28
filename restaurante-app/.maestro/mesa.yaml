@@ -18,16 +18,10 @@
 appId: com.comandapraia.donacida
 name: "Fluxo Mesa - Garcom 01"
 env:
-  PLAYWRIGHT_TEST_EMAIL: ""
-  PLAYWRIGHT_TEST_PASSWORD: ""
   NUMERO_MESA: "3"
 ---
 # ── 1. Login ─────────────────────────────────────────────────────────────────
-- runFlow:
-    file: _subflows/login.yaml
-    env:
-      TEST_EMAIL: ${PLAYWRIGHT_TEST_EMAIL}
-      TEST_PASSWORD: ${PLAYWRIGHT_TEST_PASSWORD}
+- runFlow: _subflows/login.yaml
 
 # ── 2. Navega para Novo Pedido ────────────────────────────────────────────────
 - tapOn: "Novo Pedido"
