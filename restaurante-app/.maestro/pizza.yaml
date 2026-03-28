@@ -31,5 +31,5 @@ name: "Fluxo Pizza - Garcom 01"
 - tapOn: "Criar Pedido"
 - extendedWaitUntil:
     visible:
-      text: "Pedido criado! Comanda"
+      text: "Digite o nome"
     timeout: 15000

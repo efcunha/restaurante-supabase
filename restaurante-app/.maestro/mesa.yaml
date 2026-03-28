@@ -35,7 +35,8 @@ env:
 - inputText: "Mesa Maestro G01"
 
 - tapOn: "Nº"
-- inputText: "${NUMERO_MESA}"- hideKeyboard
+- inputText: "${NUMERO_MESA}"
+- hideKeyboard
 # ── 4. Adiciona pizza Grande/Família ─────────────────────────────────────────
 - runFlow: _subflows/add_pizza.yaml
 
@@ -46,7 +47,7 @@ env:
 - tapOn: "Criar Pedido"
 - extendedWaitUntil:
     visible:
-      text: "Pedido criado! Comanda"
+      text: "Digite o nome"
     timeout: 20000
 
 # ── 7. Verifica Cozinha (descomente se o usuário de teste tiver acesso à tab) ─

@@ -15,6 +15,7 @@ appId: com.comandapraia.donacida
       - eraseText: 50
       - inputText: "chopp"
       - waitForAnimationToEnd
+      - hideKeyboard
       - tapOn:
           text: "+"
           index: 0
@@ -24,6 +25,7 @@ appId: com.comandapraia.donacida
 - eraseText: 50
 - inputText: "risoto"
 - waitForAnimationToEnd
+- hideKeyboard
 - tapOn:
     text: "+"
     index: 0
@@ -36,10 +38,12 @@ appId: com.comandapraia.donacida
       - eraseText: 50
       - inputText: "caldo"
       - waitForAnimationToEnd
+      - hideKeyboard
       - tapOn:
           text: "+"
           index: 0
 
-# ── Limpa busca ─────────────────────────────────────────────────────────────
+# ── Limpa busca e fecha teclado ─────────────────────────────────────────────
 - tapOn: "Buscar item do cardápio..."
 - eraseText: 50
+- hideKeyboard
