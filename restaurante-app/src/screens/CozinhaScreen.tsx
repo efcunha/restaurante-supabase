@@ -9,7 +9,7 @@ import { useAuth } from '../context/AuthContext';
 import OrderService from '../services/OrderService';
 import { supabase } from '../config/SupabaseConfig';
 // @ts-ignore
-import { getLocalDateKey } from '../utils/dateUtils';
+import { getBusinessDateKey } from '../services/BusinessDateService';
 import OptimizedFlatList from '../components/OptimizedFlatList';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
@@ -21,10 +21,10 @@ export default function CozinhaScreen() {
   useEffect(() => {
     // @ts-ignore
     if (!user?.companyId) return;
-    const today = getLocalDateKey();
 
     // Initial fetch
     const fetchOrders = async () => {
+      const today = await getBusinessDateKey(user.companyId);
       const { data, error } = await supabase
         .from('orders')
         .select('*')

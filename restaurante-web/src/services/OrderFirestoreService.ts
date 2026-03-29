@@ -9,10 +9,7 @@ import { RealtimeChannel } from '@supabase/supabase-js';
 import offlineQueueService from './OfflineQueueService';
 import { isRetryableError } from '../utils/errors';
 
-import { getLocalDateKey } from '../utils/dateUtils';
-
-// Helper to get today's date key YYYY-MM-DD
-const getTodayKey = (): string => getLocalDateKey();
+import { getBusinessDateKey } from './BusinessDateService';
 
 class OrderFirestoreService {
   private _subscription: RealtimeChannel | null = null;
@@ -57,35 +54,37 @@ class OrderFirestoreService {
       this._subscription.unsubscribe();
     }
 
-    const todayKey = getTodayKey();
+    void (async () => {
+      const todayKey = await getBusinessDateKey(companyId);
 
-    // Initial fetch
-    this.fetchActiveOrders(companyId, todayKey).then(orders => {
-      const docMap: Record<string, string> = {};
-      orders.forEach(o => docMap[o.id] = o.id);
-      callback({ orders, docMap });
-    });
+      // Initial fetch
+      this.fetchActiveOrders(companyId, todayKey).then(orders => {
+        const docMap: Record<string, string> = {};
+        orders.forEach(o => docMap[o.id] = o.id);
+        callback({ orders, docMap });
+      });
 
-    // Subscribe to changes
-    this._subscription = supabase
-      .channel('orders-channel')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'orders',
-          filter: `company_id=eq.${companyId}`,
-        },
-        async (payload) => {
-          console.log('[OrderService] Change received:', payload);
-          const orders = await this.fetchActiveOrders(companyId, todayKey);
-          const docMap: Record<string, string> = {};
-          orders.forEach(o => docMap[o.id] = o.id);
-          callback({ orders, docMap });
-        }
-      )
-      .subscribe();
+      // Subscribe to changes
+      this._subscription = supabase
+        .channel('orders-channel')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'orders',
+            filter: `company_id=eq.${companyId}`,
+          },
+          async (payload) => {
+            console.log('[OrderService] Change received:', payload);
+            const orders = await this.fetchActiveOrders(companyId, todayKey);
+            const docMap: Record<string, string> = {};
+            orders.forEach(o => docMap[o.id] = o.id);
+            callback({ orders, docMap });
+          }
+        )
+        .subscribe();
+    })();
 
     return () => {
       if (this._subscription) this._subscription.unsubscribe();
@@ -116,6 +115,7 @@ class OrderFirestoreService {
    * Internal method for creating order directly
    */
   private async _createOrderInternal(companyId: string, order: Partial<Order>): Promise<string> {
+    const dateKey = order.dateKey || await getBusinessDateKey(companyId);
     const { data, error } = await supabase
       .from('orders')
       .insert({
@@ -129,7 +129,7 @@ class OrderFirestoreService {
         total_amount: order.totalPrice,
         is_paid: false,
         created_by: order.createdBy,
-        date_key: order.dateKey || getTodayKey(),
+        date_key: dateKey,
         items_with_status: order.itemsWithStatus || [],
         order_type: order.orderType || 'local',
         updated_at: new Date().toISOString()
@@ -277,6 +277,7 @@ class OrderFirestoreService {
    */
   async saveOrder(companyId: string, order: Order): Promise<string> {
     console.log('🔵 [OrderFirestoreService] saveOrder chamado:', { companyId, client: order.client, itemsWithStatusLength: order.itemsWithStatus?.length });
+    const dateKey = order.dateKey || await getBusinessDateKey(companyId);
     const { data, error } = await supabase
       .from('orders')
       .insert({
@@ -291,7 +292,7 @@ class OrderFirestoreService {
         total_amount: order.totalPrice,
         is_paid: order.isPago || false,
         created_by: order.createdBy,
-        date_key: getTodayKey(),
+        date_key: dateKey,
         updated_at: new Date().toISOString()
       })
       .select()

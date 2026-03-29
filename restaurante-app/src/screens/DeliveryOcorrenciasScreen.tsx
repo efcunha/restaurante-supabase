@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../config/SupabaseConfig';
-import { getLocalDateKey } from '../utils/dateUtils';
+import { getBusinessDateKey } from '../services/BusinessDateService';
 import { colors } from '../theme/colors';
 
 type DeliveryFailureStatus = 'failed_delivery' | 'returned' | 'refused';
@@ -85,9 +85,25 @@ export default function DeliveryOcorrenciasScreen({ onClose }: DeliveryOcorrenci
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [selectedDay, setSelectedDay] = useState<string>(getLocalDateKey());
+  const [selectedDay, setSelectedDay] = useState<string>('');
   const [operatorFilter, setOperatorFilter] = useState('');
   const [occurrences, setOccurrences] = useState<DeliveryOccurrence[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    if (!user?.companyId || selectedDay) return;
+
+    const loadBusinessDay = async () => {
+      const dateKey = await getBusinessDateKey(user.companyId);
+      if (active) setSelectedDay(dateKey);
+    };
+
+    loadBusinessDay();
+
+    return () => {
+      active = false;
+    };
+  }, [selectedDay, user?.companyId]);
 
   const fetchOccurrences = useCallback(async () => {
     try {
@@ -103,7 +119,7 @@ export default function DeliveryOcorrenciasScreen({ onClose }: DeliveryOcorrenci
         .gte('date_key', getStartDateKey(30))
         .order('updated_at', { ascending: false });
 
-      if (selectedDay !== 'all') {
+      if (selectedDay && selectedDay !== 'all') {
         query = query.eq('date_key', selectedDay);
       }
 

@@ -19,7 +19,7 @@ import { useAuth } from '../context/AuthContext';
 import TransferModal from '../components/TransferModal';
 import { calcularPrecoItem, MenuItem } from '../utils/orderCalculator';
 
-import { getTodayKey } from '../utils/dateUtils';
+import { getBusinessDateKey } from '../services/BusinessDateService';
 import { colors } from '../theme/colors';
 interface Props {
   visible: boolean;
@@ -85,7 +85,7 @@ export default function PedidoDetalhesModal({ visible, orderId, orderIds = [], t
               if (order && (order.comandaNumber || order.numeroComanda)) {
                   const num = order.comandaNumber || order.numeroComanda;
                   // Use order's dateKey if available, otherwise today
-                  const dateKey = order.dateKey || getTodayKey();
+                  const dateKey = order.dateKey || await getBusinessDateKey(user?.companyId || '');
                   
                     const { data } = await supabase
                       .from('comandas')

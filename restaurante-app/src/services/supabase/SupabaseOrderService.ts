@@ -5,9 +5,10 @@ import { isRetryableError } from '../../utils/errors';
 import { realTimeListenerManager } from '../optimization/RealTimeListenerManager';
 import type { Subscription } from '../optimization/RealTimeListenerManager';
 import { CompanySettingsService } from '../CompanySettingsService';
-import { getBusinessDayStart, getTodayKey } from '../../utils/dateUtils';
+import { getBusinessDayStart } from '../../utils/dateUtils';
 import ComandasService from '../ComandasService';
 import { getNextComandaNumber } from '../ComandaNumberService';
+import { getBusinessDateKey } from '../BusinessDateService';
 
 class SupabaseOrderService {
   private _subscription: Subscription | null = null;
@@ -117,29 +118,31 @@ class SupabaseOrderService {
       this._subscription = null;
     }
 
-    const todayKey = getTodayKey();
+    void (async () => {
+      const todayKey = await getBusinessDateKey(companyId);
 
-    // Initial fetch
-    this.fetchActiveOrders(companyId, todayKey).then(orders => callback({ orders }));
+      // Initial fetch
+      this.fetchActiveOrders(companyId, todayKey).then(orders => callback({ orders }));
 
-    // Subscribe using RealTimeListenerManager with filters and debouncing
-    const channelName = `orders-${companyId}-${todayKey}`;
+      // Subscribe using RealTimeListenerManager with filters and debouncing
+      const channelName = `orders-${companyId}-${todayKey}`;
 
-    this._subscription = realTimeListenerManager.subscribe(
-      channelName,
-      {
-        table: 'orders',
-        event: '*',
-        filter: `company_id=eq.${companyId}`,
-        schema: 'public'
-      },
-      async (payload) => {
-        // Debounced callback - will be called after 500ms of no updates
-        console.log('[SupabaseOrder] Change received:', payload);
-        const orders = await this.fetchActiveOrders(companyId, todayKey);
-        callback({ orders });
-      }
-    );
+      this._subscription = realTimeListenerManager.subscribe(
+        channelName,
+        {
+          table: 'orders',
+          event: '*',
+          filter: `company_id=eq.${companyId}`,
+          schema: 'public'
+        },
+        async (payload) => {
+          // Debounced callback - will be called after 500ms of no updates
+          console.log('[SupabaseOrder] Change received:', payload);
+          const orders = await this.fetchActiveOrders(companyId, todayKey);
+          callback({ orders });
+        }
+      );
+    })();
 
     // Return cleanup function
     return () => {
@@ -196,6 +199,7 @@ class SupabaseOrderService {
    * Internal method for creating order directly
    */
   private async _createOrderInternal(companyId: string, order: Partial<Order>): Promise<string> {
+    const dateKey = order.dateKey || await getBusinessDateKey(companyId);
     const { data, error } = await supabase
       .from('orders')
       .insert({
@@ -209,7 +213,7 @@ class SupabaseOrderService {
         total_amount: order.totalPrice,
         is_paid: false,
         created_by: order.createdBy,
-        date_key: getTodayKey(),
+        date_key: dateKey,
         comanda_status: 'aberta',
         items_with_status: order.itemsWithStatus || [],
         order_type: order.orderType || 'local',
@@ -227,7 +231,7 @@ class SupabaseOrderService {
 
     // Invalidate cache for orders
     const { cacheLayerService } = await import('../CacheLayerService');
-    await cacheLayerService.invalidateByTags([`orders:${companyId}`, `orders:date:${getTodayKey()}`]);
+  await cacheLayerService.invalidateByTags([`orders:${companyId}`, `orders:date:${dateKey}`]);
 
     return data.id;
   }
@@ -352,13 +356,13 @@ class SupabaseOrderService {
    * Salva um pedido completo
    */
   async saveOrder(companyId: string, order: Order): Promise<string> {
-    const dateKey = getTodayKey();
+    const dateKey = order.dateKey || await getBusinessDateKey(companyId);
     const orderType = (order.orderType || 'local').toLowerCase();
     let comandaNumber = parseInt(String(order.comandaNumber || '0').replace(/\D/g, ''), 10);
 
     // Para delivery, usar a mesma fonte de verdade da tabela comandas para evitar colisões entre fluxos.
     if (orderType === 'delivery' && (!comandaNumber || comandaNumber <= 0)) {
-      comandaNumber = await getNextComandaNumber();
+      comandaNumber = await getNextComandaNumber(dateKey);
       console.log(`[SupabaseOrderService] 🚚 Gerado comanda_number unificada para delivery: ${comandaNumber}`);
     }
 
@@ -387,7 +391,9 @@ class SupabaseOrderService {
         actorId,
         actorName,
         '',
-        order.client || 'Cliente Delivery'
+        order.client || 'Cliente Delivery',
+        0,
+        dateKey
       );
     }
     
@@ -419,7 +425,7 @@ class SupabaseOrderService {
 
     if (orderType === 'delivery') {
       try {
-        await ComandasService.adicionarConsumo(companyId, String(comandaNumber), Number(order.totalPrice || 0));
+        await ComandasService.adicionarConsumo(companyId, String(comandaNumber), Number(order.totalPrice || 0), dateKey);
       } catch (consumeError: any) {
         console.warn('[SupabaseOrderService] adicionarConsumo falhou para delivery, aplicando recálculo de segurança:', consumeError?.message || consumeError);
         await this._recalculateComandaTotals(companyId, dateKey, [comandaNumber]);
@@ -451,7 +457,7 @@ class SupabaseOrderService {
         throw new Error('Mesa de destino inválida');
       }
 
-      const dateK = getTodayKey();
+      const dateK = await getBusinessDateKey(companyId);
 
       // 1. Get current order info to log 'from_table'
       const { data: currentOrder, error: fetchError } = await supabase
