@@ -225,13 +225,14 @@ class OrderService {
     categoryMap: any = null,
     priceMap: Record<string, number> | undefined = undefined,
     tableId: string = '',
-    waiterId: string = ''
+    waiterId: string = '',
+    businessDateKey?: string
   ): Order {
     const now = new Date();
     const nowISO = now.toISOString();
 
     // CORREÇÃO: Usar data LOCAL consistente com o restante do app
-    const dateKeyStr = getLocalDateKey();
+    const dateKeyStr = businessDateKey || getLocalDateKey();
 
     const comanda = comandaNumber?.trim() || '';
     const calculatedTotal = totalPrice > 0 ? totalPrice : this.calculateOrderTotal(items);

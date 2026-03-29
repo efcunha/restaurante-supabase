@@ -2,12 +2,10 @@
  * ComandasService - Gerencia contas abertas (comandas), totais e fechamento.
  */
 import { supabase } from '../config/SupabaseConfig';
-import { getLocalDateKey } from '../utils/dateUtils';
 import { Comanda } from '../types';
+import { getBusinessDateKey } from './BusinessDateService';
 
 const TABLE_COMANDAS = 'comandas';
-
-const todayKey = (): string => getLocalDateKey();
 
 class ComandasService {
 
@@ -58,7 +56,8 @@ class ComandasService {
     usuarioNome: string,
     mesa: string = '',
     cliente: string = '',
-    attemptCount: number = 0
+    attemptCount: number = 0,
+    businessDateKey?: string
   ): Promise<{ id: string; dateKey: string }> {
     console.log(`[ComandasService] ensureComandaAberta START - attempt ${attemptCount}, comanda ${comandaNumber}, mesa ${mesa}, cliente ${cliente}`);
     
@@ -69,7 +68,7 @@ class ComandasService {
     }
 
     if (!companyId) throw new Error("Company ID required");
-    const dateK = todayKey();
+    const dateK = businessDateKey || await getBusinessDateKey(companyId);
     const numStr = String(comandaNumber);
 
     // 1. Check if exists — busca APENAS por company_id + date_key + comanda_number.
@@ -165,7 +164,7 @@ class ComandasService {
           console.log('[ComandasService] Retry SELECT with params:', { companyId, dateK, numStr, mesa });
           // Add small delay to handle race condition timing
           await new Promise(resolve => setTimeout(resolve, 100));
-          return this.ensureComandaAberta(companyId, comandaNumber, usuarioId, usuarioNome, mesa, cliente, attemptCount + 1);
+          return this.ensureComandaAberta(companyId, comandaNumber, usuarioId, usuarioNome, mesa, cliente, attemptCount + 1, dateK);
         } else {
           throw new Error('Failed to ensure comanda after 2 attempts');
         }
@@ -178,9 +177,9 @@ class ComandasService {
     return { id: novo.id, dateKey: dateK };
   }
 
-  async adicionarConsumo(companyId: string, comandaNumber: string | number, valorAcrescentar: number | string) {
+  async adicionarConsumo(companyId: string, comandaNumber: string | number, valorAcrescentar: number | string, businessDateKey?: string) {
     if (!companyId) throw new Error("Company ID required");
-    const dateK = todayKey();
+    const dateK = businessDateKey || await getBusinessDateKey(companyId);
     const numStr = String(comandaNumber);
     const valor = typeof valorAcrescentar === 'string' ? parseFloat(valorAcrescentar) : valorAcrescentar;
 
@@ -235,9 +234,9 @@ class ComandasService {
     }
   }
 
-  async fecharComanda(companyId: string, comandaNumber: string | number, usuarioId: string, usuarioNome: string) {
+  async fecharComanda(companyId: string, comandaNumber: string | number, usuarioId: string, usuarioNome: string, businessDateKey?: string) {
     if (!companyId) throw new Error("Company ID required");
-    const dateK = todayKey();
+    const dateK = businessDateKey || await getBusinessDateKey(companyId);
     const numStr = String(comandaNumber);
 
     const { data: comanda } = await supabase

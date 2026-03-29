@@ -32,7 +32,8 @@ interface OrderContextType {
     priceMap?: any,
     categoryMap?: any,
     tableId?: string,
-    waiterId?: string
+    waiterId?: string,
+    businessDateKey?: string
   ) => Promise<string>;
   editOrder: (orderId: string, updatedData: Partial<Order>) => Promise<void>;
   deleteOrder: (orderId: string) => Promise<void>;
@@ -202,7 +203,7 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     clientName: string, items: string[], observations: string, comandaNumber: string = '',
     createdBy: string = '', createdByName: string = '', totalPrice: number = 0,
     _isPago: boolean = false, mesa: string = '', priceMap: any = null, categoryMap: any = null,
-    tableId: string = '', waiterId: string = ''
+    tableId: string = '', waiterId: string = '', businessDateKey?: string
   ) => {
     const orderId = OrderService.generateOrderId(orderCounter);
 
@@ -214,7 +215,9 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         const caixa = await CaixaService.getCaixaAberto(user.companyId);
         if (!caixa) {
           console.warn('[OrderContext] ⚠️ Caixa não encontrado - bloqueando criação de pedido');
-          throw new Error('Caixa não está aberto');
+          const caixaError = new Error('Caixa não está aberto');
+          (caixaError as any).code = 'CAIXA_FECHADO';
+          throw caixaError;
         } else {
           console.log('[OrderContext] Caixa aberto:', caixa.id);
         }
@@ -222,7 +225,7 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         // Verificar se comanda já possui pagamentos (usando Supabase)
         if (comandaNumber && comandaNumber.trim() !== '') {
           console.log('[OrderContext] Verificando pagamentos para comanda:', comandaNumber);
-          const dateKey = getTodayKey();
+          const dateKey = businessDateKey || getTodayKey();
 
           const { data: pagamentos, error } = await supabase
             .from('pagamentos')
@@ -243,7 +246,7 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         }
 
         console.log('[OrderContext] Chamando ensureComandaAberta...');
-        await ComandasService.ensureComandaAberta(user.companyId, comandaNumber, createdBy, createdByName, mesa, clientName);
+        await ComandasService.ensureComandaAberta(user.companyId, comandaNumber, createdBy, createdByName, mesa, clientName, 0, businessDateKey);
         console.log('[OrderContext] ensureComandaAberta concluído');
 
         // PRIORIDADE: Se o UI enviou um total calculado (totalPrice), usa ele.
@@ -255,14 +258,14 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         }
 
         // If _isPago is passed, we generally ignore it for new orders as they start unpaid, but let's keep it if needed for logic
-        const order = OrderService.createOrder(orderId, clientName, items, observations, comandaNumber, createdBy, createdByName, calculatedTotal, false, mesa, categoryMap, priceMap, tableId, waiterId);
+        const order = OrderService.createOrder(orderId, clientName, items, observations, comandaNumber, createdBy, createdByName, calculatedTotal, false, mesa, categoryMap, priceMap, tableId, waiterId, businessDateKey);
         const valorPedido = order.totalPrice || 0;
 
         console.log('🟢 [OrderContext] Chamando saveOrder com:', { companyId: user.companyId, orderId, itemsWithStatus: order.itemsWithStatus?.length });
         console.log('[OrderContext] Chamando Promise.all com saveOrder e adicionarConsumo...');
         const [firestoreDocId] = await Promise.all([
           OrderFirestoreService.saveOrder(user.companyId, order),
-          ComandasService.adicionarConsumo(user.companyId, comandaNumber, valorPedido)
+          ComandasService.adicionarConsumo(user.companyId, comandaNumber, valorPedido, businessDateKey)
         ]);
         console.log('[OrderContext] Promise.all concluído, firestoreDocId:', firestoreDocId);
 
@@ -271,7 +274,7 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         return orderId;
       } else {
         // Offline fallback
-        const order = OrderService.createOrder(orderId, clientName, items, observations, comandaNumber, createdBy, createdByName, totalPrice, false, mesa, categoryMap, priceMap, tableId, waiterId);
+        const order = OrderService.createOrder(orderId, clientName, items, observations, comandaNumber, createdBy, createdByName, totalPrice, false, mesa, categoryMap, priceMap, tableId, waiterId, businessDateKey);
         SyncService.addToQueue('ADD_ORDER', { companyId: user?.companyId, id: orderId, orderData: order });
         setOrders(prev => [order as Order, ...prev]);
         setOrderCounter(prev => prev + 1);
