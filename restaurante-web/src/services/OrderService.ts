@@ -1,4 +1,4 @@
-import { getLocalDateKey } from '../utils/dateUtils';
+import { formatDateKey } from '../utils/dateUtils';
 import { Order, OrderItemStatus } from '../types';
 import { calcularPrecoItem } from '../utils/orderCalculator';
 
@@ -231,8 +231,8 @@ class OrderService {
     const now = new Date();
     const nowISO = now.toISOString();
 
-    // CORREÇÃO: Usar data LOCAL consistente com o restante do app
-    const dateKeyStr = businessDateKey || getLocalDateKey();
+    // CORREÇÃO: Usar data consistente com o restante do app
+    const dateKeyStr = businessDateKey || formatDateKey(now);
 
     const comanda = comandaNumber?.trim() || '';
     const calculatedTotal = totalPrice > 0 ? totalPrice : this.calculateOrderTotal(items);

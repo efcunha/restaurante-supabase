@@ -8,7 +8,6 @@ import { useToast } from '../context/ToastContext';
 import { getNextComandaNumber, formatComandaNumber } from '../services/ComandaNumberService';
 import { supabase } from '../config/SupabaseConfig'; // Switched to Supabase
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getLocalDateKey } from '../utils/dateUtils';
 // @ts-ignore
 import { confirmLogout } from '../utils/appUtils';
 // @ts-ignore
@@ -704,9 +703,11 @@ export function useNovoPedido(): UseNovoPedidoReturn {
             console.log('[useNovoPedido] Setting isSubmitting=true');
             setIsSubmitting(true);
 
-            const businessDateKey = user?.companyId
-                ? await getBusinessDateKey(user.companyId)
-                : getLocalDateKey();
+            if (!user?.companyId) {
+                throw new Error('Empresa não identificada');
+            }
+
+            const businessDateKey = await getBusinessDateKey(user.companyId);
 
             if (user?.companyId) {
                 const caixaAberto = await CaixaService.getCaixaAberto(user.companyId);
