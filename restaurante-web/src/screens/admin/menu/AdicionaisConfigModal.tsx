@@ -59,7 +59,7 @@ function normalizeCategoryConstraints(
   maxChoices: number | undefined
 ): { selectionType: ProductAdicional['selectionType']; maxChoices: number | undefined } {
   if (selectionType === 'unico') {
-    return { selectionType: 'unico', maxChoices: 1 };
+    return { selectionType: 'unico', maxChoices: undefined };
   }
   return { selectionType: 'multiplo', maxChoices };
 }
@@ -434,8 +434,15 @@ export default function AdicionaisConfigModal({ visible, onClose, product, compa
                         style={[styles.segment, form.selectionType === st.value && styles.segmentActive]}
                         onPress={() => {
                           setField('selectionType', st.value);
-                          if (!editingId) {
-                            updateCategorySetting(form.category, { selectionType: st.value });
+                          if (st.value === 'unico') {
+                            setField('maxChoices', '');
+                            if (!editingId) {
+                              updateCategorySetting(form.category, { selectionType: 'unico', maxChoices: '' });
+                            }
+                          } else {
+                            if (!editingId) {
+                              updateCategorySetting(form.category, { selectionType: 'multiplo' });
+                            }
                           }
                         }}
                       >
@@ -446,10 +453,13 @@ export default function AdicionaisConfigModal({ visible, onClose, product, compa
                     ))}
                   </View>
 
-                  <Text style={styles.label}>Máx. escolhas (deixe vazio = sem limite)</Text>
+                  <Text style={[styles.label, form.selectionType === 'unico' && { opacity: 0.4 }]}>
+                    {form.selectionType === 'unico' ? 'Máx. escolhas (N/A — escolha única)' : 'Máx. escolhas (deixe vazio = sem limite)'}
+                  </Text>
                   <TextInput
-                    style={styles.input}
-                    value={form.maxChoices}
+                    style={[styles.input, form.selectionType === 'unico' && { opacity: 0.4, backgroundColor: '#f0f0f0' }]}
+                    value={form.selectionType === 'unico' ? '' : form.maxChoices}
+                    editable={form.selectionType !== 'unico'}
                     onChangeText={v => {
                       setField('maxChoices', v);
                       if (!editingId) {
@@ -457,7 +467,7 @@ export default function AdicionaisConfigModal({ visible, onClose, product, compa
                       }
                     }}
                     keyboardType="number-pad"
-                    placeholder="Ex: 1"
+                    placeholder={form.selectionType === 'unico' ? '—' : 'Ex: 3'}
                     placeholderTextColor={colors.disabled}
                   />
 
