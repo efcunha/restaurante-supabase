@@ -550,13 +550,12 @@ export default function DeliveryScreen() {
   }, [cardapio.porcoes, user?.companyId]);
 
   const handlePorcaoIncrement = useCallback((product: Product & { price: number }) => {
-    const adicionais = adicionaisMap[product.id] || [];
-    if (adicionais.length > 0) {
+    if (product?.id && user?.companyId) {
       setAdicionaisPickerProduct(product);
-    } else {
-      updateProdutoAnimated(product.name, 1);
+      return;
     }
-  }, [adicionaisMap, updateProdutoAnimated]);
+    updateProdutoAnimated(product.name, 1);
+  }, [updateProdutoAnimated, user?.companyId]);
 
   const keyExtractor = useCallback((item: any, index: number) => {
     if (typeof item === 'string') return item;
