@@ -11,7 +11,7 @@ import SyncService from '../services/SyncService';
 import { Order } from '../types';
 import CaixaService from '../services/CaixaService';
 import ComandasService from '../services/ComandasService';
-import { getTodayKey } from '../utils/dateUtils';
+import { getBusinessDateKey } from '../services/BusinessDateService';
 
 // Dynamic imports are great, but for types we might need to import them or use 'any' if services are JS.
 // Assuming services are JS or TS, we'll try to use standard imports for types if possible, 
@@ -224,7 +224,7 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
         // Verificar se comanda já possui pagamentos (usando Supabase)
         if (comandaNumber && comandaNumber.trim() !== '') {
-          const dateKey = businessDateKey || getTodayKey();
+          const dateKey = businessDateKey || await getBusinessDateKey(user.companyId);
 
           const { data: pagamentos, error } = await supabase
             .from('pagamentos')
