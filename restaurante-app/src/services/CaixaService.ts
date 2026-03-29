@@ -3,7 +3,8 @@
  */
 import { supabase } from '../config/SupabaseConfig';
 import { Caixa } from '../types';
-import { getLocalDateKey } from '../utils/dateUtils';
+import { formatDateKey, getBusinessDayStart } from '../utils/dateUtils';
+import { CompanySettingsService } from './CompanySettingsService';
 
 const TABLE_CAIXA = 'cash_registers';
 const TABLE_MOVIMENTOS = 'cash_movements';
@@ -12,12 +13,28 @@ const TABLE_MOVIMENTOS = 'cash_movements';
 interface CaixaCache {
   data: Caixa | null;
   timestamp: number;
+  companyId: string | null;
+  dateKey: string | null;
 }
 
-let caixaCache: CaixaCache = { data: null, timestamp: 0 };
+let caixaCache: CaixaCache = { data: null, timestamp: 0, companyId: null, dateKey: null };
 const CACHE_TTL = 2 * 60 * 1000;
 
 class CaixaService {
+
+  private async _getBusinessDateKey(companyId: string): Promise<string> {
+    try {
+      const settings = await CompanySettingsService.getSettings(companyId);
+      const cutoffHour = Number.isInteger(settings.businessDayCutoff)
+        ? settings.businessDayCutoff!
+        : 6;
+
+      return formatDateKey(getBusinessDayStart(cutoffHour));
+    } catch (error) {
+      console.warn('[CaixaService] Failed to resolve businessDayCutoff, using default 6 AM:', error);
+      return formatDateKey(getBusinessDayStart(6));
+    }
+  }
 
   // Helper: Get user's company ID
   private async _getCompanyId(): Promise<string | null> {
@@ -68,18 +85,16 @@ class CaixaService {
     if (!cid) return null;
 
     const now = Date.now();
-    const today = getLocalDateKey();
-    console.log('[CaixaService] Today key:', today);
+    const today = await this._getBusinessDateKey(cid);
+    console.log('[CaixaService] Business date key:', today);
     
     // Verificar cache: válido se dentro do TTL E do mesmo dia
     if (caixaCache.data && (now - caixaCache.timestamp) < CACHE_TTL) {
-      // Validar se o cache é do dia atual
-      if (caixaCache.data.data === today) {
+      if (caixaCache.companyId === cid && caixaCache.dateKey === today) {
         console.log('[CaixaService] Returning from cache');
         return caixaCache.data;
       }
-      // Cache é de outro dia, invalidar
-      caixaCache = { data: null, timestamp: 0 };
+      caixaCache = { data: null, timestamp: 0, companyId: null, dateKey: null };
     }
 
     console.log('[CaixaService] Querying Supabase for caixa aberto... [v4-with-abort]');
@@ -123,18 +138,18 @@ class CaixaService {
 
     if (data) {
       const mappedCaixa: Caixa = this._mapCaixaToType(data);
-      caixaCache = { data: mappedCaixa, timestamp: now };
+      caixaCache = { data: mappedCaixa, timestamp: now, companyId: cid, dateKey: today };
       console.log('[CaixaService] Caixa found and cached:', mappedCaixa.id);
       return mappedCaixa;
     }
 
-    caixaCache = { data: null, timestamp: now };
+    caixaCache = { data: null, timestamp: now, companyId: cid, dateKey: today };
     console.log('[CaixaService] No caixa aberto found');
     return null;
   }
 
   invalidateCache() {
-    caixaCache = { data: null, timestamp: 0 };
+    caixaCache = { data: null, timestamp: 0, companyId: null, dateKey: null };
   }
 
   async abrirCaixa(companyId: string, valorInicial: string | number, usuarioId: string, usuarioNome: string) {
@@ -147,11 +162,13 @@ class CaixaService {
     const existente = await this.getCaixaAberto(companyId);
     if (existente) throw new Error('Já existe um caixa aberto para hoje/agora.');
 
+    const businessDateKey = await this._getBusinessDateKey(companyId);
+
     const { data, error } = await supabase
       .from(TABLE_CAIXA)
       .insert({
         company_id: companyId,
-        date_key: getLocalDateKey(),
+        date_key: businessDateKey,
         opened_by: usuarioId,
         opened_by_name: usuarioNome,
         initial_value: valor,

@@ -70,6 +70,59 @@ test.describe('Fluxo Principal - Balcão (Novo Pedido Direto)', () => {
     }
     await page.waitForTimeout(500);
 
+    // Porções/Batata Frita: fluxo com novo modal de adicionais
+    console.log('Adicionando Porção Batata Frita (novo modal de adicionais)...');
+    await searchInput.click();
+    await searchInput.fill('');
+    await searchInput.fill('batata frita');
+    await page.waitForTimeout(1500);
+
+    const batataCard = page.locator('div[dir="auto"]').filter({ hasText: /Batata Frita/i }).filter({ visible: true }).first();
+    await expect(batataCard).toBeVisible({ timeout: 8000 });
+
+    const plusInBatataCard = batataCard
+      .locator('div[role="button"], div[dir="auto"]')
+      .filter({ hasText: /^\+$/ })
+      .filter({ visible: true })
+      .first();
+
+    if (await plusInBatataCard.count() > 0) {
+      await plusInBatataCard.click();
+    } else {
+      const fallbackPlusBtn = page
+        .locator('div[role="button"], div[dir="auto"]')
+        .filter({ hasText: /^\+$/ })
+        .filter({ visible: true })
+        .first();
+      await expect(fallbackPlusBtn).toBeVisible({ timeout: 8000 });
+      await fallbackPlusBtn.click();
+    }
+
+    const adicionaisModalSubtitle = page.getByText('Escolha os adicionais').last();
+    await expect(adicionaisModalSubtitle).toBeVisible({ timeout: 8000 });
+
+    const adicionaisBatata = [
+      /Ketchup/i,
+      /^Maionese$/i,
+      /Maionese\s+Temperada/i,
+      /Calabresa/i,
+    ];
+
+    for (const adicional of adicionaisBatata) {
+      const adicionalOption = page.getByText(adicional).last();
+      await expect(adicionalOption).toBeVisible({ timeout: 8000 });
+      await adicionalOption.click();
+    }
+
+    const addComAdicionaisBtn = page.getByText(/Adicionar ao pedido\s*·\s*R\$/i).last();
+    await expect(addComAdicionaisBtn).toBeVisible({ timeout: 8000 });
+    await addComAdicionaisBtn.click();
+
+    await expect(adicionaisModalSubtitle).toBeHidden({ timeout: 10000 });
+    await expect(page.getByText(/Batata Frita/i).first()).toBeVisible({ timeout: 8000 });
+    console.log('   ✓ Batata Frita adicionada via modal de adicionais');
+    await page.waitForTimeout(500);
+
     const itemsToSearch = [
       { term: 'chopp', quantity: 3 },
       { term: 'risoto', quantity: 1 },

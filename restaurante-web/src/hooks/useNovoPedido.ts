@@ -14,6 +14,8 @@ import { confirmLogout } from '../utils/appUtils';
 // @ts-ignore
 // @ts-ignore
 import InventoryService from '../services/InventoryService';
+import CaixaService from '../services/CaixaService';
+import { getBusinessDateKey } from '../services/BusinessDateService';
 import { listarFuncionarios } from '../services/FuncionariosService';
 import { Product, Cardapio, PizzaConfig, Funcionario } from '../types';
 import { getOrCreateMenuCategories, normalizeCategorySlug } from '../utils/menuCategories';
@@ -702,6 +704,24 @@ export function useNovoPedido(): UseNovoPedidoReturn {
             console.log('[useNovoPedido] Setting isSubmitting=true');
             setIsSubmitting(true);
 
+            const businessDateKey = user?.companyId
+                ? await getBusinessDateKey(user.companyId)
+                : getLocalDateKey();
+
+            if (user?.companyId) {
+                const caixaAberto = await CaixaService.getCaixaAberto(user.companyId);
+                if (!caixaAberto) {
+                    const caixaMensagem = 'O caixa precisa estar aberto para criar pedidos. Vá em "Caixa" > "Abertura" para abrir o caixa do dia.';
+                    showToast(caixaMensagem, 'warning');
+                    Alert.alert(
+                        '⚠️ Caixa Fechado',
+                        'O caixa precisa estar aberto para criar pedidos.\n\nVá em "Caixa" > "Abertura" para abrir o caixa do dia.',
+                        [{ text: 'Entendi' }]
+                    );
+                    return;
+                }
+            }
+
             // ✅ CRÍTICO: Prevenção de Concorrência em Mesas Livres
             if (user && mesa && mesa.trim() !== '') {
                 console.log('[useNovoPedido] Verificando se mesa já está ocupada:', mesa);
@@ -710,7 +730,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                     .from('comandas')
                     .select('id')
                     .eq('company_id', user.companyId)
-                    .eq('date_key', getLocalDateKey())
+                    .eq('date_key', businessDateKey)
                     .eq('table_number', mesa)
                     .eq('status', 'aberta')
                     .limit(1)
@@ -730,7 +750,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
             }
 
             console.log('[useNovoPedido] Gerando número de comanda...');
-            const nextNumber = await getNextComandaNumber();
+            const nextNumber = await getNextComandaNumber(businessDateKey);
             const novoNumeroComanda = formatComandaNumber(nextNumber);
             console.log('[useNovoPedido] Número de comanda gerado:', novoNumeroComanda);
 
@@ -800,7 +820,8 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                 priceMap, // ✅ Passar mapa de preços cached
                 categoryMap, // ✅ Passar mapa de categorias
                 tableId,
-                waiterId
+                waiterId,
+                businessDateKey
             );
             console.log('[useNovoPedido] addOrder concluído, orderId:', createdOrderId);
 
@@ -870,7 +891,12 @@ export function useNovoPedido(): UseNovoPedidoReturn {
             // ---------------------------
         } catch (error: any) {
             console.error('❌ Erro ao criar pedido:', error);
-            if (error.message?.includes('Caixa não está aberto')) {
+            if (error?.code === 'CAIXA_FECHADO') {
+                const caixaMensagem = 'O caixa precisa estar aberto para criar pedidos. Vá em "Caixa" > "Abertura" para abrir o caixa do dia.';
+
+                // Em web, o toast é mais confiável visualmente que Alert.alert em alguns navegadores.
+                showToast(caixaMensagem, 'warning');
+
                 Alert.alert(
                     '⚠️ Caixa Fechado',
                     'O caixa precisa estar aberto para criar pedidos.\n\nVá em "Caixa" > "Abertura" para abrir o caixa do dia.',
