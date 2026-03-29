@@ -49,7 +49,7 @@ type CategoryConstraints = {
   hasMixedMaxChoices: boolean;
 };
 
-function computeEffectiveCategoryConstraints(categoryItems: ProductAdicional[]): CategoryConstraints {
+export function computeEffectiveCategoryConstraints(categoryItems: ProductAdicional[]): CategoryConstraints {
   if (categoryItems.length === 0) {
     return { selectionType: 'multiplo', hasMixedMaxChoices: false };
   }

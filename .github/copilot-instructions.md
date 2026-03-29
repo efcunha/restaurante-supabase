@@ -30,6 +30,7 @@ Critical rules to always enforce in this repository:
 Operational reminders from recent incidents:
 - Delivery completion logic must reconcile payment + comanda closure, not only order status.
 - In `orders`, cancellation status is `cancelled`; keep `cancelada` semantics for comanda state only.
+- In `product_adicionais`, category constraints (`selection_type`, `max_choices`) must stay consistent per `company_id + product_id + category`; if inconsistent at runtime, enforce fail-safe by smallest positive `max_choices`.
 - Avoid duplicate `.neq` filters for the same field in Supabase/PostgREST queries (can lead to 400).
 - If `webhook=200` but no payment row inserted, validate `code_delivery_payment` inputs and flow publish/enabled status.
 - In `restaurante-ops` reconcile flow, keep `public.reconcile_billing_event_atomic` as the single write path for invoice/subscription/webhook/audit updates.
@@ -39,6 +40,7 @@ Operational reminders from recent incidents:
 - Security docs generated on 2026-03-23: `docs/security/SECURITY_AUDIT_REPORT_2026-03-23.md`, `docs/security/REMEDIATION_PLAN_DETAILED.md`, `docs/security/LGPD_COMPLIANCE_GUIDE.md`, `docs/security/EXECUTIVE_SUMMARY_PT.md`, `docs/security/SECURITY_DOCUMENTATION_INDEX.md`.
 - Secrets hardening implemented: use `database-backup/.env.local` (gitignored) + `database-backup/.env.example`; legacy `config.local.sh`/`config.example.sh` removed.
 - `profiles` hardening implemented in `database-backup/migrations/20260323183000_harden_profiles_rls_and_role_guardrails.sql` and applied remotely.
+- `product_adicionais` normalization hardening implemented in `database-backup/migrations/20260329113000_normalize_product_adicionais_category_constraints.sql` and applied/remotely registered (`supabase_migrations.schema_migrations`).
 - `public.profiles` now uses restrictive policies (self + admin/gerente same-company), no longer `SELECT USING (true)`.
 - `handle_new_user` and role checks were aligned to canonical roles (`admin`, `gerente`, `garcom`, `cozinheiro`, `montagem`, `entregador`, `caixa`) with legacy alias normalization.
 - Environment policy: there is currently no dedicated staging environment; deployments and validations run directly in production.
@@ -333,14 +335,18 @@ Use this workflow for any schema/function/index change in Supabase to avoid drif
 1. Create migration first (before manual SQL in dashboard):
 
 ```bash
+# Preferred (monorepo): create versioned file in database-backup/migrations first.
+# If using Supabase CLI scaffolding locally, run from database-backup/supabase.
+cd database-backup/supabase
 supabase migration new <migration_name_in_snake_case>
 ```
 
-2. Add SQL to the generated file in `database-backup/migrations/`.
+2. Keep `database-backup/migrations/` as source-of-truth for committed migrations.
 3. Apply migration immediately to the target DB (same work session).
 4. Verify migration is registered in remote history (`supabase_migrations.schema_migrations` / `list_migrations`).
-5. Commit migration file in the same PR as the feature/fix.
-6. For RLS/security changes, validate remote `pg_policies`, changed function definitions, and key constraints after apply.
+5. Validate drift status with `database-backup/check-migration-sync.sh`.
+6. Commit migration file in the same PR as the feature/fix.
+7. For RLS/security changes, validate remote `pg_policies`, changed function definitions, and key constraints after apply.
 
 Remote-truth rule:
 

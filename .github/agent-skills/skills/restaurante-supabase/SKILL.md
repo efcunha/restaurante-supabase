@@ -27,7 +27,8 @@ Guiar implementacoes e reviews no projeto com foco em:
 - Para mudancas sensiveis (seguranca, auth, billing, RLS, CORS, rate limiting), usar rollout guardado: validar endpoint publico, executar smoke controlado e registrar evidencias no mesmo ciclo.
 
 ## Stack Principal
-- React Native 19 + Expo 54
+- React 19 + Expo 54
+- React Native: `restaurante-app` em `0.81.5` e `restaurante-web` em `0.84.0`
 - TypeScript estrito
 - Supabase (PostgreSQL 15+, RLS, Realtime)
 - Playwright (`restaurante-web/e2e`)
@@ -95,6 +96,7 @@ Conceitos chave:
 Invariantes importantes:
 - Em `orders`, cancelamento usa `status='cancelled'`.
 - Estado da comanda pode usar `comanda_status='cancelada'`.
+- Em `product_adicionais`, `selection_type` e `max_choices` devem permanecer coerentes por `company_id + product_id + category`; em inconsistencia, aplicar limite fail-safe pelo menor `max_choices` positivo.
 - Cancelamento de comanda deve propagar por chave logica: `company_id + date_key + comanda_number`.
 - Delivery concluido (`delivered`) exige reconciliar pagamento e fechamento da comanda quando nao houver pedidos ativos.
 - Evitar encadear dois `.neq` no mesmo campo em query Supabase/PostgREST (pode gerar 400).
@@ -117,11 +119,14 @@ Migracoes de referencia:
 - `20260314203000_add_unique_open_mesa_index.sql`
 - `20260322170000_create_reconcile_billing_event_atomic_function.sql`
 - `20260323183000_harden_profiles_rls_and_role_guardrails.sql`
+- `20260328175830_product_adicionais.sql`
+- `20260329113000_normalize_product_adicionais_category_constraints.sql`
 
 Runbook de remuneracao (ops):
 1. Priorizar `public.reconcile_billing_event_atomic` como caminho unico de escrita para reconcile.
 2. Para deploy do `restaurante-ops` no monorepo, usar `railway up --service restaurante-ops --path-as-root ./restaurante-ops`.
 3. Se SQL manual for aplicado, sincronizar imediatamente `database-backup/migrations/` e `supabase_migrations.schema_migrations`.
+4. Fonte de verdade de migration no repositorio: `database-backup/migrations/` (quando usar Supabase CLI local, manter espelho em `database-backup/supabase/migrations/` quando aplicavel para fluxo de tooling).
 
 Antes de alterar schema:
 1. Ler schema dump atual.
@@ -182,6 +187,7 @@ Runbook curto (webhook 200 sem insert em `pagamentos`):
 - Em investigacoes de RLS, tratar banco remoto como fonte de verdade quando houver drift local-remoto.
 - Em `profiles`, policy de self-update deve bloquear troca de `company_id`, `role`, `funcao`, `email` e `active` pelo proprio usuario.
 - Em fluxo de cadastro de funcionario, manter compatibilidade com profile inicial sem `company_id` ate update administrativo.
+- Em `NovoPedido` (app/web), a regra antiga de adicionais podia desativar limite da categoria quando `max_choices` viesse misto/nulo; manter regra fail-safe com menor `max_choices` positivo e normalizacao no banco.
 
 ## Fluxo de Trabalho Recomendado
 1. Implementar e validar no `restaurante-web`.
@@ -250,6 +256,10 @@ npx playwright test e2e/phase12-auth-canary.spec.ts --project=chromium --workers
 npx playwright test e2e/phase12-ordering-canary.spec.ts --project=chromium --workers=1
 npx playwright test e2e/phase12-settlement-canary.spec.ts --project=chromium --workers=1
 npx playwright test e2e/phase12-admin-canary.spec.ts --project=chromium --workers=1
+
+# Drift de migrations (database-backup)
+cd database-backup
+./check-migration-sync.sh
 ```
 
 ## Checklist para o Copilot (antes de responder)
