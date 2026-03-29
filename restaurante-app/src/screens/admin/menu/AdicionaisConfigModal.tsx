@@ -330,8 +330,18 @@ export default function AdicionaisConfigModal({ visible, onClose, product, compa
 
   // ─── toggle ativo ─────────────────────────────────────────────────────────
   const handleToggleActive = async (item: ProductAdicional) => {
+    const nextActive = !item.active;
     try {
-      await AdicionaisService.update(item.id, { active: !item.active });
+      if (!nextActive) {
+        // Desativar um item implica desativar toda a categoria para manter consistência da configuração.
+        const categoryItems = adicionais.filter(a => a.category === item.category && a.active);
+        const updates = categoryItems.map(a => AdicionaisService.update(a.id, { active: false }));
+        if (updates.length > 0) {
+          await Promise.all(updates);
+        }
+      } else {
+        await AdicionaisService.update(item.id, { active: true });
+      }
       await load();
     } catch {
       Alert.alert('Erro', 'Não foi possível atualizar.');
