@@ -354,48 +354,55 @@ export function useComandaManagement() {
     // Listeners em Tempo Real (Apenas para 'abertas')
     useEffect(() => {
         if (activeTab !== 'abertas' || !user?.companyId) return;
+        let ordersChannel = null;
+        let comandasChannel = null;
+        let disposed = false;
 
-        const dateKey = todayKey();
+        void (async () => {
+            const dateKey = await getBusinessDateKey(user.companyId);
+            if (disposed) return;
 
-        // Subscribe to orders changes
-        const ordersChannel = supabase
-            .channel(`orders-${user.companyId}-${dateKey}`)
-            .on(
-                'postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'orders',
-                    filter: `company_id=eq.${user.companyId}`
-                },
-                (payload) => {
-                    console.log('[useComandaManagement] 🔄 Realtime update for Orders:', payload.eventType);
-                    carregarComandas(true);
-                }
-            )
-            .subscribe();
+            // Subscribe to orders changes
+            ordersChannel = supabase
+                .channel(`orders-${user.companyId}-${dateKey}`)
+                .on(
+                    'postgres_changes',
+                    {
+                        event: '*',
+                        schema: 'public',
+                        table: 'orders',
+                        filter: `company_id=eq.${user.companyId}`
+                    },
+                    (payload) => {
+                        console.log('[useComandaManagement] 🔄 Realtime update for Orders:', payload.eventType);
+                        carregarComandas(true);
+                    }
+                )
+                .subscribe();
 
-        // Subscribe to comandas changes
-        const comandasChannel = supabase
-            .channel(`comandas-${user.companyId}-${dateKey}`)
-            .on(
-                'postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'comandas',
-                    filter: `company_id=eq.${user.companyId}`
-                },
-                (payload) => {
-                    console.log('[useComandaManagement] 🔄 Realtime update for Comandas:', payload.eventType);
-                    carregarComandas(true);
-                }
-            )
-            .subscribe();
+            // Subscribe to comandas changes
+            comandasChannel = supabase
+                .channel(`comandas-${user.companyId}-${dateKey}`)
+                .on(
+                    'postgres_changes',
+                    {
+                        event: '*',
+                        schema: 'public',
+                        table: 'comandas',
+                        filter: `company_id=eq.${user.companyId}`
+                    },
+                    (payload) => {
+                        console.log('[useComandaManagement] 🔄 Realtime update for Comandas:', payload.eventType);
+                        carregarComandas(true);
+                    }
+                )
+                .subscribe();
+        })();
 
         return () => {
-            ordersChannel.unsubscribe();
-            comandasChannel.unsubscribe();
+            disposed = true;
+            ordersChannel?.unsubscribe();
+            comandasChannel?.unsubscribe();
         };
     }, [activeTab, user?.companyId]);
 
