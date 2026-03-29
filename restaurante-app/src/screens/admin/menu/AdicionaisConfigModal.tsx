@@ -414,7 +414,7 @@ export default function AdicionaisConfigModal({ visible, onClose, product, compa
                     placeholderTextColor={colors.disabled}
                   />
                   <TouchableOpacity
-                    style={[styles.saveBtn, { flex: 0, marginTop: 12 }, categoryApplying && { opacity: 0.6 }]}
+                    style={[styles.saveBtn, styles.categoryCfgBtn, categoryApplying && { opacity: 0.6 }]}
                     onPress={handleSaveCategorySettings}
                     disabled={categoryApplying}
                   >
@@ -760,5 +760,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#4f46e5',
     marginBottom: 2,
+  },
+  categoryCfgBtn: {
+    width: '100%',
+    marginTop: 12,
   },
 });
