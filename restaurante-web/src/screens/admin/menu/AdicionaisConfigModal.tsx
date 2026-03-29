@@ -94,6 +94,7 @@ export default function AdicionaisConfigModal({ visible, onClose, product, compa
   const [adicionais, setAdicionais] = useState<ProductAdicional[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [categoryApplying, setCategoryApplying] = useState(false);
   const [activeTab, setActiveTab] = useState<ProductAdicional['category']>('molhos');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...EMPTY_FORM });
@@ -187,6 +188,31 @@ export default function AdicionaisConfigModal({ visible, onClose, product, compa
     }
   }, [product.id, companyId]);
 
+  // ─── salvar configuração da categoria ─────────────────────────────────────
+  const handleSaveCategorySettings = useCallback(async () => {
+    const settings = categorySettings[activeTab];
+    const maxChoicesVal = settings.selectionType === 'multiplo' && settings.maxChoices.trim()
+      ? parseInt(settings.maxChoices, 10)
+      : undefined;
+    if (
+      settings.selectionType === 'multiplo' &&
+      settings.maxChoices.trim() &&
+      (isNaN(maxChoicesVal!) || maxChoicesVal! < 1)
+    ) {
+      Alert.alert('Validação', 'Máximo de escolhas deve ser um número inteiro ≥ 1.');
+      return;
+    }
+    setCategoryApplying(true);
+    try {
+      await syncCategoryConstraints(activeTab, settings.selectionType, maxChoicesVal);
+      await load();
+    } catch (e: any) {
+      Alert.alert('Erro', `Não foi possível salvar: ${e?.message || e}`);
+    } finally {
+      setCategoryApplying(false);
+    }
+  }, [activeTab, categorySettings, syncCategoryConstraints, load]);
+
   const startEdit = (item: ProductAdicional) => {
     setEditingId(item.id);
     setForm({
@@ -216,13 +242,12 @@ export default function AdicionaisConfigModal({ visible, onClose, product, compa
       Alert.alert('Validação', 'Informe um preço válido (0 ou mais).');
       return;
     }
-    const maxChoicesVal = form.maxChoices.trim() ? parseInt(form.maxChoices, 10) : undefined;
-    if (form.maxChoices.trim() && (isNaN(maxChoicesVal!) || maxChoicesVal! < 1)) {
-      Alert.alert('Validação', 'Máximo de escolhas deve ser um número inteiro ≥ 1.');
-      return;
-    }
-
-    const normalized = normalizeCategoryConstraints(form.selectionType, maxChoicesVal);
+    // selectionType e maxChoices vêm das configurações da categoria, não do form individual.
+    const catSettings = categorySettings[form.category];
+    const catMaxVal = catSettings.selectionType === 'multiplo' && catSettings.maxChoices.trim()
+      ? parseInt(catSettings.maxChoices, 10)
+      : undefined;
+    const normalized = normalizeCategoryConstraints(catSettings.selectionType, catMaxVal);
 
     setSaving(true);
     try {
@@ -339,6 +364,54 @@ export default function AdicionaisConfigModal({ visible, onClose, product, compa
               <ActivityIndicator color={colors.primary} style={{ marginVertical: 20 }} />
             ) : (
               <>
+                {/* ── Configuração da categoria ─────────────────────── */}
+                <View style={styles.categoryCfgCard}>
+                  <Text style={styles.categoryCfgTitle}>⚙️ Configuração desta categoria</Text>
+                  <Text style={styles.label}>Tipo de seleção</Text>
+                  <View style={styles.segmentRow}>
+                    {SELECTION_TYPES.map(st => (
+                      <TouchableOpacity
+                        key={st.value}
+                        style={[styles.segment, categorySettings[activeTab].selectionType === st.value && styles.segmentActive]}
+                        onPress={() =>
+                          setCategorySettings(prev => ({
+                            ...prev,
+                            [activeTab]: {
+                              selectionType: st.value as ProductAdicional['selectionType'],
+                              maxChoices: st.value === 'unico' ? '' : prev[activeTab].maxChoices,
+                            },
+                          }))
+                        }
+                      >
+                        <Text style={[styles.segmentText, categorySettings[activeTab].selectionType === st.value && styles.segmentTextActive]}>
+                          {st.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <Text style={[styles.label, categorySettings[activeTab].selectionType === 'unico' && { opacity: 0.4 }]}>
+                    {categorySettings[activeTab].selectionType === 'unico' ? 'Máx. escolhas (N/A — escolha única)' : 'Máx. escolhas (vazio = sem limite)'}
+                  </Text>
+                  <TextInput
+                    style={[styles.input, categorySettings[activeTab].selectionType === 'unico' && { opacity: 0.4, backgroundColor: '#f0f0f0' }]}
+                    value={categorySettings[activeTab].selectionType === 'unico' ? '' : categorySettings[activeTab].maxChoices}
+                    editable={categorySettings[activeTab].selectionType !== 'unico'}
+                    onChangeText={v => updateCategorySetting(activeTab, { maxChoices: v })}
+                    keyboardType="number-pad"
+                    placeholder={categorySettings[activeTab].selectionType === 'unico' ? '—' : 'Ex: 3'}
+                    placeholderTextColor={colors.disabled}
+                  />
+                  <TouchableOpacity
+                    style={[styles.saveBtn, { flex: 0, marginTop: 12 }, categoryApplying && { opacity: 0.6 }]}
+                    onPress={handleSaveCategorySettings}
+                    disabled={categoryApplying}
+                  >
+                    {categoryApplying
+                      ? <ActivityIndicator color={colors.white} size="small" />
+                      : <Text style={styles.saveBtnText}>✓ Aplicar configuração</Text>
+                    }
+                  </TouchableOpacity>
+                </View>
                 {filtered.length === 0 && (
                   <Text style={styles.emptyText}>Nenhum adicional nesta categoria ainda.</Text>
                 )}
@@ -425,51 +498,6 @@ export default function AdicionaisConfigModal({ visible, onClose, product, compa
                       </TouchableOpacity>
                     ))}
                   </View>
-
-                  <Text style={styles.label}>Tipo de seleção</Text>
-                  <View style={styles.segmentRow}>
-                    {SELECTION_TYPES.map(st => (
-                      <TouchableOpacity
-                        key={st.value}
-                        style={[styles.segment, form.selectionType === st.value && styles.segmentActive]}
-                        onPress={() => {
-                          setField('selectionType', st.value);
-                          if (st.value === 'unico') {
-                            setField('maxChoices', '');
-                            if (!editingId) {
-                              updateCategorySetting(form.category, { selectionType: 'unico', maxChoices: '' });
-                            }
-                          } else {
-                            if (!editingId) {
-                              updateCategorySetting(form.category, { selectionType: 'multiplo' });
-                            }
-                          }
-                        }}
-                      >
-                        <Text style={[styles.segmentText, form.selectionType === st.value && styles.segmentTextActive]}>
-                          {st.label}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-
-                  <Text style={[styles.label, form.selectionType === 'unico' && { opacity: 0.4 }]}>
-                    {form.selectionType === 'unico' ? 'Máx. escolhas (N/A — escolha única)' : 'Máx. escolhas (deixe vazio = sem limite)'}
-                  </Text>
-                  <TextInput
-                    style={[styles.input, form.selectionType === 'unico' && { opacity: 0.4, backgroundColor: '#f0f0f0' }]}
-                    value={form.selectionType === 'unico' ? '' : form.maxChoices}
-                    editable={form.selectionType !== 'unico'}
-                    onChangeText={v => {
-                      setField('maxChoices', v);
-                      if (!editingId) {
-                        updateCategorySetting(form.category, { maxChoices: v });
-                      }
-                    }}
-                    keyboardType="number-pad"
-                    placeholder={form.selectionType === 'unico' ? '—' : 'Ex: 3'}
-                    placeholderTextColor={colors.disabled}
-                  />
 
                   <View style={styles.activeRow}>
                     <Text style={styles.label}>Ativo</Text>
@@ -569,4 +597,6 @@ const styles = StyleSheet.create({
   cancelBtnText: { color: colors.danger || '#e74c3c', fontWeight: '700' },
   saveBtn: { flex: 2, paddingVertical: 12, borderRadius: 8, backgroundColor: colors.primary, alignItems: 'center' },
   saveBtnText: { color: colors.white || '#fff', fontWeight: '700', fontSize: 15 },
+  categoryCfgCard: { backgroundColor: '#eef2ff', borderRadius: 12, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: '#c7d2fe' },
+  categoryCfgTitle: { fontSize: 14, fontWeight: '700', color: '#4f46e5', marginBottom: 2 },
 });
