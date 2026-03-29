@@ -1,6 +1,22 @@
 import { supabase } from '../config/SupabaseConfig';
 import { ProductAdicional } from '../types/models';
 
+function parseOptionalNumber(value: unknown): number | undefined {
+  if (value == null || value === '') return undefined;
+  const parsed = typeof value === 'string' ? Number(value) : Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function normalizeCategory(value: unknown): ProductAdicional['category'] {
+  const normalized = String(value ?? '').trim().toLowerCase();
+  if (normalized === 'molhos' || normalized === 'toppings') return normalized;
+  return 'extras';
+}
+
+function normalizeSelectionType(value: unknown): ProductAdicional['selectionType'] {
+  return String(value ?? '').trim().toLowerCase() === 'unico' ? 'unico' : 'multiplo';
+}
+
 function mapRow(row: Record<string, any>): ProductAdicional {
   return {
     id: row.id,
@@ -8,11 +24,11 @@ function mapRow(row: Record<string, any>): ProductAdicional {
     productId: row.product_id,
     name: row.name,
     description: row.description ?? undefined,
-    price: typeof row.price === 'string' ? parseFloat(row.price) : (row.price ?? 0),
-    category: row.category,
-    selectionType: row.selection_type,
-    maxChoices: row.max_choices ?? undefined,
-    displayOrder: row.display_order ?? 0,
+    price: parseOptionalNumber(row.price) ?? 0,
+    category: normalizeCategory(row.category),
+    selectionType: normalizeSelectionType(row.selection_type),
+    maxChoices: parseOptionalNumber(row.max_choices),
+    displayOrder: parseOptionalNumber(row.display_order) ?? 0,
     active: row.active ?? true,
     createdAt: new Date(row.created_at),
     updatedAt: row.updated_at ? new Date(row.updated_at) : undefined,

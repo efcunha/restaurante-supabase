@@ -49,21 +49,34 @@ export default function AdicionaisPickerModal({ visible, onClose, onConfirm, pro
   const [adicionais, setAdicionais] = useState<ProductAdicional[]>(adicionaisProp ?? []);
   const [loading, setLoading] = useState(false);
 
-  // Ao abrir: se não vieram adicionais pré-carregados, busca do DB
+  // Ao abrir, sempre sincroniza com o DB para evitar regras desatualizadas no cache local.
   useEffect(() => {
     if (!visible) return;
+    let cancelled = false;
     setSelected({});
-    const initial = adicionaisProp ?? [];
-    if (initial.length > 0) {
-      setAdicionais(initial);
-      return;
+    const fallback = adicionaisProp ?? [];
+    setAdicionais(fallback);
+    if (!product.id || !companyId) {
+      setLoading(false);
+      return () => {
+        cancelled = true;
+      };
     }
-    if (!product.id || !companyId) return;
     setLoading(true);
     AdicionaisService.fetchByProduct(product.id, companyId)
-      .then(data => setAdicionais(data))
-      .catch(() => setAdicionais([]))
-      .finally(() => setLoading(false));
+      .then(data => {
+        if (!cancelled) setAdicionais(data);
+      })
+      .catch(() => {
+        if (!cancelled) setAdicionais(fallback);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [visible, product.id, companyId, adicionaisProp]);
 
   const groups = groupByCategory(adicionais);
