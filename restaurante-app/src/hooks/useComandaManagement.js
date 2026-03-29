@@ -2,10 +2,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../config/SupabaseConfig';
 import { useAuth } from '../context/AuthContext';
-import { getTodayKey } from '../utils/dateUtils'; // Migrated from FirebaseOptimizations
 import { normalizeComandaNumber } from '../services/OrderFirestoreService';
 import { calcularTotalPedido, calcularPagoPedido, fixDecimal } from '../utils/orderCalculator';
 import ComandasService from '../services/ComandasService';
+import { getBusinessDateKey } from '../services/BusinessDateService';
 
 const getMesaValida = (mesa) => {
     const normalizedMesa = String(mesa || '').trim();
@@ -29,8 +29,6 @@ export function useComandaManagement() {
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [hasMore, setHasMore] = useState({ pagas: true, canceladas: true });
     const [cardapioDin, setCardapioDin] = useState([]);
-
-    const todayKey = getTodayKey;
 
     const carregarComandas = useCallback(async (_forcarBusca = false, loadMore = false) => {
         if (loadMore) {
@@ -70,7 +68,7 @@ export function useComandaManagement() {
 
     const _carregarComandasAbertas = async () => {
         if (!user?.companyId) return;
-        const diaHoje = getTodayKey();
+        const diaHoje = await getBusinessDateKey(user.companyId);
 
         try {
             // Buscar em paralelo para reduzir latência total de carregamento
@@ -282,7 +280,7 @@ export function useComandaManagement() {
 
     const _carregarHistorico = async (statusTab) => {
         if (!user?.companyId) return;
-        const diaHoje = getTodayKey();
+        const diaHoje = await getBusinessDateKey(user.companyId);
         const statusSupabase = statusTab === 'pagas' ? 'fechada' : 'cancelada';
 
         try {

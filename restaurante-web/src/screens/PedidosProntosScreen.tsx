@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext';
 
 import PedidoDetalhesModal from './PedidoDetalhesModal';
 import { supabase } from '../config/SupabaseConfig';
-import { getLocalDateKey } from '../utils/dateUtils';
+import { getBusinessDateKey } from '../services/BusinessDateService';
 import OptimizedFlatList from '../components/OptimizedFlatList';
 import { colors } from '../theme/colors';
 
@@ -53,10 +53,10 @@ export default function PedidosProntosScreen() {
   useEffect(() => {
     // @ts-ignore
     if (!user?.companyId) return;
-    const today = getLocalDateKey();
 
     // Initial fetch
     const fetchOrders = async () => {
+      const today = await getBusinessDateKey(user.companyId);
       const { data, error } = await supabase
         .from('orders')
         .select(`

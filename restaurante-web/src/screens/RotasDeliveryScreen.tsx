@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../config/SupabaseConfig';
-import { getLocalDateKey } from '../utils/dateUtils';
+import { getBusinessDateKey } from '../services/BusinessDateService';
 import { EvolutionApiService } from '../services/EvolutionApiService';
 import OptimizedFlatList from '../components/OptimizedFlatList';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -49,7 +49,7 @@ export default function RotasDeliveryScreen() {
   const fetchDeliveryOrders = useCallback(async () => {
     try {
       if (!user?.companyId) return;
-      const today = getLocalDateKey();
+      const today = await getBusinessDateKey(user.companyId);
 
       // Busca pedidos do tipo Delivery que ainda não foram marcados como entregues e não estão cancelados.
       // E preferencialmente os que já passaram da cozinha (status 'preparing' mas com os itens marcados como pronto para o montador fechar,
@@ -160,7 +160,7 @@ export default function RotasDeliveryScreen() {
   const closeDeliveryComandaIfSettled = async (order: any) => {
     if (!user?.companyId || !order?.comandaNumber) return;
 
-    const dateKey = getLocalDateKey();
+    const dateKey = await getBusinessDateKey(user.companyId);
     const comandaNumber = String(order.comandaNumber);
 
     try {

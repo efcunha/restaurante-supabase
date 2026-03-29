@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useRoute } from '@react-navigation/native';
 import { supabase } from '../config/SupabaseConfig';
 import { getTodayKey, getDateKeyRange, Period } from '../utils/dateUtils'; // Migrated from FirebaseOptimizations
+import { getBusinessDateKey } from '../services/BusinessDateService';
 
 
 // @ts-ignore
@@ -176,47 +177,54 @@ export default function AdminScreen() {
     // Listener para pedidos (atualiza estatísticas operacionais)
     if (!user?.companyId) return;
 
-    const dateKey = getTodayKey();
+    let pedidosChannel: any = null;
+    let comandasChannel: any = null;
+    let disposed = false;
 
-    // Supabase Realtime para pedidos
-    const pedidosChannel = supabase
-      .channel('admin-pedidos-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'orders',
-          filter: `company_id=eq.${user.companyId},date_key=eq.${dateKey}`
-        },
-        () => {
-          debounceReload();
-        }
-      )
-      .subscribe();
+    const setupChannels = async () => {
+      const dateKey = await getBusinessDateKey(user.companyId);
+      if (disposed) return;
 
-    // Supabase Realtime para comandas
-    const today = getTodayKey();
-    const comandasChannel = supabase
-      .channel('admin-comandas-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'comandas',
-          filter: `company_id=eq.${user.companyId},date_key=gte.${today}`
-        },
-        () => {
-          debounceReload();
-        }
-      )
-      .subscribe();
+      pedidosChannel = supabase
+        .channel('admin-pedidos-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'orders',
+            filter: `company_id=eq.${user.companyId},date_key=eq.${dateKey}`
+          },
+          () => {
+            debounceReload();
+          }
+        )
+        .subscribe();
+
+      comandasChannel = supabase
+        .channel('admin-comandas-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'comandas',
+            filter: `company_id=eq.${user.companyId},date_key=gte.${dateKey}`
+          },
+          () => {
+            debounceReload();
+          }
+        )
+        .subscribe();
+    };
+
+    setupChannels();
 
     // Cleanup: remover listeners ao desmontar
     return () => {
-      supabase.removeChannel(pedidosChannel);
-      supabase.removeChannel(comandasChannel);
+      disposed = true;
+      if (pedidosChannel) supabase.removeChannel(pedidosChannel);
+      if (comandasChannel) supabase.removeChannel(comandasChannel);
     };
   }, [periodoSelecionado]);
 
@@ -234,7 +242,7 @@ export default function AdminScreen() {
       setLoadingStats(true);
       if (!user?.companyId) return;
 
-      const today = getTodayKey();
+      const today = await getBusinessDateKey(user.companyId);
       const { data: pedidos, error } = await supabase
         .from('orders')
         .select('*')
