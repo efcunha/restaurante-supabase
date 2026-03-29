@@ -2662,26 +2662,28 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                   </TouchableOpacity>
                 </View>
 
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={styles.unitOptionsWrap}>
                   {unidadesUI.map((u: string) => (
                     <TouchableOpacity
                       key={u}
-                      style={{
-                        paddingVertical: 8,
-                        paddingHorizontal: 12,
-                        backgroundColor: unitIngredient === u ? colors.primary : colors.border,
-                        borderRadius: 8,
-                        marginRight: 5,
-                        justifyContent: 'center',
-                        minWidth: 40,
-                        alignItems: 'center'
-                      }}
+                      activeOpacity={0.82}
+                      style={[
+                        styles.unitOptionChip,
+                        unitIngredient === u && styles.unitOptionChipActive,
+                      ]}
                       onPress={() => setUnitIngredient(u)}
                     >
-                      <Text style={{ color: unitIngredient === u ? colors.white : colors.text, fontWeight: 'bold', fontSize: 13 }}>{u}</Text>
+                      <Text
+                        style={[
+                          styles.unitOptionChipText,
+                          unitIngredient === u && styles.unitOptionChipTextActive,
+                        ]}
+                      >
+                        {u}
+                      </Text>
                     </TouchableOpacity>
                   ))}
-                </ScrollView>
+                </View>
               </View>
             </View>
 
@@ -3010,8 +3012,9 @@ const styles = StyleSheet.create({
   adicionaisBtn: {
     backgroundColor: '#5c6bc0',
     paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     borderRadius: 8,
+    width: 130,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -3191,6 +3194,31 @@ const styles = StyleSheet.create({
   },
   unitTabTextActive: {
     color: colors.primary
+  },
+  unitOptionsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  unitOptionChip: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: colors.border,
+    borderRadius: 8,
+    justifyContent: 'center',
+    minWidth: 40,
+    alignItems: 'center',
+  },
+  unitOptionChipActive: {
+    backgroundColor: colors.primary,
+  },
+  unitOptionChipText: {
+    color: colors.text,
+    fontWeight: 'bold',
+    fontSize: 13,
+  },
+  unitOptionChipTextActive: {
+    color: colors.white,
   },
   addTemperoRow: {
     flexDirection: 'row',
