@@ -43,6 +43,42 @@ function groupByCategory(items: ProductAdicional[]): Array<{ category: string; l
     .map(cat => ({ category: cat, label: CATEGORY_LABELS[cat] || cat, items: map[cat] }));
 }
 
+type CategoryConstraints = {
+  selectionType: 'unico' | 'multiplo';
+  maxChoices?: number;
+};
+
+function computeEffectiveCategoryConstraints(categoryItems: ProductAdicional[]): CategoryConstraints {
+  if (categoryItems.length === 0) {
+    return { selectionType: 'multiplo' };
+  }
+
+  // Treat category as single-choice only if all items are configured as 'unico'.
+  const selectionType: 'unico' | 'multiplo' = categoryItems.every(item => item.selectionType === 'unico')
+    ? 'unico'
+    : 'multiplo';
+
+  if (selectionType === 'unico') {
+    return { selectionType };
+  }
+
+  // Apply maxChoices only when every item defines the same positive value.
+  const normalizedMaxChoices = categoryItems.map(item => (
+    typeof item.maxChoices === 'number' && item.maxChoices > 0 ? item.maxChoices : null
+  ));
+
+  if (normalizedMaxChoices.some(value => value == null)) {
+    return { selectionType };
+  }
+
+  const firstMaxChoices = normalizedMaxChoices[0] as number;
+  const hasSameMaxChoices = normalizedMaxChoices.every(value => value === firstMaxChoices);
+
+  return hasSameMaxChoices
+    ? { selectionType, maxChoices: firstMaxChoices }
+    : { selectionType };
+}
+
 // ─── componente ────────────────────────────────────────────────────────────────
 export default function AdicionaisPickerModal({ visible, onClose, onConfirm, product, companyId, adicionais: adicionaisProp }: Props) {
   const [selected, setSelected] = useState<Record<string, boolean>>({});
@@ -84,7 +120,7 @@ export default function AdicionaisPickerModal({ visible, onClose, onConfirm, pro
   const toggle = useCallback((adicional: ProductAdicional) => {
     const cat = adicional.category;
     const groupItems = adicionais.filter(a => a.category === cat);
-    const maxChoices = adicional.maxChoices;
+    const { selectionType, maxChoices } = computeEffectiveCategoryConstraints(groupItems);
 
     setSelected(prev => {
       const next = { ...prev };
@@ -95,8 +131,8 @@ export default function AdicionaisPickerModal({ visible, onClose, onConfirm, pro
         return next;
       }
 
-      // For 'unico' type: deselect all others in this category first
-      if (adicional.selectionType === 'unico') {
+      // For category-level 'unico': deselect all others in this category first.
+      if (selectionType === 'unico') {
         for (const item of groupItems) {
           delete next[item.id];
         }
@@ -104,10 +140,10 @@ export default function AdicionaisPickerModal({ visible, onClose, onConfirm, pro
         return next;
       }
 
-      // For 'multiplo' with max_choices: check limit per category
+      // For 'multiplo' with max_choices: check limit per category.
       if (maxChoices != null) {
         const currentCount = groupItems.filter(a => next[a.id]).length;
-        if (currentCount >= maxChoices) return prev; // limit reached
+        if (currentCount >= maxChoices) return prev;
       }
 
       next[adicional.id] = true;
@@ -156,41 +192,43 @@ export default function AdicionaisPickerModal({ visible, onClose, onConfirm, pro
             ) : adicionais.length === 0 ? (
               <Text style={styles.emptyText}>Nenhum adicional configurado para esta porção.{`\n`}Toque em "Adicionar" para incluir sem extras.</Text>
             ) : (
-              groups.map(group => (
-                <View key={group.category} style={styles.group}>
-                  <Text style={styles.groupTitle}>{group.label}</Text>
-                  {group.items.map(item => {
-                    const isSelected = !!selected[item.id];
-                    const catItems = adicionais.filter(a => a.category === item.category);
-                    const catSelectedCount = catItems.filter(a => selected[a.id]).length;
-                    const atLimit = item.maxChoices != null && !isSelected && catSelectedCount >= item.maxChoices;
+              groups.map(group => {
+                const { maxChoices } = computeEffectiveCategoryConstraints(group.items);
+                return (
+                  <View key={group.category} style={styles.group}>
+                    <Text style={styles.groupTitle}>{group.label}</Text>
+                    {group.items.map(item => {
+                      const isSelected = !!selected[item.id];
+                      const catSelectedCount = group.items.filter(a => selected[a.id]).length;
+                      const atLimit = maxChoices != null && !isSelected && catSelectedCount >= maxChoices;
 
-                    return (
-                      <TouchableOpacity
-                        key={item.id}
-                        style={[styles.adItem, isSelected && styles.adItemSelected, atLimit && styles.adItemDisabled]}
-                        onPress={() => !atLimit && toggle(item)}
-                        activeOpacity={atLimit ? 1 : 0.7}
-                      >
-                        <View style={styles.adInfo}>
-                          <Text style={[styles.adName, isSelected && styles.adNameSelected]}>{item.name}</Text>
-                          {item.description ? (
-                            <Text style={styles.adDesc}>{item.description}</Text>
-                          ) : null}
-                        </View>
-                        <View style={styles.adRight}>
-                          <Text style={[styles.adPrice, isSelected && styles.adPriceSelected]}>
-                            {item.price === 0 ? 'Grátis' : `+R$ ${item.price.toFixed(2)}`}
-                          </Text>
-                          <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
-                            {isSelected && <Text style={styles.checkmark}>✓</Text>}
+                      return (
+                        <TouchableOpacity
+                          key={item.id}
+                          style={[styles.adItem, isSelected && styles.adItemSelected, atLimit && styles.adItemDisabled]}
+                          onPress={() => !atLimit && toggle(item)}
+                          activeOpacity={atLimit ? 1 : 0.7}
+                        >
+                          <View style={styles.adInfo}>
+                            <Text style={[styles.adName, isSelected && styles.adNameSelected]}>{item.name}</Text>
+                            {item.description ? (
+                              <Text style={styles.adDesc}>{item.description}</Text>
+                            ) : null}
                           </View>
-                        </View>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              ))
+                          <View style={styles.adRight}>
+                            <Text style={[styles.adPrice, isSelected && styles.adPriceSelected]}>
+                              {item.price === 0 ? 'Grátis' : `+R$ ${item.price.toFixed(2)}`}
+                            </Text>
+                            <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+                              {isSelected && <Text style={styles.checkmark}>✓</Text>}
+                            </View>
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                );
+              })
             )}
           </ScrollView>
 
