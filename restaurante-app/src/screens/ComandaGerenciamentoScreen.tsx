@@ -13,12 +13,12 @@ import ComandaList from '../components/comandas/ComandaList';
 import ComandaDetails from '../components/comandas/ComandaDetails';
 // @ts-ignore
 import AddItemsModal from '../components/comandas/AddItemsModal';
-import { getTodayKey } from '../utils/dateUtils'; // Migrated from FirebaseOptimizations
 import { calcularPrecoItem } from '../utils/orderCalculator';
 import CancelOrderModal from '../components/comandas/CancelOrderModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import PagamentosService from '../services/PagamentosService';
+import { getBusinessDateKey } from '../services/BusinessDateService';
 import ComandasService from '../services/ComandasService';
 import PrinterService from '../services/PrinterService';
 // @ts-ignore
@@ -189,9 +189,11 @@ export default function ComandaGerenciamentoScreen(props: any) {
         .filter((p: any) => !p.isPago)
         .map((p: any) => p.id);
 
+      const businessDateKey = await getBusinessDateKey(user?.companyId || '');
+
       await PagamentosService.registrarPagamento({
         companyId: user?.companyId || '',
-        dateKey: getTodayKey(),
+        dateKey: businessDateKey,
         comandaNumber: comanda.comandaNumber,
         forma: forma,
         valor: valor,
@@ -208,7 +210,7 @@ export default function ComandaGerenciamentoScreen(props: any) {
       if (saldoRestante <= 0.01) {
         // Close comanda
         await new Promise(r => setTimeout(r, 1000)); // wait propagation
-        await ComandasService.fecharComanda(user?.companyId || '', comanda.comandaNumber, user?.id, usuarioNome);
+        await ComandasService.fecharComanda(user?.companyId || '', comanda.comandaNumber, user?.id, usuarioNome, businessDateKey);
       }
 
       showToast('Pagamento registrado!', 'success');
@@ -254,8 +256,9 @@ export default function ComandaGerenciamentoScreen(props: any) {
     }
 
     try {
+      const businessDateKey = await getBusinessDateKey(user?.companyId || '');
       console.log('[ComandaGerenciamento] 🚫 Cancelando comanda:', {
-        docId: `comanda-${getTodayKey()}-${comanda.comandaNumber}`,
+        docId: `comanda-${businessDateKey}-${comanda.comandaNumber}`,
         comandaNumber: comanda.comandaNumber,
         reason
       });
@@ -270,7 +273,7 @@ export default function ComandaGerenciamentoScreen(props: any) {
           motivo_cancelamento: reason.trim()
         })
         .eq('company_id', user?.companyId || '')
-        .eq('date_key', getTodayKey())
+        .eq('date_key', businessDateKey)
         .eq('comanda_number', comanda.comandaNumber);
 
       if (updateError) throw updateError;
@@ -292,7 +295,7 @@ export default function ComandaGerenciamentoScreen(props: any) {
           cancelado_por: user?.nome || 'Admin'
         })
         .eq('company_id', user?.companyId || '')
-        .eq('date_key', getTodayKey())
+        .eq('date_key', businessDateKey)
         .eq('comanda_number', comandaNumberFilter)
         .select('id');
 
@@ -372,6 +375,7 @@ export default function ComandaGerenciamentoScreen(props: any) {
     }
 
     try {
+      const businessDateKey = comanda.dateKey || await getBusinessDateKey(user?.companyId || '');
       const novoPedido = {
         comandaNumber: comanda.comandaNumber,
         client: comanda.cliente || 'Não informado',
@@ -379,7 +383,7 @@ export default function ComandaGerenciamentoScreen(props: any) {
         status: 'prontos',
         isPago: false,
         createdAt: new Date(),
-        dateKey: getTodayKey(),
+        dateKey: businessDateKey,
         waiter: user?.nome,
         waiterId: user?.id
       };
@@ -392,7 +396,9 @@ export default function ComandaGerenciamentoScreen(props: any) {
         novoPedido.waiterId,
         novoPedido.waiter,
         0,
-        false
+        false,
+        undefined,
+        businessDateKey
       );
 
       showToast('Itens adicionados com sucesso!', 'success');

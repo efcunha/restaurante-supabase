@@ -18,7 +18,7 @@ import { Table, Order } from '../types';
 import { useAuth } from '../context/AuthContext';
 // @ts-ignore
 import PedidoDetalhesModal from './PedidoDetalhesModal';
-import { getTodayKey } from '../utils/dateUtils';
+import { getBusinessDateKey } from '../services/BusinessDateService';
 import { ScreenScaffold } from '../layouts/ScreenScaffold';
 import { colors } from '../theme/colors';
 const { width } = Dimensions.get('window');
@@ -45,11 +45,13 @@ export default function MapaMesasScreen({ navigation, route }: any) {
             return;
         }
 
+        const businessDateKey = await getBusinessDateKey(user.companyId);
+
         const { data: canceledComandas } = await supabase
             .from('comandas')
             .select('comanda_number')
             .eq('company_id', user.companyId)
-            .eq('date_key', getTodayKey())
+            .eq('date_key', businessDateKey)
             .eq('status', 'cancelada');
 
         const canceledComandaSet = new Set(
@@ -73,7 +75,8 @@ export default function MapaMesasScreen({ navigation, route }: any) {
             return;
         }
 
-        const orders = await SupabaseOrderService.fetchActiveOrders(user.companyId, getTodayKey());
+        const businessDateKey = await getBusinessDateKey(user.companyId);
+        const orders = await SupabaseOrderService.fetchActiveOrders(user.companyId, businessDateKey);
         await applyActiveOrdersFilter(orders);
     }, [applyActiveOrdersFilter, user?.companyId]);
 

@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, memo, useRef, useMemo } from 'react';
 import { useOrders } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../config/SupabaseConfig';
-import { getLocalDateKey } from '../utils/dateUtils';
+import { getBusinessDateKey } from '../services/BusinessDateService';
 import CaixaService from '../services/CaixaService';
 import offlineQueueService from '../services/OfflineQueueService';
 import { persistMontagemToggleItems } from '../services/MontagemSyncService';
@@ -247,7 +247,7 @@ export default function MontagemScreen() {
     if (!user?.companyId) return;
     const seq = ++fetchSeq.current;
     const queuedOperationIds = new Set(offlineQueueService.getOperations().map(op => op.id));
-    const today = getLocalDateKey();
+    const today = await getBusinessDateKey(user.companyId);
 
     const { data, error } = await supabase
       .from('orders')
