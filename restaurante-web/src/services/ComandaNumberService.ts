@@ -4,6 +4,7 @@
  * Usa a função RPC get_next_comanda_number() criada na migration.
  */
 import { supabase } from '../config/SupabaseConfig';
+import { getBusinessDateKey } from './BusinessDateService';
 
 /**
  * Retorna string da data (YYYY-MM-DD) para chave diária.
@@ -19,7 +20,7 @@ const getDateKey = (date: Date = new Date()): string => {
  * Retorna o próximo número que SERÁ gerado, sem incrementar o contador
  * @returns {Promise<number | null>} próximo número disponível
  */
-export const peekNextComandaNumber = async (): Promise<number | null> => {
+export const peekNextComandaNumber = async (businessDateKey?: string): Promise<number | null> => {
   try {
     // Buscar company_id do usuário logado
     const { data: { user } } = await supabase.auth.getUser();
@@ -33,7 +34,7 @@ export const peekNextComandaNumber = async (): Promise<number | null> => {
 
     if (!profile?.company_id) return null;
 
-    const dateKey = getDateKey();
+    const dateKey = businessDateKey || await getBusinessDateKey(profile.company_id);
 
     // Buscar todos os números e calcular max numericamente (evita bug lexicográfico se TEXT)
     const { data: allNums, error } = await supabase
@@ -67,7 +68,7 @@ export const peekNextComandaNumber = async (): Promise<number | null> => {
  * Usa a função RPC get_next_comanda_number() do Supabase.
  * @returns {Promise<number>} novo número de comanda
  */
-export const getNextComandaNumber = async (): Promise<number> => {
+export const getNextComandaNumber = async (businessDateKey?: string): Promise<number> => {
   try {
     // Buscar company_id do usuário logado
     const { data: { user } } = await supabase.auth.getUser();
@@ -81,7 +82,7 @@ export const getNextComandaNumber = async (): Promise<number> => {
 
     if (!profile?.company_id) throw new Error('Usuário sem empresa vinculada');
 
-    const dateKey = getDateKey();
+    const dateKey = businessDateKey || await getBusinessDateKey(profile.company_id);
 
     // 🔒 CORREÇÃO: Usar transação atômica com SELECT FOR UPDATE para evitar race conditions
     // Implementação de reserva atômica via frontend (Retry Loop) mitigando Race Condition.

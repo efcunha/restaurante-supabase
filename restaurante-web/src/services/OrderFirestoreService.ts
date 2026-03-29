@@ -129,7 +129,7 @@ class OrderFirestoreService {
         total_amount: order.totalPrice,
         is_paid: false,
         created_by: order.createdBy,
-        date_key: getTodayKey(),
+        date_key: order.dateKey || getTodayKey(),
         items_with_status: order.itemsWithStatus || [],
         order_type: order.orderType || 'local',
         updated_at: new Date().toISOString()
