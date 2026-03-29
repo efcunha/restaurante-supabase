@@ -43,6 +43,43 @@ const EMPTY_FORM = {
   active: true,
 };
 
+type CategorySetting = {
+  selectionType: ProductAdicional['selectionType'];
+  maxChoices: string;
+};
+
+const DEFAULT_CATEGORY_SETTINGS: Record<ProductAdicional['category'], CategorySetting> = {
+  molhos: { selectionType: 'multiplo', maxChoices: '' },
+  extras: { selectionType: 'multiplo', maxChoices: '' },
+  toppings: { selectionType: 'multiplo', maxChoices: '' },
+};
+
+function buildCategorySettingsFromAdicionais(items: ProductAdicional[]): Record<ProductAdicional['category'], CategorySetting> {
+  const next = {
+    molhos: { ...DEFAULT_CATEGORY_SETTINGS.molhos },
+    extras: { ...DEFAULT_CATEGORY_SETTINGS.extras },
+    toppings: { ...DEFAULT_CATEGORY_SETTINGS.toppings },
+  };
+
+  CATEGORIES.forEach(({ value }) => {
+    const group = items.filter(item => item.category === value);
+    if (group.length === 0) return;
+
+    const firstSelection = group[0].selectionType;
+    const selectionType = group.every(item => item.selectionType === firstSelection)
+      ? firstSelection
+      : 'multiplo';
+
+    const firstMax = group[0].maxChoices;
+    const hasSameMax = group.every(item => item.maxChoices === firstMax);
+    const maxChoices = hasSameMax && firstMax != null ? String(firstMax) : '';
+
+    next[value] = { selectionType, maxChoices };
+  });
+
+  return next;
+}
+
 export default function AdicionaisConfigModal({ visible, onClose, product, companyId }: Props) {
   const [adicionais, setAdicionais] = useState<ProductAdicional[]>([]);
   const [loading, setLoading] = useState(false);
@@ -50,6 +87,11 @@ export default function AdicionaisConfigModal({ visible, onClose, product, compa
   const [activeTab, setActiveTab] = useState<ProductAdicional['category']>('molhos');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...EMPTY_FORM });
+  const [categorySettings, setCategorySettings] = useState<Record<ProductAdicional['category'], CategorySetting>>({
+    molhos: { ...DEFAULT_CATEGORY_SETTINGS.molhos },
+    extras: { ...DEFAULT_CATEGORY_SETTINGS.extras },
+    toppings: { ...DEFAULT_CATEGORY_SETTINGS.toppings },
+  });
 
   const load = useCallback(async () => {
     if (!product.id || !companyId) return;
@@ -57,6 +99,7 @@ export default function AdicionaisConfigModal({ visible, onClose, product, compa
     try {
       const data = await AdicionaisService.fetchAllByProduct(product.id, companyId);
       setAdicionais(data);
+      setCategorySettings(buildCategorySettingsFromAdicionais(data));
     } catch {
       Alert.alert('Erro', 'Não foi possível carregar os adicionais.');
     } finally {
@@ -67,13 +110,45 @@ export default function AdicionaisConfigModal({ visible, onClose, product, compa
   useEffect(() => {
     if (visible) {
       load();
-      setForm({ ...EMPTY_FORM });
+      setCategorySettings({
+        molhos: { ...DEFAULT_CATEGORY_SETTINGS.molhos },
+        extras: { ...DEFAULT_CATEGORY_SETTINGS.extras },
+        toppings: { ...DEFAULT_CATEGORY_SETTINGS.toppings },
+      });
+      setForm({
+        ...EMPTY_FORM,
+        category: activeTab,
+        selectionType: categorySettings[activeTab].selectionType,
+        maxChoices: categorySettings[activeTab].maxChoices,
+      });
       setEditingId(null);
     }
   }, [visible, load]);
 
   const setField = (key: keyof typeof EMPTY_FORM, value: any) =>
     setForm(prev => ({ ...prev, [key]: value }));
+
+  const applyCategorySettingsToForm = useCallback((category: ProductAdicional['category']) => {
+    setForm(prev => ({
+      ...prev,
+      category,
+      selectionType: categorySettings[category].selectionType,
+      maxChoices: categorySettings[category].maxChoices,
+    }));
+  }, [categorySettings]);
+
+  const updateCategorySetting = useCallback((
+    category: ProductAdicional['category'],
+    changes: Partial<CategorySetting>
+  ) => {
+    setCategorySettings(prev => ({
+      ...prev,
+      [category]: {
+        ...prev[category],
+        ...changes,
+      },
+    }));
+  }, []);
 
   const startEdit = (item: ProductAdicional) => {
     setEditingId(item.id);
@@ -91,7 +166,7 @@ export default function AdicionaisConfigModal({ visible, onClose, product, compa
 
   const cancelEdit = () => {
     setEditingId(null);
-    setForm({ ...EMPTY_FORM });
+    applyCategorySettingsToForm(activeTab);
   };
 
   const handleSave = async () => {
@@ -197,7 +272,10 @@ export default function AdicionaisConfigModal({ visible, onClose, product, compa
               <TouchableOpacity
                 key={cat.value}
                 style={[styles.tab, activeTab === cat.value && styles.tabActive]}
-                onPress={() => { setActiveTab(cat.value); if (!editingId) setField('category', cat.value); }}
+                onPress={() => {
+                  setActiveTab(cat.value);
+                  if (!editingId) applyCategorySettingsToForm(cat.value);
+                }}
               >
                 <Text style={[styles.tabText, activeTab === cat.value && styles.tabTextActive]}>
                   {cat.label}
@@ -282,7 +360,14 @@ export default function AdicionaisConfigModal({ visible, onClose, product, compa
                       <TouchableOpacity
                         key={cat.value}
                         style={[styles.segment, form.category === cat.value && styles.segmentActive]}
-                        onPress={() => setField('category', cat.value)}
+                        onPress={() => {
+                          if (editingId) {
+                            setField('category', cat.value);
+                            return;
+                          }
+                          setActiveTab(cat.value);
+                          applyCategorySettingsToForm(cat.value);
+                        }}
                       >
                         <Text style={[styles.segmentText, form.category === cat.value && styles.segmentTextActive]}>
                           {cat.label}
@@ -297,7 +382,12 @@ export default function AdicionaisConfigModal({ visible, onClose, product, compa
                       <TouchableOpacity
                         key={st.value}
                         style={[styles.segment, form.selectionType === st.value && styles.segmentActive]}
-                        onPress={() => setField('selectionType', st.value)}
+                        onPress={() => {
+                          setField('selectionType', st.value);
+                          if (!editingId) {
+                            updateCategorySetting(form.category, { selectionType: st.value });
+                          }
+                        }}
                       >
                         <Text style={[styles.segmentText, form.selectionType === st.value && styles.segmentTextActive]}>
                           {st.label}
@@ -310,7 +400,12 @@ export default function AdicionaisConfigModal({ visible, onClose, product, compa
                   <TextInput
                     style={styles.input}
                     value={form.maxChoices}
-                    onChangeText={v => setField('maxChoices', v)}
+                    onChangeText={v => {
+                      setField('maxChoices', v);
+                      if (!editingId) {
+                        updateCategorySetting(form.category, { maxChoices: v });
+                      }
+                    }}
                     keyboardType="number-pad"
                     placeholder="Ex: 1"
                     placeholderTextColor={colors.disabled}
