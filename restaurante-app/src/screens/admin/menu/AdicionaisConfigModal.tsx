@@ -57,6 +57,16 @@ const DEFAULT_CATEGORY_SETTINGS: Record<ProductAdicional['category'], CategorySe
   toppings: { selectionType: 'multiplo', maxChoices: '' },
 };
 
+function normalizeCategoryConstraints(
+  selectionType: ProductAdicional['selectionType'],
+  maxChoices: number | undefined
+): { selectionType: ProductAdicional['selectionType']; maxChoices: number | undefined } {
+  if (selectionType === 'unico') {
+    return { selectionType: 'unico', maxChoices: 1 };
+  }
+  return { selectionType: 'multiplo', maxChoices };
+}
+
 function buildCategorySettingsFromAdicionais(items: ProductAdicional[]): Record<ProductAdicional['category'], CategorySetting> {
   const next = {
     molhos: { ...DEFAULT_CATEGORY_SETTINGS.molhos },
@@ -156,6 +166,33 @@ export default function AdicionaisConfigModal({ visible, onClose, product, compa
     }));
   }, []);
 
+  const syncCategoryConstraints = useCallback(async (
+    category: ProductAdicional['category'],
+    selectionType: ProductAdicional['selectionType'],
+    maxChoices: number | undefined
+  ) => {
+    if (!product.id || !companyId) return;
+
+    const normalized = normalizeCategoryConstraints(selectionType, maxChoices);
+    const currentItems = await AdicionaisService.fetchAllByProduct(product.id, companyId);
+    const categoryItems = currentItems.filter(item => item.category === category);
+
+    if (categoryItems.length === 0) return;
+
+    const updates = categoryItems
+      .filter(item => (
+        item.selectionType !== normalized.selectionType || item.maxChoices !== normalized.maxChoices
+      ))
+      .map(item => AdicionaisService.update(item.id, {
+        selectionType: normalized.selectionType,
+        maxChoices: normalized.maxChoices,
+      }));
+
+    if (updates.length > 0) {
+      await Promise.all(updates);
+    }
+  }, [product.id, companyId]);
+
   const startEdit = (item: ProductAdicional) => {
     setEditingId(item.id);
     setForm({
@@ -192,19 +229,30 @@ export default function AdicionaisConfigModal({ visible, onClose, product, compa
       return;
     }
 
+    const normalized = normalizeCategoryConstraints(form.selectionType, maxChoicesVal);
+
     setSaving(true);
     try {
       if (editingId) {
+        const previousItem = adicionais.find(item => item.id === editingId);
+
         await AdicionaisService.update(editingId, {
           name: form.name.trim(),
           description: form.description.trim() || undefined,
           price: priceVal,
           category: form.category,
-          selectionType: form.selectionType,
-          maxChoices: maxChoicesVal,
+          selectionType: normalized.selectionType,
+          maxChoices: normalized.maxChoices,
           active: form.active,
         });
+
+        await syncCategoryConstraints(form.category, normalized.selectionType, normalized.maxChoices);
+        if (previousItem && previousItem.category !== form.category) {
+          await syncCategoryConstraints(previousItem.category, previousItem.selectionType, previousItem.maxChoices);
+        }
       } else {
+        await syncCategoryConstraints(form.category, normalized.selectionType, normalized.maxChoices);
+
         const nextOrder =
           adicionais.filter(a => a.category === form.category).length * 10 + 10;
         await AdicionaisService.create({
@@ -214,11 +262,13 @@ export default function AdicionaisConfigModal({ visible, onClose, product, compa
           description: form.description.trim() || undefined,
           price: priceVal,
           category: form.category,
-          selectionType: form.selectionType,
-          maxChoices: maxChoicesVal,
+          selectionType: normalized.selectionType,
+          maxChoices: normalized.maxChoices,
           displayOrder: nextOrder,
           active: form.active,
         });
+
+        await syncCategoryConstraints(form.category, normalized.selectionType, normalized.maxChoices);
       }
       await load();
       cancelEdit();

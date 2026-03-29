@@ -46,11 +46,12 @@ function groupByCategory(items: ProductAdicional[]): Array<{ category: string; l
 type CategoryConstraints = {
   selectionType: 'unico' | 'multiplo';
   maxChoices?: number;
+  hasMixedMaxChoices: boolean;
 };
 
 function computeEffectiveCategoryConstraints(categoryItems: ProductAdicional[]): CategoryConstraints {
   if (categoryItems.length === 0) {
-    return { selectionType: 'multiplo' };
+    return { selectionType: 'multiplo', hasMixedMaxChoices: false };
   }
 
   // Treat category as single-choice only if all items are configured as 'unico'.
@@ -59,24 +60,27 @@ function computeEffectiveCategoryConstraints(categoryItems: ProductAdicional[]):
     : 'multiplo';
 
   if (selectionType === 'unico') {
-    return { selectionType };
+    return { selectionType, hasMixedMaxChoices: false };
   }
 
-  // Apply maxChoices only when every item defines the same positive value.
-  const normalizedMaxChoices = categoryItems.map(item => (
-    typeof item.maxChoices === 'number' && item.maxChoices > 0 ? item.maxChoices : null
-  ));
+  // Fail-safe: when category config is inconsistent, enforce the smallest positive limit.
+  const positiveMaxChoices = categoryItems
+    .map(item => (typeof item.maxChoices === 'number' && item.maxChoices > 0 ? item.maxChoices : null))
+    .filter((value): value is number => value != null);
 
-  if (normalizedMaxChoices.some(value => value == null)) {
-    return { selectionType };
+  if (positiveMaxChoices.length === 0) {
+    return { selectionType, hasMixedMaxChoices: false };
   }
 
-  const firstMaxChoices = normalizedMaxChoices[0] as number;
-  const hasSameMaxChoices = normalizedMaxChoices.every(value => value === firstMaxChoices);
+  const effectiveMaxChoices = Math.min(...positiveMaxChoices);
+  const hasMissingOrInvalid = positiveMaxChoices.length !== categoryItems.length;
+  const hasDifferentLimits = new Set(positiveMaxChoices).size > 1;
 
-  return hasSameMaxChoices
-    ? { selectionType, maxChoices: firstMaxChoices }
-    : { selectionType };
+  return {
+    selectionType,
+    maxChoices: effectiveMaxChoices,
+    hasMixedMaxChoices: hasMissingOrInvalid || hasDifferentLimits,
+  };
 }
 
 // ─── componente ────────────────────────────────────────────────────────────────
@@ -193,10 +197,16 @@ export default function AdicionaisPickerModal({ visible, onClose, onConfirm, pro
               <Text style={styles.emptyText}>Nenhum adicional configurado para esta porção.{`\n`}Toque em "Adicionar" para incluir sem extras.</Text>
             ) : (
               groups.map(group => {
-                const { maxChoices } = computeEffectiveCategoryConstraints(group.items);
+                const { maxChoices, hasMixedMaxChoices } = computeEffectiveCategoryConstraints(group.items);
                 return (
                   <View key={group.category} style={styles.group}>
                     <Text style={styles.groupTitle}>{group.label}</Text>
+                    {maxChoices != null && (
+                      <Text style={styles.groupHint}>
+                        Máximo: {maxChoices}
+                        {hasMixedMaxChoices ? ' (configuração inconsistente, aplicando limite mais restritivo)' : ''}
+                      </Text>
+                    )}
                     {group.items.map(item => {
                       const isSelected = !!selected[item.id];
                       const catSelectedCount = group.items.filter(a => selected[a.id]).length;
@@ -307,6 +317,11 @@ const styles = StyleSheet.create({
     paddingBottom: 6,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
+  },
+  groupHint: {
+    fontSize: 12,
+    color: colors.textSecondary || '#888',
+    marginBottom: 8,
   },
   adItem: {
     flexDirection: 'row',

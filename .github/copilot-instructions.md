@@ -361,11 +361,3 @@ If SQL was applied manually in the database:
 2. Register/sync its version in migration history when needed.
 3. Document why manual SQL was required.
 4. Confirm local migration list and remote migration history are aligned before merge/deploy.
-
-Task-to-skill quick map:
-
-- RN performance or rendering -> `.github/agent-skills/skills/react-native-best-practices/SKILL.md`
-- RN/Expo upgrade -> `.github/agent-skills/skills/upgrading-react-native/SKILL.md`
-- CI/build artifacts -> `.github/agent-skills/skills/github-actions/SKILL.md`
-- PR workflow/branching -> `.github/agent-skills/skills/github/SKILL.md`
-- Brownfield integration -> `.github/agent-skills/skills/react-native-brownfield-migration/SKILL.md`
