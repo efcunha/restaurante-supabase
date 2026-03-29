@@ -359,7 +359,7 @@ export default function AdicionaisConfigModal({ visible, onClose, product, compa
             ))}
           </View>
 
-          <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+          <ScrollView style={styles.scrollView} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
             {loading ? (
               <ActivityIndicator color={colors.primary} style={{ marginVertical: 20 }} />
             ) : (
@@ -402,13 +402,13 @@ export default function AdicionaisConfigModal({ visible, onClose, product, compa
                     placeholderTextColor={colors.disabled}
                   />
                   <TouchableOpacity
-                    style={[styles.saveBtn, { flex: 0, marginTop: 12 }, categoryApplying && { opacity: 0.6 }]}
+                    style={[styles.categoryCfgPrimaryBtn, categoryApplying && { opacity: 0.6 }]}
                     onPress={handleSaveCategorySettings}
                     disabled={categoryApplying}
                   >
                     {categoryApplying
                       ? <ActivityIndicator color={colors.white} size="small" />
-                      : <Text style={styles.saveBtnText}>✓ Aplicar configuração</Text>
+                      : <Text style={styles.categoryCfgPrimaryBtnText}>Aplicar configuração</Text>
                     }
                   </TouchableOpacity>
                 </View>
@@ -548,7 +548,9 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '90%',
-    paddingBottom: 30,
+    flex: 1,
+    flexDirection: 'column',
+    minHeight: 0,
   },
   header: {
     flexDirection: 'row',
@@ -571,6 +573,7 @@ const styles = StyleSheet.create({
   tabActive: { borderBottomWidth: 2, borderBottomColor: colors.primary },
   tabText: { fontSize: 13, color: colors.textSecondary || '#888' },
   tabTextActive: { color: colors.primary, fontWeight: '700' },
+  scrollView: { flex: 1, minHeight: 0 },
   scroll: { padding: 16, paddingBottom: 40 },
   emptyText: { color: colors.textSecondary || '#888', textAlign: 'center', marginVertical: 12, fontStyle: 'italic' },
   itemRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f9f9f9', borderRadius: 10, padding: 10, marginBottom: 8 },
@@ -599,4 +602,19 @@ const styles = StyleSheet.create({
   saveBtnText: { color: colors.white || '#fff', fontWeight: '700', fontSize: 15 },
   categoryCfgCard: { backgroundColor: '#eef2ff', borderRadius: 12, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: '#c7d2fe' },
   categoryCfgTitle: { fontSize: 14, fontWeight: '700', color: '#4f46e5', marginBottom: 2 },
+  categoryCfgPrimaryBtn: {
+    width: '100%',
+    marginTop: 12,
+    minHeight: 44,
+    borderRadius: 8,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  categoryCfgPrimaryBtnText: {
+    color: colors.white || '#fff',
+    fontWeight: '700',
+    fontSize: 15,
+    lineHeight: 20,
+  },
 });
