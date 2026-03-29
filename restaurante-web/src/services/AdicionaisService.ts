@@ -95,7 +95,7 @@ export const AdicionaisService = {
     if (changes.price !== undefined) payload.price = changes.price;
     if (changes.category !== undefined) payload.category = changes.category;
     if (changes.selectionType !== undefined) payload.selection_type = changes.selectionType;
-    if (changes.maxChoices !== undefined) payload.max_choices = changes.maxChoices ?? null;
+    if (Object.prototype.hasOwnProperty.call(changes, 'maxChoices')) payload.max_choices = changes.maxChoices ?? null;
     if (changes.displayOrder !== undefined) payload.display_order = changes.displayOrder;
     if (changes.active !== undefined) payload.active = changes.active;
 
