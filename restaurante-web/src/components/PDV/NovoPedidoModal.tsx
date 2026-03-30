@@ -20,6 +20,7 @@ interface NovoPedidoModalProps {
 
 export default function NovoPedidoModal({ onClose }: NovoPedidoModalProps) {
   const { user } = useAuth();
+  const [checkoutFooterHeight, setCheckoutFooterHeight] = useState(156);
 
   // Delivery Form
   const [clientName, setClientName] = useState('');
@@ -226,7 +227,10 @@ export default function NovoPedidoModal({ onClose }: NovoPedidoModalProps) {
 
         {/* === RIGHT PANEL: CART & CHECKOUT === */}
         <View style={styles.rightPanel}>
-          <ScrollView style={styles.cartContainer}>
+          <ScrollView
+            style={[styles.cartContainer, { marginBottom: checkoutFooterHeight }]}
+            contentContainerStyle={styles.cartContent}
+          >
             {/* INFORMAÇÕES DO CLIENTE */}
             <View style={styles.formSection}>
               <TextInput style={styles.input} placeholder="Nome do Cliente *" value={clientName} onChangeText={setClientName} />
@@ -270,7 +274,10 @@ export default function NovoPedidoModal({ onClose }: NovoPedidoModalProps) {
           </ScrollView>
 
           {/* TOTAL E SUBMIT */}
-          <View style={styles.checkoutFooter}>
+          <View
+            style={styles.checkoutFooter}
+            onLayout={(event) => setCheckoutFooterHeight(event.nativeEvent.layout.height)}
+          >
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Subtotal:</Text>
               <Text style={styles.totalValue}>R$ {subtotal.toFixed(2)}</Text>
@@ -440,6 +447,9 @@ const styles = StyleSheet.create({
   cartContainer: {
     flex: 1,
     padding: 15,
+  },
+  cartContent: {
+    paddingBottom: 20,
   },
   formSection: {
     marginBottom: 20,
