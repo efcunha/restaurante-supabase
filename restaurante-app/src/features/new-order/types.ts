@@ -27,6 +27,7 @@ export interface NewOrderCartFooterProps {
   onRemoveItem: (item: string) => void;
   onSubmit: () => void;
   isSubmitting: boolean;
+  onHeightChange?: (height: number) => void;
 }
 
 export interface NewOrderHeaderFormProps {

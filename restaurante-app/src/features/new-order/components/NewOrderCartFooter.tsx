@@ -14,9 +14,13 @@ export const NewOrderCartFooter = memo(function NewOrderCartFooter({
   onRemoveItem,
   onSubmit,
   isSubmitting,
+  onHeightChange,
 }: NewOrderCartFooterProps) {
   return (
-    <View style={styles.stickyFooter}>
+    <View
+      style={styles.stickyFooter}
+      onLayout={(event) => onHeightChange?.(event.nativeEvent.layout.height)}
+    >
       <TouchableOpacity
         style={styles.cartSummaryRow}
         onPress={() => selectedItems.length > 0 && onToggleCart()}
