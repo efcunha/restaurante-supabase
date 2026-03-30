@@ -190,10 +190,11 @@ Runbook curto (webhook 200 sem insert em `pagamentos`):
 - Em `NovoPedido` (app/web), a regra antiga de adicionais podia desativar limite da categoria quando `max_choices` viesse misto/nulo; manter regra fail-safe com menor `max_choices` positivo e normalizacao no banco.
 
 ## Fluxo de Trabalho Recomendado
-1. Implementar e validar no `restaurante-web`.
-2. Replicar para `restaurante-app` apenas o que for producao.
-3. Executar testes criticos E2E.
-4. Promover wave canary apenas com evidencias de estabilidade.
+1. Implementar e validar no `restaurante-web` quando o fluxo for espelhado e sem dependencia nativa.
+2. Em fluxo com dependencia nativa (device APIs, permissao, printer bridge, biometria), priorizar `restaurante-app` e depois alinhar `restaurante-web`.
+3. Replicar para o outro cliente apenas o que for producao.
+4. Executar testes criticos E2E.
+5. Promover wave canary apenas com evidencias de estabilidade.
 
 Regra anti-loop:
 - Se um comando falhar, tentar corrigir uma vez.
@@ -252,10 +253,14 @@ cd restaurante-web
 npx playwright test e2e/balcao.spec.ts e2e/mesa.spec.ts e2e/pizza.spec.ts e2e/delivery.spec.ts --repeat-each=1 --workers=1
 
 # Canary Phase 12
-npx playwright test e2e/phase12-auth-canary.spec.ts --project=chromium --workers=1
-npx playwright test e2e/phase12-ordering-canary.spec.ts --project=chromium --workers=1
-npx playwright test e2e/phase12-settlement-canary.spec.ts --project=chromium --workers=1
-npx playwright test e2e/phase12-admin-canary.spec.ts --project=chromium --workers=1
+# Aplicar perfil canary por wave
+npm run phase12:auth
+npm run phase12:ordering
+npm run phase12:settlement
+
+# Validar ondas com E2E critico existente
+npx playwright test e2e/balcao.spec.ts e2e/mesa.spec.ts --workers=1
+npx playwright test e2e/pizza.spec.ts e2e/delivery.spec.ts --workers=1
 
 # Drift de migrations (database-backup)
 cd database-backup
