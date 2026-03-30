@@ -16,13 +16,6 @@ export const LEGACY_MENU_CATEGORIES: MenuCategory[] = [
   { slug: 'outro', name: 'Outro', order: 8, active: true },
 ];
 
-export const DEFAULT_BEBIDAS_SUBCATEGORIES = [
-  'Bebidas Não Alcoólicas',
-  'Drinks',
-  'Doses',
-  'Whiskies',
-];
-
 const CATEGORY_ICON_BY_SLUG: Record<string, string> = {
   caldo: '🍲',
   'espetinho-simples': '🔥',

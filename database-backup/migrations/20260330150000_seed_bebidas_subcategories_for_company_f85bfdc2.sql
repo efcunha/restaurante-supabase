@@ -1,5 +1,9 @@
 BEGIN;
 
+-- Bootstrap inicial do tenant alvo.
+-- A lista em companies.settings.bebidasSubcategories e os produtos abaixo
+-- servem para seed/migração de dados, não como fallback de runtime.
+
 UPDATE public.companies
 SET settings = COALESCE(settings, '{}'::jsonb) || jsonb_build_object(
   'bebidasSubcategories',

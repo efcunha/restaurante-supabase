@@ -18,7 +18,6 @@ import { SUPPORTED_UNITS } from '../utils/unitConversion';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 import {
-  DEFAULT_BEBIDAS_SUBCATEGORIES,
   LEGACY_MENU_CATEGORIES,
   MenuCategory,
   getOrCreateMenuCategories,
@@ -137,11 +136,13 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
   const [editTemperoIndex, setEditTemperoIndex] = useState(-1);
   const [pizzaSubcategoryInput, setPizzaSubcategoryInput] = useState('');
   const [editPizzaSubcategoryIndex, setEditPizzaSubcategoryIndex] = useState(-1);
+  const [bebidaSubcategoryInput, setBebidaSubcategoryInput] = useState('');
+  const [editBebidaSubcategoryIndex, setEditBebidaSubcategoryIndex] = useState(-1);
   const [loadingTemperos, setLoadingTemperos] = useState(true);
 
   // Estados para Pizza
   const [pizzaConfig, setPizzaConfig] = useState<PizzaConfig>({ sizes: [] });
-  const [bebidaSubcategories, setBebidaSubcategories] = useState<string[]>(DEFAULT_BEBIDAS_SUBCATEGORIES);
+  const [bebidaSubcategories, setBebidaSubcategories] = useState<string[]>([]);
   const [pizzaSizes, setPizzaSizes] = useState<PizzaSize[]>([]); // Local state for editing sizes
   const [novoTamanho, setNovoTamanho] = useState('');
   const [novosSaboresMax, setNovosSaboresMax] = useState('');
@@ -435,7 +436,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
         }
 
         setPizzaSubcategories(resolveConfiguredSubcategories(settings.pizzaSubcategories, []));
-        setBebidaSubcategories(resolveConfiguredSubcategories(settings.bebidasSubcategories, DEFAULT_BEBIDAS_SUBCATEGORIES));
+        setBebidaSubcategories(resolveConfiguredSubcategories(settings.bebidasSubcategories, []));
 
         if (settings.pizzaConfig) {
           setPizzaConfig(settings.pizzaConfig);
@@ -471,7 +472,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
           { name: 'Grande/Família', maxFlavors: 4 }
         ];
         setPizzaSubcategories([]);
-        setBebidaSubcategories(DEFAULT_BEBIDAS_SUBCATEGORIES);
+        setBebidaSubcategories([]);
         setPizzaConfig({ sizes: defaultSizes, pricingMode: 'HIGHER' });
         setPizzaSizes(defaultSizes);
       }
@@ -615,7 +616,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
 
       const { data } = supabase.storage.from('menu-images').getPublicUrl(path);
       return data.publicUrl;
-    } catch (error) {
+    } catch {
       Alert.alert('Erro', 'Falha ao enviar imagem.');
       return null;
     } finally {
@@ -681,6 +682,11 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
     }
 
     if (!user?.companyId) return;
+
+    if (isBebidaCategorySlug(categoria) && bebidaSubcategories.length === 0) {
+      Alert.alert('Atenção', 'Cadastre ao menos uma subcategoria de bebidas antes de criar produtos nesta categoria.');
+      return;
+    }
 
     if (criarVariacoes && isEspetinhoCategorySlug(categoria)) {
       const algumVazio = variacoesEspetinho.some(v => !precosVariacoes[v] || precosVariacoes[v] === '');
@@ -895,7 +901,8 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
     novaListaComidas?: string[],
     novaListaVariacoes?: string[],
     novaListaPizzas?: string[],
-    novaListaPizzaSubcategorias?: string[]
+    novaListaPizzaSubcategorias?: string[],
+    novaListaBebidasSubcategorias?: string[]
   ) => {
     if (!user?.companyId) return;
 
@@ -906,6 +913,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
     if (novaListaVariacoes !== undefined) updates.variacoesEspetinho = novaListaVariacoes;
     if (novaListaPizzas !== undefined) updates.ingredientesPizza = novaListaPizzas;
     if (novaListaPizzaSubcategorias !== undefined) updates.pizzaSubcategories = novaListaPizzaSubcategorias;
+    if (novaListaBebidasSubcategorias !== undefined) updates.bebidasSubcategories = novaListaBebidasSubcategorias;
 
     // Always include pizzaConfig to persist size changes if any
     updates.pizzaConfig = { ...pizzaConfig, sizes: pizzaSizes };
@@ -924,6 +932,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
         variacoesEspetinho: novaListaVariacoes !== undefined ? novaListaVariacoes : variacoesEspetinho,
         ingredientesPizza: novaListaPizzas !== undefined ? novaListaPizzas : ingredientesPizza,
         pizzaSubcategories: novaListaPizzaSubcategorias !== undefined ? novaListaPizzaSubcategorias : pizzaSubcategories,
+        bebidasSubcategories: novaListaBebidasSubcategorias !== undefined ? novaListaBebidasSubcategorias : bebidaSubcategories,
         pizzaConfig: { ...pizzaConfig, sizes: pizzaSizes },
       });
     } catch (e) {
@@ -1001,6 +1010,11 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
     }
 
     if (!editando || !user?.companyId) return;
+
+    if (isBebidaCategorySlug(editCategoria) && bebidaSubcategories.length === 0) {
+      Alert.alert('Atenção', 'Cadastre ao menos uma subcategoria de bebidas antes de salvar produtos nesta categoria.');
+      return;
+    }
 
     const isPizza = normalizeCategorySlug(editCategoria).includes('pizza');
 
@@ -1241,6 +1255,20 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
     await salvarListas(undefined, undefined, undefined, undefined, sanitized);
   };
 
+  const salvarBebidaSubcategorias = async (lista: string[]) => {
+    const sanitized = lista
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0)
+      .filter((item, index, arr) => arr.indexOf(item) === index);
+
+    setBebidaSubcategories(sanitized);
+    if (isBebidaCategorySlug(categoria) && subcategoria && !sanitized.includes(subcategoria)) {
+      setSubcategoria(sanitized[0] || '');
+    }
+
+    await salvarListas(undefined, undefined, undefined, undefined, undefined, sanitized);
+  };
+
   const salvarPizzaSubcategoria = async () => {
     const value = pizzaSubcategoryInput.trim();
     if (!value) {
@@ -1300,6 +1328,68 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
     } catch (error) {
       console.error('Erro ao remover subcategoria de pizza:', error);
       Alert.alert('Erro', 'Não foi possível remover a subcategoria da pizza');
+    }
+  };
+
+  const salvarBebidaSubcategoria = async () => {
+    const value = bebidaSubcategoryInput.trim();
+    if (!value) {
+      Alert.alert('Atenção', 'Digite o nome da subcategoria de bebidas');
+      return;
+    }
+
+    const duplicateIndex = bebidaSubcategories.findIndex((item) => item.toLowerCase() === value.toLowerCase());
+    if (duplicateIndex >= 0 && duplicateIndex !== editBebidaSubcategoryIndex) {
+      Alert.alert('Atenção', 'Esta subcategoria já existe');
+      return;
+    }
+
+    try {
+      const updated = [...bebidaSubcategories];
+      if (editBebidaSubcategoryIndex >= 0) {
+        const previous = updated[editBebidaSubcategoryIndex];
+        updated[editBebidaSubcategoryIndex] = value;
+        if (subcategoria === previous) {
+          setSubcategoria(value);
+        }
+      } else {
+        updated.push(value);
+      }
+
+      await salvarBebidaSubcategorias(updated);
+      setBebidaSubcategoryInput('');
+      setEditBebidaSubcategoryIndex(-1);
+    } catch (error) {
+      console.error('Erro ao salvar subcategoria de bebidas:', error);
+      Alert.alert('Erro', 'Não foi possível salvar a subcategoria de bebidas');
+    }
+  };
+
+  const editarBebidaSubcategoria = (index: number) => {
+    setBebidaSubcategoryInput(bebidaSubcategories[index] || '');
+    setEditBebidaSubcategoryIndex(index);
+  };
+
+  const cancelarEdicaoBebidaSubcategoria = () => {
+    setBebidaSubcategoryInput('');
+    setEditBebidaSubcategoryIndex(-1);
+  };
+
+  const removerBebidaSubcategoria = async (index: number) => {
+    const toRemove = bebidaSubcategories[index];
+    const updated = bebidaSubcategories.filter((_, idx) => idx !== index);
+
+    try {
+      await salvarBebidaSubcategorias(updated);
+      if (subcategoria === toRemove) {
+        setSubcategoria(updated[0] || '');
+      }
+      if (editBebidaSubcategoryIndex === index) {
+        cancelarEdicaoBebidaSubcategoria();
+      }
+    } catch (error) {
+      console.error('Erro ao remover subcategoria de bebidas:', error);
+      Alert.alert('Erro', 'Não foi possível remover a subcategoria de bebidas');
     }
   };
 
@@ -1603,6 +1693,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
           )}
         </View>
       </View>
+
       <KeyboardWrapper style={{ flex: 1 }}>
       <ScrollView style={styles.content} contentContainerStyle={{ 
         paddingBottom: 100,
@@ -1613,7 +1704,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
           maxWidth: isTablet ? 700 : '100%',
           alignSelf: 'center',
           width: '100%',
-        }]}>
+        }]}> 
           <Text style={styles.sectionTitle}>➕ Cadastrar Produto</Text>
 
           <View style={styles.form}>
@@ -2057,6 +2148,49 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
               ))}
               {pizzaSubcategories.length === 0 && (
                 <Text style={styles.loadingText}>Nenhuma subcategoria cadastrada.</Text>
+              )}
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>🥤 Gerenciar Subcategorias de Bebidas</Text>
+          <View style={styles.form}>
+            <Text style={styles.label}>Subcategoria de Bebidas</Text>
+            <View style={styles.addTemperoRow}>
+              <TextInput
+                style={styles.inputTempero}
+                placeholder={editBebidaSubcategoryIndex >= 0 ? 'Editar subcategoria...' : 'Ex: Drinks'}
+                placeholderTextColor={colors.textSecondary}
+                value={bebidaSubcategoryInput}
+                onChangeText={setBebidaSubcategoryInput}
+              />
+              <TouchableOpacity style={styles.addBtn} onPress={salvarBebidaSubcategoria}>
+                <Ionicons name={editBebidaSubcategoryIndex >= 0 ? 'checkmark' : 'add'} size={24} color={colors.white} />
+              </TouchableOpacity>
+              {editBebidaSubcategoryIndex >= 0 && (
+                <TouchableOpacity style={[styles.addBtn, { backgroundColor: colors.textSecondary }]} onPress={cancelarEdicaoBebidaSubcategoria}>
+                  <Ionicons name="close" size={24} color={colors.white} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <View style={styles.listaTemperos}>
+              {bebidaSubcategories.map((item, index) => (
+                <View key={`${item}-${index}`} style={styles.temperoRow}>
+                  <Text style={styles.temperoText}>{item}</Text>
+                  <View style={{ flexDirection: 'row' }}>
+                    <TouchableOpacity onPress={() => editarBebidaSubcategoria(index)} style={{ marginRight: 10 }}>
+                      <Ionicons name="pencil" size={20} color={colors.text} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => removerBebidaSubcategoria(index)}>
+                      <Ionicons name="trash-outline" size={20} color={colors.danger} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
+              {bebidaSubcategories.length === 0 && (
+                <Text style={styles.loadingText}>Nenhuma subcategoria de bebidas cadastrada.</Text>
               )}
             </View>
           </View>
@@ -2567,25 +2701,29 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
               ) : isBebidaCategorySlug(editCategoria) ? (
                 <>
                   <Text style={styles.label}>Subcategoria de Bebidas:</Text>
-                  <View style={styles.categoriaButtons}>
-                    {bebidaSubcategories.map((item) => (
-                      <TouchableOpacity
-                        key={item}
-                        style={[
-                          styles.categoriaBtn,
-                          subcategoria === item && styles.categoriaBtnActive
-                        ]}
-                        onPress={() => setSubcategoria(item)}
-                      >
-                        <Text style={[
-                          styles.categoriaBtnText,
-                          subcategoria === item && styles.categoriaBtnTextActive
-                        ]}>
-                          {item}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
+                  {bebidaSubcategories.length === 0 ? (
+                    <Text style={styles.loadingText}>Cadastre subcategorias de bebidas na seção de configurações antes de editar produtos.</Text>
+                  ) : (
+                    <View style={styles.categoriaButtons}>
+                      {bebidaSubcategories.map((item) => (
+                        <TouchableOpacity
+                          key={item}
+                          style={[
+                            styles.categoriaBtn,
+                            subcategoria === item && styles.categoriaBtnActive
+                          ]}
+                          onPress={() => setSubcategoria(item)}
+                        >
+                          <Text style={[
+                            styles.categoriaBtnText,
+                            subcategoria === item && styles.categoriaBtnTextActive
+                          ]}>
+                            {item}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
 
                   <Text style={styles.label}>Preço:</Text>
                   <TextInput
@@ -3320,6 +3458,38 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 16,
     fontWeight: '700',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 10,
+    marginBottom: 15,
+  },
+  modalBtn: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveBtn: {
+    backgroundColor: colors.primary,
+  },
+  saveBtnText: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  cancelBtn: {
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  cancelBtnText: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '600',
   },
   fecharBtn: {
     backgroundColor: colors.textSecondary,
