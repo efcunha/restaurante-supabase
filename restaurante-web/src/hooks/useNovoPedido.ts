@@ -18,7 +18,6 @@ import { getBusinessDateKey } from '../services/BusinessDateService';
 import { listarFuncionarios } from '../services/FuncionariosService';
 import { Product, Cardapio, PizzaConfig, Funcionario } from '../types';
 import {
-    DEFAULT_BEBIDAS_SUBCATEGORIES,
     getOrCreateMenuCategories,
     normalizeCategorySlug,
     resolveConfiguredSubcategories,
@@ -87,7 +86,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
     const [temperosComidas] = useState(['Cebolinha e Coentro', 'Cebolinha', 'Sem Nada']);
     const [variacoesEspetinho] = useState(['Simples', 'com Arroz', 'com Macaxeira', 'Completo']);
     const [pizzaSubcategories, setPizzaSubcategories] = useState<string[]>([]);
-    const [bebidaSubcategories, setBebidaSubcategories] = useState<string[]>(DEFAULT_BEBIDAS_SUBCATEGORIES);
+    const [bebidaSubcategories, setBebidaSubcategories] = useState<string[]>([]);
     const [pizzaConfig, setPizzaConfig] = useState<PizzaConfig | null>(null);
     const [customPrices, setCustomPrices] = useState<Record<string, number>>({}); // { 'Pizza Grande (Calabresa)': 40.00 }
     const [loadingCardapio, setLoadingCardapio] = useState(true);
@@ -128,7 +127,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
         if (Array.isArray(parsedCache.pizzaSubcategories)) {
             setPizzaSubcategories(parsedCache.pizzaSubcategories);
         }
-        setBebidaSubcategories(resolveConfiguredSubcategories(parsedCache.bebidaSubcategories, DEFAULT_BEBIDAS_SUBCATEGORIES));
+        setBebidaSubcategories(resolveConfiguredSubcategories(parsedCache.bebidaSubcategories, []));
         setExtras(parsedCache.extras || []);
         cardapioLoadedRef.current = true;
         lastLoadTimeRef.current = Date.now();
@@ -268,7 +267,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
             );
             const resolvedBebidaSubcategories = resolveConfiguredSubcategories(
                 companySettings?.bebidasSubcategories,
-                DEFAULT_BEBIDAS_SUBCATEGORIES
+                []
             );
             setPizzaSubcategories(resolvedPizzaSubcategories);
             setBebidaSubcategories(resolvedBebidaSubcategories);
