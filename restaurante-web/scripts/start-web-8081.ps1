@@ -20,9 +20,9 @@ if (-not $pids -or $pids.Count -eq 0) {
     foreach ($line in $netstatLines) {
       $parts = ($line.ToString() -split '\s+') | Where-Object { $_ -ne '' }
       if ($parts.Length -ge 5) {
-        $pid = $parts[$parts.Length - 1]
-        if ($pid -match '^[0-9]+$') {
-          $pids += [int]$pid
+        $ownerPid = $parts[$parts.Length - 1]
+        if ($ownerPid -match '^[0-9]+$') {
+          $pids += [int]$ownerPid
         }
       }
     }
@@ -32,13 +32,13 @@ if (-not $pids -or $pids.Count -eq 0) {
   }
 }
 
-foreach ($pid in $pids) {
-  if ($pid -and $pid -ne $PID) {
+foreach ($ownerPid in $pids) {
+  if ($ownerPid -and $ownerPid -ne $PID) {
     try {
-      Write-Host "[start-web-8081] Stopping process on port $port (PID: $pid)..."
-      Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue
+      Write-Host "[start-web-8081] Stopping process on port $port (PID: $ownerPid)..."
+      Stop-Process -Id $ownerPid -Force -ErrorAction SilentlyContinue
     } catch {
-      Write-Host "[start-web-8081] Could not stop PID $pid automatically."
+      Write-Host "[start-web-8081] Could not stop PID $ownerPid automatically."
     }
   }
 }
