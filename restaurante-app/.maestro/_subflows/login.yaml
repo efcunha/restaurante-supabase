@@ -13,16 +13,19 @@ appId: com.comandapraia.donacida
 
 - extendedWaitUntil:
     visible:
-      text: "seu@email.com"
+    id: "login-email-input"
     timeout: 15000
 
-- tapOn: "seu@email.com"
+- tapOn:
+  id: "login-email-input"
 - inputText: "${PLAYWRIGHT_TEST_EMAIL}"
 
-- tapOn: "••••••••"
+- tapOn:
+  id: "login-password-input"
 - inputText: "${PLAYWRIGHT_TEST_PASSWORD}"
 
-- tapOn: "ENTRAR"
+- tapOn:
+  id: "login-submit-button"
 
 - extendedWaitUntil:
     visible:
