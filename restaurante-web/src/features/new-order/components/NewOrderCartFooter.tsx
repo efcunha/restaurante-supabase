@@ -8,9 +8,13 @@ export const NewOrderCartFooter = memo(function NewOrderCartFooter({
   total,
   onSubmit,
   isSubmitting,
+  onHeightChange,
 }: NewOrderCartFooterProps) {
   return (
-    <View style={styles.stickyFooter}>
+    <View
+      style={styles.stickyFooter}
+      onLayout={(event) => onHeightChange?.(event.nativeEvent.layout.height)}
+    >
       <View style={styles.totalContainer}>
         <Text style={styles.totalLabel}>Total:</Text>
         <Text style={styles.totalValue}>R$ {total.toFixed(2)}</Text>

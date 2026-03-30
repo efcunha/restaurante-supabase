@@ -445,6 +445,7 @@ interface Section {
 }
 
 export default function NovoPedidoScreen({ route }: any) {
+  const [footerHeight, setFooterHeight] = useState(112);
   const [showPizzaModal, setShowPizzaModal] = useState(false);
   const [selectedPizza, setSelectedPizza] = useState<Product | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -966,7 +967,7 @@ export default function NovoPedidoScreen({ route }: any) {
       </View>
 
       <SectionList
-        style={styles.sectionList}
+        style={[styles.sectionList, { marginBottom: footerHeight }]}
         sections={filteredSections}
         renderItem={renderItem}
         renderSectionHeader={renderSectionHeader}
@@ -1002,6 +1003,7 @@ export default function NovoPedidoScreen({ route }: any) {
         onRemoveItem={handleStickyFooterRemove}
         onSubmit={handleSubmit}
         isSubmitting={isSubmitting}
+        onHeightChange={setFooterHeight}
       />
 
       <PizzaBuilderModal
@@ -1141,7 +1143,7 @@ const styles = StyleSheet.create({
   headerRefreshButtonDisabled: {
     opacity: 0.75,
   },
-  listContent: { padding: 20, paddingBottom: 120 },
+  listContent: { padding: 20, paddingBottom: 24 },
   headerForm: { marginBottom: 20 },
   label: { fontSize: 16, color: colors.text, marginBottom: 6, fontWeight: 'bold' },
   input: {

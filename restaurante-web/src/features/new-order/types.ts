@@ -23,6 +23,7 @@ export interface NewOrderCartFooterProps {
   total: number;
   onSubmit: () => void;
   isSubmitting: boolean;
+  onHeightChange?: (height: number) => void;
 }
 
 export interface NewOrderHeaderFormProps {
