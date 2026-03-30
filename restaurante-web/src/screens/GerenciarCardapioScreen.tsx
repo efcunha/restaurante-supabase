@@ -17,12 +17,15 @@ import { SUPPORTED_UNITS } from '../utils/unitConversion';
 import { ScreenScaffold } from '../layouts/ScreenScaffold';
 import { colors } from '../theme/colors';
 import {
+  DEFAULT_BEBIDAS_SUBCATEGORIES,
   LEGACY_MENU_CATEGORIES,
   MenuCategory,
   getOrCreateMenuCategories,
+  isBebidaCategorySlug,
   isEspetinhoCategorySlug,
   isIngredientsCategorySlug,
   normalizeCategorySlug,
+  resolveConfiguredSubcategories,
   slugifyCategoryName,
   toCategoryOption,
 } from '../utils/menuCategories';
@@ -136,6 +139,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
 
   // Estados para Pizza
   const [pizzaConfig, setPizzaConfig] = useState<PizzaConfig>({ sizes: [] });
+  const [bebidaSubcategories, setBebidaSubcategories] = useState<string[]>(DEFAULT_BEBIDAS_SUBCATEGORIES);
   const [pizzaSizes, setPizzaSizes] = useState<PizzaSize[]>([]); // Local state for editing sizes
   const [novoTamanho, setNovoTamanho] = useState('');
   const [novosSaboresMax, setNovosSaboresMax] = useState('');
@@ -428,11 +432,8 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
           }
         }
 
-        if (Array.isArray(settings.pizzaSubcategories) && settings.pizzaSubcategories.length > 0) {
-          setPizzaSubcategories(settings.pizzaSubcategories.filter((item: any) => typeof item === 'string' && item.trim() !== ''));
-        } else {
-          setPizzaSubcategories([]);
-        }
+        setPizzaSubcategories(resolveConfiguredSubcategories(settings.pizzaSubcategories, []));
+        setBebidaSubcategories(resolveConfiguredSubcategories(settings.bebidasSubcategories, DEFAULT_BEBIDAS_SUBCATEGORIES));
 
         if (settings.pizzaConfig) {
           setPizzaConfig(settings.pizzaConfig);
@@ -468,6 +469,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
           { name: 'Grande/Família', maxFlavors: 4 }
         ];
         setPizzaSubcategories([]);
+        setBebidaSubcategories(DEFAULT_BEBIDAS_SUBCATEGORIES);
         setPizzaConfig({ sizes: defaultSizes, pricingMode: 'HIGHER' });
         setPizzaSizes(defaultSizes);
       }
@@ -479,11 +481,22 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
   };
 
   useEffect(() => {
-    if (categoria !== 'pizza') return;
-    if (subcategoria) return;
-    if (pizzaSubcategories.length === 0) return;
-    setSubcategoria(pizzaSubcategories[0]);
-  }, [categoria, pizzaSubcategories, subcategoria]);
+    if (categoria === 'pizza') {
+      if (subcategoria || pizzaSubcategories.length === 0) return;
+      setSubcategoria(pizzaSubcategories[0]);
+      return;
+    }
+
+    if (isBebidaCategorySlug(categoria)) {
+      if (subcategoria || bebidaSubcategories.length === 0) return;
+      setSubcategoria(bebidaSubcategories[0]);
+      return;
+    }
+
+    if (subcategoria) {
+      setSubcategoria('');
+    }
+  }, [categoria, pizzaSubcategories, bebidaSubcategories, subcategoria]);
 
   const carregarProdutos = async () => {
     try {
@@ -702,6 +715,10 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
           category: categoria,
           available: true // DB Column is available
         };
+
+        if (isBebidaCategorySlug(categoria)) {
+          novoProduto.subcategory = subcategoria || bebidaSubcategories[0] || null;
+        }
 
         if (isEspetinhoCategorySlug(categoria)) {
           novoProduto.accompaniments = normalizeStringArray(acompanhamentosEspetinho);
@@ -950,7 +967,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
       setIngredientesPersonalizados(produto.customIngredients || '');
     } else {
       setPrecosPizza({});
-      setSubcategoria('');
+      setSubcategoria(isBebidaCategorySlug(produto.category) ? (produto.subcategory || bebidaSubcategories[0] || '') : '');
       if (isIngredientsCategorySlug(produto.category)) {
         setIngredientesSelecionados(produto.ingredients || []);
         setIngredientesPersonalizados(produto.customIngredients || '');
@@ -1029,6 +1046,9 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
         const sanitizedPreco = editPreco?.toString().replace(',', '.');
         const val = parseFloat(sanitizedPreco);
         updateData.price = val;
+        updateData.subcategory = isBebidaCategorySlug(editCategoria)
+          ? (subcategoria || bebidaSubcategories[0] || null)
+          : null;
         if (isIngredientsCategorySlug(editCategoria)) {
           updateData.ingredients = ingredientesSelecionados;
           updateData.custom_ingredients = ingredientesPersonalizados;
@@ -1779,6 +1799,38 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                   ))}
                 </View>
               </>
+            ) : isBebidaCategorySlug(categoria) ? (
+              <>
+                <Text style={styles.label}>Subcategoria de Bebidas:</Text>
+                <View style={styles.categoriaButtons}>
+                  {bebidaSubcategories.map((item) => (
+                    <TouchableOpacity
+                      key={item}
+                      style={[
+                        styles.categoriaBtn,
+                        subcategoria === item && styles.categoriaBtnActive
+                      ]}
+                      onPress={() => setSubcategoria(item)}
+                    >
+                      <Text style={[
+                        styles.categoriaBtnText,
+                        subcategoria === item && styles.categoriaBtnTextActive
+                      ]}>
+                        {item}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Preço (ex: 12.00)"
+                  placeholderTextColor={colors.textSecondary}
+                  value={preco}
+                  onChangeText={setPreco}
+                  keyboardType="numeric"
+                />
+              </>
             ) : (
               <>
                 <TextInput
@@ -2198,6 +2250,9 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                             : `${variacoes.length} variações`
                           }
                         </Text>
+                        {isBebidaCategorySlug(primeiraVariacao.category) && primeiraVariacao.subcategory ? (
+                          <Text style={styles.produtoIngredientes}>{`Subcategoria: ${primeiraVariacao.subcategory}`}</Text>
+                        ) : null}
                         {/* Display ingredients for pizza products */}
                         {isPizzaProduct(primeiraVariacao) && primeiraVariacao.ingredients && primeiraVariacao.ingredients.length > 0 && (
                           <Text style={styles.produtoIngredientes}>
@@ -2435,6 +2490,39 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                       ))
                     )}
                   </View>
+                </>
+              ) : isBebidaCategorySlug(editCategoria) ? (
+                <>
+                  <Text style={styles.label}>Subcategoria de Bebidas:</Text>
+                  <View style={styles.categoriaButtons}>
+                    {bebidaSubcategories.map((item) => (
+                      <TouchableOpacity
+                        key={item}
+                        style={[
+                          styles.categoriaBtn,
+                          subcategoria === item && styles.categoriaBtnActive
+                        ]}
+                        onPress={() => setSubcategoria(item)}
+                      >
+                        <Text style={[
+                          styles.categoriaBtnText,
+                          subcategoria === item && styles.categoriaBtnTextActive
+                        ]}>
+                          {item}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  <Text style={styles.label}>Preço:</Text>
+                  <TextInput
+                    style={[styles.input, { maxWidth: inputMaxWidth }]}
+                    placeholder="Preço"
+                    placeholderTextColor={colors.textSecondary}
+                    value={editPreco}
+                    onChangeText={setEditPreco}
+                    keyboardType="numeric"
+                  />
                 </>
               ) : (
                 <>

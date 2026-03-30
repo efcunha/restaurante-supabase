@@ -476,6 +476,7 @@ export default function NovoPedidoScreen({ route }: any) {
     temperosComidas,
     variacoesEspetinho,
     pizzaSubcategories,
+    bebidaSubcategories,
     pizzaConfig,
     addPizzaToOrder,
     addPorcaoWithAdicionais,
@@ -693,11 +694,37 @@ export default function NovoPedidoScreen({ route }: any) {
 
     if (cardapio.bebidas?.length > 0) {
       const activeBebidas = cardapio.bebidas.filter(isActive);
-      sectionsData.push({ title: '🥤 Bebidas', data: activeBebidas, type: 'bebidas' });
+      const configuredBebidaSubcategories = (bebidaSubcategories || [])
+        .map((item) => (item || '').trim())
+        .filter((item, index, arr) => item.length > 0 && arr.indexOf(item) === index);
+      const bebidaCategoryOrder = [...configuredBebidaSubcategories, 'Outras'];
+      const bebidasByCategory: Record<string, Product[]> = bebidaCategoryOrder.reduce((acc, current) => {
+        acc[current] = [];
+        return acc;
+      }, {} as Record<string, Product[]>);
+
+      activeBebidas.forEach((bebida) => {
+        const normalizedSubcategory = (bebida.subcategory || '').trim();
+        const targetKey = normalizedSubcategory || 'Outras';
+        if (!bebidasByCategory[targetKey]) {
+          bebidasByCategory[targetKey] = [];
+        }
+        bebidasByCategory[targetKey].push(bebida);
+      });
+
+      bebidaCategoryOrder.forEach((subcategory) => {
+        if (bebidasByCategory[subcategory]?.length > 0) {
+          sectionsData.push({
+            title: `🥤 Bebidas > ${subcategory}`,
+            data: bebidasByCategory[subcategory],
+            type: 'bebidas'
+          });
+        }
+      });
     }
 
     return sectionsData;
-  }, [cardapio, variacoesEspetinho, pizzaSubcategories]);
+  }, [cardapio, variacoesEspetinho, pizzaSubcategories, bebidaSubcategories]);
 
   // Normaliza string: minúsculas + substitui acentos/diacríticos do português
   // Usa mapeamento explícito em vez de String.normalize('NFD') pois o Hermes
