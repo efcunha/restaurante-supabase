@@ -27,7 +27,7 @@ export default function ProductForm({
   const [createVariations, setCreateVariations] = useState(false);
   const [espetinhoPrices, setEspetinhoPrices] = useState<Record<string, string>>({});
   
-  const effectiveVariationNames = variationNames || ['Simples', 'com Arroz', 'com Macaxeira', 'Completo'];
+  const effectiveVariationNames = variationNames ?? [];
 
   useEffect(() => {
     if (visible && initialData) {
