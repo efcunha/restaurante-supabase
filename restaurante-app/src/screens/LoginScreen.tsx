@@ -118,6 +118,7 @@ export default function LoginScreen({ navigation }: Props) {
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>Email</Text>
             <TextInput
+              testID="login-email-input"
               style={styles.input}
               placeholder="seu@email.com"
               placeholderTextColor="#8FA3B1"
@@ -132,6 +133,7 @@ export default function LoginScreen({ navigation }: Props) {
             <Text style={styles.label}>Senha</Text>
             <View style={styles.passwordRow}>
               <TextInput
+                testID="login-password-input"
                 style={styles.passwordInput}
                 placeholder="••••••••"
                 placeholderTextColor="#8FA3B1"
@@ -147,6 +149,7 @@ export default function LoginScreen({ navigation }: Props) {
           </View>
 
           <TouchableOpacity
+            testID="login-submit-button"
             style={[styles.loginBtn, loading && styles.loginBtnDisabled]}
             onPress={handleLogin}
             disabled={loading}

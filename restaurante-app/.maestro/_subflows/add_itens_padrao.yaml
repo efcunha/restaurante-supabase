@@ -16,7 +16,7 @@ appId: com.comandapraia.donacida
       - eraseText: 50
       - inputText: "chopp"
       - waitForAnimationToEnd
-      - hideKeyboard
+      - tapOn: "Novo Pedido"
       - tapOn:
           text: "+"
           index: 0
@@ -26,7 +26,7 @@ appId: com.comandapraia.donacida
 - eraseText: 50
 - inputText: "frango"
 - waitForAnimationToEnd
-- hideKeyboard
+- tapOn: "Novo Pedido"
 - tapOn: "Simples"
 
 # ── Espetinho Especial x1 (Cupim Simples) ───────────────────────────────────
@@ -34,7 +34,7 @@ appId: com.comandapraia.donacida
 - eraseText: 50
 - inputText: "cupim"
 - waitForAnimationToEnd
-- hideKeyboard
+- tapOn: "Novo Pedido"
 - tapOn: "Simples"
 
 # ── Porção x1 (Batata Frita) ────────────────────────────────────────────────
@@ -42,7 +42,7 @@ appId: com.comandapraia.donacida
 - eraseText: 50
 - inputText: "batata frita"
 - waitForAnimationToEnd
-- hideKeyboard
+- tapOn: "Novo Pedido"
 - tapOn:
     text: "+"
     index: 0
@@ -52,7 +52,7 @@ appId: com.comandapraia.donacida
 - eraseText: 50
 - inputText: "risoto"
 - waitForAnimationToEnd
-- hideKeyboard
+- tapOn: "Novo Pedido"
 - tapOn:
     text: "+"
     index: 0
@@ -65,7 +65,7 @@ appId: com.comandapraia.donacida
       - eraseText: 50
       - inputText: "caldo"
       - waitForAnimationToEnd
-      - hideKeyboard
+      - tapOn: "Novo Pedido"
       - tapOn:
           text: "+"
           index: 0
@@ -73,4 +73,4 @@ appId: com.comandapraia.donacida
 # ── Limpa busca e fecha teclado ─────────────────────────────────────────────
 - tapOn: "Buscar item do cardápio..."
 - eraseText: 50
-- hideKeyboard
+- tapOn: "Novo Pedido"
