@@ -9,9 +9,13 @@ export const DeliverySubmitFooter = memo(function DeliverySubmitFooter({
   onSubmit,
   isSubmitting,
   disabled,
+  onHeightChange,
 }: DeliverySubmitFooterProps) {
   return (
-    <View style={styles.stickyFooter}>
+    <View
+      style={styles.stickyFooter}
+      onLayout={(event) => onHeightChange?.(event.nativeEvent.layout.height)}
+    >
       <View style={styles.totalContainer}>
         <Text style={styles.totalLabel}>Total Final:</Text>
         <Text style={styles.totalValue}>R$ {finalTotal.toFixed(2)}</Text>

@@ -2513,6 +2513,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
       <Modal visible={showEditModal} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { 
+            height: '90%',
             maxHeight: '90%',
             width: modalWidth,
             maxWidth: modalMaxWidth,
@@ -2525,7 +2526,13 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
+            <View style={styles.modalBody}>
+              <ScrollView
+                showsVerticalScrollIndicator
+                style={styles.modalScrollView}
+                contentContainerStyle={styles.modalScrollContent}
+                keyboardShouldPersistTaps="handled"
+              >
               <Text style={styles.label}>Nome:</Text>
               <TextInput
                 style={[styles.input, { maxWidth: inputMaxWidth }]}
@@ -2840,8 +2847,12 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                 </TouchableOpacity>
               )}
 
+              </ScrollView>
+            </View>
+
+            <View style={styles.modalFooterActions}>
               <TouchableOpacity
-                style={[styles.salvarBtn, loading && styles.salvarBtnDisabled, { marginTop: 10 }]}
+                style={[styles.salvarBtn, styles.modalFooterSaveButton, loading && styles.salvarBtnDisabled]}
                 onPress={salvarEdicao}
                 disabled={loading}
               >
@@ -2849,7 +2860,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                   {loading ? 'Salvando...' : 'SALVAR ALTERAÇÕES'}
                 </Text>
               </TouchableOpacity>
-            </ScrollView>
+            </View>
           </View>
         </View>
       </Modal>
@@ -3431,6 +3442,27 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     display: 'flex',
     flexDirection: 'column', // Prepare for flex children
+    minHeight: 0,
+  },
+  modalScrollView: {
+    flex: 1,
+    minHeight: 0,
+  },
+  modalBody: {
+    flex: 1,
+    minHeight: 0,
+  },
+  modalScrollContent: {
+    paddingBottom: 120,
+  },
+  modalFooterActions: {
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    backgroundColor: colors.white,
+  },
+  modalFooterSaveButton: {
+    marginTop: 0,
   },
   modalHeader: {
     flexDirection: 'row',
