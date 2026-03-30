@@ -16,6 +16,13 @@ export const LEGACY_MENU_CATEGORIES: MenuCategory[] = [
   { slug: 'outro', name: 'Outro', order: 8, active: true },
 ];
 
+export const DEFAULT_BEBIDAS_SUBCATEGORIES = [
+  'Bebidas Não Alcoólicas',
+  'Drinks',
+  'Doses',
+  'Whiskies',
+];
+
 const CATEGORY_ICON_BY_SLUG: Record<string, string> = {
   caldo: '🍲',
   'espetinho-simples': '🔥',
@@ -118,6 +125,22 @@ export function isPizzaCategorySlug(slug?: string | null): boolean {
 export function isEspetinhoCategorySlug(slug?: string | null): boolean {
   const normalized = normalizeCategorySlug(slug);
   return normalized === 'espetinho-simples' || normalized === 'espetinho-especial';
+}
+
+export function isBebidaCategorySlug(slug?: string | null): boolean {
+  return normalizeCategorySlug(slug) === 'bebida';
+}
+
+export function resolveConfiguredSubcategories(input: unknown, fallback: string[]): string[] {
+  if (!Array.isArray(input)) {
+    return [...fallback];
+  }
+
+  const sanitized = input
+    .map((item) => String(item ?? '').trim())
+    .filter((item, index, arr) => item.length > 0 && arr.indexOf(item) === index);
+
+  return sanitized.length > 0 ? sanitized : [...fallback];
 }
 
 /**
