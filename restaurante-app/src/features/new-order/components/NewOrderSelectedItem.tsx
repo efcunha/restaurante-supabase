@@ -6,12 +6,14 @@ import { NewOrderSelectedItemProps } from '../types';
 export const NewOrderSelectedItem = memo(function NewOrderSelectedItem({
   item,
   price,
+  subtitle,
   onRemove,
 }: NewOrderSelectedItemProps) {
   return (
     <View style={styles.selectedItem}>
       <View style={styles.selectedItemInfo}>
         <Text style={styles.selectedItemName}>{item}</Text>
+        {!!subtitle && <Text style={styles.selectedItemSubtitle}>{subtitle}</Text>}
         <Text style={styles.selectedItemPrice}>R$ {price.toFixed(2)}</Text>
       </View>
       <TouchableOpacity style={styles.removeBtn} onPress={onRemove}>
@@ -37,6 +39,11 @@ const styles = StyleSheet.create({
   selectedItemName: {
     fontSize: 16,
     color: colors.text,
+  },
+  selectedItemSubtitle: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: 2,
   },
   selectedItemPrice: {
     fontSize: 14,

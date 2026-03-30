@@ -310,6 +310,15 @@ const EspetinhoRow = memo(({ baseName, cardapioEspetinhos, produtos, onIncrement
     }).filter((item): item is { label: string; produto: Product } => !!item.produto);
   }, [baseName, cardapioEspetinhos, variacoes]);
 
+  const acompanhamentosInfo = useMemo(() => {
+    const primeiraVariacao = itensVariaveis[0]?.produto;
+    const acompanhamentos = Array.isArray(primeiraVariacao?.accompaniments)
+      ? primeiraVariacao.accompaniments.map((item) => String(item).trim()).filter(Boolean)
+      : [];
+    if (acompanhamentos.length === 0) return '';
+    return `Acompanha: ${acompanhamentos.join(', ')}`;
+  }, [itensVariaveis]);
+
   if (itensVariaveis.length === 0) return null;
 
   // Cyclic colors for consistent UI
@@ -318,6 +327,9 @@ const EspetinhoRow = memo(({ baseName, cardapioEspetinhos, produtos, onIncrement
   return (
     <View style={styles.caldoCard}>
       <Text style={styles.produtoName}>{baseName}</Text>
+      {!!acompanhamentosInfo && (
+        <Text style={styles.pizzaIngredientsText}>{acompanhamentosInfo}</Text>
+      )}
 
       {/* Dynamic Variation Rows */}
       {itensVariaveis.map((item, idx) => {

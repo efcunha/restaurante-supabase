@@ -99,6 +99,7 @@ export interface Product {
   prices?: Record<string, number>;
   ingredients?: string[]; // Para pizza
   customIngredients?: string; // Para pizza
+  accompaniments?: string[]; // Acompanhamentos de espetinho
   inventoryItems?: Ingredient[];
   [key: string]: any;
 }

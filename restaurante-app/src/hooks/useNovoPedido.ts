@@ -41,7 +41,7 @@ interface UseNovoPedidoReturn {
     setObservations: (obs: string) => void;
     updateProduto: (itemName: string, delta: number) => void;
     total: number;
-    selectedItems: { text: string; price: number; name: string }[];
+    selectedItems: { text: string; price: number; name: string; accompanimentsText?: string }[];
     handleRemoveItem: (itemText: string) => void;
     handleSubmit: () => Promise<void>;
     isSubmitting: boolean;
@@ -198,6 +198,9 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                     category: data.category || 'outro',
                     price: data.price ? Number(data.price) : 0, // Ensure number
                     prices: data.prices || {}, // Map de preços para Pizza
+                    accompaniments: Array.isArray(data.accompaniments)
+                        ? data.accompaniments.map((item: unknown) => String(item).trim()).filter(Boolean)
+                        : [],
                     // inventoryItems: data.inventoryItems, // Not yet in SQL schema?
                     active: isActive !== undefined ? isActive : true, // Default to true if missing
                     createdAt: new Date(data.created_at).getTime(),
@@ -497,19 +500,32 @@ export function useNovoPedido(): UseNovoPedidoReturn {
     }, [produtos, calculateItemPrice]);
 
     const selectedItems = useMemo(() => {
-        const items: { text: string; price: number; name: string }[] = [];
+        const items: { text: string; price: number; name: string; accompanimentsText?: string }[] = [];
+
+        const resolveAccompanimentsText = (itemName: string): string | undefined => {
+            const nomeBase = itemName.replace(/\s*\(.*\)$/, '');
+            const produtoExato = cardapioCombinado.find(p => p.name === nomeBase);
+            const produtoPrefixo = produtoExato || cardapioCombinado.find(p => itemName.startsWith(p.name));
+            const accompaniments = Array.isArray(produtoPrefixo?.accompaniments)
+                ? produtoPrefixo.accompaniments.map((item) => String(item).trim()).filter(Boolean)
+                : [];
+            if (accompaniments.length === 0) return undefined;
+            return `Acompanha: ${accompaniments.join(', ')}`;
+        };
+
         for (const [name, qty] of Object.entries(produtos)) {
             if (qty > 0) {
                 const itemPrice = calculateItemPrice(name, 1); // Unit price
                 items.push({
                     text: `${qty}x ${name}`,
                     price: itemPrice * qty,
-                    name: name // Pass the KEY explicitly
+                    name: name, // Pass the KEY explicitly
+                    accompanimentsText: resolveAccompanimentsText(name)
                 });
             }
         }
         return items;
-    }, [produtos, calculateItemPrice]);
+    }, [produtos, calculateItemPrice, cardapioCombinado]);
 
     const handleRemoveItem = useCallback((itemName: string) => {
         if (Platform.OS === 'web') {

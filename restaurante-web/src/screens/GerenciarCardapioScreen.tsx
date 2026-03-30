@@ -96,6 +96,8 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
   const [criarVariacoes, setCriarVariacoes] = useState(false);
   const [precosVariacoes, setPrecosVariacoes] = useState<Record<string, string>>({});
   const [variacoesEspetinho, setVariacoesEspetinho] = useState<string[]>([]);
+  const [acompanhamentosEspetinho, setAcompanhamentosEspetinho] = useState<string[]>([]);
+  const [novoAcompanhamento, setNovoAcompanhamento] = useState('');
   const [companySettings, setCompanySettings] = useState<Record<string, any>>({});
   const [menuCategories, setMenuCategories] = useState<MenuCategory[]>(LEGACY_MENU_CATEGORIES);
   const [categoryNameInput, setCategoryNameInput] = useState('');
@@ -113,6 +115,8 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
   const [editNome, setEditNome] = useState('');
   const [editPreco, setEditPreco] = useState('');
   const [editCategoria, setEditCategoria] = useState('');
+  const [editAcompanhamentosEspetinho, setEditAcompanhamentosEspetinho] = useState<string[]>([]);
+  const [editNovoAcompanhamento, setEditNovoAcompanhamento] = useState('');
   const [editImageUrl, setEditImageUrl] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
 
@@ -162,6 +166,13 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
   // Helper function to detect pizza products
   const isPizzaProduct = (product: Product): boolean => {
     return product.category?.toLowerCase().includes('pizza') || false;
+  };
+
+  const normalizeStringArray = (value: unknown): string[] => {
+    if (!Array.isArray(value)) return [];
+    return value
+      .map((item) => String(item ?? '').trim())
+      .filter((item) => item.length > 0);
   };
 
   // Helper function to transform pizza prices Record into pseudo-Product variations
@@ -488,7 +499,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
       // Note: available column now always mirrors active (enforced by constraint)
       const { data, error } = await supabase
         .from('products')
-        .select('id, name, description, price, category, subcategory, active, created_at, prices, ingredients, custom_ingredients, inventory_items, image_url')
+        .select('id, name, description, price, category, subcategory, active, created_at, prices, ingredients, custom_ingredients, accompaniments, inventory_items, image_url')
         .eq('company_id', user.companyId)
         .order('category', { ascending: true })
         .order('name', { ascending: true });
@@ -510,6 +521,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
         prices: p.prices || {},
         ingredients: p.ingredients || [],
         customIngredients: p.custom_ingredients || '',
+        accompaniments: normalizeStringArray(p.accompaniments),
         inventoryItems: p.inventory_items || [],
         image_url: p.image_url || null,
       })) as Product[];
@@ -560,11 +572,13 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
 
       try {
         setLoading(true);
+        const acompanhamentos = normalizeStringArray(acompanhamentosEspetinho);
         const variacoes = variacoesEspetinho.map(v => ({
           company_id: user.companyId,
           name: `${nome.trim()} ${v}`,
           price: parseFloat(precosVariacoes[v].replace(',', '.')) || 0,
           category: categoria,
+          accompaniments: acompanhamentos,
           available: true // DB Column is available
         }));
 
@@ -588,6 +602,8 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
         Alert.alert('Sucesso', 'Cadastrado com sucesso!');
         setNome('');
         setPrecosVariacoes({});
+        setAcompanhamentosEspetinho([]);
+        setNovoAcompanhamento('');
         setNewProductImageUrl(null);
         setNewProductImageFile(null);
         setNewProductImagePreview(null);
@@ -687,6 +703,10 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
           available: true // DB Column is available
         };
 
+        if (isEspetinhoCategorySlug(categoria)) {
+          novoProduto.accompaniments = normalizeStringArray(acompanhamentosEspetinho);
+        }
+
         if (isIngredientsCategorySlug(categoria)) {
           novoProduto.ingredients = ingredientesSelecionados;
           novoProduto.custom_ingredients = ingredientesPersonalizados;
@@ -714,6 +734,10 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
         if (isIngredientsCategorySlug(categoria)) {
           setIngredientesSelecionados([]);
           setIngredientesPersonalizados('');
+        }
+        if (isEspetinhoCategorySlug(categoria)) {
+          setAcompanhamentosEspetinho([]);
+          setNovoAcompanhamento('');
         }
         setNewProductImageUrl(null);
         setNewProductImageFile(null);
@@ -899,6 +923,8 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
     setEditando(produto);
     setEditNome(produto.name);
     setEditCategoria(produto.category);
+    setEditAcompanhamentosEspetinho(normalizeStringArray(produto.accompaniments));
+    setEditNovoAcompanhamento('');
 
     console.log('✏️ [abrirEdicao] Produto:', produto.name, 'Categoria:', produto.category);
     console.log('🍕 [abrirEdicao] Subcategoria:', produto.subcategory);
@@ -997,6 +1023,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
         updateData.subcategory = subcategoria || null;
         updateData.ingredients = ingredientesSelecionados;
         updateData.custom_ingredients = ingredientesPersonalizados;
+        updateData.accompaniments = [];
       } else {
         // Update non-pizza fields
         const sanitizedPreco = editPreco?.toString().replace(',', '.');
@@ -1005,6 +1032,11 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
         if (isIngredientsCategorySlug(editCategoria)) {
           updateData.ingredients = ingredientesSelecionados;
           updateData.custom_ingredients = ingredientesPersonalizados;
+        }
+        if (isEspetinhoCategorySlug(editCategoria)) {
+          updateData.accompaniments = normalizeStringArray(editAcompanhamentosEspetinho);
+        } else {
+          updateData.accompaniments = [];
         }
       }
 
@@ -1569,6 +1601,8 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                       setCriarVariacoes(true);
                     } else {
                       setCriarVariacoes(false);
+                      setAcompanhamentosEspetinho([]);
+                      setNovoAcompanhamento('');
                     }
                   }}
                 >
@@ -1594,6 +1628,50 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                   Criar variações automáticas ({variacoesEspetinho.join(', ')})
                 </Text>
               </TouchableOpacity>
+            )}
+
+            {isEspetinhoCategorySlug(categoria) && (
+              <>
+                <Text style={styles.label}>Acompanhamentos fixos do espetinho:</Text>
+                <View style={styles.addTemperoRow}>
+                  <TextInput
+                    style={styles.inputTempero}
+                    placeholder="Ex: Farofa"
+                    placeholderTextColor={colors.textSecondary}
+                    value={novoAcompanhamento}
+                    onChangeText={setNovoAcompanhamento}
+                  />
+                  <TouchableOpacity
+                    style={styles.addBtn}
+                    onPress={() => {
+                      const value = novoAcompanhamento.trim();
+                      if (!value) return;
+                      if (acompanhamentosEspetinho.includes(value)) return;
+                      setAcompanhamentosEspetinho((prev) => [...prev, value]);
+                      setNovoAcompanhamento('');
+                    }}
+                  >
+                    <Ionicons name="add" size={24} color={colors.white} />
+                  </TouchableOpacity>
+                </View>
+
+                {acompanhamentosEspetinho.length > 0 && (
+                  <View style={styles.listaTemperos}>
+                    {acompanhamentosEspetinho.map((item, index) => (
+                      <View key={`${item}-${index}`} style={styles.temperoRow}>
+                        <Text style={styles.temperoText}>{item}</Text>
+                        <TouchableOpacity
+                          onPress={() => {
+                            setAcompanhamentosEspetinho((prev) => prev.filter((_, i) => i !== index));
+                          }}
+                        >
+                          <Ionicons name="trash-outline" size={20} color={colors.danger} />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </>
             )}
 
             {criarVariacoes && isEspetinhoCategorySlug(categoria) ? (
@@ -2370,6 +2448,50 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                     keyboardType="numeric"
                   />
 
+                  {isEspetinhoCategorySlug(editCategoria) && (
+                    <>
+                      <Text style={styles.label}>Acompanhamentos fixos:</Text>
+                      <View style={styles.addTemperoRow}>
+                        <TextInput
+                          style={styles.inputTempero}
+                          placeholder="Ex: Vinagrete"
+                          placeholderTextColor={colors.textSecondary}
+                          value={editNovoAcompanhamento}
+                          onChangeText={setEditNovoAcompanhamento}
+                        />
+                        <TouchableOpacity
+                          style={styles.addBtn}
+                          onPress={() => {
+                            const value = editNovoAcompanhamento.trim();
+                            if (!value) return;
+                            if (editAcompanhamentosEspetinho.includes(value)) return;
+                            setEditAcompanhamentosEspetinho((prev) => [...prev, value]);
+                            setEditNovoAcompanhamento('');
+                          }}
+                        >
+                          <Ionicons name="add" size={24} color={colors.white} />
+                        </TouchableOpacity>
+                      </View>
+
+                      {editAcompanhamentosEspetinho.length > 0 && (
+                        <View style={styles.listaTemperos}>
+                          {editAcompanhamentosEspetinho.map((item, index) => (
+                            <View key={`${item}-${index}`} style={styles.temperoRow}>
+                              <Text style={styles.temperoText}>{item}</Text>
+                              <TouchableOpacity
+                                onPress={() => {
+                                  setEditAcompanhamentosEspetinho((prev) => prev.filter((_, i) => i !== index));
+                                }}
+                              >
+                                <Ionicons name="trash-outline" size={20} color={colors.danger} />
+                              </TouchableOpacity>
+                            </View>
+                          ))}
+                        </View>
+                      )}
+                    </>
+                  )}
+
                   {isIngredientsCategorySlug(editCategoria) && (
                     <>
                       <Text style={styles.label}>Ingredientes:</Text>
@@ -2419,7 +2541,13 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
                       styles.categoriaBtn,
                       editCategoria === cat.value && styles.categoriaBtnActive
                     ]}
-                    onPress={() => setEditCategoria(cat.value)}
+                    onPress={() => {
+                      setEditCategoria(cat.value);
+                      if (!isEspetinhoCategorySlug(cat.value)) {
+                        setEditAcompanhamentosEspetinho([]);
+                        setEditNovoAcompanhamento('');
+                      }
+                    }}
                   >
                     <Text style={[
                       styles.categoriaBtnText,
