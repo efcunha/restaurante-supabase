@@ -43,7 +43,7 @@ Operational reminders from recent incidents:
 - `product_adicionais` null/trigger fix applied in `database-backup/migrations/20260329140000_fix_adicionais_unico_null_and_trigger.sql` (uniqueness constraint + trigger correction for null category edge cases).
 - `public.profiles` now uses restrictive policies (self + admin/gerente same-company), no longer `SELECT USING (true)`.
 - `handle_new_user` and role checks were aligned to canonical roles (`admin`, `gerente`, `garcom`, `cozinheiro`, `montagem`, `entregador`, `caixa`) with legacy alias normalization.
-- `LicenseGate` component exists in app/web (`src/components/LicenseGate.tsx`) but does NOT yet wrap operational screens (`NovoPedidoScreen`, `ComandaGerenciamentoScreen`, `RotasDeliveryScreen`). Do NOT set `billing_enabled=true` in production until this coverage is complete.
+- `LicenseGate` component exists in app/web (`restaurante-app/src/components/LicenseGate.tsx` + `restaurante-web/src/components/LicenseGate.tsx`) but does NOT yet wrap operational screens (`NovoPedidoScreen`, `ComandaGerenciamentoScreen`, `RotasDeliveryScreen`). Do NOT set `billing_enabled=true` in production until this coverage is complete.
 - Environment policy: there is currently no dedicated staging environment; deployments and validations run directly in production.
 - Production-only rule: for sensitive changes (security, auth, billing, RLS, CORS, rate limiting), require guarded rollout, smoke tests, and explicit evidence docs update in the same work cycle.
 
@@ -103,11 +103,12 @@ For tasks involving React Native, Expo, performance, upgrades, GitHub Actions, C
 
 1. First consult `.github\skills\restaurante-supabase\SKILL.md`.
 2. Then consult the corresponding Callstack skill:
-	- RN performance/rendering/bundle/profiling -> `.github/agent-skills/skills/react-native-best-practices/SKILL.md`
-	- RN/Expo upgrade path -> `.github/agent-skills/skills/upgrading-react-native/SKILL.md`
-	- CI/GitHub Actions/build artifacts -> `.github/agent-skills/skills/github-actions/SKILL.md`
-	- PR flow/branching/gh CLI -> `.github/agent-skills/skills/github/SKILL.md`
-	- Brownfield native/Expo integration path -> `.github/agent-skills/skills/react-native-brownfield-migration/SKILL.md`
+	> **STATUS: Callstack skill files are NOT INSTALLED in this repository (`.github/agent-skills/` does not exist). Apply conservative fallback for all topics below.**
+	- RN performance/rendering/bundle/profiling -> `.github/agent-skills/skills/react-native-best-practices/SKILL.md` (**NOT INSTALLED**)
+	- RN/Expo upgrade path -> `.github/agent-skills/skills/upgrading-react-native/SKILL.md` (**NOT INSTALLED**)
+	- CI/GitHub Actions/build artifacts -> `.github/agent-skills/skills/github-actions/SKILL.md` (**NOT INSTALLED**)
+	- PR flow/branching/gh CLI -> `.github/agent-skills/skills/github/SKILL.md` (**NOT INSTALLED**)
+	- Brownfield native/Expo integration path -> `.github/agent-skills/skills/react-native-brownfield-migration/SKILL.md` (**NOT INSTALLED**)
 3. Do not answer with implementation-level recommendations until both checks above are completed.
 4. If any required skill cannot be accessed, explicitly state the missing file and provide a conservative fallback aligned with existing repository patterns.
 5. For substantial implementation guidance, explicitly mention which skill(s) were consulted before presenting the solution.
@@ -120,13 +121,15 @@ Hard-stop gate:
 
 ### React Native and Expo work
 
+> **NOT INSTALLED**: `.github/agent-skills/skills/react-native-best-practices/SKILL.md` — apply conservative fallback aligned with existing patterns.
+
 For React Native performance, rendering, memory, bundle, startup, and profiling topics, start with:
 
-- `.github/agent-skills/skills/react-native-best-practices/SKILL.md`
+- `.github/agent-skills/skills/react-native-best-practices/SKILL.md` (**NOT INSTALLED**)
 
 Then use detailed references from:
 
-- `.github/agent-skills/skills/react-native-best-practices/references/`
+- `.github/agent-skills/skills/react-native-best-practices/references/` (**NOT INSTALLED**)
 
 Rules:
 
@@ -137,13 +140,15 @@ Rules:
 
 ### React Native upgrades
 
+> **NOT INSTALLED**: `.github/agent-skills/skills/upgrading-react-native/SKILL.md` — apply conservative fallback aligned with existing patterns.
+
 For React Native, Expo SDK, CocoaPods, Gradle, and template-diff upgrade tasks, start with:
 
-- `.github/agent-skills/skills/upgrading-react-native/SKILL.md`
+- `.github/agent-skills/skills/upgrading-react-native/SKILL.md` (**NOT INSTALLED**)
 
 Then use detailed references from:
 
-- `.github/agent-skills/skills/upgrading-react-native/references/`
+- `.github/agent-skills/skills/upgrading-react-native/references/` (**NOT INSTALLED**)
 
 Rules:
 
@@ -153,42 +158,50 @@ Rules:
 
 ### GitHub Actions and CI builds
 
+> **NOT INSTALLED**: `.github/agent-skills/skills/github-actions/SKILL.md` — apply conservative fallback aligned with existing patterns.
+
 For GitHub Actions workflows, build artifacts, CI download flows, and mobile build automation, start with:
 
-- `.github/agent-skills/skills/github-actions/SKILL.md`
+- `.github/agent-skills/skills/github-actions/SKILL.md` (**NOT INSTALLED**)
 
 Then use detailed references from:
 
-- `.github/agent-skills/skills/github-actions/references/`
+- `.github/agent-skills/skills/github-actions/references/` (**NOT INSTALLED**)
 
 ### GitHub workflow operations
 
+> **NOT INSTALLED**: `.github/agent-skills/skills/github/SKILL.md` — apply conservative fallback aligned with existing patterns.
+
 For pull requests, stacked PRs, branch management, and `gh` CLI usage, start with:
 
-- `.github/agent-skills/skills/github/SKILL.md`
+- `.github/agent-skills/skills/github/SKILL.md` (**NOT INSTALLED**)
 
 Then use detailed references from:
 
-- `.github/agent-skills/skills/github/references/`
+- `.github/agent-skills/skills/github/references/` (**NOT INSTALLED**)
 
 ### Brownfield migration
 
+> **NOT INSTALLED**: `.github/agent-skills/skills/react-native-brownfield-migration/SKILL.md` — apply conservative fallback aligned with existing patterns.
+
 For incremental migration between native and React Native or Expo integration in native apps, start with:
 
-- `.github/agent-skills/skills/react-native-brownfield-migration/SKILL.md`
+- `.github/agent-skills/skills/react-native-brownfield-migration/SKILL.md` (**NOT INSTALLED**)
 
 Then use detailed references from:
 
-- `.github/agent-skills/skills/react-native-brownfield-migration/references/`
+- `.github/agent-skills/skills/react-native-brownfield-migration/references/` (**NOT INSTALLED**)
 
 ## How to Use These Skills in Chat
 
 When deeper context is needed, explicitly reference the relevant skill file in chat, for example:
 
-- `#file:.github/agent-skills/skills/react-native-best-practices/SKILL.md`
-- `#file:.github/agent-skills/skills/github-actions/SKILL.md`
+- `#file:.github/agent-skills/skills/react-native-best-practices/SKILL.md` (**NOT INSTALLED** — omit from prompt if file not present)
+- `#file:.github/agent-skills/skills/github-actions/SKILL.md` (**NOT INSTALLED** — omit from prompt if file not present)
 
 Start with the main `SKILL.md` file, then open individual reference files for implementation details.
+
+> **Note**: The `.github/agent-skills/` directory has not been created in this repository. All Callstack skill files above are currently unavailable. The hard-stop gate fallback applies automatically for all RN/CI topics.
 
 For UI/UX workflow usage, explicitly reference `.github/prompts/ui-ux-pro-max/PROMPT.md` or invoke `/ui-ux-pro-max` in chat.
 

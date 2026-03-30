@@ -34,22 +34,30 @@ Guiar implementacoes e reviews no projeto com foco em:
 - Supabase (PostgreSQL 15+, RLS, Realtime)
 - Playwright (`restaurante-web/e2e`) — testes E2E do cliente web
 - Maestro (`restaurante-app/.maestro/`) — testes E2E do app nativo (ver secao Maestro abaixo)
-- Sentry (`src/config/sentryConfig.js`) — arquivo legado JS; nao migrar para `.ts` sem alinhar typings de `@sentry/react-native`
+- Sentry (`restaurante-app/src/config/sentryConfig.js` + `restaurante-web/src/config/sentryConfig.js`) — arquivo legado JS; nao migrar para `.ts` sem alinhar typings de `@sentry/react-native`
 
 ## Arquivos de Referencia (alta prioridade)
-- `src/config/SupabaseConfig.ts`
-- `src/config/featureFlags.ts`
-- `src/design-system/tokens.ts`
-- `src/theme/colors.ts`
-- `src/ui/index.ts`
-- `src/layouts/ScreenScaffold.tsx`
-- `src/auth/roles.js`
-- `scripts/phase12-profile.js`
+
+Arquivos espelhados (existem em `restaurante-app/` e `restaurante-web/`):
+- `restaurante-app/src/config/SupabaseConfig.ts` + `restaurante-web/src/config/SupabaseConfig.ts`
+- `restaurante-app/src/config/featureFlags.ts` + `restaurante-web/src/config/featureFlags.ts`
+- `restaurante-app/src/design-system/tokens.ts` + `restaurante-web/src/design-system/tokens.ts`
+- `restaurante-app/src/theme/colors.ts` + `restaurante-web/src/theme/colors.ts`
+- `restaurante-app/src/ui/index.ts` + `restaurante-web/src/ui/index.ts`
+- `restaurante-app/src/layouts/ScreenScaffold.tsx` + `restaurante-web/src/layouts/ScreenScaffold.tsx`
+- `restaurante-app/src/auth/roles.js` + `restaurante-web/src/auth/roles.js`
+- `restaurante-app/scripts/phase12-profile.js` + `restaurante-web/scripts/phase12-profile.js`
+
+Banco de dados / migracoes (raiz do monorepo):
 - `database-backup/migrations/20260311161100_schema_dump.sql`
 - `database-backup/migrations/20260323183000_harden_profiles_rls_and_role_guardrails.sql`
+
+Seguranca / LGPD (raiz do monorepo):
 - `docs/security/SECURITY_AUDIT_REPORT_2026-03-23.md`
 - `docs/security/REMEDIATION_PLAN_DETAILED.md`
 - `docs/security/LGPD_COMPLIANCE_GUIDE.md`
+
+Operacoes SaaS:
 - `restaurante-ops/src/modules/billing-operations.ts`
 - `restaurante-ops/src/index.ts`
 - `restaurante-ops/docs/API-CONTRACTS.md`
