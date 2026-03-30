@@ -252,6 +252,7 @@ VariationRow.displayName = 'VariationRow';
 
 export default function DeliveryScreen() {
   const useUiNextDelivery = isFeatureEnabled('delivery_uiNext');
+  const [footerHeight, setFooterHeight] = useState(112);
   const [showPizzaModal, setShowPizzaModal] = useState(false);
   const [selectedPizza, setSelectedPizza] = useState<Product | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -601,10 +602,11 @@ export default function DeliveryScreen() {
             onSubmit={handleDeliverySubmit}
             isSubmitting={isSubmittingDelivery}
             disabled={isSubmittingDelivery || selectedItems.length === 0}
+            onHeightChange={setFooterHeight}
           />
         }
       >
-        <View style={styles.twoColLayout}>
+        <View style={[styles.twoColLayout, { marginBottom: footerHeight }]}>
           <ScrollView style={styles.leftPanel} contentContainerStyle={styles.leftPanelContent} keyboardShouldPersistTaps="handled">
             <DeliveryOrderForm
               clientName={clientName}
@@ -693,7 +695,7 @@ const styles = StyleSheet.create({
   leftPanel: { width: 380, borderRightWidth: 1, borderRightColor: colors.border, backgroundColor: colors.white },
   leftPanelContent: { padding: 16, gap: 0 },
   rightPanel: { flex: 1, flexDirection: 'column' as const },
-  listContent: { padding: 20, paddingBottom: 120 },
+  listContent: { padding: 20, paddingBottom: 24 },
   sectionTitle: { fontSize: 18, fontWeight: 'bold', color: colors.primary, marginTop: 20, marginBottom: 12 },
   quantityBtn: { backgroundColor: colors.primary, width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
   quantityBtnText: { color: colors.white, fontSize: 18, fontWeight: 'bold' },

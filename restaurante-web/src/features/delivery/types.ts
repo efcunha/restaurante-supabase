@@ -21,4 +21,5 @@ export interface DeliverySubmitFooterProps {
   onSubmit: () => void;
   isSubmitting: boolean;
   disabled: boolean;
+  onHeightChange?: (height: number) => void;
 }
