@@ -29,10 +29,12 @@ Guiar implementacoes e reviews no projeto com foco em:
 ## Stack Principal
 - React 19 + Expo 54
 - React Native: `restaurante-app` em `0.81.5` e `restaurante-web` em `0.84.0`
+  - **Risco documentado**: versoes divergem 3 patches; APIs introduzidas em `0.82+` usadas no web devem ser verificadas contra `0.81.5` antes de espelhar no app.
 - TypeScript estrito
 - Supabase (PostgreSQL 15+, RLS, Realtime)
-- Playwright (`restaurante-web/e2e`)
-- Sentry (`src/config/sentryConfig.js`)
+- Playwright (`restaurante-web/e2e`) — testes E2E do cliente web
+- Maestro (`restaurante-app/.maestro/`) — testes E2E do app nativo (ver secao Maestro abaixo)
+- Sentry (`src/config/sentryConfig.js`) — arquivo legado JS; nao migrar para `.ts` sem alinhar typings de `@sentry/react-native`
 
 ## Arquivos de Referencia (alta prioridade)
 - `src/config/SupabaseConfig.ts`
@@ -87,6 +89,12 @@ Sequencia recomendada:
 Rollback total:
 - `npm run phase12:legacy -- --env <env_real_em_uso>`
 
+Fase 6 — Billing / Licensing (rollout independente dos waves de UI):
+- `EXPO_PUBLIC_FEATURE_BILLING=true` → `billing_enabled` (master toggle; `false` desabilita LicenseGate e checks de assinatura)
+- `EXPO_PUBLIC_FEATURE_BILLING_FORCE_BLOCK=true` → `billing_forceBlock` (QA only — simula bloqueio local sem alterar DB)
+- Status atual: **billing not live em producao**.
+- Pre-requisito para ativar: `LicenseGate` deve envolver telas operacionais (`NovoPedidoScreen`, `ComandaGerenciamentoScreen`, `RotasDeliveryScreen`, etc.) antes de habilitar `billing_enabled=true` em producao.
+
 ## Dominio e Integridade
 Conceitos chave:
 - **Comanda**: agrupador de pedidos (mesa, balcao, delivery)
@@ -121,6 +129,7 @@ Migracoes de referencia:
 - `20260323183000_harden_profiles_rls_and_role_guardrails.sql`
 - `20260328175830_product_adicionais.sql`
 - `20260329113000_normalize_product_adicionais_category_constraints.sql`
+- `20260329140000_fix_adicionais_unico_null_and_trigger.sql`
 
 Runbook de remuneracao (ops):
 1. Priorizar `public.reconcile_billing_event_atomic` como caminho unico de escrita para reconcile.
@@ -265,7 +274,34 @@ npx playwright test e2e/pizza.spec.ts e2e/delivery.spec.ts --workers=1
 # Drift de migrations (database-backup)
 cd database-backup
 ./check-migration-sync.sh
+
+# CI/CD: o job `deploy` em .github/workflows/security.yml e apenas um gate de aprovacao.
+# Deploy real em producao: railway up --service restaurante-ops --path-as-root ./restaurante-ops
 ```
+
+## Maestro E2E (app nativo)
+Flows ativos em `restaurante-app/.maestro/`:
+- `balcao.yaml`, `balcao_garcom02.yaml`
+- `mesa.yaml`, `mesa_garcom02.yaml`
+- `pizza.yaml`, `pizza_garcom02.yaml`
+- Subflows reutilizaveis em `_subflows/` (ex.: `login.yaml`)
+
+Quando usar Maestro vs Playwright:
+- **Maestro**: validacao em dispositivo/emulador fisico do `restaurante-app` (app nativo React Native).
+- **Playwright**: validacao de `restaurante-web` em browser. Nao copiar specs de um para o outro.
+
+Execucao basica:
+```bash
+# Configurar credenciais em restaurante-app/.maestro/.env.maestro (gitignored)
+# Exemplo de arquivo: restaurante-app/.maestro/.env.maestro.example
+maestro test .maestro/balcao.yaml --udid emulator-5554 \
+  -e PLAYWRIGHT_TEST_EMAIL=<email> -e PLAYWRIGHT_TEST_PASSWORD=<senha>
+```
+
+Bloqueador conhecido (2026-03-28):
+- Login no emulador nao navega para `Novo Pedido` apos `ENTRAR`.
+- Causa provavel: credencial incorreta ou `profiles` sem `company_id` para o usuario.
+- Resolucao: validar usuario em `auth.users` + `public.profiles` no Supabase; testar login manual no emulador antes de executar o flow completo.
 
 ## Checklist para o Copilot (antes de responder)
 1. Esta mudanca afeta app, web ou ambos?

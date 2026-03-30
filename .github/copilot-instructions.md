@@ -40,8 +40,10 @@ Operational reminders from recent incidents:
 - Secrets hardening implemented: use `database-backup/.env.local` (gitignored) + `database-backup/.env.example`; legacy `config.local.sh`/`config.example.sh` removed.
 - `profiles` hardening implemented in `database-backup/migrations/20260323183000_harden_profiles_rls_and_role_guardrails.sql` and applied remotely.
 - `product_adicionais` normalization hardening implemented in `database-backup/migrations/20260329113000_normalize_product_adicionais_category_constraints.sql` and applied/remotely registered (`supabase_migrations.schema_migrations`).
+- `product_adicionais` null/trigger fix applied in `database-backup/migrations/20260329140000_fix_adicionais_unico_null_and_trigger.sql` (uniqueness constraint + trigger correction for null category edge cases).
 - `public.profiles` now uses restrictive policies (self + admin/gerente same-company), no longer `SELECT USING (true)`.
 - `handle_new_user` and role checks were aligned to canonical roles (`admin`, `gerente`, `garcom`, `cozinheiro`, `montagem`, `entregador`, `caixa`) with legacy alias normalization.
+- `LicenseGate` component exists in app/web (`src/components/LicenseGate.tsx`) but does NOT yet wrap operational screens (`NovoPedidoScreen`, `ComandaGerenciamentoScreen`, `RotasDeliveryScreen`). Do NOT set `billing_enabled=true` in production until this coverage is complete.
 - Environment policy: there is currently no dedicated staging environment; deployments and validations run directly in production.
 - Production-only rule: for sensitive changes (security, auth, billing, RLS, CORS, rate limiting), require guarded rollout, smoke tests, and explicit evidence docs update in the same work cycle.
 
@@ -112,8 +114,9 @@ For tasks involving React Native, Expo, performance, upgrades, GitHub Actions, C
 
 Hard-stop gate:
 
-- If the required skill checks are not completed, do not provide implementation steps, code suggestions, or migration commands.
-- In that case, respond only with the missing-skill limitation block from the mandatory response format.
+- If Callstack skill files cannot be accessed due to a transient I/O error, apply conservative fallback aligned with existing repository patterns rather than blocking entirely.
+- Start the response with the missing-skill limitation block from the mandatory response format, stating which file could not be read.
+- Full block (no implementation steps) applies only when the **primary project skill** (`.github\skills\restaurante-supabase\SKILL.md`) cannot be accessed.
 
 ### React Native and Expo work
 
