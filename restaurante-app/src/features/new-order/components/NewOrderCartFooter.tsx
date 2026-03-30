@@ -57,6 +57,7 @@ export const NewOrderCartFooter = memo(function NewOrderCartFooter({
               key={`${item.name}-${index}`}
               item={item.text}
               price={item.price}
+              subtitle={item.accompanimentsText}
               onRemove={() => onRemoveItem(item.name)}
             />
           ))}

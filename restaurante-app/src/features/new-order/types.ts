@@ -4,11 +4,13 @@ export interface NewOrderSelectedItemData {
   text: string;
   price: number;
   name: string;
+  accompanimentsText?: string;
 }
 
 export interface NewOrderSelectedItemProps {
   item: string;
   price: number;
+  subtitle?: string;
   onRemove: () => void;
 }
 
