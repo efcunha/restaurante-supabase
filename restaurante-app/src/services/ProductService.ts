@@ -27,6 +27,7 @@ export const criarProduto = async (produto: Omit<Product, 'id' | 'createdAt'>) =
       name: produto.name.trim(),
       price: typeof produto.price === 'string' ? parseFloat(produto.price) : produto.price,
       category: produto.category || 'outros',
+      subcategory: produto.subcategory || null,
       image_url: produto.image || '🍖',
       available: produto.active !== undefined ? produto.active : true,
       description: produto.description || '',
@@ -135,6 +136,8 @@ export const atualizarProduto = async (produtoId: string, dadosAtualizados: any)
 
     if (dadosAtualizados.categoria) updateData.category = dadosAtualizados.categoria;
     if (dadosAtualizados.category) updateData.category = dadosAtualizados.category;
+    if (dadosAtualizados.subcategoria !== undefined) updateData.subcategory = dadosAtualizados.subcategoria || null;
+    if (dadosAtualizados.subcategory !== undefined) updateData.subcategory = dadosAtualizados.subcategory || null;
 
     if (dadosAtualizados.icone) updateData.image_url = dadosAtualizados.icone;
     if (dadosAtualizados.image) updateData.image_url = dadosAtualizados.image;
@@ -236,6 +239,7 @@ function _mapToProduct(row: any): any {
     name: row.name,
     price: row.price,
     category: row.category,
+    subcategory: row.subcategory,
     image: row.image_url,
     active: row.available,
     unit: row.unit,
