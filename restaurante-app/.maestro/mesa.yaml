@@ -36,7 +36,7 @@ env:
 
 - tapOn: "Nº"
 - inputText: "${NUMERO_MESA}"
-- hideKeyboard
+- tapOn: "Novo Pedido"
 # ── 4. Adiciona pizza Grande/Família ─────────────────────────────────────────
 - runFlow: _subflows/add_pizza.yaml
 

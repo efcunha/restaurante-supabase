@@ -19,7 +19,7 @@ name: "Fluxo Pizza - Garcom 02"
 # ── 3. Preenche nome do cliente ───────────────────────────────────────────────
 - tapOn: "Digite o nome"
 - inputText: "Pedido Pizza G02 Maestro"
-- hideKeyboard
+- tapOn: "Novo Pedido"
 
 # ── 4. Configura Pizza Grande/Família (Calabresa + Chocolate com Morango + Bacon)
 - runFlow: _subflows/add_pizza.yaml
