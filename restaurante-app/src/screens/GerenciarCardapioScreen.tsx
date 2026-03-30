@@ -99,7 +99,7 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
   // Estados para cadastro com variações (espetinhos)
   const [criarVariacoes, setCriarVariacoes] = useState(false);
   const [precosVariacoes, setPrecosVariacoes] = useState<Record<string, string>>({});
-  const [variacoesEspetinho, setVariacoesEspetinho] = useState<string[]>(['Simples', 'com Arroz', 'com Macaxeira', 'Completo']);
+  const [variacoesEspetinho, setVariacoesEspetinho] = useState<string[]>([]);
   const [companySettings, setCompanySettings] = useState<Record<string, any>>({});
   const [menuCategories, setMenuCategories] = useState<MenuCategory[]>(LEGACY_MENU_CATEGORIES);
   const [categoryNameInput, setCategoryNameInput] = useState('');
@@ -391,7 +391,17 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
 
         if (settings.temperosCaldos) setTemperosCaldos(settings.temperosCaldos);
         if (settings.temperosComidas) setTemperosComidas(settings.temperosComidas);
-        if (settings.variacoesEspetinho) setVariacoesEspetinho(settings.variacoesEspetinho);
+        if (settings.variacoesEspetinho && settings.variacoesEspetinho.length > 0) {
+          setVariacoesEspetinho(settings.variacoesEspetinho);
+        } else {
+          const defaultVariacoes = ['Simples', 'com Arroz', 'com Macaxeira', 'Completo'];
+          setVariacoesEspetinho(defaultVariacoes);
+          try {
+            await persistCompanySettings({ variacoesEspetinho: defaultVariacoes }, settings);
+          } catch (persistError) {
+            console.error('Error saving default espetinho variations:', persistError);
+          }
+        }
         console.log('[GerenciarCardapio] Pizza ingredients from DB:', settings.ingredientesPizza);
         if (settings.ingredientesPizza && settings.ingredientesPizza.length > 0) {
           setIngredientesPizza(settings.ingredientesPizza);
