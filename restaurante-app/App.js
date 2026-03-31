@@ -199,7 +199,23 @@ function AuthStack() {
 }
 
 function AppContent() {
-  const { user, loading, isPasswordRecovery } = useAuth();
+  const { user, loading, isPasswordRecovery, initError, debugLog } = useAuth();
+  const [forceAuthFallback, setForceAuthFallback] = React.useState(false);
+
+  useEffect(() => {
+    setForceAuthFallback(false);
+  }, [user]);
+
+  useEffect(() => {
+    if (!loading || user) return;
+
+    const timer = setTimeout(() => {
+      setForceAuthFallback(true);
+      console.warn('[Boot] Auth loading timeout fallback activated');
+    }, 18000);
+
+    return () => clearTimeout(timer);
+  }, [loading, user]);
 
   // Tentar reconexao com impressora ao iniciar
   useEffect(() => {
@@ -207,7 +223,7 @@ function AppContent() {
   }, []);
 
   // LOADING
-  if (loading) {
+  if (loading && !forceAuthFallback) {
     return (
       <SafeAreaProvider>
         <StatusBar barStyle="dark-content" backgroundColor={colorSystem.background} translucent={false} />
@@ -215,6 +231,12 @@ function AppContent() {
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={colorSystem.primary} />
             <Text style={styles.loadingText}>Verificando acesso...</Text>
+            {!!initError && (
+              <Text style={[styles.loadingText, { marginTop: 8, fontSize: 13 }]}>Erro: {initError}</Text>
+            )}
+            {!initError && debugLog?.length > 0 && (
+              <Text style={[styles.loadingText, { marginTop: 8, fontSize: 12 }]}>Inicializando autenticacao...</Text>
+            )}
           </View>
         </SafeAreaView>
       </SafeAreaProvider>
