@@ -1,7 +1,9 @@
-diff --git a/android/src/main/java/expo/modules/kotlin/Promise.kt b/android/src/main/java/expo/modules/kotlin/Promise.kt
+warning: in the working copy of 'C:/Users/ECUNHA/AppData/Local/Temp/pp-orig/android/src/main/java/expo/modules/kotlin/Promise.kt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'D:/restaurante-supabase/restaurante-app/node_modules/expo-modules-core/android/src/main/java/expo/modules/kotlin/Promise.kt', LF will be replaced by CRLF the next time Git touches it
+diff --git a/C:/Users/ECUNHA/AppData/Local/Temp/pp-orig/android/src/main/java/expo/modules/kotlin/Promise.kt b/D:/restaurante-supabase/restaurante-app/node_modules/expo-modules-core/android/src/main/java/expo/modules/kotlin/Promise.kt
 index cc342ff..01a1baf 100644
---- a/android/src/main/java/expo/modules/kotlin/Promise.kt
-+++ b/android/src/main/java/expo/modules/kotlin/Promise.kt
+--- a/C:/Users/ECUNHA/AppData/Local/Temp/pp-orig/android/src/main/java/expo/modules/kotlin/Promise.kt
++++ b/D:/restaurante-supabase/restaurante-app/node_modules/expo-modules-core/android/src/main/java/expo/modules/kotlin/Promise.kt
 @@ -45,16 +45,16 @@ fun Promise.toBridgePromise(): com.facebook.react.bridge.Promise {
        resolveMethod(value)
      }
