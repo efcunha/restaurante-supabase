@@ -27,7 +27,43 @@ interface ItemResumo {
     precoUnit: number;
 }
 
+const isInvalidHistoricoClient = (value: any) => {
+    const normalized = String(value || '').trim();
+    if (!normalized) return true;
+
+    return normalized === 'Não informado'
+        || normalized === 'Cliente Balcão'
+        || normalized === 'Cliente'
+        || normalized === 'Reservando...';
+};
+
+const isItemCancellable = (item: any) => {
+    const itemStatus = String(item?.status || '').trim().toLowerCase();
+    const isCancelled = itemStatus === 'cancelled' || itemStatus === 'cancelado' || itemStatus === 'cancelada';
+    const isDelivered = item?.delivered === true || itemStatus === 'delivered' || itemStatus === 'entregue';
+    return !isCancelled && !isDelivered;
+};
+
 export default function ComandaDetails({ comanda, cardapioDin, onClose, onPay, onPrint, onCancel, onAddItems, onShare, onFullPayment, onCancelItem }: ComandaDetailsProps) {
+    const clienteDisplay = useMemo(() => {
+        const raw = String(comanda?.cliente || '').trim();
+        const isPlaceholder = isInvalidHistoricoClient(raw);
+        if (!isPlaceholder) return raw;
+
+        const pedidos = Array.isArray(comanda?.pedidos) ? comanda.pedidos : [];
+        const sorted = [...pedidos].sort((a: any, b: any) => {
+            const aTs = new Date(a?.updated_at || a?.created_at || 0).getTime();
+            const bTs = new Date(b?.updated_at || b?.created_at || 0).getTime();
+            return bTs - aTs;
+        });
+        const fromOrder = sorted.find((p: any) => {
+            const name = String(p?.client_name || p?.customer_name || p?.client || '').trim();
+            return !isInvalidHistoricoClient(name);
+        });
+
+        return String(fromOrder?.client_name || fromOrder?.customer_name || fromOrder?.client || raw || 'Não informado').trim();
+    }, [comanda?.cliente, comanda?.pedidos]);
+
     // Calcular Saldo devedor (with safe defaults)
     const saldoDevedor = useMemo(() => {
         const totalConsumido = Number(comanda.totalConsumido) || 0;
@@ -254,7 +290,7 @@ export default function ComandaDetails({ comanda, cardapioDin, onClose, onPay, o
 
                     <View style={styles.infoRow}>
                         <Text style={styles.label}>Cliente:</Text>
-                        <Text style={styles.value}>{comanda.cliente}</Text>
+                        <Text style={styles.value}>{clienteDisplay}</Text>
                     </View>
                     {comanda.mesa ? (
                         <View style={styles.infoRow}>
@@ -266,6 +302,12 @@ export default function ComandaDetails({ comanda, cardapioDin, onClose, onPay, o
                         <View style={styles.infoRow}>
                             <Text style={styles.label}>Garçom:</Text>
                             <Text style={styles.value}>{comanda.abertaPorNome || comanda.criadoPorNome}</Text>
+                        </View>
+                    ) : null}
+                    {(comanda.tipoComanda === 'delivery' || comanda.entregadorNome || comanda.closed_by_name) ? (
+                        <View style={styles.infoRow}>
+                            <Text style={styles.label}>Entregador:</Text>
+                            <Text style={styles.value}>{comanda.entregadorNome || comanda.closed_by_name || 'Não informado'}</Text>
                         </View>
                     ) : null}
                     <View style={styles.infoRow}>
@@ -373,16 +415,14 @@ export default function ComandaDetails({ comanda, cardapioDin, onClose, onPay, o
 
                 {/* 🔒 SEÇÃO DE CANCELAMENTO DE ITENS - Apenas se comanda está aberta */}
                 {shouldShowActions() && comanda.pedidos?.some((p: any) => 
-                    p.itemsWithStatus?.some((item: any) => item.delivered !== true && item.status !== 'cancelled')
+                    p.itemsWithStatus?.some((item: any) => isItemCancellable(item))
                 ) && (
                     <View style={[styles.paperReceipt, { marginTop: 20, borderTopColor: colors.danger }]}>
                         <Text style={[styles.receiptTitle, { color: colors.danger }]}>CANCELAR ITENS</Text>
                         <View style={styles.divider} />
                         
                         {comanda.pedidos?.map((pedido: any, pedidoIdx: number) => {
-                            const itemsNaoEntregues = pedido.itemsWithStatus?.filter(
-                                (item: any) => item.delivered !== true && item.status !== 'cancelled'
-                            ) || [];
+                            const itemsNaoEntregues = pedido.itemsWithStatus?.filter((item: any) => isItemCancellable(item)) || [];
                             
                             if (itemsNaoEntregues.length === 0) return null;
                             

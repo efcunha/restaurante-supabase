@@ -94,6 +94,8 @@ class OrderService {
     return total;
   }
 
+    private readonly deliveredStatuses = new Set(['delivered', 'entregue']);
+
   extractQuantity(item: string): number {
     const match = item.match(/^(\d+)x?\s*/);
     return parseInt(match?.[1] || '1', 10) || 1;
@@ -344,6 +346,7 @@ class OrderService {
   /**
    * Cancela um item individual dentro do pedido
    * Regra: só pode cancelar se o item ainda não foi entregue (delivered !== true)
+  * Regra: só pode cancelar se o item ainda não foi entregue
    * Recalcula o total do pedido após cancelamento
    */
   cancelItem(order: Order, itemId: string): Order {
@@ -357,7 +360,11 @@ class OrderService {
     }
 
     // 🔒 Bloquear cancelamento de item já entregue
-    if (itemToCancel.delivered === true) {
+    const itemStatus = String((itemToCancel as any).status || '').trim().toLowerCase();
+    const isDeliveredByStatus = this.deliveredStatuses.has(itemStatus);
+
+    // 🔒 Bloquear cancelamento de item já entregue (flag ou status)
+    if (itemToCancel.delivered === true || isDeliveredByStatus) {
       throw new Error('Não é possível cancelar item já entregue');
     }
 

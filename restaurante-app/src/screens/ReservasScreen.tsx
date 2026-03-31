@@ -7,6 +7,26 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { EvolutionApiService } from '../services/EvolutionApiService';
 import { colors } from '../theme/colors';
+
+function normalizeReservationPhone(phone: string): string {
+  const digits = String(phone || '').replace(/\D/g, '');
+
+  if (!digits) {
+    return '';
+  }
+
+  if (digits.startsWith('55')) {
+    return digits;
+  }
+
+  // Entrada local (DDD + numero) recebe DDI Brasil automaticamente.
+  if (digits.length >= 10 && digits.length <= 11) {
+    return `55${digits}`;
+  }
+
+  return digits;
+}
+
 export default function ReservasScreen() {
   const { user } = useAuth();
   const navigation = useNavigation<any>();
@@ -76,10 +96,12 @@ export default function ReservasScreen() {
     }
     
     try {
+      const normalizedPhone = normalizeReservationPhone(telefone);
+
       const { error } = await supabase.from('agendamentos').insert({
         company_id: user?.companyId,
         nome_cliente: nome,
-        telefone_cliente: telefone,
+        telefone_cliente: normalizedPhone,
         data_hora_reserva: new Date(dataHora).toISOString(),
         quantidade_pessoas: parseInt(pessoas, 10),
         observacoes: observacoes,
@@ -292,7 +314,8 @@ export default function ReservasScreen() {
               <TextInput style={styles.input} value={nome} onChangeText={setNome} placeholder="Ex: João Silva" />
               
               <Text style={styles.label}>Telefone (WhatsApp)</Text>
-              <TextInput style={styles.input} value={telefone} onChangeText={setTelefone} placeholder="Ex: 5511999999999" keyboardType="phone-pad" />
+              <TextInput style={styles.input} value={telefone} onChangeText={setTelefone} placeholder="Ex: 11999999999" keyboardType="phone-pad" />
+              <Text style={styles.hintText}>O DDI 55 (Brasil) é aplicado automaticamente</Text>
               
               <Text style={styles.label}>Data e Hora * (Ex: 2026-05-20T20:00)</Text>
               <TextInput style={styles.input} value={dataHora} onChangeText={setDataHora} placeholder="AAAA-MM-DDTHH:MM" />
@@ -441,6 +464,7 @@ const styles = StyleSheet.create({
   modalTitle: { fontSize: 18, fontWeight: 'bold', color: colors.text },
   label: { fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: 5 },
   input: { borderWidth: 1, borderColor: colors.border, borderRadius: 6, padding: 10, marginBottom: 15, backgroundColor: colors.surfaceMuted, color: colors.text },
+  hintText: { fontSize: 12, color: colors.textSecondary, marginTop: -10, marginBottom: 12 },
   btnSave: { backgroundColor: colors.primary, padding: 15, borderRadius: 6, alignItems: 'center', marginTop: 10 },
   btnSaveText: { color: colors.white, fontWeight: 'bold', fontSize: 16 }
 });
