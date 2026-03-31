@@ -36,6 +36,7 @@ Operational reminders from recent incidents:
 - In monorepo deploys for `restaurante-ops`, use `railway up --service restaurante-ops --path-as-root ./restaurante-ops` to avoid root autodetection failures.
 - Supabase CLI is installed via Scoop (`C:\Users\ECUNHA\scoop\shims\supabase.exe`); avoid `npm install -g supabase` (unsupported by Supabase).
 - Migration sync policy: whenever a new migration file is created, apply it to the target DB immediately and verify it appears in migration history.
+- **Migration Reference**: For complete list of applied migrations, see `.github/skills/restaurante-supabase/SKILL.md` section "Banco de Dados — Migracoes de referencia". Snapshot below lists only critical hardening migrations.
 - Security docs generated on 2026-03-23: `docs/security/SECURITY_AUDIT_REPORT_2026-03-23.md`, `docs/security/REMEDIATION_PLAN_DETAILED.md`, `docs/security/LGPD_COMPLIANCE_GUIDE.md`, `docs/security/EXECUTIVE_SUMMARY_PT.md`, `docs/security/SECURITY_DOCUMENTATION_INDEX.md`.
 - Secrets hardening implemented: use `database-backup/.env.local` (gitignored) + `database-backup/.env.example`; legacy `config.local.sh`/`config.example.sh` removed.
 - `profiles` hardening implemented in `database-backup/migrations/20260323183000_harden_profiles_rls_and_role_guardrails.sql` and applied remotely.
@@ -207,12 +208,20 @@ For UI/UX workflow usage, explicitly reference `.github/prompts/ui-ux-pro-max/PR
 
 ## Context7 Skill Routing (Library Docs)
 
+> **STATUS: Context7 MCP tools available** — Use when querying external library documentation. Fall back to web search only if Context7 is transientally unavailable.
+
 For any request involving library/framework API docs, setup instructions, version-specific usage, or code generation based on external packages:
 
-- Prefer Context7 MCP tools first (`resolve-library-id` then `query-docs` / `get-library-docs`).
+- Prefer Context7 MCP tools first (`mcp_context7_resolve-library-id` then `mcp_context7_query-docs`).
 - Resolve the library ID before querying docs unless the user already provides an explicit Context7 ID (`/org/project` or `/org/project/version`).
 - Favor Context7 output over memory-based API recall when there is potential version drift.
-- If Context7 is unavailable, state the limitation and provide conservative guidance.
+- If Context7 is unavailable (transient error), state the limitation and provide conservative guidance backed by local files or memory.
+
+Examples of Context7 queries:
+- Supabase Auth setup for latest version
+- React Native 0.84.0 API reference
+- TypeScript 5.x strict mode rules
+- Expo Router latest navigation patterns
 
 Prompt pattern to force Context7 usage:
 
