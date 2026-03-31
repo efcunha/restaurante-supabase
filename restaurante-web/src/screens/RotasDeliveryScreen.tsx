@@ -265,6 +265,21 @@ export default function RotasDeliveryScreen() {
 
         if (error) throw error;
 
+        // Envia notificacao WhatsApp quando entregador sai com a entrega
+        if (novoStatus === 'dispatched' && order?.customer_phone && user?.companyId) {
+          try {
+            const comandaNumber = order.comanda_number || order.numeroComanda || '#';
+            const customerName = order.customerName || 'Cliente';
+            const message = `Olá ${customerName}! O motoboy saiu com sua entrega da comanda ${comandaNumber}. Acompanhe o status em tempo real!`;
+            
+            await EvolutionApiService.sendTextMessage(user.companyId, order.customer_phone, message);
+            console.log('[RotasDelivery] WhatsApp enviado com sucesso para status dispatched');
+          } catch (notificationError) {
+            console.warn('[RotasDelivery] Erro ao enviar WhatsApp para status dispatched:', notificationError);
+            // Não quebra o fluxo se o envio de WhatsApp falhar
+          }
+        }
+
         if (novoStatus === 'delivered' && order) {
           await closeDeliveryComandaIfSettled(order);
         }
@@ -332,14 +347,22 @@ export default function RotasDeliveryScreen() {
       if (currentStatus === 'pronto' || currentStatus === 'ready') {
           updateOrderStatus(order.id, 'dispatched');
       } else if (currentStatus === 'dispatched') {
+          if (Platform.OS === 'web') {
+            const confirmed = window.confirm('Confirmar entrega com sucesso?');
+            if (confirmed) {
+              updateOrderStatus(order.id, 'delivered');
+            }
+            return;
+          }
+
           Alert.alert(
-              'Confirmar Entrega',
-              'Confirme o desfecho desta rota.',
-              [
-                  { text: 'Cancelar', style: 'cancel' },
-                  { text: 'Nao entregue', style: 'destructive', onPress: () => handleUndeliveredAction(order) },
-                  { text: 'Sim, entregue com sucesso', style: 'default', onPress: () => updateOrderStatus(order.id, 'delivered') }
-              ]
+            'Confirmar Entrega',
+            'Confirme o desfecho desta rota.',
+            [
+              { text: 'Cancelar', style: 'cancel' },
+              { text: 'Nao entregue', style: 'destructive', onPress: () => handleUndeliveredAction(order) },
+              { text: 'Sim, entregue com sucesso', style: 'default', onPress: () => updateOrderStatus(order.id, 'delivered') }
+            ]
           );
       }
   };
