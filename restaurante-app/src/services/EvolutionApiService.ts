@@ -148,7 +148,7 @@ export const EvolutionApiService = {
         },
         body: JSON.stringify({
           number: normalizeBrazilPhone(phone),
-          textMessage: { text },
+          text,
         }),
       });
 
