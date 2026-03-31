@@ -12,6 +12,14 @@ import { supabase } from '../config/SupabaseConfig';
 import { getBusinessDateKey } from '../services/BusinessDateService';
 import OptimizedFlatList from '../components/OptimizedFlatList';
 import { colors } from '../theme/colors';
+
+const isItemActiveInKitchen = (item: any) => {
+  const status = String(item?.status || '').trim().toLowerCase();
+  const isCancelled = status === 'cancelled' || status === 'cancelada' || status === 'cancelado';
+  const isReadyOrDelivered = status === 'pronto' || status === 'delivered' || status === 'entregue';
+  return !isCancelled && !isReadyOrDelivered && item?.checked !== true;
+};
+
 export default function CozinhaScreen() {
   const { user } = useAuth();
   const [allOrders, setAllOrders] = useState<any[]>([]);
@@ -121,7 +129,7 @@ export default function CozinhaScreen() {
           : OrderService.extractBebidas([item.name]).length === 0;
 
         // ✅ CORREÇÃO: Verificar status (não pronto, não cancelado), checked e dedup
-        const shouldShow = item.status !== 'pronto' && item.status !== 'cancelled' && item.checked !== true && !seenItemIds.has(item.id) && isKitchenItem;
+        const shouldShow = isItemActiveInKitchen(item) && !seenItemIds.has(item.id) && isKitchenItem;
 
         if (shouldShow) {
           seenItemIds.add(item.id);

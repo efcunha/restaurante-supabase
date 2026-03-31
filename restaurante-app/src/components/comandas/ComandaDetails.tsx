@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, Platform } from 'react-native';
 import { fixDecimal, MenuItem } from '../../utils/orderCalculator';
 import { Comanda } from '../../types';
 
@@ -254,6 +254,33 @@ export default function ComandaDetails({ comanda, cardapioDin, onClose, onPay, o
         }
     };
 
+    const confirmCancelItem = (pedido: any, item: any) => {
+        if (!onCancelItem) return;
+
+        const itemLabel = `${item.quantity}x ${item.name}`;
+
+        if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof window.confirm === 'function') {
+            const confirmed = window.confirm(`Deseja cancelar ${itemLabel}?`);
+            if (confirmed) {
+                onCancelItem(pedido, item.id, item.name);
+            }
+            return;
+        }
+
+        Alert.alert(
+            'Cancelar Item',
+            `Deseja cancelar ${itemLabel}?`,
+            [
+                { text: 'Não', style: 'cancel' },
+                {
+                    text: 'Sim, cancelar',
+                    style: 'destructive',
+                    onPress: () => onCancelItem(pedido, item.id, item.name)
+                }
+            ]
+        );
+    };
+
     const shouldShowActions = () => {
         // STRICT ALLOWLIST: Só mostra ações se estiver explicitamente 'aberta'
         // Isso garante que comandas pagas ou canceladas não permitam edições
@@ -444,22 +471,7 @@ export default function ComandaDetails({ comanda, cardapioDin, onClose, onPay, o
                                                     borderRadius: 4,
                                                     marginLeft: 10
                                                 }}
-                                                onPress={() => {
-                                                    if (onCancelItem) {
-                                                        Alert.alert(
-                                                            'Cancelar Item',
-                                                            `Deseja cancelar ${item.quantity}x ${item.name}?`,
-                                                            [
-                                                                { text: 'Não', style: 'cancel' },
-                                                                {
-                                                                    text: 'Sim, cancelar',
-                                                                    style: 'destructive',
-                                                                    onPress: () => onCancelItem(pedido, item.id, item.name)
-                                                                }
-                                                            ]
-                                                        );
-                                                    }
-                                                }}
+                                                onPress={() => confirmCancelItem(pedido, item)}
                                             >
                                                 <Text style={{ color: colors.white, fontWeight: 'bold', fontSize: 12 }}>✕</Text>
                                             </TouchableOpacity>
