@@ -38,7 +38,7 @@ NC='\033[0m' # No Color
 echo "=========================================="
 echo "React Native API Divergence Check"
 echo "Checking: restaurante-web (RN 0.84.0)"
-echo "Against: restaurante-app (RN 0.81.5)"
+echo "Against: restaurante-app (RN 0.84.0)"
 echo "=========================================="
 
 ISSUES_FOUND=0
