@@ -115,8 +115,8 @@ export default function AdminStatsCards({
       <View style={styles.block}>
         <View style={styles.blockHeader}>
           <Text style={styles.blockTitle}>Estatísticas Operacionais</Text>
-          <TouchableOpacity onPress={onRefreshStats} style={styles.refreshBtn} accessibilityLabel="Atualizar estatísticas operacionais">
-            <Ionicons name="refresh" size={16} color={colorSystem.primary} />
+          <TouchableOpacity onPress={onRefreshStats} style={styles.refreshBtnPrimary} accessibilityLabel="Atualizar estatísticas operacionais">
+            <Ionicons name="refresh" size={16} color={colorSystem.onPrimary} />
           </TouchableOpacity>
         </View>
         <View style={styles.kpiRow}>
@@ -252,15 +252,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colorSystem.text,
     letterSpacing: -0.2,
-  },
-  refreshBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colorSystem.border,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   refreshBtnPrimary: {
     width: 40,
