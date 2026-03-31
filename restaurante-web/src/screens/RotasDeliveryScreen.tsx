@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, TouchableOpacity, Alert, Platform, Linking, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Alert, Platform, Linking, ActivityIndicator, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
@@ -21,6 +21,7 @@ export default function RotasDeliveryScreen() {
   const [loading, setLoading] = useState(true);
   const [deliveryOrders, setDeliveryOrders] = useState<any[]>([]);
   const [processingItems, setProcessingItems] = useState(new Set());
+  const [confirmDelivery, setConfirmDelivery] = useState<{ orderId: string; label: string } | null>(null);
 
   const ensureWhatsAppConnectionForDelivery = useCallback(async (status: DeliveryStatus) => {
     if (!user?.companyId || !DELIVERY_NOTIFICATION_STATUSES.includes(status)) {
@@ -234,7 +235,6 @@ export default function RotasDeliveryScreen() {
         // Ao confirmar entrega, baixa financeira e comanda para não manter Delivery em aberto no gerenciamento.
         if (order && novoStatus === 'delivered') {
             updatePayload.is_paid = true;
-            updatePayload.delivered_at = nowIso;
             updatePayload.comanda_status = 'fechada';
 
             if (order.itemsWithStatus) {
@@ -348,10 +348,10 @@ export default function RotasDeliveryScreen() {
           updateOrderStatus(order.id, 'dispatched');
       } else if (currentStatus === 'dispatched') {
           if (Platform.OS === 'web') {
-            const confirmed = window.confirm('Confirmar entrega com sucesso?');
-            if (confirmed) {
-              updateOrderStatus(order.id, 'delivered');
-            }
+            const label = order.customerName
+              ? `Confirmar entrega da comanda #${order.comandaNumber || '?'} para ${order.customerName}?`
+              : `Confirmar entrega da comanda #${order.comandaNumber || '?'}?`;
+            setConfirmDelivery({ orderId: order.id, label });
             return;
           }
 
@@ -509,6 +509,36 @@ export default function RotasDeliveryScreen() {
       )}
 
       <StatusBar style="light" backgroundColor={colors.primary} />
+
+      {/* Modal de confirmação de entrega — evita window.confirm bloqueado pelo browser */}
+      {confirmDelivery && (
+        <Modal transparent animationType="fade" visible onRequestClose={() => setConfirmDelivery(null)}>
+          <View style={styles.confirmOverlay}>
+            <View style={styles.confirmBox}>
+              <Text style={styles.confirmTitle}>Confirmar Entrega</Text>
+              <Text style={styles.confirmMessage}>{confirmDelivery.label}</Text>
+              <View style={styles.confirmButtons}>
+                <TouchableOpacity
+                  style={[styles.confirmBtn, styles.confirmBtnCancel]}
+                  onPress={() => setConfirmDelivery(null)}
+                >
+                  <Text style={styles.confirmBtnCancelText}>Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.confirmBtn, styles.confirmBtnOk]}
+                  onPress={() => {
+                    const { orderId } = confirmDelivery;
+                    setConfirmDelivery(null);
+                    updateOrderStatus(orderId, 'delivered');
+                  }}
+                >
+                  <Text style={styles.confirmBtnOkText}>✅ Confirmar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 }
@@ -743,5 +773,64 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     textAlign: 'center',
+  },
+  confirmOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmBox: {
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    padding: 28,
+    width: '90%',
+    maxWidth: 400,
+    ...Platform.select({
+      web: { boxShadow: '0px 8px 32px rgba(0,0,0,0.25)' },
+      // @ts-ignore
+      default: { elevation: 12 },
+    }),
+  },
+  confirmTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  confirmMessage: {
+    fontSize: 15,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  confirmButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  confirmBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  confirmBtnCancel: {
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border || '#ddd',
+  },
+  confirmBtnCancelText: {
+    color: colors.textSecondary,
+    fontWeight: '600',
+    fontSize: 15,
+  },
+  confirmBtnOk: {
+    backgroundColor: colors.success || '#22c55e',
+  },
+  confirmBtnOkText: {
+    color: colors.white,
+    fontWeight: '700',
+    fontSize: 15,
   },
 });
