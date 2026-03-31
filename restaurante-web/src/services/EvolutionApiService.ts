@@ -5,9 +5,61 @@
 
 // NOTA DE SEGURANÇA: Em produção, idealmente estas variáveis devem vir do .env (ex: import.meta.env.VITE_EVO_API_URL)
 // ou as chamadas roteadas por uma Edge Function do Supabase para não expor a API_KEY.
-const EVO_API_URL = 'https://evolution-api-production-9ac1.up.railway.app';
-// A chave não deve ter espaços sobrando que causam 403 Forbidden
-const EVO_API_KEY = 'Lueed28@13546289b@P@ssw0rd'.trim();
+const DEFAULT_EVO_API_URL = 'https://evolution-api-production-203d4.up.railway.app';
+
+function normalizeEvolutionBaseUrl(rawUrl: string | undefined): string {
+  const trimmed = String(rawUrl || '').trim();
+  if (!trimmed) {
+    return DEFAULT_EVO_API_URL;
+  }
+
+  const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+
+  try {
+    const parsed = new URL(withProtocol);
+    return parsed.origin.replace(/\/+$/, '');
+  } catch {
+    throw new Error(`URL da Evolution API invalida: ${trimmed}`);
+  }
+}
+
+// Vite/Expo substitui EXPO_PUBLIC_* em tempo de build
+const EVO_API_URL = normalizeEvolutionBaseUrl(process.env.EXPO_PUBLIC_EVO_API_URL);
+const EVO_API_KEY = String(process.env.EXPO_PUBLIC_EVO_API_KEY || '').trim();
+
+function ensureApiKeyConfigured(): string {
+  if (!EVO_API_KEY) {
+    throw new Error('Configuracao ausente: defina EXPO_PUBLIC_EVO_API_KEY no ambiente e gere novo build/deploy.');
+  }
+  return EVO_API_KEY;
+}
+
+function parseEvolutionApiError(response: Response, data: any, fallbackMessage: string): Error {
+  if (response.status === 401 || response.status === 403) {
+    return new Error('Unauthorized na Evolution API. Verifique EXPO_PUBLIC_EVO_API_KEY no ambiente do deploy e reinicie o app/web apos atualizar as variaveis.');
+  }
+
+  return new Error(data?.message || data?.error || fallbackMessage);
+}
+
+function getFriendlyNetworkError(error: unknown): Error {
+  const message = (error as any)?.message ? String((error as any).message) : '';
+  const host = (() => {
+    try {
+      return new URL(EVO_API_URL).host;
+    } catch {
+      return EVO_API_URL;
+    }
+  })();
+
+  if (/failed to fetch|networkerror|load failed|fetch failed/i.test(message)) {
+    return new Error(
+      `Falha ao conectar na Evolution API (${host}). Verifique se a URL esta correta (EXPO_PUBLIC_EVO_API_URL), se o servico esta ativo no Railway e se o CORS permite o dominio do admin web.`
+    );
+  }
+
+  return error as Error;
+}
 
 export interface ConnectionStateResponse {
   instance?: {
@@ -68,13 +120,12 @@ export const EvolutionApiService = {
    */
   async createInstance(companyId: string): Promise<any> {
     try {
+      const apiKey = ensureApiKeyConfigured();
       const response = await fetch(`${EVO_API_URL}/instance/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': EVO_API_KEY,
-          'globalApiKey': EVO_API_KEY, // Evolution v2 required for admin endpoints
-          'Authorization': `Bearer ${EVO_API_KEY}`,
+          'apikey': apiKey,
         },
         body: JSON.stringify({
           instanceName: companyId,
@@ -92,13 +143,13 @@ export const EvolutionApiService = {
           console.log('[EvolutionApiService] Instância já existe ou criação bloqueada. Buscando QR code de conexão direta...');
           return await this.connectInstance(companyId);
         }
-        throw new Error(data.message || data.error || 'Erro ao criar instância na Evolution API');
+        throw parseEvolutionApiError(response, data, 'Erro ao criar instância na Evolution API');
       }
 
       return data;
     } catch (error: any) {
       console.error('[EvolutionApiService] createInstance error:', error);
-      throw error;
+      throw getFriendlyNetworkError(error);
     }
   },
 
@@ -107,10 +158,11 @@ export const EvolutionApiService = {
    */
   async getConnectionState(companyId: string): Promise<ConnectionStateResponse> {
     try {
+      const apiKey = ensureApiKeyConfigured();
       const response = await fetch(`${EVO_API_URL}/instance/connectionState/${companyId}`, {
         method: 'GET',
         headers: {
-          'apikey': EVO_API_KEY,
+          'apikey': apiKey,
         },
       });
 
@@ -122,13 +174,13 @@ export const EvolutionApiService = {
 
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.message || data.error || 'Erro ao buscar estado da conexão');
+        throw parseEvolutionApiError(response, data, 'Erro ao buscar estado da conexão');
       }
 
       return data as ConnectionStateResponse;
     } catch (error: any) {
       console.error('[EvolutionApiService] getConnectionState error:', error);
-      throw error;
+      throw getFriendlyNetworkError(error);
     }
   },
 
@@ -137,22 +189,23 @@ export const EvolutionApiService = {
    */
   async connectInstance(companyId: string): Promise<any> {
     try {
+      const apiKey = ensureApiKeyConfigured();
       const response = await fetch(`${EVO_API_URL}/instance/connect/${companyId}`, {
         method: 'GET',
         headers: {
-          'apikey': EVO_API_KEY,
+          'apikey': apiKey,
         },
       });
 
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.message || data.error || 'Erro ao conectar instância');
+        throw parseEvolutionApiError(response, data, 'Erro ao conectar instância');
       }
 
       return data;
     } catch (error: any) {
       console.error('[EvolutionApiService] connectInstance error:', error);
-      throw error;
+      throw getFriendlyNetworkError(error);
     }
   },
 
@@ -161,27 +214,29 @@ export const EvolutionApiService = {
    */
   async logoutInstance(companyId: string): Promise<any> {
     try {
+      const apiKey = ensureApiKeyConfigured();
       const response = await fetch(`${EVO_API_URL}/instance/logout/${companyId}`, {
         method: 'DELETE',
         headers: {
-          'apikey': EVO_API_KEY,
+          'apikey': apiKey,
         },
       });
 
       return await response.json();
     } catch (error: any) {
       console.error('[EvolutionApiService] logoutInstance error:', error);
-      throw error;
+      throw getFriendlyNetworkError(error);
     }
   },
 
   async sendTextMessage(companyId: string, phone: string, text: string): Promise<any> {
     try {
+      const apiKey = ensureApiKeyConfigured();
       const response = await fetch(`${EVO_API_URL}/message/sendText/${companyId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': EVO_API_KEY,
+          'apikey': apiKey,
         },
         body: JSON.stringify({
           number: normalizeBrazilPhone(phone),
@@ -192,13 +247,13 @@ export const EvolutionApiService = {
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(data.message || data.error || 'Erro ao enviar mensagem na Evolution API');
+        throw parseEvolutionApiError(response, data, 'Erro ao enviar mensagem na Evolution API');
       }
 
       return data;
     } catch (error: any) {
       console.error('[EvolutionApiService] sendTextMessage error:', error);
-      throw error;
+      throw getFriendlyNetworkError(error);
     }
   },
 
