@@ -5,6 +5,26 @@ import { supabase } from '../config/SupabaseConfig';
 import { useAuth } from '../context/AuthContext';
 import { EvolutionApiService } from '../services/EvolutionApiService';
 import { colors } from '../theme/colors';
+
+function normalizeReservationPhone(phone: string): string {
+  const digits = String(phone || '').replace(/\D/g, '');
+
+  if (!digits) {
+    return '';
+  }
+
+  if (digits.startsWith('55')) {
+    return digits;
+  }
+
+  // Entrada local (DDD + numero) recebe DDI Brasil automaticamente.
+  if (digits.length >= 10 && digits.length <= 11) {
+    return `55${digits}`;
+  }
+
+  return digits;
+}
+
 export default function ReservasScreen({ navigation: _navigation }: any) {
   const { user } = useAuth();
   const [reservas, setReservas] = useState<any[]>([]);
@@ -75,10 +95,12 @@ export default function ReservasScreen({ navigation: _navigation }: any) {
     }
     
     try {
+      const normalizedPhone = normalizeReservationPhone(telefone);
+
       const { error } = await supabase.from('agendamentos').insert({
         company_id: user?.companyId,
         nome_cliente: nome,
-        telefone_cliente: telefone,
+        telefone_cliente: normalizedPhone,
         data_hora_reserva: new Date(dataHora).toISOString(),
         quantidade_pessoas: parseInt(pessoas, 10),
         observacoes: observacoes,
@@ -309,8 +331,8 @@ export default function ReservasScreen({ navigation: _navigation }: any) {
             
             <View style={styles.formGroup}>
               <Text style={styles.label}>Telefone (WhatsApp)</Text>
-              <TextInput style={styles.input} value={telefone} onChangeText={setTelefone} placeholder="Ex: 5511999999999" keyboardType="phone-pad" placeholderTextColor={colors.textSecondary} />
-              <Text style={styles.hintText}>O cliente será notificado das mudanças por este número</Text>
+              <TextInput style={styles.input} value={telefone} onChangeText={setTelefone} placeholder="Ex: 11999999999" keyboardType="phone-pad" placeholderTextColor={colors.textSecondary} />
+              <Text style={styles.hintText}>O DDI 55 (Brasil) é aplicado automaticamente</Text>
             </View>
             
             <View style={styles.formGroup}>

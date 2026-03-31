@@ -29,6 +29,34 @@ import { LayoutAnimation, Platform, UIManager } from 'react-native';
 import PDFService from '../services/PDFService';
 import { isFeatureEnabled } from '../config/featureFlags';
 import { colors } from '../theme/colors';
+const DELIVERED_ORDER_STATUSES = new Set(['delivered', 'entregue']);
+
+const parseItemsWithStatus = (value: any): any[] => {
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+    try {
+      const parsed = JSON.parse(trimmed);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+};
+
+const isDeliveredOrderOrItem = (pedido: any): boolean => {
+  const normalizedStatus = String(pedido?.status || '').trim().toLowerCase();
+  if (DELIVERED_ORDER_STATUSES.has(normalizedStatus)) return true;
+
+  const itemsWithStatus = parseItemsWithStatus(pedido?.itemsWithStatus ?? pedido?.items_with_status);
+  return itemsWithStatus.some((item: any) => {
+    const itemStatus = String(item?.status || '').trim().toLowerCase();
+    return item?.delivered === true || DELIVERED_ORDER_STATUSES.has(itemStatus);
+  });
+};
+
 if (Platform.OS === 'android') {
   if (UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -94,6 +122,13 @@ export default function ComandaGerenciamentoScreen(props: any) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const { showToast } = useToast();
+
+  const showDeliveredCancelBlockMessage = () => {
+    const title = 'Operação Bloqueada';
+    const message = 'Esta comanda possui itens já ENTREGUES e não pode ser cancelada. Para cancelar a comanda, estorne primeiro os itens/pedidos entregues.';
+    showToast(`${title}: ${message}`, 'warning');
+    Alert.alert(title, message);
+  };
 
   // --- Actions ---
 
@@ -225,19 +260,10 @@ export default function ComandaGerenciamentoScreen(props: any) {
   const handleCancel = () => {
     if (!selectedComanda) return;
 
-    const temPedidoEntregue = selectedComanda.pedidos?.some((pedido: any) => {
-      if (pedido.status === 'delivered') return true;
-      if (pedido.itemsWithStatus && Array.isArray(pedido.itemsWithStatus)) {
-        return pedido.itemsWithStatus.some((item: any) => item.delivered === true);
-      }
-      return false;
-    });
+    const temPedidoEntregue = selectedComanda.pedidos?.some((pedido: any) => isDeliveredOrderOrItem(pedido));
 
     if (temPedidoEntregue) {
-      Alert.alert(
-        'Operação Bloqueada',
-        'Esta comanda possui pedidos já ENTREGUES e não pode ser cancelada.\n\nPara cancelar, você precisa primeiro estornar os pedidos entregues.'
-      );
+      showDeliveredCancelBlockMessage();
       return;
     }
 
@@ -257,6 +283,30 @@ export default function ComandaGerenciamentoScreen(props: any) {
 
     try {
       const businessDateKey = await getBusinessDateKey(user?.companyId || '');
+
+      // Revalida no banco para evitar cancelamento em condição de corrida ou payload legado.
+      const { data: ordersForValidation, error: validationError } = await supabase
+        .from('orders')
+        .select('status,items_with_status')
+        .eq('company_id', user?.companyId || '')
+        .eq('date_key', businessDateKey)
+        .eq('comanda_number', comanda.comandaNumber);
+
+      if (validationError) throw validationError;
+
+      const hasDeliveredOrders = (ordersForValidation || []).some((pedido: any) =>
+        isDeliveredOrderOrItem({
+          status: pedido?.status,
+          items_with_status: pedido?.items_with_status,
+        })
+      );
+
+      if (hasDeliveredOrders) {
+        showDeliveredCancelBlockMessage();
+        setShowCancelModal(false);
+        return;
+      }
+
       console.log('[ComandaGerenciamento] 🚫 Cancelando comanda:', {
         docId: `comanda-${businessDateKey}-${comanda.comandaNumber}`,
         comandaNumber: comanda.comandaNumber,
@@ -325,6 +375,11 @@ export default function ComandaGerenciamentoScreen(props: any) {
       carregarComandas(true);
     } catch (e: any) {
       console.error('[ComandaGerenciamento] ❌ Erro ao cancelar:', e);
+      const normalizedErrorMessage = String(e?.message || '').toLowerCase();
+      if (normalizedErrorMessage.includes('entreg') || normalizedErrorMessage.includes('delivered')) {
+        showDeliveredCancelBlockMessage();
+        return;
+      }
       showToast(e.message, 'error');
     }
   };

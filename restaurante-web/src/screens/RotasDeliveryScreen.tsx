@@ -265,6 +265,23 @@ export default function RotasDeliveryScreen() {
 
         if (error) throw error;
 
+        // Atualiza a UI imediatamente para evitar atraso perceptivel apos confirmar entrega.
+        const isFinalStatus = ['delivered', 'failed_delivery', 'returned', 'refused'].includes(novoStatus);
+        if (isFinalStatus) {
+          setDeliveryOrders(prev => prev.filter(o => o.id !== orderId));
+        } else {
+          setDeliveryOrders(prev => prev.map(o => (
+            o.id === orderId
+              ? {
+                  ...o,
+                  status: novoStatus,
+                  updated_at: nowIso,
+                  ...(novoStatus === 'dispatched' ? { dispatched_at: nowIso } : {})
+                }
+              : o
+          )));
+        }
+
         // Envia notificacao WhatsApp quando entregador sai com a entrega
         if (novoStatus === 'dispatched' && order?.customer_phone && user?.companyId) {
           try {
@@ -284,12 +301,8 @@ export default function RotasDeliveryScreen() {
           await closeDeliveryComandaIfSettled(order);
         }
 
-        // Estados finais nao ficam na lista de rotas pendentes.
-        if (['delivered', 'failed_delivery', 'returned', 'refused'].includes(novoStatus)) {
-             setDeliveryOrders(prev => prev.filter(o => o.id !== orderId));
-        } else {
-             fetchDeliveryOrders();
-        }
+           // Revalida no fundo para manter consistencia com o banco/realtime.
+           fetchDeliveryOrders();
 
       } catch (e: any) {
         console.error('❌ Erro atualizar entrega:', e);

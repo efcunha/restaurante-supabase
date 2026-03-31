@@ -18,6 +18,42 @@ const getMesaValida = (mesa) => {
     return normalizedMesa;
 };
 
+const isInvalidHistoricoClient = (value) => {
+    const normalized = String(value || '').trim();
+    if (!normalized) return true;
+
+    return normalized === 'Não informado'
+        || normalized === 'Cliente Balcão'
+        || normalized === 'Cliente'
+        || normalized === 'Reservando...';
+};
+
+const pickBestOrderClient = (order) => {
+    const candidates = [order?.client_name, order?.customer_name, order?.client];
+    return candidates.find((value) => !isInvalidHistoricoClient(value)) || null;
+};
+
+const coerceOrderItemsList = (value) => {
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (!trimmed) return [];
+
+        try {
+            const parsed = JSON.parse(trimmed);
+            if (Array.isArray(parsed)) return parsed;
+        } catch {
+        }
+
+        return trimmed
+            .split(/\r?\n/)
+            .map((line) => line.trim())
+            .filter(Boolean);
+    }
+
+    return [];
+};
+
 export function useComandaManagement() {
     const { user } = useAuth();
     const [activeTab, setActiveTab] = useState('abertas');
@@ -293,7 +329,111 @@ export function useComandaManagement() {
 
             if (error) throw error;
 
+            const comandaNumbers = (comandas || [])
+                .map((c) => normalizeComandaNumber(c.comanda_number))
+                .filter((n) => n !== null && n !== undefined && n !== '' && n !== '0');
+            const comandaSet = new Set(comandaNumbers);
+
+            let ordersByComanda = {};
+            let ordersListByComanda = {};
+            if (comandaNumbers.length > 0) {
+                const { data: ordersData, error: ordersError } = await supabase
+                    .from('orders')
+                    .select(`
+                        comanda_number,
+                        client_name,
+                        created_by,
+                        order_type,
+                        updated_at,
+                        created_at,
+                        items_with_status,
+                        items,
+                        total_amount,
+                        is_paid,
+                        status,
+                        profiles:created_by (
+                            full_name
+                        )
+                    `)
+                    .eq('company_id', user.companyId)
+                    .eq('date_key', diaHoje);
+
+                if (ordersError) {
+                    console.warn('[CarregarHistorico] Aviso ao buscar orders para enriquecer historico:', ordersError);
+                } else {
+                    const filteredOrders = (ordersData || []).filter((order) => comandaSet.has(normalizeComandaNumber(order.comanda_number)));
+
+                    ordersListByComanda = filteredOrders.reduce((acc, order) => {
+                        const key = normalizeComandaNumber(order.comanda_number);
+                        if (!key || key === '0') return acc;
+                        if (!acc[key]) acc[key] = [];
+                        acc[key].push(order);
+                        return acc;
+                    }, {});
+
+                    ordersByComanda = filteredOrders.reduce((acc, order) => {
+                        const key = normalizeComandaNumber(order.comanda_number);
+                        if (!key || key === '0') return acc;
+
+                        const currentTs = new Date(order.updated_at || order.created_at || 0).getTime();
+                        const prevTs = acc[key] ? new Date(acc[key].updated_at || acc[key].created_at || 0).getTime() : -1;
+
+                        if (currentTs >= prevTs) {
+                            acc[key] = order;
+                        }
+                        return acc;
+                    }, {});
+                }
+            }
+
             const newComandas = (comandas || []).map(doc => {
+                const normalizedComandaNumber = normalizeComandaNumber(doc.comanda_number);
+                const orderInfo = ordersByComanda[normalizedComandaNumber] || null;
+                const isDeliveryHistorico = String(orderInfo?.order_type || '').toLowerCase() === 'delivery';
+                const clienteComanda = String(doc.cliente || '').trim();
+                const clienteComandaValido = !isInvalidHistoricoClient(clienteComanda);
+                const clientePedido = pickBestOrderClient(orderInfo);
+                const clienteHistorico =
+                    (isDeliveryHistorico ? clientePedido : null) ||
+                    (clienteComandaValido ? clienteComanda : null) ||
+                    clientePedido ||
+                    clienteComanda ||
+                    'Não informado';
+                const recebedorHistorico =
+                    doc.ultimo_pagamento_por && doc.ultimo_pagamento_por !== 'Activepieces Delivery'
+                        ? doc.ultimo_pagamento_por
+                        : (orderInfo?.entregue_por_nome || doc.closed_by_name || doc.ultimo_pagamento_por || null);
+
+                const pedidosHistorico = (ordersListByComanda[normalizedComandaNumber] || []).map((order) => {
+                    const parseJsonSafe = (value, fallback) => {
+                        if (value === null || value === undefined) return fallback;
+                        if (typeof value === 'string') {
+                            try {
+                                const parsed = JSON.parse(value);
+                                return parsed ?? fallback;
+                            } catch {
+                                return fallback;
+                            }
+                        }
+                        return value;
+                    };
+
+                    const parsedItemsWithStatus = parseJsonSafe(order.items_with_status, []);
+                    const parsedItems = coerceOrderItemsList(parseJsonSafe(order.items, []));
+
+                    return {
+                        ...order,
+                        client: order.client_name || '',
+                        created_by_name: order.profiles?.full_name || null,
+                        totalPrice: order.total_amount || 0,
+                        isPago: order.is_paid || false,
+                        priceMap: {},
+                        itemsWithStatus: Array.isArray(parsedItemsWithStatus) ? parsedItemsWithStatus : [],
+                        items: parsedItems,
+                        itens: parsedItems
+                    };
+                });
+
                 // Extrair hora do created_at
                 const createdDate = doc.created_at ? new Date(doc.created_at) : null;
                 const horarioCriacao = createdDate ? createdDate.toLocaleTimeString('pt-BR', { 
@@ -305,9 +445,13 @@ export function useComandaManagement() {
                     comandaNumber: doc.comanda_number,
                     ...doc,
                     // Informações básicas
-                    cliente: doc.cliente || 'Não informado',
+                    cliente: clienteHistorico,
                     mesa: doc.mesa || '',
                     horarioCriacao: horarioCriacao,
+                    pedidos: pedidosHistorico,
+                    tipoComanda: isDeliveryHistorico
+                        ? 'delivery'
+                        : (doc.mesa ? 'mesa' : 'balcao'),
                     
                     // Totais
                     totalConsumido: doc.total_consumed || 0,
@@ -315,12 +459,17 @@ export function useComandaManagement() {
                     saldoAberto: doc.open_balance || 0,
                     
                     // Informações do garçom
-                    abertaPorNome: doc.opened_by_name || null,
-                    criadoPorNome: doc.opened_by_name || null,
+                    abertaPorNome: isDeliveryHistorico
+                        ? (orderInfo?.created_by_name || doc.opened_by_name || null)
+                        : (doc.opened_by_name || orderInfo?.created_by_name || null),
+                    criadoPorNome: isDeliveryHistorico
+                        ? (orderInfo?.created_by_name || doc.opened_by_name || null)
+                        : (doc.opened_by_name || orderInfo?.created_by_name || null),
+                    entregadorNome: orderInfo?.entregue_por_nome || doc.closed_by_name || null,
                     
                     // Informações de pagamento
                     pagamentosResumo: doc.pagamentos_resumo || null,
-                    ultimoPagamentoPor: doc.ultimo_pagamento_por || null,
+                    ultimoPagamentoPor: recebedorHistorico,
                     ultimoPagamentoForma: doc.ultimo_pagamento_forma || null,
                     ultimoPagamentoEm: doc.ultimo_pagamento_em || null,
                     
