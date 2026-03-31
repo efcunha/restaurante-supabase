@@ -91,6 +91,11 @@ const createItemMutationId = (orderId: string, itemId: string) => (
   `${orderId}:${itemId}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`
 );
 
+const isActiveMontagemItem = (item: any) => {
+  const status = String(item?.status || '').trim().toLowerCase();
+  return status !== 'cancelled' && status !== 'cancelada' && status !== 'cancelado';
+};
+
 // Componente OrderCard memoizado
 interface OrderCardProps {
   order: any;
@@ -102,8 +107,9 @@ interface OrderCardProps {
 const OrderCard = memo(({ order, onToggleItem, onMarkReady, nowMs }: OrderCardProps) => {
   const timeReference = getOrderTimeReference(order);
   const urgent = isUrgent(timeReference, nowMs);
-  const allItemsDone = order.itemsWithStatus && order.itemsWithStatus.length > 0
-    ? order.itemsWithStatus.every((item: any) => item.checked === true)
+  const activeItems = order.itemsWithStatus?.filter((item: any) => isActiveMontagemItem(item)) || [];
+  const allItemsDone = activeItems.length > 0
+    ? activeItems.every((item: any) => item.checked === true)
     : true;
   const orderTitle = order.orderType === 'delivery'
     ? `Delivery ${order.comandaNumber || '?'}`
@@ -151,8 +157,8 @@ const OrderCard = memo(({ order, onToggleItem, onMarkReady, nowMs }: OrderCardPr
         <Text style={styles.orderObs}>📝 Obs: {order.observations}</Text>
       )}
       <View style={styles.orderItems}>
-        {order.itemsWithStatus && order.itemsWithStatus.length > 0 ? (
-          order.itemsWithStatus.filter((item: any) => item.status !== 'cancelled').map((item: any) => {
+        {activeItems.length > 0 ? (
+          activeItems.map((item: any) => {
             const parts = item.name.split(' + ');
             const mainName = parts[0];
             const extras = parts.length > 1 ? parts.slice(1).join(' + ') : null;
@@ -422,10 +428,12 @@ export default function MontagemScreen() {
 
       // ✅ FIX: Não filtrar itens duplicados entre pedidos diferentes
       // Cada pedido delivery deve ter seus próprios itens, mesmo que sejam iguais
-      const itemsParaMontar = order.itemsWithStatus.map((item: any) => ({
-        ...item,
-        originalOrderId: order.id
-      }));
+      const itemsParaMontar = order.itemsWithStatus
+        .filter((item: any) => isActiveMontagemItem(item))
+        .map((item: any) => ({
+          ...item,
+          originalOrderId: order.id
+        }));
 
       if (itemsParaMontar.length === 0) return;
 
