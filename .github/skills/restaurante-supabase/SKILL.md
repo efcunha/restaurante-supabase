@@ -48,8 +48,8 @@ Guiar implementacoes e reviews no projeto com foco em:
 
 ## Stack Principal
 - React 19 + Expo 54
-- React Native: `restaurante-app` em `0.81.5` e `restaurante-web` em `0.84.0`
-  - **Risco documentado**: versoes divergem 3 patches; APIs introduzidas em `0.82+` usadas no web devem ser verificadas contra `0.81.5` antes de espelhar no app.
+- React Native: `restaurante-app` em `0.84.0` e `restaurante-web` em `0.84.0` (alinhados ✅)
+  - **Divergência RN resolvida (Mar 2026)**: versões agora idênticas; nenhuma restrição de API entre app e web.
 - TypeScript estrito
 - Supabase (PostgreSQL 15+, RLS, Realtime)
 - Playwright (`restaurante-web/e2e`) — testes E2E do cliente web
