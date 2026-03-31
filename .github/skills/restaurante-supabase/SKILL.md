@@ -5,6 +5,26 @@ description: Especialista no projeto restaurante-supabase — POS/PDV full-stack
 
 # Skill: restaurante-supabase
 
+## Índice de Conteúdo
+1. [Objetivo](#objetivo)
+2. [Contexto Rápido](#contexto-rápido)
+3. [Política de Ambiente](#política-de-ambiente)
+4. [Stack Principal](#stack-principal)
+5. [Arquivos de Referência (Alta Prioridade)](#arquivos-de-referência-alta-prioridade)
+6. [Regras Inegociáveis](#regras-inegociáveis)
+7. [Padrões de Arquitetura](#padrões-de-arquitetura)
+8. [Canary Rollout (Phase 12)](#canary-rollout-phase-12)
+9. [Domínio e Integridade](#domínio-e-integridade)
+10. [Banco de Dados](#banco-de-dados-resumo-operacional)
+11. [Segurança e LGPD (Mar/2026)](#segurança-e-lgpd-mar2026)
+12. [Activepieces (Pagamento Delivery)](#activepieces-pagamento-delivery)
+13. [Aprendizados Operacionais Recentes](#aprendizados-operacionais-recentes-mar2026)
+14. [Fluxo de Trabalho Recomendado](#fluxo-de-trabalho-recomendado)
+15. [Modo de Atuação: Desenvolvedor Full Stack Senior](#modo-de-atuacao-desenvolvedor-full-stack-senior)
+16. [Comandos Úteis](#comandos-úteis)
+17. [Maestro E2E (App Nativo)](#maestro-e2e-app-nativo)
+18. [Checklist para o Copilot](#checklist-para-o-copilot-antes-de-responder)
+
 ## Objetivo
 Guiar implementacoes e reviews no projeto com foco em:
 - Seguranca de dados multi-tenant (`company_id` + RLS)
