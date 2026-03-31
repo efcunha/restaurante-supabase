@@ -196,6 +196,7 @@ export default function PedidosProntosScreen() {
 
   const handleDeliver = useCallback(async (orderId: string, itemId: string) => {
     console.log('[Prontos] Delivering item:', orderId, itemId);
+    let previousOrder: any = null;
 
     // Validar se caixa está aberto
     try {
@@ -222,6 +223,7 @@ export default function PedidosProntosScreen() {
       if (!order || !order.itemsWithStatus) {
         throw new Error('Pedido não encontrado');
       }
+      previousOrder = order;
 
       const now = new Date().toISOString();
 
@@ -244,6 +246,18 @@ export default function PedidosProntosScreen() {
       if (allDelivered) {
         updatePayload.status = 'delivered';
       }
+
+      // Atualizacao otimista local para o item sumir da lista imediatamente.
+      setAllOrders(prev => prev.map(o => {
+        if (o.id !== orderId) return o;
+        return {
+          ...o,
+          itemsWithStatus: updatedItems,
+          items_with_status: updatedItems,
+          updated_at: now,
+          ...(allDelivered ? { status: 'delivered' } : {})
+        };
+      }));
 
       // @ts-ignore
       console.log('[Prontos] Updating doc:', user.companyId, orderId);
@@ -268,6 +282,11 @@ export default function PedidosProntosScreen() {
       console.error('❌ Erro ao entregar item:', error);
       if (Platform.OS === 'web') window.alert('Erro: ' + error.message);
       else Alert.alert('Erro', 'Não foi possível marcar como entregue: ' + error.message);
+
+      // Reverte estado local em caso de falha na gravacao.
+      if (previousOrder) {
+        setAllOrders(prev => prev.map(o => (o.id === orderId ? previousOrder : o)));
+      }
 
       const itemKey = `${orderId}-${itemId}`;
       setProcessingItems(prev => {
