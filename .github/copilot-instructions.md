@@ -197,12 +197,10 @@ Then use detailed references from:
 
 When deeper context is needed, explicitly reference the relevant skill file in chat, for example:
 
-- `#file:.github/agent-skills/skills/react-native-best-practices/SKILL.md` (**NOT INSTALLED** — omit from prompt if file not present)
-- `#file:.github/agent-skills/skills/github-actions/SKILL.md` (**NOT INSTALLED** — omit from prompt if file not present)
+- `#file:.github/skills/react-native-best-practices/SKILL.md` 
+- `#file:.github/skills/github-actions/SKILL.md`
 
 Start with the main `SKILL.md` file, then open individual reference files for implementation details.
-
-> **Note**: The `.github/agent-skills/` directory has not been created in this repository. All Callstack skill files above are currently unavailable. The hard-stop gate fallback applies automatically for all RN/CI topics.
 
 For UI/UX workflow usage, explicitly reference `.github/prompts/ui-ux-pro-max/PROMPT.md` or invoke `/ui-ux-pro-max` in chat.
 
@@ -276,7 +274,7 @@ Profile this screen and propose a measured optimization plan with no behavior ch
 
 ```text
 #file:.github/skills/restaurante-supabase/SKILL.md
-#file:.github/agent-skills/skills/upgrading-react-native/SKILL.md
+#file:.github/skills/upgrading-react-native/SKILL.md
 
 Plan an Expo SDK + React Native upgrade path for this repository with risk checklist and verification gates.
 ```
@@ -290,7 +288,7 @@ Create a GitHub Actions workflow to build Android emulator APK and iOS simulator
 
 ```text
 #file:.github/skills/restaurante-supabase/SKILL.md
-#file:.github/agent-skills/skills/github/SKILL.md
+#file:.github/skills/github/SKILL.md
 
 Propose a safe stacked PR merge plan with gh CLI commands for this branch chain.
 ```
@@ -310,7 +308,7 @@ Use these variants when you want explicit scope by codebase area.
 
 ```text
 #file:.github/skills/restaurante-supabase/SKILL.md
-#file:.github/agent-skills/skills/react-native-best-practices/SKILL.md
+#file:.github/skills/react-native-best-practices/SKILL.md
 #file:restaurante-app/src/screens/NovoPedidoScreen.tsx
 
 Review this screen for render bottlenecks, propose measured optimizations, and keep behavior unchanged.
@@ -318,7 +316,7 @@ Review this screen for render bottlenecks, propose measured optimizations, and k
 
 ```text
 #file:.github/skills/restaurante-supabase/SKILL.md
-#file:.github/agent-skills/skills/upgrading-react-native/SKILL.md
+#file:.github/skills/upgrading-react-native/SKILL.md
 #file:restaurante-app/package.json
 
 Plan a safe Expo SDK + React Native upgrade path for this app with risks, checkpoints, and rollback criteria.
@@ -328,7 +326,7 @@ Plan a safe Expo SDK + React Native upgrade path for this app with risks, checkp
 
 ```text
 #file:.github/skills/restaurante-supabase/SKILL.md
-#file:.github/agent-skills/skills/github-actions/SKILL.md
+#file:.github/skills/github-actions/SKILL.md
 #file:restaurante-web/playwright.config.ts
 
 Propose CI changes to build and publish emulator/simulator artifacts and include artifact download commands.
@@ -336,7 +334,7 @@ Propose CI changes to build and publish emulator/simulator artifacts and include
 
 ```text
 #file:.github/skills/restaurante-supabase/SKILL.md
-#file:.github/agent-skills/skills/github/SKILL.md
+#file:.github/skills/github/SKILL.md
 #file:restaurante-web/e2e/delivery.spec.ts
 
 Create a safe stacked PR plan for this area, including gh CLI commands and merge order.
