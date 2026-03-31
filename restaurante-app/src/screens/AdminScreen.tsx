@@ -94,7 +94,6 @@ export default function AdminScreen() {
   const [showComandasVisualizacao, setShowComandasVisualizacao] = useState(false);
   const [showGerenciarCardapio, setShowGerenciarCardapio] = useState(false);
   const [showEstoque, setShowEstoque] = useState(false);
-  const [showExtrasConfig, setShowExtrasConfig] = useState(false);
   const [showPrinterConfig, setShowPrinterConfig] = useState(false);
   const [showEditarEmpresa, setShowEditarEmpresa] = useState(false);
   const [showFinancialConfig, setShowFinancialConfig] = useState(false);
@@ -383,7 +382,6 @@ export default function AdminScreen() {
     { name: 'Gerenciar Cardápio', icon: '🍴', action: () => setShowGerenciarCardapio(true) },
     { name: 'Configurar Mesas e Ambientes', icon: '🪑', action: () => setShowConfiguracaoMesas(true) },
     { name: 'Configurações Operacionais', icon: '🕐', action: () => setShowOperationalSettings(true) },
-    { name: 'Configurar Extras de Pizza', icon: '🍕', action: () => setShowExtrasConfig(true) },
     { name: 'Configurar Impressora', icon: '🖨️', action: () => setShowPrinterConfig(true) },
     { name: 'Dados da Empresa', icon: '🏢', action: () => setShowEditarEmpresa(true) },
     { name: 'Configurar Biometria', icon: '👆', action: () => setShowBiometricSetup(true) },
@@ -536,11 +534,6 @@ export default function AdminScreen() {
       {/* Modal Gerenciar Estoque */}
       <AdminSlideModal visible={showEstoque} onClose={() => setShowEstoque(false)}>
         <EstoqueScreen onClose={() => setShowEstoque(false)} />
-      </AdminSlideModal>
-
-      {/* Modal Configurar Extras de Pizza */}
-      <AdminSlideModal visible={showExtrasConfig} onClose={() => setShowExtrasConfig(false)}>
-        <ExtrasConfigScreen onClose={() => setShowExtrasConfig(false)} />
       </AdminSlideModal>
 
       {/* Modal Configurar Impressora */}

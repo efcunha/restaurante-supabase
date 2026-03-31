@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import AdicionaisConfigModal from './admin/menu/AdicionaisConfigModal';
+// @ts-ignore
+import ExtrasConfigScreen from './ExtrasConfigScreen';
+import { AdminSlideModal } from '../features/admin';
 import { View, Text, StyleSheet, Alert, ActivityIndicator, Platform, TouchableOpacity, ScrollView, TextInput, Modal } from 'react-native';
 // @ts-ignore
 import KeyboardWrapper from '../components/KeyboardWrapper';
@@ -160,6 +163,9 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
   const [showAdicionaisModal, setShowAdicionaisModal] = useState(false);
   const [productForAdicionais, setProductForAdicionais] = useState<{ id: string; name: string } | null>(null);
   const [stockItems, setStockItems] = useState<{ id: string; nome: string; unidadeOriginal: string; }[]>([]);
+
+  // Estado para Extras de Pizza
+  const [showExtrasConfig, setShowExtrasConfig] = useState(false);
   // Form Ficha Técnica
   const [selectedStockId, setSelectedStockId] = useState('');
   const [qtyIngredient, setQtyIngredient] = useState('');
@@ -2331,6 +2337,17 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
           </View>
         </View>
 
+        {/* SEÇÃO: CONFIGURAR EXTRAS DE PIZZA */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>🍕 Configurações de Extras</Text>
+          <TouchableOpacity
+            style={[styles.addBtn, { height: 50, justifyContent: 'center', paddingHorizontal: 16 }]}
+            onPress={() => setShowExtrasConfig(true)}
+          >
+            <Text style={styles.addBtnText}>Configurar Extras de Pizza</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* SEÇÃO 2: LISTAR PRODUTOS POR CATEGORIA */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>📋 Produtos Cadastrados</Text>
@@ -3073,6 +3090,11 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
           </View>
         </View>
       </Modal>
+
+      {/* Modal Configurar Extras de Pizza */}
+      <AdminSlideModal visible={showExtrasConfig} onClose={() => setShowExtrasConfig(false)}>
+        <ExtrasConfigScreen onClose={() => setShowExtrasConfig(false)} />
+      </AdminSlideModal>
 
     </KeyboardWrapper>
     </ScreenScaffold>
