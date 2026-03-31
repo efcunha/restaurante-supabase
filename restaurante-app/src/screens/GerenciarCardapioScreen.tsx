@@ -2363,10 +2363,10 @@ export default function GerenciarCardapioScreen({ onClose }: GerenciarCardapioSc
         }]}>
           <Text style={styles.sectionTitle}>🍕 Configurações de Extras</Text>
           <TouchableOpacity
-            style={[styles.addBtn, { height: 50, justifyContent: 'center', paddingHorizontal: 16, width: '100%' }]}
+            style={styles.extrasButton}
             onPress={() => setShowExtrasConfig(true)}
           >
-            <Text style={styles.addBtnText}>Configurar Extras de Pizza</Text>
+            <Text style={styles.extrasButtonText}>Configurar Extras de Pizza</Text>
           </TouchableOpacity>
         </View>
 
@@ -3665,6 +3665,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 2
+  },
+  extrasButton: {
+    width: '100%',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 3,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+  },
+  extrasButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.white,
   },
   listaTemperos: {
     marginTop: 5
