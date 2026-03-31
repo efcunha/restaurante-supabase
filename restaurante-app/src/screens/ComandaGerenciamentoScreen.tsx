@@ -125,7 +125,7 @@ export default function ComandaGerenciamentoScreen(props: any) {
 
   const showDeliveredCancelBlockMessage = () => {
     const title = 'Operação Bloqueada';
-    const message = 'Esta comanda possui itens já ENTREGUES e não pode ser cancelada. Para cancelar a comanda, estorne primeiro os itens/pedidos entregues.';
+    const message = 'Esta comanda possui itens já ENTREGUES e não pode ser cancelada. Para cancelar a comanda, estorne primeiro os itens/pedidos não entregues.';
     showToast(`${title}: ${message}`, 'warning');
     Alert.alert(title, message);
   };
@@ -397,7 +397,10 @@ export default function ComandaGerenciamentoScreen(props: any) {
       // 2. Atualizar o pedido no banco
       const { error: updateError } = await supabase
         .from('orders')
-        .update({ items_with_status: cancelledOrder.itemsWithStatus })
+        .update({
+          items_with_status: cancelledOrder.itemsWithStatus,
+          total_amount: Number(cancelledOrder.totalPrice || 0),
+        })
         .eq('id', pedido.id);
 
       if (updateError) throw updateError;
