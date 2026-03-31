@@ -281,7 +281,7 @@ Plan an Expo SDK + React Native upgrade path for this repository with risk check
 
 ```text
 #file:.github/skills/restaurante-supabase/SKILL.md
-#file:.github/agent-skills/skills/github-actions/SKILL.md
+#file:.github/skills/github-actions/SKILL.md
 
 Create a GitHub Actions workflow to build Android emulator APK and iOS simulator artifacts and document download commands.
 ```
@@ -295,7 +295,7 @@ Propose a safe stacked PR merge plan with gh CLI commands for this branch chain.
 
 ```text
 #file:.github/skills/restaurante-supabase/SKILL.md
-#file:.github/agent-skills/skills/react-native-brownfield-migration/SKILL.md
+#file:.github/skills/react-native-brownfield-migration/SKILL.md
 
 Design a phased brownfield integration plan for adding Expo features into an existing native app path.
 ```
