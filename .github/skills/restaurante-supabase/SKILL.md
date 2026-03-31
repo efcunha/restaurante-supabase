@@ -322,7 +322,7 @@ Execucao basica:
 ```bash
 # Configurar credenciais em restaurante-app/.maestro/.env.maestro (gitignored)
 # Exemplo de arquivo: restaurante-app/.maestro/.env.maestro.example
-maestro test .maestro/balcao.yaml --udid emulator-5554 \
+maestro test restaurante-app/.maestro/balcao.yaml --udid emulator-5554 \
   -e PLAYWRIGHT_TEST_EMAIL=<email> -e PLAYWRIGHT_TEST_PASSWORD=<senha>
 ```
 
