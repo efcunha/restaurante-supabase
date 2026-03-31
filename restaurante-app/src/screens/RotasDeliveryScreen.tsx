@@ -241,7 +241,6 @@ export default function RotasDeliveryScreen() {
       // Ao confirmar entrega, baixa financeira e comanda para não manter Delivery em aberto no gerenciamento.
         if (order && novoStatus === 'delivered') {
             updatePayload.is_paid = true;
-            updatePayload.delivered_at = nowIso;
             updatePayload.comanda_status = 'fechada';
 
             if (order.itemsWithStatus) {
