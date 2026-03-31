@@ -61,10 +61,10 @@ test.describe('Fluxo de Pedido Delivery', () => {
     const uniqueId = Date.now() + Math.round(Math.random() * 1000);
     const clientName = `Delivery PW ${uniqueId}`;
     await page.getByPlaceholder('Nome do Cliente').fill(clientName);
-    await page.getByPlaceholder('(11) 99999-9999').fill('11987654321');
-    await page.getByPlaceholder('00000-000').fill('01310100');
+    await page.getByPlaceholder('(11) 99999-9999').fill('65999471346');
+    await page.getByPlaceholder('00000-000').fill('58046310');
     await page.waitForTimeout(1000);
-    await page.getByPlaceholder('Rua, Número, Bairro, Referência...').fill('Av Paulista, 1000, Bela Vista');
+    await page.getByPlaceholder('Rua, Número, Bairro, Referência...').fill('Arina Alves de Melo, 41, Cabo Branco Altiplano');
 
     // 4. Adiciona pizza e os demais itens padrão
     console.log('STEP 4: search and add common items');
