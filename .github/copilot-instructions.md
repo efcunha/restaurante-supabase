@@ -90,7 +90,7 @@ Usage rules:
 
 #### Mandatory enforcement
 
-- For any code change proposal, review, or implementation in this repository, consult `\SKILL.md` first.
+- For any code change proposal, review, or implementation in this repository, consult `.github/skills/restaurante-supabase/SKILL.md` first.
 - Do not provide project-specific implementation guidance until this primary skill has been considered.
 - If the task is specialized, combine the primary skill with the relevant Callstack skill.
 - In case of conflict, prioritize the project-specific skill (`restaurante-supabase`) for domain and architecture decisions, and use Callstack skills as complementary technical references.
@@ -104,12 +104,12 @@ For tasks involving React Native, Expo, performance, upgrades, GitHub Actions, C
 
 1. First consult `.github\skills\restaurante-supabase\SKILL.md`.
 2. Then consult the corresponding Callstack skill:
-	> **STATUS: Callstack skill files are NOT INSTALLED in this repository (`.github/agent-skills/` does not exist). Apply conservative fallback for all topics below.**
-	- RN performance/rendering/bundle/profiling -> `.github/agent-skills/skills/react-native-best-practices/SKILL.md` (**NOT INSTALLED**)
-	- RN/Expo upgrade path -> `.github/agent-skills/skills/upgrading-react-native/SKILL.md` (**NOT INSTALLED**)
-	- CI/GitHub Actions/build artifacts -> `.github/agent-skills/skills/github-actions/SKILL.md` (**NOT INSTALLED**)
-	- PR flow/branching/gh CLI -> `.github/agent-skills/skills/github/SKILL.md` (**NOT INSTALLED**)
-	- Brownfield native/Expo integration path -> `.github/agent-skills/skills/react-native-brownfield-migration/SKILL.md` (**NOT INSTALLED**)
+	> **STATUS: `.github/agent-skills/` is not installed in this repository. Use local repository skills when available and conservative fallback for the remaining topics.**
+	- RN performance/rendering/bundle/profiling -> `.github/skills/react-native-best-practices/SKILL.md` (**INSTALLED LOCAL SKILL**)
+	- RN/Expo upgrade path -> no dedicated local skill installed; use primary project skill + conservative fallback
+	- CI/GitHub Actions/build artifacts -> `.github/skills/github-actions/SKILL.md` (**INSTALLED LOCAL SKILL**)
+	- PR flow/branching/gh CLI -> no dedicated local skill installed; use primary project skill + conservative fallback
+	- Brownfield native/Expo integration path -> no dedicated local skill installed; use primary project skill + conservative fallback
 3. Do not answer with implementation-level recommendations until both checks above are completed.
 4. If any required skill cannot be accessed, explicitly state the missing file and provide a conservative fallback aligned with existing repository patterns.
 5. For substantial implementation guidance, explicitly mention which skill(s) were consulted before presenting the solution.
@@ -122,15 +122,15 @@ Hard-stop gate:
 
 ### React Native and Expo work
 
-> **NOT INSTALLED**: `.github/agent-skills/skills/react-native-best-practices/SKILL.md` — apply conservative fallback aligned with existing patterns.
+> **INSTALLED LOCAL SKILL**: `.github/skills/react-native-best-practices/SKILL.md`
 
 For React Native performance, rendering, memory, bundle, startup, and profiling topics, start with:
 
-- `.github/agent-skills/skills/react-native-best-practices/SKILL.md` (**NOT INSTALLED**)
+- `.github/skills/react-native-best-practices/SKILL.md`
 
 Then use detailed references from:
 
-- `.github/agent-skills/skills/react-native-best-practices/references/` (**NOT INSTALLED**)
+- no dedicated `references/` subtree is installed for this skill in this repository; apply conservative fallback aligned with existing patterns
 
 Rules:
 
@@ -159,39 +159,39 @@ Rules:
 
 ### GitHub Actions and CI builds
 
-> **NOT INSTALLED**: `.github/agent-skills/skills/github-actions/SKILL.md` — apply conservative fallback aligned with existing patterns.
+> **INSTALLED LOCAL SKILL**: `.github/skills/github-actions/SKILL.md`
 
 For GitHub Actions workflows, build artifacts, CI download flows, and mobile build automation, start with:
 
-- `.github/agent-skills/skills/github-actions/SKILL.md` (**NOT INSTALLED**)
+- `.github/skills/github-actions/SKILL.md`
 
 Then use detailed references from:
 
-- `.github/agent-skills/skills/github-actions/references/` (**NOT INSTALLED**)
+- no dedicated `references/` subtree is installed for this skill in this repository; apply conservative fallback aligned with existing patterns
 
 ### GitHub workflow operations
 
-> **NOT INSTALLED**: `.github/agent-skills/skills/github/SKILL.md` — apply conservative fallback aligned with existing patterns.
+> **NOT INSTALLED**: no dedicated local skill for GitHub workflow operations is installed in this repository; apply conservative fallback aligned with existing patterns.
 
 For pull requests, stacked PRs, branch management, and `gh` CLI usage, start with:
 
-- `.github/agent-skills/skills/github/SKILL.md` (**NOT INSTALLED**)
+- `.github/skills/restaurante-supabase/SKILL.md`
 
 Then use detailed references from:
 
-- `.github/agent-skills/skills/github/references/` (**NOT INSTALLED**)
+- no dedicated `references/` subtree is installed for GitHub workflow operations in this repository; apply conservative fallback aligned with existing patterns
 
 ### Brownfield migration
 
-> **NOT INSTALLED**: `.github/agent-skills/skills/react-native-brownfield-migration/SKILL.md` — apply conservative fallback aligned with existing patterns.
+> **NOT INSTALLED**: no dedicated local skill for brownfield migration is installed in this repository; apply conservative fallback aligned with existing patterns.
 
 For incremental migration between native and React Native or Expo integration in native apps, start with:
 
-- `.github/agent-skills/skills/react-native-brownfield-migration/SKILL.md` (**NOT INSTALLED**)
+- `.github/skills/restaurante-supabase/SKILL.md`
 
 Then use detailed references from:
 
-- `.github/agent-skills/skills/react-native-brownfield-migration/references/` (**NOT INSTALLED**)
+- no dedicated `references/` subtree is installed for brownfield migration in this repository; apply conservative fallback aligned with existing patterns
 
 ## How to Use These Skills in Chat
 
@@ -237,7 +237,7 @@ For RN/CI-related implementation guidance, start the response with a short check
 ```text
 Skills consulted:
 - .github\skills\restaurante-supabase\SKILL.md
-- <one relevant Callstack SKILL.md path>
+- <one relevant specialized SKILL.md path>
 
 Scope:
 - <what part of the codebase is affected>
@@ -251,7 +251,7 @@ If a required skill file is not accessible, replace the checklist with:
 ```text
 Skills consulted:
 - .github\skills\restaurante-supabase\SKILL.md (status: OK/FAILED)
-- <required Callstack SKILL.md path> (status: FAILED)
+- <required specialized SKILL.md path> (status: FAILED)
 
 Limitation:
 - Could not access required skill file(s): <path>
@@ -266,7 +266,7 @@ Use these prompts in Copilot Chat to force explicit skill context:
 
 ```text
 #file:.github/skills/restaurante-supabase/SKILL.md
-#file:.github/agent-skills/skills/react-native-best-practices/SKILL.md
+#file:.github/skills/react-native-best-practices/SKILL.md
 #file:restaurante-app/src/screens/NovoPedidoScreen.tsx
 
 Profile this screen and propose a measured optimization plan with no behavior changes.
@@ -274,9 +274,9 @@ Profile this screen and propose a measured optimization plan with no behavior ch
 
 ```text
 #file:.github/skills/restaurante-supabase/SKILL.md
-#file:.github/skills/upgrading-react-native/SKILL.md
+#file:restaurante-app/package.json
 
-Plan an Expo SDK + React Native upgrade path for this repository with risk checklist and verification gates.
+Plan an Expo SDK + React Native upgrade path for this repository with risk checklist and verification gates. No dedicated upgrade skill is installed in this repository, so use conservative fallback aligned with existing patterns.
 ```
 
 ```text
@@ -288,16 +288,16 @@ Create a GitHub Actions workflow to build Android emulator APK and iOS simulator
 
 ```text
 #file:.github/skills/restaurante-supabase/SKILL.md
-#file:.github/skills/github/SKILL.md
+#file:restaurante-web/e2e/delivery.spec.ts
 
-Propose a safe stacked PR merge plan with gh CLI commands for this branch chain.
+Propose a safe stacked PR merge plan with gh CLI commands for this branch chain. No dedicated GitHub workflow skill is installed in this repository, so use conservative fallback aligned with existing patterns.
 ```
 
 ```text
 #file:.github/skills/restaurante-supabase/SKILL.md
-#file:.github/skills/react-native-brownfield-migration/SKILL.md
+#file:restaurante-app/package.json
 
-Design a phased brownfield integration plan for adding Expo features into an existing native app path.
+Design a phased brownfield integration plan for adding Expo features into an existing native app path. No dedicated brownfield migration skill is installed in this repository, so use conservative fallback aligned with existing patterns.
 ```
 
 ## Quick Prompts by Target (App/Web)
@@ -316,10 +316,9 @@ Review this screen for render bottlenecks, propose measured optimizations, and k
 
 ```text
 #file:.github/skills/restaurante-supabase/SKILL.md
-#file:.github/skills/upgrading-react-native/SKILL.md
 #file:restaurante-app/package.json
 
-Plan a safe Expo SDK + React Native upgrade path for this app with risks, checkpoints, and rollback criteria.
+Plan a safe Expo SDK + React Native upgrade path for this app with risks, checkpoints, and rollback criteria. No dedicated upgrade skill is installed in this repository, so use conservative fallback aligned with existing patterns.
 ```
 
 ### Web app (`restaurante-web`)
@@ -334,10 +333,9 @@ Propose CI changes to build and publish emulator/simulator artifacts and include
 
 ```text
 #file:.github/skills/restaurante-supabase/SKILL.md
-#file:.github/skills/github/SKILL.md
 #file:restaurante-web/e2e/delivery.spec.ts
 
-Create a safe stacked PR plan for this area, including gh CLI commands and merge order.
+Create a safe stacked PR plan for this area, including gh CLI commands and merge order. No dedicated GitHub workflow skill is installed in this repository, so use conservative fallback aligned with existing patterns.
 ```
 
 ## Usage Runbook
@@ -346,7 +344,7 @@ Use this order to keep responses consistent with mandatory skill checks:
 
 1. Choose scope first (`restaurante-app` or `restaurante-web`) and attach one real target file.
 2. Attach the primary project skill: `#file:.github/skills/restaurante-supabase/SKILL.md`.
-3. Attach exactly one specialized Callstack skill matching the task type.
+3. Attach exactly one specialized skill matching the task type when available in the repository.
 4. Ask for a constrained output (plan, checklist, or implementation with no behavior change).
 5. Verify the response starts with the mandatory RN/CI checklist block.
 
