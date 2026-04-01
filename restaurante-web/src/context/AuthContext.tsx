@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, useRef, ReactNode } from 'react';
-import { Alert, InteractionManager } from 'react-native';
+import { Alert } from 'react-native';
 import { supabase } from '../config/SupabaseConfig';
 import { User } from '@supabase/supabase-js';
 
@@ -153,10 +153,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     const scheduleReloadUserData = async (
       sbUser: User,
-      options?: { rotateSessionKey?: boolean; useInteraction?: boolean }
+      options?: { rotateSessionKey?: boolean }
     ) => {
       const rotateSessionKey = options?.rotateSessionKey ?? true;
-      const useInteraction = options?.useInteraction ?? false;
 
       // Avoid duplicate reloads fired in quick succession for the same user
       const now = Date.now();
@@ -173,16 +172,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       lastReloadAtRef.current = now;
 
       try {
-        if (useInteraction) {
-          await new Promise<void>((resolve) => {
-            InteractionManager.runAfterInteractions(async () => {
-              await reloadUserData(sbUser, { rotateSessionKey });
-              resolve();
-            });
-          });
-        } else {
-          await reloadUserData(sbUser, { rotateSessionKey });
-        }
+        await reloadUserData(sbUser, { rotateSessionKey });
       } finally {
         if (reloadInFlightForUserRef.current === sbUser.id) {
           reloadInFlightForUserRef.current = null;
@@ -190,39 +180,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     };
 
-    // Safety net: never leave loading=true forever regardless of what fails
-    const safetyTimer = setTimeout(() => {
-      if (mounted) {
-        logger.warn('[SupabaseAuth] Safety timeout fired — forcing loading=false');
-        setLoading(false);
-      }
-    }, 10000);
-
+    // initAuth: only responsible for releasing the loading gate.
+    // Profile loading is handled by onAuthStateChange(INITIAL_SESSION) in background.
+    // This prevents a deadlock where loading=true blocks rendering while the profile
+    // fetch hangs (token refresh, slow network, cold Supabase connection, etc.).
     const initAuth = async () => {
-       try {
-         // Check active session first
-         const { data: { session } } = await supabase.auth.getSession();
-         
-         if (session?.user) {
-             if (hasRecoveryHashInBrowser()) {
-             clearRecoveryHashInBrowser();
-                 setPasswordRecoveryMode(true);
-                 setLoading(false);
-                 return;
-             }
-             logger.debug('[SupabaseAuth] Session restored', { hasSessionUser: true });
-           await scheduleReloadUserData(session.user, {
-             rotateSessionKey: true,
-             useInteraction: false,
-           });
-           setLoading(false);
-         } else {
-             setLoading(false);
-         }
-       } catch (e) {
-         logger.error('[SupabaseAuth] Init error', e, { phase: 'initAuth' });
-         setLoading(false);
-       }
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!mounted) return;
+
+        if (session?.user && hasRecoveryHashInBrowser()) {
+          clearRecoveryHashInBrowser();
+          setPasswordRecoveryMode(true);
+        }
+        // Release the loading spinner regardless of whether the profile has loaded.
+        // onAuthStateChange fires INITIAL_SESSION and loads the profile in background.
+        // When reloadUserData finishes, setUser() is called and the app opens.
+      } catch (e) {
+        logger.error('[SupabaseAuth] Init error', e, { phase: 'initAuth' });
+      } finally {
+        if (mounted) setLoading(false);
+      }
     };
 
     initAuth();
@@ -239,11 +217,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         if (event === 'SIGNED_OUT' || !session?.user) {
           setPasswordRecoveryMode(false);
-            setUser(null);
-            setRole(null);
-            setCustomClaims(null);
-            setLoading(false);
-            return;
+          setUser(null);
+          setRole(null);
+          setCustomClaims(null);
+          setLoading(false);
+          return;
         }
 
         if (event === 'PASSWORD_RECOVERY') {
@@ -262,28 +240,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
 
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
-             // Avoid double reload if we did it manually in login()
-             logger.debug('[SupabaseAuth] Processing auth event', {
-               isManualLogin: isManualLoginRef.current,
-               event
-             });
-             if (!isManualLoginRef.current) {
-               // useInteraction: false — InteractionManager.runAfterInteractions can deadlock
-               // when ActivityIndicator (loading spinner) is animating, because the spinner
-               // animation keeps the interaction queue busy. INITIAL_SESSION fires during
-               // bootstrap (no nav transition), so direct call is safe and required.
-               await scheduleReloadUserData(session.user, {
-                 rotateSessionKey: event !== 'TOKEN_REFRESHED',
-                 useInteraction: false,
-               });
-               setLoading(false);
-             }
+          logger.debug('[SupabaseAuth] Processing auth event', {
+            isManualLogin: isManualLoginRef.current,
+            event
+          });
+          // Manual login is handled entirely by login() — skip here to avoid double reload.
+          if (!isManualLoginRef.current) {
+            // Fire profile reload in background — do NOT await before releasing loading.
+            // loading is already controlled by initAuth (released after getSession).
+            scheduleReloadUserData(session.user, {
+              rotateSessionKey: event !== 'TOKEN_REFRESHED',
+            }).catch(e => logger.error('[SupabaseAuth] Background reload failed', e, { event }));
+          }
         }
     });
 
     return () => {
         mounted = false;
-        clearTimeout(safetyTimer);
         subscription.unsubscribe();
     };
   }, []);
