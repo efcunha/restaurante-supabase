@@ -152,6 +152,26 @@ Pendencias restantes para fechamento do item:
 - Validar smoke de paginacao (app + web)
 - Validar ausencia de erro `CURSOR_SECRET not configured` em logs
 
+### Evidencia de Build App (2026-04-01)
+
+Comando executado:
+
+```bash
+cd restaurante-app
+./scripts/build-android.sh
+```
+
+Resultado:
+
+- Build Android concluido com sucesso (APKs gerados)
+- Porem, no log de export de env do build nao apareceu `CURSOR_SECRET`
+- Em arquivos de ambiente do app, `CURSOR_SECRET` foi encontrado apenas em `.env.example` (placeholder)
+
+Conclusao operacional:
+
+- O build atual nao comprova `CURSOR_SECRET` aplicado no app runtime.
+- SEC-W1-002 permanece pendente ate aplicar env real no app (EAS/Expo) e repetir smoke.
+
 ### Retorno Rapido para Encerramento
 
 Preencher e enviar para fechamento automatico da documentacao:
