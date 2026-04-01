@@ -34,6 +34,25 @@ fi
 # Navegar para raiz do projeto
 cd "$(dirname "$0")/.."
 
+# Garantir CURSOR_SECRET no ambiente do bundling local
+# Prioridade: variavel de ambiente atual > .env
+if [ -z "$CURSOR_SECRET" ] && [ -f ".env" ]; then
+    ENV_CURSOR_SECRET=$(grep -E '^[[:space:]]*CURSOR_SECRET=' .env | tail -n 1 | cut -d'=' -f2-)
+    # Remove aspas simples/duplas e espacos nas pontas
+    ENV_CURSOR_SECRET=$(printf '%s' "$ENV_CURSOR_SECRET" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")
+    if [ -n "$ENV_CURSOR_SECRET" ]; then
+        export CURSOR_SECRET="$ENV_CURSOR_SECRET"
+    fi
+fi
+
+if [ -z "$CURSOR_SECRET" ] || [ "$CURSOR_SECRET" = "generate_with_openssl_rand_hex_32" ]; then
+    echo "❌ CURSOR_SECRET não definido para build local."
+    echo "   Defina CURSOR_SECRET no ambiente ou no arquivo .env antes de executar o script."
+    exit 1
+fi
+
+echo "🔐 CURSOR_SECRET carregado no ambiente do build (valor mascarado)."
+
 # Criar pasta build se não existir
 mkdir -p build
 
