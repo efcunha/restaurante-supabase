@@ -1,17 +1,22 @@
 # Security Docs
 
-Este diretório centraliza a documentação de auditoria, remediação e compliance de segurança/LGPD do repositório.
+Este diretorio foi consolidado para reduzir dispersao de informacao.
 
-## Conteúdo
+## Comece por aqui
 
-- `SECURITY_DOCUMENTATION_INDEX.md`: índice principal e mapa de uso
-- `SECURITY_AUDIT_REPORT_2026-03-23.md`: relatório-base da auditoria
-- `REMEDIATION_PLAN_DETAILED.md`: plano detalhado de correções
-- `LGPD_COMPLIANCE_GUIDE.md`: guia operacional de compliance
-- `EXECUTIVE_SUMMARY_PT.md`: resumo executivo
+1. SECURITY_DOCUMENTATION_INDEX.md
+2. SECURITY_REMEDIATION_WEEKLY_STATUS_2026-Q2.md
+3. SECURITY_REMEDIATION_PLAN_2026-Q2.md
 
-## Uso recomendado
+## Estrutura recomendada
 
-1. Começar por `SECURITY_DOCUMENTATION_INDEX.md`
-2. Usar `SECURITY_AUDIT_REPORT_2026-03-23.md` como baseline histórica
-3. Cruzas com `docs/saas-billing/operations/` quando a decisão envolver rollout operacional de billing
+- Fonte de verdade de status: SECURITY_REMEDIATION_WEEKLY_STATUS_2026-Q2.md
+- Fonte de verdade de escopo/plano: SECURITY_REMEDIATION_PLAN_2026-Q2.md
+- Baseline tecnico: SECURITY_AUDIT_REPORT_2026-03-23.md
+- Compliance e executivo: LGPD_COMPLIANCE_GUIDE.md e EXECUTIVE_SUMMARY_PT.md
+
+## Regra para evitar nova fragmentacao
+
+- Nao abrir um novo documento para cada ajuste pequeno.
+- Preferir atualizar o status semanal.
+- Criar documento novo apenas quando houver requisito regulatorio ou runbook operacional obrigatorio.

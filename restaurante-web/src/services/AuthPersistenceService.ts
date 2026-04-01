@@ -6,6 +6,7 @@
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import logger from '../utils/logger';
 
 
 // Generic User interface to support both Firebase and Supabase
@@ -75,7 +76,7 @@ class AuthPersistenceService {
         );
       }
 
-      console.log('[AuthPersistence] Auth state persisted successfully');
+      logger.debug('[AuthPersistence] Auth state persisted successfully');
     } catch (error) {
       console.error('[AuthPersistence] Error persisting auth state:', error);
       throw new Error('Falha ao salvar estado de autenticação');
@@ -95,7 +96,7 @@ class AuthPersistenceService {
       }
 
       if (!authStateStr) {
-        console.log('[AuthPersistence] No persisted auth state found');
+        logger.debug('[AuthPersistence] No persisted auth state found');
         return null;
       }
 
@@ -111,7 +112,7 @@ class AuthPersistenceService {
         return null;
       }
 
-      console.log('[AuthPersistence] Auth state restored successfully');
+      logger.debug('[AuthPersistence] Auth state restored successfully');
       return authState;
     } catch (error) {
       console.error('[AuthPersistence] Error restoring auth state:', error);
@@ -131,7 +132,7 @@ class AuthPersistenceService {
       } else {
         await SecureStore.deleteItemAsync(this.AUTH_STATE_KEY);
       }
-      console.log('[AuthPersistence] Auth state cleared');
+      logger.debug('[AuthPersistence] Auth state cleared');
     } catch (error) {
       console.error('[AuthPersistence] Error clearing auth state:', error);
     }

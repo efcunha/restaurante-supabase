@@ -7,6 +7,7 @@ import { User } from '@supabase/supabase-js';
 import AuthPersistenceService, { PersistenceUser } from '../services/AuthPersistenceService';
 import BiometricAuthService from '../services/BiometricAuthService';
 import { Permissions, hasPermission, normalizeRole } from '../auth/roles';
+import logger from '../utils/logger';
 
 // Tipos
 export interface CustomClaims {
@@ -126,6 +127,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return typeof window !== 'undefined' && window.location.hash.includes('type=recovery');
   };
 
+  const shouldLogAuthEvent = (event: string, hasSessionUser: boolean): boolean => {
+    // INITIAL_SESSION/SIGNED_OUT without session are expected during bootstrap.
+    if (!hasSessionUser && (event === 'INITIAL_SESSION' || event === 'SIGNED_OUT')) {
+      return false;
+    }
+    return true;
+  };
+
   // Check Biometrics on Mount
   useEffect(() => {
     const checkBiometric = async () => {
@@ -191,7 +200,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                  setLoading(false);
                  return;
              }
-             console.log('[SupabaseAuth] Session restored', session.user.id);
+             logger.debug('[SupabaseAuth] Session restored', { hasSessionUser: true });
            await scheduleReloadUserData(session.user, {
              rotateSessionKey: true,
              useInteraction: false,
@@ -201,7 +210,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
              setLoading(false);
          }
        } catch (e) {
-         console.error('[SupabaseAuth] Init error', e);
+         logger.error('[SupabaseAuth] Init error', e, { phase: 'initAuth' });
          setLoading(false);
        }
     };
@@ -210,8 +219,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
         if (!mounted) return;
-        
-        console.log(`[SupabaseAuth] Auth event: ${event}`, session?.user?.id);
+
+        if (shouldLogAuthEvent(event, Boolean(session?.user))) {
+          logger.debug('[SupabaseAuth] Auth event', {
+            event,
+            hasSessionUser: Boolean(session?.user)
+          });
+        }
 
         if (event === 'SIGNED_OUT' || !session?.user) {
           setPasswordRecoveryMode(false);
@@ -239,7 +253,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
              // Avoid double reload if we did it manually in login()
-             console.log('[SupabaseAuth] Processing auth event. Manual?', isManualLoginRef.current, 'Event:', event);
+             logger.debug('[SupabaseAuth] Processing auth event', {
+               isManualLogin: isManualLoginRef.current,
+               event
+             });
              if (!isManualLoginRef.current) {
                await scheduleReloadUserData(session.user, {
                  rotateSessionKey: event !== 'TOKEN_REFRESHED',
@@ -263,11 +280,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     options?: { rotateSessionKey?: boolean }
   ) => {
       const rotateSessionKey = options?.rotateSessionKey ?? true;
-      console.log('[AuthContext] reloadUserData called for:', sbUser.id);
+      logger.debug('[AuthContext] reloadUserData called', { hasUserId: Boolean(sbUser.id) });
       try {
           // 1. Fetch Profile (Simple, no joins first to avoid lock)
-          // 1. Fetch Profile (Simple, no joins first to avoid lock)
-          console.log('[AuthContext] Fetching profile table only...');
+          logger.debug('[AuthContext] Fetching profile table only');
           
           // TIMEOUT WRAPPER - Increased to 10 seconds to handle slow RLS policies
           const fetchPromise = supabase
@@ -282,10 +298,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           
           const { data: profile, error: profileError } = await Promise.race([fetchPromise, timeoutPromise]) as any;
 
-          console.log('[AuthContext] Profile result:', { profile, error: profileError });
+          logger.debug('[AuthContext] Profile fetch finished', {
+            hasProfile: Boolean(profile),
+            hasProfileError: Boolean(profileError)
+          });
 
           if (profileError || !profile) {
-              console.warn('[SupabaseAuth] No profile found for user', sbUser.id);
+              logger.warn('[SupabaseAuth] No profile found for user', { hasUserId: Boolean(sbUser.id) });
               setLoading(false);
               return;
           }
@@ -293,16 +312,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // 2. Fetch Company (Separate call)
           let companyData = null;
           if (profile.company_id) {
-               console.log('[AuthContext] Fetching company data...', profile.company_id);
+            logger.debug('[AuthContext] Fetching company data', { hasCompanyId: true });
                const { data: comp, error: compError } = await supabase
                  .from('companies')
                  .select('*')
                  .eq('id', profile.company_id)
                  .single();
                
-               if (compError) console.warn('[AuthContext] Company fetch error', compError);
+            if (compError) logger.warn('[AuthContext] Company fetch error', { hasCompanyError: true });
                companyData = comp;
-               console.log('[AuthContext] Company data:', companyData);
+            logger.debug('[AuthContext] Company fetch finished', { hasCompanyData: Boolean(companyData) });
           }
 
           // 2. Map Key Data
@@ -331,12 +350,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             updatedAt: Date.now()
           };
 
-          console.log('[AuthContext] Setting user:', {
-              uid: appUser.uid, 
-              funcao: appUser.funcao, 
-              roleOriginal: userRole, 
-              companyId
-          });
+            logger.debug('[AuthContext] Setting authenticated user state', {
+              role: appUser.funcao,
+              hasCompanyId: Boolean(companyId)
+            });
 
           setUser(appUser);
           setRole(normalizeRole(userRole));
@@ -361,8 +378,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               (await supabase.auth.getSession()).data.session?.refresh_token
           );
 
-      } catch (error) {
-          console.error('[SupabaseAuth] Error reloading user data:', error);
+        } catch (error) {
+          logger.error('[SupabaseAuth] Error reloading user data', error, { phase: 'reloadUserData' });
           // Don't fail silently - set loading to false so UI can respond
           setLoading(false);
       }
@@ -391,7 +408,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                      // Also link device if needed? Logic was in enrollUser but simplest is just storing creds here.
                   }
               } catch (bioError) {
-                  console.warn('[SupabaseAuth] Failed to update biometric creds', bioError);
+                  logger.warn('[SupabaseAuth] Failed to update biometric creds', { hasBiometricError: true });
               }
 
               await reloadUserData(data.session.user, { rotateSessionKey: true });
@@ -403,7 +420,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           return false;
 
       } catch (error: any) {
-          console.error('[SupabaseAuth] Login error:', error);
+          logger.error('[SupabaseAuth] Login error', error, { phase: 'login' });
           setLoading(false);
           isManualLoginRef.current = false;
             setPasswordRecoveryMode(false);
@@ -421,7 +438,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setRole(null);
           setCustomClaims(null);
       } catch (error) {
-          console.error('[SupabaseAuth] Logout error', error);
+          logger.error('[SupabaseAuth] Logout error', error, { phase: 'logout' });
       }
   };
 
@@ -483,7 +500,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       } catch (error: any) {
           setLoading(false);
-          console.error('[SupabaseAuth] Bio login error', error);
+          logger.error('[SupabaseAuth] Bio login error', error, { phase: 'biometricLogin' });
           return { success: false, error: error.message };
       }
   };
