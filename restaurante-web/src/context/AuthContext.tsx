@@ -85,6 +85,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const isManualLoginRef = useRef<boolean>(false);
   const passwordRecoveryModeRef = useRef<boolean>(false);
+  const reloadInFlightForUserRef = useRef<string | null>(null);
+  const lastReloadUserRef = useRef<string | null>(null);
+  const lastReloadAtRef = useRef<number>(0);
 
   const setPasswordRecoveryMode = (enabled: boolean) => {
     passwordRecoveryModeRef.current = enabled;
@@ -137,6 +140,45 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     let mounted = true;
 
+    const scheduleReloadUserData = async (
+      sbUser: User,
+      options?: { rotateSessionKey?: boolean; useInteraction?: boolean }
+    ) => {
+      const rotateSessionKey = options?.rotateSessionKey ?? true;
+      const useInteraction = options?.useInteraction ?? true;
+
+      // Avoid duplicate reloads fired in quick succession for the same user
+      const now = Date.now();
+      const sameUserBurst =
+        lastReloadUserRef.current === sbUser.id &&
+        now - lastReloadAtRef.current < 1500;
+
+      if (reloadInFlightForUserRef.current === sbUser.id || sameUserBurst) {
+        return;
+      }
+
+      reloadInFlightForUserRef.current = sbUser.id;
+      lastReloadUserRef.current = sbUser.id;
+      lastReloadAtRef.current = now;
+
+      try {
+        if (useInteraction) {
+          await new Promise<void>((resolve) => {
+            InteractionManager.runAfterInteractions(async () => {
+              await reloadUserData(sbUser, { rotateSessionKey });
+              resolve();
+            });
+          });
+        } else {
+          await reloadUserData(sbUser, { rotateSessionKey });
+        }
+      } finally {
+        if (reloadInFlightForUserRef.current === sbUser.id) {
+          reloadInFlightForUserRef.current = null;
+        }
+      }
+    };
+
     const initAuth = async () => {
        try {
          // Check active session first
@@ -150,7 +192,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                  return;
              }
              console.log('[SupabaseAuth] Session restored', session.user.id);
-           await reloadUserData(session.user, { rotateSessionKey: true });
+           await scheduleReloadUserData(session.user, {
+             rotateSessionKey: true,
+             useInteraction: false,
+           });
+           setLoading(false);
          } else {
              setLoading(false);
          }
@@ -191,17 +237,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           return;
         }
 
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
              // Avoid double reload if we did it manually in login()
-             console.log('[SupabaseAuth] Processing SIGNED_IN. Manual?', isManualLoginRef.current);
+             console.log('[SupabaseAuth] Processing auth event. Manual?', isManualLoginRef.current, 'Event:', event);
              if (!isManualLoginRef.current) {
-                 // Defer background refresh to avoid jank/timeout during interactions (e.g. scrolling)
-               InteractionManager.runAfterInteractions(async () => {
-                     await reloadUserData(session.user, {
-                       rotateSessionKey: event !== 'TOKEN_REFRESHED'
-                     });
-                     setLoading(false);
-                 });
+               await scheduleReloadUserData(session.user, {
+                 rotateSessionKey: event !== 'TOKEN_REFRESHED',
+                 useInteraction: true,
+               });
+               setLoading(false);
                  // Ideally cancel if unmounted, but interaction handle cancellation is tricky in effect return.
                  // Since reloadUserData handles errors gracefully, it's safer to let it run.
              }
