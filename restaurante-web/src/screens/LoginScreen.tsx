@@ -584,7 +584,6 @@ const styles = StyleSheet.create({
   fieldGroupShort: {
     marginBottom: 10,
   },
-  },
   label: {
     color: '#0D5D72',
     fontSize: 14,
