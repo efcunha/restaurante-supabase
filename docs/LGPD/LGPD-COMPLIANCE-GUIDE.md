@@ -1,6 +1,12 @@
 # 📋 IMPLEMENTAÇÃO LGPD PARA O TIME
 ## Guia Prático de Compliance com LGPD (Lei 13.709/2018)
 
+**Versao**: 1.1  
+**Data de Vigencia**: 2026-03-23  
+**Ultima Revisao**: 2026-04-01  
+**Proxima Revisao**: 2026-07-01  
+**Owner**: Legal + Data Protection Officer + Engineering  
+
 **Data:** 23 de março de 2026  
 **Público:** Développeurs, DPO, Product, Legal  
 **Objetivo:** Implementar security by design conforme LGPD
