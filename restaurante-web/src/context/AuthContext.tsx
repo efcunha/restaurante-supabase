@@ -145,6 +145,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkBiometric();
   }, []);
 
+
+
   // Initialize Auth
   useEffect(() => {
     let mounted = true;
@@ -287,38 +289,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const fetchProfileStartTime = Date.now();
           logger.debug('[AuthContext] Fetching profile table only');
           
-          // Retry profile fetch once when network/RLS latency spikes.
-          const fetchProfileWithTimeout = async () => {
-            const fetchPromise = supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', sbUser.id)
-              .single();
-
-            const timeoutPromise = new Promise((_, reject) =>
-              setTimeout(() => reject(new Error('TIMEOUT_FETCH_PROFILE (30s)')), 30000)
-            );
-
-            return Promise.race([fetchPromise, timeoutPromise]) as Promise<any>;
-          };
-
-          let profile: any = null;
-          let profileError: any = null;
-          try {
-            const result = await fetchProfileWithTimeout();
-            profile = result?.data;
-            profileError = result?.error;
-          } catch (firstFetchError: any) {
-            const firstMessage = firstFetchError?.message || 'UNKNOWN_PROFILE_FETCH_ERROR';
-            logger.warn('[SupabaseAuth] Profile fetch first attempt failed', {
-              error: firstMessage,
-              willRetry: true,
-            });
-
-            const retryResult = await fetchProfileWithTimeout();
-            profile = retryResult?.data;
-            profileError = retryResult?.error;
-          }
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', sbUser.id)
+            .single();
           const profileDuration = Date.now() - fetchProfileStartTime;
           
           logger.debug('[AuthContext] Profile fetch finished', {
@@ -331,8 +306,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               const errMsg = profileError?.message || 'No profile found';
               logger.warn('[SupabaseAuth] Profile fetch failed', { 
                 error: errMsg,
-                duration: profileDuration,
-                isDueToTimeout: errMsg.includes('TIMEOUT')
+                duration: profileDuration
               });
               setLoading(false);
               return;
