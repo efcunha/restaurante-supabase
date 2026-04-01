@@ -448,16 +448,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const login = async (email: string, senha: string): Promise<boolean> => {
+      const loginStartTime = Date.now();
       try {
           setLoading(true);
           isManualLoginRef.current = true;
+          appendLog('🔐 Login iniciado...');
 
-        await supabase.auth.signOut();
-
+          const signInStartTime = Date.now();
           const { data, error } = await supabase.auth.signInWithPassword({
               email,
               password: senha
           });
+          const signInDuration = Date.now() - signInStartTime;
+          appendLog(`✓ signInWithPassword: ${signInDuration}ms`);
 
           if (error) throw error;
           
@@ -465,7 +468,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               // SEC-W1-003: No password storage for biometric replay
               // Biometric auth uses server-side session refresh, not password replay
               
+              const reloadStartTime = Date.now();
               await reloadUserData(data.session.user, { rotateSessionKey: true });
+              const reloadDuration = Date.now() - reloadStartTime;
+              appendLog(`✓ reloadUserData: ${reloadDuration}ms`);
+              
+              const totalDuration = Date.now() - loginStartTime;
+              appendLog(`✅ Login concluído em ${totalDuration}ms`);
               
               setLoading(false);
               isManualLoginRef.current = false;
@@ -474,6 +483,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           return false;
 
       } catch (error: any) {
+          const totalDuration = Date.now() - loginStartTime;
+          appendLog(`❌ Login falhou em ${totalDuration}ms: ${error?.message ?? String(error)}`);
           console.error('[SupabaseAuth] Login error:', error);
           setLoading(false);
           isManualLoginRef.current = false;

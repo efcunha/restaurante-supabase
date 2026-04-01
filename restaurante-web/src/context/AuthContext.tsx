@@ -386,32 +386,44 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const login = async (email: string, senha: string): Promise<boolean> => {
+      const loginStartTime = Date.now();
       try {
           setLoading(true);
           isManualLoginRef.current = true;
+          logger.debug('[SupabaseAuth] Login started', { email: email.slice(0, 5) + '...' });
 
-        await supabase.auth.signOut();
-
+          const signInStartTime = Date.now();
           const { data, error } = await supabase.auth.signInWithPassword({
               email,
               password: senha
           });
+          const signInDuration = Date.now() - signInStartTime;
+          logger.debug('[SupabaseAuth] signInWithPassword completed', { duration: signInDuration });
 
           if (error) throw error;
           
           if (data.session?.user) {
               // Store credentials for Biometric Login Replay
               try {
+                  const bioStartTime = Date.now();
                   const hasBiometrics = await BiometricAuthService.hasEnrolledBiometrics();
                   if (hasBiometrics) {
                     await BiometricAuthService.storeCredentials(data.session.user.id, email, senha);
                      // Also link device if needed? Logic was in enrollUser but simplest is just storing creds here.
                   }
+                  const bioDuration = Date.now() - bioStartTime;
+                  logger.debug('[SupabaseAuth] Biometric store completed', { duration: bioDuration });
               } catch (bioError) {
                   logger.warn('[SupabaseAuth] Failed to update biometric creds', { hasBiometricError: true });
               }
 
+              const reloadStartTime = Date.now();
               await reloadUserData(data.session.user, { rotateSessionKey: true });
+              const reloadDuration = Date.now() - reloadStartTime;
+              logger.debug('[SupabaseAuth] reloadUserData completed', { duration: reloadDuration });
+              
+              const totalDuration = Date.now() - loginStartTime;
+              logger.debug('[SupabaseAuth] Login completed', { totalDuration, signInDuration, reloadDuration });
               
               setLoading(false);
               isManualLoginRef.current = false;
@@ -420,7 +432,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           return false;
 
       } catch (error: any) {
-          logger.error('[SupabaseAuth] Login error', error, { phase: 'login' });
+          const totalDuration = Date.now() - loginStartTime;
+          logger.error('[SupabaseAuth] Login error', error, { phase: 'login', totalDuration });
           setLoading(false);
           isManualLoginRef.current = false;
             setPasswordRecoveryMode(false);
