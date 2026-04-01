@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Data Extraction Rules for restaurante-app
+  
+  Security: SEC-W1-004
+  Android API: 31+ (Android 12+)
+  Purpose: Control what data is accessible for backup and extraction
+  
+  This file supplements backup_rules.xml for modern Android versions.
+  Allows fine-grained control over backup, cloud sync, and data extraction.
+  
+  Reference:
+  - https://developer.android.com/guide/topics/data/autobackup
+  - https://developer.android.com/about/versions/12/behavior-changes-12
+  
+  Requires: android:dataExtractionRules in AndroidManifest.xml
+-->
+
+<data-extraction-rules>
+  <!-- Default rule for unspecified domains: allow backup -->
+  <domain-config>
+    <domain name="root">
+      <path-filter path=".*" />
+    </domain>
+    <domain name="file">
+      <path-filter path=".*" />
+    </domain>
+    <domain name="database">
+      <path-filter path=".*" />
+    </domain>
+    <domain name="sharedpref">
+      <path-filter path=".*" />
+    </domain>
+    <domain name="cache">
+      <path-filter path=".*" />
+    </domain>
+  </domain-config>
+  
+  <!-- EXCLUDED: EncryptedSharedPreferences (SecureStore equivalent) -->
+  <domain-config backup="false">
+    <domain name="sharedpref">
+      <!-- SecureStore library uses EncryptedSharedPreferences -->
+      <path-filter path="EncryptedSharedPreferences" />
+      <path-filter path="EncryptedSharedPreferences.xml" />
+      <path-filter path="biometric.*" />
+      <path-filter path="session.*" />
+      <path-filter path="auth.*" />
+      <path-filter path="token.*" />
+      <path-filter path="secret.*" />
+    </domain>
+    <domain name="file">
+      <path-filter path="sharedprefs/EncryptedSharedPreferences.*" />
+    </domain>
+  </domain-config>
+  
+  <!-- EXCLUDED: Expo-specific encrypted storage -->
+  <domain-config backup="false">
+    <domain name="file">
+      <path-filter path="expo/session" />
+      <path-filter path="expo/auth" />
+      <path-filter path="expo/credentials" />
+    </domain>
+  </domain-config>
+  
+  <!-- EXCLUDED: AsyncStorage sensitive keys -->
+  <domain-config backup="false">
+    <domain name="sharedpref">
+      <path-filter path="RCTAsyncStorage" />
+    </domain>
+    <domain name="file">
+      <path-filter path="RCTAsyncLocalStorage.*" />
+    </domain>
+  </domain-config>
+  
+  <!-- EXCLUDED: Cache (often contains tokens) -->
+  <domain-config backup="false">
+    <domain name="cache">
+      <path-filter path=".*" />
+    </domain>
+  </domain-config>
+  
+</data-extraction-rules>

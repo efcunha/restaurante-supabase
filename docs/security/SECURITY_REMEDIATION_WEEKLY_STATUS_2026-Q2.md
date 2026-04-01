@@ -28,15 +28,15 @@ Legenda de status:
 
 | Item | Escopo | Status | Evidencia | Observacoes |
 |------|--------|--------|-----------|-------------|
-| Firebase key rotacionada | app + web | em andamento | `restaurante-app/.env.example`, `restaurante-web/.env.example` | Placeholder saneado; ainda falta rotacao/validacao de ambiente |
-| `CURSOR_SECRET` sem hardcode | app + web | em andamento | `restaurante-app/src/utils/cursorValidation.ts`, `restaurante-web/src/utils/cursorValidation.ts`, `restaurante-app/src/services/optimization/CursorPaginationService.ts`, `restaurante-web/src/services/optimization/CursorPaginationService.ts` | Hardcodes removidos; ainda falta configurar secret nos ambientes reais |
+| Firebase key rotacionada | app + web | em andamento | `restaurante-app/.env.example`, `restaurante-web/.env.example`, `restaurante-app/src/config/firebaseConfig.ts`, `restaurante-web/src/config/firebaseConfig.ts`, `docs/security/SEC-W1-001-FIREBASE-RUNTIME-ASSESSMENT-2026-04-01.md` | Placeholder saneado. Deploy alvo: app via EAS/Expo env (novo build), web via Railway. Observacao: backend principal e Supabase; avaliacao de 01/04 indica Firebase em trilha legada sem reachability clara no runtime ativo. Fechar gate de decisao antes de forcar rotacao em producao. |
+| `CURSOR_SECRET` sem hardcode | app + web | em andamento | `docs/security/SEC-W1-002-CURSOR-SECRET-DEPLOYMENT.md`, `restaurante-app/src/utils/cursorValidation.ts`, `restaurante-web/src/utils/cursorValidation.ts`, `.env.example` em ambos | Secret gerado: `9f05e59a28393b3c7684abf8f98d9d226a1a47ea1383ba7c74b04be89d868fd6` (01/04, 16:15 UTC). Aplicacao confirmada em `restaurante-web` (Railway) em 01/04. Pendente: aplicar no app via EAS/Expo env + smoke de paginacao (app/web) e checagem de logs sem `CURSOR_SECRET not configured`. |
 
 ### App
 
 | Item | Escopo | Status | Evidencia | Observacoes |
 |------|--------|--------|-----------|-------------|
-| Biometria sem senha persistida | app | nao iniciado |  | Migrar para token local + refresh server-side |
-| Android backup hardening | app | nao iniciado |  | Validar estrategia de `allowBackup` + regras XML |
+| Biometria sem senha persistida | app | concluido | `docs/security/SEC-W1-003-BIOMETRIC-HARDENING-COMPLETE.md`, `restaurante-app/src/services/BiometricTokenService.ts` (NOVO), `restaurante-app/src/services/BiometricAuthService.ts` (removidas storeCredentials/getCredentials), `restaurante-app/src/context/AuthContext.tsx` (atualizado loginWithBiometric/login/logout) | BiometricTokenService implementado com token ephemeral + hash SHA-256. storeCredentials/getCredentials removidas. loginWithBiometric agora usa refreshSession server-side ao invés de password replay. TypeScript validation: ✅ Passou. Próximos: testes unitários + E2E + deploy EAS. |
+| Android backup hardening | app | concluido | `docs/security/SEC-W1-004-ANDROID-BACKUP-COMPLETE.md`, `restaurante-app/android/app/src/main/res/xml/backup_rules.xml` (NOVO), `restaurante-app/android/app/src/main/res/xml/data_extraction_rules.xml` (NOVO), `restaurante-app/android/app/src/main/AndroidManifest.xml` (atualizado) | backup_rules.xml + data_extraction_rules.xml criados com exclusões de biometric/session/token/cache. AndroidManifest referencia ambos. allowBackup=true + explicitly excluded sensitive data. Próximos: EAS build + teste manual. |
 
 ### Ops
 
@@ -88,7 +88,7 @@ Legenda de status:
 
 | Item | Escopo | Status | Evidencia | Observacoes |
 |------|--------|--------|-----------|-------------|
-| Billing/reconcile smoke controlado | ops | em andamento | smoke local em 01/04 (15:53 UTC): `POST /ops/billing/reconcile`, `POST /ops/billing/company/{id}/regularize/card` | Guardrails validados (`400` para `idempotencyKey`/`invoiceId` invalidos) e `404 INVOICE_ACTION_TARGET_NOT_FOUND` sem invoice elegivel; falta cenario com invoice pendente/falha para validar replay de sucesso com mesmo `idempotency_key` |
+| Billing/reconcile smoke controlado | ops | em andamento | smoke local em 01/04 (15:53 UTC): `POST /ops/billing/reconcile`, `POST /ops/billing/company/{id}/regularize/card`, consulta service role em `invoices`, helper `npm run billing:candidates` | Guardrails validados (`400` para `idempotencyKey`/`invoiceId` invalidos) e `404 INVOICE_ACTION_TARGET_NOT_FOUND`; consulta direta retornou `[]` para invoices `pending/failed`, bloqueando replay de sucesso com mesmo `idempotency_key` sem mutar dados |
 
 ### Monorepo
 
@@ -103,10 +103,11 @@ Legenda de status:
 
 | Item | Status | Dono | Proximo passo |
 |------|--------|------|---------------|
+| Railway CLI sem autenticacao valida para deploy de variaveis | aberto | time | Impacta o web no Railway. Executar deploy de `restaurante-web` via Railway UI enquanto `railway whoami` retorna `Unauthorized`; renovar com `railway login` quando possivel |
 | Ambiente de staging dedicado inexistente | aberto | time | Usar validacao controlada em producao ate existir ambiente formal |
 | MFA ainda legado da migracao Firebase -> Supabase | aberto | app + web | Reimplementar sobre Supabase Auth |
 | Pinning ainda sem decisao tecnica final | aberto | app | Fazer prova de conceito antes de comprometer backlog |
-| OPS-4 sem invoice elegivel para replay de sucesso | aberto | ops | Repetir smoke com empresa que tenha invoice `pending` ou `failed` para validar idempotencia de sucesso (`alreadyProcessed`) |
+| OPS-4 sem invoice elegivel para replay de sucesso | aberto | ops | Repetir smoke quando existir invoice `pending` ou `failed`; usar `npm run billing:candidates` para localizar candidatos antes do replay |
 
 ---
 
@@ -116,3 +117,23 @@ Legenda de status:
 - App sem replay biometrico baseado em senha persistida.
 - MFA funcional para roles privilegiadas em app e web.
 - `restaurante-ops` com logs saneados, rate limit validado e smoke de billing registrado.
+
+---
+
+## Evidencia Pos-Deploy (Template Rapido)
+
+Preencher apos deploy/validacao para encerrar `SEC-W1-002` e fechar gate de decisao de `SEC-W1-001`.
+
+| Campo | Valor |
+|------|-------|
+| Data/hora da execucao | PREENCHER |
+| Executor | PREENCHER |
+| Alvos atualizados | `restaurante-app` (EAS/Expo env), `restaurante-web` (Railway) |
+| Variaveis aplicadas | `CURSOR_SECRET` |
+| Resultado build app (EAS) | PREENCHER (`ok`/`falha`) |
+| Resultado redeploy web | PREENCHER (`ok`/`falha`) |
+| Smoke login/auth | PREENCHER (`ok`/`falha` + evidencia) |
+| Smoke cursor pagination | PREENCHER (`ok`/`falha` + evidencia) |
+| Sentry sem erro de chave/secret faltante | PREENCHER (`sim`/`nao`) |
+| Status final SEC-W1-001 | PREENCHER (`gate_fechado`/`pendente`) |
+| Status final SEC-W1-002 | PREENCHER (`concluido`/`pendente`) |

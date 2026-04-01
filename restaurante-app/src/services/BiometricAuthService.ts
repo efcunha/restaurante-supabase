@@ -114,11 +114,12 @@ class BiometricAuthService {
 
   /**
    * Enroll user for biometric authentication
+   * 
+   * Security: This function does NOT store passwords or credentials.
+   * Credentials are managed via BiometricTokenService for biometric unlock,
+   * and server-side session validation via Supabase.auth.refreshSession().
    */
-  /**
-   * Enroll user for biometric authentication
-   */
-  async enrollUser(userId: string, deviceId: string, email?: string, password?: string): Promise<void> {
+  async enrollUser(userId: string, deviceId: string): Promise<void> {
     try {
       // Verify device supports biometrics
       const isSupported = await this.isSupported();
@@ -149,11 +150,6 @@ class BiometricAuthService {
         `${this.ENROLLMENT_KEY}_${userId}`,
         JSON.stringify(enrollmentData)
       );
-      
-      // Store credentials if provided
-      if (email && password) {
-        await this.storeCredentials(userId, email, password);
-      }
       
       // Mark as last user
       await AsyncStorage.setItem(this.LAST_USER_KEY, userId);
@@ -507,31 +503,24 @@ class BiometricAuthService {
     }
   }
   /**
-   * Store user credentials securely
+   * ⚠️ DEPRECATED: storeCredentials() - REMOVED for SEC-W1-003
+   * 
+   * Storing passwords on device for biometric replay is a critical security risk.
+   * Instead, use BiometricTokenService for biometric unlock and call
+   * supabase.auth.refreshSession() to establish server-side session.
+   * 
+   * This method is intentionally removed. If your code calls it, refactor to:
+   * - Call BiometricAuthService.authenticate(userId) to verify biometric
+   * - Call supabase.auth.refreshSession() to get actual session credentials
+   * - Use BiometricTokenService.generateToken() if local token needed
    */
-  async storeCredentials(userId: string, email: string, password: string): Promise<void> {
-    try {
-       const creds = { email, password };
-       await SecureStore.setItemAsync(`${this.CREDENTIALS_KEY}_${userId}`, JSON.stringify(creds));
-    } catch (error) {
-       console.error('[BiometricAuth] Error storing credentials:', error);
-       throw error;
-    }
-  }
 
   /**
-   * Get stored credentials
+   * ⚠️ DEPRECATED: getCredentials() - REMOVED for SEC-W1-003
+   * 
+   * Retrieving stored passwords for replay authentication is a critical security risk.
+   * See storeCredentials() deprecation notice above for proper pattern.
    */
-  async getCredentials(userId: string): Promise<{email: string, password: string} | null> {
-    try {
-      const credsStr = await SecureStore.getItemAsync(`${this.CREDENTIALS_KEY}_${userId}`);
-      if (!credsStr) return null;
-      return JSON.parse(credsStr);
-    } catch (error) {
-      console.error('[BiometricAuth] Error getting credentials:', error);
-      return null;
-    }
-  }
   
   /**
    * Get Last Enrolled User ID
