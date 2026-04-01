@@ -106,6 +106,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsPasswordRecovery(enabled);
   };
 
+  const scheduleReloadUserData = async (
+    sbUser: User,
+    options?: { rotateSessionKey?: boolean }
+  ) => {
+    const rotateSessionKey = options?.rotateSessionKey ?? true;
+    const now = Date.now();
+
+    const sameUserBurst =
+      lastReloadUserRef.current === sbUser.id &&
+      now - lastReloadAtRef.current < 1500;
+
+    if (reloadInFlightForUserRef.current === sbUser.id || sameUserBurst) {
+      appendLog(`↩️ Reload deduplicado para user=${sbUser.id.slice(0, 8)}`);
+      return;
+    }
+
+    reloadInFlightForUserRef.current = sbUser.id;
+    lastReloadUserRef.current = sbUser.id;
+    lastReloadAtRef.current = now;
+
+    try {
+      await reloadUserData(sbUser, { rotateSessionKey });
+    } finally {
+      if (reloadInFlightForUserRef.current === sbUser.id) {
+        reloadInFlightForUserRef.current = null;
+      }
+    }
+  };
+
   const mapLoginErrorMessage = (error: unknown): string => {
     const raw = error instanceof Error ? error.message : String(error || '');
     const normalized = raw.toLowerCase();
@@ -183,35 +212,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     let mounted = true;
-
-    const scheduleReloadUserData = async (
-      sbUser: User,
-      options?: { rotateSessionKey?: boolean }
-    ) => {
-      const rotateSessionKey = options?.rotateSessionKey ?? true;
-      const now = Date.now();
-
-      const sameUserBurst =
-        lastReloadUserRef.current === sbUser.id &&
-        now - lastReloadAtRef.current < 1500;
-
-      if (reloadInFlightForUserRef.current === sbUser.id || sameUserBurst) {
-        appendLog(`↩️ Reload deduplicado para user=${sbUser.id.slice(0, 8)}`);
-        return;
-      }
-
-      reloadInFlightForUserRef.current = sbUser.id;
-      lastReloadUserRef.current = sbUser.id;
-      lastReloadAtRef.current = now;
-
-      try {
-        await reloadUserData(sbUser, { rotateSessionKey });
-      } finally {
-        if (reloadInFlightForUserRef.current === sbUser.id) {
-          reloadInFlightForUserRef.current = null;
-        }
-      }
-    };
 
     const loadInitialUrl = async () => {
       try {
