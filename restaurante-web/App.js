@@ -289,12 +289,10 @@ export default function App() {
     ...MaterialCommunityIcons.font,
   });
 
+  // Don't block rendering while fonts load — icons appear slightly later
+  // but the login screen is immediately visible, reducing perceived load time.
   if (!fontsLoaded) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color={colorSystem.primary} />
-      </View>
-    );
+    // Still render the app; vector icons will fall back to text glyphs briefly
   }
 
   return (
