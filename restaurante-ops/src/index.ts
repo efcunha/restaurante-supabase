@@ -1450,17 +1450,24 @@ function validateReconcileInput(input: Partial<ReconcileInput>): string | null {
 
 function respondBillingError(res: import('node:http').ServerResponse, err: unknown): void {
   if (err instanceof BillingOperationError) {
+    const safeMessage = err.message
+      .replace(/Bearer\s+[A-Za-z0-9\-._~+/]+=*/gi, 'Bearer [REDACTED]')
+      .replace(/eyJ[A-Za-z0-9._-]{10,}/g, '[REDACTED]')
+      .replace(/sb_(publishable|secret)_[A-Za-z0-9_]+/g, '[REDACTED]');
+
     res.writeHead(err.statusCode, { 'content-type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify({
-      error: err.message,
+      error: safeMessage,
       code: err.code,
     }));
     return;
   }
 
-  const message = err instanceof Error ? err.message : 'Erro inesperado no billing';
   res.writeHead(500, { 'content-type': 'application/json; charset=utf-8' });
-  res.end(JSON.stringify({ error: message, code: 'BILLING_INTERNAL_ERROR' }));
+  res.end(JSON.stringify({
+    error: 'Erro interno no billing. Tente novamente em instantes.',
+    code: 'BILLING_INTERNAL_ERROR',
+  }));
 }
 
 function respondInternalError(req: IncomingMessage, res: import('node:http').ServerResponse): void {

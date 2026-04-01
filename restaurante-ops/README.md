@@ -56,6 +56,17 @@ Centralizar gestao de clientes, contratos, metricas de uso e operacao financeira
 
 Arquivo de deploy: `railway.json`.
 
+## Variaveis de Ambiente Server-Only
+
+As variaveis abaixo sao exclusivas do servidor e nunca devem ser expostas em cliente, logs ou exemplos publicos com valores reais:
+
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `REDIS_URL`
+- `MERCADOPAGO_ACCESS_TOKEN`
+- `MERCADOPAGO_WEBHOOK_SECRET`
+
+Use sempre placeholders em documentacao e mantenha credenciais reais somente em ambientes seguros.
+
 ## Validacao de Rate Limiting
 
 Para validar rapidamente respostas `429`/`503` nas rotas protegidas:
@@ -64,6 +75,27 @@ Para validar rapidamente respostas `429`/`503` nas rotas protegidas:
 cd restaurante-ops
 chmod +x scripts/rate-limit-smoke.sh
 BASE_URL=http://localhost:4040 ATTEMPTS=10 ./scripts/rate-limit-smoke.sh
+```
+
+Para incluir trilha de billing no mesmo smoke (com autenticacao):
+
+```bash
+cd restaurante-ops
+AUTH_EMAIL='ops@example.com' AUTH_PASSWORD='***' \
+BILLING_JSON='{"companyId":"<uuid>","idempotencyKey":"smoke-1","eventType":"payment_received","paymentStatus":"paid"}' \
+BASE_URL=http://localhost:4040 ATTEMPTS=35 ./scripts/rate-limit-smoke.sh
+```
+
+No Windows/PowerShell:
+
+```powershell
+Set-Location restaurante-ops
+$env:AUTH_EMAIL='ops@example.com'
+$env:AUTH_PASSWORD='***'
+$env:BILLING_JSON='{"companyId":"<uuid>","idempotencyKey":"smoke-1","eventType":"payment_received","paymentStatus":"paid"}'
+$env:BASE_URL='http://localhost:4040'
+$env:ATTEMPTS='35'
+./scripts/rate-limit-smoke.ps1
 ```
 
 Diretrizes consolidadas de rollout e evidencias:

@@ -1,0 +1,7 @@
+organization=efcunha
+projectKey=efcunha_restaurante-supabase
+serverUrl=https://sonarcloud.io
+serverVersion=8.0.0.84570
+dashboardUrl=https://sonarcloud.io/dashboard?id=efcunha_restaurante-supabase
+ceTaskId=AZ1JtEGYKmjRCgRQY0yD
+ceTaskUrl=https://sonarcloud.io/api/ce/task?id=AZ1JtEGYKmjRCgRQY0yD

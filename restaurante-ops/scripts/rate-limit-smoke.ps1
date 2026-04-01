@@ -11,6 +11,8 @@ $LoginPath = if ($env:LOGIN_PATH) { $env:LOGIN_PATH } else { '/auth/login' }
 $BillingPath = if ($env:BILLING_PATH) { $env:BILLING_PATH } else { '/ops/billing/reconcile' }
 $AuthCookie = if ($env:AUTH_COOKIE) { $env:AUTH_COOKIE } else { '' }
 $BillingJson = if ($env:BILLING_JSON) { $env:BILLING_JSON } else { '' }
+$AuthEmail = if ($env:AUTH_EMAIL) { $env:AUTH_EMAIL } else { '' }
+$AuthPassword = if ($env:AUTH_PASSWORD) { $env:AUTH_PASSWORD } else { '' }
 $ReportFile = if ($env:REPORT_FILE) { $env:REPORT_FILE } else { '' }
 
 if (-not [string]::IsNullOrWhiteSpace($ReportFile)) {
@@ -63,7 +65,8 @@ function Invoke-RequestSafe {
     [Parameter(Mandatory = $true)][string]$Method,
     [string]$ContentType,
     [string]$Body,
-    [hashtable]$Headers
+    [hashtable]$Headers,
+    [Microsoft.PowerShell.Commands.WebRequestSession]$WebSession
   )
 
   try {
@@ -81,6 +84,9 @@ function Invoke-RequestSafe {
     }
     if ($null -ne $Headers -and $Headers.Count -gt 0) {
       $params.Headers = $Headers
+    }
+    if ($null -ne $WebSession) {
+      $params.WebSession = $WebSession
     }
 
     $response = Invoke-WebRequest @params
@@ -144,15 +150,39 @@ $lastLoginResponse.Headers.GetEnumerator() | ForEach-Object {
   Write-Host ("{0}: {1}" -f $_.Key, $_.Value)
 }
 
-if ([string]::IsNullOrWhiteSpace($AuthCookie) -or [string]::IsNullOrWhiteSpace($BillingJson)) {
+if ([string]::IsNullOrWhiteSpace($AuthCookie) -and -not [string]::IsNullOrWhiteSpace($AuthEmail) -and -not [string]::IsNullOrWhiteSpace($AuthPassword)) {
+  Write-Section 'Generating auth cookie via /auth/login'
+  $authSession = New-Object Microsoft.PowerShell.Commands.WebRequestSession
+  $authBody = "email=$AuthEmail&password=$AuthPassword"
+  $authResponse = Invoke-RequestSafe -Uri "$BaseUrl$LoginPath" -Method 'Post' -ContentType 'application/x-www-form-urlencoded' -Body $authBody -WebSession $authSession
+
+  if ($authResponse.StatusCode -ne 302) {
+    throw "Could not create authenticated session for billing smoke (HTTP $($authResponse.StatusCode))"
+  }
+
+  $cookie = $authSession.Cookies.GetCookies($BaseUrl) | Where-Object { $_.Name -eq 'ops_session' } | Select-Object -First 1
+  if ($null -eq $cookie -or [string]::IsNullOrWhiteSpace($cookie.Value)) {
+    throw 'Login succeeded but ops_session cookie was not captured'
+  }
+
+  $AuthCookie = "ops_session=$($cookie.Value)"
+  Write-Host '[PASS] Auth cookie generated from AUTH_EMAIL/AUTH_PASSWORD'
+}
+
+if ([string]::IsNullOrWhiteSpace($BillingJson)) {
   Write-Section 'Billing validation skipped'
-  Write-Host 'Set AUTH_COOKIE and BILLING_JSON to validate billing rate limiting.'
+  Write-Host 'Set BILLING_JSON and either AUTH_COOKIE or AUTH_EMAIL/AUTH_PASSWORD to validate billing rate limiting.'
   Write-Host 'Example:'
   Write-Host "  `$env:AUTH_COOKIE='ops_session=<token>'; `$env:BILLING_JSON='{""companyId"":""<uuid>"",""idempotencyKey"":""smoke-1"",""eventType"":""payment_received"",""paymentStatus"":""paid""}'; ./scripts/rate-limit-smoke.ps1"
+  Write-Host "  `$env:AUTH_EMAIL='ops@example.com'; `$env:AUTH_PASSWORD='***'; `$env:BILLING_JSON='{""companyId"":""<uuid>"",""idempotencyKey"":""smoke-1"",""eventType"":""payment_received"",""paymentStatus"":""paid""}'; ./scripts/rate-limit-smoke.ps1"
   if (-not [string]::IsNullOrWhiteSpace($ReportFile)) {
     Stop-Transcript | Out-Null
   }
   exit 0
+}
+
+if ([string]::IsNullOrWhiteSpace($AuthCookie)) {
+  throw 'Missing authenticated session: set AUTH_COOKIE or provide AUTH_EMAIL/AUTH_PASSWORD'
 }
 
 Write-Section "Billing rate-limit smoke ($BaseUrl$BillingPath)"

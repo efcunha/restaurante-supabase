@@ -12,7 +12,27 @@
  */
 
 import { SupabaseClient } from '@supabase/supabase-js';
+import crypto from 'crypto';
 import { supabase } from '../../config/SupabaseConfig';
+
+function resolveCursorSecret(providedSecret?: string): string {
+  const explicitSecret = providedSecret?.trim();
+  if (explicitSecret) {
+    return explicitSecret;
+  }
+
+  const envSecret = process.env.CURSOR_SECRET?.trim();
+  if (envSecret) {
+    return envSecret;
+  }
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('[CursorPaginationService] CURSOR_SECRET not configured. Using ephemeral development secret.');
+    return crypto.randomBytes(32).toString('hex');
+  }
+
+  throw new Error('[SECURITY] CURSOR_SECRET environment variable is required in production');
+}
 
 /**
  * Pagination configuration
@@ -66,10 +86,11 @@ export class CursorPaginationService {
   };
 
   private client: SupabaseClient;
-  private secret: string = 'cursor-secret-key'; // In production, use env variable
+  private secret: string;
 
-  constructor(client?: SupabaseClient) {
+  constructor(client?: SupabaseClient, secret?: string) {
     this.client = client || supabase;
+    this.secret = resolveCursorSecret(secret);
   }
 
   /**
@@ -238,17 +259,16 @@ export class CursorPaginationService {
    * Generate signature for cursor integrity
    */
   private generateSignature(cursor: Omit<PaginationCursor, 'signature'>): string {
-    const data = `${cursor.value}:${cursor.column}:${cursor.direction}:${cursor.timestamp}:${this.secret}`;
-    
-    // Simple hash function (in production, use crypto.createHmac)
-    let hash = 0;
-    for (let i = 0; i < data.length; i++) {
-      const char = data.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash;
-    }
-    
-    return hash.toString(36);
+    const data = JSON.stringify({
+      value: cursor.value,
+      column: cursor.column,
+      direction: cursor.direction,
+      timestamp: cursor.timestamp,
+    });
+
+    const hmac = crypto.createHmac('sha256', this.secret);
+    hmac.update(data);
+    return hmac.digest('hex');
   }
 
   /**
