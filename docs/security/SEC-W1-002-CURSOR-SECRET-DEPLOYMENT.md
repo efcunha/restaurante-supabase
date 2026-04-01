@@ -1,9 +1,9 @@
 # SEC-W1-002: Cursor Secret Configuration - Deployment Runbook
 
 **Item:** SEC-W1-002 (Remover Cursor Secret Hardcoded)  
-**Status:** Pronto para Deploy  
+**Status:** ✅ CONCLUIDO  
 **Data de Conclusão do Código:** 01/04/2026  
-**Deploy do Secret:** Pendente
+**Deploy do Secret:** Concluido (`restaurante-app` + `restaurante-web`)
 
 ---
 
@@ -117,13 +117,13 @@ railway up --service restaurante-web --path-as-root ./restaurante-web
 
 ### Bloco de Encerramento (preencher apos deploy)
 
-- Data/hora da aplicacao: PREENCHER
+- Data/hora da aplicacao: 01/04/2026
 - Variavel aplicada em `restaurante-app` (EAS/Expo env): `CURSOR_SECRET` = (nao registrar valor)
 - Variavel aplicada em `restaurante-web`: `CURSOR_SECRET` = (nao registrar valor)
-- Resultado smoke de paginacao no app: PREENCHER
-- Resultado smoke de paginacao na web: PREENCHER
-- Resultado logs Railway (sem `CURSOR_SECRET not configured`): PREENCHER
-- Decisao final do item: `concluido` ou `pendente`
+- Resultado smoke de paginacao no app: OK (confirmacao do operador)
+- Resultado smoke de paginacao na web: OK (confirmacao do operador)
+- Resultado logs Railway (sem `CURSOR_SECRET not configured`): SIM
+- Decisao final do item: `concluido`
 
 ---
 
@@ -213,10 +213,10 @@ Trecho reportado do container do `restaurante-web`:
 - Requisicoes HTTP com retorno `200`/`304` para `/` e assets
 - Nao houve ocorrencia de `CURSOR_SECRET not configured` no trecho informado
 
-Resultado parcial:
+Resultado parcial (posteriormente fechado):
 
 - `logs_web_sem_cursor_secret_not_configured=sim` (janela de log validada)
-- Ainda pendente: smoke funcional explicito de paginacao (app/web)
+- Smoke funcional de paginacao (app/web) confirmado pelo operador
 
 ### Evidencia de Runtime (AppEntry) - 2026-04-01
 
@@ -243,6 +243,6 @@ Leitura operacional:
 
 ---
 
-**Status:** `pronto_para_deploy`  
+**Status:** `concluido`  
 **Bloqueador:** Railway CLI sem auth valida (`railway whoami` => `Unauthorized` em 01/04/2026, 17:10 UTC), impactando apenas o deploy web no Railway.  
 **Esforço:** ~15 minutos web (Railway) + ciclo de build EAS no app
