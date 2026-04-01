@@ -1,3 +1,5 @@
+// Security boundary: values in this module are server-only configuration.
+// Never expose these vars to client-side bundles or HTTP responses.
 export interface OpsEnv {
   SUPABASE_URL: string;
   SUPABASE_SERVICE_ROLE_KEY: string;

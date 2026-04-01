@@ -102,6 +102,52 @@ npm run dev
 
 ## Testing Rate Limiting
 
+### Smoke Script (recommended)
+
+Use the maintained smoke scripts instead of ad-hoc curl loops when possible.
+
+Linux/macOS (bash):
+
+```bash
+cd restaurante-ops
+BASE_URL=http://localhost:4040 ATTEMPTS=10 ./scripts/rate-limit-smoke.sh
+```
+
+Windows (PowerShell):
+
+```powershell
+Set-Location restaurante-ops
+$env:BASE_URL='http://localhost:4040'
+$env:ATTEMPTS='10'
+./scripts/rate-limit-smoke.ps1
+```
+
+To include billing validation in the same smoke run, provide authenticated session input:
+
+- Option A: pre-generated cookie via `AUTH_COOKIE='ops_session=<token>'`
+- Option B: automatic login via `AUTH_EMAIL` + `AUTH_PASSWORD`
+
+Example (bash):
+
+```bash
+AUTH_EMAIL='ops@example.com' AUTH_PASSWORD='***' \
+BILLING_JSON='{"companyId":"<uuid>","idempotencyKey":"smoke-1","eventType":"payment_received","paymentStatus":"paid"}' \
+BASE_URL=http://localhost:4040 ATTEMPTS=35 ./scripts/rate-limit-smoke.sh
+```
+
+Example (PowerShell):
+
+```powershell
+$env:AUTH_EMAIL='ops@example.com'
+$env:AUTH_PASSWORD='***'
+$env:BILLING_JSON='{"companyId":"<uuid>","idempotencyKey":"smoke-1","eventType":"payment_received","paymentStatus":"paid"}'
+$env:BASE_URL='http://localhost:4040'
+$env:ATTEMPTS='35'
+./scripts/rate-limit-smoke.ps1
+```
+
+If local environment variables (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`) are not configured, authenticated billing validation cannot be completed.
+
 ### Test Login Rate Limiting (8 attempts / 15 min)
 
 ```bash
