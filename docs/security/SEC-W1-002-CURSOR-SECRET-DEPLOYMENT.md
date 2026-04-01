@@ -218,6 +218,20 @@ Resultado parcial:
 - `logs_web_sem_cursor_secret_not_configured=sim` (janela de log validada)
 - Ainda pendente: smoke funcional explicito de paginacao (app/web)
 
+### Evidencia de Runtime (AppEntry) - 2026-04-01
+
+Trecho adicional reportado pelo operador apos deploy/build:
+
+- Inicialmente ocorreu `AuthApiError: Invalid Refresh Token: Refresh Token Not Found` com evento `SIGNED_OUT`
+- Em seguida o fluxo recuperou com sucesso: `SIGNED_IN` + `reloadUserData` + carga de perfil/empresa
+- Navegacao funcional observada com carga de dados (`GerenciarCardapio`, `FuncionariosScreen`, menu cache)
+- Nao houve ocorrencia de `CURSOR_SECRET not configured` no trecho informado
+
+Leitura operacional:
+
+- Erro de refresh token indica sessao local expirada/invalida (evento comum de borda), sem bloquear autenticacao subsequente
+- Fluxo principal de app/web permaneceu operacional apos novo login
+
 ---
 
 ## 🔄 Próximos Passos

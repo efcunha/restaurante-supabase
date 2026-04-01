@@ -89,6 +89,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const isManualLoginRef = useRef<boolean>(false);
   const passwordRecoveryModeRef = useRef<boolean>(false);
+  const reloadInFlightForUserRef = useRef<string | null>(null);
+  const lastReloadUserRef = useRef<string | null>(null);
+  const lastReloadAtRef = useRef<number>(0);
 
   // --- On-screen diagnostics ---
   const [initError, setInitError] = useState<string | null>(null);
@@ -181,6 +184,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     let mounted = true;
 
+    const scheduleReloadUserData = async (
+      sbUser: User,
+      options?: { rotateSessionKey?: boolean }
+    ) => {
+      const rotateSessionKey = options?.rotateSessionKey ?? true;
+      const now = Date.now();
+
+      const sameUserBurst =
+        lastReloadUserRef.current === sbUser.id &&
+        now - lastReloadAtRef.current < 1500;
+
+      if (reloadInFlightForUserRef.current === sbUser.id || sameUserBurst) {
+        appendLog(`↩️ Reload deduplicado para user=${sbUser.id.slice(0, 8)}`);
+        return;
+      }
+
+      reloadInFlightForUserRef.current = sbUser.id;
+      lastReloadUserRef.current = sbUser.id;
+      lastReloadAtRef.current = now;
+
+      try {
+        await reloadUserData(sbUser, { rotateSessionKey });
+      } finally {
+        if (reloadInFlightForUserRef.current === sbUser.id) {
+          reloadInFlightForUserRef.current = null;
+        }
+      }
+    };
+
     const loadInitialUrl = async () => {
       try {
         const initialUrl = await Linking.getInitialURL();
@@ -271,7 +303,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               console.log('[SupabaseAuth] Processing', event, '— Manual?', isManualLoginRef.current);
               if (!isManualLoginRef.current) {
                   try {
-                  await reloadUserData(session.user, {
+                  await scheduleReloadUserData(session.user, {
                   rotateSessionKey: event !== 'TOKEN_REFRESHED'
                   });
                   } catch (e: any) {
