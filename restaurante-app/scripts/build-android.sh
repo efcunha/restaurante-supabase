@@ -35,19 +35,38 @@ fi
 cd "$(dirname "$0")/.."
 
 # Garantir CURSOR_SECRET no ambiente do bundling local
-# Prioridade: variavel de ambiente atual > .env
-if [ -z "$CURSOR_SECRET" ] && [ -f ".env" ]; then
-    ENV_CURSOR_SECRET=$(grep -E '^[[:space:]]*CURSOR_SECRET=' .env | tail -n 1 | cut -d'=' -f2-)
-    # Remove aspas simples/duplas e espacos nas pontas
-    ENV_CURSOR_SECRET=$(printf '%s' "$ENV_CURSOR_SECRET" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")
-    if [ -n "$ENV_CURSOR_SECRET" ]; then
-        export CURSOR_SECRET="$ENV_CURSOR_SECRET"
+# Prioridade: variavel de ambiente atual > arquivos locais nao versionados > arquivos de ambiente
+load_cursor_secret_from_file() {
+    local file="$1"
+    if [ -f "$file" ] && [ -z "$CURSOR_SECRET" ]; then
+        local value
+        value=$(grep -E '^[[:space:]]*CURSOR_SECRET=' "$file" | tail -n 1 | cut -d'=' -f2-)
+        # Remove aspas simples/duplas e espacos nas pontas
+        value=$(printf '%s' "$value" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")
+        if [ -n "$value" ]; then
+            export CURSOR_SECRET="$value"
+            echo "🔎 CURSOR_SECRET carregado de $file"
+        fi
     fi
+}
+
+if [ -z "$CURSOR_SECRET" ]; then
+    load_cursor_secret_from_file ".env.local"
+fi
+if [ -z "$CURSOR_SECRET" ]; then
+    load_cursor_secret_from_file ".env.production"
+fi
+if [ -z "$CURSOR_SECRET" ]; then
+    load_cursor_secret_from_file ".env.staging"
+fi
+if [ -z "$CURSOR_SECRET" ]; then
+    load_cursor_secret_from_file ".env"
 fi
 
 if [ -z "$CURSOR_SECRET" ] || [ "$CURSOR_SECRET" = "generate_with_openssl_rand_hex_32" ]; then
     echo "❌ CURSOR_SECRET não definido para build local."
-    echo "   Defina CURSOR_SECRET no ambiente ou no arquivo .env antes de executar o script."
+    echo "   Defina CURSOR_SECRET no ambiente ou em um dos arquivos: .env.local, .env.production, .env.staging, .env"
+    echo "   Exemplo imediato: CURSOR_SECRET=<hex64> ./scripts/build-android.sh"
     exit 1
 fi
 
