@@ -15,6 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
 import { retryService } from './RetryService';
 import { isRetryableError, classifyError } from '../utils/errors';
+import logger from '../utils/logger';
 
 /**
  * Operação enfileirada
@@ -107,7 +108,7 @@ class OfflineQueueService {
       this.startAutoProcessing();
     }
 
-    console.log('[OfflineQueue] Initialized', {
+    logger.debug('[OfflineQueue] Initialized', {
       queueSize: this.queue.length,
       isOnline: this.isOnline
     });
@@ -125,7 +126,7 @@ class OfflineQueueService {
     // Persiste fila
     await this.persistQueue();
 
-    console.log('[OfflineQueue] Shutdown complete');
+    logger.debug('[OfflineQueue] Shutdown complete');
   }
 
   /**
@@ -153,7 +154,7 @@ class OfflineQueueService {
     const existing = this.queue.find(op => op.idempotencyKey === effectiveKey)
       || this.deferredOperations.find(op => op.idempotencyKey === effectiveKey);
     if (existing) {
-      console.log('[OfflineQueue] Operation already queued', {
+      logger.debug('[OfflineQueue] Operation already queued', {
         type,
         idempotencyKey: effectiveKey
       });
@@ -175,7 +176,7 @@ class OfflineQueueService {
     // Persiste fila
     await this.persistQueue();
 
-    console.log('[OfflineQueue] Operation enqueued', {
+    logger.debug('[OfflineQueue] Operation enqueued', {
       id,
       type,
       queueSize: this.queue.length
@@ -218,7 +219,7 @@ class OfflineQueueService {
     }
 
     if (!this.isOnline) {
-      console.log('[OfflineQueue] Cannot process queue while offline');
+      logger.debug('[OfflineQueue] Cannot process queue while offline');
       return;
     }
 
@@ -228,7 +229,7 @@ class OfflineQueueService {
 
     this.processing = true;
 
-    console.log('[OfflineQueue] Processing queue', {
+    logger.debug('[OfflineQueue] Processing queue', {
       queueSize: this.queue.length
     });
 
@@ -265,7 +266,7 @@ class OfflineQueueService {
           }
         });
 
-        console.log('[OfflineQueue] Operation succeeded', {
+        logger.debug('[OfflineQueue] Operation succeeded', {
           id: operation.id,
           type: operation.type,
           attempts: operation.attempts
@@ -306,7 +307,7 @@ class OfflineQueueService {
 
     this.processing = false;
 
-    console.log('[OfflineQueue] Queue processing complete', {
+    logger.debug('[OfflineQueue] Queue processing complete', {
       remainingOperations: this.queue.length
     });
   }
@@ -318,14 +319,14 @@ class OfflineQueueService {
     const wasOnline = this.isOnline;
     this.isOnline = state.isConnected ?? false;
 
-    console.log('[OfflineQueue] Connectivity changed', {
+    logger.debug('[OfflineQueue] Connectivity changed', {
       isOnline: this.isOnline,
       wasOnline
     });
 
     // Se voltou online, processa fila
     if (this.isOnline && !wasOnline && this.queue.length > 0) {
-      console.log('[OfflineQueue] Connection restored, processing queue');
+      logger.debug('[OfflineQueue] Connection restored, processing queue');
       this.processQueue();
     }
   };
@@ -463,7 +464,7 @@ class OfflineQueueService {
     this.queue = [];
     this.deferredOperations = [];
     await AsyncStorage.removeItem(this.config.persistenceKey);
-    console.log('[OfflineQueue] Queue cleared');
+    logger.debug('[OfflineQueue] Queue cleared');
   }
 
   /**
@@ -476,7 +477,7 @@ class OfflineQueueService {
       this.queue.splice(index, 1);
       await this.persistQueue();
 
-      console.log('[OfflineQueue] Operation removed', { id });
+      logger.debug('[OfflineQueue] Operation removed', { id });
       return true;
     }
 
@@ -488,7 +489,7 @@ class OfflineQueueService {
     this.deferredOperations.splice(deferredIndex, 1);
     await this.persistQueue();
 
-    console.log('[OfflineQueue] Operation removed', { id });
+    logger.debug('[OfflineQueue] Operation removed', { id });
     return true;
   }
 

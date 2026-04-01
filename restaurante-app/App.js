@@ -49,6 +49,7 @@ import './src/services/MontagemSyncService';
 import PrinterService from './src/services/PrinterService';
 import { colorSystem } from './src/design-system';
 import { useEffect } from 'react';
+import logger from './src/utils/logger';
 
 // @ts-ignore
 import PagamentoScreen from './src/screens/PagamentoScreen';
@@ -100,7 +101,10 @@ const Tab = createBottomTabNavigator();
 
 function TabNavigator() {
   const { user } = useAuth();
-  console.log('[TabNavigator] Rendering for user:', user?.email, 'Role:', user?.funcao);
+  logger.debug('[TabNavigator] Rendering for user', {
+    hasUser: Boolean(user),
+    role: user?.funcao,
+  });
 
   return (
     <Tab.Navigator
