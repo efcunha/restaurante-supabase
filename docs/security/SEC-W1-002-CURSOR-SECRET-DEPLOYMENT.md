@@ -152,6 +152,16 @@ Pendencias restantes para fechamento do item:
 - Validar smoke de paginacao (app + web)
 - Validar ausencia de erro `CURSOR_SECRET not configured` em logs
 
+### Retorno Rapido para Encerramento
+
+Preencher e enviar para fechamento automatico da documentacao:
+
+- App EAS env (`CURSOR_SECRET`): `ok` ou `falha`
+- Build app com nova env: `ok` ou `falha`
+- Smoke paginacao app: `ok` ou `falha`
+- Smoke paginacao web: `ok` ou `falha`
+- Logs web sem `CURSOR_SECRET not configured`: `sim` ou `nao`
+
 ---
 
 ## 🔄 Próximos Passos

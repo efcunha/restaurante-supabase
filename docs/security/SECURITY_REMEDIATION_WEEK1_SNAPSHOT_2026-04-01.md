@@ -24,7 +24,8 @@ Progress summary:
 
 2. SEC-W1-002 (Cursor secret): ready for deploy
 - Secret generated and code already requires runtime env in production.
-- Remaining action: set CURSOR_SECRET in app via EAS/Expo env and in web via Railway, then validate pagination smoke.
+- Remaining action: set CURSOR_SECRET in app via EAS/Expo env and validate pagination smoke.
+- Web Railway already updated with `CURSOR_SECRET` (manual confirmation on 01/04).
 
 3. SEC-W1-003 (Biometric hardening): completed
 - Token-based biometric flow active.

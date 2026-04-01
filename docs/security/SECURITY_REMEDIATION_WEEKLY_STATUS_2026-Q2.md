@@ -137,3 +137,13 @@ Preencher apos deploy/validacao para encerrar `SEC-W1-002` e fechar gate de deci
 | Sentry sem erro de chave/secret faltante | PREENCHER (`sim`/`nao`) |
 | Status final SEC-W1-001 | PREENCHER (`gate_fechado`/`pendente`) |
 | Status final SEC-W1-002 | PREENCHER (`concluido`/`pendente`) |
+
+Resposta rapida (copiar e preencher):
+
+- app_eas_env_cursor_secret: ok/falha
+- app_build_com_env: ok/falha
+- smoke_paginacao_app: ok/falha
+- smoke_paginacao_web: ok/falha
+- logs_web_sem_cursor_secret_not_configured: sim/nao
+- status_final_sec_w1_002: concluido/pendente
+- status_final_sec_w1_001: gate_fechado/pendente
