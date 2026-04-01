@@ -260,13 +260,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                event
              });
              if (!isManualLoginRef.current) {
+               // useInteraction: false — InteractionManager.runAfterInteractions can deadlock
+               // when ActivityIndicator (loading spinner) is animating, because the spinner
+               // animation keeps the interaction queue busy. INITIAL_SESSION fires during
+               // bootstrap (no nav transition), so direct call is safe and required.
                await scheduleReloadUserData(session.user, {
                  rotateSessionKey: event !== 'TOKEN_REFRESHED',
-                 useInteraction: true,
+                 useInteraction: false,
                });
                setLoading(false);
-                 // Ideally cancel if unmounted, but interaction handle cancellation is tricky in effect return.
-                 // Since reloadUserData handles errors gracefully, it's safer to let it run.
              }
         }
     });
