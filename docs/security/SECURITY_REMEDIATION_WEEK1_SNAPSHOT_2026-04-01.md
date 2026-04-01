@@ -7,12 +7,12 @@ Scope: restaurante-app, restaurante-web, restaurante-ops
 ## Executive Status
 
 Week 1 security scope is functionally implemented for code hardening items.
-Deployment-only items remain pending for `SEC-W1-002`.
+Deployment-only items were closed for `SEC-W1-002`.
 `SEC-W1-001` moved to runtime decision gate due to Firebase legacy-only reachability.
 
 Progress summary:
-- Completed now: 8/10
-- Pending deploy actions: 1/10 (`SEC-W1-002`)
+- Completed now: 9/10
+- Pending deploy actions: 0/10
 - Decision gate: 1/10 (`SEC-W1-001`)
 
 ## Item-by-Item Status
@@ -22,10 +22,10 @@ Progress summary:
 - Runtime assessment indicates Firebase remains in legacy services, with no clear active reachability outside `src/services`.
 - Remaining action: close deprecation decision gate before forcing production rotation.
 
-2. SEC-W1-002 (Cursor secret): ready for deploy
+2. SEC-W1-002 (Cursor secret): completed
 - Secret generated and code already requires runtime env in production.
-- Remaining action: set CURSOR_SECRET in app via EAS/Expo env and validate pagination smoke.
-- Web Railway already updated with `CURSOR_SECRET` (manual confirmation on 01/04).
+- `CURSOR_SECRET` aplicado em app (EAS/Expo env + build local validado) e web (Railway).
+- Smoke de paginacao app/web confirmado OK pelo operador em 01/04.
 
 3. SEC-W1-003 (Biometric hardening): completed
 - Token-based biometric flow active.
@@ -56,7 +56,6 @@ Latest validation note (2026-04-01 18:31 UTC):
 - Secure patterns remain present (`resolveCursorSecret`, `refreshSession`) in app/web auth and pagination paths.
 
 Implication:
-- Immediate deploy path is Railway UI for `SEC-W1-002` web target only.
 - `SEC-W1-001` requires decision gate closure (deprecate vs rotate where still used).
 
 ## Fast Manual Execution Checklist (UI Path)
@@ -77,4 +76,4 @@ Implication:
 
 Week 1 can be marked fully closed when both are true:
 - SEC-W1-001 decision gate closed (deprecate or rotate only where runtime applies)
-- SEC-W1-002 variables configured + smoke evidence recorded
+- SEC-W1-002 variables configured + smoke evidence recorded (concluido em 01/04)
