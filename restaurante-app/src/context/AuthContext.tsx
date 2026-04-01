@@ -210,6 +210,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkBiometric();
   }, []);
 
+
+
   useEffect(() => {
     let mounted = true;
 
@@ -342,35 +344,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           console.log('[AuthContext] Fetching profile table only...');
           appendLog(`⏳ Buscando perfil...`);
           
-          // Retry profile fetch once when network/RLS latency spikes.
-          const fetchProfileWithTimeout = async () => {
-            const fetchPromise = supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', sbUser.id)
-              .single();
-
-            const timeoutPromise = new Promise((_, reject) =>
-              setTimeout(() => reject(new Error('TIMEOUT_FETCH_PROFILE (30s)')), 30000)
-            );
-
-            return Promise.race([fetchPromise, timeoutPromise]) as Promise<any>;
-          };
-
-          let profile: any = null;
-          let profileError: any = null;
-          try {
-            const result = await fetchProfileWithTimeout();
-            profile = result?.data;
-            profileError = result?.error;
-          } catch (firstFetchError: any) {
-            const firstMessage = firstFetchError?.message || 'UNKNOWN_PROFILE_FETCH_ERROR';
-            appendLog(`⚠️ Primeira tentativa de perfil falhou: ${firstMessage}`);
-
-            const retryResult = await fetchProfileWithTimeout();
-            profile = retryResult?.data;
-            profileError = retryResult?.error;
-          }
+const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', sbUser.id)
+            .single();
           const profileDuration = Date.now() - fetchProfileStartTime;
 
           console.log('[AuthContext] Profile result:', { 
@@ -382,11 +360,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
           if (profileError || !profile) {
               const errMsg = profileError?.message || 'Perfil não encontrado';
-              console.warn('[SupabaseAuth] No profile found for user', { 
-                sbUserId: sbUser.id,
+              console.warn('[SupabaseAuth] Profile fetch failed', { 
                 error: errMsg,
-                duration: profileDuration,
-                isDueToTimeout: errMsg.includes('TIMEOUT')
+                duration: profileDuration
               });
               appendLog(`❌ Erro ao buscar perfil: ${errMsg}`);
               setLoading(false);
