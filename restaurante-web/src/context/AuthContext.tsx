@@ -287,18 +287,38 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const fetchProfileStartTime = Date.now();
           logger.debug('[AuthContext] Fetching profile table only');
           
-          // TIMEOUT WRAPPER - Increased to 30 seconds to handle network delays and slow RLS policies
-          const fetchPromise = supabase
-            .from('profiles')
-            .select('*') // No join
-            .eq('id', sbUser.id)
-            .single();
-            
-          const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('TIMEOUT_FETCH_PROFILE (30s)')), 30000)
-          );
-          
-          const { data: profile, error: profileError } = await Promise.race([fetchPromise, timeoutPromise]) as any;
+          // Retry profile fetch once when network/RLS latency spikes.
+          const fetchProfileWithTimeout = async () => {
+            const fetchPromise = supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', sbUser.id)
+              .single();
+
+            const timeoutPromise = new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('TIMEOUT_FETCH_PROFILE (30s)')), 30000)
+            );
+
+            return Promise.race([fetchPromise, timeoutPromise]) as Promise<any>;
+          };
+
+          let profile: any = null;
+          let profileError: any = null;
+          try {
+            const result = await fetchProfileWithTimeout();
+            profile = result?.data;
+            profileError = result?.error;
+          } catch (firstFetchError: any) {
+            const firstMessage = firstFetchError?.message || 'UNKNOWN_PROFILE_FETCH_ERROR';
+            logger.warn('[SupabaseAuth] Profile fetch first attempt failed', {
+              error: firstMessage,
+              willRetry: true,
+            });
+
+            const retryResult = await fetchProfileWithTimeout();
+            profile = retryResult?.data;
+            profileError = retryResult?.error;
+          }
           const profileDuration = Date.now() - fetchProfileStartTime;
           
           logger.debug('[AuthContext] Profile fetch finished', {
