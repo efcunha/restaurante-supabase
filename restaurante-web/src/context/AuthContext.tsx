@@ -156,7 +156,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       options?: { rotateSessionKey?: boolean; useInteraction?: boolean }
     ) => {
       const rotateSessionKey = options?.rotateSessionKey ?? true;
-      const useInteraction = options?.useInteraction ?? true;
+      const useInteraction = options?.useInteraction ?? false;
 
       // Avoid duplicate reloads fired in quick succession for the same user
       const now = Date.now();
@@ -189,6 +189,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       }
     };
+
+    // Safety net: never leave loading=true forever regardless of what fails
+    const safetyTimer = setTimeout(() => {
+      if (mounted) {
+        logger.warn('[SupabaseAuth] Safety timeout fired — forcing loading=false');
+        setLoading(false);
+      }
+    }, 10000);
 
     const initAuth = async () => {
        try {
@@ -275,6 +283,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     return () => {
         mounted = false;
+        clearTimeout(safetyTimer);
         subscription.unsubscribe();
     };
   }, []);
