@@ -23,6 +23,7 @@ import {
     resolveConfiguredSubcategories,
 } from '../utils/menuCategories';
 import { SelectedAdicional } from '../types/models';
+import logger from '../utils/logger';
 
 const CARDAPIO_CACHE_KEY = '@cardapio_cache_v2';
 const MENU_REFRESH_WINDOW_MS = 30 * 60 * 1000;
@@ -370,7 +371,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
 
             // 🐛 FIX: Se o cache estiver quebrado sem pizzaConfig, forçar recarregamento!
             if (!parsedCache.pizzaConfig || !parsedCache.pizzaConfig.sizes) {
-                console.log('🔄 Cache quebrado (pizzaConfig ausente). Forçando recarga...');
+                logger.debug('[useNovoPedido] Cache invalid without pizzaConfig, forcing reload');
                 return true;
             }
 
@@ -379,11 +380,11 @@ export function useNovoPedido(): UseNovoPedidoReturn {
             const isCacheExpired = (Date.now() - parsedCache.timestamp) > (24 * 60 * 60 * 1000);
 
             if (latestServerUpdate > localTimestamp || isCacheExpired) {
-                console.log('🔄 New data available or cache expired. Reloading...', { server: latestServerUpdate, local: localTimestamp });
+                logger.debug('[useNovoPedido] Menu reload needed', { server: latestServerUpdate, local: localTimestamp, isCacheExpired });
                 return true; // Need reload
             }
 
-            console.log('✅ Menu is up to date. Using cache.');
+            logger.debug('[useNovoPedido] Menu is up to date, using cache');
             applyCachedCardapio(parsedCache);
             setLoadingCardapio(false);
             return false; // No reload needed
@@ -399,7 +400,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
             const isRecentLoad = hasLoadedMenu && (Date.now() - lastLoadTimeRef.current) < MENU_REFRESH_WINDOW_MS;
 
             if (isRecentLoad) {
-                console.log('⏭️ Skipping menu refresh, cache still within refresh window.');
+                logger.debug('[useNovoPedido] Skipping menu refresh, cache still fresh');
                 return;
             }
 
@@ -411,7 +412,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
             const needsReload = await checkMenuUpdates();
 
             if (needsReload) {
-                console.log('🔄 Reloading cardápio from database (Smart Cache trigger)...');
+                logger.debug('[useNovoPedido] Reloading menu from database (smart cache trigger)');
                 await carregarCardapioSupabase({ showGlobalLoading: !hasLoadedMenu });
             }
         } catch (error) {

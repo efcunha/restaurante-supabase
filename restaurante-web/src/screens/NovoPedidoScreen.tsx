@@ -19,6 +19,7 @@ import { NewOrderCartFooter, NewOrderHeaderForm, NewOrderListFooter, PizzaProduc
 // KeyboardWrapper removed to prevent touch stealing
 import { KeyboardAvoidingView } from 'react-native';
 import { colors } from '../theme/colors';
+import logger from '../utils/logger';
 if (Platform.OS === 'android') {
   if (UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -808,8 +809,8 @@ export default function NovoPedidoScreen({ route }: any) {
   
   // Log baseline metrics on mount
   useEffect(() => {
-    console.log('📊 [Performance] Baseline measurement ready');
-    console.log('📊 [Performance] Current SectionList config:', {
+    logger.debug('[Performance] Baseline measurement ready');
+    logger.debug('[Performance] Current SectionList config', {
       initialNumToRender: 6,
       windowSize: 5,
       maxToRenderPerBatch: 5,
