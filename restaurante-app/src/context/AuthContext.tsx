@@ -556,22 +556,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               return { success: false, error: authResult.error };
           }
 
-          // Step 2: Attempt to refresh server-side session
-          // If user has a valid session cookie, this will extend it.
-          // If session expired, this will return an error and require manual login.
-          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-          
-          if (refreshError || !refreshData.session?.user) {
+            // Step 2: Restore persisted tokens and rehydrate Supabase session.
+            // This avoids relying on an already-active in-memory session.
+            const persistedAuth = await AuthPersistenceService.restoreAuthState();
+
+            if (!persistedAuth || !persistedAuth.refreshToken || persistedAuth.userId !== lastUserId) {
               setLoading(false);
-              console.warn('[SupabaseAuth] Session refresh failed after biometric auth. Require manual login.');
               return {
                   success: false,
-                  error: 'Sua sessão expirou. Faça login novamente com suas credenciais.'
+                error: 'Sessão biométrica indisponível. Faça login com email e senha para reativar.'
               };
           }
 
+            const { data: setSessionData, error: setSessionError } = await supabase.auth.setSession({
+              access_token: persistedAuth.sessionToken,
+              refresh_token: persistedAuth.refreshToken,
+            });
+
+            if (setSessionError || !setSessionData.session?.user) {
+              setLoading(false);
+              console.warn('[SupabaseAuth] Session restore failed after biometric auth. Require manual login.');
+              return {
+                success: false,
+                error: 'Sua sessão expirou. Faça login novamente com suas credenciais.'
+              };
+            }
+
           // Step 3: Reload user data with refreshed session
-          await reloadUserData(refreshData.session.user, { rotateSessionKey: true });
+            await reloadUserData(setSessionData.session.user, { rotateSessionKey: true });
           setLoading(false);
           return { success: true };
 
@@ -579,6 +591,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setLoading(false);
           console.error('[SupabaseAuth] Bio login error', error);
           return { success: false, error: error.message || 'Falha ao autenticar com biometria' };
+        } finally {
+          isManualLoginRef.current = false;
       }
   };
 
