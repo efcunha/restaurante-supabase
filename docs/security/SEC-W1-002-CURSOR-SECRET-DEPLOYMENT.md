@@ -180,6 +180,20 @@ CURSOR_SECRET=9f05e59a28393b3c7684abf8f98d9d226a1a47ea1383ba7c74b04be89d868fd6 .
 - Observacao: para execucoes futuras sem injetar na linha de comando, definir `CURSOR_SECRET` no `.env` local (nao versionado) ou no ambiente CI/CD.
 - SEC-W1-002 ainda depende de smoke (app/web) e validacao final de logs web.
 
+Execucao adicional confirmada pelo operador (01/04/2026, ~16:35 local):
+
+- Script executado diretamente: `./scripts/build-android.sh`
+- Resultado: ✅ Build RELEASE concluido
+- APKs gerados:
+	- `build/Restaurante_v1.0.1_20260401_1635_arm64-v8a.apk` (62M)
+	- `build/Restaurante_v1.0.1_20260401_1635_armeabi-v7a.apk` (53M)
+	- `build/Restaurante_v1.0.1_20260401_1635_standard.apk` (64M)
+
+Interpretacao:
+
+- O script carregou `CURSOR_SECRET` corretamente a partir do ambiente/arquivo local e concluiu o build sem injeção inline.
+- Campos ja validados: `app_eas_env_cursor_secret=ok`, `app_build_com_env=ok`.
+
 ### Retorno Rapido para Encerramento
 
 Preencher e enviar para fechamento automatico da documentacao:
@@ -189,6 +203,20 @@ Preencher e enviar para fechamento automatico da documentacao:
 - Smoke paginacao app: `ok` ou `falha`
 - Smoke paginacao web: `ok` ou `falha`
 - Logs web sem `CURSOR_SECRET not configured`: `sim` ou `nao`
+
+### Evidencia de Logs Web (Railway) - 2026-04-01
+
+Trecho reportado do container do `restaurante-web`:
+
+- `Starting Container`
+- `INFO  Accepting connections at http://localhost:8080`
+- Requisicoes HTTP com retorno `200`/`304` para `/` e assets
+- Nao houve ocorrencia de `CURSOR_SECRET not configured` no trecho informado
+
+Resultado parcial:
+
+- `logs_web_sem_cursor_secret_not_configured=sim` (janela de log validada)
+- Ainda pendente: smoke funcional explicito de paginacao (app/web)
 
 ---
 
