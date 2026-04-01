@@ -174,6 +174,8 @@ Os itens abaixo nao substituem o plano geral, mas representam o backlog de segur
 - Regularizacao sem invoice elegivel retorna `404` com codigo funcional (`INVOICE_ACTION_TARGET_NOT_FOUND`).
 - Erros HTTP de billing permanecem sem exposicao de payload sensivel (mensagens controladas + logger com mascaramento).
 - Repeticao com mesmo `idempotencyKey` manteve resposta deterministica (`404` no cenario sem invoice pendente/falha).
+- Consulta direta via service role em `invoices` nao encontrou registros com `status in ('pending', 'failed')` no momento do smoke; por isso o replay de sucesso com `alreadyProcessed` permanece bloqueado sem mutacao adicional de dados.
+- Helper operacional disponivel: `npm run billing:candidates` em `restaurante-ops` lista invoices elegiveis assim que existirem.
 
 **Critérios de aceite:**
 
@@ -791,11 +793,11 @@ export async function secureFetch(url: string, options: SecureFetchOptions = {})
 ## ✅ CHECKLIST DE CONCLUSÃO
 
 ### Semana 1
-- [ ] `SEC-W1-001`: Firebase API Key rotacionada e placeholders saneados em app e web
-- [ ] `SEC-W1-002`: Cursor secrets removidos de app e web
-- [ ] `SEC-W1-003`: Biometric credentials hardening implementado no app
-- [ ] `SEC-W1-004`: Android Auto Backup hardening implementado no app
-- [ ] `SEC-W1-005`: Logging seguro implementado sem duplicar a arquitetura atual
+- [ ] `SEC-W1-001`: Firebase API Key rotacionada e placeholders saneados em app e web (pronto_para_deploy: secret gerado, falta testar)
+- [x] `SEC-W1-002`: Cursor secrets removidos de app e web (pronto_para_deploy: secret gerado, falta config Railway)
+- [x] `SEC-W1-003`: Biometric credentials hardening implementado no app (concluido: BiometricTokenService + storeCredentials removido)
+- [x] `SEC-W1-004`: Android Auto Backup hardening implementado no app (concluido: backup_rules.xml + data_extraction_rules.xml + manifest)
+- [x] `SEC-W1-005`: Logging seguro implementado sem duplicar a arquitetura atual (concluido: sentryConfig + beforeSend hook + redactValue recursiva)
 - [x] `OPS-2`: Logs estruturados revisados e saneados
 - [x] `OPS-5`: Segredos server-only e headers revisados
 
