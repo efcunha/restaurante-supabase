@@ -169,8 +169,16 @@ Resultado:
 
 Conclusao operacional:
 
-- O build atual nao comprova `CURSOR_SECRET` aplicado no app runtime.
-- SEC-W1-002 permanece pendente ate aplicar env real no app (EAS/Expo) e repetir smoke.
+- Build validado com `CURSOR_SECRET` injetado no runtime do script:
+
+```bash
+cd restaurante-app
+CURSOR_SECRET=9f05e59a28393b3c7684abf8f98d9d226a1a47ea1383ba7c74b04be89d868fd6 ./scripts/build-android.sh
+```
+
+- Resultado: ✅ build release concluido e APKs gerados.
+- Observacao: para execucoes futuras sem injetar na linha de comando, definir `CURSOR_SECRET` no `.env` local (nao versionado) ou no ambiente CI/CD.
+- SEC-W1-002 ainda depende de smoke (app/web) e validacao final de logs web.
 
 ### Retorno Rapido para Encerramento
 
