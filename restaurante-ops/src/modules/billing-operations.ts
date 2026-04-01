@@ -1,4 +1,5 @@
 import { supabase } from '../auth/supabase.js';
+import { logWarn } from '../lib/logger.js';
 
 interface ReconcileAtomicRpcResult {
   ok?: boolean;
@@ -404,6 +405,7 @@ export async function reconcileBillingEvent(
     p_mp_payment_id: mpPaymentId ?? null,
     p_payment_method_type: paymentMethodType ?? null,
     p_error_code: errorCode ?? null,
+    // Payload is forwarded to the atomic RPC; do not log this object directly.
     p_payload: payload ?? {},
   });
 
@@ -474,7 +476,10 @@ export async function checkInvoiceAmountDivergence(
 
   if (configError) {
     // Non-fatal: log and return without divergence flag
-    console.warn('[checkInvoiceAmountDivergence] Could not resolve plan config at payment time:', configError.message);
+    logWarn('billing.plan_config.lookup_failed_at_payment_time', {
+      reason: configError.message,
+      detail: 'Could not resolve plan config at payment time during divergence check.',
+    });
     return {
       divergent: false,
       invoiceId,

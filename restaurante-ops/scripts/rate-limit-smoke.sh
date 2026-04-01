@@ -16,6 +16,8 @@ REPORT_FILE="${REPORT_FILE:-}"
 # Optional billing validation inputs.
 AUTH_COOKIE="${AUTH_COOKIE:-}"
 BILLING_JSON="${BILLING_JSON:-}"
+AUTH_EMAIL="${AUTH_EMAIL:-}"
+AUTH_PASSWORD="${AUTH_PASSWORD:-}"
 
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
@@ -83,11 +85,37 @@ echo "[PASS] Login endpoint returned 429 with expected headers"
 echo "[INFO] Login headers:"
 cat "$login_headers"
 
-if [[ -z "$AUTH_COOKIE" || -z "$BILLING_JSON" ]]; then
+if [[ -z "$AUTH_COOKIE" && -n "$AUTH_EMAIL" && -n "$AUTH_PASSWORD" ]]; then
+  print_header "Generating auth cookie via /auth/login"
+  auth_code="$(curl -sS -o "$TMP_DIR/auth-login.body" -D "$TMP_DIR/auth-login.headers" -w "%{http_code}" \
+    -X POST "$BASE_URL$LOGIN_PATH" \
+    -H "Content-Type: application/x-www-form-urlencoded" \
+    -c "$COOKIE_FILE" \
+    --data "email=$AUTH_EMAIL&password=$AUTH_PASSWORD")"
+
+  if [[ "$auth_code" != "302" ]]; then
+    echo "[FAIL] Could not create authenticated session for billing smoke (HTTP $auth_code)."
+    echo "[INFO] Auth response headers:"
+    cat "$TMP_DIR/auth-login.headers"
+    echo "[INFO] Auth response body:"
+    cat "$TMP_DIR/auth-login.body"
+    exit 1
+  fi
+
+  if [[ ! -s "$COOKIE_FILE" ]]; then
+    echo "[FAIL] Login succeeded but cookie jar is empty: $COOKIE_FILE"
+    exit 1
+  fi
+
+  echo "[PASS] Auth cookie generated at $COOKIE_FILE"
+fi
+
+if [[ -z "$BILLING_JSON" ]]; then
   print_header "Billing validation skipped"
-  echo "Set AUTH_COOKIE and BILLING_JSON to validate billing rate limiting."
+  echo "Set BILLING_JSON and either AUTH_COOKIE or AUTH_EMAIL/AUTH_PASSWORD to validate billing rate limiting."
   echo "Example:"
   echo "  AUTH_COOKIE='ops_session=<token>' BILLING_JSON='{\"companyId\":\"...\",\"idempotencyKey\":\"...\",\"eventType\":\"payment_received\",\"paymentStatus\":\"paid\"}' BASE_URL=$BASE_URL $0"
+  echo "  AUTH_EMAIL='ops@example.com' AUTH_PASSWORD='***' BILLING_JSON='{\"companyId\":\"...\",\"idempotencyKey\":\"...\",\"eventType\":\"payment_received\",\"paymentStatus\":\"paid\"}' BASE_URL=$BASE_URL $0"
   exit 0
 fi
 
@@ -95,11 +123,21 @@ print_header "Billing rate-limit smoke ($BASE_URL$BILLING_PATH)"
 
 billing_last_code=""
 for i in $(seq 1 "$ATTEMPTS"); do
-  billing_code="$(curl -sS -o "$billing_body" -D "$billing_headers" -w "%{http_code}" \
+  billing_curl=(curl -sS -o "$billing_body" -D "$billing_headers" -w "%{http_code}" \
     -X POST "$BASE_URL$BILLING_PATH" \
     -H "Content-Type: application/json" \
-    -H "Cookie: $AUTH_COOKIE" \
-    --data "$BILLING_JSON")"
+    --data "$BILLING_JSON")
+
+  if [[ -n "$AUTH_COOKIE" ]]; then
+    billing_curl+=( -H "Cookie: $AUTH_COOKIE" )
+  elif [[ -s "$COOKIE_FILE" ]]; then
+    billing_curl+=( -b "$COOKIE_FILE" )
+  else
+    echo "[FAIL] Missing authenticated session: set AUTH_COOKIE or provide AUTH_EMAIL/AUTH_PASSWORD."
+    exit 1
+  fi
+
+  billing_code="$("${billing_curl[@]}")"
   echo "Billing attempt $i -> HTTP $billing_code"
   billing_last_code="$billing_code"
 done

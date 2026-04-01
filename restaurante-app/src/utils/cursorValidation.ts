@@ -20,6 +20,25 @@ export interface CursorValidationResult {
   error?: string;
 }
 
+function resolveCursorSecret(providedSecret?: string): string {
+  const explicitSecret = providedSecret?.trim();
+  if (explicitSecret) {
+    return explicitSecret;
+  }
+
+  const envSecret = process.env.CURSOR_SECRET?.trim();
+  if (envSecret) {
+    return envSecret;
+  }
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('[CursorValidator] CURSOR_SECRET not configured. Using ephemeral development secret.');
+    return crypto.randomBytes(32).toString('hex');
+  }
+
+  throw new Error('[SECURITY] CURSOR_SECRET environment variable is required in production');
+}
+
 /**
  * Cursor Validator
  */
@@ -28,7 +47,7 @@ export class CursorValidator {
   private maxAge: number; // in milliseconds
 
   constructor(secret?: string, maxAgeHours: number = 1) {
-    this.secret = secret || process.env.CURSOR_SECRET || 'default-cursor-secret';
+    this.secret = resolveCursorSecret(secret);
     this.maxAge = maxAgeHours * 60 * 60 * 1000;
   }
 

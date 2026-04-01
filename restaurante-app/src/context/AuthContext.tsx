@@ -420,6 +420,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setLoading(true);
           isManualLoginRef.current = true;
 
+        await supabase.auth.signOut();
+
           const { data, error } = await supabase.auth.signInWithPassword({
               email,
               password: senha
