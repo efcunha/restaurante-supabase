@@ -1,10 +1,15 @@
 # LGPD Privacy Notice & Data Collection Disclosures
 
+**Version**: 1.1  
+**Effective Date**: 2026-03-23  
+**Last Updated**: 2026-04-01  
+**Next Review**: 2026-07-01  
+**Owner**: Legal + Product + Engineering  
+
 ## Overview
 
 Template privacy notice (Aviso de Privacidade) for placement in app, website, and checkout flows per LGPD Art. 14.
 
-**Effective**: 2026-03-23  
 **Language**: Portuguese (PT-BR) + English (EN-US)  
 **Audience**: Customers, delivery partners, users
 

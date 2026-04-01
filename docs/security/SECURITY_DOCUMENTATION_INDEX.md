@@ -24,7 +24,7 @@ Funcao: plano mestre do trimestre, escopo por semana e criterios de aceite.
 - SECURITY_AUDIT_REPORT_2026-03-23.md
 Funcao: baseline tecnico da auditoria e riscos originais.
 
-- LGPD_COMPLIANCE_GUIDE.md
+- ../LGPD/LGPD-COMPLIANCE-GUIDE.md
 Funcao: orientacao operacional de compliance.
 
 - EXECUTIVE_SUMMARY_PT.md

@@ -1,12 +1,14 @@
 # Security Incident Response Plan — restaurante-supabase
 
+**Version**: 1.1  
+**Effective Date**: 2026-03-23  
+**Last Updated**: 2026-04-01  
+**Next Review**: 2026-07-01  
+**Owner**: Security + Legal + Engineering  
+
 ## Overview
 
 Playbook for responding to security incidents, data breaches, and LGPD violations in restaurante-supabase POS system.
-
-**Owner**: Security + Legal + Engineering  
-**Effective Date**: 2026-03-23  
-**Last Updated**: 2026-03-23
 
 ---
 

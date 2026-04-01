@@ -338,10 +338,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('[AuthContext] reloadUserData called for:', sbUser.id);
       try {
           // 1. Fetch Profile (Simple, no joins first to avoid lock)
-          // 1. Fetch Profile (Simple, no joins first to avoid lock)
+          const fetchProfileStartTime = Date.now();
           console.log('[AuthContext] Fetching profile table only...');
+          appendLog(`⏳ Buscando perfil...`);
           
-          // TIMEOUT WRAPPER - Increased to 10 seconds to handle slow RLS policies
+          // TIMEOUT WRAPPER - Increased to 30 seconds to handle network delays and slow RLS policies
           const fetchPromise = supabase
             .from('profiles')
             .select('*') // No join
@@ -349,15 +350,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             .single();
             
           const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('TIMEOUT_FETCH_PROFILE')), 15000)
+            setTimeout(() => reject(new Error('TIMEOUT_FETCH_PROFILE (30s)')), 30000)
           );
           
           const { data: profile, error: profileError } = await Promise.race([fetchPromise, timeoutPromise]) as any;
+          const profileDuration = Date.now() - fetchProfileStartTime;
 
-          console.log('[AuthContext] Profile result:', { profile, error: profileError });
+          console.log('[AuthContext] Profile result:', { 
+            hasProfile: Boolean(profile), 
+            hasError: Boolean(profileError),
+            duration: profileDuration
+          });
+          appendLog(`✓ Perfil: ${profileDuration}ms (erro: ${profileError?.message ?? 'nenhum'})`);
 
           if (profileError || !profile) {
-              console.warn('[SupabaseAuth] No profile found for user', sbUser.id);
+              const errMsg = profileError?.message || 'Perfil não encontrado';
+              console.warn('[SupabaseAuth] No profile found for user', { 
+                sbUserId: sbUser.id,
+                error: errMsg,
+                duration: profileDuration,
+                isDueToTimeout: errMsg.includes('TIMEOUT')
+              });
+              appendLog(`❌ Erro ao buscar perfil: ${errMsg}`);
               setLoading(false);
               return;
           }
@@ -365,16 +379,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // 2. Fetch Company (Separate call)
           let companyData = null;
           if (profile.company_id) {
+               const fetchCompanyStartTime = Date.now();
                console.log('[AuthContext] Fetching company data...', profile.company_id);
+               appendLog(`⏳ Buscando empresa...`);
                const { data: comp, error: compError } = await supabase
                  .from('companies')
                  .select('*')
                  .eq('id', profile.company_id)
                  .single();
                
-               if (compError) console.warn('[AuthContext] Company fetch error', compError);
+               const companyDuration = Date.now() - fetchCompanyStartTime;
+               if (compError) {
+                 console.warn('[AuthContext] Company fetch error', { 
+                   error: compError.message,
+                   duration: companyDuration
+                 });
+                 appendLog(`❌ Erro empresa: ${compError.message}`);
+               }
                companyData = comp;
-               console.log('[AuthContext] Company data:', companyData);
+               console.log('[AuthContext] Company data:', { hasData: Boolean(companyData), duration: companyDuration });
+               appendLog(`✓ Empresa: ${companyDuration}ms`);
           }
 
           // 2. Map Key Data

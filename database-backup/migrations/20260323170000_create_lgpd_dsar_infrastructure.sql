@@ -2,8 +2,8 @@
 -- Migration: 20260323170000_create_lgpd_dsar_infrastructure
 -- Purpose   : LGPD Data Subject Access Request (DSAR) audit table and
 --             customer anonymization function.
--- References: docs/LGPD-DSAR-OPERATIONAL-GUIDE.md (LGPD Art. 18)
---             docs/LGPD-DATA-RETENTION-POLICY.md
+-- References: docs/LGPD/LGPD-DSAR-OPERATIONAL-GUIDE.md (LGPD Art. 18)
+--             docs/LGPD/LGPD-DATA-RETENTION-POLICY.md
 -- Security  : lgpd_dsar_requests is RLS-enabled + anon/authenticated revoked.
 --             anonymize_customer_by_phone is SECURITY DEFINER / service_role only.
 -- =============================================================================

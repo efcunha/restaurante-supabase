@@ -13,7 +13,7 @@ Este diretorio foi consolidado para reduzir dispersao de informacao.
 - Fonte de verdade de status: SECURITY_REMEDIATION_WEEKLY_STATUS_2026-Q2.md
 - Fonte de verdade de escopo/plano: SECURITY_REMEDIATION_PLAN_2026-Q2.md
 - Baseline tecnico: SECURITY_AUDIT_REPORT_2026-03-23.md
-- Compliance e executivo: LGPD_COMPLIANCE_GUIDE.md e EXECUTIVE_SUMMARY_PT.md
+- Compliance e executivo: ../LGPD/LGPD-COMPLIANCE-GUIDE.md e EXECUTIVE_SUMMARY_PT.md
 
 ## Regra para evitar nova fragmentacao
 

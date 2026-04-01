@@ -748,7 +748,7 @@ console.warn('[DEBUG]', userId, companyId);  // Detalhes internamente
 
 ### 6.3 Retenção e Descarte
 
-**Localização:** `docs/LGPD-DATA-RETENTION-POLICY.md`
+**Localização:** `docs/LGPD/LGPD-DATA-RETENTION-POLICY.md`
 
 ```
 Dados de Clientes (Pessoas Físicas):
@@ -787,7 +787,7 @@ Backups:
 ### 6.5 Consentimento
 
 **Implementação:**
-- Privacy notice in-app: ✅ Existe (docs/LGPD-PRIVACY-NOTICE.md)
+- Privacy notice in-app: ✅ Existe (docs/LGPD/LGPD-PRIVACY-NOTICE.md)
 - Consentimento explícito: ⚠️ Usar em checkout para email marketing
 - Revogação: ✅ "Parar emails" funcionalidade
 

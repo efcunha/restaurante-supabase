@@ -280,12 +280,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     options?: { rotateSessionKey?: boolean }
   ) => {
       const rotateSessionKey = options?.rotateSessionKey ?? true;
+      const reloadStartTime = Date.now();
       logger.debug('[AuthContext] reloadUserData called', { hasUserId: Boolean(sbUser.id) });
       try {
           // 1. Fetch Profile (Simple, no joins first to avoid lock)
+          const fetchProfileStartTime = Date.now();
           logger.debug('[AuthContext] Fetching profile table only');
           
-          // TIMEOUT WRAPPER - Increased to 10 seconds to handle slow RLS policies
+          // TIMEOUT WRAPPER - Increased to 30 seconds to handle network delays and slow RLS policies
           const fetchPromise = supabase
             .from('profiles')
             .select('*') // No join
@@ -293,18 +295,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             .single();
             
           const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('TIMEOUT_FETCH_PROFILE')), 15000)
+            setTimeout(() => reject(new Error('TIMEOUT_FETCH_PROFILE (30s)')), 30000)
           );
           
           const { data: profile, error: profileError } = await Promise.race([fetchPromise, timeoutPromise]) as any;
-
+          const profileDuration = Date.now() - fetchProfileStartTime;
+          
           logger.debug('[AuthContext] Profile fetch finished', {
             hasProfile: Boolean(profile),
-            hasProfileError: Boolean(profileError)
+            hasProfileError: Boolean(profileError),
+            duration: profileDuration
           });
 
           if (profileError || !profile) {
-              logger.warn('[SupabaseAuth] No profile found for user', { hasUserId: Boolean(sbUser.id) });
+              const errMsg = profileError?.message || 'No profile found';
+              logger.warn('[SupabaseAuth] Profile fetch failed', { 
+                error: errMsg,
+                duration: profileDuration,
+                isDueToTimeout: errMsg.includes('TIMEOUT')
+              });
               setLoading(false);
               return;
           }
@@ -312,6 +321,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // 2. Fetch Company (Separate call)
           let companyData = null;
           if (profile.company_id) {
+            const fetchCompanyStartTime = Date.now();
             logger.debug('[AuthContext] Fetching company data', { hasCompanyId: true });
                const { data: comp, error: compError } = await supabase
                  .from('companies')
@@ -319,9 +329,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                  .eq('id', profile.company_id)
                  .single();
                
-            if (compError) logger.warn('[AuthContext] Company fetch error', { hasCompanyError: true });
+            const companyDuration = Date.now() - fetchCompanyStartTime;
+            if (compError) logger.warn('[AuthContext] Company fetch error', { 
+              hasCompanyError: true,
+              duration: companyDuration,
+              error: compError.message
+            });
                companyData = comp;
-            logger.debug('[AuthContext] Company fetch finished', { hasCompanyData: Boolean(companyData) });
+            logger.debug('[AuthContext] Company fetch finished', { 
+              hasCompanyData: Boolean(companyData),
+              duration: companyDuration
+            });
           }
 
           // 2. Map Key Data
