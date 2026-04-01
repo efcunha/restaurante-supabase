@@ -1,11 +1,15 @@
 # LGPD Data Retention Policy — restaurante-supabase
 
+**Version**: 1.1  
+**Effective Date**: 2026-03-23  
+**Last Updated**: 2026-04-01  
+**Next Review**: 2026-07-01  
+**Owner**: Legal + Data Protection Officer  
+
 ## Purpose
 
 Define lawful basis and retention periods for all personal data collected in accordance with LGPD (Lei Geral de Proteção de Dados Pessoais) and related Brazilian regulations.
 
-**Effective Date**: 2026-03-23  
-**Owner**: Legal + Data Protection Officer  
 **Audit Frequency**: Quarterly
 
 ---

@@ -1,6 +1,12 @@
 # LGPD Operational Program — restaurante-supabase
 # Data Subject Access Request (DSAR) Workflow
 
+**Version**: 1.1  
+**Effective Date**: 2026-03-23  
+**Last Updated**: 2026-04-01  
+**Next Review**: 2026-07-01  
+**Owner**: Legal + Engineering  
+
 ## Overview
 
 This document defines the operational procedures for handling LGPD Data Subject Access Requests (Direito do Titular, Artigo 18 LGPD).

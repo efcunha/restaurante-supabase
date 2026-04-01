@@ -37,7 +37,7 @@ Operational reminders from recent incidents:
 - Supabase CLI is installed via Scoop (`C:\Users\ECUNHA\scoop\shims\supabase.exe`); avoid `npm install -g supabase` (unsupported by Supabase).
 - Migration sync policy: whenever a new migration file is created, apply it to the target DB immediately and verify it appears in migration history.
 - **Migration Reference**: For complete list of applied migrations, see `.github/skills/restaurante-supabase/SKILL.md` section "Banco de Dados — Migracoes de referencia". Snapshot below lists only critical hardening migrations.
-- Security docs generated on 2026-03-23: `docs/security/SECURITY_AUDIT_REPORT_2026-03-23.md`, `docs/security/REMEDIATION_PLAN_DETAILED.md`, `docs/security/LGPD_COMPLIANCE_GUIDE.md`, `docs/security/EXECUTIVE_SUMMARY_PT.md`, `docs/security/SECURITY_DOCUMENTATION_INDEX.md`.
+- Security docs generated on 2026-03-23: `docs/security/SECURITY_AUDIT_REPORT_2026-03-23.md`, `docs/security/REMEDIATION_PLAN_DETAILED.md`, `docs/LGPD/LGPD-COMPLIANCE-GUIDE.md`, `docs/security/EXECUTIVE_SUMMARY_PT.md`, `docs/security/SECURITY_DOCUMENTATION_INDEX.md`.
 - Secrets hardening implemented: use `database-backup/.env.local` (gitignored) + `database-backup/.env.example`; legacy `config.local.sh`/`config.example.sh` removed.
 - `profiles` hardening implemented in `database-backup/migrations/20260323183000_harden_profiles_rls_and_role_guardrails.sql` and applied remotely.
 - `product_adicionais` normalization hardening implemented in `database-backup/migrations/20260329113000_normalize_product_adicionais_category_constraints.sql` and applied/remotely registered (`supabase_migrations.schema_migrations`).

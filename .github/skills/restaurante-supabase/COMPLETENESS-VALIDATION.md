@@ -44,7 +44,7 @@ O arquivo `copilot-instructions.md` exibe resumos (snapshots) de segurança/LGPD
 - `.github/skills/restaurante-supabase/SKILL.md` (SKILL primária — **complete**)
 - `docs/security/SECURITY_AUDIT_REPORT_2026-03-23.md`
 - `docs/security/REMEDIATION_PLAN_DETAILED.md`
-- `docs/security/LGPD_COMPLIANCE_GUIDE.md`
+- `docs/LGPD/LGPD-COMPLIANCE-GUIDE.md`
 - `docs/security/EXECUTIVE_SUMMARY_PT.md`
 - `docs/security/SECURITY_DOCUMENTATION_INDEX.md`
 
@@ -57,7 +57,7 @@ Implementacoes ja aplicadas:
 - Auditoria consolidada em:
 	- `docs/security/SECURITY_AUDIT_REPORT_2026-03-23.md`
 	- `docs/security/REMEDIATION_PLAN_DETAILED.md`
-	- `docs/security/LGPD_COMPLIANCE_GUIDE.md`
+  - `docs/LGPD/LGPD-COMPLIANCE-GUIDE.md`
 	- `docs/security/EXECUTIVE_SUMMARY_PT.md`
 	- `docs/security/SECURITY_DOCUMENTATION_INDEX.md`
 - Hardening de segredos em scripts de backup/restore/deploy
@@ -73,10 +73,10 @@ Implementacoes ja aplicadas:
 ```
 
 ### LGPD (referenciado mas detalhe em docs/)
-- Retenção de dados: `docs/LGPD-DATA-RETENTION-POLICY.md`
-- DSAR Operacional: `docs/LGPD-DSAR-OPERATIONAL-GUIDE.md`
-- Privacidade: `docs/LGPD-PRIVACY-NOTICE.md`
-- Compliance Guide: `docs/security/LGPD_COMPLIANCE_GUIDE.md` (executive)
+- Retenção de dados: `docs/LGPD/LGPD-DATA-RETENTION-POLICY.md`
+- DSAR Operacional: `docs/LGPD/LGPD-DSAR-OPERATIONAL-GUIDE.md`
+- Privacidade: `docs/LGPD/LGPD-PRIVACY-NOTICE.md`
+- Compliance Guide: `docs/LGPD/LGPD-COMPLIANCE-GUIDE.md` (executive)
 
 ### Integridade de Banco de Dados
 ```

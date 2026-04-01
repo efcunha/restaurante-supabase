@@ -76,7 +76,7 @@ Banco de dados / migracoes (raiz do monorepo):
 Seguranca / LGPD (raiz do monorepo):
 - `docs/security/SECURITY_AUDIT_REPORT_2026-03-23.md`
 - `docs/security/REMEDIATION_PLAN_DETAILED.md`
-- `docs/security/LGPD_COMPLIANCE_GUIDE.md`
+- `docs/LGPD/LGPD-COMPLIANCE-GUIDE.md`
 
 Operacoes SaaS:
 - `restaurante-ops/src/modules/billing-operations.ts`
@@ -177,7 +177,7 @@ Implementacoes ja aplicadas:
 - Auditoria consolidada em:
 	- `docs/security/SECURITY_AUDIT_REPORT_2026-03-23.md`
 	- `docs/security/REMEDIATION_PLAN_DETAILED.md`
-	- `docs/security/LGPD_COMPLIANCE_GUIDE.md`
+  - `docs/LGPD/LGPD-COMPLIANCE-GUIDE.md`
 	- `docs/security/EXECUTIVE_SUMMARY_PT.md`
 	- `docs/security/SECURITY_DOCUMENTATION_INDEX.md`
 - Hardening de segredos em scripts de backup/restore/deploy:
@@ -384,7 +384,7 @@ npm run phase12:legacy -- --env production
 - **Consentimento**: fluxos de cadastro de cliente final devem exibir aviso de coleta de dados conforme LGPD.
 
 **Referências do projeto:**
-- `docs/security/LGPD_COMPLIANCE_GUIDE.md` é a fonte de verdade para decisões de privacidade.
+- `docs/LGPD/LGPD-COMPLIANCE-GUIDE.md` é a fonte de verdade para decisões de privacidade.
 - Alterações em tabelas que armazenam PII (`profiles`, `pedidos`, `clientes_delivery`) devem ser revisadas contra o guia LGPD antes de ir para produção.
 
 ---
