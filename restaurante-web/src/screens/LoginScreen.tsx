@@ -21,9 +21,13 @@ export default function LoginScreen({ navigation }: Props) {
   const { login, loginWithBiometric, biometricAvailable, biometricType, mfaResolver, setMfaResolver } = useAuth();
   const { showToast } = useToast();
   const windowWidth = Dimensions.get('window').width;
+  const windowHeight = Dimensions.get('window').height;
   const isDesktop = windowWidth >= 1080;
   const isTablet = windowWidth >= 760;
-  const logoSize = isDesktop ? 290 : isTablet ? 220 : 170;
+  const isShortScreen = windowHeight < 800;
+  let logoSize = 170;
+  if (isDesktop) { logoSize = isShortScreen ? 180 : 290; }
+  else if (isTablet) { logoSize = 220; }
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [loading, setLoading] = useState(false);
@@ -52,7 +56,7 @@ export default function LoginScreen({ navigation }: Props) {
       <View style={styles.overlayVeil} />
 
       <ScrollView
-        contentContainerStyle={[styles.scrollContent, isDesktop && styles.scrollContentDesktop]}
+        contentContainerStyle={[styles.scrollContent, isDesktop && styles.scrollContentDesktop, isShortScreen && styles.scrollContentShort]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
@@ -86,7 +90,7 @@ export default function LoginScreen({ navigation }: Props) {
           </View>
           )}
 
-          <View style={[styles.authColumn, isDesktop && styles.authColumnDesktop]}>
+          <View style={[styles.authColumn, isDesktop && styles.authColumnDesktop, isShortScreen && styles.authColumnShort]}>
             {!isTablet && (
               <Image
                 source={require('../../imagem/icone.png')}
@@ -94,14 +98,14 @@ export default function LoginScreen({ navigation }: Props) {
                 resizeMode="contain"
               />
             )}
-            <View style={styles.formCard}>
+            <View style={[styles.formCard, isShortScreen && styles.formCardShort]}>
               <Text style={styles.formEyebrow}>Acesso restrito</Text>
-              <Text style={styles.formTitle}>Entrar na plataforma</Text>
-              <Text style={styles.formSubtitle}>
+              <Text style={[styles.formTitle, isShortScreen && styles.formTitleShort]}>Entrar na plataforma</Text>
+              <Text style={[styles.formSubtitle, isShortScreen && styles.formSubtitleShort]}>
                 Use o usuario e a senha fornecidos pelo administrador para acessar o ambiente do restaurante.
               </Text>
 
-              <View style={styles.fieldGroup}>
+              <View style={[styles.fieldGroup, isShortScreen && styles.fieldGroupShort]}>
                 <Text style={styles.label}>Email</Text>
                 <TextInput
                   style={styles.input}
@@ -114,7 +118,7 @@ export default function LoginScreen({ navigation }: Props) {
                 />
               </View>
 
-              <View style={styles.fieldGroup}>
+              <View style={[styles.fieldGroup, isShortScreen && styles.fieldGroupShort]}>
                 <Text style={styles.label}>Senha</Text>
                 <View style={styles.passwordContainer}>
                   <TextInput
@@ -277,6 +281,10 @@ const styles = StyleSheet.create({
   },
   scrollContentDesktop: {
     minHeight: '100%',
+  },
+  scrollContentShort: {
+    paddingTop: 20,
+    paddingBottom: 16,
   },
   shell: {
     width: '100%',
@@ -520,6 +528,9 @@ const styles = StyleSheet.create({
     maxWidth: 470,
     marginLeft: 12,
   },
+  authColumnShort: {
+    maxWidth: 440,
+  },
   formCard: {
     backgroundColor: 'rgba(255, 252, 247, 0.98)',
     borderRadius: 30,
@@ -530,6 +541,10 @@ const styles = StyleSheet.create({
     // @ts-ignore
     boxShadow: '0px 22px 50px rgba(4, 38, 47, 0.28)',
     elevation: 14,
+  },
+  formCardShort: {
+    paddingVertical: 16,
+    paddingHorizontal: 20,
   },
   formEyebrow: {
     color: '#0B6780',
@@ -545,6 +560,11 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     marginTop: 10,
   },
+  formTitleShort: {
+    fontSize: 24,
+    lineHeight: 30,
+    marginTop: 6,
+  },
   formSubtitle: {
     color: '#576875',
     fontSize: 16,
@@ -552,8 +572,18 @@ const styles = StyleSheet.create({
     marginTop: 12,
     marginBottom: 22,
   },
+  formSubtitleShort: {
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: 6,
+    marginBottom: 12,
+  },
   fieldGroup: {
     marginBottom: 16,
+  },
+  fieldGroupShort: {
+    marginBottom: 10,
+  },
   },
   label: {
     color: '#0D5D72',
