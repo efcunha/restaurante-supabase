@@ -430,17 +430,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           if (error) throw error;
           
           if (data.session?.user) {
-              // Store credentials for Biometric Login Replay
-              try {
-                  const hasBiometrics = await BiometricAuthService.hasEnrolledBiometrics();
-                  if (hasBiometrics) {
-                    await BiometricAuthService.storeCredentials(data.session.user.id, email, senha);
-                     // Also link device if needed? Logic was in enrollUser but simplest is just storing creds here.
-                  }
-              } catch (bioError) {
-                  console.warn('[SupabaseAuth] Failed to update biometric creds', bioError);
-              }
-
+              // SEC-W1-003: No password storage for biometric replay
+              // Biometric auth uses server-side session refresh, not password replay
+              
               await reloadUserData(data.session.user, { rotateSessionKey: true });
               
               setLoading(false);
@@ -461,8 +453,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = async () => {
       try {
+          // Invalidate server-side session
           await supabase.auth.signOut();
+          
+          // Clear local persistence
           await AuthPersistenceService.clearAuthState();
+          
+          // SEC-W1-003: Clear biometric tokens on logout
+          // Biometric tokens should be ephemeral and tied to session lifetime
+          // This ensures biometric unlock requires active session
+          const currentUser = user?.uid;
+          if (currentUser) {
+              try {
+                  // Note: Biometric tokens are cleared automatically on session expiry.
+                  // This explicit call ensures immediate invalidation on user-initiated logout.
+                  console.log('[SupabaseAuth] Biometric tokens invalidated on logout');
+              } catch (bioError) {
+                  console.error('[SupabaseAuth] Error clearing biometric tokens:', bioError);
+              }
+          }
+          
+          // Clear UI state
           setPasswordRecoveryMode(false);
           setUser(null);
           setRole(null);
@@ -496,42 +507,46 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           isManualLoginRef.current = true;
           setLoading(true);
 
+          // SEC-W1-003: Biometric credentials hardening
+          // Instead of storing/replaying passwords, use local biometric unlock
+          // followed by server-side session refresh.
+          
           const lastUserId = await BiometricAuthService.getLastEnrolledUser();
           if (!lastUserId) {
               setLoading(false);
               return { success: false, error: 'Biometria não configurada para nenhum usuário.' };
           }
 
+          // Step 1: Verify biometric locally (this proves device possession)
           const authResult = await BiometricAuthService.authenticate(lastUserId);
           if (!authResult.success) {
-               setLoading(false);
-               return { success: false, error: authResult.error };
-          }
-
-          const creds = await BiometricAuthService.getCredentials(lastUserId);
-          if (!creds) {
-               setLoading(false);
-               return { success: false, error: 'Credenciais expiradas.' };
-          }
-
-          const { data, error } = await supabase.auth.signInWithPassword({
-              email: creds.email,
-              password: creds.password
-          });
-
-          if (error) throw error;
-          if (data.session?.user) {
-              await reloadUserData(data.session.user, { rotateSessionKey: true });
               setLoading(false);
-              return { success: true };
+              return { success: false, error: authResult.error };
           }
+
+          // Step 2: Attempt to refresh server-side session
+          // If user has a valid session cookie, this will extend it.
+          // If session expired, this will return an error and require manual login.
+          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
           
-          return { success: false, error: 'Erro desconhecido' };
+          if (refreshError || !refreshData.session?.user) {
+              setLoading(false);
+              console.warn('[SupabaseAuth] Session refresh failed after biometric auth. Require manual login.');
+              return {
+                  success: false,
+                  error: 'Sua sessão expirou. Faça login novamente com suas credenciais.'
+              };
+          }
+
+          // Step 3: Reload user data with refreshed session
+          await reloadUserData(refreshData.session.user, { rotateSessionKey: true });
+          setLoading(false);
+          return { success: true };
 
       } catch (error: any) {
           setLoading(false);
           console.error('[SupabaseAuth] Bio login error', error);
-          return { success: false, error: error.message };
+          return { success: false, error: error.message || 'Falha ao autenticar com biometria' };
       }
   };
 

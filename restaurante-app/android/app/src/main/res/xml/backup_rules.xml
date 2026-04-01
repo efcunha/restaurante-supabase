@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Backup Rules for restaurante-app
+  
+  Security: SEC-W1-004
+  Purpose: Exclude sensitive data from Android backup
+  
+  Sensitive data EXCLUDED:
+  - SecureStore (biometric tokens, session data, credentials)
+  - AsyncStorage auth state
+  - Shared preferences with auth/session info
+  - Sensitive cache files
+  
+  This prevents:
+  - Biometric/auth tokens from being exposed via backup
+  - Session data from being restored to unauthorized devices
+  - Credential data from being exfiltrated via backup restore
+  
+  Reference:
+  - https://developer.android.com/guide/topics/data/autobackup
+  - Requires android:fullBackupContent in AndroidManifest.xml
+-->
+
+<full-backup-content>
+  <!-- Include standard app data directories -->
+  <include domain="root" path="." />
+  <include domain="file" path="." />
+  <include domain="database" path="." />
+  <include domain="sharedpref" path="." />
+  <include domain="cache" path="." />
+  
+  <!-- EXCLUDE: SecureStore (EncryptedSharedPreferences equivalent) -->
+  <!-- SecureStore typically stored in SharedPreferences with "EncryptedSharedPreferences" prefix -->
+  <exclude domain="sharedpref" path="EncryptedSharedPreferences" />
+  <exclude domain="sharedpref" path="biometric_" />
+  <exclude domain="sharedpref" path="session_" />
+  <exclude domain="sharedpref" path="auth_" />
+  <exclude domain="sharedpref" path="token_" />
+  <exclude domain="sharedpref" path="secret_" />
+  
+  <!-- EXCLUDE: Sensitive AsyncStorage data (often stored as files) -->
+  <exclude domain="file" path="databases/expo-file-system" />
+  <exclude domain="file" path="RCTAsyncLocalStorage" />
+  
+  <!-- EXCLUDE: Expo-specific sensitive stores -->
+  <exclude domain="file" path="expo/session" />
+  <exclude domain="file" path="expo/auth" />
+  
+  <!-- EXCLUDE: Cache that might contain auth tokens -->
+  <exclude domain="cache" path="." />
+  
+  <!-- EXCLUDE: Any file with "secret", "token", "password" in name -->
+  <!-- (Database files like "secret*.db" will be excluded by pattern if supported) -->
+  <!-- Note: Exact file exclusion may require Android 12+ data extraction rules -->
+  
+</full-backup-content>

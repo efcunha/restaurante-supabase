@@ -98,6 +98,20 @@ $env:ATTEMPTS='35'
 ./scripts/rate-limit-smoke.ps1
 ```
 
+Para localizar uma empresa com invoice elegivel (`pending` ou `failed`) antes do smoke final de `OPS-4`:
+
+```bash
+cd restaurante-ops
+npm run billing:candidates
+```
+
+Filtrando por empresa:
+
+```bash
+cd restaurante-ops
+npm run billing:candidates -- --company-id <company_uuid>
+```
+
 Diretrizes consolidadas de rollout e evidencias:
 - `.github/copilot-instructions.md`
 
