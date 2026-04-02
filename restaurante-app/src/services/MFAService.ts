@@ -1,29 +1,28 @@
 /**
  * MFAService - Multi-Factor Authentication Service
- * Implements TOTP-based MFA with backup codes and account lockout
- * 
- * NOTE: This service is Firebase-specific and has been disabled during Supabase migration.
- * MFA functionality needs to be reimplemented using Supabase Auth.
+ * Implements Supabase Auth TOTP with local backup code support.
  */
 
-// Firebase imports disabled during Supabase migration
-// import {
-//   multiFactor,
-//   TotpMultiFactorGenerator,
-//   TotpSecret,
-//   MultiFactorResolver,
-//   MultiFactorError,
-//   User,
-// } from 'firebase/auth';
-// import { auth } from '../config/firebaseConfig';
-// import { doc, setDoc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
-// import { db } from '../config/firebaseConfig';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
+import { supabase } from '../config/SupabaseConfig';
 
-// Placeholder types for disabled Firebase functionality
-type User = any;
-type TotpSecret = any;
-type MultiFactorResolver = any;
+type User = {
+  uid?: string;
+  id?: string;
+  email?: string | null;
+};
+
+export interface MFAVerificationResolver {
+  factorId: string;
+  challengeId?: string;
+}
+
+interface TotpSecret {
+  id: string;
+  uri: string;
+  qrCode: string;
+}
 
 interface MFASetupResult {
   secret: TotpSecret;
@@ -31,12 +30,16 @@ interface MFASetupResult {
   backupCodes: string[];
 }
 
-// Service disabled during Supabase migration - all methods throw errors
 class MFAService {
   private readonly BACKUP_CODES_COUNT = 10;
+  private readonly BACKUP_CODES_KEY_PREFIX = 'mfa_backup_codes_v1:';
 
-  private throwDisabledError(): never {
-    throw new Error('MFA Service is disabled during Supabase migration. Please use Supabase Auth MFA.');
+  private getUserId(user: User): string {
+    const userId = user?.uid || user?.id;
+    if (!userId) {
+      throw new Error('Usuario invalido para operacao de MFA.');
+    }
+    return userId;
   }
 
   /**
@@ -52,15 +55,43 @@ class MFAService {
    * Check if user has MFA enrolled
    */
   async isEnrolled(_user: User): Promise<boolean> {
-    return false;
+    const { data, error } = await supabase.auth.mfa.listFactors();
+    if (error) {
+      throw new Error(error.message);
+    }
+    return Boolean(data?.totp?.length);
   }
 
   /**
    * Start MFA enrollment process
    * Returns secret and QR code URL for TOTP setup
    */
-  async startEnrollment(_user: User, _displayName: string = 'Restaurant App'): Promise<MFASetupResult> {
-    this.throwDisabledError();
+  async startEnrollment(user: User, displayName: string = 'Restaurant App'): Promise<MFASetupResult> {
+    const userId = this.getUserId(user);
+    const friendlyName = `${displayName} ${new Date().toISOString().slice(0, 10)}`;
+    const { data, error } = await supabase.auth.mfa.enroll({
+      factorType: 'totp',
+      friendlyName,
+    });
+
+    if (error || !data || data.factor_type !== 'totp' || !data.totp?.uri) {
+      throw new Error(error?.message || 'Nao foi possivel iniciar o cadastro de TOTP.');
+    }
+
+    const backupCodes = await this.generateBackupCodes();
+    await this.storeEnrollmentData(userId, backupCodes);
+
+    const qrCodeUrl = data.totp.qr_code || data.totp.uri;
+
+    return {
+      secret: {
+        id: data.id,
+        uri: data.totp.uri,
+        qrCode: qrCodeUrl,
+      },
+      qrCodeUrl,
+      backupCodes,
+    };
   }
 
   /**
@@ -70,31 +101,91 @@ class MFAService {
     _user: User,
     secret: TotpSecret,
     verificationCode: string,
-    backupCodes: string[],
+    _backupCodes: string[],
     _displayName: string = 'TOTP'
   ): Promise<void> {
-    this.throwDisabledError();
+    if (!secret?.id) {
+      throw new Error('Fator TOTP invalido para confirmacao.');
+    }
+
+    const { error } = await supabase.auth.mfa.challengeAndVerify({
+      factorId: secret.id,
+      code: verificationCode.trim(),
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
   }
 
   /**
    * Verify MFA code during sign-in
    */
-  async verifyCode(_resolver: MultiFactorResolver, _verificationCode: string): Promise<void> {
-    this.throwDisabledError();
+  async verifyCode(resolver: MFAVerificationResolver, verificationCode: string): Promise<void> {
+    if (!resolver?.factorId) {
+      throw new Error('Resolver de MFA invalido.');
+    }
+
+    const normalizedCode = verificationCode.trim();
+    if (!normalizedCode) {
+      throw new Error('Codigo MFA invalido.');
+    }
+
+    const response = resolver.challengeId
+      ? await supabase.auth.mfa.verify({
+          factorId: resolver.factorId,
+          challengeId: resolver.challengeId,
+          code: normalizedCode,
+        })
+      : await supabase.auth.mfa.challengeAndVerify({
+          factorId: resolver.factorId,
+          code: normalizedCode,
+        });
+
+    if (response.error) {
+      throw new Error(response.error.message);
+    }
   }
 
   /**
    * Verify backup code during sign-in
    */
-  async verifyBackupCode(_userId: string, _backupCode: string): Promise<boolean> {
-    return false;
+  async verifyBackupCode(userId: string, backupCode: string): Promise<boolean> {
+    const normalizedCode = backupCode.trim().toUpperCase();
+    if (!normalizedCode) {
+      return false;
+    }
+
+    const codes = await this.getBackupCodes(userId);
+    const index = codes.indexOf(normalizedCode);
+    if (index === -1) {
+      return false;
+    }
+
+    const remaining = codes.filter((_, codeIndex) => codeIndex !== index);
+    await this.storeEnrollmentData(userId, remaining);
+    return true;
   }
 
   /**
    * Unenroll MFA for a user
    */
-  async unenroll(_user: User): Promise<void> {
-    this.throwDisabledError();
+  async unenroll(user: User): Promise<void> {
+    const userId = this.getUserId(user);
+    const { data, error } = await supabase.auth.mfa.listFactors();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    for (const factor of data?.totp || []) {
+      const { error: unenrollError } = await supabase.auth.mfa.unenroll({ factorId: factor.id });
+      if (unenrollError) {
+        throw new Error(unenrollError.message);
+      }
+    }
+
+    await this.removeEnrollmentData(userId);
   }
 
   /**
@@ -117,13 +208,30 @@ class MFAService {
     return codes;
   }
 
-  // All Firestore methods disabled during migration
-  private async storeEnrollmentData(_userId: string, _backupCodes: string[]): Promise<void> {
-    this.throwDisabledError();
+  private async storeEnrollmentData(userId: string, backupCodes: string[]): Promise<void> {
+    const normalized = backupCodes.map((code) => code.trim().toUpperCase());
+    await AsyncStorage.setItem(this.BACKUP_CODES_KEY_PREFIX + userId, JSON.stringify(normalized));
   }
 
-  private async removeEnrollmentData(_userId: string): Promise<void> {
-    this.throwDisabledError();
+  private async getBackupCodes(userId: string): Promise<string[]> {
+    const raw = await AsyncStorage.getItem(this.BACKUP_CODES_KEY_PREFIX + userId);
+    if (!raw) {
+      return [];
+    }
+
+    try {
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) {
+        return [];
+      }
+      return parsed.map((code) => String(code).trim().toUpperCase()).filter(Boolean);
+    } catch {
+      return [];
+    }
+  }
+
+  private async removeEnrollmentData(userId: string): Promise<void> {
+    await AsyncStorage.removeItem(this.BACKUP_CODES_KEY_PREFIX + userId);
   }
 
   private async isAccountLocked(_userId: string): Promise<boolean> {
@@ -142,14 +250,26 @@ class MFAService {
    * Get remaining backup codes count
    */
   async getRemainingBackupCodesCount(_userId: string): Promise<number> {
-    return 0;
+    const userId = String(_userId || '').trim();
+    if (!userId) {
+      return 0;
+    }
+    const codes = await this.getBackupCodes(userId);
+    return codes.length;
   }
 
   /**
    * Regenerate backup codes
    */
-  async regenerateBackupCodes(_userId: string): Promise<string[]> {
-    this.throwDisabledError();
+  async regenerateBackupCodes(userId: string): Promise<string[]> {
+    const normalizedUserId = String(userId || '').trim();
+    if (!normalizedUserId) {
+      throw new Error('Usuario invalido para regenerar codigos de backup.');
+    }
+
+    const backupCodes = await this.generateBackupCodes();
+    await this.storeEnrollmentData(normalizedUserId, backupCodes);
+    return backupCodes;
   }
 }
 

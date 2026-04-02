@@ -46,7 +46,7 @@ Use esta secao como checklist curto de acompanhamento. O detalhamento tecnico co
 
 ### Semana 2
 
-- `restaurante-app`: decidir go/no-go para certificate pinning apos prova de conceito.
+- `restaurante-app`: gate de pinning fechado como **CONDITIONAL (NO-GO neste ciclo)**.
 - `restaurante-ops`: validar `429` e `503` em modo fail-closed para auth e billing.
 - `restaurante-web`: acompanhar apenas impactos compartilhados de auth/env/logging, sem trilha nativa.
 
@@ -79,7 +79,7 @@ Use esta secao como checklist curto de acompanhamento. O detalhamento tecnico co
 | `SEC-W1-003` Biometric credentials hardening | ✅ Sim | ❌ Nao | ❌ Nao | Risco exclusivo do app |
 | `SEC-W1-004` Android Auto Backup hardening | ✅ Sim | ❌ Nao | ❌ Nao | Item Android nativo |
 | `SEC-W1-005` Logging seguro | ✅ Sim | ✅ Sim | ✅ Sim | Cada projeto deve respeitar seu logger atual |
-| `SEC-W2-001` Certificate pinning | ✅ Sim | ❌ Nao | ❌ Nao | Avaliar custo operacional antes de implementar |
+| `SEC-W2-001` Certificate pinning | ✅ Sim | ❌ Nao | ❌ Nao | Gate 02/04/2026: CONDITIONAL (NO-GO neste ciclo) por risco operacional sem staging e sem esteira MITM automatizada |
 | `SEC-W3-001` MFA TOTP para admins | ✅ Sim | ✅ Sim | ⚠️ Parcial | `ops` exige trilha propria se MFA for obrigatorio no backoffice |
 | `SEC-W3-002` Session fixation prevention | ✅ Sim | ✅ Sim | ❌ Nao | Trata login dos clientes; `ops` usa sessao/cookie separado |
 
@@ -590,6 +590,12 @@ railway up
 > - Item nativo, fora de escopo de `restaurante-web` e `restaurante-ops`.
 > - Tratar como trilha opcional e de maior custo operacional, nao como requisito transversal do monorepo.
 
+> Decisao de gate em 02/04/2026:
+> - **CONDITIONAL (NO-GO neste ciclo)**.
+> - Justificativa objetiva: ausencia de staging dedicado, ausencia de suite automatizada de MITM regression e risco de lockout operacional em rotacao de certificado.
+> - Mitigacao alternativa ativa: TLS padrao + HSTS no `ops` + hardening de sessao + MFA para roles privilegiadas.
+> - Proximo gatilho para reavaliacao: staging ativo + runbook de rotacao de certificado + teste MITM automatizado no CI/mobile.
+
 #### Tarefas
 
 - [ ] **6.1** Instalar dependências
@@ -690,6 +696,12 @@ export async function secureFetch(url: string, options: SecureFetchOptions = {})
 > - O servico `MFAService` atual ainda esta desabilitado por ser legado da migracao Firebase -> Supabase.
 > - `restaurante-ops` exigiria trilha propria se houver requisito de MFA para backoffice.
 
+> Atualizacao de execucao em 02/04/2026:
+> - `MFAService.ts` reimplementado em app/web com Supabase `auth.mfa` (enroll, challenge, verify, listFactors, unenroll).
+> - `MFAVerificationModal` migrado para resolver Supabase em app/web.
+> - `AuthContext` em app/web atualizado para enforcement por role privilegiada quando `EXPO_PUBLIC_FEATURE_REQUIRE_MFA=true`.
+> - Bloqueio remanescente: habilitar `auth.mfa.totp.enroll_enabled=true` e `verify_enabled=true` no projeto Supabase alvo para validacao runtime completa.
+
 #### Tarefas
 
 - [ ] **7.1** Reimplementar `MFAService.ts` em app e web com Supabase Auth
@@ -752,6 +764,11 @@ export async function secureFetch(url: string, options: SecureFetchOptions = {})
 > - Mitigacao parcial ja existe com rotacao de `sessionKey` apos reload de sessao.
 > - O backlog remanescente e o `signOut()` preventivo antes de novo `signInWithPassword()` e a eliminacao do replay biometrico por senha no app.
 
+> Atualizacao de execucao em 02/04/2026:
+> - `AuthContext` em app/web com `signOut()` preventivo antes do login por credenciais.
+> - Cancelamento de desafio MFA no login agora executa `signOut()` para evitar sessao parcial pendente.
+> - Pendente: validacao runtime controlada em ambiente com MFA TOTP habilitado.
+
 #### Tarefas
 
 - [ ] **8.1** Atualizar `login()` no `AuthContext.tsx`
@@ -802,14 +819,15 @@ export async function secureFetch(url: string, options: SecureFetchOptions = {})
 - [x] `OPS-5`: Segredos server-only e headers revisados
 
 ### Semana 2
-- [ ] `SEC-W2-001`: Certificate pinning avaliado e, se aprovado, implementado no app
-- [ ] Build nativo gerado com sucesso
-- [ ] Teste de MITM falha (pinning funcionando)
+- [x] `SEC-W2-001`: Certificate pinning avaliado com gate formal
+- [x] Decisao registrada: CONDITIONAL (NO-GO neste ciclo)
+- [ ] Build nativo gerado com sucesso (somente se gate mudar para GO)
+- [ ] Teste de MITM falha (pinning funcionando, somente se gate mudar para GO)
 - [x] `OPS-3`: Rate limiting estrito validado com `429` e `503`
 
 ### Semana 3
-- [ ] `SEC-W3-001`: MFA TOTP implementado para admins em app e web
-- [ ] `SEC-W3-002`: Session fixation prevention concluida em app e web
+- [ ] `SEC-W3-001`: MFA TOTP iniciado para admins em app e web (codigo implementado; aguardando toggle runtime no Supabase)
+- [ ] `SEC-W3-002`: Session fixation hardening iniciado e aplicado em login app/web (aguarda validacao runtime final)
 - [ ] Feature flag `REQUIRE_MFA` habilitada apos validacao controlada
 - [x] `OPS-1`: Sessao e cookies do backoffice endurecidos
 

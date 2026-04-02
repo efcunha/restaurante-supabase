@@ -16,16 +16,18 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import MFAService from '../services/MFAService';
-import { MultiFactorResolver } from 'firebase/auth';
+import type { MFAVerificationResolver } from '../services/MFAService';
+import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme/colors';
 interface Props {
   visible: boolean;
-  resolver: MultiFactorResolver | null;
+  resolver: MFAVerificationResolver | null;
   onSuccess: () => void;
   onCancel: () => void;
 }
 
 export default function MFAVerificationModal({ visible, resolver, onSuccess, onCancel }: Props) {
+  const { user } = useAuth();
   const [verificationCode, setVerificationCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [useBackupCode, setUseBackupCode] = useState(false);
@@ -41,15 +43,14 @@ export default function MFAVerificationModal({ visible, resolver, onSuccess, onC
     setLoading(true);
     try {
       if (useBackupCode) {
-        // Verify backup code
-        const userId = resolver.hints[0]?.uid;
+        const userId = user?.uid;
         if (!userId) {
-          throw new Error('Usuário não identificado');
+          throw new Error('Usuario nao identificado para validar codigo de backup.');
         }
 
         const isValid = await MFAService.verifyBackupCode(userId, verificationCode);
         if (!isValid) {
-          throw new Error('Código de backup inválido');
+          throw new Error('Codigo de backup invalido');
         }
 
         // If backup code is valid, we still need to resolve the sign-in
