@@ -513,25 +513,23 @@ const { data: profile, error: profileError } = await supabase
 
   const logout = async () => {
       try {
-          // If biometrics are enrolled for this user, preserve the refresh token so
-          // biometric login can restore the session after logout.
-          // signOut({ scope: 'local' }) clears the local/in-memory session but does NOT
-          // revoke the refresh token on Supabase server — biometric login needs it.
+          // For users with biometrics enrolled, do NOT call signOut.
+          // signOut clears the Supabase SDK's own SecureStore session keys,
+          // making biometric login impossible (no session to restore).
+          // Mobile biometric pattern: "logout" = clear UI state only; the session
+          // stays persisted so biometric re-login can restore it.
           const enrolledUser = await BiometricAuthService.getLastEnrolledUser();
           const hasBiometrics = !!enrolledUser && enrolledUser === user?.uid;
 
-          if (hasBiometrics) {
-              // Local sign-out only: local session cleared, refresh token stays valid.
-              // Auth state (with refresh token) is kept in SecureStore for biometric re-login.
-              await supabase.auth.signOut({ scope: 'local' });
-              console.log('[SupabaseAuth] Local sign-out (biometrics enrolled) — auth state preserved');
-          } else {
+          if (!hasBiometrics) {
               // Full sign-out: invalidates server session and clears local state.
               await supabase.auth.signOut();
               await AuthPersistenceService.clearAuthState();
+          } else {
+              console.log('[SupabaseAuth] Biometrics enrolled — UI-only logout, session preserved for biometric re-login');
           }
 
-          // Clear UI state
+          // Clear UI state regardless
           setPasswordRecoveryMode(false);
           setUser(null);
           setRole(null);
@@ -565,37 +563,59 @@ const { data: profile, error: profileError } = await supabase
           isManualLoginRef.current = true;
           setLoading(true);
 
-          // SEC-W1-003: Biometric credentials hardening
-          // Instead of storing/replaying passwords, use local biometric unlock
-          // followed by server-side session refresh.
-          
           const lastUserId = await BiometricAuthService.getLastEnrolledUser();
           if (!lastUserId) {
               setLoading(false);
               return { success: false, error: 'Biometria não configurada para nenhum usuário.' };
           }
 
-          // Step 1: Verify biometric locally (this proves device possession)
+          // Step 1: Verify biometric locally (proves device possession)
           const authResult = await BiometricAuthService.authenticate(lastUserId);
           if (!authResult.success) {
               setLoading(false);
               return { success: false, error: authResult.error };
           }
 
-          // Step 2: Get refresh token — primary: BiometricAuthService SecureStore.
-          // Fallback: AuthPersistenceService (may have stricter validation).
-          let refreshToken: string | null = await BiometricAuthService.getRefreshToken(lastUserId);
+          // Step 2: Restore Supabase session.
+          // Primary: use the session already persisted by the Supabase SDK in SecureStore.
+          // This works because logout() for biometric users does NOT call signOut(),
+          // leaving the SDK's own persisted session intact.
+          let sessionUser = null;
 
-          if (!refreshToken) {
-              // Fallback to AuthPersistenceService
-              console.warn('[SupabaseAuth] BiometricAuthService has no refresh token, trying AuthPersistenceService...');
-              const persistedAuth = await AuthPersistenceService.restoreAuthState();
-              if (persistedAuth?.refreshToken && persistedAuth.userId === lastUserId) {
-                  refreshToken = persistedAuth.refreshToken;
+          const { data: existingSessionData, error: existingSessionError } = await supabase.auth.getSession();
+          if (!existingSessionError && existingSessionData?.session?.user) {
+              // Validate that the persisted session belongs to the enrolled user
+              if (existingSessionData.session.user.id === lastUserId) {
+                  sessionUser = existingSessionData.session.user;
+                  console.log('[SupabaseAuth] Biometric login: restored persisted session');
+              } else {
+                  console.warn('[SupabaseAuth] Persisted session user mismatch — enrolled:', lastUserId, 'session:', existingSessionData.session.user.id);
               }
           }
 
-          if (!refreshToken) {
+          // Fallback: try refreshing with stored refresh token
+          if (!sessionUser) {
+              console.warn('[SupabaseAuth] No persisted session — trying stored refresh token...');
+              const storedRefreshToken = await BiometricAuthService.getRefreshToken(lastUserId);
+
+              if (storedRefreshToken) {
+                  const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession({
+                      refresh_token: storedRefreshToken,
+                  });
+                  if (!refreshError && refreshData?.session?.user) {
+                      sessionUser = refreshData.session.user;
+                      // Update stored token after successful rotation
+                      if (refreshData.session.refresh_token) {
+                          await BiometricAuthService.storeRefreshToken(lastUserId, refreshData.session.refresh_token);
+                      }
+                      console.log('[SupabaseAuth] Biometric login: session restored via stored refresh token');
+                  } else {
+                      console.warn('[SupabaseAuth] Stored refresh token failed:', refreshError?.message);
+                  }
+              }
+          }
+
+          if (!sessionUser) {
               setLoading(false);
               return {
                   success: false,
@@ -603,30 +623,8 @@ const { data: profile, error: profileError } = await supabase
               };
           }
 
-          // Step 3: Restore Supabase session using the refresh token.
-          // Use a dummy access_token — Supabase will exchange the refresh_token for a new session.
-          const { data: setSessionData, error: setSessionError } = await supabase.auth.refreshSession({
-              refresh_token: refreshToken,
-          });
-
-            if (setSessionError || !setSessionData?.session?.user) {
-              setLoading(false);
-              console.warn('[SupabaseAuth] Session restore failed after biometric auth. Require manual login.', setSessionError?.message);
-              // If refresh token was rejected, clean it up so enrollment is required again
-              await BiometricAuthService.unenrollUser(lastUserId);
-              return {
-                success: false,
-                error: 'Sua sessão expirou. Faça login novamente com suas credenciais para reativar a biometria.'
-              };
-            }
-
-          // After successful refresh, update the stored refresh token with the new one
-          if (setSessionData.session.refresh_token) {
-              await BiometricAuthService.storeRefreshToken(lastUserId, setSessionData.session.refresh_token);
-          }
-
-          // Step 4: Reload user data with refreshed session
-            await reloadUserData(setSessionData.session.user, { rotateSessionKey: true });
+          // Step 3: Reload user profile data
+          await reloadUserData(sessionUser, { rotateSessionKey: true });
           setLoading(false);
           return { success: true };
 
@@ -634,7 +632,7 @@ const { data: profile, error: profileError } = await supabase
           setLoading(false);
           console.error('[SupabaseAuth] Bio login error', error);
           return { success: false, error: error.message || 'Falha ao autenticar com biometria' };
-        } finally {
+      } finally {
           isManualLoginRef.current = false;
       }
   };
