@@ -223,7 +223,11 @@ export default function MFASetupModal({ visible, onClose, onSuccess }: Props) {
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <View style={styles.container}>
         <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
-          <View style={styles.headerLeft} />
+          <View style={styles.headerLeft}>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <Ionicons name="arrow-back-outline" size={24} color={colors.white} />
+            </TouchableOpacity>
+          </View>
           <View style={styles.headerCenter}>
             <View style={styles.headerTitleRow}>
               <Ionicons name="shield-checkmark-outline" size={24} color={colors.white} style={styles.headerIcon} />
@@ -231,11 +235,7 @@ export default function MFASetupModal({ visible, onClose, onSuccess }: Props) {
             </View>
             {!!user && <Text style={styles.userInfo}>Operador: {user.nome || user.name || user.email}</Text>}
           </View>
-          <View style={styles.headerRight}>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="arrow-back-outline" size={24} color={colors.white} />
-            </TouchableOpacity>
-          </View>
+          <View style={styles.headerRight} />
         </View>
 
         <ScrollView contentContainerStyle={styles.content}>
@@ -272,6 +272,8 @@ const styles = StyleSheet.create({
   },
   headerLeft: {
     flex: 1,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
   },
   headerCenter: {
     flex: 2,
@@ -280,8 +282,6 @@ const styles = StyleSheet.create({
   },
   headerRight: {
     flex: 1,
-    alignItems: 'flex-end',
-    justifyContent: 'center',
   },
   headerTitleRow: {
     flexDirection: 'row',
