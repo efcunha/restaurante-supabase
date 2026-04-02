@@ -11,6 +11,10 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 DB_BACKUP_DIR="$ROOT_DIR/database-backup"
 MIGRATIONS_DIR="$DB_BACKUP_DIR/migrations"
 CHECK_SYNC_SCRIPT="$DB_BACKUP_DIR/check-migration-sync.sh"
+RAILWAY_WORKSPACE="${RAILWAY_WORKSPACE:-Machado & Cunha Soft House}"
+RAILWAY_PROJECT="${RAILWAY_PROJECT:-restaurante}"
+RAILWAY_ENVIRONMENT="${RAILWAY_ENVIRONMENT:-production}"
+RAILWAY_SERVICE="${RAILWAY_SERVICE:-restaurante-ops}"
 
 echo "======================================"
 echo "Iniciando Deploy para o Railway..."
@@ -294,10 +298,14 @@ unset RAILWAY_TOKEN
 echo ""
 echo "Verificando vinculo com o projeto Railway..."
 cd "$ROOT_DIR"
-railway link
+railway link \
+    --workspace "$RAILWAY_WORKSPACE" \
+    --project "$RAILWAY_PROJECT" \
+    --environment "$RAILWAY_ENVIRONMENT" \
+    --service "$RAILWAY_SERVICE"
 
 echo "Enviando restaurante-ops para producao no Railway..."
-if railway up --service restaurante-ops --path-as-root ./restaurante-ops; then
+if railway up --service "$RAILWAY_SERVICE" --path-as-root ./restaurante-ops; then
     echo "Deploy iniciado/concluido com sucesso no Railway!"
 else
     echo "Ocorreu um erro durante o deploy."

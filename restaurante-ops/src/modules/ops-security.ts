@@ -225,7 +225,8 @@ export async function userHasVerifiedMfa(userId: string): Promise<boolean> {
     throw new Error('Nao foi possivel verificar status de MFA do usuario.');
   }
 
-  // Check if user has at least one verified TOTP factor
-  const verifiedFactors = (data?.totp || []).filter((f) => f.status === 'verified');
+  const verifiedFactors = (data?.factors || []).filter(
+    (factor) => factor.factor_type === 'totp' && factor.status === 'verified',
+  );
   return verifiedFactors.length > 0;
 }
