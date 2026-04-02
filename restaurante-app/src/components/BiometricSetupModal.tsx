@@ -130,10 +130,10 @@ export default function BiometricSetupModal({ visible, onClose, onSuccess }: Pro
 
   const initEnrollment = () => {
       setShowPasswordInput(true);
-      // Focus on input after a brief delay to ensure it's rendered
+      // Focus on input after a delay to ensure it's rendered (longer on Android)
       setTimeout(() => {
         passwordInputRef.current?.focus();
-      }, 100);
+      }, Platform.OS === 'android' ? 300 : 100);
   };
 
   const getBiometricIcon = () => {
@@ -176,12 +176,12 @@ export default function BiometricSetupModal({ visible, onClose, onSuccess }: Pro
 
   const renderAvailable = () => (
     <KeyboardAvoidingView 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={styles.content}
     >
       <ScrollView
         contentContainerStyle={showPasswordInput ? styles.scrollContainer : styles.contentCenter}
-        keyboardShouldPersistTaps="handled"
+        keyboardShouldPersistTaps="always"
         showsVerticalScrollIndicator={false}
       >
         {!showPasswordInput ? (
@@ -264,9 +264,13 @@ export default function BiometricSetupModal({ visible, onClose, onSuccess }: Pro
                   placeholderTextColor={colors.textSecondary}
                   secureTextEntry
                   autoCapitalize="none"
+                  autoCorrect={false}
+                  returnKeyType="done"
+                  onSubmitEditing={verifyAndEnroll}
                   onFocus={() => setIsPasswordFocused(true)}
                   onBlur={() => setIsPasswordFocused(false)}
                   editable={!loading}
+                  blurOnSubmit={false}
                 />
                 {password.length > 0 && (
                   <View style={styles.passwordIndicator}>
