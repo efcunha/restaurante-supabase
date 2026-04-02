@@ -10,6 +10,38 @@ buildscript {
     classpath('com.facebook.react:react-native-gradle-plugin')
     classpath('org.jetbrains.kotlin:kotlin-gradle-plugin')
     // classpath('com.google.gms:google-services:4.4.4')
+
+    constraints {
+      classpath('io.netty:netty-codec-http:4.1.132.Final') {
+        because 'Security hardening for Snyk-reported CVEs in Gradle classpath'
+      }
+      classpath('io.netty:netty-codec-http2:4.1.132.Final') {
+        because 'Security hardening for Snyk-reported CVEs in Gradle classpath'
+      }
+      classpath('io.netty:netty-common:4.1.132.Final') {
+        because 'Security hardening for Snyk-reported CVEs in Gradle classpath'
+      }
+      classpath('io.netty:netty-handler:4.1.132.Final') {
+        because 'Security hardening for Snyk-reported CVEs in Gradle classpath'
+      }
+      classpath('com.google.protobuf:protobuf-java:3.25.5') {
+        because 'Security hardening for CVE-2024-7254 in Gradle classpath'
+      }
+    }
+  }
+
+  configurations.classpath {
+    resolutionStrategy.eachDependency { details ->
+      if (details.requested.group == 'io.netty') {
+        details.useVersion '4.1.132.Final'
+        details.because 'Fix CVEs reported by Snyk in Gradle classpath transitive dependencies'
+      }
+
+      if (details.requested.group == 'com.google.protobuf' && details.requested.name == 'protobuf-java') {
+        details.useVersion '3.25.5'
+        details.because 'Fix CVE-2024-7254 reported by Snyk in Gradle classpath'
+      }
+    }
   }
 }
 
