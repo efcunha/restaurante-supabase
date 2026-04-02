@@ -101,6 +101,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setDebugLog(prev => [...prev.slice(-30), `${ts}  ${msg}`]);
   };
 
+  const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> => {
+    return Promise.race([
+      promise,
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs)
+      ),
+    ]);
+  };
+
   const setPasswordRecoveryMode = (enabled: boolean) => {
     passwordRecoveryModeRef.current = enabled;
     setIsPasswordRecovery(enabled);
@@ -250,15 +259,46 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     appendLog(`SUPABASE_URL: ${process.env.EXPO_PUBLIC_SUPABASE_URL ? '✅' : '❌ AUSENTE'}`);
     appendLog(`SUPABASE_KEY: ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ? '✅' : '❌ AUSENTE'}`);
 
-    // Safety timeout — if onAuthStateChange never fires (network/config issue), unblock UI
+    // Safety timeout — if onAuthStateChange never fires (network/config issue), unblock UI quickly
     const safetyTimer = setTimeout(() => {
       if (mounted) {
-        const msg = 'Timeout (15s): onAuthStateChange nao disparou. Verifique conexao e variaveis de ambiente SUPABASE.';
+        const msg = 'Timeout (8s): onAuthStateChange nao disparou. Verifique conexao e variaveis de ambiente SUPABASE.';
         appendLog('⏱️ ' + msg);
         setInitError(msg);
         setLoading(false);
       }
-    }, 15000);
+    }, 8000);
+
+    // Proactive fallback: try getSession directly so login screen does not stay blocked
+    // waiting only for auth event on slow devices/network.
+    withTimeout(
+      supabase.auth.getSession(),
+      3500,
+      'Timeout ao recuperar sessao inicial.'
+    )
+      .then(async ({ data }) => {
+        if (!mounted || listenerReady) return;
+        if (!data?.session?.user) {
+          appendLog('ℹ️ Sem sessao inicial, liberando tela de login');
+          setLoading(false);
+          return;
+        }
+
+        appendLog('ℹ️ Sessao inicial detectada via getSession, carregando perfil...');
+        try {
+          await scheduleReloadUserData(data.session.user, { rotateSessionKey: false });
+        } catch (e: any) {
+          const errMsg = `Erro ao carregar perfil inicial: ${e?.message ?? String(e)}`;
+          appendLog('❌ ' + errMsg);
+          setInitError(errMsg);
+          setLoading(false);
+        }
+      })
+      .catch((e: any) => {
+        if (!mounted || listenerReady) return;
+        appendLog(`⚠️ Fallback getSession falhou: ${e?.message ?? String(e)}`);
+        setLoading(false);
+      });
 
     let listenerReady = false;
     try {
@@ -344,11 +384,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           console.log('[AuthContext] Fetching profile table only...');
           appendLog(`⏳ Buscando perfil...`);
           
-const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', sbUser.id)
-            .single();
+const { data: profile, error: profileError } = await withTimeout(
+            supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', sbUser.id)
+              .single(),
+            8000,
+            'Timeout ao buscar perfil.'
+          );
           const profileDuration = Date.now() - fetchProfileStartTime;
 
           console.log('[AuthContext] Profile result:', { 
@@ -375,11 +419,15 @@ const { data: profile, error: profileError } = await supabase
                const fetchCompanyStartTime = Date.now();
                console.log('[AuthContext] Fetching company data...', profile.company_id);
                appendLog(`⏳ Buscando empresa...`);
-               const { data: comp, error: compError } = await supabase
-                 .from('companies')
-                 .select('*')
-                 .eq('id', profile.company_id)
-                 .single();
+               const { data: comp, error: compError } = await withTimeout(
+                 supabase
+                   .from('companies')
+                   .select('*')
+                   .eq('id', profile.company_id)
+                   .single(),
+                 8000,
+                 'Timeout ao buscar empresa.'
+               );
                
                const companyDuration = Date.now() - fetchCompanyStartTime;
                if (compError) {
