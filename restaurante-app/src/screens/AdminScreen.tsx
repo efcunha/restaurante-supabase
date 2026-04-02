@@ -438,18 +438,6 @@ export default function AdminScreen() {
           formatarMoeda={formatarMoeda}
         />
 
-        <AdminSection title="OPERAÇÃO DE DELIVERY">
-          <AdminActionCard
-            name="Painel de Rotas e Entregas"
-            icon="🛵"
-            onPress={() => navigation.navigate('RotasDelivery')}
-            subtitle="Despache motoboys e acompanhe entregas"
-            cardStyle={{ backgroundColor: colors.warningSurface, borderLeftColor: colors.secondary, borderLeftWidth: 4 }}
-            nameStyle={{ color: colors.primary, fontWeight: 'bold' } as any}
-            arrowStyle={{ color: colors.primary } as any}
-          />
-        </AdminSection>
-
         <AdminSection title="FINANCEIRO">
           {renderReportList(financialReports, { keyPrefix: 'fin' })}
         </AdminSection>
