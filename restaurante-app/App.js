@@ -216,7 +216,7 @@ function AppContent() {
     const timer = setTimeout(() => {
       setForceAuthFallback(true);
       console.warn('[Boot] Auth loading timeout fallback activated');
-    }, 18000);
+    }, 9000);
 
     return () => clearTimeout(timer);
   }, [loading, user]);
