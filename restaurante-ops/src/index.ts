@@ -1597,7 +1597,8 @@ function startServer() {
 
       // ---- Telas publicas de auth ----
       if (req.method === 'GET' && path === '/login') {
-        const securitySettings = await getOpsSecuritySettings(opsCompanyId).catch(() => ({ requireMfa: env.OPS_REQUIRE_MFA }));
+        // EMERGENCY: Always false on fetch failure to prevent lockout
+        const securitySettings = await getOpsSecuritySettings(opsCompanyId).catch(() => ({ requireMfa: false }));
         res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
         res.end(renderLoginHtml(securitySettings.requireMfa));
         return;
@@ -1619,7 +1620,7 @@ function startServer() {
       if (req.method === 'POST' && path === '/auth/login') {
         let rateKey = '';
         try {
-          const securitySettings = await getOpsSecuritySettings(opsCompanyId).catch(() => ({ requireMfa: env.OPS_REQUIRE_MFA }));
+          const securitySettings = await getOpsSecuritySettings(opsCompanyId).catch(() => ({ requireMfa: false }));
           const requireMfa = securitySettings.requireMfa;
           const raw = await readBody(req);
           const body = parseFormBody(raw);
@@ -1696,7 +1697,7 @@ function startServer() {
           res.end();
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : 'Erro ao fazer login';
-          const securitySettings = await getOpsSecuritySettings(opsCompanyId).catch(() => ({ requireMfa: env.OPS_REQUIRE_MFA }));
+          const securitySettings = await getOpsSecuritySettings(opsCompanyId).catch(() => ({ requireMfa: false }));
           const safeLoginMessage = mapOpsLoginErrorMessage(msg, securitySettings.requireMfa);
           logWarn('auth.login_failed', {
             method: req.method,
@@ -1754,7 +1755,7 @@ function startServer() {
         const [kpis, companies, securitySettings, mfaUsers] = await Promise.all([
           fetchKpiCounts(),
           fetchRecentCompanies(8),
-          getOpsSecuritySettings(opsCompanyId).catch(() => ({ requireMfa: env.OPS_REQUIRE_MFA })),
+          getOpsSecuritySettings(opsCompanyId).catch(() => ({ requireMfa: false })),
           listOpsMfaUsers(opsCompanyId).catch(() => []),
         ]);
         const notice = url.searchParams.get('notice');
