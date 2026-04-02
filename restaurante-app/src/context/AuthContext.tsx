@@ -7,6 +7,8 @@ import { User } from '@supabase/supabase-js';
 // Services
 import AuthPersistenceService, { PersistenceUser } from '../services/AuthPersistenceService';
 import BiometricAuthService from '../services/BiometricAuthService';
+import MFAService, { MFAVerificationResolver } from '../services/MFAService';
+import { featureFlags } from '../config/featureFlags';
 import { Permissions, hasPermission, normalizeRole } from '../auth/roles';
 
 // Tipos
@@ -47,8 +49,8 @@ interface AuthContextType {
   getCustomClaims: () => CustomClaims | null;
   
   // MFA & Biometric Placeholders (for interface compatibility)
-  mfaResolver: any | null; 
-  setMfaResolver: (resolver: any | null) => void;
+  mfaResolver: MFAVerificationResolver | null;
+  setMfaResolver: (resolver: MFAVerificationResolver | null) => void;
   loginWithBiometric: () => Promise<{ success: boolean; error?: string }>;
   biometricAvailable: boolean;
   biometricType?: string;
@@ -86,8 +88,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Security State
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricType, setBiometricType] = useState<string | undefined>(undefined);
-  // Implementation note: MFA Resolver is less standard in Supabase than Firebase, keeping null for now
-  const [mfaResolver, setMfaResolver] = useState<any | null>(null);
+  const [mfaResolver, setMfaResolver] = useState<MFAVerificationResolver | null>(null);
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
 
   const isManualLoginRef = useRef<boolean>(false);
@@ -185,7 +186,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return 'Muitas tentativas de login. Aguarde alguns minutos e tente novamente.';
     }
 
+    if (normalized.includes('mfa obrigatorio') || normalized.includes('mfa')) {
+      return raw;
+    }
+
     return raw || 'Erro desconhecido';
+  };
+
+  const resolveUserRole = async (userId: string): Promise<string | null> => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .single();
+
+    if (error) {
+      throw new Error(`Nao foi possivel carregar perfil para validacao de MFA: ${error.message}`);
+    }
+
+    return normalizeRole(data?.role || null);
   };
 
   const extractRecoverySession = (url: string) => {
@@ -385,7 +404,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             }
 
           // Session available — load profile data
-            if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+            if (
+              event === 'INITIAL_SESSION' ||
+              event === 'SIGNED_IN' ||
+              event === 'TOKEN_REFRESHED' ||
+              event === 'MFA_CHALLENGE_VERIFIED'
+            ) {
               appendLog(`Carregando perfil (${event})...`);
               console.log('[SupabaseAuth] Processing', event, '— Manual?', isManualLoginRef.current);
               if (!isManualLoginRef.current) {
@@ -562,7 +586,15 @@ const { data: profile, error: profileError } = await withTimeout(
       const loginStartTime = Date.now();
       try {
           isManualLoginRef.current = true;
+          setLoading(true);
+          setMfaResolver(null);
           appendLog('🔐 Login iniciado...');
+
+          // Session fixation hardening: clear any previous session before a new credential login.
+          const { data: existingSessionData } = await supabase.auth.getSession();
+          if (existingSessionData?.session) {
+            await supabase.auth.signOut();
+          }
 
           const signInStartTime = Date.now();
           const signInResult = await Promise.race([
@@ -581,6 +613,52 @@ const { data: profile, error: profileError } = await withTimeout(
           if (error) throw error;
           
           if (data.session?.user) {
+              const normalizedRole = await resolveUserRole(data.session.user.id);
+              const requiresMfa =
+                featureFlags.requireMFA &&
+                Boolean(normalizedRole) &&
+                MFAService.isRequiredForRole(normalizedRole);
+
+              if (requiresMfa) {
+                const { data: assuranceData, error: assuranceError } =
+                  await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+
+                if (assuranceError) {
+                  throw new Error(`Falha ao validar nivel de autenticacao MFA: ${assuranceError.message}`);
+                }
+
+                const needsAal2 =
+                  assuranceData?.nextLevel === 'aal2' && assuranceData?.currentLevel !== 'aal2';
+
+                if (needsAal2) {
+                  const { data: factorsData, error: factorsError } = await supabase.auth.mfa.listFactors();
+                  if (factorsError) {
+                    throw new Error(`Falha ao listar fatores MFA: ${factorsError.message}`);
+                  }
+
+                  const primaryTotpFactor = factorsData?.totp?.[0];
+                  if (!primaryTotpFactor) {
+                    await supabase.auth.signOut();
+                    throw new Error('MFA obrigatorio para sua role, mas nenhum fator TOTP foi cadastrado. Configure o MFA no painel administrativo.');
+                  }
+
+                  const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({
+                    factorId: primaryTotpFactor.id,
+                  });
+
+                  if (challengeError || !challengeData?.id) {
+                    throw new Error(challengeError?.message || 'Falha ao iniciar desafio MFA.');
+                  }
+
+                  setMfaResolver({
+                    factorId: primaryTotpFactor.id,
+                    challengeId: challengeData.id,
+                  });
+                  setLoading(false);
+                  return false;
+                }
+              }
+
               // SEC-W1-003: No password storage for biometric replay
               // Biometric auth uses server-side session refresh, not password replay
               
@@ -598,6 +676,7 @@ const { data: profile, error: profileError } = await withTimeout(
               appendLog(`✅ Login concluído em ${totalDuration}ms`);
 
                 await writeBiometricLock(false);
+                setLoading(false);
               
               return true;
           }
@@ -608,6 +687,7 @@ const { data: profile, error: profileError } = await withTimeout(
           appendLog(`❌ Login falhou em ${totalDuration}ms: ${error?.message ?? String(error)}`);
           console.error('[SupabaseAuth] Login error:', error);
           setPasswordRecoveryMode(false);
+            setLoading(false);
           Alert.alert('Erro no Login', mapLoginErrorMessage(error));
           return false;
       } finally {
