@@ -3,7 +3,7 @@
  * Allows users to enroll fingerprint or face recognition
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,9 @@ import {
   ActivityIndicator,
   Alert,
   TextInput,
+  KeyboardAvoidingView,
+  ScrollView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -30,12 +33,14 @@ interface Props {
 export default function BiometricSetupModal({ visible, onClose, onSuccess }: Props) {
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
+  const passwordInputRef = useRef<TextInput>(null);
   const [loading, setLoading] = useState(false);
   const [biometricType, setBiometricType] = useState<string>('Biometria');
   const [isAvailable, setIsAvailable] = useState(false);
   const [unavailableReason, setUnavailableReason] = useState<string>('');
   const [password, setPassword] = useState('');
   const [showPasswordInput, setShowPasswordInput] = useState(false);
+  const [isPasswordFocused, setIsPasswordFocused] = useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -55,7 +60,8 @@ export default function BiometricSetupModal({ visible, onClose, onSuccess }: Pro
   };
 
   const verifyAndEnroll = async () => {
-    if (!password) {
+    const trimmedPassword = password.trim();
+    if (!trimmedPassword) {
       Alert.alert('Senha Necessária', 'Por favor, digite sua senha para confirmar.');
       return;
     }
@@ -69,7 +75,7 @@ export default function BiometricSetupModal({ visible, onClose, onSuccess }: Pro
         
         const { error: signInError } = await supabase.auth.signInWithPassword({
             email: user.email,
-            password: password
+            password: trimmedPassword
         });
 
         if (signInError) throw signInError;
@@ -86,7 +92,7 @@ export default function BiometricSetupModal({ visible, onClose, onSuccess }: Pro
         }
 
         // 3. Enroll and Store Credentials
-        await BiometricAuthService.enrollUser(user.uid || user.id, deviceId, user.email, password);
+        await BiometricAuthService.enrollUser(user.uid || user.id, deviceId);
 
         Alert.alert(
             'Sucesso',
@@ -104,11 +110,19 @@ export default function BiometricSetupModal({ visible, onClose, onSuccess }: Pro
 
     } catch (error: any) {
         console.error('Enroll error:', error);
-        if (error.message?.includes('Invalid login credentials') || error.message?.includes('password')) {
-             Alert.alert('Erro', 'Senha incorreta.');
-        } else {
-             Alert.alert('Erro', 'Falha ao habilitar autenticação biométrica: ' + error.message);
+        let errorMessage = 'Falha ao habilitar autenticação biométrica';
+        
+        if (error.message?.includes('Invalid login credentials')) {
+             errorMessage = 'Email ou senha incorretos. Verifique seus dados.';
+        } else if (error.message?.includes('password')) {
+             errorMessage = 'Senha incorreta. Digite sua senha atual de acesso.';
+        } else if (error.message?.includes('Email')) {
+             errorMessage = 'Email não encontrado no sistema.';
+        } else if (error.message?.includes('Nenhuma biometria') || error.message?.includes('enrolled')) {
+             errorMessage = 'Nenhuma biometria cadastrada neste dispositivo. Cadastre uma nas Configurações do dispositivo.';
         }
+        
+        Alert.alert('Erro', errorMessage);
     } finally {
         setLoading(false);
     }
@@ -116,6 +130,10 @@ export default function BiometricSetupModal({ visible, onClose, onSuccess }: Pro
 
   const initEnrollment = () => {
       setShowPasswordInput(true);
+      // Focus on input after a brief delay to ensure it's rendered
+      setTimeout(() => {
+        passwordInputRef.current?.focus();
+      }, 100);
   };
 
   const getBiometricIcon = () => {
@@ -157,31 +175,116 @@ export default function BiometricSetupModal({ visible, onClose, onSuccess }: Pro
   );
 
   const renderAvailable = () => (
-    <View style={styles.content}>
-      <View style={styles.iconContainer}>
-        <Ionicons name={getBiometricIcon()} size={64} color={colors.primary} />
-      </View>
+    <KeyboardAvoidingView 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.content}
+    >
+      <ScrollView
+        contentContainerStyle={showPasswordInput ? styles.scrollContainer : styles.contentCenter}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {!showPasswordInput ? (
+          <>
+            <View style={styles.iconContainer}>
+              <Ionicons name={getBiometricIcon()} size={64} color={colors.primary} />
+            </View>
 
-      <Text style={styles.title}>Habilitar {biometricType}</Text>
-      <Text style={styles.description}>
-        Faça login mais rápido e seguro usando {biometricType.toLowerCase()} do seu dispositivo.
-      </Text>
+            <Text style={styles.title}>Habilitar {biometricType}</Text>
+            <Text style={styles.description}>
+              Faça login mais rápido e seguro usando {biometricType.toLowerCase()} do seu dispositivo.
+            </Text>
 
-      {showPasswordInput ? (
-          <View style={styles.passwordContainer}>
+            <View style={styles.benefitsList}>
+              <View style={styles.benefitItem}>
+                <Ionicons name="checkmark-circle" size={24} color={colors.success} />
+                <Text style={styles.benefitText}>Login rápido e conveniente</Text>
+              </View>
+              <View style={styles.benefitItem}>
+                <Ionicons name="checkmark-circle" size={24} color={colors.success} />
+                <Text style={styles.benefitText}>Mais seguro que senha</Text>
+              </View>
+              <View style={styles.benefitItem}>
+                <Ionicons name="checkmark-circle" size={24} color={colors.success} />
+                <Text style={styles.benefitText}>Seus dados ficam no dispositivo</Text>
+              </View>
+              <View style={styles.benefitItem}>
+                <Ionicons name="checkmark-circle" size={24} color={colors.success} />
+                <Text style={styles.benefitText}>Fallback para senha sempre disponível</Text>
+              </View>
+            </View>
+
+            <View style={styles.infoBox}>
+              <Ionicons name="information-circle-outline" size={20} color={colors.textSecondary} />
+              <Text style={styles.infoText}>
+                Você sempre poderá usar sua senha se a biometria não funcionar.
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={initEnrollment}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color={colors.white} />
+              ) : (
+                <>
+                  <Ionicons name={getBiometricIcon()} size={20} color={colors.white} />
+                  <Text style={styles.primaryButtonText}>Habilitar {biometricType}</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </>
+        ) : (
+          <View style={styles.passwordContentContainer}>
+            <View style={styles.passwordHeader}>
+              <TouchableOpacity onPress={() => setShowPasswordInput(false)}>
+                <Ionicons name="arrow-back" size={24} color={colors.primary} />
+              </TouchableOpacity>
+              <Text style={styles.passwordHeaderTitle}>Confirmar Senha</Text>
+              <View style={{ width: 24 }} />
+            </View>
+
+            <View style={styles.passwordFormContainer}>
               <Text style={styles.label}>Confirme sua senha:</Text>
-              <TextInput 
+              
+              <View 
+                style={[
+                  styles.inputWrapper,
+                  isPasswordFocused && styles.inputWrapperFocused
+                ]}
+              >
+                <TextInput 
+                  ref={passwordInputRef}
                   style={styles.input}
                   value={password}
                   onChangeText={setPassword}
                   placeholder="Sua senha atual"
+                  placeholderTextColor={colors.textSecondary}
                   secureTextEntry
                   autoCapitalize="none"
-              />
+                  onFocus={() => setIsPasswordFocused(true)}
+                  onBlur={() => setIsPasswordFocused(false)}
+                  editable={!loading}
+                />
+                {password.length > 0 && (
+                  <View style={styles.passwordIndicator}>
+                    <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+                  </View>
+                )}
+              </View>
+              
+              <Text style={styles.passwordHint}>
+                {password.length > 0 
+                  ? `${password.length} caracteres digitados`
+                  : 'Digite sua senha para continuar'}
+              </Text>
+
               <TouchableOpacity
-                style={styles.primaryButton}
+                style={[styles.primaryButton, password.length === 0 && styles.disabledButton]}
                 onPress={verifyAndEnroll}
-                disabled={loading}
+                disabled={loading || password.length === 0}
               >
                 {loading ? (
                   <ActivityIndicator color={colors.white} />
@@ -189,57 +292,29 @@ export default function BiometricSetupModal({ visible, onClose, onSuccess }: Pro
                   <Text style={styles.primaryButtonText}>Confirmar e Ativar</Text>
                 )}
               </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.secondaryButton}
+                onPress={() => setShowPasswordInput(false)}
+                disabled={loading}
+              >
+                <Text style={styles.secondaryButtonText}>Cancelar</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-      ) : (
-          <>
-
-      <View style={styles.benefitsList}>
-        <View style={styles.benefitItem}>
-          <Ionicons name="checkmark-circle" size={24} color={colors.success} />
-          <Text style={styles.benefitText}>Login rápido e conveniente</Text>
-        </View>
-        <View style={styles.benefitItem}>
-          <Ionicons name="checkmark-circle" size={24} color={colors.success} />
-          <Text style={styles.benefitText}>Mais seguro que senha</Text>
-        </View>
-        <View style={styles.benefitItem}>
-          <Ionicons name="checkmark-circle" size={24} color={colors.success} />
-          <Text style={styles.benefitText}>Seus dados ficam no dispositivo</Text>
-        </View>
-        <View style={styles.benefitItem}>
-          <Ionicons name="checkmark-circle" size={24} color={colors.success} />
-          <Text style={styles.benefitText}>Fallback para senha sempre disponível</Text>
-        </View>
-      </View>
-
-      <View style={styles.infoBox}>
-        <Ionicons name="information-circle-outline" size={20} color={colors.textSecondary} />
-        <Text style={styles.infoText}>
-          Você sempre poderá usar sua senha se a biometria não funcionar.
-        </Text>
-      </View>
-
-      <TouchableOpacity
-        style={styles.primaryButton}
-        onPress={initEnrollment}
-        disabled={loading}
-      >
-        {loading ? (
-          <ActivityIndicator color={colors.white} />
-        ) : (
-          <>
-            <Ionicons name={getBiometricIcon()} size={20} color={colors.white} />
-            <Text style={styles.primaryButtonText}>Habilitar {biometricType}</Text>
-          </>
         )}
-      </TouchableOpacity>
-      </>
-      )}
 
-      <TouchableOpacity style={styles.secondaryButton} onPress={onClose}>
-        <Text style={styles.secondaryButtonText}>Agora Não</Text>
-      </TouchableOpacity>
-    </View>
+        <TouchableOpacity 
+          style={styles.secondaryButton} 
+          onPress={onClose}
+          disabled={loading}
+        >
+          <Text style={styles.secondaryButtonText}>
+            {showPasswordInput ? 'Voltar' : 'Agora Não'}
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 
   return (
@@ -283,8 +358,40 @@ const styles = StyleSheet.create({
   logoutBtn: { paddingHorizontal: 10, paddingVertical: 8, borderRadius: 12, backgroundColor: colors.logoutBg },
   content: {
     flex: 1,
-    padding: 20,
+  },
+  scrollContainer: {
+    paddingVertical: 20,
+    flexGrow: 1,
+    paddingBottom: 30,
+  },
+  contentCenter: {
+    paddingVertical: 20,
+    paddingHorizontal: 20,
+    flexGrow: 1,
     justifyContent: 'center',
+  },
+  passwordContentContainer: {
+    flex: 1,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+  },
+  passwordHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  passwordHeaderTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  passwordFormContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 24,
   },
   iconContainer: {
     alignItems: 'center',
@@ -361,6 +468,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
   },
+  disabledButton: {
+    backgroundColor: colors.disabled || '#cccccc',
+    opacity: 0.6,
+  },
   primaryButtonText: {
     fontSize: 16,
     fontWeight: '700',
@@ -384,17 +495,44 @@ const styles = StyleSheet.create({
   },
   label: {
       fontSize: 16,
-      marginBottom: 8,
+      marginBottom: 12,
       color: colors.text,
       fontWeight: '600',
   },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    borderWidth: 2,
+    borderColor: colors.border,
+    borderRadius: 8,
+    backgroundColor: colors.white,
+    paddingRight: 12,
+  },
+  inputWrapperFocused: {
+    borderColor: colors.primary,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
   input: {
-      backgroundColor: colors.white,
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: 8,
+      flex: 1,
+      backgroundColor: 'transparent',
+      borderWidth: 0,
       padding: 12,
       fontSize: 16,
-      marginBottom: 20,
+      color: colors.text,
+  },
+  passwordIndicator: {
+    marginLeft: 8,
+    justifyContent: 'center',
+  },
+  passwordHint: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginBottom: 16,
+    fontStyle: 'italic',
   }
 });
