@@ -1,6 +1,5 @@
 
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, TouchableOpacity, Alert } from 'react-native';
+import { StatusBar } from 'expo-status-bar';import LicenseGate from '../components/LicenseGate';import { StyleSheet, Text, View, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
@@ -612,8 +611,7 @@ export default function ComandaGerenciamentoScreen(props: any) {
     );
   }
 
-  return (
-    <View style={styles.container}>
+  return (    <LicenseGate>    <View style={styles.container}>
 
 
       <View style={styles.header}>
@@ -684,6 +682,7 @@ export default function ComandaGerenciamentoScreen(props: any) {
         onConfirm={confirmCancel}
       />
     </View>
+    </LicenseGate>
   );
 }
 
