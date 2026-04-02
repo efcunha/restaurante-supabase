@@ -120,6 +120,15 @@ export interface AuditLog {
   timestamp: string;
 }
 
+type StoredAuditEnvelope = {
+  actor?: {
+    email?: string;
+    role?: string;
+  };
+  changes?: FieldChange[];
+  metadata?: Record<string, any>;
+};
+
 /**
  * Filtros para busca de logs
  */
@@ -140,6 +149,32 @@ export interface AuditLogFilters {
  */
 export class AuditService {
   private readonly tableName = 'audit_logs';
+
+  private parseStoredAuditData(row: any): {
+    after?: Record<string, any>;
+    changes?: FieldChange[];
+    metadata?: Record<string, any>;
+    userEmail: string;
+    userRole: string;
+  } {
+    const hasStructuredNewData = row?.new_data && typeof row.new_data === 'object' && !Array.isArray(row.new_data);
+    const nextData = hasStructuredNewData ? { ...row.new_data } : row?.new_data;
+    const envelope = hasStructuredNewData ? (nextData.__audit as StoredAuditEnvelope | undefined) : undefined;
+
+    if (hasStructuredNewData && Object.prototype.hasOwnProperty.call(nextData, '__audit')) {
+      delete nextData.__audit;
+    }
+
+    const hasAfterData = hasStructuredNewData && Object.keys(nextData).length > 0;
+
+    return {
+      after: hasAfterData ? nextData : undefined,
+      changes: row?.changes || envelope?.changes,
+      metadata: row?.metadata || envelope?.metadata,
+      userEmail: row?.user_email || envelope?.actor?.email || '',
+      userRole: row?.user_role || envelope?.actor?.role || 'unknown',
+    };
+  }
 
   /**
    * Registra um evento de auditoria
@@ -217,6 +252,9 @@ export class AuditService {
     userId: string,
     metadata?: Record<string, any>
   ): Promise<string> {
+    const userEmail = typeof metadata?.email === 'string' ? metadata.email : '';
+    const userRole = typeof metadata?.role === 'string' ? metadata.role : 'unknown';
+
     const auditLog = {
       event_type: eventType,
       severity: eventType === 'auth.failed_login' ? 'high' : 'low',
@@ -224,8 +262,8 @@ export class AuditService {
       resource_id: userId,
       company_id: metadata?.companyId || '',
       user_id: userId,
-      user_email: metadata?.email || '',
-      user_role: metadata?.role || '',
+      user_email: userEmail,
+      user_role: userRole,
       metadata: metadata || null,
     };
 
@@ -272,7 +310,7 @@ export class AuditService {
       user_role: userRole,
       metadata: {
         attemptedAction: params.attemptedAction,
-        reason: params.reason
+        reason: params.reason,
       },
     };
 
@@ -354,22 +392,26 @@ export class AuditService {
       return [];
     }
 
-    return (data || []).map(row => ({
-      id: row.id,
-      eventType: row.event_type,
-      severity: row.severity,
-      resourceType: row.resource_type,
-      resourceId: row.resource_id,
-      companyId: row.company_id,
-      userId: row.user_id,
-      userEmail: row.user_email,
-      userRole: row.user_role,
-      before: row.old_data,
-      after: row.new_data,
-      changes: row.changes,
-      metadata: row.metadata,
-      timestamp: row.created_at,
-    }));
+    return (data || []).map(row => {
+      const parsed = this.parseStoredAuditData(row);
+
+      return {
+        id: row.id,
+        eventType: row.event_type,
+        severity: row.severity,
+        resourceType: row.resource_type,
+        resourceId: row.resource_id,
+        companyId: row.company_id,
+        userId: row.user_id,
+        userEmail: parsed.userEmail,
+        userRole: parsed.userRole,
+        before: row.old_data,
+        after: parsed.after,
+        changes: parsed.changes,
+        metadata: parsed.metadata,
+        timestamp: row.created_at,
+      };
+    });
   }
 
   /**
