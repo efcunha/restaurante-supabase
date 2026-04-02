@@ -89,6 +89,7 @@ async function fetchOpsProfile(userId: string): Promise<OpsProfile> {
 export async function signInWithPassword(
   email: string,
   password: string,
+  mfaCode?: string,
 ): Promise<{ token: string; user: OpsUser }> {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
@@ -99,9 +100,13 @@ export async function signInWithPassword(
   const userId = data.user.id;
 
   const profile = await fetchOpsProfile(userId);
+  await enforceOpsMfa(profile, mfaCode);
+
+  const { data: sessionData } = await supabase.auth.getSession();
+  const resolvedToken = sessionData.session?.access_token ?? token;
 
   return {
-    token,
+    token: resolvedToken,
     user: {
       id: userId,
       email: data.user.email ?? email,
@@ -110,6 +115,40 @@ export async function signInWithPassword(
       company_id: profile?.company_id ?? null,
     },
   };
+}
+
+async function enforceOpsMfa(profile: OpsProfile, mfaCode?: string): Promise<void> {
+  if (!env.OPS_REQUIRE_MFA) {
+    return;
+  }
+
+  const role = normalizeOpsRole(profile.role);
+  if (!role || !OPS_ALLOWED_ROLES.has(role)) {
+    return;
+  }
+
+  const { data, error } = await supabase.auth.mfa.listFactors();
+  if (error) {
+    throw new Error('Falha ao validar MFA no restaurante-ops.');
+  }
+
+  const verifiedTotp = (data?.totp || []).filter((factor) => factor.status === 'verified');
+  if (verifiedTotp.length === 0) {
+    throw new Error('MFA obrigatorio no ops. Configure o autenticador no app/web antes de entrar.');
+  }
+
+  if (!mfaCode) {
+    throw new Error('Codigo MFA obrigatorio para acessar o restaurante-ops.');
+  }
+
+  const { error: verifyError } = await supabase.auth.mfa.challengeAndVerify({
+    factorId: verifiedTotp[0].id,
+    code: mfaCode,
+  });
+
+  if (verifyError) {
+    throw new Error('Codigo MFA invalido ou expirado.');
+  }
 }
 
 /**

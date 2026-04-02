@@ -392,6 +392,12 @@ function renderLoginHtml(errorMsg?: string): string {
   const errorBlock = errorMsg
     ? `<div style="margin-bottom:10px;padding:10px 12px;border-radius:10px;background:#fff7ed;border:1px solid #fde8c0;color:#92400e;font-size:13px;font-weight:600;">${errorMsg}</div>`
     : '';
+  const mfaField = env.OPS_REQUIRE_MFA
+    ? `<div class="field">
+          <label class="label" for="mfa_code">Codigo MFA (TOTP)</label>
+          <input class="input" id="mfa_code" name="mfa_code" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="000000" autocomplete="one-time-code" required />
+        </div>`
+    : '';
 
   const body = `<section class="shell">
   <aside class="hero-panel">
@@ -431,6 +437,7 @@ function renderLoginHtml(errorMsg?: string): string {
           <label class="label" for="password">Senha</label>
           <input class="input" id="password" name="password" type="password" placeholder="********" autocomplete="current-password" required />
         </div>
+        ${mfaField}
         <button class="btn-primary" type="submit">ENTRAR</button>
       </form>
 
@@ -1560,8 +1567,9 @@ function startServer() {
         try {
           const raw = await readBody(req);
           const body = parseFormBody(raw);
-          const { email, password } = body;
+          const { email, password, mfa_code } = body;
           const normalizedEmail = String(email || '').toLowerCase().trim();
+          const normalizedMfaCode = String(mfa_code || '').trim();
           const clientIp = getRequestIp(req);
           rateKey = `login:${clientIp}:${normalizedEmail}`;
 
@@ -1601,15 +1609,18 @@ function startServer() {
             return;
           }
 
-          if (!email || !password) {
+          if (!email || !password || (env.OPS_REQUIRE_MFA && !normalizedMfaCode)) {
             res.writeHead(400, { 'content-type': 'text/html; charset=utf-8' });
-            res.end(renderLoginHtml('Email e senha sao obrigatorios.'));
+            res.end(renderLoginHtml(env.OPS_REQUIRE_MFA
+              ? 'Email, senha e codigo MFA sao obrigatorios.'
+              : 'Email e senha sao obrigatorios.'));
             return;
           }
 
           const { token } = await signInWithPassword(
             normalizedEmail,
             String(password),
+            env.OPS_REQUIRE_MFA ? normalizedMfaCode : undefined,
           );
 
           // Reset rate limit on successful login
@@ -1685,7 +1696,7 @@ function startServer() {
           fetchRecentCompanies(8),
         ]);
         res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-        res.end(renderDashboardHtml(user, { kpis, companies }));
+        res.end(renderDashboardHtml(user, { kpis, companies, opsRequireMfa: env.OPS_REQUIRE_MFA }));
         return;
       }
 
