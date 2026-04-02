@@ -25,7 +25,7 @@ type CancelledComandaRow = {
 
 type ItemCancellationLog = {
   created_at: string;
-  user_email: string | null;
+  operator_name: string | null;
   metadata: {
     itemName?: string;
     quantity?: number;
@@ -33,6 +33,13 @@ type ItemCancellationLog = {
     comandaNumber?: string | number;
     source?: string;
   } | null;
+};
+
+type ItemCancellationLogRow = {
+  created_at: string;
+  user_email: string | null;
+  metadata: Record<string, any> | null;
+  new_data: Record<string, any> | null;
 };
 
 interface Props {
@@ -55,6 +62,29 @@ function toIsoStart(dateKey: string): string {
 
 function toIsoEnd(dateKey: string): string {
   return `${dateKey}T23:59:59.999Z`;
+}
+
+function extractItemCancellationMetadata(newData: Record<string, any> | null) {
+  if (!newData || typeof newData !== 'object' || Array.isArray(newData)) {
+    return null;
+  }
+
+  const auditMetadata = newData.__audit?.metadata;
+  if (auditMetadata && typeof auditMetadata === 'object' && !Array.isArray(auditMetadata)) {
+    return auditMetadata;
+  }
+
+  if (
+    'itemName' in newData ||
+    'quantity' in newData ||
+    'estimatedValue' in newData ||
+    'comandaNumber' in newData ||
+    'source' in newData
+  ) {
+    return newData;
+  }
+
+  return null;
 }
 
 export default function CancellationReportScreen({ onClose }: Props) {
@@ -100,7 +130,7 @@ export default function CancellationReportScreen({ onClose }: Props) {
     });
 
     itemLogs.forEach((row) => {
-      const key = row.user_email || 'Não identificado';
+      const key = row.operator_name || 'Não identificado';
       const current = summaryMap.get(key) || {
         operatorName: key,
         comandasCanceladas: 0,
@@ -147,7 +177,7 @@ export default function CancellationReportScreen({ onClose }: Props) {
           .order('canceled_at', { ascending: false }),
         supabase
           .from('audit_logs')
-          .select('created_at,user_email,metadata')
+          .select('created_at,user_email,metadata,new_data')
           .eq('company_id', user.companyId)
           .eq('event_type', 'order.item_cancelled')
           .gte('created_at', startIso)
@@ -158,8 +188,16 @@ export default function CancellationReportScreen({ onClose }: Props) {
       if (comandasResult.error) throw comandasResult.error;
       if (logsResult.error) throw logsResult.error;
 
+      const rawItemLogs = (logsResult.data || []) as ItemCancellationLogRow[];
+
+      const normalizedItemLogs: ItemCancellationLog[] = rawItemLogs.map((row) => ({
+        created_at: row.created_at,
+        operator_name: row.user_email || null,
+        metadata: row.metadata || extractItemCancellationMetadata(row.new_data),
+      }));
+
       setComandas((comandasResult.data || []) as CancelledComandaRow[]);
-      setItemLogs((logsResult.data || []) as ItemCancellationLog[]);
+      setItemLogs(normalizedItemLogs);
 
       // Telemetria não bloqueante: apenas rastreabilidade de consulta do relatório.
       auditService.log({
@@ -172,7 +210,7 @@ export default function CancellationReportScreen({ onClose }: Props) {
           startDate,
           endDate,
           cancelledComandasCount: (comandasResult.data || []).length,
-          cancelledItemsCount: (logsResult.data || []).length,
+          cancelledItemsCount: normalizedItemLogs.length,
         },
       }).catch(() => undefined);
     } catch (e: any) {
