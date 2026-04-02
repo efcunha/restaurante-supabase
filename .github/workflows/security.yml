@@ -29,42 +29,6 @@ jobs:
       - name: Run Gitleaks
         uses: gitleaks/gitleaks-action@v2
 
-      - name: Install Snyk CLI
-        run: npm install -g snyk@latest
-
-      - name: Validate SNYK_TOKEN
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        run: |
-          if [ -z "$SNYK_TOKEN" ]; then
-            echo "SNYK_TOKEN is not configured. Add this repository secret to run Snyk scans." >&2
-            exit 1
-          fi
-
-      - name: Snyk Gradle Scan (android/build.gradle)
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        run: |
-          snyk auth "$SNYK_TOKEN"
-          snyk test \
-            --severity-threshold=high \
-            --package-manager=gradle \
-            --file=restaurante-app/android/build.gradle \
-            --project-name=restaurante-app-android-root-gradle \
-            restaurante-app/android
-
-      - name: Snyk Gradle Scan (android/app/build.gradle)
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        run: |
-          snyk auth "$SNYK_TOKEN"
-          snyk test \
-            --severity-threshold=high \
-            --package-manager=gradle \
-            --file=restaurante-app/android/app/build.gradle \
-            --project-name=restaurante-app-android-app-gradle \
-            restaurante-app/android
-
       # 🔍 Scan geral (Docker, libs, etc.)
       - name: Run Trivy
         uses: aquasecurity/trivy-action@v0.35.0
@@ -80,9 +44,70 @@ jobs:
       - name: Run audit
         run: npm audit --audit-level=high
 
+  snyk-gradle:
+    name: Snyk Gradle (${{ matrix.projectName }})
+    runs-on: ubuntu-latest
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - gradleFile: restaurante-app/android/build.gradle
+            projectName: restaurante-app-android-root-gradle
+          - gradleFile: restaurante-app/android/app/build.gradle
+            projectName: restaurante-app-android-app-gradle
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Setup Java (Gradle scans)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Snyk CLI
+        run: npm install -g snyk@latest
+
+      - name: Validate SNYK_TOKEN
+        run: |
+          if [ -z "$SNYK_TOKEN" ]; then
+            echo "SNYK_TOKEN is not configured. Add this repository secret to run Snyk scans." >&2
+            exit 1
+          fi
+
+      - name: Snyk Gradle Scan
+        run: |
+          mkdir -p reports
+          snyk auth "$SNYK_TOKEN"
+          snyk test \
+            --severity-threshold=high \
+            --package-manager=gradle \
+            --file=${{ matrix.gradleFile }} \
+            --project-name=${{ matrix.projectName }} \
+            --json-file-output=reports/${{ matrix.projectName }}.json \
+            restaurante-app/android
+
+      - name: Upload Snyk Gradle report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snyk-gradle-${{ matrix.projectName }}
+          path: reports/${{ matrix.projectName }}.json
+          retention-days: 14
+
   deploy:
     name: Deploy to Railway
-    needs: security
+    needs:
+      - security
+      - snyk-gradle
     runs-on: ubuntu-latest
     if: success()
 
