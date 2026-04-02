@@ -366,7 +366,7 @@ const { data: profile, error: profileError } = await supabase
               });
               appendLog(`❌ Erro ao buscar perfil: ${errMsg}`);
               setLoading(false);
-              return;
+              throw new Error(errMsg);
           }
 
           // 2. Fetch Company (Separate call)
@@ -461,6 +461,7 @@ const { data: profile, error: profileError } = await supabase
           appendLog('❌ ' + errMsg);
           setInitError(errMsg);
           setLoading(false);
+          throw error;
       }
   };
 
@@ -472,10 +473,16 @@ const { data: profile, error: profileError } = await supabase
           appendLog('🔐 Login iniciado...');
 
           const signInStartTime = Date.now();
-          const { data, error } = await supabase.auth.signInWithPassword({
+          const signInResult = await Promise.race([
+            supabase.auth.signInWithPassword({
               email,
-              password: senha
-          });
+              password: senha,
+            }),
+            new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error('Timeout no login. Verifique sua conexao e tente novamente.')), 15000)
+            ),
+          ]);
+          const { data, error } = signInResult as Awaited<ReturnType<typeof supabase.auth.signInWithPassword>>;
           const signInDuration = Date.now() - signInStartTime;
           appendLog(`✓ signInWithPassword: ${signInDuration}ms`);
 
@@ -486,28 +493,33 @@ const { data: profile, error: profileError } = await supabase
               // Biometric auth uses server-side session refresh, not password replay
               
               const reloadStartTime = Date.now();
-              await reloadUserData(data.session.user, { rotateSessionKey: true });
+              await Promise.race([
+                reloadUserData(data.session.user, { rotateSessionKey: true }),
+                new Promise<never>((_, reject) =>
+                  setTimeout(() => reject(new Error('Timeout ao carregar dados do usuario.')), 15000)
+                ),
+              ]);
               const reloadDuration = Date.now() - reloadStartTime;
               appendLog(`✓ reloadUserData: ${reloadDuration}ms`);
               
               const totalDuration = Date.now() - loginStartTime;
               appendLog(`✅ Login concluído em ${totalDuration}ms`);
               
-              setLoading(false);
-              isManualLoginRef.current = false;
               return true;
           }
-          return false;
+          throw new Error('Sessao nao retornada pelo servidor.');
 
       } catch (error: any) {
           const totalDuration = Date.now() - loginStartTime;
           appendLog(`❌ Login falhou em ${totalDuration}ms: ${error?.message ?? String(error)}`);
           console.error('[SupabaseAuth] Login error:', error);
           setLoading(false);
-          isManualLoginRef.current = false;
-            setPasswordRecoveryMode(false);
+          setPasswordRecoveryMode(false);
           Alert.alert('Erro no Login', mapLoginErrorMessage(error));
           return false;
+      } finally {
+          isManualLoginRef.current = false;
+          setLoading(false);
       }
   };
 
@@ -582,7 +594,13 @@ const { data: profile, error: profileError } = await supabase
           // leaving the SDK's own persisted session intact.
           let sessionUser = null;
 
-          const { data: existingSessionData, error: existingSessionError } = await supabase.auth.getSession();
+          const existingSessionResult = await Promise.race([
+            supabase.auth.getSession(),
+            new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error('Timeout ao recuperar sessao biometrica.')), 15000)
+            ),
+          ]);
+          const { data: existingSessionData, error: existingSessionError } = existingSessionResult as Awaited<ReturnType<typeof supabase.auth.getSession>>;
           if (!existingSessionError && existingSessionData?.session?.user) {
               // Validate that the persisted session belongs to the enrolled user
               if (existingSessionData.session.user.id === lastUserId) {
@@ -624,7 +642,12 @@ const { data: profile, error: profileError } = await supabase
           }
 
           // Step 3: Reload user profile data
-          await reloadUserData(sessionUser, { rotateSessionKey: true });
+          await Promise.race([
+            reloadUserData(sessionUser, { rotateSessionKey: true }),
+            new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error('Timeout ao carregar perfil apos biometria.')), 15000)
+            ),
+          ]);
           setLoading(false);
           return { success: true };
 
