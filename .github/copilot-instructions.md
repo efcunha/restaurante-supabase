@@ -42,11 +42,18 @@ Além disso, atue com forte mentalidade de **SecOps (Security + DevOps)**, aplic
 - Indique padrões usados no mercado
 - Evite respostas genéricas ou superficiais
 
+**Política de idioma:**
+
+- Respostas, explicações, comentários no código e PR descriptions: **sempre em português**.
+- Nomes de variáveis, funções, tipos, arquivos e branches: **sempre em inglês** (padrão de mercado, compatível com libs e ferramentas).
+- Mensagens de commit: **inglês** no subject line (ex: `fix: prevent duplicate payment insert`); detalhes no body podem ser em português quando necessário.
+- Nunca misture idiomas dentro de um mesmo escopo (ex: variável em português + comentário em inglês no mesmo bloco).
+
 ## Repository Context
 
 - `restaurante-app/` is the React Native and Expo mobile app.
 - `restaurante-web/` is the web project and may mirror some mobile flows, but React Native guidance should only be applied where relevant.
-- `restaurante-ops/` is the SaaS operations/admin service (auth, metrics, billing and operational reconciliation).
+- `restaurante-ops/` is the SaaS operations/admin service (auth, metrics, billing and operational reconciliation). **Este é o módulo mais crítico do repositório** — concentra billing, reconciliação financeira e autenticação. Toda proposta neste módulo exige atenção redobrada a segurança, idempotência e auditabilidade. Skill routing: use `.github/skills/restaurante-supabase/SKILL.md` como primária; não há skill dedicada instalada para `restaurante-ops`; aplique conservative fallback alinhado aos padrões existentes.
 - Prefer solutions that fit the current repository structure and existing patterns.
 
 ## Project Guardrails Snapshot (Synced from Skill)
@@ -332,6 +339,59 @@ Estas regras se aplicam a qualquer proposta, revisão ou implementação de cód
 - Indique padrões de mercado quando relevante (ex: padrão Repository, Clean Architecture, BFF).
 - Aponte riscos e trade-offs de cada abordagem antes de recomendar.
 
+### Testes — política obrigatória
+- Toda feature nova deve vir acompanhada de pelo menos um teste: unitário (lógica de negócio isolada) ou E2E (fluxo crítico via Playwright).
+- Fluxos críticos (`Balcao`, `Mesa`, `Delivery`, `Montagem`, `Billing`) exigem cobertura E2E antes de qualquer merge.
+- Smoke tests são obrigatórios para mudanças em: auth, RLS, billing, CORS, rate limiting — executados na mesma sessão de trabalho.
+- O Copilot deve sempre indicar quais testes existentes podem ser afetados por uma mudança proposta e sugerir casos de teste quando nenhum existir.
+- Nunca proponha remoção ou comentário de testes existentes sem justificativa explícita e aprovação.
+
+### Política de LGPD e dados pessoais (PII)
+- Antes de propor qualquer feature que envolva coleta, armazenamento, exibição ou transmissão de dados pessoais (nome, CPF, endereço, telefone, e-mail, localização, dados de pagamento), verifique conformidade com a LGPD.
+- Referência: `docs/LGPD/LGPD-COMPLIANCE-GUIDE.md`.
+- Regras mínimas obrigatórias:
+  - Dados de PII não devem ser logados em texto claro (logs, console, Sentry).
+  - Acesso a PII deve ser restrito por RLS e role (`company_id` + role mínimo necessário).
+  - Retenção e exclusão de dados devem respeitar as políticas do guia de LGPD.
+  - Se a feature proposta impactar PII e o guia não cobrir o caso, sinalize explicitamente antes de implementar.
+
+## Definition of Done (DoD) — Feature Completa
+
+Uma feature só está completa neste repositório quando **todos** os itens abaixo estiverem atendidos:
+
+- [ ] Código implementado com tipagem forte (sem `any` injustificado)
+- [ ] Migration de banco criada em `database-backup/migrations/` (se houver mudança de schema)
+- [ ] Migration aplicada remotamente e verificada em `supabase_migrations.schema_migrations`
+- [ ] RLS validada remotamente em `pg_policies` (se a feature acessa ou expõe dados)
+- [ ] Feature flag criada (`*_UI_NEXT`) se a mudança for de UI ou rollout progressivo
+- [ ] Testes: unitário ou E2E cobrindo o fluxo principal
+- [ ] Smoke test executado em produção (ou ambiente equivalente) para mudanças sensíveis
+- [ ] Sem secrets hardcoded; variáveis de ambiente documentadas em `.env.example`
+- [ ] LGPD verificada se a feature envolve PII
+- [ ] PR description em inglês com contexto, decisões técnicas e evidência de validação
+- [ ] Skill consultada e skill routing documentado na PR se aplicável
+
+## Security PR Checklist (Gate Obrigatório)
+
+Para qualquer PR que envolva: **auth, RLS, billing, CORS, rate limiting, secrets, roles, PII ou Edge Functions**, o Copilot deve incluir o seguinte bloco no início da proposta de implementação:
+
+```text
+🔒 Security Gate — Checklist obrigatório para esta mudança:
+
+[ ] Nenhum secret hardcoded (verificado em todo código proposto)
+[ ] Menor privilégio aplicado: service role key não exposta ao cliente
+[ ] Input validation presente em todas as bordas do sistema afetadas
+[ ] RLS cobre os novos dados/tabelas envolvidos
+[ ] CORS/headers de segurança preservados ou endurecidos
+[ ] Logs não expõem PII em texto claro
+[ ] Idempotência garantida em operações de billing/webhook
+[ ] Smoke test planejado para validação pós-deploy
+[ ] LGPD verificada (se PII envolvido)
+[ ] Evidência de validação será documentada no mesmo ciclo de trabalho
+```
+
+Se qualquer item não puder ser confirmado, a proposta deve indicar explicitamente o risco e sugerir mitigação antes de prosseguir.
+
 ## Quick Prompts (RN/CI)
 
 Use these prompts in Copilot Chat to force explicit skill context:
@@ -410,15 +470,32 @@ Propose CI changes to build and publish emulator/simulator artifacts and include
 Create a safe stacked PR plan for this area, including gh CLI commands and merge order. No dedicated GitHub workflow skill is installed in this repository, so use conservative fallback aligned with existing patterns.
 ```
 
+### Ops service (`restaurante-ops`)
+
+```text
+#file:.github/skills/restaurante-supabase/SKILL.md
+#file:restaurante-ops/src/routes/billing.ts
+
+Review this billing route for security issues, idempotency gaps, and OWASP compliance. Propose hardening with no behavior change.
+```
+
+```text
+#file:.github/skills/restaurante-supabase/SKILL.md
+#file:restaurante-ops/src/services/reconcile.ts
+
+Audit this reconciliation service for atomicity, error handling, and audit trail completeness. Flag any missing rollback paths.
+```
+
 ## Usage Runbook
 
 Use this order to keep responses consistent with mandatory skill checks:
 
-1. Choose scope first (`restaurante-app` or `restaurante-web`) and attach one real target file.
+1. Choose scope first (`restaurante-app`, `restaurante-web`, ou `restaurante-ops`) and attach one real target file.
 2. Attach the primary project skill: `#file:.github/skills/restaurante-supabase/SKILL.md`.
 3. Attach exactly one specialized skill matching the task type when available in the repository.
 4. Ask for a constrained output (plan, checklist, or implementation with no behavior change).
 5. Verify the response starts with the mandatory RN/CI checklist block.
+6. For `restaurante-ops`: confirm that any proposed change addresses security, idempotency, and audit trail before accepting the output.
 
 ## Supabase Migration Workflow (Mandatory)
 
