@@ -532,6 +532,35 @@ class BiometricAuthService {
           return null;
       }
   }
+
+  /**
+   * Store refresh token for biometric login (OAuth2 pattern, not a password).
+   * Stored in SecureStore under SESSION_TOKEN_KEY scoped to userId.
+   */
+  async storeRefreshToken(userId: string, refreshToken: string): Promise<void> {
+    try {
+      await SecureStore.setItemAsync(
+        `${this.SESSION_TOKEN_KEY}_${userId}`,
+        refreshToken
+      );
+      console.log('[BiometricAuth] Refresh token stored for user');
+    } catch (error) {
+      console.error('[BiometricAuth] Error storing refresh token:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Retrieve the stored refresh token for a user.
+   */
+  async getRefreshToken(userId: string): Promise<string | null> {
+    try {
+      return await SecureStore.getItemAsync(`${this.SESSION_TOKEN_KEY}_${userId}`);
+    } catch (error) {
+      console.error('[BiometricAuth] Error retrieving refresh token:', error);
+      return null;
+    }
+  }
 }
 
 export default new BiometricAuthService();
