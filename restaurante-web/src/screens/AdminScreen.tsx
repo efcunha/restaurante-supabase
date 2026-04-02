@@ -381,7 +381,6 @@ export default function AdminScreen() {
   const reports = [
     { name: 'Gerenciar Funcionários', icon: '👥', action: () => setShowFuncionarios(true) },
     { name: 'Estatísticas dos Garçons', icon: '📊', action: () => setShowComandasVisualizacao(true) },
-    { name: 'Gerenciar Entregas/Despacho', icon: '🛵', action: () => navigation.navigate('Entregas') },
     { name: 'Ocorrencias de Entrega', icon: '⚠️', action: () => setShowDeliveryOcorrencias(true) },
     { name: 'Gerenciar Estoque', icon: '📦', action: () => setShowEstoque(true) },
     { name: 'Gerenciar Cardápio', icon: '🍴', action: () => setShowGerenciarCardapio(true) },
