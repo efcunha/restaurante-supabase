@@ -93,23 +93,33 @@ export default function BiometricSetupModal({ visible, onClose, onSuccess }: Pro
         }
 
         // 3. Enroll and Store Credentials
-        await BiometricAuthService.enrollUser(user.uid || user.id, deviceId);
+        const userId = user.uid || user.id;
+        await BiometricAuthService.enrollUser(userId, deviceId);
 
-        // 4. Explicitly persist current tokens so biometric login works even after logout.
-        // The onAuthStateChange fire-and-forget may race; this ensures the tokens are saved.
+        // 4. Persist refresh token directly in BiometricAuthService SecureStore
+        // (primary path for biometric login) and also in AuthPersistenceService (backup).
         try {
             const { data: sessionData } = await supabase.auth.getSession();
-            if (sessionData.session?.access_token && sessionData.session?.refresh_token) {
-                await AuthPersistenceService.persistAuthState(
-                    {
-                        uid: user.uid || user.id,
-                        email: user.email,
-                        displayName: user.nome || user.name,
-                    },
-                    sessionData.session.access_token,
-                    sessionData.session.refresh_token
-                );
-                console.log('[BiometricSetup] Auth state persisted after enrollment');
+            if (sessionData.session?.refresh_token) {
+                // Primary: store refresh token under BiometricAuthService key
+                await BiometricAuthService.storeRefreshToken(userId, sessionData.session.refresh_token);
+                console.log('[BiometricSetup] Refresh token stored in BiometricAuthService');
+
+                // Backup: also persist full auth state for AuthPersistenceService path
+                if (sessionData.session.access_token) {
+                    await AuthPersistenceService.persistAuthState(
+                        {
+                            uid: userId,
+                            email: user.email,
+                            displayName: user.nome || user.name,
+                        },
+                        sessionData.session.access_token,
+                        sessionData.session.refresh_token
+                    );
+                    console.log('[BiometricSetup] Auth state persisted after enrollment');
+                }
+            } else {
+                console.warn('[BiometricSetup] No refresh token available after enrollment');
             }
         } catch (persistError) {
             console.warn('[BiometricSetup] Failed to persist auth state after enrollment:', persistError);
