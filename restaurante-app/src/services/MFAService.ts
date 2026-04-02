@@ -74,22 +74,34 @@ class MFAService {
       friendlyName,
     });
 
-    if (error || !data || data.factor_type !== 'totp' || !data.totp?.uri) {
-      throw new Error(error?.message || 'Nao foi possivel iniciar o cadastro de TOTP.');
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    if (!data) {
+      throw new Error('Nao foi possivel iniciar o cadastro de TOTP. Resposta vazia.');
+    }
+
+    // TOTP data can be in different formats depending on Supabase version
+    const totpData = data.totp || data;
+    const uri = totpData.uri || totpData.totp?.uri;
+    const qrCode = totpData.qr_code || totpData.qrCode || uri;
+
+    if (!uri || !qrCode) {
+      console.error('MFA Enrollment Response:', { data, totpData });
+      throw new Error('Nao foi possivel iniciar o cadastro de TOTP. Dados incompletos.');
     }
 
     const backupCodes = await this.generateBackupCodes();
     await this.storeEnrollmentData(userId, backupCodes);
 
-    const qrCodeUrl = data.totp.qr_code || data.totp.uri;
-
     return {
       secret: {
         id: data.id,
-        uri: data.totp.uri,
-        qrCode: qrCodeUrl,
+        uri,
+        qrCode,
       },
-      qrCodeUrl,
+      qrCodeUrl: qrCode,
       backupCodes,
     };
   }
