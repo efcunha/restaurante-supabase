@@ -56,6 +56,7 @@ import {
 } from './modules/billing-plan-config-operations.js';
 
 const env = buildEnv();
+const opsCompanyId = env.OPS_ALLOWED_COMPANY_ID || 'f85bfdc2-982a-4cf7-b176-bce68426f861';
 
 function getRequestIp(req: IncomingMessage): string {
   const forwarded = req.headers['x-forwarded-for'];
@@ -394,11 +395,11 @@ function renderBaseLayout(title: string, body: string): string {
 </html>`;
 }
 
-function renderLoginHtml(errorMsg?: string): string {
+function renderLoginHtml(requireMfa: boolean, errorMsg?: string): string {
   const errorBlock = errorMsg
     ? `<div style="margin-bottom:10px;padding:10px 12px;border-radius:10px;background:#fff7ed;border:1px solid #fde8c0;color:#92400e;font-size:13px;font-weight:600;">${errorMsg}</div>`
     : '';
-  const mfaField = env.OPS_REQUIRE_MFA
+  const mfaField = requireMfa
     ? `<div class="field">
           <label class="label" for="mfa_code">Codigo MFA (TOTP)</label>
           <input class="input" id="mfa_code" name="mfa_code" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="000000" autocomplete="one-time-code" required />
@@ -462,6 +463,44 @@ function buildDashboardRedirect(notice?: string, error?: string): string {
   if (error) params.set('error', error);
   const query = params.toString();
   return query ? `/dashboard?${query}` : '/dashboard';
+}
+
+function mapOpsLoginErrorMessage(message: string, requireMfa: boolean): string {
+  const normalized = String(message || '').toLowerCase();
+
+  if (normalized.includes('invalid login credentials') || normalized.includes('invalid_credentials')) {
+    return 'Email ou senha incorretos.';
+  }
+
+  if (normalized.includes('perfil do usuario nao encontrado') || normalized.includes('usuario sem permissao') || normalized.includes('empresa autorizada')) {
+    return 'Seu usuario nao tem permissao para acessar o painel ops.';
+  }
+
+  if (normalized.includes('configure o autenticador') || normalized.includes('mfa obrigatorio no ops')) {
+    return 'Este usuario ainda nao cadastrou um autenticador. Cadastre o MFA no app ou web antes de entrar no ops.';
+  }
+
+  if (normalized.includes('codigo mfa obrigatorio')) {
+    return 'Informe o codigo do Google Authenticator ou Microsoft Authenticator para entrar.';
+  }
+
+  if (normalized.includes('codigo mfa invalido') || normalized.includes('mfa invalido') || normalized.includes('expirado')) {
+    return 'Codigo do autenticador invalido ou expirado. Gere um novo codigo e tente novamente.';
+  }
+
+  if (normalized.includes('falha ao validar mfa')) {
+    return 'Nao foi possivel validar o autenticador agora. Tente novamente em instantes.';
+  }
+
+  if (normalized.includes('sessao nao criada')) {
+    return 'Nao foi possivel iniciar a sessao. Tente novamente.';
+  }
+
+  if (requireMfa) {
+    return 'Nao foi possivel concluir o login com MFA. Revise seus dados e tente novamente.';
+  }
+
+  return 'Nao foi possivel concluir o login. Revise seus dados e tente novamente.';
 }
 
 function renderRegisterHtml(): string {
@@ -1558,8 +1597,9 @@ function startServer() {
 
       // ---- Telas publicas de auth ----
       if (req.method === 'GET' && path === '/login') {
+        const securitySettings = await getOpsSecuritySettings(opsCompanyId).catch(() => ({ requireMfa: env.OPS_REQUIRE_MFA }));
         res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-        res.end(renderLoginHtml());
+        res.end(renderLoginHtml(securitySettings.requireMfa));
         return;
       }
 
@@ -1579,6 +1619,8 @@ function startServer() {
       if (req.method === 'POST' && path === '/auth/login') {
         let rateKey = '';
         try {
+          const securitySettings = await getOpsSecuritySettings(opsCompanyId).catch(() => ({ requireMfa: env.OPS_REQUIRE_MFA }));
+          const requireMfa = securitySettings.requireMfa;
           const raw = await readBody(req);
           const body = parseFormBody(raw);
           const { email, password, mfa_code } = body;
@@ -1603,7 +1645,7 @@ function startServer() {
               reason: rateLimitResult.unavailableReason,
             });
             res.writeHead(503, { 'content-type': 'text/html; charset=utf-8' });
-            res.end(renderLoginHtml('Servico temporariamente indisponivel. Tente novamente em instantes.'));
+            res.end(renderLoginHtml(requireMfa, 'Servico temporariamente indisponivel. Tente novamente em instantes.'));
             return;
           }
 
@@ -1619,13 +1661,14 @@ function startServer() {
             res.setHeader('X-RateLimit-Remaining', String(rateLimitResult.remaining));
             res.setHeader('X-RateLimit-Reset', rateLimitResult.resetAt.toISOString());
             res.writeHead(429, { 'content-type': 'text/html; charset=utf-8' });
-            res.end(renderLoginHtml('Muitas tentativas de login. Aguarde alguns minutos e tente novamente.'));
+            res.end(renderLoginHtml(requireMfa, 'Muitas tentativas de login. Aguarde alguns minutos e tente novamente.'));
             return;
           }
 
-          if (!email || !password || (env.OPS_REQUIRE_MFA && !normalizedMfaCode)) {
+          if (!email || !password || (requireMfa && !normalizedMfaCode)) {
             res.writeHead(400, { 'content-type': 'text/html; charset=utf-8' });
-            res.end(renderLoginHtml(env.OPS_REQUIRE_MFA
+            res.end(renderLoginHtml(requireMfa,
+              requireMfa
               ? 'Email, senha e codigo MFA sao obrigatorios.'
               : 'Email e senha sao obrigatorios.'));
             return;
@@ -1634,7 +1677,8 @@ function startServer() {
           const { token } = await signInWithPassword(
             normalizedEmail,
             String(password),
-            env.OPS_REQUIRE_MFA ? normalizedMfaCode : undefined,
+            requireMfa,
+            requireMfa ? normalizedMfaCode : undefined,
           );
 
           // Reset rate limit on successful login
@@ -1652,6 +1696,8 @@ function startServer() {
           res.end();
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : 'Erro ao fazer login';
+          const securitySettings = await getOpsSecuritySettings(opsCompanyId).catch(() => ({ requireMfa: env.OPS_REQUIRE_MFA }));
+          const safeLoginMessage = mapOpsLoginErrorMessage(msg, securitySettings.requireMfa);
           logWarn('auth.login_failed', {
             method: req.method,
             path,
@@ -1659,7 +1705,7 @@ function startServer() {
             reason: msg,
           });
           res.writeHead(401, { 'content-type': 'text/html; charset=utf-8' });
-          res.end(renderLoginHtml(msg));
+          res.end(renderLoginHtml(securitySettings.requireMfa, safeLoginMessage));
         }
         return;
       }
@@ -1708,8 +1754,8 @@ function startServer() {
         const [kpis, companies, securitySettings, mfaUsers] = await Promise.all([
           fetchKpiCounts(),
           fetchRecentCompanies(8),
-          getOpsSecuritySettings(env.OPS_ALLOWED_COMPANY_ID || 'f85bfdc2-982a-4cf7-b176-bce68426f861').catch(() => ({ requireMfa: env.OPS_REQUIRE_MFA })),
-          listOpsMfaUsers(env.OPS_ALLOWED_COMPANY_ID || 'f85bfdc2-982a-4cf7-b176-bce68426f861').catch(() => []),
+          getOpsSecuritySettings(opsCompanyId).catch(() => ({ requireMfa: env.OPS_REQUIRE_MFA })),
+          listOpsMfaUsers(opsCompanyId).catch(() => []),
         ]);
         const notice = url.searchParams.get('notice');
         const error = url.searchParams.get('error');
@@ -1730,7 +1776,7 @@ function startServer() {
         const user = await requireAuth(req, res);
         if (!user) return;
         if (user.role !== 'admin') {
-          res.writeHead(302, { Location: buildDashboardRedirect(undefined, 'Apenas admins podem alterar a politica de MFA do ops.') });
+          res.writeHead(302, { Location: buildDashboardRedirect(undefined, 'Somente administradores podem alterar a exigencia de MFA do painel ops.') });
           res.end();
           return;
         }
@@ -1739,11 +1785,11 @@ function startServer() {
           const raw = await readBody(req);
           const body = parseFormBody(raw);
           const requireMfa = String(body.require_mfa || 'false') === 'true';
-          await updateOpsRequireMfa(env.OPS_ALLOWED_COMPANY_ID || 'f85bfdc2-982a-4cf7-b176-bce68426f861', requireMfa);
-          res.writeHead(302, { Location: buildDashboardRedirect(requireMfa ? 'MFA do ops habilitado com sucesso.' : 'MFA do ops desabilitado com sucesso.') });
+          await updateOpsRequireMfa(opsCompanyId, requireMfa);
+          res.writeHead(302, { Location: buildDashboardRedirect(requireMfa ? 'Exigencia de MFA habilitada com sucesso no painel ops.' : 'Exigencia de MFA desabilitada com sucesso no painel ops.') });
           res.end();
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Falha ao atualizar a configuracao de MFA do ops.';
+          const message = error instanceof Error ? error.message : 'Nao foi possivel atualizar a configuracao de MFA do painel ops.';
           res.writeHead(302, { Location: buildDashboardRedirect(undefined, message) });
           res.end();
         }
@@ -1754,7 +1800,7 @@ function startServer() {
         const user = await requireAuth(req, res);
         if (!user) return;
         if (user.role !== 'admin') {
-          res.writeHead(302, { Location: buildDashboardRedirect(undefined, 'Apenas admins podem resetar MFA de usuarios.') });
+          res.writeHead(302, { Location: buildDashboardRedirect(undefined, 'Somente administradores podem remover autenticadores MFA de usuarios.') });
           res.end();
           return;
         }
@@ -1764,19 +1810,19 @@ function startServer() {
           const body = parseFormBody(raw);
           const targetUserId = String(body.target_user_id || '').trim();
           if (!targetUserId) {
-            res.writeHead(302, { Location: buildDashboardRedirect(undefined, 'Usuario alvo obrigatorio para reset de MFA.') });
+            res.writeHead(302, { Location: buildDashboardRedirect(undefined, 'Selecione um usuario valido para remover os autenticadores MFA.') });
             res.end();
             return;
           }
 
-          const removedCount = await resetUserMfaFactors(env.OPS_ALLOWED_COMPANY_ID || 'f85bfdc2-982a-4cf7-b176-bce68426f861', targetUserId);
+          const removedCount = await resetUserMfaFactors(opsCompanyId, targetUserId);
           const notice = removedCount > 0
-            ? `MFA do usuario resetado com sucesso (${removedCount} fator(es) removido(s)).`
-            : 'Usuario sem fatores MFA cadastrados.';
+            ? `Autenticadores MFA removidos com sucesso (${removedCount} item(ns) removido(s)).`
+            : 'O usuario selecionado nao possui autenticadores MFA cadastrados.';
           res.writeHead(302, { Location: buildDashboardRedirect(notice) });
           res.end();
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Falha ao resetar MFA do usuario.';
+          const message = error instanceof Error ? error.message : 'Nao foi possivel remover os autenticadores MFA do usuario.';
           res.writeHead(302, { Location: buildDashboardRedirect(undefined, message) });
           res.end();
         }

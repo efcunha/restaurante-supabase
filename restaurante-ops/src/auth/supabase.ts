@@ -89,6 +89,7 @@ async function fetchOpsProfile(userId: string): Promise<OpsProfile> {
 export async function signInWithPassword(
   email: string,
   password: string,
+  requireMfa = false,
   mfaCode?: string,
 ): Promise<{ token: string; user: OpsUser }> {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -100,7 +101,7 @@ export async function signInWithPassword(
   const userId = data.user.id;
 
   const profile = await fetchOpsProfile(userId);
-  await enforceOpsMfa(profile, mfaCode);
+  await enforceOpsMfa(profile, requireMfa, mfaCode);
 
   const { data: sessionData } = await supabase.auth.getSession();
   const resolvedToken = sessionData.session?.access_token ?? token;
@@ -117,8 +118,8 @@ export async function signInWithPassword(
   };
 }
 
-async function enforceOpsMfa(profile: OpsProfile, mfaCode?: string): Promise<void> {
-  if (!env.OPS_REQUIRE_MFA) {
+async function enforceOpsMfa(profile: OpsProfile, requireMfa: boolean, mfaCode?: string): Promise<void> {
+  if (!requireMfa) {
     return;
   }
 

@@ -63,7 +63,7 @@ export async function getOpsSecuritySettings(companyId: string): Promise<OpsSecu
     .single<CompanyRow>();
 
   if (error) {
-    throw new Error('Nao foi possivel carregar as configuracoes de seguranca do ops.');
+    throw new Error('Nao foi possivel carregar as configuracoes de seguranca do painel ops.');
   }
 
   return extractOpsSecuritySettings(data?.settings);
@@ -97,7 +97,7 @@ export async function updateOpsRequireMfa(companyId: string, requireMfa: boolean
     .eq('id', companyId);
 
   if (updateError) {
-    throw new Error('Nao foi possivel salvar a configuracao de MFA do ops.');
+    throw new Error('Nao foi possivel salvar a configuracao de MFA do painel ops.');
   }
 
   return { requireMfa };
@@ -113,7 +113,7 @@ export async function listOpsMfaUsers(companyId: string): Promise<OpsMfaUserRow[
     .returns<ProfileRow[]>();
 
   if (error) {
-    throw new Error('Nao foi possivel listar usuarios elegiveis para gestao de MFA.');
+    throw new Error('Nao foi possivel listar os usuarios elegiveis para gestao de MFA.');
   }
 
   const profiles = (data || [])
@@ -127,11 +127,11 @@ export async function listOpsMfaUsers(companyId: string): Promise<OpsMfaUserRow[
     ]);
 
     if (userError) {
-      throw new Error(`Nao foi possivel carregar o usuario ${profile.id}.`);
+      throw new Error('Nao foi possivel carregar os dados de um dos usuarios administrativos.');
     }
 
     if (factorError) {
-      throw new Error(`Nao foi possivel carregar os fatores MFA do usuario ${profile.id}.`);
+      throw new Error('Nao foi possivel carregar os autenticadores MFA de um dos usuarios administrativos.');
     }
 
     const factors = (factorData?.factors || []).map((factor) => ({
@@ -163,12 +163,12 @@ export async function resetUserMfaFactors(companyId: string, userId: string): Pr
     .single<{ id: string; company_id: string | null }>();
 
   if (profileError || !profile || profile.company_id !== companyId) {
-    throw new Error('Usuario alvo nao pertence a empresa autorizada.');
+    throw new Error('O usuario selecionado nao pertence a empresa autorizada para este painel.');
   }
 
   const { data, error } = await supabase.auth.admin.mfa.listFactors({ userId });
   if (error) {
-    throw new Error('Nao foi possivel consultar os fatores MFA do usuario.');
+    throw new Error('Nao foi possivel consultar os autenticadores MFA do usuario.');
   }
 
   const factors = data?.factors || [];
@@ -179,7 +179,7 @@ export async function resetUserMfaFactors(companyId: string, userId: string): Pr
     });
 
     if (deleteError) {
-      throw new Error('Nao foi possivel resetar o MFA do usuario.');
+      throw new Error('Nao foi possivel remover os autenticadores MFA do usuario.');
     }
   }
 
