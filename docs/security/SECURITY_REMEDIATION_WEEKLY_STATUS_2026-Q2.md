@@ -72,14 +72,30 @@ Legenda de status:
 
 | Item | Escopo | Status | Evidencia | Observacoes |
 |------|--------|--------|-----------|-------------|
-| MFA TOTP com Supabase Auth | app + web | em andamento | `restaurante-app/src/services/MFAService.ts`, `restaurante-web/src/services/MFAService.ts`, `restaurante-app/src/components/MFAVerificationModal.tsx`, `restaurante-web/src/components/MFAVerificationModal.tsx` | Implementacao iniciada: enrollment/challenge/verify em Supabase (`auth.mfa`), modal migrado de resolver Firebase para resolver Supabase e backup codes locais mantidos. |
-| Session fixation hardening | app + web | em andamento | `restaurante-app/src/context/AuthContext.tsx`, `restaurante-web/src/context/AuthContext.tsx`, `restaurante-app/src/screens/LoginScreen.tsx`, `restaurante-web/src/screens/LoginScreen.tsx` | Endurecimento aplicado: signOut preventivo antes de login por credenciais e signOut ao cancelar desafio MFA. Pendente validar runtime controlado app/web apos deploy. |
+| MFA TOTP com Supabase Auth | app + web | concluido | `restaurante-app/src/services/MFAService.ts`, `restaurante-web/src/services/MFAService.ts`, `restaurante-app/src/components/MFAVerificationModal.tsx`, `restaurante-web/src/components/MFAVerificationModal.tsx`, `restaurante-app/src/components/MFASetupModal.tsx`, `restaurante-web/src/components/MFASetupModal.tsx` | Enrollment/challenge/verify em Supabase `auth.mfa` funcionando end-to-end em app e web. UI de setup corrigida (botao no lado correto por plataforma). Validado em producao em 02/04/2026. |
+| Session fixation hardening | app + web | concluido | `restaurante-app/src/context/AuthContext.tsx`, `restaurante-web/src/context/AuthContext.tsx`, `restaurante-app/src/screens/LoginScreen.tsx`, `restaurante-web/src/screens/LoginScreen.tsx` | Endurecimento concluido: signOut preventivo antes de login por credenciais e signOut ao cancelar desafio MFA. Validado em runtime controlado em producao em 02/04/2026. |
 
 ### Ops
 
 | Item | Escopo | Status | Evidencia | Observacoes |
 |------|--------|--------|-----------|-------------|
 | Sessao e cookies endurecidos | ops | concluido | `restaurante-ops/src/auth/session.ts`, smoke manual em 01/04 (15:49 UTC) | Login valido acessa `/dashboard` (200); logout limpa `ops_session` com `Max-Age=0` + `Expires=Thu, 01 Jan 1970`; `/dashboard` apos logout ou com cookie invalido retorna `302 /login` |
+
+---
+
+## Semana 3 (continuacao — 2026-04-02)
+
+### Ops
+
+| Item | Escopo | Status | Evidencia | Observacoes |
+|------|--------|--------|-----------|-------------|
+| MFA setup e reativacao em ops | ops | concluido | `restaurante-ops/src/modules/ops-security.ts`, `restaurante-ops/src/index.ts` (`GET /security/mfa-setup`), `restaurante-ops/src/views/dashboard.ts`, `database-backup/migrations/20260402002000_disable_ops_mfa_emergency.sql` | MFA desabilitado via migration de emergencia para desbloquear acesso; pagina `/security/mfa-setup` criada; dashboard exibe status TOTP do usuario atual; MFA reativado pelo usuario apos configurar TOTP. Validado em producao em 02/04. |
+
+### Monorepo
+
+| Item | Escopo | Status | Evidencia | Observacoes |
+|------|--------|--------|-----------|-------------|
+| LicenseGate cobrindo telas operacionais | app + web | concluido | commit `c0b1042` — `restaurante-app/src/screens/NovoPedidoScreen.tsx`, `ComandaGerenciamentoScreen.tsx`, `RotasDeliveryScreen.tsx`, `restaurante-web/src/screens/NovoPedidoScreen.tsx`, `ComandaGerenciamentoScreen.tsx`, `RotasDeliveryScreen.tsx` | Todas as 6 telas operacionais criticas envolvidas com `<LicenseGate>`. Pre-requisito de billing em producao cumprido. Flags `billing_enabled` e `billing_licenseGate` permanecem `false` ate validacao de assinatura ativa no banco. |
 
 ---
 
@@ -106,7 +122,7 @@ Legenda de status:
 |------|--------|------|---------------|
 | Railway CLI sem autenticacao valida para deploy de variaveis | aberto | time | Impacta o web no Railway. Executar deploy de `restaurante-web` via Railway UI enquanto `railway whoami` retorna `Unauthorized`; renovar com `railway login` quando possivel |
 | Ambiente de staging dedicado inexistente | aberto | time | Usar validacao controlada em producao ate existir ambiente formal |
-| Supabase Auth MFA TOTP ainda desabilitado em runtime | aberto | app + web | Habilitar `auth.mfa.totp.enroll_enabled=true` e `verify_enabled=true` no projeto Supabase alvo, depois executar smoke de login privilegiado com desafio TOTP |
+| Supabase Auth MFA TOTP ainda desabilitado em runtime | concluido (2026-04-02) | app + web | MFA TOTP validado end-to-end em producao. Enrollment, desafio e verificacao confirmados para roles privilegiadas em app e web. |
 | Pinning com gate CONDITIONAL (NO-GO neste ciclo) | monitoramento | app | Reavaliar em novo ciclo quando houver staging, runbook de rotacao/pinning e suite de teste MITM automatizada |
 | OPS-4 sem invoice elegivel para replay de sucesso | aberto | ops | Repetir smoke quando existir invoice `pending` ou `failed`; usar `npm run billing:candidates` para localizar candidatos antes do replay |
 
