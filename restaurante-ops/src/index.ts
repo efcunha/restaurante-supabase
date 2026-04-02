@@ -10,6 +10,7 @@ import {
   listOpsMfaUsers,
   resetUserMfaFactors,
   updateOpsRequireMfa,
+  userHasVerifiedMfa,
 } from './modules/ops-security.js';
 import {
   fetchRecentCompanies,
@@ -1752,11 +1753,12 @@ function startServer() {
       if (path === '/dashboard') {
         const user = await requireAuth(req, res);
         if (!user) return;
-        const [kpis, companies, securitySettings, mfaUsers] = await Promise.all([
+        const [kpis, companies, securitySettings, mfaUsers, currentUserMfaVerified] = await Promise.all([
           fetchKpiCounts(),
           fetchRecentCompanies(8),
           getOpsSecuritySettings(opsCompanyId).catch(() => ({ requireMfa: false })),
           listOpsMfaUsers(opsCompanyId).catch(() => []),
+          userHasVerifiedMfa(user.id).catch(() => false),
         ]);
         const notice = url.searchParams.get('notice');
         const error = url.searchParams.get('error');
@@ -1766,6 +1768,7 @@ function startServer() {
           companies,
           opsRequireMfa: securitySettings.requireMfa,
           mfaUsers,
+          currentUserMfaVerified,
           securityNotice: notice,
           securityError: error,
           canManageSecurity: user.role === 'admin',
@@ -1827,6 +1830,151 @@ function startServer() {
           res.writeHead(302, { Location: buildDashboardRedirect(undefined, message) });
           res.end();
         }
+        return;
+      }
+
+      // ---- GET /security/mfa-setup — configurar MFA pessoal do admin ----
+      if (req.method === 'GET' && path === '/security/mfa-setup') {
+        const user = await requireAuth(req, res);
+        if (!user) return;
+
+        const webBaseUrl = env.WEB_BASE_URL || 'https://restaurante-web.app.br';
+        const mfaSetupUrl = `${webBaseUrl}/admin?tab=mfa-setup`;
+
+        const html = `<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Configurar MFA - Restaurante Ops</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        background: linear-gradient(135deg, #0c7a96 0%, #0a5063 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+      .container {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        max-width: 500px;
+        width: 100%;
+        padding: 40px;
+        text-align: center;
+      }
+      .icon {
+        width: 80px;
+        height: 80px;
+        background: #0c7a96;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 20px;
+        font-size: 40px;
+      }
+      h1 {
+        color: #1d2a35;
+        margin-bottom: 10px;
+        font-size: 28px;
+      }
+      p {
+        color: #6f808d;
+        margin-bottom: 20px;
+        line-height: 1.6;
+      }
+      .step {
+        background: #f5f7fa;
+        border-left: 4px solid #0c7a96;
+        padding: 15px;
+        margin: 20px 0;
+        border-radius: 4px;
+        text-align: left;
+      }
+      .step-number {
+        display: inline-block;
+        background: #0c7a96;
+        color: white;
+        width: 28px;
+        height: 28px;
+        line-height: 28px;
+        border-radius: 50%;
+        font-weight: bold;
+        margin-right: 10px;
+        text-align: center;
+      }
+      .step-text {
+        color: #1d2a35;
+        font-weight: 500;
+        margin-top: 10px;
+      }
+      .button {
+        display: inline-block;
+        background: #0c7a96;
+        color: white;
+        padding: 12px 30px;
+        border-radius: 6px;
+        text-decoration: none;
+        font-weight: 500;
+        margin-top: 20px;
+        border: none;
+        cursor: pointer;
+        font-size: 16px;
+        transition: background 0.3s;
+      }
+      .button:hover {
+        background: #0a5063;
+      }
+      .secondary {
+        background: transparent;
+        color: #0c7a96;
+        border: 2px solid #0c7a96;
+        margin-left: 10px;
+      }
+      .secondary:hover {
+        background: #f5f7fa;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="icon">🔐</div>
+      <h1>Configurar Autenticação de Dois Fatores</h1>
+      <p>Para ativar MFA com Google/Microsoft Authenticator, acesse o painel de configurações no App ou Web.</p>
+      
+      <div class="step">
+        <div><span class="step-number">1</span><strong>Clique no botão abaixo</strong></div>
+        <div class="step-text">Você será redirecionado para o painel web.</div>
+      </div>
+      
+      <div class="step">
+        <div><span class="step-number">2</span><strong>Acesse Admin → Configurar MFA (2FA)</strong></div>
+        <div class="step-text">Clique em "Começar Configuração".</div>
+      </div>
+      
+      <div class="step">
+        <div><span class="step-number">3</span><strong>Escaneie o QR Code</strong></div>
+        <div class="step-text">Use Google Authenticator ou Microsoft Authenticator no seu celular.</div>
+      </div>
+      
+      <div class="step">
+        <div><span class="step-number">4</span><strong>Confirme com o código gerado</strong></div>
+        <div class="step-text">Voltará para o restaurante-ops automaticamente.</div>
+      </div>
+
+      <a href="${mfaSetupUrl}" class="button">Ir para Configurar MFA no App/Web</a>
+      <a href="/dashboard" class="button secondary">Voltar ao Painel</a>
+    </div>
+  </body>
+</html>`;
+
+        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+        res.end(html);
         return;
       }
 

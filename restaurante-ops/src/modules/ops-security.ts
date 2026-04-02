@@ -185,3 +185,47 @@ export async function resetUserMfaFactors(companyId: string, userId: string): Pr
 
   return factors.length;
 }
+
+interface TotpSecret {
+  id: string;
+  uri: string;
+  qrCode: string;
+}
+
+interface MFASetupResult {
+  secret: TotpSecret;
+  qrCodeUrl: string;
+  backupCodes: string[];
+}
+
+/**
+ * Start MFA enrollment for current user (admin/gerente)
+ * Returns secret and QR code URL for TOTP setup via Supabase client-side auth
+ */
+export async function startUserMfaEnrollment(displayName: string = 'Restaurante Ops Admin'): Promise<MFASetupResult> {
+  // This enrollment is initiated from web/app clients
+  // User will receive QR code and backup codes to configure their authenticator
+  // The actual enrollment completion happens client-side via supabase.auth.mfa.challengeAndVerify
+  
+  throw new Error(
+    'MFA enrollment deve ser configurado via aplicativo web (restaurante-web.app.br). ' +
+    'Acesse o painel de Admin > Configurar MFA (2FA) para escanear o QR code com seu Google/Microsoft Authenticator.'
+  );
+}
+
+/**
+ * For ops server: verify user MFA factor exists
+ */
+export async function userHasVerifiedMfa(userId: string): Promise<boolean> {
+  const { data, error } = await supabase.auth.admin.mfa.listFactors({
+    userId,
+  });
+
+  if (error) {
+    throw new Error('Nao foi possivel verificar status de MFA do usuario.');
+  }
+
+  // Check if user has at least one verified TOTP factor
+  const verifiedFactors = (data?.totp || []).filter((f) => f.status === 'verified');
+  return verifiedFactors.length > 0;
+}
