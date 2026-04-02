@@ -26,6 +26,25 @@ export function renderDashboardHtml(user: OpsUser, data?: DashboardData): string
     .map((w) => w[0]?.toUpperCase() ?? '')
     .join('');
 
+  const roleLabel = (role: string) => {
+    if (role === 'admin') return 'admin';
+    if (role === 'gerente') return 'gerente';
+    return role;
+  };
+
+  const factorTypeLabel = (factorType: string) => {
+    if (factorType === 'totp') return 'Google/Microsoft Authenticator';
+    if (factorType === 'phone') return 'Telefone';
+    if (factorType === 'webauthn') return 'Chave de acesso';
+    return factorType;
+  };
+
+  const factorStatusLabel = (status: string) => {
+    if (status === 'verified') return 'verificado';
+    if (status === 'unverified') return 'pendente';
+    return status;
+  };
+
   return `<!doctype html>
 <html lang="pt-BR">
   <head>
@@ -507,42 +526,43 @@ export function renderDashboardHtml(user: OpsUser, data?: DashboardData): string
           </nav>
 
           <div class="security-panel">
-            <div class="security-title">Seguranca de Login (Ops)</div>
+            <div class="security-title">Seguranca de Login do Ops</div>
             <div class="security-row">
               <label class="switch-wrap">
                 <input type="checkbox" ${opsRequireMfa ? 'checked' : ''} disabled />
-                <span>Exigir MFA no login</span>
+                <span>Exigir autenticador no login</span>
               </label>
               <span class="status-pill ${opsRequireMfa ? 'pill-active' : 'pill-trial'}">${opsRequireMfa ? 'Ativado' : 'Desativado'}</span>
             </div>
-            <p class="security-note">Controle manual persistido no painel ops. Quando ativado, o login do ops exige TOTP para operadores administrativos.</p>
+            <p class="security-note">Quando ativado, administradores e gerentes do restaurante-ops precisam informar o codigo do Google Authenticator ou Microsoft Authenticator para entrar.</p>
             ${securityNotice ? `<div class="security-alert notice">${securityNotice}</div>` : ''}
             ${securityError ? `<div class="security-alert error">${securityError}</div>` : ''}
             <form method="post" action="/security/mfa/toggle" class="security-actions">
               <input type="hidden" name="require_mfa" value="${opsRequireMfa ? 'false' : 'true'}" />
-              <button class="security-btn primary" type="submit" ${canManageSecurity ? '' : 'disabled'}>${opsRequireMfa ? 'Desabilitar MFA do Ops' : 'Habilitar MFA do Ops'}</button>
+              <button class="security-btn primary" type="submit" ${canManageSecurity ? '' : 'disabled'}>${opsRequireMfa ? 'Desabilitar exigencia de MFA' : 'Habilitar exigencia de MFA'}</button>
             </form>
 
             <div class="security-user-list">
               ${mfaUsers.length === 0
-                ? '<div class="security-user-card"><div class="security-user-name">Nenhum usuario administrativo encontrado</div><div class="security-user-meta">Os perfis admin/gerente da empresa aparecerao aqui para gestao de fatores MFA.</div></div>'
+                ? '<div class="security-user-card"><div class="security-user-name">Nenhum usuario administrativo encontrado</div><div class="security-user-meta">Admins e gerentes da empresa aparecerao aqui para consulta e reset do autenticador.</div></div>'
                 : mfaUsers.map((mfaUser) => `
                   <div class="security-user-card">
                     <div class="security-user-top">
                       <div>
                         <div class="security-user-name">${mfaUser.fullName || mfaUser.email}</div>
-                        <div class="security-user-meta">${mfaUser.email} • role ${mfaUser.role} • ${mfaUser.verifiedFactorCount}/${mfaUser.factorCount} fator(es) verificado(s)</div>
+                        <div class="security-user-meta">${mfaUser.email} • perfil ${roleLabel(mfaUser.role)} • ${mfaUser.verifiedFactorCount}/${mfaUser.factorCount} autenticador(es) verificado(s)</div>
                       </div>
-                      <form method="post" action="/security/mfa/reset-user" onsubmit="return confirm('Resetar todos os fatores MFA deste usuario? Ele precisara cadastrar um novo autenticador.')">
+                      <form method="post" action="/security/mfa/reset-user" onsubmit="return confirm('Remover todos os autenticadores MFA deste usuario? Ele precisara cadastrar um novo autenticador para voltar a usar MFA.')">
                         <input type="hidden" name="target_user_id" value="${mfaUser.userId}" />
-                        <button class="security-btn secondary" type="submit" ${(canManageSecurity && mfaUser.factorCount > 0) ? '' : 'disabled'}>Resetar MFA</button>
+                        <button class="security-btn secondary" type="submit" ${(canManageSecurity && mfaUser.factorCount > 0) ? '' : 'disabled'}>Remover autenticadores</button>
                       </form>
                     </div>
                     <div class="factor-list">
                       ${mfaUser.factors.length === 0
-                        ? '<div class="factor-item">Sem fatores cadastrados.</div>'
-                        : mfaUser.factors.map((factor) => `<div class="factor-item">${factor.factorType} • ${factor.status}${factor.friendlyName ? ` • ${factor.friendlyName}` : ''}</div>`).join('')}
+                        ? '<div class="factor-item">Sem autenticador cadastrado.</div>'
+                        : mfaUser.factors.map((factor) => `<div class="factor-item">${factorTypeLabel(factor.factorType)} • ${factorStatusLabel(factor.status)}${factor.friendlyName ? ` • ${factor.friendlyName}` : ''}</div>`).join('')}
                     </div>
+                    <div class="security-note">Perdeu ou trocou de celular? Remova os autenticadores acima e peça para o colaborador cadastrar um novo MFA no app ou web.</div>
                   </div>
                 `).join('')}
             </div>
