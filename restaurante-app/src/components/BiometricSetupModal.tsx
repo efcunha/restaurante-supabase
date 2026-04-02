@@ -23,6 +23,7 @@ import BiometricAuthService from '../services/BiometricAuthService';
 import { useAuth } from '../context/AuthContext';
 import * as Device from 'expo-device';
 import { supabase } from '../config/SupabaseConfig';
+import AuthPersistenceService from '../services/AuthPersistenceService';
 import { colors } from '../theme/colors';
 interface Props {
   visible: boolean;
@@ -40,7 +41,7 @@ export default function BiometricSetupModal({ visible, onClose, onSuccess }: Pro
   const [unavailableReason, setUnavailableReason] = useState<string>('');
   const [password, setPassword] = useState('');
   const [showPasswordInput, setShowPasswordInput] = useState(false);
-  const [isPasswordFocused, setIsPasswordFocused] = useState(false);
+
 
   useEffect(() => {
     if (visible) {
@@ -94,6 +95,26 @@ export default function BiometricSetupModal({ visible, onClose, onSuccess }: Pro
         // 3. Enroll and Store Credentials
         await BiometricAuthService.enrollUser(user.uid || user.id, deviceId);
 
+        // 4. Explicitly persist current tokens so biometric login works even after logout.
+        // The onAuthStateChange fire-and-forget may race; this ensures the tokens are saved.
+        try {
+            const { data: sessionData } = await supabase.auth.getSession();
+            if (sessionData.session?.access_token && sessionData.session?.refresh_token) {
+                await AuthPersistenceService.persistAuthState(
+                    {
+                        uid: user.uid || user.id,
+                        email: user.email,
+                        displayName: user.nome || user.name,
+                    },
+                    sessionData.session.access_token,
+                    sessionData.session.refresh_token
+                );
+                console.log('[BiometricSetup] Auth state persisted after enrollment');
+            }
+        } catch (persistError) {
+            console.warn('[BiometricSetup] Failed to persist auth state after enrollment:', persistError);
+        }
+
         Alert.alert(
             'Sucesso',
             `${biometricType} habilitado com sucesso!`,
@@ -130,10 +151,6 @@ export default function BiometricSetupModal({ visible, onClose, onSuccess }: Pro
 
   const initEnrollment = () => {
       setShowPasswordInput(true);
-      // Focus on input after a delay to ensure it's rendered (longer on Android)
-      setTimeout(() => {
-        passwordInputRef.current?.focus();
-      }, Platform.OS === 'android' ? 300 : 100);
   };
 
   const getBiometricIcon = () => {
@@ -249,12 +266,7 @@ export default function BiometricSetupModal({ visible, onClose, onSuccess }: Pro
             <View style={styles.passwordFormContainer}>
               <Text style={styles.label}>Confirme sua senha:</Text>
               
-              <View 
-                style={[
-                  styles.inputWrapper,
-                  isPasswordFocused && styles.inputWrapperFocused
-                ]}
-              >
+              <View style={styles.inputWrapper}>
                 <TextInput 
                   ref={passwordInputRef}
                   style={styles.input}
@@ -267,8 +279,6 @@ export default function BiometricSetupModal({ visible, onClose, onSuccess }: Pro
                   autoCorrect={false}
                   returnKeyType="done"
                   onSubmitEditing={verifyAndEnroll}
-                  onFocus={() => setIsPasswordFocused(true)}
-                  onBlur={() => setIsPasswordFocused(false)}
                   editable={!loading}
                   blurOnSubmit={false}
                 />
@@ -515,11 +525,6 @@ const styles = StyleSheet.create({
   },
   inputWrapperFocused: {
     borderColor: colors.primary,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   input: {
       flex: 1,
