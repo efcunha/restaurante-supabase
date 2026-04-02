@@ -6,6 +6,12 @@ import { requireAuth } from './auth/middleware.js';
 import { renderDashboardHtml } from './views/dashboard.js';
 import type { OpsUser } from './auth/supabase.js';
 import {
+  getOpsSecuritySettings,
+  listOpsMfaUsers,
+  resetUserMfaFactors,
+  updateOpsRequireMfa,
+} from './modules/ops-security.js';
+import {
   fetchRecentCompanies,
   fetchInvoiceStats,
   fetchRecentInvoices,
@@ -448,6 +454,14 @@ function renderLoginHtml(errorMsg?: string): string {
 </section>`;
 
   return renderBaseLayout('restaurante-ops | login', body);
+}
+
+function buildDashboardRedirect(notice?: string, error?: string): string {
+  const params = new URLSearchParams();
+  if (notice) params.set('notice', notice);
+  if (error) params.set('error', error);
+  const query = params.toString();
+  return query ? `/dashboard?${query}` : '/dashboard';
 }
 
 function renderRegisterHtml(): string {
@@ -1691,12 +1705,81 @@ function startServer() {
       if (path === '/dashboard') {
         const user = await requireAuth(req, res);
         if (!user) return;
-        const [kpis, companies] = await Promise.all([
+        const [kpis, companies, securitySettings, mfaUsers] = await Promise.all([
           fetchKpiCounts(),
           fetchRecentCompanies(8),
+          getOpsSecuritySettings(env.OPS_ALLOWED_COMPANY_ID || 'f85bfdc2-982a-4cf7-b176-bce68426f861').catch(() => ({ requireMfa: env.OPS_REQUIRE_MFA })),
+          listOpsMfaUsers(env.OPS_ALLOWED_COMPANY_ID || 'f85bfdc2-982a-4cf7-b176-bce68426f861').catch(() => []),
         ]);
+        const notice = url.searchParams.get('notice');
+        const error = url.searchParams.get('error');
         res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-        res.end(renderDashboardHtml(user, { kpis, companies, opsRequireMfa: env.OPS_REQUIRE_MFA }));
+        res.end(renderDashboardHtml(user, {
+          kpis,
+          companies,
+          opsRequireMfa: securitySettings.requireMfa,
+          mfaUsers,
+          securityNotice: notice,
+          securityError: error,
+          canManageSecurity: user.role === 'admin',
+        }));
+        return;
+      }
+
+      if (req.method === 'POST' && path === '/security/mfa/toggle') {
+        const user = await requireAuth(req, res);
+        if (!user) return;
+        if (user.role !== 'admin') {
+          res.writeHead(302, { Location: buildDashboardRedirect(undefined, 'Apenas admins podem alterar a politica de MFA do ops.') });
+          res.end();
+          return;
+        }
+
+        try {
+          const raw = await readBody(req);
+          const body = parseFormBody(raw);
+          const requireMfa = String(body.require_mfa || 'false') === 'true';
+          await updateOpsRequireMfa(env.OPS_ALLOWED_COMPANY_ID || 'f85bfdc2-982a-4cf7-b176-bce68426f861', requireMfa);
+          res.writeHead(302, { Location: buildDashboardRedirect(requireMfa ? 'MFA do ops habilitado com sucesso.' : 'MFA do ops desabilitado com sucesso.') });
+          res.end();
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Falha ao atualizar a configuracao de MFA do ops.';
+          res.writeHead(302, { Location: buildDashboardRedirect(undefined, message) });
+          res.end();
+        }
+        return;
+      }
+
+      if (req.method === 'POST' && path === '/security/mfa/reset-user') {
+        const user = await requireAuth(req, res);
+        if (!user) return;
+        if (user.role !== 'admin') {
+          res.writeHead(302, { Location: buildDashboardRedirect(undefined, 'Apenas admins podem resetar MFA de usuarios.') });
+          res.end();
+          return;
+        }
+
+        try {
+          const raw = await readBody(req);
+          const body = parseFormBody(raw);
+          const targetUserId = String(body.target_user_id || '').trim();
+          if (!targetUserId) {
+            res.writeHead(302, { Location: buildDashboardRedirect(undefined, 'Usuario alvo obrigatorio para reset de MFA.') });
+            res.end();
+            return;
+          }
+
+          const removedCount = await resetUserMfaFactors(env.OPS_ALLOWED_COMPANY_ID || 'f85bfdc2-982a-4cf7-b176-bce68426f861', targetUserId);
+          const notice = removedCount > 0
+            ? `MFA do usuario resetado com sucesso (${removedCount} fator(es) removido(s)).`
+            : 'Usuario sem fatores MFA cadastrados.';
+          res.writeHead(302, { Location: buildDashboardRedirect(notice) });
+          res.end();
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Falha ao resetar MFA do usuario.';
+          res.writeHead(302, { Location: buildDashboardRedirect(undefined, message) });
+          res.end();
+        }
         return;
       }
 

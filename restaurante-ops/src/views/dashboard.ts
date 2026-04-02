@@ -1,16 +1,25 @@
 import type { OpsUser } from '../auth/supabase.js';
 import type { KpiCounts, CompanyRow } from '../modules/data.js';
+import type { OpsMfaUserRow } from '../modules/ops-security.js';
 
 export interface DashboardData {
   kpis: KpiCounts;
   companies: CompanyRow[];
   opsRequireMfa?: boolean;
+  mfaUsers?: OpsMfaUserRow[];
+  securityNotice?: string | null;
+  securityError?: string | null;
+  canManageSecurity?: boolean;
 }
 
 export function renderDashboardHtml(user: OpsUser, data?: DashboardData): string {
   const kpis = data?.kpis ?? { active: 0, trialing: 0, pastDue: 0, mrr: 0 };
   const companies = data?.companies ?? [];
   const opsRequireMfa = data?.opsRequireMfa === true;
+  const mfaUsers = data?.mfaUsers ?? [];
+  const securityNotice = data?.securityNotice ?? null;
+  const securityError = data?.securityError ?? null;
+  const canManageSecurity = data?.canManageSecurity === true;
   const initials = (user.full_name ?? user.email)
     .split(' ')
     .slice(0, 2)
@@ -302,6 +311,99 @@ export function renderDashboardHtml(user: OpsUser, data?: DashboardData): string
         color: var(--ink-500);
       }
 
+      .security-alert {
+        margin-top: 12px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .security-alert.notice {
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        color: #166534;
+      }
+
+      .security-alert.error {
+        background: #fff7ed;
+        border: 1px solid #fed7aa;
+        color: #9a3412;
+      }
+
+      .security-actions {
+        margin-top: 12px;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .security-btn {
+        border: 0;
+        border-radius: 10px;
+        padding: 10px 14px;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .security-btn.primary {
+        background: #0b6780;
+        color: #fff;
+      }
+
+      .security-btn.secondary {
+        background: #e5f3f7;
+        color: #0a5063;
+      }
+
+      .security-btn:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
+
+      .security-user-list {
+        margin-top: 14px;
+        display: grid;
+        gap: 10px;
+      }
+
+      .security-user-card {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #fff;
+        padding: 12px;
+      }
+
+      .security-user-top {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .security-user-name {
+        font-size: 14px;
+        font-weight: 800;
+        color: var(--ink-900);
+      }
+
+      .security-user-meta {
+        font-size: 12px;
+        color: var(--ink-500);
+        margin-top: 4px;
+      }
+
+      .factor-list {
+        margin-top: 8px;
+        font-size: 12px;
+        color: var(--ink-700);
+      }
+
+      .factor-item {
+        margin-top: 4px;
+      }
+
       @media (max-width: 820px) {
         .section-grid { grid-template-columns: 1fr; }
         .welcome-text h1 { font-size: 28px; }
@@ -413,7 +515,37 @@ export function renderDashboardHtml(user: OpsUser, data?: DashboardData): string
               </label>
               <span class="status-pill ${opsRequireMfa ? 'pill-active' : 'pill-trial'}">${opsRequireMfa ? 'Ativado' : 'Desativado'}</span>
             </div>
-            <p class="security-note">Opcao visual (somente leitura). Alteracao operacional via variavel OPS_REQUIRE_MFA.</p>
+            <p class="security-note">Controle manual persistido no painel ops. Quando ativado, o login do ops exige TOTP para operadores administrativos.</p>
+            ${securityNotice ? `<div class="security-alert notice">${securityNotice}</div>` : ''}
+            ${securityError ? `<div class="security-alert error">${securityError}</div>` : ''}
+            <form method="post" action="/security/mfa/toggle" class="security-actions">
+              <input type="hidden" name="require_mfa" value="${opsRequireMfa ? 'false' : 'true'}" />
+              <button class="security-btn primary" type="submit" ${canManageSecurity ? '' : 'disabled'}>${opsRequireMfa ? 'Desabilitar MFA do Ops' : 'Habilitar MFA do Ops'}</button>
+            </form>
+
+            <div class="security-user-list">
+              ${mfaUsers.length === 0
+                ? '<div class="security-user-card"><div class="security-user-name">Nenhum usuario administrativo encontrado</div><div class="security-user-meta">Os perfis admin/gerente da empresa aparecerao aqui para gestao de fatores MFA.</div></div>'
+                : mfaUsers.map((mfaUser) => `
+                  <div class="security-user-card">
+                    <div class="security-user-top">
+                      <div>
+                        <div class="security-user-name">${mfaUser.fullName || mfaUser.email}</div>
+                        <div class="security-user-meta">${mfaUser.email} • role ${mfaUser.role} • ${mfaUser.verifiedFactorCount}/${mfaUser.factorCount} fator(es) verificado(s)</div>
+                      </div>
+                      <form method="post" action="/security/mfa/reset-user" onsubmit="return confirm('Resetar todos os fatores MFA deste usuario? Ele precisara cadastrar um novo autenticador.')">
+                        <input type="hidden" name="target_user_id" value="${mfaUser.userId}" />
+                        <button class="security-btn secondary" type="submit" ${(canManageSecurity && mfaUser.factorCount > 0) ? '' : 'disabled'}>Resetar MFA</button>
+                      </form>
+                    </div>
+                    <div class="factor-list">
+                      ${mfaUser.factors.length === 0
+                        ? '<div class="factor-item">Sem fatores cadastrados.</div>'
+                        : mfaUser.factors.map((factor) => `<div class="factor-item">${factor.factorType} • ${factor.status}${factor.friendlyName ? ` • ${factor.friendlyName}` : ''}</div>`).join('')}
+                    </div>
+                  </div>
+                `).join('')}
+            </div>
           </div>
         </div>
       </section>
