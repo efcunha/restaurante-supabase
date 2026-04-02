@@ -516,7 +516,6 @@ const { data: profile, error: profileError } = await withTimeout(
   const login = async (email: string, senha: string): Promise<boolean> => {
       const loginStartTime = Date.now();
       try {
-          setLoading(true);
           isManualLoginRef.current = true;
           appendLog('🔐 Login iniciado...');
 
@@ -561,13 +560,11 @@ const { data: profile, error: profileError } = await withTimeout(
           const totalDuration = Date.now() - loginStartTime;
           appendLog(`❌ Login falhou em ${totalDuration}ms: ${error?.message ?? String(error)}`);
           console.error('[SupabaseAuth] Login error:', error);
-          setLoading(false);
           setPasswordRecoveryMode(false);
           Alert.alert('Erro no Login', mapLoginErrorMessage(error));
           return false;
       } finally {
           isManualLoginRef.current = false;
-          setLoading(false);
       }
   };
 
@@ -621,18 +618,15 @@ const { data: profile, error: profileError } = await withTimeout(
   const loginWithBiometric = async () => {
       try {
           isManualLoginRef.current = true;
-          setLoading(true);
 
           const lastUserId = await BiometricAuthService.getLastEnrolledUser();
           if (!lastUserId) {
-              setLoading(false);
               return { success: false, error: 'Biometria não configurada para nenhum usuário.' };
           }
 
           // Step 1: Verify biometric locally (proves device possession)
           const authResult = await BiometricAuthService.authenticate(lastUserId);
           if (!authResult.success) {
-              setLoading(false);
               return { success: false, error: authResult.error };
           }
 
@@ -682,7 +676,6 @@ const { data: profile, error: profileError } = await withTimeout(
           }
 
           if (!sessionUser) {
-              setLoading(false);
               return {
                   success: false,
                   error: 'Sessão biométrica indisponível. Faça login com email e senha para reativar.',
@@ -696,11 +689,9 @@ const { data: profile, error: profileError } = await withTimeout(
               setTimeout(() => reject(new Error('Timeout ao carregar perfil apos biometria.')), 15000)
             ),
           ]);
-          setLoading(false);
           return { success: true };
 
       } catch (error: any) {
-          setLoading(false);
           console.error('[SupabaseAuth] Bio login error', error);
           return { success: false, error: error.message || 'Falha ao autenticar com biometria' };
       } finally {
