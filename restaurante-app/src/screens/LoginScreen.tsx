@@ -161,9 +161,14 @@ export default function LoginScreen({ navigation }: Props) {
             <TouchableOpacity
               style={styles.biometricBtn}
               onPress={async () => {
-                const result = await loginWithBiometric();
-                if (!result.success && result.error) {
-                  Alert.alert('Biometria', result.error);
+                setLoading(true);
+                try {
+                  const result = await loginWithBiometric();
+                  if (!result.success && result.error) {
+                    Alert.alert('Biometria', result.error);
+                  }
+                } finally {
+                  setLoading(false);
                 }
               }}
               disabled={loading}
@@ -174,7 +179,7 @@ export default function LoginScreen({ navigation }: Props) {
                 color="#0A5063"
                 style={styles.biometricIcon}
               />
-              <Text style={styles.biometricBtnText}>Entrar com {biometricType}</Text>
+              <Text style={styles.biometricBtnText}>{loading ? 'Validando biometria...' : `Entrar com ${biometricType}`}</Text>
             </TouchableOpacity>
           )}
 
