@@ -6,6 +6,8 @@ import { User } from '@supabase/supabase-js';
 // Services
 import AuthPersistenceService, { PersistenceUser } from '../services/AuthPersistenceService';
 import BiometricAuthService from '../services/BiometricAuthService';
+import MFAService, { MFAVerificationResolver } from '../services/MFAService';
+import { featureFlags } from '../config/featureFlags';
 import { Permissions, hasPermission, normalizeRole } from '../auth/roles';
 import logger from '../utils/logger';
 
@@ -47,8 +49,8 @@ interface AuthContextType {
   getCustomClaims: () => CustomClaims | null;
   
   // MFA & Biometric Placeholders (for interface compatibility)
-  mfaResolver: any | null; 
-  setMfaResolver: (resolver: any | null) => void;
+  mfaResolver: MFAVerificationResolver | null;
+  setMfaResolver: (resolver: MFAVerificationResolver | null) => void;
   loginWithBiometric: () => Promise<{ success: boolean; error?: string }>;
   biometricAvailable: boolean;
   biometricType?: string;
@@ -80,8 +82,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Security State
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricType, setBiometricType] = useState<string | undefined>(undefined);
-  // Implementation note: MFA Resolver is less standard in Supabase than Firebase, keeping null for now
-  const [mfaResolver, setMfaResolver] = useState<any | null>(null);
+  const [mfaResolver, setMfaResolver] = useState<MFAVerificationResolver | null>(null);
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
 
   const isManualLoginRef = useRef<boolean>(false);
@@ -111,7 +112,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return 'Muitas tentativas de login. Aguarde alguns minutos e tente novamente.';
     }
 
+    if (normalized.includes('mfa obrigatorio') || normalized.includes('mfa')) {
+      return raw;
+    }
+
     return raw || 'Erro desconhecido';
+  };
+
+  const resolveUserRole = async (userId: string): Promise<string | null> => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .single();
+
+    if (error) {
+      throw new Error(`Nao foi possivel carregar perfil para validacao de MFA: ${error.message}`);
+    }
+
+    return normalizeRole(data?.role || null);
   };
 
   const clearRecoveryHashInBrowser = () => {
@@ -239,7 +258,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           return;
         }
 
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
+        if (
+          event === 'SIGNED_IN' ||
+          event === 'TOKEN_REFRESHED' ||
+          event === 'INITIAL_SESSION' ||
+          event === 'MFA_CHALLENGE_VERIFIED'
+        ) {
           logger.debug('[SupabaseAuth] Processing auth event', {
             isManualLogin: isManualLoginRef.current,
             event
@@ -386,7 +410,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       try {
           setLoading(true);
           isManualLoginRef.current = true;
+          setMfaResolver(null);
           logger.debug('[SupabaseAuth] Login started', { email: email.slice(0, 5) + '...' });
+
+          // Session fixation hardening: clear stale session before credential login.
+          const { data: existingSessionData } = await supabase.auth.getSession();
+          if (existingSessionData?.session) {
+            await supabase.auth.signOut();
+          }
 
           const signInStartTime = Date.now();
           const { data, error } = await supabase.auth.signInWithPassword({
@@ -399,6 +430,52 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           if (error) throw error;
           
           if (data.session?.user) {
+              const normalizedRole = await resolveUserRole(data.session.user.id);
+              const requiresMfa =
+                featureFlags.requireMFA &&
+                Boolean(normalizedRole) &&
+                MFAService.isRequiredForRole(normalizedRole);
+
+              if (requiresMfa) {
+                const { data: assuranceData, error: assuranceError } =
+                  await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+
+                if (assuranceError) {
+                  throw new Error(`Falha ao validar nivel de autenticacao MFA: ${assuranceError.message}`);
+                }
+
+                const needsAal2 =
+                  assuranceData?.nextLevel === 'aal2' && assuranceData?.currentLevel !== 'aal2';
+
+                if (needsAal2) {
+                  const { data: factorsData, error: factorsError } = await supabase.auth.mfa.listFactors();
+                  if (factorsError) {
+                    throw new Error(`Falha ao listar fatores MFA: ${factorsError.message}`);
+                  }
+
+                  const primaryTotpFactor = factorsData?.totp?.[0];
+                  if (!primaryTotpFactor) {
+                    await supabase.auth.signOut();
+                    throw new Error('MFA obrigatorio para sua role, mas nenhum fator TOTP foi cadastrado. Configure o MFA no painel administrativo.');
+                  }
+
+                  const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({
+                    factorId: primaryTotpFactor.id,
+                  });
+
+                  if (challengeError || !challengeData?.id) {
+                    throw new Error(challengeError?.message || 'Falha ao iniciar desafio MFA.');
+                  }
+
+                  setMfaResolver({
+                    factorId: primaryTotpFactor.id,
+                    challengeId: challengeData.id,
+                  });
+                  setLoading(false);
+                  return false;
+                }
+              }
+
               // Store credentials for Biometric Login Replay
               try {
                   const bioStartTime = Date.now();
@@ -491,6 +568,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           if (!creds) {
                setLoading(false);
                return { success: false, error: 'Credenciais expiradas.' };
+          }
+
+          const { data: existingSessionData } = await supabase.auth.getSession();
+          if (existingSessionData?.session) {
+            await supabase.auth.signOut();
           }
 
           const { data, error } = await supabase.auth.signInWithPassword({

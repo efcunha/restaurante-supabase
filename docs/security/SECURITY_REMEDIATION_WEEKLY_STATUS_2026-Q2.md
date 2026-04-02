@@ -54,8 +54,8 @@ Legenda de status:
 
 | Item | Escopo | Status | Evidencia | Observacoes |
 |------|--------|--------|-----------|-------------|
-| Certificate Pinning evaluation | app | nao iniciado | `docs/security/SECURITY_REMEDIATION_PLAN_2026-Q2.md`, `restaurante-app/package.json` | Fechar gate GO/NO-GO/CONDITIONAL com base em custo operacional, rotacao de certificados, rollback e teste MITM. |
-| Build nativo + MITM testing | app | nao iniciado |  | Somente se pinning for aprovado (GO decision) |
+| Certificate Pinning evaluation | app | concluido (CONDITIONAL) | `docs/security/SECURITY_REMEDIATION_PLAN_2026-Q2.md`, `restaurante-app/package.json` | Gate formal: **CONDITIONAL (NO-GO neste ciclo)**. Justificativa objetiva: sem staging dedicado, sem esteira de MITM regression automatizada e alto risco operacional de lockout em rotacao de certificado/rede intermediaria. |
+| Build nativo + MITM testing | app | bloqueado (dependente de gate GO) |  | Mitigacao alternativa ativa: TLS padrao + HSTS no `ops` + monitoramento de expiracao de certificado + hardening de sessao/MFA. Reavaliar pinning com pre-requisitos de observabilidade e rollback nativo. |
 
 ### Ops
 
@@ -72,8 +72,8 @@ Legenda de status:
 
 | Item | Escopo | Status | Evidencia | Observacoes |
 |------|--------|--------|-----------|-------------|
-| MFA TOTP com Supabase Auth | app + web | nao iniciado | `docs/security/SECURITY_REMEDIATION_PLAN_2026-Q2.md`, `restaurante-app/src/services/MFAService.ts`, `restaurante-web/src/services/MFAService.ts` | Reimplementar MFA sobre Supabase Auth e aplicar enforcement para roles privilegiadas com feature flag. |
-| Session fixation hardening | app + web | em andamento | `restaurante-app/src/context/AuthContext.tsx`, `restaurante-web/src/context/AuthContext.tsx` | Mitigacao parcial aplicada; pendente validacao runtime final apos deploy controlado. |
+| MFA TOTP com Supabase Auth | app + web | em andamento | `restaurante-app/src/services/MFAService.ts`, `restaurante-web/src/services/MFAService.ts`, `restaurante-app/src/components/MFAVerificationModal.tsx`, `restaurante-web/src/components/MFAVerificationModal.tsx` | Implementacao iniciada: enrollment/challenge/verify em Supabase (`auth.mfa`), modal migrado de resolver Firebase para resolver Supabase e backup codes locais mantidos. |
+| Session fixation hardening | app + web | em andamento | `restaurante-app/src/context/AuthContext.tsx`, `restaurante-web/src/context/AuthContext.tsx`, `restaurante-app/src/screens/LoginScreen.tsx`, `restaurante-web/src/screens/LoginScreen.tsx` | Endurecimento aplicado: signOut preventivo antes de login por credenciais e signOut ao cancelar desafio MFA. Pendente validar runtime controlado app/web apos deploy. |
 
 ### Ops
 
@@ -106,8 +106,8 @@ Legenda de status:
 |------|--------|------|---------------|
 | Railway CLI sem autenticacao valida para deploy de variaveis | aberto | time | Impacta o web no Railway. Executar deploy de `restaurante-web` via Railway UI enquanto `railway whoami` retorna `Unauthorized`; renovar com `railway login` quando possivel |
 | Ambiente de staging dedicado inexistente | aberto | time | Usar validacao controlada em producao ate existir ambiente formal |
-| MFA ainda legado da migracao Firebase -> Supabase | aberto | app + web | Executar plano de Week 3 com base em `SECURITY_REMEDIATION_PLAN_2026-Q2.md` |
-| Pinning ainda sem decisao tecnica final | aberto | app | Fechar gate da Week 2 (GO/NO-GO/CONDITIONAL) antes da implementacao |
+| Supabase Auth MFA TOTP ainda desabilitado em runtime | aberto | app + web | Habilitar `auth.mfa.totp.enroll_enabled=true` e `verify_enabled=true` no projeto Supabase alvo, depois executar smoke de login privilegiado com desafio TOTP |
+| Pinning com gate CONDITIONAL (NO-GO neste ciclo) | monitoramento | app | Reavaliar em novo ciclo quando houver staging, runbook de rotacao/pinning e suite de teste MITM automatizada |
 | OPS-4 sem invoice elegivel para replay de sucesso | aberto | ops | Repetir smoke quando existir invoice `pending` ou `failed`; usar `npm run billing:candidates` para localizar candidatos antes do replay |
 
 ---

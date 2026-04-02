@@ -251,7 +251,10 @@ export default function LoginScreen({ navigation }: Props) {
         visible={!!mfaResolver}
         resolver={mfaResolver}
         onSuccess={() => setMfaResolver(null)}
-        onCancel={() => setMfaResolver(null)}
+        onCancel={async () => {
+          await supabase.auth.signOut();
+          setMfaResolver(null);
+        }}
       />
     </View>
   );
