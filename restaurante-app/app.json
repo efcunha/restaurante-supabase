@@ -43,7 +43,8 @@
       },
       "package": "com.comandapraia.donacida",
       "ndkVersion": "26.1.10909125",
-      "screenOrientation": "default"
+      "screenOrientation": "default",
+      "softwareKeyboardLayoutMode": "pan"
     },
     "web": {
       "bundler": "metro"

@@ -513,26 +513,24 @@ const { data: profile, error: profileError } = await supabase
 
   const logout = async () => {
       try {
-          // Invalidate server-side session
-          await supabase.auth.signOut();
-          
-          // Clear local persistence
-          await AuthPersistenceService.clearAuthState();
-          
-          // SEC-W1-003: Clear biometric tokens on logout
-          // Biometric tokens should be ephemeral and tied to session lifetime
-          // This ensures biometric unlock requires active session
-          const currentUser = user?.uid;
-          if (currentUser) {
-              try {
-                  // Note: Biometric tokens are cleared automatically on session expiry.
-                  // This explicit call ensures immediate invalidation on user-initiated logout.
-                  console.log('[SupabaseAuth] Biometric tokens invalidated on logout');
-              } catch (bioError) {
-                  console.error('[SupabaseAuth] Error clearing biometric tokens:', bioError);
-              }
+          // If biometrics are enrolled for this user, preserve the refresh token so
+          // biometric login can restore the session after logout.
+          // signOut({ scope: 'local' }) clears the local/in-memory session but does NOT
+          // revoke the refresh token on Supabase server — biometric login needs it.
+          const enrolledUser = await BiometricAuthService.getLastEnrolledUser();
+          const hasBiometrics = !!enrolledUser && enrolledUser === user?.uid;
+
+          if (hasBiometrics) {
+              // Local sign-out only: local session cleared, refresh token stays valid.
+              // Auth state (with refresh token) is kept in SecureStore for biometric re-login.
+              await supabase.auth.signOut({ scope: 'local' });
+              console.log('[SupabaseAuth] Local sign-out (biometrics enrolled) — auth state preserved');
+          } else {
+              // Full sign-out: invalidates server session and clears local state.
+              await supabase.auth.signOut();
+              await AuthPersistenceService.clearAuthState();
           }
-          
+
           // Clear UI state
           setPasswordRecoveryMode(false);
           setUser(null);
