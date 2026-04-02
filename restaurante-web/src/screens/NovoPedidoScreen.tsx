@@ -1,4 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
+import LicenseGate from '../components/LicenseGate';
 import { StyleSheet, Text, View, SectionList, TouchableOpacity, TextInput, ActivityIndicator, LayoutAnimation, Platform, UIManager, SectionListRenderItem, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import React, { memo, useCallback, useState, useMemo, useEffect, useRef } from 'react';
@@ -913,6 +914,7 @@ export default function NovoPedidoScreen({ route }: any) {
 
 
   return (
+    <LicenseGate>
     <KeyboardAvoidingView 
       style={styles.container} 
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -1027,6 +1029,7 @@ export default function NovoPedidoScreen({ route }: any) {
 
       <StatusBar style="dark" />
     </KeyboardAvoidingView>
+    </LicenseGate>
   );
 }
 

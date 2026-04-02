@@ -1,4 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
+import LicenseGate from '../components/LicenseGate';
 import { StyleSheet, Text, View, TouchableOpacity, Alert, Platform, Linking, ActivityIndicator, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect, useCallback } from 'react';
@@ -488,6 +489,7 @@ export default function RotasDeliveryScreen() {
   ), []);
 
   return (
+    <LicenseGate>
     <View style={styles.container}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
@@ -553,6 +555,7 @@ export default function RotasDeliveryScreen() {
         </Modal>
       )}
     </View>
+    </LicenseGate>
   );
 }
 
