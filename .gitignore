@@ -124,3 +124,6 @@ database-backup/*.dump
 database-backup/*.sql
 database-backup/*.backup
 database-backup/*.bak
+
+#Ignore vscode AI rules
+.github\instructions\codacy.instructions.md
