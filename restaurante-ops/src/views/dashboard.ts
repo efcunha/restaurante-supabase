@@ -4,11 +4,13 @@ import type { KpiCounts, CompanyRow } from '../modules/data.js';
 export interface DashboardData {
   kpis: KpiCounts;
   companies: CompanyRow[];
+  opsRequireMfa?: boolean;
 }
 
 export function renderDashboardHtml(user: OpsUser, data?: DashboardData): string {
   const kpis = data?.kpis ?? { active: 0, trialing: 0, pastDue: 0, mrr: 0 };
   const companies = data?.companies ?? [];
+  const opsRequireMfa = data?.opsRequireMfa === true;
   const initials = (user.full_name ?? user.email)
     .split(' ')
     .slice(0, 2)
@@ -259,6 +261,47 @@ export function renderDashboardHtml(user: OpsUser, data?: DashboardData): string
 
       .quick-link:hover { border-color: #0b6780; color: #0b6780; background: #eff8fc; }
 
+      .security-panel {
+        margin-top: 14px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px;
+        background: #f8fbfd;
+      }
+
+      .security-title {
+        font-size: 14px;
+        font-weight: 800;
+        color: var(--ink-700);
+        margin-bottom: 8px;
+      }
+
+      .security-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .switch-wrap {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+        color: var(--ink-700);
+      }
+
+      .switch-wrap input[type='checkbox'] {
+        width: 18px;
+        height: 18px;
+      }
+
+      .security-note {
+        margin-top: 8px;
+        font-size: 12px;
+        color: var(--ink-500);
+      }
+
       @media (max-width: 820px) {
         .section-grid { grid-template-columns: 1fr; }
         .welcome-text h1 { font-size: 28px; }
@@ -360,6 +403,18 @@ export function renderDashboardHtml(user: OpsUser, data?: DashboardData): string
             <a class="quick-link" href="/service-status">Estado do servico</a>
             <a class="quick-link" href="/api-status">API status JSON</a>
           </nav>
+
+          <div class="security-panel">
+            <div class="security-title">Seguranca de Login (Ops)</div>
+            <div class="security-row">
+              <label class="switch-wrap">
+                <input type="checkbox" ${opsRequireMfa ? 'checked' : ''} disabled />
+                <span>Exigir MFA no login</span>
+              </label>
+              <span class="status-pill ${opsRequireMfa ? 'pill-active' : 'pill-trial'}">${opsRequireMfa ? 'Ativado' : 'Desativado'}</span>
+            </div>
+            <p class="security-note">Opcao visual (somente leitura). Alteracao operacional via variavel OPS_REQUIRE_MFA.</p>
+          </div>
         </div>
       </section>
 

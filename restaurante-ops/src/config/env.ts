@@ -6,6 +6,7 @@ export interface OpsEnv {
   OPS_PORT: number;
   OPS_ENV: string;
   OPS_ALLOWED_COMPANY_ID?: string;
+  OPS_REQUIRE_MFA: boolean;
   AUTH_RATE_LIMIT_MAX_ATTEMPTS: number;
   AUTH_RATE_LIMIT_WINDOW_MS: number;
   RATE_LIMIT_BILLING_MAX_ATTEMPTS: number;
@@ -33,6 +34,7 @@ export function buildEnv(): OpsEnv {
   const parsedBillingMaxAttempts = Number(process.env.RATE_LIMIT_BILLING_MAX_ATTEMPTS || '30');
   const parsedBillingWindowMs = Number(process.env.RATE_LIMIT_BILLING_WINDOW_MS || String(60 * 1000));
   const parsedFallbackEnabled = process.env.RATE_LIMIT_FALLBACK_ENABLED !== 'false';
+  const parsedRequireMfa = process.env.OPS_REQUIRE_MFA === 'true';
 
   return {
     SUPABASE_URL: required('SUPABASE_URL'),
@@ -40,6 +42,7 @@ export function buildEnv(): OpsEnv {
     OPS_PORT: Number.isFinite(resolvedPort) ? resolvedPort : 4040,
     OPS_ENV: process.env.OPS_ENV || 'development',
     OPS_ALLOWED_COMPANY_ID: process.env.OPS_ALLOWED_COMPANY_ID,
+    OPS_REQUIRE_MFA: parsedRequireMfa,
     AUTH_RATE_LIMIT_MAX_ATTEMPTS: Number.isFinite(parsedMaxAttempts) ? parsedMaxAttempts : 8,
     AUTH_RATE_LIMIT_WINDOW_MS: Number.isFinite(parsedWindowMs) ? parsedWindowMs : 15 * 60 * 1000,
     RATE_LIMIT_BILLING_MAX_ATTEMPTS: Number.isFinite(parsedBillingMaxAttempts) ? parsedBillingMaxAttempts : 30,
