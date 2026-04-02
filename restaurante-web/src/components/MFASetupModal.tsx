@@ -17,6 +17,7 @@ import {
   Clipboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
 import MFAService from '../services/MFAService';
 import { useAuth } from '../context/AuthContext';
@@ -29,6 +30,7 @@ interface Props {
 
 export default function MFASetupModal({ visible, onClose, onSuccess }: Props) {
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const [step, setStep] = useState<'intro' | 'qrcode' | 'verify' | 'backup'>('intro');
   const [loading, setLoading] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
@@ -220,11 +222,20 @@ export default function MFASetupModal({ visible, onClose, onSuccess }: Props) {
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Configurar MFA</Text>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Ionicons name="close" size={28} color={colors.text} />
-          </TouchableOpacity>
+        <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
+          <View style={styles.headerLeft} />
+          <View style={styles.headerCenter}>
+            <View style={styles.headerTitleRow}>
+              <Ionicons name="shield-checkmark-outline" size={24} color={colors.white} style={styles.headerIcon} />
+              <Text style={styles.headerTitle}>Configurar MFA (2FA)</Text>
+            </View>
+            {!!user && <Text style={styles.userInfo}>Operador: {user.nome || user.name || user.email}</Text>}
+          </View>
+          <View style={styles.headerRight}>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <Ionicons name="arrow-back-outline" size={24} color={colors.white} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <ScrollView contentContainerStyle={styles.content}>
@@ -244,20 +255,59 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: colors.primary,
-    paddingTop: 50,
+    minHeight: 92,
     paddingBottom: 15,
     paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    zIndex: 10,
+    elevation: 8,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  headerCenter: {
+    flex: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerRight: {
+    flex: 1,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerIcon: {
+    marginRight: 8,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
     color: colors.white,
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  userInfo: {
+    fontSize: 12,
+    color: colors.userInfo,
+    fontWeight: '600',
+    marginTop: 4,
+    textAlign: 'center',
   },
   closeButton: {
-    padding: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: colors.logoutBg,
   },
   content: {
     padding: 20,
