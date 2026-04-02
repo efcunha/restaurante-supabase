@@ -10,6 +10,7 @@ export interface DashboardData {
   securityNotice?: string | null;
   securityError?: string | null;
   canManageSecurity?: boolean;
+  currentUserMfaVerified?: boolean;
 }
 
 export function renderDashboardHtml(user: OpsUser, data?: DashboardData): string {
@@ -20,6 +21,7 @@ export function renderDashboardHtml(user: OpsUser, data?: DashboardData): string
   const securityNotice = data?.securityNotice ?? null;
   const securityError = data?.securityError ?? null;
   const canManageSecurity = data?.canManageSecurity === true;
+  const currentUserMfaVerified = data?.currentUserMfaVerified ?? false;
   const initials = (user.full_name ?? user.email)
     .split(' ')
     .slice(0, 2)
@@ -524,6 +526,21 @@ export function renderDashboardHtml(user: OpsUser, data?: DashboardData): string
             <a class="quick-link" href="/service-status">Estado do servico</a>
             <a class="quick-link" href="/api-status">API status JSON</a>
           </nav>
+
+          <div class="security-panel">
+            <div class="security-title">Sua Autenticacao de Dois Fatores</div>
+            <div class="security-row">
+              <div>
+                <div class="security-user-name">Status de MFA</div>
+                <div class="security-user-meta">${currentUserMfaVerified ? '✓ Autenticador configurado' : '⚠ Sem autenticador verificado'}</div>
+              </div>
+              <span class="status-pill ${currentUserMfaVerified ? 'pill-active' : 'pill-trial'}">${currentUserMfaVerified ? 'Verificado' : 'Nao configurado'}</span>
+            </div>
+            ${opsRequireMfa && !currentUserMfaVerified
+              ? `<p class="security-note" style="color: #d32f2f; margin-top: 10px;">⚠ Atencao: MFA é obrigatório, mas você ainda nao configurou seu autenticador.</p>`
+              : ''}
+            <a href="/security/mfa-setup" class="security-btn primary" style="display: inline-block; margin-top: 15px;">Configurar Autenticador</a>
+          </div>
 
           <div class="security-panel">
             <div class="security-title">Seguranca de Login do Ops</div>
