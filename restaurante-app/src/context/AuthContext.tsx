@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect, useRef, ReactNode } from 'react';
 import { Alert, Linking } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../config/SupabaseConfig';
 import { User } from '@supabase/supabase-js';
 
@@ -73,6 +74,8 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+const BIOMETRIC_LOCK_KEY = 'biometric_login_lock_v1';
+
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -88,6 +91,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
 
   const isManualLoginRef = useRef<boolean>(false);
+  const biometricLockRef = useRef<boolean>(false);
   const passwordRecoveryModeRef = useRef<boolean>(false);
   const reloadInFlightForUserRef = useRef<string | null>(null);
   const lastReloadUserRef = useRef<string | null>(null);
@@ -108,6 +112,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs)
       ),
     ]);
+  };
+
+  const readBiometricLock = async (): Promise<boolean> => {
+    try {
+      const value = await AsyncStorage.getItem(BIOMETRIC_LOCK_KEY);
+      const isLocked = value === '1';
+      biometricLockRef.current = isLocked;
+      return isLocked;
+    } catch {
+      biometricLockRef.current = false;
+      return false;
+    }
+  };
+
+  const writeBiometricLock = async (locked: boolean): Promise<void> => {
+    biometricLockRef.current = locked;
+    try {
+      await AsyncStorage.setItem(BIOMETRIC_LOCK_KEY, locked ? '1' : '0');
+    } catch (error) {
+      console.warn('[SupabaseAuth] Failed to persist biometric lock:', error);
+    }
   };
 
   const setPasswordRecoveryMode = (enabled: boolean) => {
@@ -284,6 +309,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           return;
         }
 
+        const isBiometricLocked = await readBiometricLock();
+        if (isBiometricLocked) {
+          appendLog('🔒 Sessao inicial bloqueada por biometria. Aguardando validacao no login.');
+          setUser(null);
+          setRole(null);
+          setCustomClaims(null);
+          setLoading(false);
+          return;
+        }
+
         appendLog('ℹ️ Sessao inicial detectada via getSession, carregando perfil...');
         try {
           await scheduleReloadUserData(data.session.user, { rotateSessionKey: false });
@@ -335,6 +370,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
             if (passwordRecoveryModeRef.current) {
               appendLog(`Sessao em recovery (${event})`);
+              setLoading(false);
+              return;
+            }
+
+            const isBiometricLocked = await readBiometricLock();
+            if (isBiometricLocked && !isManualLoginRef.current) {
+              appendLog(`🔒 Sessao bloqueada (${event}). Permanecendo na tela de login.`);
+              setUser(null);
+              setRole(null);
+              setCustomClaims(null);
               setLoading(false);
               return;
             }
@@ -551,6 +596,8 @@ const { data: profile, error: profileError } = await withTimeout(
               
               const totalDuration = Date.now() - loginStartTime;
               appendLog(`✅ Login concluído em ${totalDuration}ms`);
+
+                await writeBiometricLock(false);
               
               return true;
           }
@@ -582,7 +629,9 @@ const { data: profile, error: profileError } = await withTimeout(
               // Full sign-out: invalidates server session and clears local state.
               await supabase.auth.signOut();
               await AuthPersistenceService.clearAuthState();
+              await writeBiometricLock(false);
           } else {
+              await writeBiometricLock(true);
               console.log('[SupabaseAuth] Biometrics enrolled — UI-only logout, session preserved for biometric re-login');
           }
 
@@ -681,6 +730,8 @@ const { data: profile, error: profileError } = await withTimeout(
                   error: 'Sessão biométrica indisponível. Faça login com email e senha para reativar.',
               };
           }
+
+            await writeBiometricLock(false);
 
           // Step 3: Reload user profile data
           await Promise.race([
