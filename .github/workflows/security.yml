@@ -14,19 +14,60 @@ jobs:
       - name: Checkout código
         uses: actions/checkout@v4
 
+      - name: Setup Java (Gradle scans)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
       # 🔍 Detectar secrets (senhas, tokens, etc.)
       - name: Run Gitleaks
         uses: gitleaks/gitleaks-action@v2
 
-      # 🔍 Scan de dependências
-      - name: Snyk Scan
-        uses: snyk/actions/node@master
+      - name: Install Snyk CLI
+        run: npm install -g snyk@latest
+
+      - name: Validate SNYK_TOKEN
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          if [ -z "$SNYK_TOKEN" ]; then
+            echo "SNYK_TOKEN is not configured. Add this repository secret to run Snyk scans." >&2
+            exit 1
+          fi
+
+      - name: Snyk Gradle Scan (android/build.gradle)
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          snyk auth "$SNYK_TOKEN"
+          snyk test \
+            --severity-threshold=high \
+            --package-manager=gradle \
+            --file=restaurante-app/android/build.gradle \
+            --project-name=restaurante-app-android-root-gradle \
+            restaurante-app/android
+
+      - name: Snyk Gradle Scan (android/app/build.gradle)
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          snyk auth "$SNYK_TOKEN"
+          snyk test \
+            --severity-threshold=high \
+            --package-manager=gradle \
+            --file=restaurante-app/android/app/build.gradle \
+            --project-name=restaurante-app-android-app-gradle \
+            restaurante-app/android
 
       # 🔍 Scan geral (Docker, libs, etc.)
       - name: Run Trivy
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.35.0
         with:
           scan-type: fs
           ignore-unfixed: true

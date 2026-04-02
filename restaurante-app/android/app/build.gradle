@@ -4,12 +4,35 @@ apply plugin: "com.facebook.react"
 
 def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
 
+def requiresReleaseSigning = gradle.startParameter.taskNames.any { taskName ->
+    def normalized = taskName?.toLowerCase() ?: ''
+    return normalized.contains('releas') && (
+        normalized.contains('assemble') ||
+        normalized.contains('bundle') ||
+        normalized.contains('publish')
+    )
+}
+
 def getReleaseSigningValue = { key ->
     def value = findProperty(key)
     if (value == null || value.toString().trim().isEmpty()) {
         value = System.getenv(key)
     }
     return value?.toString()?.trim()
+}
+
+configurations.configureEach {
+    resolutionStrategy.eachDependency { details ->
+        if (details.requested.group == 'io.netty') {
+            details.useVersion '4.1.132.Final'
+            details.because 'Security hardening for Snyk-reported CVEs'
+        }
+
+        if (details.requested.group == 'com.google.protobuf' && details.requested.name == 'protobuf-java') {
+            details.useVersion '3.25.5'
+            details.because 'Security hardening for CVE-2024-7254'
+        }
+    }
 }
 
 /**
@@ -139,7 +162,7 @@ android {
         release {
             // Caution! In production, you need to generate your own keystore file.
             // see https://reactnative.dev/docs/signed-apk-android.
-            if (!signingConfigs.release.storeFile || !signingConfigs.release.storePassword || !signingConfigs.release.keyAlias || !signingConfigs.release.keyPassword) {
+            if (requiresReleaseSigning && (!signingConfigs.release.storeFile || !signingConfigs.release.storePassword || !signingConfigs.release.keyAlias || !signingConfigs.release.keyPassword)) {
                 throw new RuntimeException('Missing release signing configuration. Set RELEASE_STORE_FILE, RELEASE_STORE_PASSWORD, RELEASE_KEY_ALIAS and RELEASE_KEY_PASSWORD via gradle.properties or environment variables.')
             }
             signingConfig signingConfigs.release
