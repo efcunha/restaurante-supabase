@@ -91,7 +91,6 @@ jobs:
             -a
             -j
             -J /tmp/zap-report.json
-          allow_issue_dismissal: true
 
       - name: Run OWASP ZAP baseline scan (POST endpoints)
         uses: zaproxy/action-baseline@v0.12.0
