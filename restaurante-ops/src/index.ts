@@ -72,6 +72,72 @@ function getRequestIp(req: IncomingMessage): string {
   return req.socket.remoteAddress || 'unknown';
 }
 
+function sanitizePlainText(value: string | null | undefined): string {
+  if (!value) return '';
+  return String(value).replace(/[\u0000-\u001F\u007F]/g, '').trim();
+}
+
+function sanitizeOpsUserForHtml(user: OpsUser): OpsUser {
+  return {
+    id: sanitizePlainText(user.id),
+    email: sanitizePlainText(user.email),
+    full_name: user.full_name ? sanitizePlainText(user.full_name) : null,
+    role: user.role ? sanitizePlainText(user.role) : null,
+    company_id: user.company_id ? sanitizePlainText(user.company_id) : null,
+  };
+}
+
+function isSecureTransport(req: IncomingMessage): boolean {
+  const forwardedProto = req.headers['x-forwarded-proto'];
+  const firstProto = Array.isArray(forwardedProto)
+    ? forwardedProto[0]
+    : forwardedProto;
+
+  if (typeof firstProto === 'string' && firstProto.length > 0) {
+    return firstProto.split(',')[0].trim().toLowerCase() === 'https';
+  }
+
+  return Boolean((req.socket as import('node:tls').TLSSocket).encrypted);
+}
+
+function enforceHttpsInProduction(
+  req: IncomingMessage,
+  res: import('node:http').ServerResponse,
+  path: string,
+  search: string,
+): boolean {
+  if (env.OPS_ENV !== 'production' || isSecureTransport(req)) {
+    return false;
+  }
+
+  const baseUrl = env.OPS_PUBLIC_BASE_URL.trim();
+  if (!baseUrl.toLowerCase().startsWith('https://')) {
+    logWarn('http.insecure_transport_rejected', {
+      method: req.method,
+      path,
+      statusCode: 426,
+      reason: 'OPS_PUBLIC_BASE_URL must be https in production',
+    });
+    res.writeHead(426, { 'content-type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({ error: 'HTTPS requerido em producao.' }));
+    return true;
+  }
+
+  const target = `${baseUrl.replace(/\/$/, '')}${path}${search}`;
+  if (req.method === 'GET' || req.method === 'HEAD') {
+    res.writeHead(308, {
+      Location: target,
+      'content-type': 'text/plain; charset=utf-8',
+    });
+    res.end('Use HTTPS');
+    return true;
+  }
+
+  res.writeHead(400, { 'content-type': 'application/json; charset=utf-8' });
+  res.end(JSON.stringify({ error: 'Requisicao insegura bloqueada. Use HTTPS.' }));
+  return true;
+}
+
 function applySecurityHeaders(res: import('node:http').ServerResponse): void {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
@@ -91,6 +157,35 @@ function escapeHtml(value: string | null | undefined): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#x27;');
+}
+
+function sanitizeJsonValue(value: unknown): unknown {
+  if (typeof value === 'string') {
+    return sanitizePlainText(value)
+      .replace(/</g, '\\u003c')
+      .replace(/>/g, '\\u003e')
+      .replace(/&/g, '\\u0026');
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((entry) => sanitizeJsonValue(entry));
+  }
+
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>);
+    return Object.fromEntries(entries.map(([key, entry]) => [key, sanitizeJsonValue(entry)]));
+  }
+
+  return value;
+}
+
+function respondJson(
+  res: import('node:http').ServerResponse,
+  statusCode: number,
+  payload: unknown,
+): void {
+  res.writeHead(statusCode, { 'content-type': 'application/json; charset=utf-8' });
+  res.end(JSON.stringify(sanitizeJsonValue(payload)));
 }
 
 function renderBaseLayout(title: string, body: string): string {
@@ -1592,6 +1687,10 @@ function startServer() {
       const url = new URL(req.url || '/', 'http://localhost');
       const path = url.pathname;
 
+      if (enforceHttpsInProduction(req, res, path, url.search)) {
+        return;
+      }
+
       // ---- Healthcheck / API status (publicos) ----
       if (path === '/healthz') {
         res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
@@ -1768,6 +1867,7 @@ function startServer() {
       if (path === '/dashboard') {
         const user = await requireAuth(req, res);
         if (!user) return;
+        const safeUser = sanitizeOpsUserForHtml(user);
         const [kpis, companies, securitySettings, mfaUsers, currentUserMfaVerified] = await Promise.all([
           fetchKpiCounts(),
           fetchRecentCompanies(8),
@@ -1778,7 +1878,7 @@ function startServer() {
         const notice = url.searchParams.get('notice');
         const error = url.searchParams.get('error');
         res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-        res.end(renderDashboardHtml(user, {
+        res.end(renderDashboardHtml(safeUser, {
           kpis,
           companies,
           opsRequireMfa: securitySettings.requireMfa,
@@ -1786,7 +1886,7 @@ function startServer() {
           currentUserMfaVerified,
           securityNotice: notice,
           securityError: error,
-          canManageSecurity: user.role === 'admin',
+          canManageSecurity: safeUser.role === 'admin',
         }));
         return;
       }
@@ -2021,8 +2121,7 @@ function startServer() {
         if (auditMatch) {
           const companyId = auditMatch[1];
           if (!isUuid(companyId)) {
-            res.writeHead(400, { 'content-type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify({ error: 'companyId invalido. Informe UUID valido.' }));
+            respondJson(res, 400, { error: 'companyId invalido. Informe UUID valido.' });
             return;
           }
 
@@ -2030,14 +2129,13 @@ function startServer() {
           const limit = limitRaw ? Number.parseInt(limitRaw, 10) : 30;
           const entries = await fetchBillingAudit(companyId, Number.isNaN(limit) ? 30 : limit);
 
-          res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
-          res.end(JSON.stringify({
+          respondJson(res, 200, {
             ok: true,
             generatedAt: new Date().toISOString(),
             companyId,
             count: entries.length,
             entries,
-          }));
+          });
           return;
         }
 
@@ -2045,18 +2143,16 @@ function startServer() {
         if (snapshotMatch) {
           const companyId = snapshotMatch[1];
           if (!isUuid(companyId)) {
-            res.writeHead(400, { 'content-type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify({ error: 'companyId invalido. Informe UUID valido.' }));
+            respondJson(res, 400, { error: 'companyId invalido. Informe UUID valido.' });
             return;
           }
 
           const snapshot = await fetchBillingSnapshot(companyId);
-          res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
-          res.end(JSON.stringify({
+          respondJson(res, 200, {
             ok: true,
             generatedAt: new Date().toISOString(),
             snapshot,
-          }));
+          });
           return;
         }
       }
@@ -2081,12 +2177,9 @@ function startServer() {
             statusCode: 503,
             reason: billingRateLimit.unavailableReason,
           });
-          res.writeHead(503, { 'content-type': 'application/json; charset=utf-8' });
-          res.end(
-            JSON.stringify({
-              error: 'Servico temporariamente indisponivel. Tente novamente em instantes.',
-            }),
-          );
+          respondJson(res, 503, {
+            error: 'Servico temporariamente indisponivel. Tente novamente em instantes.',
+          });
           return;
         }
 
@@ -2115,22 +2208,19 @@ function startServer() {
         if (cardMatch) {
           const companyId = cardMatch[1];
           if (!isUuid(companyId)) {
-            res.writeHead(400, { 'content-type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify({ error: 'companyId invalido. Informe UUID valido.' }));
+            respondJson(res, 400, { error: 'companyId invalido. Informe UUID valido.' });
             return;
           }
 
           const body = parseJsonBody<{ invoiceId?: string }>(await readBody(req));
           if (body.invoiceId && !isUuid(body.invoiceId)) {
-            res.writeHead(400, { 'content-type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify({ error: 'invoiceId invalido. Informe UUID valido.' }));
+            respondJson(res, 400, { error: 'invoiceId invalido. Informe UUID valido.' });
             return;
           }
 
           try {
             const result = await regularizeByCard(companyId, user.id, body.invoiceId);
-            res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(result));
+            respondJson(res, 200, result);
           } catch (err) {
             respondBillingError(res, err);
           }
@@ -2141,22 +2231,19 @@ function startServer() {
         if (pixMatch) {
           const companyId = pixMatch[1];
           if (!isUuid(companyId)) {
-            res.writeHead(400, { 'content-type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify({ error: 'companyId invalido. Informe UUID valido.' }));
+            respondJson(res, 400, { error: 'companyId invalido. Informe UUID valido.' });
             return;
           }
 
           const body = parseJsonBody<{ invoiceId?: string }>(await readBody(req));
           if (body.invoiceId && !isUuid(body.invoiceId)) {
-            res.writeHead(400, { 'content-type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify({ error: 'invoiceId invalido. Informe UUID valido.' }));
+            respondJson(res, 400, { error: 'invoiceId invalido. Informe UUID valido.' });
             return;
           }
 
           try {
             const result = await regularizeByPix(companyId, user.id, body.invoiceId);
-            res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(result));
+            respondJson(res, 200, result);
           } catch (err) {
             respondBillingError(res, err);
           }
@@ -2348,8 +2435,7 @@ function startServer() {
 
         const validationError = validateActivatePlanConfigInput(body);
         if (validationError) {
-          res.writeHead(400, { 'content-type': 'application/json; charset=utf-8' });
-          res.end(JSON.stringify({ error: validationError, code: 'PLAN_CONFIG_INVALID_INPUT' }));
+          respondJson(res, 400, { error: validationError, code: 'PLAN_CONFIG_INVALID_INPUT' });
           return;
         }
 
@@ -2380,24 +2466,21 @@ function startServer() {
             effective_from: body.effective_from,
           });
 
-          res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
-          res.end(JSON.stringify({
+          respondJson(res, 200, {
             ok: true,
             new_config_id: result.new_config_id,
             message: 'Nova configuração de plano ativada com sucesso. Efeito imediato nas proximas cobranças.',
-          }));
+          });
         } catch (err) {
           if (err instanceof PlanConfigOperationError) {
             logWarn('billing.plan_config_operation_error', { message: err.message, code: err.code });
-            res.writeHead(err.statusCode, { 'content-type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify({ code: safeBillingCode(err.code, 'PLAN_CONFIG_ERROR') }));
+            respondJson(res, err.statusCode, { code: safeBillingCode(err.code, 'PLAN_CONFIG_ERROR') });
           } else {
             logError('billing.plan_config.activate_error', {
               actor_id: user.id,
               error: err instanceof Error ? err.message : String(err),
             });
-            res.writeHead(500, { 'content-type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify({ error: 'Erro interno ao ativar configuração de plano.' }));
+            respondJson(res, 500, { error: 'Erro interno ao ativar configuração de plano.' });
           }
         }
         return;
@@ -2413,14 +2496,13 @@ function startServer() {
           fetchRecentInvoices(20),
         ]);
 
-        res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify({
+        respondJson(res, 200, {
           ok: true,
           generatedAt: new Date().toISOString(),
           stats,
           ops,
           recentInvoices,
-        }));
+        });
         return;
       }
 
@@ -2434,14 +2516,13 @@ function startServer() {
           fetchRevenueSeries(6),
         ]);
 
-        res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify({
+        respondJson(res, 200, {
           ok: true,
           generatedAt: new Date().toISOString(),
           metrics,
           breakdown,
           revenueSeries,
-        }));
+        });
         return;
       }
 
@@ -2449,31 +2530,34 @@ function startServer() {
       if (path === '/customers') {
         const user = await requireAuth(req, res);
         if (!user) return;
+        const safeUser = sanitizeOpsUserForHtml(user);
         const [kpis, companies] = await Promise.all([
           fetchKpiCounts(),
           fetchRecentCompanies(20),
         ]);
         res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-        res.end(renderCustomersPanel(user, kpis, companies));
+        res.end(renderCustomersPanel(safeUser, kpis, companies));
         return;
       }
 
       if (path === '/billing') {
         const user = await requireAuth(req, res);
         if (!user) return;
+        const safeUser = sanitizeOpsUserForHtml(user);
         const [stats, ops, invoices] = await Promise.all([
           fetchInvoiceStats(),
           fetchBillingOpsMetrics(),
           fetchRecentInvoices(15),
         ]);
         res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-        res.end(renderBillingPanel(user, stats, ops, invoices));
+        res.end(renderBillingPanel(safeUser, stats, ops, invoices));
         return;
       }
 
       if (path === '/billing/plan-config') {
         const user = await requireAuth(req, res);
         if (!user) return;
+        const safeUser = sanitizeOpsUserForHtml(user);
         try {
           const [active, history, audit] = await Promise.all([
             fetchActivePlanConfig(),
@@ -2481,10 +2565,10 @@ function startServer() {
             fetchPlanConfigAudit('default_monthly', 50),
           ]);
           res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-          res.end(renderPlanConfigPanel(user, active, history, audit));
+          res.end(renderPlanConfigPanel(safeUser, active, history, audit));
         } catch (err) {
           res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-          res.end(renderPlanConfigPanel(user, null, [], []));
+          res.end(renderPlanConfigPanel(safeUser, null, [], []));
         }
         return;
       }
@@ -2492,33 +2576,36 @@ function startServer() {
       if (path === '/metrics') {
         const user = await requireAuth(req, res);
         if (!user) return;
+        const safeUser = sanitizeOpsUserForHtml(user);
         const [metrics, breakdown, revenueSeries] = await Promise.all([
           fetchSaasMetrics(),
           fetchSubscriptionBreakdown(),
           fetchRevenueSeries(6),
         ]);
         res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-        res.end(renderMetricsPanel(user, metrics, breakdown, revenueSeries));
+        res.end(renderMetricsPanel(safeUser, metrics, breakdown, revenueSeries));
         return;
       }
 
       if (path === '/service-status') {
         const user = await requireAuth(req, res);
         if (!user) return;
+        const safeUser = sanitizeOpsUserForHtml(user);
         const [services, supabaseMetrics] = await Promise.all([
           checkAllServices(),
           getSupabaseMetrics(),
         ]);
         res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-        res.end(renderServiceStatusPanel(user, services, supabaseMetrics));
+        res.end(renderServiceStatusPanel(safeUser, services, supabaseMetrics));
         return;
       }
 
       if (path === '/api-status') {
         const user = await requireAuth(req, res);
         if (!user) return;
+        const safeUser = sanitizeOpsUserForHtml(user);
         res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-        res.end(renderApiStatusPanel(user));
+        res.end(renderApiStatusPanel(safeUser));
         return;
       }
 

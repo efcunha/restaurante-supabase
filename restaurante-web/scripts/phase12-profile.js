@@ -61,6 +61,14 @@ const PROFILES = {
   },
 };
 
+const ALLOWED_ENV_FILES = new Set([
+  '.env.development',
+  '.env.staging',
+  '.env.production',
+  '.env.local',
+  '.env.test',
+]);
+
 function parseArgs(argv) {
   const args = { profile: '', envFile: '.env.development' };
 
@@ -101,6 +109,15 @@ function printUsage() {
   console.log('Example: node scripts/phase12-profile.js --profile canary-ordering --env .env.staging');
 }
 
+function resolveSafeEnvFile(envFile) {
+  const normalized = String(envFile || '').trim();
+  if (!ALLOWED_ENV_FILES.has(normalized)) {
+    throw new Error(`Invalid --env value. Allowed: ${Array.from(ALLOWED_ENV_FILES).join(', ')}`);
+  }
+
+  return normalized;
+}
+
 function run() {
   const { profile, envFile } = parseArgs(process.argv.slice(2));
 
@@ -110,7 +127,14 @@ function run() {
   }
 
   const projectRoot = path.resolve(__dirname, '..');
-  const envPath = path.resolve(projectRoot, envFile);
+  let envFileName;
+  try {
+    envFileName = resolveSafeEnvFile(envFile);
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  }
+  const envPath = path.join(projectRoot, envFileName);
 
   if (!fs.existsSync(envPath)) {
     console.error(`Env file not found: ${envPath}`);
