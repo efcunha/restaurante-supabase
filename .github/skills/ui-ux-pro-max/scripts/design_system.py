@@ -16,6 +16,7 @@ Usage:
 import csv
 import json
 import os
+import re
 from datetime import datetime
 from pathlib import Path
 from core import search, DATA_DIR
@@ -501,11 +502,16 @@ def persist_design_system(design_system: dict, page: str = None, output_dir: str
     Returns:
         dict with created file paths and status
     """
-    base_dir = Path(output_dir) if output_dir else Path.cwd()
+    workspace_root = Path.cwd().resolve()
+    base_dir = Path(output_dir).resolve() if output_dir else workspace_root
+    try:
+        base_dir.relative_to(workspace_root)
+    except ValueError:
+        raise ValueError(f"Invalid output_dir. Must be inside workspace: {workspace_root}")
     
     # Use project name for project-specific folder
-    project_name = design_system.get("project_name", "default")
-    project_slug = project_name.lower().replace(' ', '-')
+    project_name = str(design_system.get("project_name", "default"))
+    project_slug = re.sub(r"[^a-z0-9-]", "-", project_name.lower().replace(' ', '-')).strip('-') or 'default'
     
     design_system_dir = base_dir / "design-system" / project_slug
     pages_dir = design_system_dir / "pages"
@@ -526,7 +532,8 @@ def persist_design_system(design_system: dict, page: str = None, output_dir: str
     
     # If page is specified, create page override file with intelligent content
     if page:
-        page_file = pages_dir / f"{page.lower().replace(' ', '-')}.md"
+        page_slug = re.sub(r"[^a-z0-9-]", "-", str(page).lower().replace(' ', '-')).strip('-') or 'page'
+        page_file = pages_dir / f"{page_slug}.md"
         page_content = format_page_override_md(design_system, page, page_query)
         with open(page_file, 'w', encoding='utf-8') as f:
             f.write(page_content)
