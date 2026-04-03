@@ -34,34 +34,40 @@ fi
 # Navegar para raiz do projeto
 cd "$(dirname "$0")/.."
 
-# Garantir CURSOR_SECRET no ambiente do bundling local
-# Prioridade: variavel de ambiente atual > arquivos locais nao versionados > arquivos de ambiente
-load_cursor_secret_from_file() {
-    local file="$1"
-    if [ -f "$file" ] && [ -z "$CURSOR_SECRET" ]; then
-        local value
-        value=$(grep -E '^[[:space:]]*CURSOR_SECRET=' "$file" | tail -n 1 | cut -d'=' -f2-)
-        # Remove aspas simples/duplas e espacos nas pontas
-        value=$(printf '%s' "$value" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")
-        if [ -n "$value" ]; then
-            export CURSOR_SECRET="$value"
-            echo "🔎 CURSOR_SECRET carregado de $file"
-        fi
-    fi
+ENV_FILES=(".env.local" ".env.production" ".env.staging" ".env")
+
+sanitize_env_value() {
+    printf '%s' "$1" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//"
 }
 
-if [ -z "$CURSOR_SECRET" ]; then
-    load_cursor_secret_from_file ".env.local"
-fi
-if [ -z "$CURSOR_SECRET" ]; then
-    load_cursor_secret_from_file ".env.production"
-fi
-if [ -z "$CURSOR_SECRET" ]; then
-    load_cursor_secret_from_file ".env.staging"
-fi
-if [ -z "$CURSOR_SECRET" ]; then
-    load_cursor_secret_from_file ".env"
-fi
+load_env_var_from_files() {
+    local var_name="$1"
+    local file
+
+    # Respeita prioridade de variável já exportada no shell
+    if [ -n "${!var_name}" ]; then
+        return 0
+    fi
+
+    for file in "${ENV_FILES[@]}"; do
+        if [ -f "$file" ]; then
+            local value
+            value=$(grep -E "^[[:space:]]*${var_name}=" "$file" | tail -n 1 | cut -d'=' -f2-)
+            value=$(sanitize_env_value "$value")
+            if [ -n "$value" ]; then
+                export "$var_name=$value"
+                echo "🔎 ${var_name} carregado de $file"
+                return 0
+            fi
+        fi
+    done
+
+    return 1
+}
+
+# Garantir CURSOR_SECRET no ambiente do bundling local
+# Prioridade: variavel de ambiente atual > arquivos locais nao versionados > arquivos de ambiente
+load_env_var_from_files "CURSOR_SECRET"
 
 if [ -z "$CURSOR_SECRET" ] || [ "$CURSOR_SECRET" = "generate_with_openssl_rand_hex_32" ]; then
     echo "❌ CURSOR_SECRET não definido para build local."
@@ -71,6 +77,76 @@ if [ -z "$CURSOR_SECRET" ] || [ "$CURSOR_SECRET" = "generate_with_openssl_rand_h
 fi
 
 echo "🔐 CURSOR_SECRET carregado no ambiente do build (valor mascarado)."
+
+# Garantir variáveis de assinatura release para tasks de produção
+load_env_var_from_files "RELEASE_STORE_FILE"
+load_env_var_from_files "RELEASE_STORE_PASSWORD"
+load_env_var_from_files "RELEASE_KEY_ALIAS"
+load_env_var_from_files "RELEASE_KEY_PASSWORD"
+
+# Compatibilidade com aliases de assinatura usados em setups antigos/CI
+if [ -z "$RELEASE_STORE_FILE" ]; then
+    load_env_var_from_files "MYAPP_UPLOAD_STORE_FILE"
+    load_env_var_from_files "UPLOAD_STORE_FILE"
+    if [ -n "$MYAPP_UPLOAD_STORE_FILE" ]; then
+        export RELEASE_STORE_FILE="$MYAPP_UPLOAD_STORE_FILE"
+    elif [ -n "$UPLOAD_STORE_FILE" ]; then
+        export RELEASE_STORE_FILE="$UPLOAD_STORE_FILE"
+    fi
+fi
+
+if [ -z "$RELEASE_STORE_PASSWORD" ]; then
+    load_env_var_from_files "MYAPP_UPLOAD_STORE_PASSWORD"
+    load_env_var_from_files "UPLOAD_STORE_PASSWORD"
+    if [ -n "$MYAPP_UPLOAD_STORE_PASSWORD" ]; then
+        export RELEASE_STORE_PASSWORD="$MYAPP_UPLOAD_STORE_PASSWORD"
+    elif [ -n "$UPLOAD_STORE_PASSWORD" ]; then
+        export RELEASE_STORE_PASSWORD="$UPLOAD_STORE_PASSWORD"
+    fi
+fi
+
+if [ -z "$RELEASE_KEY_ALIAS" ]; then
+    load_env_var_from_files "MYAPP_UPLOAD_KEY_ALIAS"
+    load_env_var_from_files "UPLOAD_KEY_ALIAS"
+    if [ -n "$MYAPP_UPLOAD_KEY_ALIAS" ]; then
+        export RELEASE_KEY_ALIAS="$MYAPP_UPLOAD_KEY_ALIAS"
+    elif [ -n "$UPLOAD_KEY_ALIAS" ]; then
+        export RELEASE_KEY_ALIAS="$UPLOAD_KEY_ALIAS"
+    fi
+fi
+
+if [ -z "$RELEASE_KEY_PASSWORD" ]; then
+    load_env_var_from_files "MYAPP_UPLOAD_KEY_PASSWORD"
+    load_env_var_from_files "UPLOAD_KEY_PASSWORD"
+    if [ -n "$MYAPP_UPLOAD_KEY_PASSWORD" ]; then
+        export RELEASE_KEY_PASSWORD="$MYAPP_UPLOAD_KEY_PASSWORD"
+    elif [ -n "$UPLOAD_KEY_PASSWORD" ]; then
+        export RELEASE_KEY_PASSWORD="$UPLOAD_KEY_PASSWORD"
+    fi
+fi
+
+if [ -n "$RELEASE_STORE_FILE" ] && [ ! -f "$RELEASE_STORE_FILE" ]; then
+    # Tenta resolver caminho relativo a partir da raiz do restaurante-app
+    if [ -f "$(pwd)/$RELEASE_STORE_FILE" ]; then
+        export RELEASE_STORE_FILE="$(pwd)/$RELEASE_STORE_FILE"
+    fi
+fi
+
+if [ -z "$RELEASE_STORE_FILE" ] || [ -z "$RELEASE_STORE_PASSWORD" ] || [ -z "$RELEASE_KEY_ALIAS" ] || [ -z "$RELEASE_KEY_PASSWORD" ]; then
+    echo "❌ Configuração de assinatura RELEASE incompleta."
+    echo "   Defina RELEASE_STORE_FILE, RELEASE_STORE_PASSWORD, RELEASE_KEY_ALIAS e RELEASE_KEY_PASSWORD"
+    echo "   (ou aliases MYAPP_UPLOAD_* / UPLOAD_*)."
+    echo "   Configure via variáveis de ambiente, android/gradle.properties ou arquivos .env locais."
+    exit 1
+fi
+
+if [ ! -f "$RELEASE_STORE_FILE" ]; then
+    echo "❌ RELEASE_STORE_FILE inválido: $RELEASE_STORE_FILE"
+    echo "   Informe o caminho absoluto do keystore ou um caminho relativo válido dentro de restaurante-app."
+    exit 1
+fi
+
+echo "🔐 Assinatura RELEASE carregada (segredos mascarados)."
 
 # Criar pasta build se não existir
 mkdir -p build
