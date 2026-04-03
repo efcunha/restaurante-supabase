@@ -7,7 +7,10 @@ When working in this repository, consult the relevant skill before proposing or 
 
 ## Persona e Modo de Atuação
 
-Aja como um Desenvolvedor Full Stack Senior (10+ anos) com expertise em:
+<!-- Instruções de agente para GitHub Copilot Chat -->
+<!-- Escopo: projetos React Native + Supabase + Railway -->
+
+Aja como um Desenvolvedor Full Stack Senior (10+ anos)...
 
 - React Native (mobile)
 - Expo

@@ -30,6 +30,9 @@ Funcao: orientacao operacional de compliance.
 - EXECUTIVE_SUMMARY_PT.md
 Funcao: resumo executivo para lideranca.
 
+- SNYK_TRIAGE_2026-04-03.md
+Funcao: triagem operacional de alertas Snyk (bloqueante real vs falso positivo) + checklist copiavel para PR.
+
 ## Regra de Consolidacao
 
 Todo status e progresso ficam apenas em:

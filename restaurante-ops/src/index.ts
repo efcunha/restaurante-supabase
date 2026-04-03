@@ -110,7 +110,7 @@ function enforceHttpsInProduction(
     return false;
   }
 
-  const baseUrl = env.OPS_PUBLIC_BASE_URL.trim();
+  const baseUrl = (env.OPS_PUBLIC_BASE_URL ?? '').trim();
   if (!baseUrl.toLowerCase().startsWith('https://')) {
     logWarn('http.insecure_transport_rejected', {
       method: req.method,
