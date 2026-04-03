@@ -15,10 +15,8 @@ Persistence (Master + Overrides pattern):
 """
 
 import argparse
-import os
 import sys
 import io
-from pathlib import Path
 from core import CSV_CONFIG, AVAILABLE_STACKS, MAX_RESULTS, search, search_stack
 from design_system import generate_design_system, persist_design_system
 
@@ -55,23 +53,6 @@ def format_output(result):
     return "\n".join(output)
 
 
-def resolve_safe_output_dir(raw_output_dir):
-    """Resolve output dir to a safe path within current workspace."""
-    if not raw_output_dir:
-        return None
-
-    workspace_root = Path.cwd().resolve()
-    candidate = Path(raw_output_dir)
-    resolved = (workspace_root / candidate).resolve() if not candidate.is_absolute() else candidate.resolve()
-
-    try:
-        resolved.relative_to(workspace_root)
-    except ValueError:
-        raise ValueError(f"Invalid --output-dir. Must be inside workspace: {workspace_root}")
-
-    return str(resolved)
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="UI Pro Max Search")
     parser.add_argument("query", help="Search query")
@@ -86,14 +67,18 @@ if __name__ == "__main__":
     # Persistence (Master + Overrides pattern)
     parser.add_argument("--persist", action="store_true", help="Save design system to design-system/MASTER.md (creates hierarchical structure)")
     parser.add_argument("--page", type=str, default=None, help="Create page-specific override file in design-system/pages/")
-    parser.add_argument("--output-dir", "-o", type=str, default=None, help="Output directory for persisted files (default: current directory)")
+    parser.add_argument("--output-dir", "-o", type=str, default=None, help="Deprecated: output path customization disabled for security")
 
     args = parser.parse_args()
+    allowed_domains = set(CSV_CONFIG.keys())
+    allowed_stacks = set(AVAILABLE_STACKS)
 
-    try:
-        safe_output_dir = resolve_safe_output_dir(args.output_dir)
-    except ValueError as error:
-        print(f"Error: {error}")
+    if args.domain and args.domain not in allowed_domains:
+        print("Error: invalid domain")
+        sys.exit(1)
+
+    if args.stack and args.stack not in allowed_stacks:
+        print("Error: invalid stack")
         sys.exit(1)
 
     # Design system takes priority
@@ -104,7 +89,7 @@ if __name__ == "__main__":
             args.format,
             persist=args.persist,
             page=args.page,
-            output_dir=safe_output_dir
+            output_dir=None
         )
         print(result)
         
@@ -123,7 +108,8 @@ if __name__ == "__main__":
             print("=" * 60)
     # Stack search
     elif args.stack:
-        result = search_stack(args.query, args.stack, args.max_results)
+        safe_stack = args.stack
+        result = search_stack(args.query, safe_stack, args.max_results)
         if args.json:
             import json
             print(json.dumps(result, indent=2, ensure_ascii=False))
@@ -131,7 +117,8 @@ if __name__ == "__main__":
             print(format_output(result))
     # Domain search
     else:
-        result = search(args.query, args.domain, args.max_results)
+        safe_domain = args.domain
+        result = search(args.query, safe_domain, args.max_results)
         if args.json:
             import json
             print(json.dumps(result, indent=2, ensure_ascii=False))
