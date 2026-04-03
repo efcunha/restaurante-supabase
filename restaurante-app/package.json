@@ -118,6 +118,7 @@
   },
   "overrides": {
     "qs": "^6.15.0",
-    "hermes-compiler": "250829098.0.10"
+    "hermes-compiler": "250829098.0.10",
+    "lodash": "^4.18.1"
   }
 }

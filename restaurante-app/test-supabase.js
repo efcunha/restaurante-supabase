@@ -1,8 +1,18 @@
 // Script de diagnóstico — roda com: node test-supabase.js
+// Requer: EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY definidos no ambiente
+// ou via arquivo .env.development (nunca exponha chaves reais em código-fonte)
 const { createClient } = require('./node_modules/@supabase/supabase-js');
 
-const URL = 'https://ykalocfhnetxenvmtlcn.supabase.co';
-const KEY = 'sb_publishable_sUAhOXyPkUhEb4tpbVU8wQ_71qyFI3x';
+try { require('dotenv').config({ path: '.env.development' }); } catch (_) { /* dotenv opcional */ }
+
+const URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
+const KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!URL || !KEY) {
+  console.error('ERRO: EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY são obrigatórios.');
+  console.error('Defina-as no ambiente ou em .env.development (arquivo gitignored).');
+  process.exit(1);
+}
 
 console.log('--- Diagnóstico Supabase ---');
 console.log('URL length:', URL.length, '| starts with https:', URL.startsWith('https'));
