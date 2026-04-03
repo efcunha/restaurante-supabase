@@ -13,7 +13,10 @@ import AdicionaisPickerModal from '../components/AdicionaisPickerModal';
 import { Product } from '../types';
 import { ProductAdicional, SelectedAdicional } from '../types/models';
 import { AdicionaisService } from '../services/AdicionaisService';
-import { NewOrderCartFooter, NewOrderHeaderForm, NewOrderListFooter, PizzaProductCard } from '../features/new-order';
+import { NewOrderCartFooter } from '../features/new-order/components/NewOrderCartFooter';
+import { NewOrderHeaderForm } from '../features/new-order/components/NewOrderHeaderForm';
+import { NewOrderListFooter } from '../features/new-order/components/NewOrderListFooter';
+import { PizzaProductCard } from '../features/new-order/components/PizzaProductCard';
 // KeyboardWrapper removed to prevent touch stealing
 import { KeyboardAvoidingView } from 'react-native';
 import { colors } from '../theme/colors';
@@ -828,6 +831,19 @@ export default function NovoPedidoScreen({ route }: any) {
 
   // Log baseline metrics on mount
   useEffect(() => {
+    const componentDiagnostics = {
+      LicenseGate: typeof LicenseGate,
+      NewOrderHeaderForm: typeof NewOrderHeaderForm,
+      NewOrderListFooter: typeof NewOrderListFooter,
+      NewOrderCartFooter: typeof NewOrderCartFooter,
+      PizzaProductCard: typeof PizzaProductCard,
+      PizzaBuilderModal: typeof PizzaBuilderModal,
+      AdicionaisPickerModal: typeof AdicionaisPickerModal,
+      StatusBar: typeof StatusBar,
+    };
+
+    console.log('🧪 [NovoPedidoScreen] Component diagnostics:', componentDiagnostics);
+
     console.log('📊 [Performance] Baseline measurement ready');
     console.log('📊 [Performance] Current SectionList config:', {
       initialNumToRender: 6,
