@@ -192,7 +192,7 @@ else
 fi
 
 echo "🔨 Gerando APK RELEASE..."
-cd android && ./gradlew assembleRelease --quiet
+cd android && ./gradlew assembleRelease --quiet --no-parallel
 
 if [ $? -eq 0 ]; then
     cd ..
