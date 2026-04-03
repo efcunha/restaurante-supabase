@@ -197,7 +197,7 @@ else
 fi
 
 echo "🔨 Gerando APK RELEASE..."
-cd android && ./gradlew assembleRelease --quiet --no-parallel
+cd android && ./gradlew assembleRelease --quiet --no-parallel -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
 
 if [ $? -eq 0 ]; then
     cd ..
