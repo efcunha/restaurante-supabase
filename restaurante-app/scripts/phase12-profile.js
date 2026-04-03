@@ -118,6 +118,19 @@ function resolveSafeEnvFile(envFile) {
   return normalized;
 }
 
+function resolveSafeEnvPath(projectRoot, envFile) {
+  const envFileName = resolveSafeEnvFile(envFile);
+  const allowedEnvPaths = {
+    '.env.development': path.join(projectRoot, '.env.development'),
+    '.env.staging': path.join(projectRoot, '.env.staging'),
+    '.env.production': path.join(projectRoot, '.env.production'),
+    '.env.local': path.join(projectRoot, '.env.local'),
+    '.env.test': path.join(projectRoot, '.env.test'),
+  };
+
+  return allowedEnvPaths[envFileName];
+}
+
 function run() {
   const { profile, envFile } = parseArgs(process.argv.slice(2));
 
@@ -127,14 +140,13 @@ function run() {
   }
 
   const projectRoot = path.resolve(__dirname, '..');
-  let envFileName;
+  let envPath;
   try {
-    envFileName = resolveSafeEnvFile(envFile);
+    envPath = resolveSafeEnvPath(projectRoot, envFile);
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
     process.exit(1);
   }
-  const envPath = path.join(projectRoot, envFileName);
 
   if (!fs.existsSync(envPath)) {
     console.error(`Env file not found: ${envPath}`);
