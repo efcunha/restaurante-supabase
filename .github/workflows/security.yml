@@ -83,6 +83,9 @@ jobs:
             exit 1
           fi
 
+      - name: Ensure Gradle wrapper is executable
+        run: chmod +x restaurante-app/android/gradlew
+
       - name: Snyk Gradle Scan
         run: |
           mkdir -p reports
