@@ -58,7 +58,7 @@ Abra o Copilot Chat e cole o prompt do [ATALHO-USO-INTERNO.md](./ATALHO-USO-INTE
 
 **Exemplo para web:**
 ```
-#file:.github/prompts/ui-ux-pro-max/PROMPT.md
+#file:.github/skills/ui-ux-pro-max/PROMPT.md
 #file:restaurante-web/src/screens/DeliveryScreen.tsx
 
 Revise esta tela e gere um relatório de design e UX focado em checkout delivery para restaurante brasileiro.
@@ -66,7 +66,7 @@ Revise esta tela e gere um relatório de design e UX focado em checkout delivery
 
 **Exemplo para app:**
 ```
-#file:.github/prompts/ui-ux-pro-max/PROMPT.md
+#file:.github/skills/ui-ux-pro-max/PROMPT.md
 #file:restaurante-app/src/screens/NovoPedidoScreen.tsx
 
 Revise esta tela e gere um relatório de design e UX focado em PDV de balcão mobile-first.
@@ -92,7 +92,7 @@ Se você está implementando uma tela que ainda não tem design system, use o sc
 
 ```bash
 # Windows
-python .github/prompts/ui-ux-pro-max/scripts/search.py \
+python .github/skills/ui-ux-pro-max/scripts/search.py \
   --design-system \
   --persist \
   --page "nome-da-tela" \
@@ -125,7 +125,7 @@ Ver [PACK-EXECUCAO-UIUX.md](./PACK-EXECUCAO-UIUX.md) para os prompts específico
 
 O roteamento de skills do Copilot para este repositório está em [.github/copilot-instructions.md](../../copilot-instructions.md).
 
-O workflow UI/UX Pro Max é invocado via `/ui-ux-pro-max <pedido>` no Copilot Chat ou anexando `#file:.github/prompts/ui-ux-pro-max/PROMPT.md` nas mensagens.
+O workflow UI/UX Pro Max é invocado via `/ui-ux-pro-max <pedido>` no Copilot Chat ou anexando `#file:.github/skills/ui-ux-pro-max/PROMPT.md` nas mensagens.
 
 ---
 
@@ -134,7 +134,7 @@ O workflow UI/UX Pro Max é invocado via `/ui-ux-pro-max <pedido>` no Copilot Ch
 ```
 .github/
   copilot-instructions.md          ← roteamento global de skills
-  prompts/ui-ux-pro-max/
+  skills/ui-ux-pro-max/
     PROMPT.md                      ← prompt principal (referência completa)
     ATALHO-USO-INTERNO.md          ← entrada rápida para o time
     PACK-EXECUCAO-UIUX.md          ← pack de execução por papel

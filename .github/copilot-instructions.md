@@ -1,7 +1,7 @@
 # Agent Skills for GitHub Copilot
 
 This setup uses a local project-specific skill at `.github\skills\restaurante-supabase\SKILL.md`.
-This workspace also includes the UI/UX Pro Max Copilot workflow at `.github/prompts/ui-ux-pro-max/PROMPT.md`.
+This workspace also includes the UI/UX Pro Max Copilot workflow at `.github/skills/ui-ux-pro-max/PROMPT.md`.
 
 When working in this repository, consult the relevant skill before proposing or implementing changes.
 
@@ -120,11 +120,11 @@ Then route to Callstack skills for specialized guidance (performance, upgrades, 
 
 For UI/UX design direction, visual exploration, design system generation, or interface quality reviews:
 
-- Use `.github/prompts/ui-ux-pro-max/PROMPT.md`
+- Use `.github/skills/ui-ux-pro-max/PROMPT.md`
 - Invoke it in GitHub Copilot with `/ui-ux-pro-max <pedido>`
-- Team shortcut guide: `.github/prompts/ui-ux-pro-max/ATALHO-USO-INTERNO.md`
-- Team execution pack: `.github/prompts/ui-ux-pro-max/PACK-EXECUCAO-UIUX.md`
-- Team onboarding index: `.github/prompts/ui-ux-pro-max/ONBOARDING-UIUX.md`
+- Team shortcut guide: `.github/skills/ui-ux-pro-max/ATALHO-USO-INTERNO.md`
+- Team execution pack: `.github/skills/ui-ux-pro-max/PACK-EXECUCAO-UIUX.md`
+- Team onboarding index: `.github/skills/ui-ux-pro-max/ONBOARDING-UIUX.md`
 
 Usage rules:
 
@@ -246,7 +246,7 @@ When deeper context is needed, explicitly reference the relevant skill file in c
 
 Start with the main `SKILL.md` file, then open individual reference files for implementation details.
 
-For UI/UX workflow usage, explicitly reference `.github/prompts/ui-ux-pro-max/PROMPT.md` or invoke `/ui-ux-pro-max` in chat.
+For UI/UX workflow usage, explicitly reference `.github/skills/ui-ux-pro-max/PROMPT.md` or invoke `/ui-ux-pro-max` in chat.
 
 ## Context7 Skill Routing (Library Docs)
 

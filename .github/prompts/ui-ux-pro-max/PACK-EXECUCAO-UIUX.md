@@ -10,7 +10,7 @@ Objetivo: validar impacto de negocio, risco e criterio de sucesso.
 
 ```text
 #file:D:\restaurante-supabase\.github\agent-skills\skills\restaurante-supabase\SKILL.md
-#file:.github/prompts/ui-ux-pro-max/PROMPT.md
+#file:.github/skills/ui-ux-pro-max/PROMPT.md
 #file:<arquivo-da-tela>
 
 /ui-ux-pro-max proponha melhoria incremental nesta tela para aumentar <metrica>, mantendo comportamento atual. Entregue: problema atual, proposta, impacto esperado, risco e criterio de aceite.
@@ -22,7 +22,7 @@ Objetivo: direcao visual e interacao com consistencia do design system.
 
 ```text
 #file:D:\restaurante-supabase\.github\agent-skills\skills\restaurante-supabase\SKILL.md
-#file:.github/prompts/ui-ux-pro-max/PROMPT.md
+#file:.github/skills/ui-ux-pro-max/PROMPT.md
 #file:docs/design-system/<pacote>/MASTER.md
 #file:docs/design-system/<pacote>/pages/<tela>.md
 #file:<arquivo-da-tela>
@@ -36,7 +36,7 @@ Objetivo: plano tecnico executavel sem regressao funcional.
 
 ```text
 #file:D:\restaurante-supabase\.github\agent-skills\skills\restaurante-supabase\SKILL.md
-#file:.github/prompts/ui-ux-pro-max/PROMPT.md
+#file:.github/skills/ui-ux-pro-max/PROMPT.md
 #file:docs/design-system/<pacote>/MASTER.md
 #file:docs/design-system/<pacote>/pages/<tela>.md
 #file:<arquivo-da-tela>
@@ -63,9 +63,9 @@ Use este checklist em review tecnico e review de produto.
 
 Copie e use no corpo do PR.
 
-Exemplo preenchido (DeliveryScreen): `.github/prompts/ui-ux-pro-max/EXEMPLO-PR-DELIVERYSCREEN.md`
-Exemplo preenchido (NovoPedidoScreen): `.github/prompts/ui-ux-pro-max/EXEMPLO-PR-NOVOPEDIDO.md`
-Exemplo preenchido (AdminScreen Web): `.github/prompts/ui-ux-pro-max/EXEMPLO-PR-ADMINSCREEN-WEB.md`
+Exemplo preenchido (DeliveryScreen): `.github/skills/ui-ux-pro-max/EXEMPLO-PR-DELIVERYSCREEN.md`
+Exemplo preenchido (NovoPedidoScreen): `.github/skills/ui-ux-pro-max/EXEMPLO-PR-NOVOPEDIDO.md`
+Exemplo preenchido (AdminScreen Web): `.github/skills/ui-ux-pro-max/EXEMPLO-PR-ADMINSCREEN-WEB.md`
 
 ```md
 ## Contexto
@@ -109,11 +109,11 @@ Exemplo preenchido (AdminScreen Web): `.github/prompts/ui-ux-pro-max/EXEMPLO-PR-
 Gerar recomendacao rapida:
 
 ```bash
-python .github/prompts/ui-ux-pro-max/scripts/search.py "<contexto-da-tela>" --design-system -p "<nome-do-pacote>" --format markdown
+python .github/skills/ui-ux-pro-max/scripts/search.py "<contexto-da-tela>" --design-system -p "<nome-do-pacote>" --format markdown
 ```
 
 Gerar master + override:
 
 ```bash
-python .github/prompts/ui-ux-pro-max/scripts/search.py "<contexto-da-tela>" --design-system --persist --page "<slug-da-tela>" -p "<nome-do-pacote>"
+python .github/skills/ui-ux-pro-max/scripts/search.py "<contexto-da-tela>" --design-system --persist --page "<slug-da-tela>" -p "<nome-do-pacote>"
 ```
