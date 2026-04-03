@@ -6,8 +6,8 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { colorSystem, radius, shadows, spacing, typography } from '../design-system';
 
-const validatePassword = (password: string) => {
-  if (password.length < 8) {
+const validateNewCredential = (candidate: string) => {
+  if (candidate.length < 8) {
     return 'A nova senha deve ter pelo menos 8 caracteres.';
   }
 
@@ -20,20 +20,20 @@ export default function ResetPasswordScreen() {
   const windowWidth = Dimensions.get('window').width;
   const isDesktop = windowWidth >= 1080;
   const isTablet = windowWidth >= 760;
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [newCredential, setNewCredential] = useState('');
+  const [confirmCredential, setConfirmCredential] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleSubmit = async () => {
-    const passwordError = validatePassword(password.trim());
-    if (passwordError) {
-      Alert.alert('Nova senha', passwordError);
+    const credentialError = validateNewCredential(newCredential.trim());
+    if (credentialError) {
+      Alert.alert('Nova senha', credentialError);
       return;
     }
 
-    if (password !== confirmPassword) {
+    if (newCredential !== confirmCredential) {
       Alert.alert('Confirmacao de senha', 'As senhas digitadas nao conferem.');
       return;
     }
@@ -41,7 +41,7 @@ export default function ResetPasswordScreen() {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.updateUser({ password: password.trim() });
+      const { error } = await supabase.auth.updateUser({ password: newCredential.trim() });
       if (error) {
         throw error;
       }
@@ -90,8 +90,8 @@ export default function ResetPasswordScreen() {
                     style={styles.passwordInput}
                     placeholder="••••••••"
                     placeholderTextColor={colorSystem.textMuted}
-                    value={password}
-                    onChangeText={setPassword}
+                    value={newCredential}
+                    onChangeText={setNewCredential}
                     secureTextEntry={!showPassword}
                     autoCapitalize="none"
                   />
@@ -108,8 +108,8 @@ export default function ResetPasswordScreen() {
                     style={styles.passwordInput}
                     placeholder="••••••••"
                     placeholderTextColor={colorSystem.textMuted}
-                    value={confirmPassword}
-                    onChangeText={setConfirmPassword}
+                    value={confirmCredential}
+                    onChangeText={setConfirmCredential}
                     secureTextEntry={!showConfirmPassword}
                     autoCapitalize="none"
                   />
