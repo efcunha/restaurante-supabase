@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import path from 'path';
+import crypto from 'crypto';
 
 // Load .env.test
 const envPath = path.resolve(__dirname, '../.env.test');
@@ -85,9 +86,10 @@ async function seed() {
         console.log(`Using existing user: ${userId}`);
     } else {
         console.log('User not found. Creating new user...');
+        const seedUserPassword = process.env.TEST_SEED_USER_PASSWORD || `seed-${crypto.randomBytes(12).toString('hex')}`;
         const { data: newUser, error: createUserError } = await supabase.auth.admin.createUser({
             email: email,
-            password: 'password123',
+            password: seedUserPassword,
             email_confirm: true
         });
 

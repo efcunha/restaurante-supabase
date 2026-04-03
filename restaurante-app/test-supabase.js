@@ -28,6 +28,8 @@ try {
 }
 
 async function run() {
+  const badPassword = process.env.SUPABASE_DIAG_BAD_PASSWORD || `invalid-${Date.now()}`;
+
   // 1. Testar getSession (sem storage, retorna null sem crash)
   try {
     const { data, error } = await client.auth.getSession();
@@ -46,7 +48,7 @@ async function run() {
 
   // 3. Testar autenticacao com cred invalidas (so para ver o formato da resposta)
   try {
-    const { data, error } = await client.auth.signInWithPassword({ email: 'teste@teste.com', password: 'errado' });
+    const { data, error } = await client.auth.signInWithPassword({ email: 'teste@teste.com', password: badPassword });
     console.log('signIn (cred invalida) | error:', error?.message ?? 'none', '| code:', error?.code ?? 'none');
   } catch (e) {
     console.log('signIn CRASH:', e.message);
