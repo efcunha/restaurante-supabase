@@ -125,11 +125,16 @@ if [ -z "$RELEASE_KEY_PASSWORD" ]; then
     fi
 fi
 
-if [ -n "$RELEASE_STORE_FILE" ] && [ ! -f "$RELEASE_STORE_FILE" ]; then
-    # Tenta resolver caminho relativo a partir da raiz do restaurante-app
-    if [ -f "$(pwd)/$RELEASE_STORE_FILE" ]; then
-        export RELEASE_STORE_FILE="$(pwd)/$RELEASE_STORE_FILE"
-    fi
+if [ -n "$RELEASE_STORE_FILE" ]; then
+    case "$RELEASE_STORE_FILE" in
+        [A-Za-z]:/*|/*)
+            # Já absoluto
+            ;;
+        *)
+            # Normaliza relativo para absoluto a partir da raiz do restaurante-app
+            export RELEASE_STORE_FILE="$(pwd)/$RELEASE_STORE_FILE"
+            ;;
+    esac
 fi
 
 if [ -z "$RELEASE_STORE_FILE" ] || [ -z "$RELEASE_STORE_PASSWORD" ] || [ -z "$RELEASE_KEY_ALIAS" ] || [ -z "$RELEASE_KEY_PASSWORD" ]; then
