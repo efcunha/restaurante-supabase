@@ -180,8 +180,6 @@ export function LicenseGate({ children, isBillingScreen = false }: LicenseGatePr
   );
 }
 
-export default LicenseGate;
-
 // ---------------------------------------------------------------------------
 // TrialBanner
 // ---------------------------------------------------------------------------
@@ -216,6 +214,8 @@ export function TrialBanner() {
     </View>
   );
 }
+
+export default LicenseGate;
 
 // ---------------------------------------------------------------------------
 // Styles
