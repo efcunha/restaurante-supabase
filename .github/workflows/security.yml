@@ -49,6 +49,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      NPM_CONFIG_LEGACY_PEER_DEPS: "true"
     strategy:
       fail-fast: false
       matrix:
@@ -78,7 +79,7 @@ jobs:
 
       - name: Install app dependencies (required by Gradle settings)
         working-directory: restaurante-app
-        run: npm install --legacy-peer-deps
+        run: npm install --legacy-peer-deps --force
 
       - name: Validate SNYK_TOKEN
         run: |
