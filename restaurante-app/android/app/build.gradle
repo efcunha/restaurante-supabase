@@ -18,6 +18,30 @@ def getReleaseSigningValue = { key ->
     if (value == null || value.toString().trim().isEmpty()) {
         value = System.getenv(key)
     }
+
+    if (value == null || value.toString().trim().isEmpty()) {
+        def aliases = [
+            RELEASE_STORE_FILE: ['MYAPP_UPLOAD_STORE_FILE', 'UPLOAD_STORE_FILE'],
+            RELEASE_STORE_PASSWORD: ['MYAPP_UPLOAD_STORE_PASSWORD', 'UPLOAD_STORE_PASSWORD'],
+            RELEASE_KEY_ALIAS: ['MYAPP_UPLOAD_KEY_ALIAS', 'UPLOAD_KEY_ALIAS'],
+            RELEASE_KEY_PASSWORD: ['MYAPP_UPLOAD_KEY_PASSWORD', 'UPLOAD_KEY_PASSWORD']
+        ]
+
+        (aliases[key] ?: []).find { aliasKey ->
+            def aliasValue = findProperty(aliasKey)
+            if (aliasValue == null || aliasValue.toString().trim().isEmpty()) {
+                aliasValue = System.getenv(aliasKey)
+            }
+
+            if (aliasValue != null && !aliasValue.toString().trim().isEmpty()) {
+                value = aliasValue
+                return true
+            }
+
+            return false
+        }
+    }
+
     return value?.toString()?.trim()
 }
 
