@@ -725,11 +725,11 @@ function renderHomeHtml(): string {
       <div class="field-row">
         <div class="field">
           <span class="label">Ambiente</span>
-          <input class="input" readonly value="${env.OPS_ENV}" />
+          <input class="input" readonly value="${escapeHtml(String(env.OPS_ENV ?? ''))}" />
         </div>
         <div class="field">
           <span class="label">Porta</span>
-          <input class="input" readonly value="${env.OPS_PORT}" />
+          <input class="input" readonly value="${escapeHtml(String(env.OPS_PORT ?? ''))}" />
         </div>
       </div>
       <button class="btn-primary" type="button" onclick="window.location.href='/login'">Abrir Login</button>
@@ -1458,7 +1458,7 @@ function renderServiceStatusPanel(user: OpsUser, services: ServiceStatus[], supa
       <div class="grid">
         <article class="metric">
           <div class="metric-label">Ambiente</div>
-          <div class="metric-value">${env.OPS_ENV}</div>
+          <div class="metric-value">${escapeHtml(String(env.OPS_ENV ?? ''))}</div>
           <div class="metric-hint">Runtime atual</div>
         </article>
         <article class="metric">
@@ -1954,7 +1954,10 @@ function startServer() {
         if (!user) return;
 
         const webBaseUrl = env.WEB_BASE_URL || 'https://restaurante-web.app.br';
-        const mfaSetupUrl = `${webBaseUrl}/admin?tab=mfa-setup`;
+        const safeMfaBaseUrl = /^https:\/\/[a-zA-Z0-9]/.test(webBaseUrl)
+          ? webBaseUrl
+          : 'https://restaurante-web.app.br';
+        const mfaSetupUrl = escapeHtml(`${safeMfaBaseUrl}/admin?tab=mfa-setup`);
 
         const html = `<!doctype html>
 <html lang="pt-BR">
