@@ -4,7 +4,6 @@ on:
   pull_request:
     branches:
       - main
-      - staging
     paths:
       - 'restaurante-ops/src/**'
       - 'database-backup/supabase/functions/**'
@@ -14,9 +13,9 @@ on:
   workflow_dispatch:
     inputs:
       target_env:
-        description: 'Target environment (staging or production)'
+        description: 'Target environment (production only)'
         required: false
-        default: 'staging'
+        default: 'production'
   schedule:
     # Run nightly scan on main branch
     - cron: '0 2 * * *'
@@ -30,9 +29,8 @@ jobs:
     name: OWASP ZAP Dynamic Security Test
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    
+
     services:
-      # Local Supabase for testing
       postgres:
         image: postgres:17
         env:
@@ -62,7 +60,8 @@ jobs:
 
       - name: Set up test environment
         run: |
-          # Create minimal .env for test server
+          # NOTE: AUTH_RATE_LIMIT_MAX_ATTEMPTS must match production value.
+          # Verify against restaurante-ops/src/index.ts before changing this value.
           cat > restaurante-ops/.env.test << 'EOF'
           PORT=3000
           NODE_ENV=test
@@ -70,8 +69,9 @@ jobs:
           SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRlc3QiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTcwMDAwMDAwMCwiZXhwIjoyMDAwMDAwMDAwfQ.test
           SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRlc3QiLCJyb2xlIjoic2VydmljZV9yb2xlIiwiaWF0IjoxNzAwMDAwMDAwLCJleHAiOjIwMDAwMDAwMDB9.test
           OPS_ALLOWED_COMPANY_ID=550e8400-e29b-41d4-a716-446655440000
-          AUTH_RATE_LIMIT_MAX_ATTEMPTS=8
+          AUTH_RATE_LIMIT_MAX_ATTEMPTS=5
           AUTH_RATE_LIMIT_WINDOW_MS=900000
+          RATE_LIMIT_FALLBACK_ENABLED=false
           EOF
 
       - name: Start test server
@@ -79,7 +79,6 @@ jobs:
         run: |
           timeout 30 npm start > /tmp/server.log 2>&1 &
           sleep 5
-          # Verify server is running
           curl -f http://localhost:3000/health || (cat /tmp/server.log && exit 1)
 
       - name: Run OWASP ZAP Docker scan
@@ -105,13 +104,13 @@ jobs:
         if: always()
         run: |
           echo "## 🔐 DAST Security Scan Results" >> $GITHUB_STEP_SUMMARY
-          
+
           if [ -f /tmp/zap-report.json ]; then
             HIGH_COUNT=$(jq '[.report.site[0].alerts[] | select(.riskcode == "3")] | length' /tmp/zap-report.json)
             MEDIUM_COUNT=$(jq '[.report.site[0].alerts[] | select(.riskcode == "2")] | length' /tmp/zap-report.json)
             echo "- **HIGH Risk Issues**: $HIGH_COUNT" >> $GITHUB_STEP_SUMMARY
             echo "- **MEDIUM Risk Issues**: $MEDIUM_COUNT" >> $GITHUB_STEP_SUMMARY
-            
+
             if [ "$HIGH_COUNT" -gt 0 ]; then
               echo "❌ HIGH severity vulnerabilities detected" >> $GITHUB_STEP_SUMMARY
               jq '.report.site[0].alerts[] | select(.riskcode == "3") | "\n- **\(.name)**: \(.description)"' /tmp/zap-report.json >> $GITHUB_STEP_SUMMARY
@@ -135,23 +134,23 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const report = fs.existsSync('/tmp/zap-report.json') 
+            const report = fs.existsSync('/tmp/zap-report.json')
               ? JSON.parse(fs.readFileSync('/tmp/zap-report.json', 'utf8'))
               : null;
-            
+
             let comment = '## 🔐 DAST Security Scan\n\n';
-            
+
             if (report && report.report.site[0].alerts) {
               const alerts = report.report.site[0].alerts;
               const high = alerts.filter(a => a.riskcode === '3');
               const medium = alerts.filter(a => a.riskcode === '2');
               const low = alerts.filter(a => a.riskcode === '1');
-              
+
               comment += `### Summary\n`;
               comment += `- 🔴 **HIGH**: ${high.length}\n`;
               comment += `- 🟠 **MEDIUM**: ${medium.length}\n`;
               comment += `- 🟡 **LOW**: ${low.length}\n\n`;
-              
+
               if (high.length > 0) {
                 comment += `### ⚠️ High Risk Issues\n`;
                 high.forEach(alert => {
@@ -161,7 +160,7 @@ jobs:
             } else {
               comment += '✅ **DAST scan complete** - No results available\n';
             }
-            
+
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
@@ -173,7 +172,7 @@ jobs:
   api-contract-test:
     name: API Contract & Input Validation
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -198,38 +197,56 @@ jobs:
 
       - name: Validate rate limit headers
         run: |
-          # Test script: verify Retry-After and 429 responses
           node << 'TESTEOF'
           const http = require('http');
-          
+
           const tests = [
             { name: 'Valid login', data: '{"email":"test@x.com","password":"x"}' },
             { name: 'Missing email', data: '{"password":"x"}' },
             { name: 'Empty body', data: '' },
             { name: 'Malformed JSON', data: '{invalid' }
           ];
-          
+
           console.log('✓ Rate limit header validation script prepared');
           TESTEOF
 
       - name: Check CORS headers
+        # Fail the job if CORS is not properly configured — missing CORS is a blocking security issue.
         run: |
-          # Verify CORS allowlist is properly configured
-          grep -q "CORS_ALLOWED_ORIGINS" restaurante-ops/.env.example && \
-            echo "✓ CORS environment variable documented" || \
-            echo "❌ CORS_ALLOWED_ORIGINS not found in .env.example"
-          
-          grep -q "resolveAllowOrigin" database-backup/supabase/functions/_shared/cors.ts && \
-            echo "✓ CORS resolution function implemented" || \
-            echo "❌ CORS function not found"
+          CORS_ENV_OK=true
+          CORS_FUNC_OK=true
+
+          grep -q "CORS_ALLOWED_ORIGINS" restaurante-ops/.env.example \
+            && echo "✓ CORS environment variable documented" \
+            || { echo "❌ CORS_ALLOWED_ORIGINS not found in restaurante-ops/.env.example"; CORS_ENV_OK=false; }
+
+          grep -q "resolveAllowOrigin" database-backup/supabase/functions/_shared/cors.ts \
+            && echo "✓ CORS resolution function implemented" \
+            || { echo "❌ CORS resolveAllowOrigin function not found in _shared/cors.ts"; CORS_FUNC_OK=false; }
+
+          if [ "$CORS_ENV_OK" = false ] || [ "$CORS_FUNC_OK" = false ]; then
+            echo "❌ CORS configuration incomplete — review CORS_ALLOWED_ORIGINS and resolveAllowOrigin"
+            exit 1
+          fi
 
       - name: Verify security headers
+        # Fail the job if required security headers are missing from restaurante-ops/src/index.ts.
         run: |
-          # Check that security headers are implemented
           grep -q "X-Content-Type-Options\|X-Frame-Options\|Strict-Transport-Security" \
-            restaurante-ops/src/index.ts && \
-            echo "✓ Security headers configured" || \
-            echo "❌ Security headers not found"
+            restaurante-ops/src/index.ts \
+            && echo "✓ Security headers configured" \
+            || { echo "❌ Security headers (X-Content-Type-Options / X-Frame-Options / HSTS) not found in src/index.ts"; exit 1; }
+
+      - name: Verify RATE_LIMIT_FALLBACK_ENABLED is fail-closed
+        # Per ops hardening: Redis unavailability must return 503, not open the gate.
+        run: |
+          grep -q "RATE_LIMIT_FALLBACK_ENABLED" restaurante-ops/.env.example \
+            && echo "✓ RATE_LIMIT_FALLBACK_ENABLED documented in .env.example" \
+            || { echo "❌ RATE_LIMIT_FALLBACK_ENABLED missing from restaurante-ops/.env.example"; exit 1; }
+
+          grep -rq "RATE_LIMIT_FALLBACK_ENABLED" restaurante-ops/src/ \
+            && echo "✓ RATE_LIMIT_FALLBACK_ENABLED consumed in source" \
+            || { echo "❌ RATE_LIMIT_FALLBACK_ENABLED not found in restaurante-ops/src/"; exit 1; }
 
       - name: Upload test results
         if: always()
