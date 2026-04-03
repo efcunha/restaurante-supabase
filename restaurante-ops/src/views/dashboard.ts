@@ -2,6 +2,17 @@ import type { OpsUser } from '../auth/supabase.js';
 import type { KpiCounts, CompanyRow } from '../modules/data.js';
 import type { OpsMfaUserRow } from '../modules/ops-security.js';
 
+/** Escapa caracteres especiais HTML para prevenir XSS em template strings. */
+function escapeHtml(value: string | null | undefined): string {
+  if (value == null) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
+
 export interface DashboardData {
   kpis: KpiCounts;
   companies: CompanyRow[];
@@ -441,8 +452,8 @@ export function renderDashboardHtml(user: OpsUser, data?: DashboardData): string
         <span class="topbar-badge">Backoffice SaaS</span>
       </div>
       <div class="topbar-user">
-        <div class="avatar">${initials}</div>
-        <span>${user.email}</span>
+        <div class="avatar">${escapeHtml(initials)}</div>
+        <span>${escapeHtml(user.email)}</span>
         <a class="btn-logout" href="/auth/logout">Sair</a>
       </div>
     </header>
@@ -452,11 +463,11 @@ export function renderDashboardHtml(user: OpsUser, data?: DashboardData): string
       <!-- Boas-vindas -->
       <section class="welcome-bar">
         <div class="welcome-text">
-          <h1>Bom dia, ${user.full_name ?? user.email}</h1>
+          <h1>Bom dia, ${escapeHtml(user.full_name ?? user.email)}</h1>
           <p>Painel de operacao SaaS — clientes, billing e metricas em um lugar.</p>
         </div>
         <div class="welcome-meta">
-          Role: <strong>${user.role ?? 'admin'}</strong>
+          Role: <strong>${escapeHtml(user.role ?? 'admin')}</strong>
         </div>
       </section>
 
@@ -509,7 +520,7 @@ export function renderDashboardHtml(user: OpsUser, data?: DashboardData): string
                     const st = c.subscription_status ?? 'sem plano';
                     const stStyle = `background:${bgMap[st] ?? '#f4f8fb'};color:${statusMap[st] ?? '#2f4353'};border-radius:999px;padding:2px 8px;font-size:12px;font-weight:700;`;
                     const since = c.created_at ? new Date(c.created_at).toLocaleDateString('pt-BR') : '—';
-                    return `<tr><td>${c.name}</td><td>${c.plan ?? '—'}</td><td><span style="${stStyle}">${st}</span></td><td>${since}</td></tr>`;
+                    return `<tr><td>${escapeHtml(c.name)}</td><td>${escapeHtml(c.plan ?? '—')}</td><td><span style="${stStyle}">${escapeHtml(st)}</span></td><td>${since}</td></tr>`;
                   }).join('')
               }
             </tbody>
@@ -552,8 +563,8 @@ export function renderDashboardHtml(user: OpsUser, data?: DashboardData): string
               <span class="status-pill ${opsRequireMfa ? 'pill-active' : 'pill-trial'}">${opsRequireMfa ? 'Ativado' : 'Desativado'}</span>
             </div>
             <p class="security-note">Quando ativado, administradores e gerentes do restaurante-ops precisam informar o codigo do Google Authenticator ou Microsoft Authenticator para entrar.</p>
-            ${securityNotice ? `<div class="security-alert notice">${securityNotice}</div>` : ''}
-            ${securityError ? `<div class="security-alert error">${securityError}</div>` : ''}
+            ${securityNotice ? `<div class="security-alert notice">${escapeHtml(securityNotice)}</div>` : ''}
+            ${securityError ? `<div class="security-alert error">${escapeHtml(securityError)}</div>` : ''}
             <form method="post" action="/security/mfa/toggle" class="security-actions">
               <input type="hidden" name="require_mfa" value="${opsRequireMfa ? 'false' : 'true'}" />
               <button class="security-btn primary" type="submit" ${canManageSecurity ? '' : 'disabled'}>${opsRequireMfa ? 'Desabilitar exigencia de MFA' : 'Habilitar exigencia de MFA'}</button>
@@ -566,18 +577,18 @@ export function renderDashboardHtml(user: OpsUser, data?: DashboardData): string
                   <div class="security-user-card">
                     <div class="security-user-top">
                       <div>
-                        <div class="security-user-name">${mfaUser.fullName || mfaUser.email}</div>
-                        <div class="security-user-meta">${mfaUser.email} • perfil ${roleLabel(mfaUser.role)} • ${mfaUser.verifiedFactorCount}/${mfaUser.factorCount} autenticador(es) verificado(s)</div>
+                        <div class="security-user-name">${escapeHtml(mfaUser.fullName || mfaUser.email)}</div>
+                        <div class="security-user-meta">${escapeHtml(mfaUser.email)} • perfil ${escapeHtml(roleLabel(mfaUser.role))} • ${mfaUser.verifiedFactorCount}/${mfaUser.factorCount} autenticador(es) verificado(s)</div>
                       </div>
                       <form method="post" action="/security/mfa/reset-user" onsubmit="return confirm('Remover todos os autenticadores MFA deste usuario? Ele precisara cadastrar um novo autenticador para voltar a usar MFA.')">
-                        <input type="hidden" name="target_user_id" value="${mfaUser.userId}" />
+                        <input type="hidden" name="target_user_id" value="${escapeHtml(mfaUser.userId)}" />
                         <button class="security-btn secondary" type="submit" ${(canManageSecurity && mfaUser.factorCount > 0) ? '' : 'disabled'}>Remover autenticadores</button>
                       </form>
                     </div>
                     <div class="factor-list">
                       ${mfaUser.factors.length === 0
                         ? '<div class="factor-item">Sem autenticador cadastrado.</div>'
-                        : mfaUser.factors.map((factor) => `<div class="factor-item">${factorTypeLabel(factor.factorType)} • ${factorStatusLabel(factor.status)}${factor.friendlyName ? ` • ${factor.friendlyName}` : ''}</div>`).join('')}
+                        : mfaUser.factors.map((factor) => `<div class="factor-item">${factorTypeLabel(factor.factorType)} • ${factorStatusLabel(factor.status)}${factor.friendlyName ? ` • ${escapeHtml(factor.friendlyName)}` : ''}</div>`).join('')}
                     </div>
                     <div class="security-note">Perdeu ou trocou de celular? Remova os autenticadores acima e peça para o colaborador cadastrar um novo MFA no app ou web.</div>
                   </div>
