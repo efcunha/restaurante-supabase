@@ -60,6 +60,34 @@ allprojects {
     mavenCentral()
     maven { url 'https://www.jitpack.io' }
   }
+
+    // Force safe versions of transitive dependencies for all module configurations.
+    // Fixes Snyk-reported CVEs that cannot be addressed via npm/yarn overrides
+    // because they are declared inside React Native / Expo Android modules.
+    configurations.all {
+      resolutionStrategy.eachDependency { details ->
+        // CVE-2021-29425 / CVE-2024-47554 — commons-io Directory Traversal + Resource Exhaustion
+        if (details.requested.group == 'commons-io' && details.requested.name == 'commons-io') {
+          details.useVersion '2.14.0'
+          details.because 'Fix CVE-2021-29425 and CVE-2024-47554 reported by Snyk (fixedIn >= 2.7 / 2.14.0)'
+        }
+        // CVE-2022-25647 — Gson Deserialization of Untrusted Data
+        if (details.requested.group == 'com.google.code.gson' && details.requested.name == 'gson') {
+          details.useVersion '2.11.0'
+          details.because 'Fix CVE-2022-25647 reported by Snyk (fixedIn >= 2.8.9)'
+        }
+        // Netty CVEs — also force in implementation scope (build-time test infra)
+        if (details.requested.group == 'io.netty') {
+          details.useVersion '4.1.132.Final'
+          details.because 'Fix Snyk netty CVEs in module build dependencies'
+        }
+        // CVE-2024-7254 — protobuf also force in implementation scope
+        if (details.requested.group == 'com.google.protobuf' && details.requested.name == 'protobuf-java') {
+          details.useVersion '3.25.5'
+          details.because 'Fix CVE-2024-7254 reported by Snyk in module build dependencies'
+        }
+      }
+    }
 }
 
 apply plugin: "expo-root-project"
