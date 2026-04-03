@@ -24,6 +24,14 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
     }
 });
 
+function resolveSeedUserEmail(): string {
+    const configured = process.env.TEST_SEED_USER_EMAIL?.trim();
+    if (configured) return configured;
+
+    const localPart = `seed-${crypto.randomBytes(6).toString('hex')}`;
+    return `${localPart}@example.invalid`;
+}
+
 async function seed() {
     console.log('Starting DB Seed...');
 
@@ -67,7 +75,7 @@ async function seed() {
     }
 
     // 2. Check/Create User
-    const email = 'test@example.com';
+    const email = resolveSeedUserEmail();
     console.log(`Checking for user: ${email}...`);
     
     let userId: string;
