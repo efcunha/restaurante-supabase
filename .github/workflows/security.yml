@@ -76,6 +76,10 @@ jobs:
       - name: Install Snyk CLI
         run: npm install -g snyk@latest
 
+      - name: Install app dependencies (required by Gradle settings)
+        working-directory: restaurante-app
+        run: npm install
+
       - name: Validate SNYK_TOKEN
         run: |
           if [ -z "$SNYK_TOKEN" ]; then
