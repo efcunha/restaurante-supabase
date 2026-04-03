@@ -83,13 +83,23 @@ function applySecurityHeaders(res: import('node:http').ServerResponse): void {
   }
 }
 
+function escapeHtml(value: string | null | undefined): string {
+  if (value == null) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
+
 function renderBaseLayout(title: string, body: string): string {
   return `<!doctype html>
 <html lang="pt-BR">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>${title}</title>
+    <title>${escapeHtml(title)}</title>
     <style>
       :root {
         --teal-700: #0c7a96;
@@ -398,7 +408,7 @@ function renderBaseLayout(title: string, body: string): string {
 
 function renderLoginHtml(requireMfa: boolean, errorMsg?: string): string {
   const errorBlock = errorMsg
-    ? `<div style="margin-bottom:10px;padding:10px 12px;border-radius:10px;background:#fff7ed;border:1px solid #fde8c0;color:#92400e;font-size:13px;font-weight:600;">${errorMsg}</div>`
+    ? `<div style="margin-bottom:10px;padding:10px 12px;border-radius:10px;background:#fff7ed;border:1px solid #fde8c0;color:#92400e;font-size:13px;font-weight:600;">${escapeHtml(errorMsg)}</div>`
     : '';
   const mfaField = requireMfa
     ? `<div class="field">
@@ -655,7 +665,7 @@ function renderQuickActionPanel(
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>restaurante-ops | ${title}</title>
+    <title>restaurante-ops | ${escapeHtml(title)}</title>
     <style>
       :root {
         --teal-700: #0c7a96;
@@ -861,16 +871,16 @@ function renderQuickActionPanel(
         <span class="topbar-badge">Backoffice SaaS</span>
       </div>
       <div class="topbar-user">
-        <div class="avatar">${initials}</div>
-        <span>${user.email}</span>
+        <div class="avatar">${escapeHtml(initials)}</div>
+        <span>${escapeHtml(user.email)}</span>
         <a class="btn-logout" href="/auth/logout">Sair</a>
       </div>
     </header>
 
     <main class="shell">
       <section class="title-card">
-        <h1>${title}</h1>
-        <p>${subtitle}</p>
+        <h1>${escapeHtml(title)}</h1>
+        <p>${escapeHtml(subtitle)}</p>
       </section>
 
       <nav class="nav-links">
@@ -901,7 +911,7 @@ function statusPill(status: string | null): string {
     cancelled: 'warn',
   };
   const cls = map[status] ?? 'info';
-  return `<span class="pill ${cls}">${status}</span>`;
+  return `<span class="pill ${cls}">${escapeHtml(status)}</span>`;
 }
 
 function fmtDate(iso: string | null): string {
@@ -918,8 +928,8 @@ function renderCustomersPanel(
     ? '<tr><td colspan="5" style="text-align:center;color:#516675;">Nenhuma empresa encontrada.</td></tr>'
     : companies.map((c) => `
         <tr>
-          <td>${c.name}</td>
-          <td>${c.plan ?? '—'}</td>
+          <td>${escapeHtml(c.name)}</td>
+          <td>${escapeHtml(c.plan ?? '—')}</td>
           <td>${statusPill(c.subscription_status)}</td>
           <td>${fmtDate(c.trial_ends_at)}</td>
           <td>${fmtDate(c.created_at)}</td>
@@ -970,14 +980,14 @@ function renderBillingPanel(
 ): string {
   const invPill = (s: string) => {
     const map: Record<string, string> = { paid: 'ok', pending: 'info', failed: 'warn', cancelled: 'warn' };
-    return `<span class="pill ${map[s] ?? 'info'}">${s}</span>`;
+    return `<span class="pill ${map[s] ?? 'info'}">${escapeHtml(s)}</span>`;
   };
 
   const rows = invoices.length === 0
     ? '<tr><td colspan="5" style="text-align:center;color:#516675;">Nenhuma invoice encontrada.</td></tr>'
     : invoices.map((inv) => `
         <tr>
-          <td>${inv.company_name}</td>
+          <td>${escapeHtml(inv.company_name)}</td>
           <td>${brl(inv.amount)}</td>
           <td>${invPill(inv.status)}</td>
           <td>${fmtDate(inv.due_date)}</td>
@@ -1069,7 +1079,7 @@ function renderPlanConfigPanel(
     : history.map((row) => `
         <tr>
           <td>${brl(row.amount_cents)}</td>
-          <td>${row.currency}</td>
+          <td>${escapeHtml(row.currency)}</td>
           <td>${row.trial_days} dias</td>
           <td>${fmtDate(row.effective_from)}</td>
         </tr>`).join('');
@@ -1078,9 +1088,9 @@ function renderPlanConfigPanel(
     ? '<tr><td colspan="4" style="text-align:center;color:#516675;">Sem eventos de auditoria.</td></tr>'
     : audit.map((a) => `
         <tr>
-          <td>${a.action}</td>
+          <td>${escapeHtml(a.action)}</td>
           <td>${brl((a.after_snapshot as any)?.amount_cents ?? 0)}</td>
-          <td>${a.changed_by}</td>
+          <td>${escapeHtml(a.changed_by)}</td>
           <td>${fmtDate(a.created_at)}</td>
         </tr>`).join('');
 
@@ -1259,7 +1269,7 @@ function renderMetricsPanel(
   const revenueRows = revenueSeries.length === 0
     ? '<tr><td colspan="2" style="text-align:center;color:#516675;">Sem dados de receita no periodo.</td></tr>'
     : revenueSeries
-      .map((point) => `<tr><td>${point.label}</td><td>${brl(point.amount)}</td></tr>`)
+      .map((point) => `<tr><td>${escapeHtml(point.label)}</td><td>${brl(point.amount)}</td></tr>`)
       .join('');
 
   return renderQuickActionPanel(
@@ -1330,11 +1340,11 @@ function renderServiceStatusPanel(user: OpsUser, services: ServiceStatus[], supa
     .map(
       (svc) =>
         `<tr>
-          <td>${svc.name}</td>
+          <td>${escapeHtml(svc.name)}</td>
           <td>${svc.status === 'online' ? '<span class="pill ok">Online</span>' : svc.status === 'offline' ? '<span class="pill error">Offline</span>' : '<span class="pill warn">Unknown</span>'}</td>
           <td>${svc.responseTime ? svc.responseTime + 'ms' : '—'}</td>
-          <td>${svc.url ? `<a href="${svc.url}" target="_blank" rel="noreferrer">Check</a>` : '—'}</td>
-          <td>${svc.detail ?? '—'}</td>
+          <td>${svc.url ? `<a href="${escapeHtml(svc.url)}" target="_blank" rel="noreferrer">Check</a>` : '—'}</td>
+          <td>${escapeHtml(svc.detail ?? '—')}</td>
         </tr>`,
     )
     .join('');
@@ -1390,11 +1400,11 @@ function renderServiceStatusPanel(user: OpsUser, services: ServiceStatus[], supa
         <tbody>
           <tr><td>Status da conexao</td><td>${supabaseStatus}</td><td>${supabaseTime}</td></tr>
           <tr><td>Conexoes ativas</td><td>${supabaseConnections}</td><td>—</td></tr>
-          <tr><td>Tamanho do banco</td><td>${supabaseSize}</td><td>—</td></tr>
+          <tr><td>Tamanho do banco</td><td>${escapeHtml(supabaseSize)}</td><td>—</td></tr>
         </tbody>
       </table>
-      ${supabaseMetrics.detail ? `<p style="color:#516675;font-size:13px;margin-top:8px;">Detalhe: ${supabaseMetrics.detail}</p>` : ''}
-      ${supabaseMetrics.error ? `<p style="color:#dc2626;font-size:13px;margin-top:8px;">Erro: ${supabaseMetrics.error}</p>` : ''}
+      ${supabaseMetrics.detail ? `<p style="color:#516675;font-size:13px;margin-top:8px;">Detalhe: ${escapeHtml(supabaseMetrics.detail)}</p>` : ''}
+      ${supabaseMetrics.error ? `<p style="color:#dc2626;font-size:13px;margin-top:8px;">Erro: ${escapeHtml(supabaseMetrics.error)}</p>` : ''}
     </section>`,
   );
 }
@@ -1413,14 +1423,14 @@ function renderApiStatusPanel(user: OpsUser): string {
     `<section class="panel">
       <h2>Payload atual</h2>
       <p>Este JSON e o retorno do endpoint publico <strong>/api/status</strong>.</p>
-      <pre class="mono">${JSON.stringify(payload, null, 2)}</pre>
+      <pre class="mono">${escapeHtml(JSON.stringify(payload, null, 2))}</pre>
     </section>
 
     <section class="panel">
       <h2>Acoes rapidas de diagnostico</h2>
       <p>Use os comandos abaixo para monitoramento basico.</p>
-      <pre class="mono">curl -sS ${env.OPS_PUBLIC_BASE_URL}/healthz
-curl -sS ${env.OPS_PUBLIC_BASE_URL}/api/status</pre>
+      <pre class="mono">curl -sS ${escapeHtml(env.OPS_PUBLIC_BASE_URL)}/healthz
+curl -sS ${escapeHtml(env.OPS_PUBLIC_BASE_URL)}/api/status</pre>
       <p style="margin-top:8px;">Status sugerido: <span class="pill ok">Operacional</span></p>
     </section>`,
   );
