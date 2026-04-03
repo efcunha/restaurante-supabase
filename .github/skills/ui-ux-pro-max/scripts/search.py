@@ -15,8 +15,10 @@ Persistence (Master + Overrides pattern):
 """
 
 import argparse
+import os
 import sys
 import io
+from pathlib import Path
 from core import CSV_CONFIG, AVAILABLE_STACKS, MAX_RESULTS, search, search_stack
 from design_system import generate_design_system, persist_design_system
 
@@ -53,6 +55,23 @@ def format_output(result):
     return "\n".join(output)
 
 
+def resolve_safe_output_dir(raw_output_dir):
+    """Resolve output dir to a safe path within current workspace."""
+    if not raw_output_dir:
+        return None
+
+    workspace_root = Path.cwd().resolve()
+    candidate = Path(raw_output_dir)
+    resolved = (workspace_root / candidate).resolve() if not candidate.is_absolute() else candidate.resolve()
+
+    try:
+        resolved.relative_to(workspace_root)
+    except ValueError:
+        raise ValueError(f"Invalid --output-dir. Must be inside workspace: {workspace_root}")
+
+    return str(resolved)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="UI Pro Max Search")
     parser.add_argument("query", help="Search query")
@@ -71,6 +90,12 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    try:
+        safe_output_dir = resolve_safe_output_dir(args.output_dir)
+    except ValueError as error:
+        print(f"Error: {error}")
+        sys.exit(1)
+
     # Design system takes priority
     if args.design_system:
         result = generate_design_system(
@@ -79,7 +104,7 @@ if __name__ == "__main__":
             args.format,
             persist=args.persist,
             page=args.page,
-            output_dir=args.output_dir
+            output_dir=safe_output_dir
         )
         print(result)
         
