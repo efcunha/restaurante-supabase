@@ -1519,6 +1519,11 @@ function validateReconcileInput(input: Partial<ReconcileInput>): string | null {
   return null;
 }
 
+/** Valida que o código de erro só contém caracteres seguros antes de incluir na resposta. */
+function safeBillingCode(code: string, fallback: string): string {
+  return /^[A-Z][A-Z0-9_]{2,49}$/.test(code) ? code : fallback;
+}
+
 function respondBillingError(res: import('node:http').ServerResponse, err: unknown): void {
   if (err instanceof BillingOperationError) {
     const safeMessage = err.message
@@ -1526,10 +1531,10 @@ function respondBillingError(res: import('node:http').ServerResponse, err: unkno
       .replace(/eyJ[A-Za-z0-9._-]{10,}/g, '[REDACTED]')
       .replace(/sb_(publishable|secret)_[A-Za-z0-9_]+/g, '[REDACTED]');
 
+    logWarn('billing.operation_error_detail', { message: safeMessage, code: err.code });
     res.writeHead(err.statusCode, { 'content-type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify({
-      error: safeMessage,
-      code: err.code,
+      code: safeBillingCode(err.code, 'BILLING_OPERATION_ERROR'),
     }));
     return;
   }
@@ -1662,7 +1667,7 @@ function startServer() {
           }
 
           if (!rateLimitResult.allowed) {
-            const retryAfter = rateLimitResult.retryAfterSeconds || 1;
+            const retryAfter = Math.max(1, Math.floor(Number(rateLimitResult.retryAfterSeconds) || 1));
             logWarn('auth.login_rate_limited', {
               method: req.method,
               path,
@@ -2086,7 +2091,7 @@ function startServer() {
         }
 
         if (!billingRateLimit.allowed) {
-          const retryAfter = billingRateLimit.retryAfterSeconds || 1;
+          const retryAfter = Math.max(1, Math.floor(Number(billingRateLimit.retryAfterSeconds) || 1));
           logWarn('billing.operation_rate_limited', {
             method: req.method,
             path,
@@ -2189,7 +2194,7 @@ function startServer() {
         }
 
         if (!billingRateLimit.allowed) {
-          const retryAfter = billingRateLimit.retryAfterSeconds || 1;
+          const retryAfter = Math.max(1, Math.floor(Number(billingRateLimit.retryAfterSeconds) || 1));
           logWarn('billing.operation_rate_limited', {
             method: req.method,
             path,
@@ -2284,8 +2289,9 @@ function startServer() {
           }));
         } catch (err) {
           if (err instanceof PlanConfigOperationError) {
+            logWarn('billing.plan_config_activate_error', { message: err.message, code: err.code });
             res.writeHead(err.statusCode, { 'content-type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify({ error: err.message, code: err.code }));
+            res.end(JSON.stringify({ code: safeBillingCode(err.code, 'PLAN_CONFIG_ERROR') }));
           } else {
             res.writeHead(500, { 'content-type': 'application/json; charset=utf-8' });
             res.end(JSON.stringify({ error: 'Erro ao carregar configuração de plano.' }));
@@ -2330,7 +2336,7 @@ function startServer() {
         }
 
         if (!rl.allowed) {
-          const retryAfter = rl.retryAfterSeconds || 1;
+          const retryAfter = Math.max(1, Math.floor(Number(rl.retryAfterSeconds) || 1));
           res.setHeader('Retry-After', String(retryAfter));
           res.writeHead(429, { 'content-type': 'application/json; charset=utf-8' });
           res.end(JSON.stringify({ error: 'Muitas tentativas. Aguarde e tente novamente.', retryAfter }));
@@ -2382,8 +2388,9 @@ function startServer() {
           }));
         } catch (err) {
           if (err instanceof PlanConfigOperationError) {
+            logWarn('billing.plan_config_operation_error', { message: err.message, code: err.code });
             res.writeHead(err.statusCode, { 'content-type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify({ error: err.message, code: err.code }));
+            res.end(JSON.stringify({ code: safeBillingCode(err.code, 'PLAN_CONFIG_ERROR') }));
           } else {
             logError('billing.plan_config.activate_error', {
               actor_id: user.id,
