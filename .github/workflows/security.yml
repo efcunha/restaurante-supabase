@@ -53,9 +53,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - gradleFile: restaurante-app/android/build.gradle
+          - gradleFile: build.gradle
             projectName: restaurante-app-android-root-gradle
-          - gradleFile: restaurante-app/android/app/build.gradle
+          - gradleFile: app/build.gradle
             projectName: restaurante-app-android-app-gradle
 
     steps:
