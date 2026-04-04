@@ -198,3 +198,8 @@ export function initSentry() {
 export function scrubData(data: any): any {
   return redactValue(data);
 }
+
+/**
+ * Export Sentry instance for use in other modules
+ */
+export { Sentry };
