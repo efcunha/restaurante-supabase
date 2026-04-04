@@ -22,7 +22,7 @@ import {
     resolveConfiguredSubcategories,
 } from '../utils/menuCategories';
 
-const CARDAPIO_CACHE_KEY = '@cardapio_cache_v2';
+const CARDAPIO_CACHE_KEY = 'cardapio_cache_v2';
 const MENU_REFRESH_WINDOW_MS = 30 * 60 * 1000;
 
 export const fixDecimal = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
