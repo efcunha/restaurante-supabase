@@ -67,7 +67,9 @@ CREATE INDEX idx_ops_logs_service ON ops_logs (service);
 CREATE INDEX idx_ops_logs_event ON ops_logs (event);
 CREATE INDEX idx_ops_logs_level ON ops_logs (level);
 CREATE INDEX idx_ops_logs_request_id ON ops_logs (request_id);
-CREATE INDEX idx_ops_logs_order_id ON ops_logs (order_id);
+ CREATE INDEX idx_ops_logs_order_id ON ops_logs (order_id);
+ -- Índice composto para queries de "erros nas últimas Xh" (level + range de timestamp)
+ CREATE INDEX idx_ops_logs_level_timestamp ON ops_logs (level, timestamp DESC);
 ```
 
 **`ops_alerts`** e **`ops_alert_firings`** — gerenciamento de alertas:
@@ -87,7 +89,7 @@ CREATE TABLE ops_alerts (
 
 CREATE TABLE ops_alert_firings (
   id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  alert_id    BIGINT NOT NULL REFERENCES ops_alerts(id),
+  alert_id    BIGINT NOT NULL REFERENCES ops_alerts(id) ON DELETE CASCADE,
   fired_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   context     JSONB,
   notified    BOOLEAN NOT NULL DEFAULT false
@@ -98,6 +100,40 @@ CREATE TABLE ops_alert_firings (
 
 ```
 restaurante-ops/
+├── src/
+│   ├── index.ts                          # Entry point (2662 linhas, vanilla HTTP, node:http)
+│   ├── config/
+│   │   └── env.ts                        # Variáveis de ambiente validadas (OpsEnv interface)
+│   ├── auth/
+│   │   ├── supabase.ts                   # Cliente Supabase service-role
+│   │   ├── session.ts                    # Cookies httpOnly
+│   │   └── middleware.ts                 # requireAuth()
+│   ├── lib/
+│   │   ├── logger.ts                     # Logger JSON existente (com redaction — campo: "ts")
+│   │   ├── redis.ts                      # Cliente Redis
+│   │   └── rate-limiter.ts               # Rate limiter distribuído
+│   ├── modules/
+│   │   ├── billing/                      # Submódulo billing
+│   │   ├── customers/                    # Submódulo clientes
+│   │   ├── metrics/                      # Submódulo métricas
+│   │   ├── billing-operations.ts         # Reconciliação billing
+│   │   ├── billing-plan-config-operations.ts  # Config de plano
+│   │   ├── data.ts                       # Acesso a dados (KPIs, empresas, invoices)
+│   │   ├── ops-security.ts               # Gestão MFA
+│   │   ├── service-status.ts             # Health check de serviços externos
+│   │   └── supabase-metrics.ts           # Métricas do banco
+│   └── views/
+│       └── dashboard.ts                  # Template HTML do dashboard existente
+├── docs/
+│   └── (vazio)
+├── package.json                          # type: "module", tsx, @supabase/supabase-js 2.56, redis 4.7
+├── tsconfig.json
+└── railway.json
+
+# IMPORTANTE: restaurante-web e restaurante-app são projetos Expo/React Native,
+# NÃO são Next.js. Usam prefixo EXPO_PUBLIC_ (não NEXT_PUBLIC_).
+# Ambos já possuem src/services/LoggerService.ts (Sentry) para crash reporting.
+```
 ├── src/
 │   ├── index.ts                          # Entry point (2662 linhas, vanilla HTTP)
 │   ├── config/
@@ -128,7 +164,7 @@ restaurante-ops/
 
 ### Logger existente (`src/lib/logger.ts`)
 
-Já existe um logger JSON com redaction de dados sensíveis. Formato atual:
+Já existe um logger JSON com redaction de dados sensíveis. **Formato atual (campo `ts`, não `timestamp`):**
 
 ```json
 {
@@ -139,9 +175,11 @@ Já existe um logger JSON com redaction de dados sensíveis. Formato atual:
 }
 ```
 
-**Redaction automática** para: `token`, `secret`, `password`, `cookie`, `authorization`, `api_key`, `card`, `cvv`, `pix_qr`. Emails são mascarados.
+**Redaction automática** para: `token`, `secret`, `password`, `cookie`, `authorization`, `api_key`, `apikey`, `service_role`, `mp_payment`, `card`, `cvv`, `pix_qr`. Emails são mascarados.
 
-**Este logger deve ser refatorado** para o novo formato padronizado e integrado com o storage de logs.
+**Este logger deve ser refatorado** para o novo formato padronizado (`timestamp` ao invés de `ts`, campo `service` obrigatório, campo `message` obrigatório) e integrado com o storage de logs.
+
+> **Redaction a adicionar:** `cpf`, `phone` (mencionados na section de segurança mas ausentes no código atual).
 
 ---
 
@@ -200,10 +238,10 @@ Criar suporte a logging para os seguintes eventos:
 | `whatsapp_webhook` | evolution | Evento recebido |
 | `slow_query` | supabase | Query > 500ms |
 | `db_error` | supabase | Erro de query |
-| `frontend_error` | web | Erro JavaScript |
+| `app_error` | web / app | Erro JS via ErrorUtils (React Native — não `window.onerror`) |
 | `api_error` | web / app | Erro em chamada API |
 | `app_startup` | app | Inicialização do app |
-| `page_view` | web | Navegação de página |
+| `page_view` | web | Navegação (React Navigation) |
 | `http_request` | ops | Toda requisição HTTP |
 
 ### 3. STORAGE DE LOGS
@@ -225,7 +263,7 @@ Criar `src/lib/log-storage.ts` com:
 
 Criar `src/lib/request-tracker.ts` com:
 
-- Gerar `request_id` único (UUID v4) por requisição
+ - Gerar `request_id` único (UUID v4) por requisição — usar `crypto.randomUUID()` built-in do Node.js (sem dependência externa)
 - Medir tempo de resposta (início → fim)
 - Logar todas as requisições HTTP com evento `http_request`
 - Logar automaticamente respostas com status >= 400
@@ -237,7 +275,7 @@ Criar `src/lib/request-tracker.ts` com:
 Refatorar `src/lib/logger.ts` com:
 
 - Manter redaction existente (senhas, tokens, etc.)
-- Adaptar para novo formato de log
+ - Adaptar para novo formato de log — renomear campo `ts`→`timestamp` e `durationMs`→`duration_ms` em `LogContext`
 - Inserir log no storage (assíncrono, não bloqueante)
 - Batch inserts para performance
 - Exportar funções: `logInfo()`, `logWarn()`, `logError()`
@@ -262,16 +300,18 @@ Criar `src/lib/supabase-logger.ts` com:
 
 Criar `src/lib/activepieces-logger.ts` com:
 
-- Endpoint `POST /webhooks/activepieces` no ops
-- Logar `automation_executed` ou `automation_failed`
+ - Endpoint `POST /webhooks/activepieces` no ops
+ - **Autenticar** via `X-Webhook-Secret` (env `ACTIVEPIECES_WEBHOOK_SECRET`) — rejeitar com 401 se ausente ou inválido
+ - Logar `automation_executed` ou `automation_failed`
 - Incluir: `workflow_id`, `execution_id`, `workflow_name`, `duration_ms`, `result`
 
 ### 8. WEBHOOK EVOLUTION API
 
 Criar `src/lib/evolution-logger.ts` com:
 
-- Endpoint `POST /webhooks/evolution` no ops
-- Wrapper para chamadas de envio de mensagem
+ - Endpoint `POST /webhooks/evolution` no ops
+ - **Autenticar** via `X-Webhook-Secret` (env `EVOLUTION_WEBHOOK_SECRET`) — rejeitar com 401 se ausente ou inválido
+ - Wrapper para chamadas de envio de mensagem
 - Logar `whatsapp_sent`, `whatsapp_failed`, `whatsapp_webhook`
 - Incluir: `phone_number` (mascarado), `message_id`, `instance`, `message_type`
 
@@ -283,7 +323,7 @@ Criar `src/lib/external-logs.ts` com:
 - Autenticar via API key (header `X-Log-Api-Key`)
 - Receber batch de logs do web e app
 - Validar formato, aplicar redaction, inserir no storage
-- Rate limiting por origem
+ - Rate limiting por API key (`X-Log-Api-Key`) — **não usar IP** como chave (apps Expo podem estar atrás de NAT/CDN)
 - Responder com 202 Accepted
 
 ### 10. API DE CONSULTA DE LOGS
@@ -319,7 +359,7 @@ Criar `src/views/observability.ts` com template HTML para:
 
 ### 13. VARIÁVEIS DE AMBIENTE
 
-Atualizar `src/config/env.ts` e `.env.example` com:
+Atualizar `src/config/env.ts` (interface `OpsEnv`) e `.env.example` com:
 
 ```bash
 # Logging
@@ -327,12 +367,22 @@ LOG_LEVEL=info
 SLOW_QUERY_THRESHOLD_MS=500
 LOG_RETENTION_DAYS=30
 
-# API Key para recebimento de logs externos
+# API Key para recebimento de logs externos (web/app)
+# Valor é exposto no bundle Expo — apenas escrita de logs, sem risco crítico
+# Rate limiting no endpoint mitiga abuso
 OPS_LOG_API_KEY=sk-ops-log-key-aqui
 
 # Alertas
 ALERT_CHECK_INTERVAL_MS=60000
 ALERT_WEBHOOK_TIMEOUT_MS=5000
+```
+
+**Variáveis do lado dos apps Expo** (`restaurante-web` e `restaurante-app`):
+
+```bash
+# EXPO_PUBLIC_ — obrigatório para Expo (NÃO usar NEXT_PUBLIC_)
+EXPO_PUBLIC_OPS_LOGS_ENDPOINT=https://ops.restaurante-web.app.br
+EXPO_PUBLIC_LOG_API_KEY=sk-ops-log-key-aqui
 ```
 
 ### 14. BOAS PRÁTICAS
@@ -348,9 +398,10 @@ ALERT_WEBHOOK_TIMEOUT_MS=5000
 
 ## 📦 ENTREGÁVEIS
 
-1. **SQL migration** — Tabelas `ops_logs`, `ops_alerts`, `ops_alert_firings`
+### restaurante-ops (todos em `restaurante-ops/`)
+1. **SQL migration** em `database-backup/migrations/` — Tabelas `ops_logs`, `ops_alerts`, `ops_alert_firings` com RLS correta
 2. **`src/lib/log-storage.ts`** — Storage de logs no Supabase
-3. **`src/lib/logger.ts`** (refatorado) — Logger central integrado com storage
+ 3. **`src/lib/logger.ts`** (refatorado) — Renomear `ts`→`timestamp`, `durationMs`→`duration_ms`, adicionar `service`/`message` obrigatórios, integrar com storage
 4. **`src/lib/request-tracker.ts`** — Middleware de request tracking
 5. **`src/lib/supabase-logger.ts`** — Wrapper para queries Supabase
 6. **`src/lib/evolution-logger.ts`** — Logging + webhook Evolution API
@@ -360,10 +411,16 @@ ALERT_WEBHOOK_TIMEOUT_MS=5000
 10. **`src/lib/alerts-engine.ts`** — Engine de alertas
 11. **`src/lib/alert-scheduler.ts`** — Agendamento de verificação de alertas
 12. **`src/views/observability.ts`** — Dashboard web de observabilidade
-13. **`src/config/env.ts`** (atualizado) — Variáveis de logging
-14. **`.env.example`** (atualizado) — Documentação das variáveis
-15. **`src/index.ts`** (atualizado) — Integração de todos os componentes
-16. **Exemplos de logs** (no guia)
+13. **`src/config/env.ts`** (atualizado) — Adicionar `OPS_LOG_API_KEY`, `LOG_LEVEL`, etc. na interface `OpsEnv`
+14. **`.env.example`** (atualizado) — Documentação das novas variáveis
+15. **`src/index.ts`** (atualizado) — Integrar middlewares, rotas de webhook e dashboard
+
+### restaurante-web e restaurante-app (Expo/React Native)
+16. **`restaurante-web/src/services/ObservabilityService.ts`** — Captura `app_error` + envio para ops
+17. **`restaurante-app/src/services/ObservabilityService.ts`** — Equivalente para o app mobile
+    - Ambos usam `ErrorUtils.setGlobalHandler` (não `window.onerror`)
+    - Ambos usam `EXPO_PUBLIC_` para env vars (não `NEXT_PUBLIC_`)
+    - Ambos complementam o `LoggerService.ts` existente (Sentry para crashes, ops para eventos)
 
 ---
 
@@ -391,6 +448,12 @@ Ao final da implementação, o restaurante-ops deve permitir:
 * **TypeScript strict** — sem `any` injustificado
 * **Preservar padrões existentes** do projeto (logger JSON, redaction, env validation)
 * O dashboard web deve ser **Server-Side Rendered** (mesmo padrão do projeto)
+* **`restaurante-web` e `restaurante-app` são Expo/React Native, não Next.js:**
+  - Não usar `window.onerror` (API do browser) — usar `ErrorUtils.setGlobalHandler`
+  - Não usar prefixo `NEXT_PUBLIC_` — usar `EXPO_PUBLIC_`
+  - Móduos nos apps vão em `src/services/ObservabilityService.ts` (seguir padrão de `LoggerService.ts`)
+  - **Sentry já existe** em ambos os projetos via `src/services/LoggerService.ts` — o ObservabilityService **complementa** (Sentry para crashes, ops para eventos de negócio)
+* **RLS de `ops_logs`:** INSERT restrito a `service_role` apenas; SELECT para `authenticated`
 
 ---
 
@@ -416,3 +479,5 @@ Ao final da implementação, o restaurante-ops deve permitir:
 ---
 
 **Inicie a implementação agora.** Comece lendo os arquivos existentes (`src/lib/logger.ts`, `src/config/env.ts`, `src/index.ts`, `src/views/dashboard.ts`) para entender os padrões atuais antes de criar novos arquivos.
+
+> **Atenção ao ler `src/lib/logger.ts`:** O campo de timestamp atual é `ts` (não `timestamp`). A refatoração deve renomear para `timestamp` e adicionar os campos `service` e `message` como obrigatórios no formato de saída. Qualquer código que precise do campo `ts` deve ser migrado em conjunto.
