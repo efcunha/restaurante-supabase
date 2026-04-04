@@ -6,7 +6,7 @@ import { Product, Cardapio } from '../types';
 import type { MenuItem } from '../types/index';
 import { getOrCreateMenuCategories, normalizeCategorySlug } from '../utils/menuCategories';
 
-const CARDAPIO_CACHE_KEY = '@cardapio_cache';
+const CARDAPIO_CACHE_KEY = 'cardapio_cache';
 
 export function useMenu() {
     const { user } = useAuth();
