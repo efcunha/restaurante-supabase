@@ -106,8 +106,10 @@ function patchEscPosAndroidBuildGradle() {
     return;
   }
 
-  const original = fs.readFileSync(escPosAndroidBuildGradlePath, 'utf8');
+  let content = fs.readFileSync(escPosAndroidBuildGradlePath, 'utf8');
+  let changed = false;
 
+  // Patch 1: Remove legacy new-arch sourceSets (generated/java + generated/jni)
   const legacySourceSetBlock = `  sourceSets {
     main {
       if (isNewArchitectureEnabled()) {
@@ -121,7 +123,6 @@ function patchEscPosAndroidBuildGradle() {
     }
   }
 `;
-
   const fixedSourceSetBlock = `  sourceSets {
     main {
       if (!isNewArchitectureEnabled()) {
@@ -130,21 +131,59 @@ function patchEscPosAndroidBuildGradle() {
     }
   }
 `;
-
-  if (!original.includes('java.srcDirs += [\n            "generated/java"')) {
+  if (content.includes('java.srcDirs += [\n            "generated/java"')) {
+    content = content.replace(legacySourceSetBlock, fixedSourceSetBlock);
+    changed = true;
+    console.log('[postinstall] react-native-esc-pos-printer sourceSets patched for RN 0.84');
+  } else {
     console.log('[postinstall] react-native-esc-pos-printer sourceSets already patched');
-    return;
   }
 
-  const updated = original.replace(legacySourceSetBlock, fixedSourceSetBlock);
-
-  if (updated === original) {
-    console.log('[postinstall] react-native-esc-pos-printer sourceSets pattern not matched, skipping patch');
-    return;
+  // Patch 2: Remove "apply plugin: com.facebook.react" conditional block.
+  // With newArchEnabled=true in the host app, this plugin gets applied to
+  // react-native-esc-pos-printer and generates codegen. However, the generated
+  // JNI directory is added to Android-autolinking.cmake before it actually
+  // exists, causing a CMake configuration failure on RN 0.84 / EAS builds.
+  // Removing this prevents the Gradle autolinking from including this library
+  // in the CMake native build (old-arch bridge handles it instead).
+  const applyPluginBlock = `if (isNewArchitectureEnabled()) {
+  apply plugin: "com.facebook.react"
+}`;
+  const applyPluginComment = `// react-native-esc-pos-printer: com.facebook.react plugin removed by postinstall.
+// The package ships pre-generated JNI stubs but does not support the full
+// RN 0.84 codegen pipeline when hosted in a new-arch app build.
+// Old-arch NativeModules bridge is used instead.`;
+  if (content.includes(applyPluginBlock)) {
+    content = content.replace(applyPluginBlock, applyPluginComment);
+    changed = true;
+    console.log('[postinstall] react-native-esc-pos-printer apply plugin:com.facebook.react removed');
+  } else {
+    console.log('[postinstall] react-native-esc-pos-printer apply plugin already removed or not present');
   }
 
-  fs.writeFileSync(escPosAndroidBuildGradlePath, updated, 'utf8');
-  console.log('[postinstall] react-native-esc-pos-printer sourceSets patched for RN 0.84');
+  // Patch 3: Remove "react { ... }" block that configures codegen spec.
+  // Required to prevent the Gradle autolinking from generating codegen artifacts
+  // for this library (would reference a non-existent JNI directory in CMake).
+  const reactBlock = `if (isNewArchitectureEnabled()) {
+  react {
+    jsRootDir = file("../src/")
+    libraryName = "RNEscPosPrinterSpec"
+    codegenJavaPackageName = "com.escposprinter"
+  }
+}`;
+  const reactBlockComment = `// react-native-esc-pos-printer: react{} codegen block removed by postinstall.
+// See Patch 2 comment above for rationale.`;
+  if (content.includes(reactBlock)) {
+    content = content.replace(reactBlock, reactBlockComment);
+    changed = true;
+    console.log('[postinstall] react-native-esc-pos-printer react{} codegen block removed');
+  } else {
+    console.log('[postinstall] react-native-esc-pos-printer react{} block already removed or not present');
+  }
+
+  if (changed) {
+    fs.writeFileSync(escPosAndroidBuildGradlePath, content, 'utf8');
+  }
 }
 
 patchExpoModulesCorePromise();
