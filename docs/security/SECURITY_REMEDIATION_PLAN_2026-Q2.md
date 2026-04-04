@@ -599,8 +599,9 @@ railway up
 > Atualizacao de execucao em 04/04/2026:
 > - Pinning aplicado no `restaurante-app` para `supabase.co` (subdominios) e `api.mercadopago.com` com pin leaf + backup CA.
 > - Evidencia tecnica registrada em `docs/security/PINNING_CERT_EVIDENCE_2026-04-04.md`.
-> - Build Android preview iniciado com sucesso em EAS (`build id 577eb0c4-1909-48dd-afed-ed5ea06633f6`).
-> - Pendencia remanescente: setup interativo de credenciais iOS + smoke controlado (incluindo MITM) antes do fechamento definitivo do item.
+> - Build Android preview iniciado com sucesso em EAS (`build id 47c4f6fe-4360-4942-8070-5a30fa6fe410`).
+> - Build iOS simulador tambem iniciado com sucesso em EAS (`build id 523cc6b1-a4d5-4573-8d74-6c7cd199eb6d`) via `ios.simulator=true` no perfil `preview`.
+> - Pendencia remanescente: acompanhar conclusao dos builds e executar smoke controlado (incluindo MITM) antes do fechamento definitivo do item.
 
 #### Tarefas
 

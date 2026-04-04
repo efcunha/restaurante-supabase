@@ -108,3 +108,4 @@ __tests__*
 .vercel
 test-results*
 playwright-report*
+.env.local
