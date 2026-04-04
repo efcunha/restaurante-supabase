@@ -15,19 +15,20 @@ const original = fs.readFileSync(promiseKtPath, 'utf8');
 
 const replacements = [
   ['override fun reject(code: String, message: String?) {', 'override fun reject(code: String?, message: String?) {'],
-  ['expoPromise.reject(code, message, null)', 'expoPromise.reject(code ?: unknownCode, message, null)'],
   ['override fun reject(code: String, throwable: Throwable?) {', 'override fun reject(code: String?, throwable: Throwable?) {'],
-  ['expoPromise.reject(code, null, throwable)', 'expoPromise.reject(code ?: unknownCode, null, throwable)'],
   ['override fun reject(code: String, message: String?, throwable: Throwable?) {', 'override fun reject(code: String?, message: String?, throwable: Throwable?) {'],
-  ['expoPromise.reject(code, message, throwable)', 'expoPromise.reject(code ?: unknownCode, message, throwable)'],
   ['override fun reject(code: String, userInfo: WritableMap) {', 'override fun reject(code: String?, userInfo: WritableMap) {'],
   ['override fun reject(code: String, throwable: Throwable?, userInfo: WritableMap) {', 'override fun reject(code: String?, throwable: Throwable?, userInfo: WritableMap) {'],
-  ['override fun reject(code: String, message: String?, userInfo: WritableMap) {', 'override fun reject(code: String?, message: String?, userInfo: WritableMap) {']
+  ['override fun reject(code: String, message: String?, userInfo: WritableMap) {', 'override fun reject(code: String?, message: String?, userInfo: WritableMap) {'],
+  ['expoPromise.reject(code, message, null)', 'expoPromise.reject(code ?: unknownCode, message, null)'],
+  ['expoPromise.reject(code, null, throwable)', 'expoPromise.reject(code ?: unknownCode, null, throwable)'],
+  ['expoPromise.reject(code, message, throwable)', 'expoPromise.reject(code ?: unknownCode, message, throwable)'],
+  ['expoPromise.reject(code, null, null)', 'expoPromise.reject(code ?: unknownCode, null, null)']
 ];
 
 let updated = original;
 for (const [from, to] of replacements) {
-  updated = updated.replace(from, to);
+  updated = updated.split(from).join(to);
 }
 
 if (updated === original) {
