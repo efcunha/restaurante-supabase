@@ -1,0 +1,56 @@
+[
+  {
+    "id": "21654e7b-1683-41b7-9591-fc49c23cc397",
+    "status": "ERRORED",
+    "platform": "IOS",
+    "error": {
+      "errorCode": "XCODE_BUILD_ERROR",
+      "message": "The \"Run fastlane\" step failed because of an error in the Xcode build process. We automatically detected following errors in your Xcode build logs:\n- no member named 'CallInvoker' in namespace 'facebook::react'\nRefer to \"Xcode Logs\" below for additional, more detailed logs."
+    },
+    "artifacts": {
+      "xcodeBuildLogsUrl": "https://job-logs.eascdn.net/production-xcode-logs/21654e7b-1683-41b7-9591-fc49c23cc397?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260404%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260404T211709Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=4cdb0ead1abfdb761927d6559d2e390ea42863f8ba7981b828cad9ec6f8201ff5b6e3a8b3c52447d5fb9e9260e1eae176841a1fd049f9e2893be08a1023a769e06b577f4f1884b40f1655bd69171a5536e129f73f9b43d86d762f1b14b257223c08ae4cf64d479b119bb776338f2a72d524be4106178cee300792a6bf98079f3eb404ed57360bac0c4cc90a5983ca6cdc29e574fbe87457d994b9d25b3a86fc8ee31347e72540d3e0fb0b399f8dff2eb0b7db5bda516464aa8bb2aa0c88629e020b5c7f63317ff2e05bbe748fd20a7fa430b4247edb890488fc54383acd3a8b5f62b282ac754e2432e3170a6b223025a26df1a6f0a4ed58a35535452661280d4"
+    },
+    "fingerprint": {
+      "id": "019d5a3c-2c1b-77f7-a7b1-235392c14d19",
+      "hash": "15043cb0b3db87bd7bd9472dca8d31b40211e5a5"
+    },
+    "initiatingActor": {
+      "id": "83ded47a-b1e9-490f-81ae-e80fffb3af39",
+      "displayName": "lumachadolp"
+    },
+    "logFiles": [
+      "https://job-logs.eascdn.net/production/21654e7b-1683-41b7-9591-fc49c23cc397/1775336551936-6b12ab82-07d4-4c05-8659-d24523b4af3f.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260404%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260404T211709Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=c19bdf8966a7069ebdf97e41e073e4904fbcc9132f0d68f6458cbcbee07a5f2c6885a48c90daf76260ac4d6c560158fc89c6a8145593d9c9b9c0acab83d18491d95b1fe28a018d063cf0a55bc1c76297d8692f5650c8589970b9b8c663a211ba2e015bbda78ba26981c7958310a93cdc758113036761d4feb8d25d328d062d03b26ed1a1c03822f2d552075e0b6d012ab8daacc3ef7b62c34178decc2558966855e6828ec6fd5a3aaf37fe8f299237d2be46b498797d1667ca8ec8d537bbcdef8b94bb2dd0522f0a38fecad33b17eb97f1bc2dfdb35fe587364e38de31bb0381c5bd9f635c3b45233b853f07993d7de792cd11e5ac08e24ab6fe74a419b78891",
+      "https://job-logs.eascdn.net/production/21654e7b-1683-41b7-9591-fc49c23cc397/1775337019856-0f68f2c6-e6b0-447d-976c-46da3d912654.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260404%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260404T211709Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=813106f549dd4a062cbbe1e12e9d363b01c3494908a5b2d4f8bab9e8ee0e052a0e68d1872cd4797cc833e4658a01babbb0ebe5c11cd6063a8d8cba8ecbeadeeb2b07b9e4e322b5a94e7813fcb2cfdb2480d7ba8c75ade25cac0fa295cb80bf839ea7a3f6ff77b4314c96eabb139e67a074aab6d4b5f57a72218cc003824098834eb6daaafb9881088cc680ec785a22918bfa25847b91e34731d994e1ecc154543c605f797b661b5383ff8353a0f7d74d01022376edb9b8caa23382823d75c5859540643c50094deac3cf7904c79644c4d7977ada26c93bf0b5f285f9e0f0ff1d7fe7efbd52dde043bdadefe7931976037d31cb7ea79ef673ddf7696a49ffb416",
+      "https://job-logs.eascdn.net/production/21654e7b-1683-41b7-9591-fc49c23cc397/1775337027694-0f21440f-888d-431c-8c93-fef97594dcd8.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260404%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260404T211709Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=93781ba0ee9f1c18158b7373b15012a9f4035c97ca344b89f700e74537c36ec8b1f992bca65ccfcd28500bf92a33e08dab35157264904e418bba6fa456efeb6f0afc88b0cd3196e93e329dab65f78a185a2a74fdcf3aea0793e2c7600c18438c54d88261b9adc997c9b0c8a73e5a56d38cb228a09828a040e0276bf5367a5863c48a21f29d39c3c4a25661dcba946ff2cfca043f6359647b21f2da818e5092724887410dab453210fccaa3988c8cc3203c64b0bc34dadf04576132c86e4d8bb70ebf8b8cfed9eb064421f913e7c6d324d673cc3b82696b3fa978a53ffa504e1ad4fd061cdf8d54628fff8763d5f2a5b31a14422d45200e3e9e199c85d278a5c7",
+      "https://job-logs.eascdn.net/production/21654e7b-1683-41b7-9591-fc49c23cc397/1775337027928-28225957-c74a-49d0-8eff-46828038f9b6.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260404%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260404T211709Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=15fae3fe00dff73a8bc74df1ebb8190c3709538ea74c2191fbcab8da6bfef66c0e02cccac7a10be94355577076c363b7823ea73ec53456d8579017a78211ca765e124f7ae4479ff45b2d558ca9e79519307884ecc8affacd42196b025d130525855aeb1fa682cb20e01c8c535f14c6e6ea023d1d37324473f8f9564feeac216697310c605e0bb739e3e7e2feb991d8e63c9b2164e3f1769db9246e6a4ff61f3298692852c9463a4040061c34642dac82831319aca16a1e0ed36d5630c72e046b2b472b621829cf17390301f65824205e58c3c0cfd40ec30e7ef9b6b118054ae03ce0f1b17598908a0c2df4619838dc756eb000ef14378862be2be7bef4fb15a5",
+      "https://job-logs.eascdn.net/production/21654e7b-1683-41b7-9591-fc49c23cc397/1775337028123-586be79a-3b33-43d9-b288-157271a3bb92.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260404%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260404T211709Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=7c365354f4ee96d40ed418b60d33d995300b928555f93808ded3a78c7d215eabff756c3ad5736247bfaedd128054ebc536db069b4a8e535ab3de203dac46abbe09ca1be11e76f47ee087ea12a62a51b6d500e4a5b28f046e99ab0e840c2993d55a0fb66ad3452f0aef4a415f2f7b3d8b46dd9f64117a139e1529bcfcccc04f920ace85f158fba38f8649f99d5dac6ad4d3540002859777b819dd5908f7cdc4ca5432afdcd50a1baad7f94763805fc8b72b0297e01348479a74922f2cf7ba5d17fd0a6eaa15ab88c6570056f74d9dbb69d609e9ecbed4d1982c6496fb76dc45c6b483846738714fa374680eafc680742ceab5b76759a1938fd90ff0973b6426ac"
+    ],
+    "project": {
+      "id": "8384f741-18dd-41fb-b0ab-df0ece2acecf",
+      "name": "restaurante-app",
+      "slug": "restaurante-app",
+      "ownerAccount": {
+        "id": "78274571-4fa1-4f3a-a809-635e4af9bbf5",
+        "name": "lumachadolp"
+      }
+    },
+    "distribution": "INTERNAL",
+    "buildProfile": "preview",
+    "sdkVersion": "54.0.0",
+    "appVersion": "1.0.1",
+    "appBuildVersion": "1",
+    "gitCommitHash": "a05dcff7df3ada7ffef062c58386762be414d571",
+    "gitCommitMessage": "fix: patch esc-pos-printer codegen config in postinstall\n\n- Remove react-native-esc-pos-printer codegenConfig during postinstall\n  to prevent invalid Android autolinking CMake entries on RN 0.84\n- Keep expo-modules-core Promise.kt patch behavior unchanged",
+    "priority": "NORMAL",
+    "createdAt": "2026-04-04T21:02:31.754Z",
+    "updatedAt": "2026-04-04T21:17:08.692Z",
+    "completedAt": "2026-04-04T21:16:57.995Z",
+    "expirationDate": "2026-04-18T21:02:31.779Z",
+    "isForIosSimulator": true,
+    "metrics": {
+      "buildWaitTime": 469366,
+      "buildQueueTime": 49208,
+      "buildDuration": 343380
+    }
+  }
+]
