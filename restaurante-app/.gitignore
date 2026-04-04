@@ -106,3 +106,4 @@ __tests__*
 .gemini/
 .expo/
 *.bak
+.env.local

@@ -283,7 +283,7 @@ const styles = StyleSheet.create({
 
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 
-export default function App() {
+export default Sentry.wrap(function App() {
   const [fontsLoaded] = useFonts({
     ...Ionicons.font,
     ...MaterialCommunityIcons.font,
@@ -306,4 +306,4 @@ export default function App() {
       </AuthProvider>
     </ErrorBoundary>
   );
-}
+});

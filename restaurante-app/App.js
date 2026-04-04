@@ -302,8 +302,28 @@ const styles = StyleSheet.create({
 });
 
 import { ErrorBoundary } from './src/components/ErrorBoundary';
+import * as Sentry from '@sentry/react-native';
 
-export default function App() {
+Sentry.init({
+  dsn: 'https://540e5308ba1986bc2bb85757511d33a1@o1148932.ingest.us.sentry.io/4511163001470976',
+
+  // Adds more context data to events (IP address, cookies, user, etc.)
+  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
+  sendDefaultPii: true,
+
+  // Enable Logs
+  enableLogs: true,
+
+  // Configure Session Replay
+  replaysSessionSampleRate: 0.1,
+  replaysOnErrorSampleRate: 1,
+  integrations: [Sentry.mobileReplayIntegration(), Sentry.feedbackIntegration()],
+
+  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
+  // spotlight: __DEV__,
+});
+
+export default Sentry.wrap(function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
@@ -315,4 +335,4 @@ export default function App() {
       </AuthProvider>
     </ErrorBoundary>
   );
-}
+});
