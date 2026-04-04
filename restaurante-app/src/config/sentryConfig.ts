@@ -13,7 +13,10 @@
 
 import * as Sentry from '@sentry/react-native';
 
-const SENTRY_DSN = 'https://eb58edf9733b7a7665c969d5680dd482@o4510816056049664.ingest.us.sentry.io/4510816058015744';
+// DSN público do projeto restaurante-app em machado-cunha-soft-house.sentry.io
+const SENTRY_DSN =
+  process.env.EXPO_PUBLIC_SENTRY_DSN ??
+  'https://540e5308ba1986bc2bb85757511d33a1@o1148932.ingest.us.sentry.io/4511163001470976';
 const IS_DEV = __DEV__ || process.env.NODE_ENV === 'development';
 
 /**
@@ -188,6 +191,14 @@ export function initSentry() {
       /exp\+restaurante-app/,
       /react-native/,
     ],
+
+    // Session Replay e Feedback
+    replaysSessionSampleRate: IS_DEV ? 0 : 0.1,
+    replaysOnErrorSampleRate: 1.0,
+    integrations: [Sentry.mobileReplayIntegration(), Sentry.feedbackIntegration()],
+
+    // Logs SDK
+    enableLogs: true,
   });
 
   console.log('[Sentry] Initialized with', {
@@ -204,3 +215,8 @@ export function initSentry() {
 export function scrubData(data: any): any {
   return redactValue(data);
 }
+
+/**
+ * Export Sentry instance for use in other modules (ex: Sentry.wrap no App.js)
+ */
+export { Sentry };

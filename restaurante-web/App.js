@@ -16,8 +16,7 @@ LogBox.ignoreLogs([
   'shadow*',
 ]);
 
-import { initSentry } from './src/config/sentryConfig';
-// import * as Sentry from '@sentry/react-native';
+import { initSentry, Sentry } from './src/config/sentryConfig';
 initSentry();
 
 import NovoPedidoScreen from './src/screens/NovoPedidoScreen';

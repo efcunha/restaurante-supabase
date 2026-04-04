@@ -13,7 +13,10 @@
 
 import * as Sentry from '@sentry/react';
 
-const SENTRY_DSN = 'https://eb58edf9733b7a7665c969d5680dd482@o4510816056049664.ingest.us.sentry.io/4510816058015744';
+// DSN público do projeto restaurante-web em machado-cunha-soft-house.sentry.io
+const SENTRY_DSN =
+  process.env.EXPO_PUBLIC_SENTRY_DSN ??
+  'https://b5e23df1080307e3b604b32e4d7f63b6@o1148932.ingest.us.sentry.io/4511163013791744';
 const IS_DEV = process.env.NODE_ENV === 'development' || process.env.REACT_APP_ENV === 'development';
 
 /**
