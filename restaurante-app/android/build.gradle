@@ -106,6 +106,20 @@ allprojects {
              details.useVersion '1.79'
              details.because 'Fix CVE-2024-30172 and CVE-2025-8916 reported by Snyk (fixedIn >= 1.78 / 1.79)'
           }
+            // CVE-2023-2976 — Guava temp file insecure permissions
+            if (details.requested.group == 'com.google.guava' && details.requested.name == 'guava') {
+              if (details.requested.version?.endsWith('-android')) {
+                details.useVersion '32.1.3-android'
+              } else {
+                details.useVersion '32.1.3-jre'
+              }
+              details.because 'Fix CVE-2023-2976 reported by Snyk (fixedIn >= 32.0.0)'
+            }
+            // commons-codec Information Exposure (CWE-200)
+            if (details.requested.group == 'commons-codec' && details.requested.name == 'commons-codec') {
+              details.useVersion '1.17.1'
+              details.because 'Fix commons-codec Information Exposure — upgrade to 1.14+ recommended by Snyk'
+            }
       }
     }
 }
