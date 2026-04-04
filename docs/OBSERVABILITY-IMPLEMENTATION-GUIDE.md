@@ -159,9 +159,9 @@ CREATE INDEX idx_ops_logs_service ON ops_logs (service);
 CREATE INDEX idx_ops_logs_event ON ops_logs (event);
 CREATE INDEX idx_ops_logs_level ON ops_logs (level);
 CREATE INDEX idx_ops_logs_request_id ON ops_logs (request_id);
- CREATE INDEX idx_ops_logs_order_id ON ops_logs (order_id);
- -- Índice composto para a query frequente "erros nas últimas Xh" (level + range de timestamp)
- CREATE INDEX idx_ops_logs_level_timestamp ON ops_logs (level, timestamp DESC);
+CREATE INDEX idx_ops_logs_order_id ON ops_logs (order_id);
+-- Índice composto para a query frequente "erros nas últimas Xh" (level + range de timestamp)
+CREATE INDEX idx_ops_logs_level_timestamp ON ops_logs (level, timestamp DESC);
 
 -- RLS: restrição de acesso por role
 ALTER TABLE ops_logs ENABLE ROW LEVEL SECURITY;
@@ -270,7 +270,7 @@ CREATE POLICY "ops_authenticated_read_logs" ON ops_logs
 
  > **Contrato `requireAuth`:** Quando `requireAuth(req, res)` retorna `null`, a resposta 302 já foi enviada internamente. O handler deve executar `if (!user) return;` imediatamente após a chamada — nunca enviar outra resposta nesse caso.
  
- | Método | Path                         | Descrição                    |
+| Método | Path                         | Descrição                    |
 |--------|------------------------------|------------------------------|
 | `GET`  | `/api/logs`                  | Listar logs com filtros      |
 | `GET`  | `/api/logs/trace/:requestId` | Rastrear requisição completa |
@@ -353,13 +353,13 @@ Resposta:
 
 **Páginas:**
 
-| Página | Conteúdo |
-|---|---|
-| `/observability` (ou `/logs`) | Log Viewer — tabela de logs com filtros |
-| `/observability/trace/:requestId` | Timeline de uma requisição |
-| `/observability/order/:orderId` | Timeline de um pedido |
-| `/observability/metrics` | Métricas agregadas (gráficos) |
-| `/observability/alerts` | Gestão de alertas |
+| Página                            | Conteúdo                                |
+|-----------------------------------|-----------------------------------------|
+| `/observability` (ou `/logs`)     | Log Viewer — tabela de logs com filtros |
+| `/observability/trace/:requestId` | Timeline de uma requisição              |
+| `/observability/order/:orderId`   | Timeline de um pedido                   |
+| `/observability/metrics`          | Métricas agregadas (gráficos)           |
+| `/observability/alerts`           | Gestão de alertas                       |
 
 #### Log Viewer
 
