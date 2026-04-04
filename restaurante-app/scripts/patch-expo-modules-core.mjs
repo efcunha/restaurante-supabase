@@ -11,6 +11,11 @@ const escPosPackageJsonPath = path.resolve(
   'node_modules/react-native-esc-pos-printer/package.json'
 );
 
+const escPosReactNativeConfigPath = path.resolve(
+  process.cwd(),
+  'node_modules/react-native-esc-pos-printer/react-native.config.js'
+);
+
 function patchExpoModulesCorePromise() {
   if (!fs.existsSync(promiseKtPath)) {
     console.log('[postinstall] expo-modules-core Promise.kt not found, skipping patch');
@@ -69,5 +74,27 @@ function patchEscPosCodegenConfig() {
   console.log('[postinstall] react-native-esc-pos-printer codegenConfig removed');
 }
 
+function patchEscPosReactNativeConfig() {
+  if (!fs.existsSync(escPosReactNativeConfigPath)) {
+    console.log('[postinstall] react-native-esc-pos-printer react-native.config.js not found, skipping patch');
+    return;
+  }
+
+  const original = fs.readFileSync(escPosReactNativeConfigPath, 'utf8');
+
+  if (!original.includes('cmakeListsPath')) {
+    console.log('[postinstall] react-native-esc-pos-printer cmakeListsPath already removed');
+    return;
+  }
+
+  const updated = original
+    .split("        cmakeListsPath: 'generated/jni/CMakeLists.txt',")
+    .join('');
+
+  fs.writeFileSync(escPosReactNativeConfigPath, updated, 'utf8');
+  console.log('[postinstall] react-native-esc-pos-printer cmakeListsPath removed');
+}
+
 patchExpoModulesCorePromise();
 patchEscPosCodegenConfig();
+patchEscPosReactNativeConfig();
