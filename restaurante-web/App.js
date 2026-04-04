@@ -16,7 +16,7 @@ LogBox.ignoreLogs([
   'shadow*',
 ]);
 
-import { initSentry, Sentry } from './src/config/sentryConfig';
+import { initSentry } from './src/config/sentryConfig';
 initSentry();
 
 import NovoPedidoScreen from './src/screens/NovoPedidoScreen';
@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
 
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 
-export default Sentry.wrap(function App() {
+export default function App() {
   const [fontsLoaded] = useFonts({
     ...Ionicons.font,
     ...MaterialCommunityIcons.font,
@@ -305,4 +305,4 @@ export default Sentry.wrap(function App() {
       </AuthProvider>
     </ErrorBoundary>
   );
-});
+}
