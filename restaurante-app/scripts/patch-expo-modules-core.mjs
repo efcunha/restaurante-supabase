@@ -16,6 +16,11 @@ const escPosReactNativeConfigPath = path.resolve(
   'node_modules/react-native-esc-pos-printer/react-native.config.js'
 );
 
+const escPosAndroidBuildGradlePath = path.resolve(
+  process.cwd(),
+  'node_modules/react-native-esc-pos-printer/android/build.gradle'
+);
+
 function patchExpoModulesCorePromise() {
   if (!fs.existsSync(promiseKtPath)) {
     console.log('[postinstall] expo-modules-core Promise.kt not found, skipping patch');
@@ -95,6 +100,54 @@ function patchEscPosReactNativeConfig() {
   console.log('[postinstall] react-native-esc-pos-printer cmakeListsPath removed');
 }
 
+function patchEscPosAndroidBuildGradle() {
+  if (!fs.existsSync(escPosAndroidBuildGradlePath)) {
+    console.log('[postinstall] react-native-esc-pos-printer android/build.gradle not found, skipping patch');
+    return;
+  }
+
+  const original = fs.readFileSync(escPosAndroidBuildGradlePath, 'utf8');
+
+  const legacySourceSetBlock = `  sourceSets {
+    main {
+      if (isNewArchitectureEnabled()) {
+          java.srcDirs += [
+            "generated/java",
+            "generated/jni"
+          ]
+      } else {
+              java.srcDirs += ['src/oldarch']
+      }
+    }
+  }
+`;
+
+  const fixedSourceSetBlock = `  sourceSets {
+    main {
+      if (!isNewArchitectureEnabled()) {
+        java.srcDirs += ['src/oldarch']
+      }
+    }
+  }
+`;
+
+  if (!original.includes('java.srcDirs += [\n            "generated/java"')) {
+    console.log('[postinstall] react-native-esc-pos-printer sourceSets already patched');
+    return;
+  }
+
+  const updated = original.replace(legacySourceSetBlock, fixedSourceSetBlock);
+
+  if (updated === original) {
+    console.log('[postinstall] react-native-esc-pos-printer sourceSets pattern not matched, skipping patch');
+    return;
+  }
+
+  fs.writeFileSync(escPosAndroidBuildGradlePath, updated, 'utf8');
+  console.log('[postinstall] react-native-esc-pos-printer sourceSets patched for RN 0.84');
+}
+
 patchExpoModulesCorePromise();
 patchEscPosCodegenConfig();
 patchEscPosReactNativeConfig();
+patchEscPosAndroidBuildGradle();
