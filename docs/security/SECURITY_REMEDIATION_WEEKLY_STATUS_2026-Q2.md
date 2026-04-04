@@ -55,7 +55,7 @@ Legenda de status:
 | Item | Escopo | Status | Evidencia | Observacoes |
 |------|--------|--------|-----------|-------------|
 | Certificate Pinning implementation | app | concluido | `restaurante-app/app.json`, `restaurante-app/android/app/src/main/AndroidManifest.xml`, `restaurante-app/android/app/src/main/res/xml/network_security_config.xml`, `restaurante-app/ios/Espeto/Info.plist`, `restaurante-app/package.json` | Implementado pinning para `supabase.co` (subdominios) e `api.mercadopago.com` com pin leaf + backup CA pin. Necessario manter runbook de rotacao de certificados e renovar pins antes de expiracao de `pin-set` (2027-12-31). |
-| Build nativo + MITM testing | app | em andamento | `restaurante-app/app.json`, `restaurante-app/android/app/src/main/res/xml/network_security_config.xml`, `restaurante-app/ios/Espeto/Info.plist` | Configuracao aplicada e validada em config parsing (`expo config --type public`). Pendente validacao final por EAS build e smoke controlado de conexao Supabase + Mercado Pago. |
+| Build nativo + MITM testing | app | em andamento | `restaurante-app/app.json`, `restaurante-app/android/app/src/main/res/xml/network_security_config.xml`, `restaurante-app/ios/Espeto/Info.plist`, `docs/security/PINNING_CERT_EVIDENCE_2026-04-04.md` | `projectId` EAS corrigido para `930f1e33-a6ec-4432-8c37-891f4eddcb1f`. Build Android iniciado com sucesso em 04/04 (`https://expo.dev/accounts/lumachadolp/projects/comandapraia-dona-cida/builds/577eb0c4-1909-48dd-afed-ed5ea06633f6`); o slug da URL no painel Expo permanece legado e nao impacta o `projectId`. Build iOS bloqueado em non-interactive por ausencia de credenciais internas; requer execucao interativa para configurar credenciais iOS e concluir smoke final de conectividade/MITM controlado. |
 
 ### Ops
 
@@ -125,6 +125,7 @@ Legenda de status:
 | Ambiente de staging dedicado inexistente | aberto | time | Usar validacao controlada em producao ate existir ambiente formal |
 | Supabase Auth MFA TOTP ainda desabilitado em runtime | concluido (2026-04-02) | app + web | MFA TOTP validado end-to-end em producao. Enrollment, desafio e verificacao confirmados para roles privilegiadas em app e web. |
 | Validacao MITM automatizada para pinning ainda pendente | monitoramento | app | Executar EAS build e testes controlados de conectividade (Supabase/Mercado Pago) antes de promover mudanca como 100% validada em producao |
+| Credenciais iOS ausentes para build preview | aberto | app | Executar `npx eas-cli build --platform ios --profile preview` em modo interativo para provisionar credenciais e concluir validacao iOS |
 | OPS-4 sem invoice elegivel para replay de sucesso | aberto | ops | Repetir smoke quando existir invoice `pending` ou `failed`; usar `npm run billing:candidates` para localizar candidatos antes do replay |
 
 ---

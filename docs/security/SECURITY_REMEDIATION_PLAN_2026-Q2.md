@@ -550,7 +550,7 @@ railway up
       // Configurar allowlist de domínios
       allowUrls: [
         /com\.comandapraia\.donacida/,
-        /exp\+comandapraia-dona-cida/,
+        /exp\+restaurante-app/,
         /restaurante-app/
       ]
     });
@@ -599,7 +599,8 @@ railway up
 > Atualizacao de execucao em 04/04/2026:
 > - Pinning aplicado no `restaurante-app` para `supabase.co` (subdominios) e `api.mercadopago.com` com pin leaf + backup CA.
 > - Evidencia tecnica registrada em `docs/security/PINNING_CERT_EVIDENCE_2026-04-04.md`.
-> - Pendencia remanescente: validacao final por EAS build e smoke controlado (incluindo MITM) antes do fechamento definitivo do item.
+> - Build Android preview iniciado com sucesso em EAS (`build id 577eb0c4-1909-48dd-afed-ed5ea06633f6`).
+> - Pendencia remanescente: setup interativo de credenciais iOS + smoke controlado (incluindo MITM) antes do fechamento definitivo do item.
 
 #### Tarefas
 
