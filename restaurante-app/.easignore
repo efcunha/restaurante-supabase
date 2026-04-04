@@ -1,0 +1,4 @@
+# Ignore local build artifacts and lock files that can break EAS tarball upload
+android/.gradle
+android/build
+ios/build

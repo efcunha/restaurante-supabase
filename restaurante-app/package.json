@@ -88,6 +88,15 @@
     "uuid": "^13.0.0"
   },
   "keywords": [],
+  "react-native": {
+    "dependencies": {
+      "react-native-esc-pos-printer": {
+        "platforms": {
+          "ios": null
+        }
+      }
+    }
+  },
   "author": "",
   "license": "ISC",
   "description": "",
