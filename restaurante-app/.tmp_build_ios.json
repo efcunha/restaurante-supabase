@@ -1,0 +1,53 @@
+{
+  "id": "bcc2602a-c0f1-4d70-88cd-e746bfe69ff3",
+  "status": "ERRORED",
+  "platform": "IOS",
+  "error": {
+    "errorCode": "XCODE_BUILD_ERROR",
+    "message": "The \"Run fastlane\" step failed because of an error in the Xcode build process. We automatically detected following errors in your Xcode build logs:\n- no member named 'CallInvoker' in namespace 'facebook::react'\nRefer to \"Xcode Logs\" below for additional, more detailed logs."
+  },
+  "artifacts": {
+    "xcodeBuildLogsUrl": "https://job-logs.eascdn.net/production-xcode-logs/bcc2602a-c0f1-4d70-88cd-e746bfe69ff3?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260404%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260404T194401Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=4dc794b393af044596b989ff5fb4b41c4985e015a18487cc6f890ca1976487ef14282fdf71cfacea65fa1396d9fb3237d99f21b5d3ac0e4571ce9c80d5399395b54df392e5ee022ff6e37c30b78cde859e03fb536048f97ea065f0d4fe2c1cae54ef2a154133025b38810123a03f4ae96e4bd394e5692aee76399f90093e215c606684b0df5ee775a47f1a9439d8b79fbc57da9eded8fbb8c0463b2466a70e4722a4f1e42c009ca4643fe07820bb3dc84bbeac87f19b1c1ce878533f9c81659513049f13197699c65a89f7194226e3737ef7531ed23a3b56a11d7a9cb0dfe5cfcaf864ab6cf1f8237f5b3a94c469d4fd77745ca17d486764943b08d0ea29158f"
+  },
+  "fingerprint": {
+    "id": "019d59f2-217f-768d-9ea7-cb07c0881cc5",
+    "hash": "1fec2fc4ff985c1dbdc36c239a8169fdadd98264"
+  },
+  "initiatingActor": {
+    "id": "83ded47a-b1e9-490f-81ae-e80fffb3af39",
+    "displayName": "lumachadolp"
+  },
+  "logFiles": [
+    "https://job-logs.eascdn.net/production/bcc2602a-c0f1-4d70-88cd-e746bfe69ff3/1775330534268-e49044ec-33de-4103-b338-4dbb4a9c1017.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260404%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260404T194401Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=afa0eb2a5aa8cfc7f0f3c92aee10061469198c646f2947db354cbb230329b26a91e0864280a27c0e745a7e5e0e8aba7d0384190f973cf173df53f445f227f162364ffb322c0e52e92de8421abb8c946de5cce66f1ff9c47ebb3f6af6951cf6938854851a7b6a224b83872a9f761a3c26e2287966517d9f2fc5bc14a7968280f7c99140e50b5de5fb316c1662f9105f678e58cb1ed23dd4a978a0f4734e54f034b4993ad00ee24e4319fff97ca358de95878aa960ef962052c1078efaccc814d5ebc2142004e8c47a468bbf0cabf047f6e52728f3a7e3537aa22ab73d32bedb7ca17d78844d03f6903339f4092dabb8b5c8be905c4babdc02841847610a6df5f5",
+    "https://job-logs.eascdn.net/production/bcc2602a-c0f1-4d70-88cd-e746bfe69ff3/1775330539295-4455e5d3-c6dc-4fef-8abf-bd9d3588664e.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260404%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260404T194401Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=3f293f1c689cfddea48508fbb405952ff75576e01d2eeb280c08ffc4dffd3c2ba658d68a2b3c9673f23000a235d7a113277bfa6774b3040af4e2775af313b622eb06979cdb93de8d535488ecc45af3c20bb7310f1d4395ec6d8035ce7b5d72e3ec7ca20d8acd9d2c03a066f362fc0bfd06cd0aa8b467802e7bb272b75b3821689e4626f9db428e206c5350a0b849632807fbb4c9139864947c5b879c3c82826ba899238612bd358e10b2ae9826800832e01c922d479bd8e2a3240e91748e9d7e52762f33771a5b8077e2772e85af198ed74d85cd5bad4603211dc26e2e08ede70f39cd8b64d75e254f9dc1eb777b2eda20593f510b31e852b266988de9efe435",
+    "https://job-logs.eascdn.net/production/bcc2602a-c0f1-4d70-88cd-e746bfe69ff3/1775330539511-22b9f81d-74b5-458d-8346-8fa1c79d2c2c.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260404%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260404T194401Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=2d6e8772a80fc3d1383c582eae6c10850e76f8cce4ec0ec9a41cf535640acca746e03070e1c1e621cb109aabd9614e94db951428e4f136ca63cd1c2a5c1e4b7995e29693a103543d5d10c21f7950459f7f7973067c8e68f20aba1a2f17a65d198701781b681af709102f1e48c2b9432c6800c739a661f37ae79787cd75fb4662350fa410d399d33867b62ebb1f81e0000abc220cc963579fac60bb896ac59eb294993e59ea08af4d06256f58e4ae2ac6988819a3d63090b94d298c46f1db8dfbf644a0f00fff98435e1472f1b64f82e6d0322e64f5241a49e4696df88a2e3494d193ef83135fc51f14afaf86f22e4aeffcbb5814e1042fb918e74cfc297e0de6",
+    "https://job-logs.eascdn.net/production/bcc2602a-c0f1-4d70-88cd-e746bfe69ff3/1775330539698-d7b1203b-791e-40c4-8a1b-0e63433bd5ab.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260404%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260404T194401Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=69042cefea588c00e07c5ce1cf0d49dd47e2c29e7f5544e61568a8d0d827e3fe6b83a66907fd981c3de9f83c1016707b80a80a71f3e73763f0620fb28499ace0b98b06c816a923b598a6428433c34116568f5445b5ae6a8dfc43a4c45e5de8a8597071b4f9e2fd7c54013dfcbaa5f89af2084e13deb2e0c3be11f1d643daf1e42e5367ecf9445c6790e21aa5db05b069b37a79ab8e13426765f5736131730aa8e30b5e48978ef95bd928004c14b5dca2301d0e055b38657534f2b74cfac6d5695814732d1517b8544265b149506360349098e30215bafbb853fef1463684acd58dd34f9a01c5bb6b6e06b83e527da8939e7daf231d63306e4b448856b8c61195"
+  ],
+  "project": {
+    "id": "8384f741-18dd-41fb-b0ab-df0ece2acecf",
+    "name": "restaurante-app",
+    "slug": "restaurante-app",
+    "ownerAccount": {
+      "id": "78274571-4fa1-4f3a-a809-635e4af9bbf5",
+      "name": "lumachadolp"
+    }
+  },
+  "distribution": "INTERNAL",
+  "buildProfile": "preview",
+  "sdkVersion": "54.0.0",
+  "appVersion": "1.0.1",
+  "appBuildVersion": "1",
+  "gitCommitHash": "aff6b7d48bfa0e5b857fb1d4af7a9ba4dba10e2c",
+  "gitCommitMessage": "feat: update app configuration and patch handling for expo-modules-core",
+  "priority": "NORMAL",
+  "createdAt": "2026-04-04T19:22:13.703Z",
+  "updatedAt": "2026-04-04T19:29:01.187Z",
+  "completedAt": "2026-04-04T19:28:51.130Z",
+  "expirationDate": "2026-04-18T19:22:13.744Z",
+  "isForIosSimulator": true,
+  "metrics": {
+    "buildWaitTime": 154,
+    "buildQueueTime": 45994,
+    "buildDuration": 347083
+  }
+}
