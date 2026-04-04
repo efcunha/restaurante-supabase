@@ -81,6 +81,7 @@
     "web": {
       "bundler": "metro"
     },
+    "newArchEnabled": false,
     "jsEngine": "hermes",
     "plugins": [
       "expo-build-properties",
