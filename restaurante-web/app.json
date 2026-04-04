@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Restaurante Web",
-    "slug": "comandapraia-web",
+    "slug": "restaurante-web",
     "version": "1.0.1",
     "orientation": "default",
     "icon": "./imagem/icone.png",
@@ -54,7 +54,7 @@
     "jsEngine": "hermes",
     "extra": {
       "eas": {
-        "projectId": "e81efdb8-d3ed-4e6f-82b4-dcf4b8e8f49e"
+        "projectId": "930f1e33-a6ec-4432-8c37-891f4eddcb1f"
       }
     },
     "plugins": [

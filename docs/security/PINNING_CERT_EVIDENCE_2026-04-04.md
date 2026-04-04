@@ -41,6 +41,14 @@ Saida validada em 04/04/2026:
 - restaurante-app/android/app/src/main/AndroidManifest.xml
 - restaurante-app/android/app/src/main/res/xml/network_security_config.xml
 
+## Build/EAS status (04/04/2026)
+
+- Novo projectId EAS vinculado: `930f1e33-a6ec-4432-8c37-891f4eddcb1f`
+- Android build iniciado com sucesso (preview, no-wait):
+  - https://expo.dev/accounts/lumachadolp/projects/comandapraia-dona-cida/builds/577eb0c4-1909-48dd-afed-ed5ea06633f6
+  - Observacao: o slug da URL no painel Expo permanece legado; a referencia operacional correta e o `projectId` `930f1e33-a6ec-4432-8c37-891f4eddcb1f`.
+- iOS build preview em modo non-interactive bloqueou por falta de credenciais internas (necessita setup interativo).
+
 ## Pendencias para fechamento do item
 
 - EAS build Android e iOS concluido com sucesso.

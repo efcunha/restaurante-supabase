@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Restaurante",
-    "slug": "comandapraia-dona-cida",
+    "slug": "restaurante-app",
     "scheme": "restaurante",
     "version": "1.0.1",
     "orientation": "default",
@@ -82,22 +82,23 @@
       "bundler": "metro"
     },
     "jsEngine": "hermes",
-    "extra": {
-      "eas": {
-        "projectId": "e81efdb8-d3ed-4e6f-82b4-dcf4b8e8f49e"
-      }
-    },
     "plugins": [
       "expo-build-properties",
-        "expo-font",
-        [
-            "@sentry/react-native/expo",
-            {
-                "url": "https://sentry.io/",
-                "project": "javascript-react",
-                "organization": "restaurante-app"
-            }
-        ]
-    ]
+      "expo-font",
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "javascript-react",
+          "organization": "restaurante-app"
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "930f1e33-a6ec-4432-8c37-891f4eddcb1f"
+      }
+    },
+    "owner": "lumachadolp"
   }
 }

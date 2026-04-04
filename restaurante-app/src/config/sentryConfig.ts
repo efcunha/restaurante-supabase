@@ -14,7 +14,6 @@
 import * as Sentry from '@sentry/react-native';
 
 const SENTRY_DSN = 'https://eb58edf9733b7a7665c969d5680dd482@o4510816056049664.ingest.us.sentry.io/4510816058015744';
-const EXPO_PUBLIC_BASE_URL = process.env.EXPO_PUBLIC_BASE_URL || 'https://comandapraia-dona-cida.app.br';
 const IS_DEV = __DEV__ || process.env.NODE_ENV === 'development';
 
 /**
@@ -185,9 +184,8 @@ export function initSentry() {
 
     // ✅ SECURITY: URL allowlist to prevent domain-specific data
     allowUrls: [
-      /comandapraia-dona-cida/,
-      /exp\+comandapraia/,
       /restaurante-app/,
+      /exp\+restaurante-app/,
       /react-native/,
     ],
   });

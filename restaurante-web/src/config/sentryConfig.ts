@@ -179,7 +179,6 @@ export function initSentry() {
 
     // ✅ SECURITY: URL allowlist
     allowUrls: [
-      /comandapraia-dona-cida/,
       /localhost/,
       /restaurante-web/,
       /react/,

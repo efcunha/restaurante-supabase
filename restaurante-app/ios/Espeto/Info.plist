@@ -33,7 +33,7 @@
       <dict>
         <key>CFBundleURLSchemes</key>
         <array>
-          <string>exp+comandapraia-dona-cida</string>
+          <string>exp+restaurante-app</string>
         </array>
       </dict>
     </array>
