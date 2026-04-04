@@ -33,6 +33,9 @@ Funcao: resumo executivo para lideranca.
 - SNYK_TRIAGE_2026-04-03.md
 Funcao: triagem operacional de alertas Snyk (bloqueante real vs falso positivo) + checklist copiavel para PR.
 
+- PINNING_CERT_EVIDENCE_2026-04-04.md
+Funcao: evidencias tecnicas de certificate pinning (hashes SPKI, comando de verificacao e arquivos alterados no app).
+
 ## Regra de Consolidacao
 
 Todo status e progresso ficam apenas em:
@@ -53,7 +56,7 @@ Arquivos de item isolado/snapshot foram consolidados e removidos para evitar fra
 ## Estado Atual (resumo rapido)
 
 - Semana 1: concluida
-- Semana 2: gate de pinning pendente
+- Semana 2: pinning implementado; validacao final (build nativo + smoke MITM controlado) em andamento
 - Semana 3: planejamento MFA e session fixation pronto
 - Bloqueio estrutural: sem staging dedicado
 

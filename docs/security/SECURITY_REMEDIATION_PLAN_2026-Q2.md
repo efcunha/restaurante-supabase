@@ -46,7 +46,7 @@ Use esta secao como checklist curto de acompanhamento. O detalhamento tecnico co
 
 ### Semana 2
 
-- `restaurante-app`: gate de pinning fechado como **CONDITIONAL (NO-GO neste ciclo)**.
+- `restaurante-app`: pinning implementado em 04/04/2026 (leaf + backup CA para Supabase e Mercado Pago), com validacao final de build/MITM em andamento.
 - `restaurante-ops`: validar `429` e `503` em modo fail-closed para auth e billing.
 - `restaurante-web`: acompanhar apenas impactos compartilhados de auth/env/logging, sem trilha nativa.
 
@@ -79,7 +79,7 @@ Use esta secao como checklist curto de acompanhamento. O detalhamento tecnico co
 | `SEC-W1-003` Biometric credentials hardening | ✅ Sim | ❌ Nao | ❌ Nao | Risco exclusivo do app |
 | `SEC-W1-004` Android Auto Backup hardening | ✅ Sim | ❌ Nao | ❌ Nao | Item Android nativo |
 | `SEC-W1-005` Logging seguro | ✅ Sim | ✅ Sim | ✅ Sim | Cada projeto deve respeitar seu logger atual |
-| `SEC-W2-001` Certificate pinning | ✅ Sim | ❌ Nao | ❌ Nao | Gate 02/04/2026: CONDITIONAL (NO-GO neste ciclo) por risco operacional sem staging e sem esteira MITM automatizada |
+| `SEC-W2-001` Certificate pinning | ✅ Sim | ❌ Nao | ❌ Nao | Implementado em 04/04/2026 via ATS/NSPinnedDomains (iOS) e network-security-config (Android); pendente validacao final por EAS build + smoke MITM controlado |
 | `SEC-W3-001` MFA TOTP para admins | ✅ Sim | ✅ Sim | ⚠️ Parcial | `ops` exige trilha propria se MFA for obrigatorio no backoffice |
 | `SEC-W3-002` Session fixation prevention | ✅ Sim | ✅ Sim | ❌ Nao | Trata login dos clientes; `ops` usa sessao/cookie separado |
 
@@ -596,6 +596,11 @@ railway up
 > - Mitigacao alternativa ativa: TLS padrao + HSTS no `ops` + hardening de sessao + MFA para roles privilegiadas.
 > - Proximo gatilho para reavaliacao: staging ativo + runbook de rotacao de certificado + teste MITM automatizado no CI/mobile.
 
+> Atualizacao de execucao em 04/04/2026:
+> - Pinning aplicado no `restaurante-app` para `supabase.co` (subdominios) e `api.mercadopago.com` com pin leaf + backup CA.
+> - Evidencia tecnica registrada em `docs/security/PINNING_CERT_EVIDENCE_2026-04-04.md`.
+> - Pendencia remanescente: validacao final por EAS build e smoke controlado (incluindo MITM) antes do fechamento definitivo do item.
+
 #### Tarefas
 
 - [ ] **6.1** Instalar dependências
@@ -819,10 +824,10 @@ export async function secureFetch(url: string, options: SecureFetchOptions = {})
 - [x] `OPS-5`: Segredos server-only e headers revisados
 
 ### Semana 2
-- [x] `SEC-W2-001`: Certificate pinning avaliado com gate formal
-- [x] Decisao registrada: CONDITIONAL (NO-GO neste ciclo)
-- [ ] Build nativo gerado com sucesso (somente se gate mudar para GO)
-- [ ] Teste de MITM falha (pinning funcionando, somente se gate mudar para GO)
+- [x] `SEC-W2-001`: Certificate pinning implementado no app
+- [x] Evidencia de pins (leaf + backup) registrada por OpenSSL
+- [ ] Build nativo gerado com sucesso (EAS Android/iOS)
+- [ ] Teste de MITM controlado documentado (criterio final de validacao)
 - [x] `OPS-3`: Rate limiting estrito validado com `429` e `503`
 
 ### Semana 3
@@ -844,7 +849,7 @@ export async function secureFetch(url: string, options: SecureFetchOptions = {})
 | Secrets hardcoded | A medir por projeto | 0 | `rg "secret|token|api[_-]?key|service_role" restaurante-app restaurante-web restaurante-ops` + revisao manual |
 | console.log em produção | A medir por projeto | Reducao objetiva nos pontos criticos | varredura focada em arquivos de producao |
 | Android allowBackup | true no app | false ou regras explicitas de exclusao | Inspecionar manifest/APK |
-| Certificate pinning | Nao implementado no app | Decisao explicita: implementar ou descartar | Teste de MITM + custo operacional |
+| Certificate pinning | Implementado no app com backup pin | Fechar validacao final operacional | EAS build + teste de MITM controlado |
 | MFA para admins | Desabilitado na migracao atual | 100% em app/web para roles privilegiadas | validacao via Supabase Auth |
 | Session fixation | Parcialmente mitigado | Protegido | revisar login flow e teste de penetracao |
 | Logs sensiveis no `ops` | A medir | 0 ocorrencias intencionais de segredos/PII criticos | revisao manual de amostra + varredura de campos logados |

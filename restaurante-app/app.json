@@ -23,6 +23,38 @@
       "bundleIdentifier": "com.comandapraia.donacida",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": false,
+          "NSAllowsLocalNetworking": true,
+          "NSPinnedDomains": {
+            "supabase.co": {
+              "NSIncludesSubdomains": true,
+              "NSPinnedLeafIdentities": [
+                {
+                  "SPKI-SHA256-BASE64": "GU2W4j1P24T3sqlI+o6YTnidzz0PI8fB/Gvd2ITfSZE="
+                }
+              ],
+              "NSPinnedCAIdentities": [
+                {
+                  "SPKI-SHA256-BASE64": "kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4="
+                }
+              ]
+            },
+            "api.mercadopago.com": {
+              "NSIncludesSubdomains": false,
+              "NSPinnedLeafIdentities": [
+                {
+                  "SPKI-SHA256-BASE64": "1rsZujOXhUcEKiMBfMqCDwhVvouJYiW+H7/RiBr4c8Y="
+                }
+              ],
+              "NSPinnedCAIdentities": [
+                {
+                  "SPKI-SHA256-BASE64": "Wec45nQiFwKvHtuHxSAMGkt19k+uPSw9JlEkxhvYPHk="
+                }
+              ]
+            }
+          }
+        },
         "UISupportedInterfaceOrientations": [
           "UIInterfaceOrientationPortrait",
           "UIInterfaceOrientationLandscapeLeft",
@@ -56,6 +88,7 @@
       }
     },
     "plugins": [
+      "expo-build-properties",
         "expo-font",
         [
             "@sentry/react-native/expo",
