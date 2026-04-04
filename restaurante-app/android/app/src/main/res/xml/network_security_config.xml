@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+  <domain-config cleartextTrafficPermitted="false">
+    <domain includeSubdomains="true">supabase.co</domain>
+    <pin-set expiration="2027-12-31">
+      <pin digest="SHA-256">GU2W4j1P24T3sqlI+o6YTnidzz0PI8fB/Gvd2ITfSZE=</pin>
+      <pin digest="SHA-256">kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=</pin>
+    </pin-set>
+  </domain-config>
+
+  <domain-config cleartextTrafficPermitted="false">
+    <domain includeSubdomains="false">api.mercadopago.com</domain>
+    <pin-set expiration="2027-12-31">
+      <pin digest="SHA-256">1rsZujOXhUcEKiMBfMqCDwhVvouJYiW+H7/RiBr4c8Y=</pin>
+      <pin digest="SHA-256">Wec45nQiFwKvHtuHxSAMGkt19k+uPSw9JlEkxhvYPHk=</pin>
+    </pin-set>
+  </domain-config>
+</network-security-config>

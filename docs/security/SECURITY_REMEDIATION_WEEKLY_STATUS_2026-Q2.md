@@ -54,8 +54,8 @@ Legenda de status:
 
 | Item | Escopo | Status | Evidencia | Observacoes |
 |------|--------|--------|-----------|-------------|
-| Certificate Pinning evaluation | app | concluido (CONDITIONAL) | `docs/security/SECURITY_REMEDIATION_PLAN_2026-Q2.md`, `restaurante-app/package.json` | Gate formal: **CONDITIONAL (NO-GO neste ciclo)**. Justificativa objetiva: sem staging dedicado, sem esteira de MITM regression automatizada e alto risco operacional de lockout em rotacao de certificado/rede intermediaria. |
-| Build nativo + MITM testing | app | bloqueado (dependente de gate GO) |  | Mitigacao alternativa ativa: TLS padrao + HSTS no `ops` + monitoramento de expiracao de certificado + hardening de sessao/MFA. Reavaliar pinning com pre-requisitos de observabilidade e rollback nativo. |
+| Certificate Pinning implementation | app | concluido | `restaurante-app/app.json`, `restaurante-app/android/app/src/main/AndroidManifest.xml`, `restaurante-app/android/app/src/main/res/xml/network_security_config.xml`, `restaurante-app/ios/Espeto/Info.plist`, `restaurante-app/package.json` | Implementado pinning para `supabase.co` (subdominios) e `api.mercadopago.com` com pin leaf + backup CA pin. Necessario manter runbook de rotacao de certificados e renovar pins antes de expiracao de `pin-set` (2027-12-31). |
+| Build nativo + MITM testing | app | em andamento | `restaurante-app/app.json`, `restaurante-app/android/app/src/main/res/xml/network_security_config.xml`, `restaurante-app/ios/Espeto/Info.plist` | Configuracao aplicada e validada em config parsing (`expo config --type public`). Pendente validacao final por EAS build e smoke controlado de conexao Supabase + Mercado Pago. |
 
 ### Ops
 
@@ -96,6 +96,7 @@ Legenda de status:
 | Item | Escopo | Status | Evidencia | Observacoes |
 |------|--------|--------|-----------|-------------|
 | LicenseGate cobrindo telas operacionais | app + web | concluido | commit `c0b1042` — `restaurante-app/src/screens/NovoPedidoScreen.tsx`, `ComandaGerenciamentoScreen.tsx`, `RotasDeliveryScreen.tsx`, `restaurante-web/src/screens/NovoPedidoScreen.tsx`, `ComandaGerenciamentoScreen.tsx`, `RotasDeliveryScreen.tsx` | Todas as 6 telas operacionais criticas envolvidas com `<LicenseGate>`. Pre-requisito de billing em producao cumprido. Flags `billing_enabled` e `billing_licenseGate` permanecem `false` ate validacao de assinatura ativa no banco. |
+| Validacao de assinatura ativa para go-live billing | monorepo | concluido | consulta service role em `subscriptions` (company_id `f85bfdc2-982a-4cf7-b176-bce68426f861`) | Resultado em 04/04: sem registro `status='active'`; assinatura atual em `trialing`. Billing deve permanecer desativado em producao ate existir assinatura ativa conforme criterio de go-live. |
 
 ---
 
@@ -123,7 +124,7 @@ Legenda de status:
 | Railway CLI sem autenticacao valida para deploy de variaveis | aberto | time | Impacta o web no Railway. Executar deploy de `restaurante-web` via Railway UI enquanto `railway whoami` retorna `Unauthorized`; renovar com `railway login` quando possivel |
 | Ambiente de staging dedicado inexistente | aberto | time | Usar validacao controlada em producao ate existir ambiente formal |
 | Supabase Auth MFA TOTP ainda desabilitado em runtime | concluido (2026-04-02) | app + web | MFA TOTP validado end-to-end em producao. Enrollment, desafio e verificacao confirmados para roles privilegiadas em app e web. |
-| Pinning com gate CONDITIONAL (NO-GO neste ciclo) | monitoramento | app | Reavaliar em novo ciclo quando houver staging, runbook de rotacao/pinning e suite de teste MITM automatizada |
+| Validacao MITM automatizada para pinning ainda pendente | monitoramento | app | Executar EAS build e testes controlados de conectividade (Supabase/Mercado Pago) antes de promover mudanca como 100% validada em producao |
 | OPS-4 sem invoice elegivel para replay de sucesso | aberto | ops | Repetir smoke quando existir invoice `pending` ou `failed`; usar `npm run billing:candidates` para localizar candidatos antes do replay |
 
 ---
