@@ -107,11 +107,13 @@ Todos os logs devem seguir este formato JSON:
 | `whatsapp_webhook`    | evolution    | Evento recebido da Evolution API     |
 | `slow_query`          | supabase     | Query > 500ms                        |
 | `db_error`            | supabase     | Erro de query/conexão                |
-| `frontend_error`      | web          | Erro JavaScript no frontend          |
+| `app_error`           | web / app    | Erro JS capturado via ErrorUtils (React Native) |
 | `api_error`           | web / app    | Erro em chamada API                  |
 | `app_startup`         | app          | Inicialização do app                 |
-| `page_view`           | web          | Navegação de página                  |
+| `page_view`           | web          | Navegação de página (React Navigation) |
 | `http_request`        | ops          | Toda requisição HTTP (para métricas) |
+
+> **Nota:** `frontend_error` é uma convenção de browser (`window.onerror`). Como `restaurante-web` e `restaurante-app` são **Expo/React Native**, o evento correto é `app_error` (capturado via `ErrorUtils.setGlobalHandler`).
 
 ---
 
@@ -125,11 +127,13 @@ Todos os logs devem seguir este formato JSON:
 
 | Opção | Prós | Contras |
 |---|---|---|
-| **SQLite** | Zero configuração, arquivo único, queries SQL | Escrita sequencial, pode ser gargalo |
-| **JSONL (arquivo)** | Simples, stream-friendly, sem overhead | Sem índices, queries lentas |
+| **SQLite**                      | Zero configuração, arquivo único, queries SQL | Escrita sequencial, pode ser gargalo |
+| **JSONL (arquivo)**             | Simples, stream-friendly, sem overhead | Sem índices, queries lentas |
 | **PostgreSQL** (mesmo Supabase) | Queries poderosas, índices, já disponível | Depende de conexão externa |
 
 **Recomendação:** Usar o mesmo **Supabase** (PostgreSQL) já disponível no projeto, com tabela `ops_logs`.
+
+> **Multi-tenancy:** O `restaurante-ops` serve um único tenant operacional (`OPS_ALLOWED_COMPANY_ID`). A tabela `ops_logs` não precisa de `company_id` por design. Logs do `restaurante-web`/`restaurante-app` são identificados pelo campo `service` e por `company_id` no `metadata` quando relevante.
 
 #### Tabela `ops_logs`
 
@@ -155,16 +159,22 @@ CREATE INDEX idx_ops_logs_service ON ops_logs (service);
 CREATE INDEX idx_ops_logs_event ON ops_logs (event);
 CREATE INDEX idx_ops_logs_level ON ops_logs (level);
 CREATE INDEX idx_ops_logs_request_id ON ops_logs (request_id);
-CREATE INDEX idx_ops_logs_order_id ON ops_logs (order_id);
+ CREATE INDEX idx_ops_logs_order_id ON ops_logs (order_id);
+ -- Índice composto para a query frequente "erros nas últimas Xh" (level + range de timestamp)
+ CREATE INDEX idx_ops_logs_level_timestamp ON ops_logs (level, timestamp DESC);
 
--- RLS: apenas authenticated users podem ler
+-- RLS: restrição de acesso por role
 ALTER TABLE ops_logs ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "ops_users_read_logs" ON ops_logs
-  FOR SELECT USING (true);
+-- INSERT: apenas service_role (endpoints do restaurante-ops) — nunca anon ou usuário comum
+CREATE POLICY "ops_service_role_insert_logs" ON ops_logs
+  FOR INSERT
+  WITH CHECK (auth.role() = 'service_role');
 
-CREATE POLICY "ops_users_insert_logs" ON ops_logs
-  FOR INSERT WITH CHECK (true);
+-- SELECT: apenas usuários autenticados (visualização no dashboard ops)
+CREATE POLICY "ops_authenticated_read_logs" ON ops_logs
+  FOR SELECT
+  USING (auth.role() IN ('service_role', 'authenticated'));
 ```
 
 **Funcionalidades do storage:**
@@ -183,7 +193,7 @@ CREATE POLICY "ops_users_insert_logs" ON ops_logs
 
 **Funcionalidades:**
 - Manter redaction existente (senhas, tokens, etc.)
-- Adaptar para novo formato de log
+ - Adaptar para novo formato de log — renomear campo `ts`→`timestamp` e `durationMs`→`duration_ms` em `LogContext`
 - Inserir log no storage (assíncrono, não bloqueante)
 - Exportar funções: `logInfo(event, context)`, `logWarn(event, context)`, `logError(event, context)`
 - Funções especializadas:
@@ -199,7 +209,7 @@ CREATE POLICY "ops_users_insert_logs" ON ops_logs
 **Responsabilidade:** Instrumentar todas as requisições HTTP.
 
 **Funcionalidades:**
-- Gerar `request_id` único (UUID v4) por requisição
+ - Gerar `request_id` único (UUID v4) por requisição — usar `crypto.randomUUID()` built-in do Node.js (sem dependência externa, disponível a partir do Node 14.17)
 - Medir tempo de resposta (início → fim)
 - Logar todas as requisições HTTP com evento `http_request`
 - Logar automaticamente respostas com status >= 400
@@ -222,8 +232,9 @@ CREATE POLICY "ops_users_insert_logs" ON ops_logs
 **Responsabilidade:** Receber e logar eventos do Activepieces.
 
 **Funcionalidades:**
-- Criar endpoint `POST /webhooks/activepieces` no restaurante-ops
-- Logar execução de workflows com evento `automation_executed`
+ - Criar endpoint `POST /webhooks/activepieces` no restaurante-ops
+ - **Autenticar** via `X-Webhook-Secret` header (env `ACTIVEPIECES_WEBHOOK_SECRET`) — rejeitar com 401 se ausente ou inválido
+ - Logar execução de workflows com evento `automation_executed`
 - Capturar erros com evento `automation_failed`
 - Incluir no metadata: `workflow_id`, `execution_id`, `workflow_name`, `duration_ms`, `result`
 
@@ -235,8 +246,9 @@ CREATE POLICY "ops_users_insert_logs" ON ops_logs
 - Wrapper para chamadas de envio de mensagem
 - Logar `whatsapp_sent` com `phone_number` (mascarado), `message_id`
 - Logar `whatsapp_failed` com erro e número de destino
-- Criar endpoint `POST /webhooks/evolution` para receber eventos
-- Logar `whatsapp_webhook` para eventos recebidos
+ - Criar endpoint `POST /webhooks/evolution` para receber eventos
+ - **Autenticar** via `X-Webhook-Secret` header (env `EVOLUTION_WEBHOOK_SECRET`) — rejeitar com 401 se ausente ou inválido
+ - Logar `whatsapp_webhook` para eventos recebidos
 
 ### 3.7 Endpoint de Logs Externos (`src/lib/external-logs.ts`)
 
@@ -247,7 +259,7 @@ CREATE POLICY "ops_users_insert_logs" ON ops_logs
 - Autenticar via API key (header `X-Log-Api-Key`)
 - Receber batch de logs do web e app
 - Validar formato, aplicar redaction, inserir no storage
-- Rate limiting por origem (web vs app)
+ - Rate limiting por API key (`X-Log-Api-Key`) — **não usar IP** como chave (apps Expo podem estar atrás de NAT/CDN)
 - Responder com 202 Accepted
 
 ### 3.8 API de Consulta de Logs (`src/lib/logs-api.ts`)
@@ -256,14 +268,16 @@ CREATE POLICY "ops_users_insert_logs" ON ops_logs
 
 **Rotas protegidas (requireAuth):**
 
-| Método | Path | Descrição |
-|---|---|---|
-| `GET` | `/api/logs` | Listar logs com filtros |
-| `GET` | `/api/logs/trace/:requestId` | Rastrear requisição completa |
-| `GET` | `/api/logs/order/:orderId` | Rastrear pedido completo |
-| `GET` | `/api/logs/metrics` | Métricas agregadas |
-| `GET` | `/api/logs/alerts` | Alertas configurados |
-| `POST` | `/api/logs/alerts` | Criar alerta |
+ > **Contrato `requireAuth`:** Quando `requireAuth(req, res)` retorna `null`, a resposta 302 já foi enviada internamente. O handler deve executar `if (!user) return;` imediatamente após a chamada — nunca enviar outra resposta nesse caso.
+ 
+ | Método | Path                         | Descrição                    |
+|--------|------------------------------|------------------------------|
+| `GET`  | `/api/logs`                  | Listar logs com filtros      |
+| `GET`  | `/api/logs/trace/:requestId` | Rastrear requisição completa |
+| `GET`  | `/api/logs/order/:orderId`   | Rastrear pedido completo     |
+| `GET`  | `/api/logs/metrics`          | Métricas agregadas           |
+| `GET`  | `/api/logs/alerts`           | Alertas configurados         |
+| `POST` | `/api/logs/alerts`           | Criar alerta                 |
 
 #### Exemplo: `GET /api/logs`
 
@@ -384,7 +398,8 @@ Resposta:
 - Notificar via:
   - Email (Supabase auth users)
   - Webhook (Slack, etc.)
-- Logar disparo de alerta no próprio storage
+ - Logar disparo de alerta no próprio storage
+ - **Lifecycle do intervalo:** armazenar o ID do `setInterval` e chamar `clearInterval(id)` nos handlers `process.on('SIGTERM', ...)` e `process.on('SIGINT', ...)` para evitar interval ativo após shutdown do servidor
 
 **Tabela `ops_alerts`:**
 
@@ -403,7 +418,7 @@ CREATE TABLE ops_alerts (
 
 CREATE TABLE ops_alert_firings (
   id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  alert_id    BIGINT NOT NULL REFERENCES ops_alerts(id),
+  alert_id    BIGINT NOT NULL REFERENCES ops_alerts(id) ON DELETE CASCADE,
   fired_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   context     JSONB,
   notified    BOOLEAN NOT NULL DEFAULT false
@@ -414,63 +429,79 @@ CREATE TABLE ops_alert_firings (
 
 ## 4. Implementação no restaurante-web (Frontend)
 
-**O web envia logs para o restaurante-ops.**
+**O restaurante-web é um projeto Expo/React Native** (não Next.js). Envia logs para o restaurante-ops.
 
-### 4.1 Módulo `src/lib/observability.ts`
+> **Contexto existente:** `restaurante-web` já possui `src/utils/logger.ts` (Firebase Analytics) e `src/services/LoggerService.ts` (Sentry). O módulo de observabilidade **complementa** esses serviços — Sentry continua com crash reporting, ops recebe eventos de negócio e logs estruturados operacionais.
+
+### 4.1 Módulo `src/services/ObservabilityService.ts`
+
+> **Caminho correto:** `src/services/` (seguindo padrão existente de `LoggerService.ts`, não `src/lib/`)
 
 ```typescript
-// Envia logs para restaurante-ops
-async function sendLogToOps(log: LogEntry): Promise<void> {
-  await fetch(`${OPS_LOGS_ENDPOINT}/api/logs`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Log-Api-Key': process.env.NEXT_PUBLIC_LOG_API_KEY,
-    },
-    body: JSON.stringify({ source: 'web', logs: [log] }),
-  });
+import Constants from 'expo-constants';
+
+const OPS_ENDPOINT = Constants.expoConfig?.extra?.opsLogsEndpoint
+  ?? process.env.EXPO_PUBLIC_OPS_LOGS_ENDPOINT ?? '';
+const LOG_API_KEY = Constants.expoConfig?.extra?.logApiKey
+  ?? process.env.EXPO_PUBLIC_LOG_API_KEY ?? '';
+
+// Envia logs para restaurante-ops (não bloqueia, falha silenciosa)
+export async function sendLogToOps(log: LogEntry): Promise<void> {
+  if (!OPS_ENDPOINT || !LOG_API_KEY) return;
+  try {
+    await fetch(`${OPS_ENDPOINT}/api/logs`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Log-Api-Key': LOG_API_KEY,
+      },
+      body: JSON.stringify({ source: 'web', logs: [log] }),
+    });
+  } catch {
+    // fallback silencioso — não degradar UX por falha de logging
+  }
 }
 ```
 
-### 4.2 Captura de Erros Globais
+### 4.2 Captura de Erros Globais (React Native)
+
+> **Importante:** `window.onerror` é uma API do navegador e **não existe em React Native/Expo**. Usar `ErrorUtils.setGlobalHandler` e `ErrorBoundary`.
 
 ```typescript
-// window.onerror
-window.onerror = (message, source, lineno, colno, error) => {
-  sendLogToOps({
-    level: 'error',
-    service: 'web',
-    event: 'frontend_error',
-    message: String(message),
-    metadata: { source, line: lineno, column: colno, stack: error?.stack },
-  });
-};
+import { ErrorUtils } from 'react-native';
 
-// unhandledrejection
-window.addEventListener('unhandledrejection', (event) => {
+// Handler global de erros JS (não capturados)
+const previousHandler = ErrorUtils.getGlobalHandler();
+ErrorUtils.setGlobalHandler((error: Error, isFatal?: boolean) => {
   sendLogToOps({
-    level: 'error',
+    level: isFatal ? 'error' : 'warn',
     service: 'web',
-    event: 'unhandled_promise',
-    message: 'Unhandled promise rejection',
-    metadata: { reason: String(event.reason) },
+    event: 'app_error',
+    message: error.message,
+    metadata: { fatal: isFatal, stack: error.stack?.slice(0, 500) },
   });
+  previousHandler(error, isFatal); // passa para Sentry e handler anterior
 });
+
+// Promises rejeitadas não tratadas (React Native 0.71+)
+if (typeof global !== 'undefined' && 'HermesInternal' in global) {
+  // Hermes suporta unhandledRejection track
+}
 ```
 
-### 4.3 Interceptor de API
+### 4.3 Interceptor de HTTP (Supabase Client)
 
-Criar wrapper para `fetch()` que:
-- Mede tempo de resposta
+Criar wrapper em volta do cliente Supabase que:
+- Mede tempo de query
 - Loga erros com status >= 400 (evento `api_error`)
-- Inclui `request_id` se presente nos headers de resposta
-- Envia log para restaurante-ops
+- Inclui `request_id` do header de resposta quando disponível
+- Envia log para restaurante-ops de forma assíncrona
 
 ### 4.4 Eventos de Negócio no Frontend
 
 ```typescript
 // Exemplo: criação de pedido
-function logOrderCreated(orderId: string, total: number) {
+export function logOrderCreated(orderId: string, total: number): void {
   sendLogToOps({
     level: 'info',
     service: 'web',
@@ -486,36 +517,52 @@ function logOrderCreated(orderId: string, total: number) {
 
 ## 5. Implementação no restaurante-app (Mobile)
 
-**O app envia logs para o restaurante-ops.**
+**O restaurante-app é um projeto Expo/React Native.** Envia logs para o restaurante-ops.
 
-### 5.1 Módulo `src/lib/observability.ts`
+> **Contexto existente:** `restaurante-app` já possui `src/services/LoggerService.ts` (Sentry). O módulo de observabilidade **complementa** — não substitui — o Sentry. Sentry continua capturando crashes e stack traces; ops recebe eventos de negócio estruturados.
 
-Equivalente ao web, adaptado para React Native/Flutter.
+### 5.1 Módulo `src/services/ObservabilityService.ts`
 
-### 5.2 Captura de Erros Globais
+> **Caminho correto:** `src/services/` (seguindo padrão existente de `LoggerService.ts`, não `src/lib/`)
 
-**React Native:**
+Equivalente ao restaurante-web, adaptado para o app mobile. Usar `EXPO_PUBLIC_` prefix para variáveis públicas.
+
 ```typescript
-import { LogBox } from 'react-native';
+import Constants from 'expo-constants';
 
-const originalConsoleError = console.error;
-console.error = (...args) => {
-  originalConsoleError(...args);
+const OPS_ENDPOINT = Constants.expoConfig?.extra?.opsLogsEndpoint
+  ?? process.env.EXPO_PUBLIC_OPS_LOGS_ENDPOINT ?? '';
+const LOG_API_KEY = Constants.expoConfig?.extra?.logApiKey
+  ?? process.env.EXPO_PUBLIC_LOG_API_KEY ?? '';
+```
+
+### 5.2 Captura de Erros Globais (React Native)
+
+```typescript
+import { ErrorUtils } from 'react-native';
+
+// Mesmo padrão do restaurante-web — usar ErrorUtils, não console.error override
+const previousHandler = ErrorUtils.getGlobalHandler();
+ErrorUtils.setGlobalHandler((error: Error, isFatal?: boolean) => {
   sendLogToOps({
-    level: 'error',
+    level: isFatal ? 'error' : 'warn',
     service: 'app',
     event: 'app_error',
-    message: args.join(' '),
+    message: error.message,
+    metadata: { fatal: isFatal, stack: error.stack?.slice(0, 500) },
   });
-};
+  previousHandler(error, isFatal);
+});
 ```
+
+> **Não substituir `console.error`** — causa ruído excessivo em warnings de bibliotecas. Usar `ErrorUtils.setGlobalHandler` ou `ErrorBoundary`.
 
 ### 5.3 Interceptor de HTTP
 
-- Interceptor no cliente HTTP
+- Interceptor no cliente Supabase (mesmo padrão do web)
 - Mede tempo de resposta
 - Loga erros com status >= 400
-- Envia log para restaurante-ops
+- Envia log para restaurante-ops de forma assíncrona (não bloqueia)
 
 ---
 
@@ -542,19 +589,27 @@ ALERT_WEBHOOK_TIMEOUT_MS=5000
 LOG_RETENTION_DAYS=30
 ```
 
-### 6.2 Variáveis de Ambiente (restaurante-web `.env.local`)
+### 6.2 Variáveis de Ambiente (restaurante-web `.env`)
+
+> **Nota:** `restaurante-web` é um projeto **Expo**, não Next.js. Variáveis públicas usam prefixo `EXPO_PUBLIC_`.
 
 ```bash
-NEXT_PUBLIC_OPS_LOGS_ENDPOINT=https://ops.seudominio.com
-NEXT_PUBLIC_LOG_API_KEY=sk-ops-log-key-aqui
+# Endpoint do restaurante-ops (público — exposto ao bundle)
+EXPO_PUBLIC_OPS_LOGS_ENDPOINT=https://ops.restaurante-web.app.br
+EXPO_PUBLIC_LOG_API_KEY=sk-ops-log-key-aqui
 ```
 
 ### 6.3 Variáveis de Ambiente (restaurante-app `.env`)
 
+> **Nota:** `restaurante-app` é um projeto **Expo**. Mesmo prefixo `EXPO_PUBLIC_`.
+
 ```bash
-OPS_LOGS_ENDPOINT=https://ops.seudominio.com
-LOG_API_KEY=sk-ops-log-key-aqui
+# Endpoint do restaurante-ops (público — exposto ao bundle)
+EXPO_PUBLIC_OPS_LOGS_ENDPOINT=https://ops.restaurante-web.app.br
+EXPO_PUBLIC_LOG_API_KEY=sk-ops-log-key-aqui
 ```
+
+> **Segurança:** `OPS_LOG_API_KEY` exposta no cliente é intencional e de baixo risco (escrita de logs apenas). Não concede leitura nem acesso ao dashboard. Rate limiting no endpoint `/api/logs` mitiga abuso.
 
 ---
 
@@ -579,9 +634,24 @@ Emails devem ser mascarados: `j***@example.com`
 
 ### 7.3 Acesso aos Logs
 
-- Apenas usuários autenticados com role `admin` ou `gerente` podem consultar logs
-- RLS no Supabase garante isolamento
-- API key para recebimento de logs externos (web/app)
+- Apenas usuários autenticados com role `admin` ou `gerente` podem consultar logs via dashboard
+- **INSERT direto no Supabase é proibido** — todo log externo entra via endpoint `POST /api/logs` no ops (com API key e rate limiting)
+- O endpoint ops usa `service_role` key (somente servidor) para inserir em `ops_logs`
+- RLS no Supabase garante isolamento: SELECT restrito a `service_role` ou `auth.role() = 'authenticated'` com validação adicional por role de ops
+
+> **Correção de segurança nas políticas RLS:** As políticas `WITH CHECK (true)` e `USING (true)` da seção 3.1 são **excessivamente permissivas**. A política correta de INSERT deve ser restrita a `service_role` apenas (nenhum cliente anônimo ou usuário autenticado comum deve inserir diretamente). Ver SQL corrigido:
+
+```sql
+-- INSERT: apenas service_role (endpoints do restaurante-ops)
+CREATE POLICY "ops_service_role_insert_logs" ON ops_logs
+  FOR INSERT
+  WITH CHECK (auth.role() = 'service_role');
+
+-- SELECT: apenas usuários autenticados (visualização via dashboard ops)
+CREATE POLICY "ops_authenticated_read_logs" ON ops_logs
+  FOR SELECT
+  USING (auth.role() IN ('service_role', 'authenticated'));
+```
 
 ---
 
@@ -590,13 +660,15 @@ Emails devem ser mascarados: `j***@example.com`
 ### 8.1 Inserção Assíncrona
 
 - Inserção de logs é **assíncrona** (não bloqueia requisição)
-- Usar `setImmediate()` ou fila em memória para batch inserts
-- Batch de 50 logs por INSERT para reduzir queries
+ - Usar fila em memória com drainer assíncrono: flush ao atingir **50 itens** OU a cada **2 segundos** (o que ocorrer primeiro)
+ - `setImmediate()` para defer de flush imediato sem bloquear a resposta HTTP corrente
+ - Batch de 50 logs por INSERT para reduzir queries
 
 ### 8.2 Retenção e Limpeza
 
-- Job agendado para deletar logs antigos que `LOG_RETENTION_DAYS`
-- Rodar diariamente às 3h (ou configurar via cron no Railway)
+ - Job agendado para deletar logs antigos conforme `LOG_RETENTION_DAYS`
+ - **Deletar em batches** para evitar transações longas: `DELETE FROM ops_logs WHERE id IN (SELECT id FROM ops_logs WHERE timestamp < $cutoff LIMIT 1000)` — repetir até retornar 0 linhas
+ - Rodar diariamente às 3h (ou configurar via cron no Railway)
 - Alternativa: partitionamento por mês na tabela `ops_logs`
 
 ### 8.3 Impacto Mínimo
@@ -612,30 +684,52 @@ Emails devem ser mascarados: `j***@example.com`
 ```
 restaurante-ops/src/
 ├── lib/
-│   ├── logger.ts                 # Logger central (refatorado)
-│   ├── log-storage.ts            # Storage de logs (Supabase)
-│   ├── request-tracker.ts        # Middleware de request tracking
-│   ├── supabase-logger.ts        # Wrapper de logging para Supabase
-│   ├── evolution-logger.ts       # Logging + webhook Evolution API
-│   ├── activepieces-logger.ts    # Logging + webhook Activepieces
-│   ├── external-logs.ts          # Endpoint POST /api/logs (web + app)
-│   ├── logs-api.ts               # API de consulta de logs + métricas
-│   ├── alerts-engine.ts          # Engine de alertas
-│   └── alert-scheduler.ts        # Agendamento de verificação de alertas
+ │   ├── logger.ts                 # Logger central (refatorar: ts→timestamp, durationMs→duration_ms, integrar storage)
+│   ├── log-storage.ts            # Storage de logs (novo — Supabase ops_logs)
+│   ├── request-tracker.ts        # Middleware de request tracking (novo)
+│   ├── supabase-logger.ts        # Wrapper de logging para Supabase (novo)
+│   ├── evolution-logger.ts       # Logging + webhook Evolution API (novo)
+│   ├── activepieces-logger.ts    # Logging + webhook Activepieces (novo)
+│   ├── external-logs.ts          # Endpoint POST /api/logs para web+app (novo)
+│   ├── logs-api.ts               # API de consulta de logs + métricas (novo)
+│   ├── alerts-engine.ts          # Engine de alertas (novo)
+│   ├── alert-scheduler.ts        # Agendamento de verificação (novo)
+│   ├── redis.ts                  # Cliente Redis (existente)
+│   └── rate-limiter.ts           # Rate limiter distribuído (existente)
+├── config/
+│   └── env.ts                    # Env vars (existente — adicionar LOG_LEVEL, OPS_LOG_API_KEY)
+├── auth/
+│   ├── supabase.ts               # Cliente Supabase service-role (existente)
+│   ├── session.ts                # Cookies httpOnly (existente)
+│   └── middleware.ts             # requireAuth() (existente)
+├── modules/
+│   ├── billing-operations.ts     # Billing (existente)
+│   ├── billing-plan-config-operations.ts  # Config plano (existente)
+│   ├── data.ts                   # KPIs, empresas, invoices (existente)
+│   ├── ops-security.ts           # Gestão MFA (existente)
+│   ├── service-status.ts         # Health check (existente)
+│   └── supabase-metrics.ts       # Métricas banco (existente)
+├── views/
+│   ├── dashboard.ts              # Dashboard existente (manter)
+│   └── observability.ts          # Dashboard de observabilidade (novo)
+└── index.ts                      # Entry point — integrar novos módulos
 │
-restaurante-ops/src/views/
-├── observability.ts              # Template HTML do dashboard de logs
-│
+# restaurante-web (Expo/React Native — NÃO Next.js)
 restaurante-web/src/
-└── lib/
-    └── observability.ts          # Captura erros + envio para ops
+└── services/
+    └── ObservabilityService.ts   # (novo — seguir padrão LoggerService.ts existente)
+        # Complementa: src/utils/logger.ts (Firebase Analytics) e
+        #              src/services/LoggerService.ts (Sentry)
 │
+# restaurante-app (Expo/React Native)
 restaurante-app/src/
-└── lib/
-    └── observability.ts          # Captura erros + envio para ops
+└── services/
+    └── ObservabilityService.ts   # (novo — seguir padrão LoggerService.ts existente)
+        # Complementa: src/services/LoggerService.ts (Sentry)
 │
 docs/
-└── OBSERVABILITY-IMPLEMENTATION-GUIDE.md  # Este documento
+├── OBSERVABILITY-IMPLEMENTATION-GUIDE.md  # Este documento (raiz do monorepo)
+└── OBSERVABILITY-IMPLEMENTATION-PROMPT.md # Prompt de implementação assistida
 ```
 
 ---
@@ -677,25 +771,26 @@ logWarn('slow_query', {
 ```bash
 # Listar logs de erro nas últimas 24h
 curl -b ops_session=... \
-  'https://ops.seudominio.com/api/logs?level=error&from=2026-04-02T10:00:00Z&limit=50'
+  'https://ops.restaurante-web.app.br/api/logs?level=error&from=2026-04-02T10:00:00Z&limit=50'
 
 # Rastrear requisição completa
 curl -b ops_session=... \
-  'https://ops.seudominio.com/api/logs/trace/550e8400-e29b-41d4-a716-446655440000'
+  'https://ops.restaurante-web.app.br/api/logs/trace/550e8400-e29b-41d4-a716-446655440000'
 
 # Rastrear pedido completo
 curl -b ops_session=... \
-  'https://ops.seudominio.com/api/logs/order/ORD-12345'
+  'https://ops.restaurante-web.app.br/api/logs/order/ORD-12345'
 
 # Métricas agregadas
 curl -b ops_session=... \
-  'https://ops.seudominio.com/api/logs/metrics'
+  'https://ops.restaurante-web.app.br/api/logs/metrics'
 ```
 
-### 10.3 Frontend (restaurante-web)
+### 10.3 Frontend/App (restaurante-web e restaurante-app — Expo/React Native)
 
 ```typescript
-import { sendLogToOps, logOrderCreated, logApiError } from './lib/observability';
+// Importar do serviço correto (src/services/ObservabilityService.ts)
+import { sendLogToOps, logOrderCreated, logApiError } from '../services/ObservabilityService';
 
 // Evento de negócio
 logOrderCreated(order.id, order.total);
@@ -704,26 +799,26 @@ logOrderCreated(order.id, order.total);
 logApiError('/api/orders', {
   status: 500,
   duration_ms: 2300,
-  request_id: response.headers.get('x-request-id')
+  request_id: responseHeaders['x-request-id'],
 });
 ```
 
 ### 10.4 Mobile (restaurante-app)
 
 ```typescript
-import { sendLogToOps, logAppEvent } from './lib/observability';
+import { sendLogToOps, logAppEvent } from '../services/ObservabilityService';
 
 // Evento de negócio
 logAppEvent('order_placed', {
   order_id: order.id,
   user_id: user.id,
-  total: 89.90
+  total: 89.90,
 });
 ```
 
 ### 10.5 Activepieces (via Webhook)
 
-O Activepieces deve enviar webhook para `POST https://ops.seudominio.com/webhooks/activepieces`:
+O Activepieces deve enviar webhook para `POST https://ops.restaurante-web.app.br/webhooks/activepieces`:
 
 ```json
 {
@@ -738,7 +833,7 @@ O Activepieces deve enviar webhook para `POST https://ops.seudominio.com/webhook
 
 ### 10.6 Evolution API (via Webhook)
 
-A Evolution API deve enviar webhook para `POST https://ops.seudominio.com/webhooks/evolution`:
+A Evolution API deve enviar webhook para `POST https://ops.restaurante-web.app.br/webhooks/evolution`:
 
 ```json
 {
@@ -855,23 +950,23 @@ A Evolution API deve enviar webhook para `POST https://ops.seudominio.com/webhoo
 }
 ```
 
-### frontend_error (origem: web)
+### app_error (origem: web ou app — React Native)
 
 ```json
 {
   "timestamp": "2026-04-03T10:35:00.000Z",
   "level": "error",
   "service": "web",
-  "event": "frontend_error",
+  "event": "app_error",
   "message": "TypeError: Cannot read property 'map' of undefined",
   "metadata": {
-    "source": "https://app.seudominio.com/_next/static/chunks/main.js",
-    "line": 42,
-    "column": 15,
-    "stack": "TypeError: Cannot read property 'map' of undefined\n  at OrderList (https://app.seudominio.com/_next/static/chunks/main.js:42:15)"
+    "fatal": false,
+    "stack": "TypeError: Cannot read property 'map' of undefined\n  at OrderList (src/screens/OrderList.tsx:42:15)"
   }
 }
 ```
+
+> **Nota:** `restaurante-web` e `restaurante-app` são projetos **Expo/React Native** — o stack trace não contém URLs de Next.js (`_next/static`). O evento é `app_error` (capturado via `ErrorUtils.setGlobalHandler`), não `frontend_error` (API do browser).
 
 ### http_request (origem: ops — middleware)
 
@@ -917,20 +1012,22 @@ A Evolution API deve enviar webhook para `POST https://ops.seudominio.com/webhoo
 - [ ] Atualizar `.env.example` — Documentar novas variáveis
 - [ ] Criar job de limpeza de logs antigos (cron ou agendador)
 
-### restaurante-web (Frontend)
+### restaurante-web (Expo/React Native — não Next.js)
 
-- [ ] Criar `src/lib/observability.ts` — Captura de erros + envio para ops
-- [ ] Adicionar `window.onerror` handler
-- [ ] Adicionar interceptor para `fetch()`
-- [ ] Configurar variáveis de ambiente
+- [ ] Criar `src/services/ObservabilityService.ts` — seguir padrão de `LoggerService.ts`
+- [ ] Configurar `ErrorUtils.setGlobalHandler` (React Native) — **não usar `window.onerror`**
+- [ ] Adicionar wrapper no cliente Supabase para medir tempo de queries e logar erros
+- [ ] Configurar variáveis de ambiente com prefixo `EXPO_PUBLIC_` (não `NEXT_PUBLIC_`)
+- [ ] Integrar com `LoggerService.ts` existente (Sentry permanece para crash reporting)
 - [ ] Adicionar logs de eventos de negócio (order_created, page_view, api_error)
 
-### restaurante-app (Mobile)
+### restaurante-app (Expo/React Native)
 
-- [ ] Criar `src/lib/observability.ts` — Captura mobile + envio para ops
-- [ ] Configurar ErrorBoundary global
-- [ ] Adicionar interceptor de HTTP client
-- [ ] Configurar variáveis de ambiente
+- [ ] Criar `src/services/ObservabilityService.ts` — seguir padrão de `LoggerService.ts`
+- [ ] Configurar `ErrorUtils.setGlobalHandler` — **não substituir `console.error`**
+- [ ] Adicionar wrapper no cliente Supabase para queries
+- [ ] Configurar variáveis de ambiente com prefixo `EXPO_PUBLIC_`
+- [ ] Integrar com `LoggerService.ts` existente (Sentry permanece para crash reporting)
 - [ ] Adicionar logs de eventos de negócio (app_startup, order_placed, app_error)
 
 ---
