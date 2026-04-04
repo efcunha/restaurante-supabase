@@ -5,7 +5,7 @@
  * Requirements: 22.1, 22.2
  */
 
-import * as Sentry from '@sentry/react-native';
+import * as Sentry from '@sentry/react';
 
 // ============================================================================
 // TYPES
