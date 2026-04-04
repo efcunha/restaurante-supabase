@@ -1,0 +1,418 @@
+# PROMPT DE IMPLEMENTAÇÃO — Observabilidade Centralizada (restaurante-ops)
+
+> **Instrução:** Copie este prompt inteiro e envie para o Qwen Code iniciar a implementação.
+
+---
+
+Você é um engenheiro sênior especialista em observabilidade e Node.js.
+
+Sua tarefa é implementar um sistema completo de **observabilidade centralizada** no projeto **restaurante-ops**. O restaurante-ops será a **única plataforma de monitoramento** — ele coleta, armazena, consulta e exibe logs de todos os projetos do ecossistema, **sem depender de serviços externos de APM**.
+
+---
+
+## 🎯 CONTEXTO DO PROJETO
+
+### Arquitetura
+
+O **restaurante-ops** é a plataforma completa de observabilidade:
+
+```
+restaurante-web ──┐
+                  │
+restaurante-app ──┤
+                  │
+Supabase ─────────┤
+Activepieces ─────┤──▶  restaurante-ops
+Evolution API ────┤     (Coleta, Armazena,
+                  │      Consulta, Dashboard, Alertas)
+                  │
+```
+
+### Stack do restaurante-ops
+
+| Camada | Tecnologia |
+|---|---|
+| **Runtime** | Node.js 20+ (ES Modules, `type: "module"`) |
+| **Linguagem** | TypeScript 5.9 (strict mode, target ES2022) |
+| **HTTP Server** | `node:http` vanilla (zero frameworks — sem Express/Fastify) |
+| **Database** | Supabase (PostgreSQL) via `@supabase/supabase-js` 2.56 |
+| **Cache** | Redis (`redis` 4.7) com fallback in-memory |
+| **Build** | `tsx` (watch), `tsc` (build) |
+| **Deploy** | Railway |
+
+### Storage de Logs
+
+Os logs serão armazenados na **mesma tabela PostgreSQL do Supabase** já usada pelo projeto. Duas tabelas novas serão criadas:
+
+**`ops_logs`** — armazena todos os logs coletados:
+
+```sql
+CREATE TABLE ops_logs (
+  id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  timestamp   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  level       TEXT NOT NULL CHECK (level IN ('info', 'warn', 'error')),
+  service     TEXT NOT NULL,
+  event       TEXT NOT NULL,
+  message     TEXT NOT NULL,
+  request_id  UUID,
+  user_id     TEXT,
+  order_id    TEXT,
+  duration_ms INTEGER,
+  metadata    JSONB,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_ops_logs_timestamp ON ops_logs (timestamp DESC);
+CREATE INDEX idx_ops_logs_service ON ops_logs (service);
+CREATE INDEX idx_ops_logs_event ON ops_logs (event);
+CREATE INDEX idx_ops_logs_level ON ops_logs (level);
+CREATE INDEX idx_ops_logs_request_id ON ops_logs (request_id);
+CREATE INDEX idx_ops_logs_order_id ON ops_logs (order_id);
+```
+
+**`ops_alerts`** e **`ops_alert_firings`** — gerenciamento de alertas:
+
+```sql
+CREATE TABLE ops_alerts (
+  id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  name        TEXT NOT NULL,
+  description TEXT,
+  condition   JSONB NOT NULL,
+  channel     TEXT NOT NULL,
+  channel_config JSONB,
+  enabled     BOOLEAN NOT NULL DEFAULT true,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE ops_alert_firings (
+  id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  alert_id    BIGINT NOT NULL REFERENCES ops_alerts(id),
+  fired_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  context     JSONB,
+  notified    BOOLEAN NOT NULL DEFAULT false
+);
+```
+
+### Estrutura atual do restaurante-ops
+
+```
+restaurante-ops/
+├── src/
+│   ├── index.ts                          # Entry point (2662 linhas, vanilla HTTP)
+│   ├── config/
+│   │   └── env.ts                        # Variáveis de ambiente validadas
+│   ├── auth/
+│   │   ├── supabase.ts                   # Cliente Supabase service-role
+│   │   ├── session.ts                    # Cookies httpOnly
+│   │   └── middleware.ts                 # requireAuth()
+│   ├── lib/
+│   │   ├── logger.ts                     # Logger JSON existente (com redaction)
+│   │   ├── redis.ts                      # Cliente Redis
+│   │   └── rate-limiter.ts               # Rate limiter distribuído
+│   ├── modules/
+│   │   ├── data.ts                       # Acesso a dados (KPIs, empresas, invoices)
+│   │   ├── billing-operations.ts         # Reconciliação billing
+│   │   ├── billing-plan-config-operations.ts  # Config de plano
+│   │   ├── ops-security.ts               # Gestão MFA
+│   │   ├── service-status.ts             # Health check de serviços externos
+│   │   └── supabase-metrics.ts           # Métricas do banco
+│   └── views/
+│       └── dashboard.ts                  # Template HTML do dashboard existente
+├── docs/
+│   └── OBSERVABILITY-IMPLEMENTATION-GUIDE.md  # Guia completo de referência
+├── package.json
+├── tsconfig.json
+└── railway.json
+```
+
+### Logger existente (`src/lib/logger.ts`)
+
+Já existe um logger JSON com redaction de dados sensíveis. Formato atual:
+
+```json
+{
+  "ts": "ISO8601",
+  "level": "info|warn|error",
+  "event": "nome_evento",
+  ...
+}
+```
+
+**Redaction automática** para: `token`, `secret`, `password`, `cookie`, `authorization`, `api_key`, `card`, `cvv`, `pix_qr`. Emails são mascarados.
+
+**Este logger deve ser refatorado** para o novo formato padronizado e integrado com o storage de logs.
+
+---
+
+## 🎯 OBJETIVO
+
+Implementar no **restaurante-ops** um sistema completo de observabilidade que:
+
+* Colete logs de web, app, Supabase, Activepieces e Evolution API
+* Armazene em tabela PostgreSQL no Supabase
+* Permita consulta via API com filtros avançados
+* Exiba um **dashboard web** para visualização de logs e métricas
+* Rastreie pedidos completos de início ao fim (via `request_id`)
+* Configure e dispare **alertas** baseados em condições
+* Seja a **única fonte de verdade** para observabilidade do ecossistema
+
+---
+
+## ⚙️ REQUISITOS TÉCNICOS
+
+### 1. FORMATO PADRÃO DE LOGS
+
+Refatorar o logger existente para o seguinte formato:
+
+```json
+{
+  "timestamp": "2026-04-03T10:30:00.000Z",
+  "level": "info|warn|error",
+  "service": "ops|web|app|supabase|activepieces|evolution",
+  "event": "nome_do_evento",
+  "message": "descrição clara",
+  "request_id": "uuid",
+  "user_id": "id do usuário",
+  "order_id": "id do pedido",
+  "duration_ms": 123,
+  "metadata": {}
+}
+```
+
+### 2. EVENTOS DE NEGÓCIO OBRIGATÓRIOS
+
+Criar suporte a logging para os seguintes eventos:
+
+| Evento | Origem | Descrição |
+|---|---|---|
+| `order_created` | web / app | Criação de pedido |
+| `order_updated` | web / ops | Atualização de status |
+| `order_cancelled` | web / ops | Cancelamento |
+| `payment_success` | ops / web | Pagamento confirmado |
+| `payment_failed` | ops / web | Falha no pagamento |
+| `webhook_received` | ops | Webhook recebido |
+| `webhook_failed` | ops | Falha ao processar webhook |
+| `automation_executed` | activepieces | Workflow executado |
+| `automation_failed` | activepieces | Falha em workflow |
+| `whatsapp_sent` | evolution | Mensagem enviada |
+| `whatsapp_failed` | evolution | Falha no envio |
+| `whatsapp_webhook` | evolution | Evento recebido |
+| `slow_query` | supabase | Query > 500ms |
+| `db_error` | supabase | Erro de query |
+| `frontend_error` | web | Erro JavaScript |
+| `api_error` | web / app | Erro em chamada API |
+| `app_startup` | app | Inicialização do app |
+| `page_view` | web | Navegação de página |
+| `http_request` | ops | Toda requisição HTTP |
+
+### 3. STORAGE DE LOGS
+
+Criar `src/lib/log-storage.ts` com:
+
+- `insertLog(log: LogEntry): Promise<void>`
+- `insertLogs(logs: LogEntry[]): Promise<void>` — batch insert
+- `queryLogs(filter: LogFilter): Promise<{ total: number, logs: LogEntry[] }>`
+  - Filtros por: `service`, `level`, `event`, `dateRange`, `request_id`, `order_id`, `user_id`
+  - Paginação: `limit`, `offset`
+  - Ordenação: `timestamp DESC`
+- `getMetrics(): Promise<LogMetrics>`
+- `traceRequest(requestId: string): Promise<LogEntry[]>`
+- `traceOrder(orderId: string): Promise<LogEntry[]>`
+- `cleanupOldLogs(olderThanDays: number): Promise<number>`
+
+### 4. MIDDLEWARE DE REQUEST TRACKING
+
+Criar `src/lib/request-tracker.ts` com:
+
+- Gerar `request_id` único (UUID v4) por requisição
+- Medir tempo de resposta (início → fim)
+- Logar todas as requisições HTTP com evento `http_request`
+- Logar automaticamente respostas com status >= 400
+- Injetar `request_id` em header de resposta `X-Request-ID`
+- Propagar `request_id` em chamadas internas
+
+### 5. LOGGER CENTRAL (REFATORAR)
+
+Refatorar `src/lib/logger.ts` com:
+
+- Manter redaction existente (senhas, tokens, etc.)
+- Adaptar para novo formato de log
+- Inserir log no storage (assíncrono, não bloqueante)
+- Batch inserts para performance
+- Exportar funções: `logInfo()`, `logWarn()`, `logError()`
+- Funções especializadas:
+  - `logOrderEvent(event, orderId, userId, metadata)`
+  - `logPaymentEvent(event, orderId, userId, metadata)`
+  - `logWebhookEvent(event, source, metadata)`
+  - `logAutomationEvent(event, workflowId, metadata)`
+  - `logWhatsAppEvent(event, phoneNumber, metadata)`
+  - `logDbEvent(event, queryInfo, metadata)`
+
+### 6. WRAPPER SUPABASE
+
+Criar `src/lib/supabase-logger.ts` com:
+
+- Wrapper para medir tempo de cada query
+- Logar queries lentas (> 500ms) com `warn` + `slow_query`
+- Logar erros de query com `error` + `db_error`
+- Incluir `request_id` no contexto de cada query
+
+### 7. WEBHOOK ACTIVEPIECES
+
+Criar `src/lib/activepieces-logger.ts` com:
+
+- Endpoint `POST /webhooks/activepieces` no ops
+- Logar `automation_executed` ou `automation_failed`
+- Incluir: `workflow_id`, `execution_id`, `workflow_name`, `duration_ms`, `result`
+
+### 8. WEBHOOK EVOLUTION API
+
+Criar `src/lib/evolution-logger.ts` com:
+
+- Endpoint `POST /webhooks/evolution` no ops
+- Wrapper para chamadas de envio de mensagem
+- Logar `whatsapp_sent`, `whatsapp_failed`, `whatsapp_webhook`
+- Incluir: `phone_number` (mascarado), `message_id`, `instance`, `message_type`
+
+### 9. ENDPOINT DE LOGS EXTERNOS
+
+Criar `src/lib/external-logs.ts` com:
+
+- Endpoint `POST /api/logs` no ops
+- Autenticar via API key (header `X-Log-Api-Key`)
+- Receber batch de logs do web e app
+- Validar formato, aplicar redaction, inserir no storage
+- Rate limiting por origem
+- Responder com 202 Accepted
+
+### 10. API DE CONSULTA DE LOGS
+
+Criar `src/lib/logs-api.ts` com rotas protegidas (requireAuth):
+
+| Método | Path | Descrição |
+|---|---|---|
+| `GET` | `/api/logs` | Listar logs com filtros |
+| `GET` | `/api/logs/trace/:requestId` | Rastrear requisição completa |
+| `GET` | `/api/logs/order/:orderId` | Rastrear pedido completo |
+| `GET` | `/api/logs/metrics` | Métricas agregadas |
+| `GET` | `/api/logs/alerts` | Listar alertas configurados |
+| `POST` | `/api/logs/alerts` | Criar alerta |
+
+### 11. ENGINE DE ALERTAS
+
+Criar `src/lib/alerts-engine.ts` com:
+
+- Verificar alertas configurados em intervalos regulares
+- Query no storage para verificar condições
+- Notificar via email ou webhook (Slack)
+- Logar disparo de alerta no storage
+
+### 12. DASHBOARD WEB
+
+Criar `src/views/observability.ts` com template HTML para:
+
+- **Log Viewer** — tabela de logs com filtros, paginação, busca
+- **Métricas** — cards de resumo, gráficos de volume/erro/latência
+- **Trace** — timeline de request_id ou order_id
+- **Alertas** — gestão de alertas configurados
+
+### 13. VARIÁVEIS DE AMBIENTE
+
+Atualizar `src/config/env.ts` e `.env.example` com:
+
+```bash
+# Logging
+LOG_LEVEL=info
+SLOW_QUERY_THRESHOLD_MS=500
+LOG_RETENTION_DAYS=30
+
+# API Key para recebimento de logs externos
+OPS_LOG_API_KEY=sk-ops-log-key-aqui
+
+# Alertas
+ALERT_CHECK_INTERVAL_MS=60000
+ALERT_WEBHOOK_TIMEOUT_MS=5000
+```
+
+### 14. BOAS PRÁTICAS
+
+* **Nunca logar dados sensíveis** (senha, token, cartão) — manter redaction
+* Usar níveis corretos (`info`, `warn`, `error`)
+* Garantir baixo impacto de performance (envio assíncrono)
+* Logs devem ser legíveis e consistentes
+* Zero dependências desnecessárias
+* Falha graceful: se storage falhar, fallback para stdout
+
+---
+
+## 📦 ENTREGÁVEIS
+
+1. **SQL migration** — Tabelas `ops_logs`, `ops_alerts`, `ops_alert_firings`
+2. **`src/lib/log-storage.ts`** — Storage de logs no Supabase
+3. **`src/lib/logger.ts`** (refatorado) — Logger central integrado com storage
+4. **`src/lib/request-tracker.ts`** — Middleware de request tracking
+5. **`src/lib/supabase-logger.ts`** — Wrapper para queries Supabase
+6. **`src/lib/evolution-logger.ts`** — Logging + webhook Evolution API
+7. **`src/lib/activepieces-logger.ts`** — Logging + webhook Activepieces
+8. **`src/lib/external-logs.ts`** — Endpoint `POST /api/logs` para web/app
+9. **`src/lib/logs-api.ts`** — API de consulta de logs + métricas
+10. **`src/lib/alerts-engine.ts`** — Engine de alertas
+11. **`src/lib/alert-scheduler.ts`** — Agendamento de verificação de alertas
+12. **`src/views/observability.ts`** — Dashboard web de observabilidade
+13. **`src/config/env.ts`** (atualizado) — Variáveis de logging
+14. **`.env.example`** (atualizado) — Documentação das variáveis
+15. **`src/index.ts`** (atualizado) — Integração de todos os componentes
+16. **Exemplos de logs** (no guia)
+
+---
+
+## 🚀 RESULTADO ESPERADO
+
+Ao final da implementação, o restaurante-ops deve permitir:
+
+* **Rastrear um pedido completo** (do início ao fim, via `request_id`)
+* **Identificar rapidamente falhas** em integrações
+* **Visualizar logs e métricas** via dashboard web
+* **Configurar alertas** com notificações
+* **Receber logs** do web, app e integrações externas
+* **Baixo impacto de performance** (< 10ms de overhead por requisição)
+* Ser a **única fonte de verdade** para observabilidade — sem serviços externos
+
+---
+
+## ⚠️ IMPORTANTE
+
+* A implementação deve ser **modular**, **escalável** e **fácil de manter**
+* Compatível com ambiente **Railway**
+* Foco em **produção e alto volume** de requisições
+* Manter **zero dependências desnecessárias** (stack minimalista do projeto)
+* **ES Modules** puros — sem `require()`
+* **TypeScript strict** — sem `any` injustificado
+* **Preservar padrões existentes** do projeto (logger JSON, redaction, env validation)
+* O dashboard web deve ser **Server-Side Rendered** (mesmo padrão do projeto)
+
+---
+
+## 📋 ORDEM DE IMPLEMENTAÇÃO SUGERIDA
+
+1. Criar SQL migration das tabelas de logs e alertas
+2. Criar `src/lib/log-storage.ts` — Storage
+3. Criar types/interfaces para logs padronizados
+4. Refatorar `src/lib/logger.ts` para novo formato
+5. Criar middleware de request tracking
+6. Integrar logger + storage + request tracking no `src/index.ts`
+7. Criar wrapper Supabase
+8. Criar endpoint de logs externos (`POST /api/logs`)
+9. Criar webhook Activepieces
+10. Criar webhook Evolution API
+11. Criar API de consulta de logs (`GET /api/logs`, `/metrics`, `/trace`)
+12. Criar engine de alertas + scheduler
+13. Criar dashboard web de observabilidade
+14. Atualizar env config e `.env.example`
+15. Testar end-to-end (simular coleta, consulta e alertas)
+16. Documentar uso e exemplos
+
+---
+
+**Inicie a implementação agora.** Comece lendo os arquivos existentes (`src/lib/logger.ts`, `src/config/env.ts`, `src/index.ts`, `src/views/dashboard.ts`) para entender os padrões atuais antes de criar novos arquivos.
