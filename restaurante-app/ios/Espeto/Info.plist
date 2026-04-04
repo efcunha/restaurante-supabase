@@ -51,6 +51,47 @@
       <false/>
       <key>NSAllowsLocalNetworking</key>
       <true/>
+      <key>NSPinnedDomains</key>
+      <dict>
+        <key>api.mercadopago.com</key>
+        <dict>
+          <key>NSIncludesSubdomains</key>
+          <false/>
+          <key>NSPinnedLeafIdentities</key>
+          <array>
+            <dict>
+              <key>SPKI-SHA256-BASE64</key>
+              <string>1rsZujOXhUcEKiMBfMqCDwhVvouJYiW+H7/RiBr4c8Y=</string>
+            </dict>
+          </array>
+          <key>NSPinnedCAIdentities</key>
+          <array>
+            <dict>
+              <key>SPKI-SHA256-BASE64</key>
+              <string>Wec45nQiFwKvHtuHxSAMGkt19k+uPSw9JlEkxhvYPHk=</string>
+            </dict>
+          </array>
+        </dict>
+        <key>supabase.co</key>
+        <dict>
+          <key>NSIncludesSubdomains</key>
+          <true/>
+          <key>NSPinnedLeafIdentities</key>
+          <array>
+            <dict>
+              <key>SPKI-SHA256-BASE64</key>
+              <string>GU2W4j1P24T3sqlI+o6YTnidzz0PI8fB/Gvd2ITfSZE=</string>
+            </dict>
+          </array>
+          <key>NSPinnedCAIdentities</key>
+          <array>
+            <dict>
+              <key>SPKI-SHA256-BASE64</key>
+              <string>kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=</string>
+            </dict>
+          </array>
+        </dict>
+      </dict>
     </dict>
     <key>RCTNewArchEnabled</key>
     <true/>
