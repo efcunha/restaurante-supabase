@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Restaurante",
-    "slug": "comandapraia-dona-cida",
+    "slug": "restaurante-app",
     "scheme": "restaurante",
     "version": "1.0.1",
     "orientation": "default",
@@ -97,7 +97,7 @@
     "owner": "lumachadolp",
     "extra": {
       "eas": {
-        "projectId": "930f1e33-a6ec-4432-8c37-891f4eddcb1f"
+        "projectId": "8384f741-18dd-41fb-b0ab-df0ece2acecf"
       }
     }
   }
