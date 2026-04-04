@@ -120,6 +120,11 @@ allprojects {
               details.useVersion '1.17.1'
               details.because 'Fix commons-codec Information Exposure — upgrade to 1.14+ recommended by Snyk'
             }
+              // CVE-2020-15250 — JUnit 4 Information Exposure (test-time only)
+              if (details.requested.group == 'junit' && details.requested.name == 'junit') {
+                details.useVersion '4.13.2'
+                details.because 'Fix CVE-2020-15250 reported by Snyk (fixedIn >= 4.13.1)'
+              }
       }
     }
 }
