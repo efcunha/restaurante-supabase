@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { randomUUID } from 'node:crypto';
 import type { Socket } from 'node:net';
 import { buildEnv } from './config/env.js';
 import { signInWithPassword } from './auth/supabase.js';
@@ -1691,11 +1692,13 @@ function respondInternalError(
   req: IncomingMessage,
   res: import('node:http').ServerResponse,
   safePath: string,
+  requestId?: string,
 ): void {
   logError('http.unhandled_error', {
     method: req.method,
     path: safePath,
     statusCode: 500,
+    request_id: requestId,
   });
 
   if (res.headersSent) {
@@ -1719,6 +1722,16 @@ function respondInternalError(
   respondJson(res, 500, { error: 'Internal Server Error' });
 }
 
+function resolveRequestId(req: IncomingMessage): string {
+  const raw = req.headers['x-request-id'];
+  const candidate = Array.isArray(raw) ? raw[0] : raw;
+  if (typeof candidate === 'string' && isUuid(candidate)) {
+    return candidate;
+  }
+
+  return randomUUID();
+}
+
 function startServer() {
   // Initialize Redis before starting server
   initRedis(env.REDIS_URL)
@@ -1733,6 +1746,24 @@ function startServer() {
   const server = createOpsHttpServer(async (req: IncomingMessage, res: ServerResponse) => {
     const safeRequestUrl = sanitizeRequestTarget(req.url);
     const safePathForLog = sanitizePlainText(safeRequestUrl.split('?')[0] || '/');
+    const requestId = resolveRequestId(req);
+    const startedAt = Date.now();
+
+    res.setHeader('X-Request-ID', requestId);
+    res.on('finish', () => {
+      const statusCode = res.statusCode;
+      const durationMs = Date.now() - startedAt;
+      const logFn = statusCode >= 400 ? logWarn : logInfo;
+
+      logFn('http_request', {
+        service: 'ops',
+        method: req.method,
+        path: safePathForLog,
+        statusCode,
+        request_id: requestId,
+        duration_ms: durationMs,
+      });
+    });
 
     try {
       applySecurityHeaders(res);
@@ -1811,6 +1842,7 @@ function startServer() {
               path,
               statusCode: 503,
               reason: rateLimitResult.unavailableReason,
+              request_id: requestId,
             });
             res.writeHead(503, { 'content-type': 'text/html; charset=utf-8' });
             res.end(renderLoginHtml(requireMfa, 'Servico temporariamente indisponivel. Tente novamente em instantes.'));
@@ -1824,6 +1856,7 @@ function startServer() {
               path,
               statusCode: 429,
               reason: `retry_after=${retryAfter}`,
+              request_id: requestId,
             });
             res.setHeader('Retry-After', String(retryAfter));
             res.setHeader('X-RateLimit-Remaining', String(rateLimitResult.remaining));
@@ -1857,6 +1890,7 @@ function startServer() {
             path,
             email: normalizedEmail,
             statusCode: 302,
+            request_id: requestId,
           });
 
           setSessionCookie(res, token);
@@ -1871,6 +1905,7 @@ function startServer() {
             path,
             statusCode: 401,
             reason: msg,
+            request_id: requestId,
           });
           res.writeHead(401, { 'content-type': 'text/html; charset=utf-8' });
           res.end(renderLoginHtml(securitySettings.requireMfa, safeLoginMessage));
@@ -2681,6 +2716,7 @@ function startServer() {
         method: req.method,
         path,
         statusCode: 404,
+        request_id: requestId,
       });
       res.end(JSON.stringify({ error: 'Not Found' }));
     } catch (err) {
@@ -2689,8 +2725,9 @@ function startServer() {
         path: safePathForLog,
         statusCode: 500,
         error: err instanceof Error ? err.message : 'Unknown error',
+        request_id: requestId,
       });
-      respondInternalError(req, res, safePathForLog);
+      respondInternalError(req, res, safePathForLog, requestId);
     }
   });
 
