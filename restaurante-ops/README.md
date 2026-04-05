@@ -105,6 +105,10 @@ cd restaurante-ops
 npm run billing:candidates
 ```
 
+Runbook operacional completo do `OPS-4`:
+
+- `../docs/security/OPS4_RECONCILE_SUCCESS_IDEMPOTENCY_RUNBOOK.md`
+
 Filtrando por empresa:
 
 ```bash

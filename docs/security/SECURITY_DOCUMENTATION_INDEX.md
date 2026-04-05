@@ -36,6 +36,9 @@ Funcao: triagem operacional de alertas Snyk (bloqueante real vs falso positivo) 
 - PINNING_CERT_EVIDENCE_2026-04-04.md
 Funcao: evidencias tecnicas de certificate pinning (hashes SPKI, comando de verificacao e arquivos alterados no app).
 
+- OPS4_RECONCILE_SUCCESS_IDEMPOTENCY_RUNBOOK.md
+Funcao: runbook operacional obrigatorio para executar e evidenciar o fechamento do `OPS-4` com sucesso idempotente.
+
 ## Regra de Consolidacao
 
 Todo status e progresso ficam apenas em:
