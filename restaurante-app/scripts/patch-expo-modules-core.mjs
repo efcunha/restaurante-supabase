@@ -26,6 +26,11 @@ const expoJSIUtilsHeaderPath = path.resolve(
   'node_modules/expo-modules-core/ios/JSI/EXJSIUtils.h'
 );
 
+const expoDevLauncherRCTBridgePath = path.resolve(
+  process.cwd(),
+  'node_modules/expo-dev-launcher/ios/ReactNative/EXDevLauncherRCTBridge.m'
+);
+
 function patchExpoModulesCorePromise() {
   if (!fs.existsSync(promiseKtPath)) {
     console.log('[postinstall] expo-modules-core Promise.kt not found, skipping patch');
@@ -238,8 +243,37 @@ function patchExpoModulesCoreJSI() {
   console.log('[postinstall] expo-modules-core EXJSIUtils.h React includes patch applied');
 }
 
+function patchExpoDevLauncherIOSBridge() {
+  // Patch 5: RN 0.84 removed initWithParentBridge: from RCTCxxBridge.
+  // expo-dev-launcher still calls [super initWithParentBridge:bridge], causing:
+  // "no visible @interface for 'RCTCxxBridge' declares the selector 'initWithParentBridge:'"
+  // Fallback to [super init] to keep compilation working for internal preview builds.
+  if (!fs.existsSync(expoDevLauncherRCTBridgePath)) {
+    console.log('[postinstall] expo-dev-launcher EXDevLauncherRCTBridge.m not found, skipping patch');
+    return;
+  }
+
+  let source = fs.readFileSync(expoDevLauncherRCTBridgePath, 'utf8');
+  const oldCall = 'if ((self = [super initWithParentBridge:bridge])) {';
+  const newCall = 'if ((self = [super init])) {';
+
+  if (!source.includes(oldCall)) {
+    if (source.includes(newCall)) {
+      console.log('[postinstall] expo-dev-launcher RN 0.84 bridge patch already applied');
+    } else {
+      console.log('[postinstall] expo-dev-launcher bridge patch pattern not found, skipping patch');
+    }
+    return;
+  }
+
+  source = source.replace(oldCall, newCall);
+  fs.writeFileSync(expoDevLauncherRCTBridgePath, source, 'utf8');
+  console.log('[postinstall] expo-dev-launcher RN 0.84 bridge patch applied');
+}
+
 patchExpoModulesCorePromise();
 patchEscPosCodegenConfig();
 patchEscPosReactNativeConfig();
 patchEscPosAndroidBuildGradle();
 patchExpoModulesCoreJSI();
+patchExpoDevLauncherIOSBridge();
