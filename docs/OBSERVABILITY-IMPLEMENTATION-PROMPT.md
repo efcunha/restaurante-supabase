@@ -430,6 +430,63 @@ EXPO_PUBLIC_LOG_API_KEY=sk-ops-log-key-aqui
 
 ---
 
+## 📌 CHECKPOINT (2026-04-05) — CONTINUIDADE PARA AMANHÃ
+
+### ✅ Concluído hoje
+
+1. **Projeto Supabase isolado criado**
+  - Nome: `restaurante-observability`
+  - Ref: `ekpitpzpeeqermtifryx`
+2. **Schema aplicado no projeto isolado**
+  - Migration: `database-backup/migrations/20260405184919_create_observability_isolated_partitioned_logs.sql`
+  - Tabelas: `ops_logs`, `ops_logs_2026_04`, `ops_logs_2026_05`, `ops_alerts`, `ops_alert_firings`
+  - Policies/RLS validadas
+3. **Logger e ingestão no `restaurante-ops` já evoluídos**
+  - `src/lib/logger.ts` já usa `timestamp`, `service`, `message`, `duration_ms`
+  - Redaction ampliada com `cpf` e `phone`
+  - Dual-write condicional via `OBS_DUAL_WRITE`
+4. **Storage assíncrono em lote implementado**
+  - `src/lib/log-storage.ts` com fila, batch, flush periódico, backpressure e consultas
+5. **Request tracking implementado**
+  - `X-Request-ID` no response + log automático `http_request`
+6. **Endpoints já implementados no `src/index.ts`**
+  - `POST /api/logs` (API key + rate limit + validação de batch)
+  - `GET /api/logs`
+  - `GET /api/logs/metrics`
+  - `GET /api/logs/trace/:requestId`
+  - `GET /api/logs/order/:orderId`
+7. **Smoke tests locais executados**
+  - `POST /api/logs` com API key válida: `202`
+  - `POST /api/logs` com API key inválida: `401`
+
+### 🟡 Pendente prioritário para amanhã
+
+1. Configurar variáveis reais no ambiente do serviço (`restaurante-ops`):
+  - `OBS_SUPABASE_URL`
+  - `OBS_SUPABASE_SERVICE_ROLE_KEY`
+  - `OBS_DUAL_WRITE=true`
+  - `OPS_LOG_API_KEY`
+2. Validar **dual-write em ambiente real**:
+  - gerar tráfego real
+  - confirmar persistência no `ops_logs` do projeto isolado
+3. Implementar bloco de alertas pendente:
+  - `GET /api/logs/alerts`
+  - `POST /api/logs/alerts`
+  - engine/scheduler de disparo
+4. Iniciar integração de emissão nos clientes:
+  - `restaurante-web/src/services/ObservabilityService.ts`
+  - `restaurante-app/src/services/ObservabilityService.ts`
+
+### ▶️ Plano de retomada (ordem exata)
+
+1. Validar env no deploy (`OBS_*` + `OPS_LOG_API_KEY`).
+2. Executar smoke de ingestão externo com payload real de app/web.
+3. Confirmar métricas/trace no dashboard via `/api/logs*` autenticado.
+4. Implementar API e persistência de alertas.
+5. Só depois avaliar `OBS_READ_FROM_ISOLATED=true` (seguindo critérios de corte).
+
+---
+
 ## 📦 ENTREGÁVEIS
 
 ### restaurante-ops (todos em `restaurante-ops/`)
@@ -441,8 +498,8 @@ EXPO_PUBLIC_LOG_API_KEY=sk-ops-log-key-aqui
 6. **`src/lib/supabase-logger.ts`** — Wrapper para queries Supabase
 7. **`src/lib/evolution-logger.ts`** — Logging + webhook Evolution API
 8. **`src/lib/activepieces-logger.ts`** — Logging + webhook Activepieces
-9. **`src/lib/external-logs.ts`** — Endpoint `POST /api/logs` para web/app
-10. **`src/lib/logs-api.ts`** — API de consulta de logs + métricas
+9. **`src/lib/external-logs.ts`** — Endpoint `POST /api/logs` para web/app (**já implementado no `src/index.ts`**)
+10. **`src/lib/logs-api.ts`** — API de consulta de logs + métricas (**já implementada no `src/index.ts`**)
 11. **`src/lib/alerts-engine.ts`** — Engine de alertas
 12. **`src/lib/alert-scheduler.ts`** — Agendamento de verificação de alertas
 13. **`src/views/observability.ts`** — Dashboard web de observabilidade
@@ -452,8 +509,8 @@ EXPO_PUBLIC_LOG_API_KEY=sk-ops-log-key-aqui
 17. **Feature flags de migração** — `OBS_DUAL_WRITE` e `OBS_READ_FROM_ISOLATED`
 
 ### restaurante-web e restaurante-app (Expo/React Native)
-16. **`restaurante-web/src/services/ObservabilityService.ts`** — Captura `app_error` + envio para ops
-17. **`restaurante-app/src/services/ObservabilityService.ts`** — Equivalente para o app mobile
+18. **`restaurante-web/src/services/ObservabilityService.ts`** — Captura `app_error` + envio para ops
+19. **`restaurante-app/src/services/ObservabilityService.ts`** — Equivalente para o app mobile
     - Ambos usam `ErrorUtils.setGlobalHandler` (não `window.onerror`)
     - Ambos usam `EXPO_PUBLIC_` para env vars (não `NEXT_PUBLIC_`)
     - Ambos complementam o `LoggerService.ts` existente (Sentry para crashes, ops para eventos)
@@ -531,6 +588,6 @@ Ao final da implementação, o restaurante-ops deve permitir:
 
 ---
 
-**Inicie a implementação agora.** Comece lendo os arquivos existentes (`src/lib/logger.ts`, `src/config/env.ts`, `src/index.ts`, `src/views/dashboard.ts`) para entender os padrões atuais antes de criar novos arquivos.
+**Retome a implementação a partir do checkpoint acima.** Priorize validação de dual-write em ambiente real e fechamento do módulo de alertas.
 
-> **Atenção ao ler `src/lib/logger.ts`:** O campo de timestamp atual é `ts` (não `timestamp`). A refatoração deve renomear para `timestamp` e adicionar os campos `service` e `message` como obrigatórios no formato de saída. Qualquer código que precise do campo `ts` deve ser migrado em conjunto.
+> **Atenção:** `src/lib/logger.ts` já foi refatorado para `timestamp` + `service` + `message`; evite retrabalho e mantenha compatibilidade com os logs já emitidos.

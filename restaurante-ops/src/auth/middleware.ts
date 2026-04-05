@@ -3,6 +3,11 @@ import { getSessionToken } from './session.js';
 import { getUserFromToken, type OpsUser } from './supabase.js';
 import { logWarn } from '../lib/logger.js';
 
+function sanitizeUrlForLog(value: string | undefined): string {
+  if (!value) return '/';
+  return value.replace(/[\u0000-\u001F\u007F]/g, '').replace(/[<>'"`]/g, '').slice(0, 512);
+}
+
 /**
  * Verifica se a requisicao possui sessao valida.
  * Retorna o OpsUser autenticado ou null se invalido/expirado.
@@ -15,7 +20,7 @@ export async function requireAuth(
   if (!token) {
     logWarn('auth.missing_session', {
       method: req.method,
-      path: req.url,
+      path: sanitizeUrlForLog(req.url),
       reason: 'missing_session_cookie',
     });
     redirectToLogin(res);
@@ -26,7 +31,7 @@ export async function requireAuth(
   if (!user) {
     logWarn('auth.invalid_session', {
       method: req.method,
-      path: req.url,
+      path: sanitizeUrlForLog(req.url),
       reason: 'invalid_or_unauthorized_session',
     });
     redirectToLogin(res);
