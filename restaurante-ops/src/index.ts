@@ -59,18 +59,25 @@ import {
 } from './modules/billing-plan-config-operations.js';
 import { createOpsHttpServer } from './lib/httpServer.js';
 import { getMetrics as getLogMetrics, queryLogs, traceOrder, traceRequest } from './lib/log-storage.js';
+import { enqueueLog, type LogEntry } from './lib/log-storage.js';
 
 const env = buildEnv();
 const opsCompanyId = env.OPS_ALLOWED_COMPANY_ID || 'f85bfdc2-982a-4cf7-b176-bce68426f861';
 
 function getRequestIp(req: IncomingMessage): string {
+  if (!env.OPS_TRUST_PROXY_HEADERS) {
+    return req.socket.remoteAddress || 'unknown';
+  }
+
   const forwarded = req.headers['x-forwarded-for'];
   if (typeof forwarded === 'string' && forwarded.length > 0) {
-    return forwarded.split(',')[0].trim();
+    const first = sanitizePlainText(forwarded.split(',')[0]).replace(/[^A-Fa-f0-9:.,]/g, '');
+    return first || req.socket.remoteAddress || 'unknown';
   }
 
   if (Array.isArray(forwarded) && forwarded.length > 0) {
-    return forwarded[0].split(',')[0].trim();
+    const first = sanitizePlainText(forwarded[0].split(',')[0]).replace(/[^A-Fa-f0-9:.,]/g, '');
+    return first || req.socket.remoteAddress || 'unknown';
   }
 
   return req.socket.remoteAddress || 'unknown';
@@ -116,13 +123,17 @@ function sanitizeOpsUserForHtml(user: OpsUser): OpsUser {
 }
 
 function isSecureTransport(req: IncomingMessage): boolean {
+  if (!env.OPS_TRUST_PROXY_HEADERS) {
+    return Boolean((req.socket as import('node:tls').TLSSocket).encrypted);
+  }
+
   const forwardedProto = req.headers['x-forwarded-proto'];
   const firstProto = Array.isArray(forwardedProto)
     ? forwardedProto[0]
     : forwardedProto;
 
   if (typeof firstProto === 'string' && firstProto.length > 0) {
-    return firstProto.split(',')[0].trim().toLowerCase() === 'https';
+    return sanitizePlainText(firstProto.split(',')[0]).toLowerCase() === 'https';
   }
 
   return Boolean((req.socket as import('node:tls').TLSSocket).encrypted);
@@ -1637,6 +1648,138 @@ function parseIntegerQuery(value: string | null, fallback: number, min: number, 
   return Math.min(max, Math.max(min, parsed));
 }
 
+const EXTERNAL_LOG_SERVICES = new Set(['ops', 'web', 'app', 'supabase', 'activepieces', 'evolution']);
+const EXTERNAL_LOG_LEVELS = new Set(['info', 'warn', 'error']);
+const EXTERNAL_LOG_MAX_BATCH_SIZE = 500;
+const EXTERNAL_LOG_SENSITIVE_KEY_FRAGMENTS = [
+  'token',
+  'secret',
+  'password',
+  'cookie',
+  'authorization',
+  'api_key',
+  'apikey',
+  'service_role',
+  'mp_payment',
+  'card',
+  'cvv',
+  'pix_qr',
+  'cpf',
+  'phone',
+];
+
+function sanitizeExternalString(value: string): string {
+  return value
+    .replace(/[\u0000-\u001F\u007F]/g, '')
+    .replace(/Bearer\s+[A-Za-z0-9\-._~+/]+=*/gi, 'Bearer [REDACTED]')
+    .replace(/eyJ[A-Za-z0-9._-]{10,}/g, '[REDACTED]')
+    .replace(/sb_(publishable|secret)_[A-Za-z0-9_]+/g, '[REDACTED]')
+    .trim();
+}
+
+function isExternalSensitiveKey(key: string): boolean {
+  const normalized = key.toLowerCase();
+  return EXTERNAL_LOG_SENSITIVE_KEY_FRAGMENTS.some((fragment) => normalized.includes(fragment));
+}
+
+function sanitizeExternalValue(value: unknown, keyHint?: string): unknown {
+  if (value == null) return value;
+
+  if (keyHint && isExternalSensitiveKey(keyHint)) {
+    return '[REDACTED]';
+  }
+
+  if (typeof value === 'string') {
+    return sanitizeExternalString(value);
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((entry) => sanitizeExternalValue(entry, keyHint));
+  }
+
+  if (typeof value === 'object') {
+    const obj: Record<string, unknown> = {};
+    for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+      obj[key] = sanitizeExternalValue(entry, key);
+    }
+    return obj;
+  }
+
+  return value;
+}
+
+function normalizeIncomingLog(entry: unknown, fallbackRequestId: string): LogEntry | null {
+  if (!entry || typeof entry !== 'object') return null;
+  const raw = entry as Record<string, unknown>;
+
+  const level = sanitizePlainText(String(raw.level || '')).toLowerCase();
+  if (!EXTERNAL_LOG_LEVELS.has(level)) return null;
+
+  const service = sanitizePlainText(String(raw.service || '')).toLowerCase();
+  if (!EXTERNAL_LOG_SERVICES.has(service)) return null;
+
+  const event = sanitizeExternalString(String(raw.event || ''));
+  if (!event) return null;
+
+  const message = sanitizeExternalString(String(raw.message || event));
+  if (!message) return null;
+
+  const tsRaw = sanitizePlainText(String(raw.timestamp || ''));
+  let timestamp = new Date().toISOString();
+  if (tsRaw) {
+    const parsed = new Date(tsRaw);
+    if (!Number.isNaN(parsed.getTime())) {
+      timestamp = parsed.toISOString();
+    }
+  }
+  const request_id_raw = sanitizePlainText(String(raw.request_id || ''));
+  const request_id = isUuid(request_id_raw) ? request_id_raw : fallbackRequestId;
+  const user_id = sanitizePlainText(String(raw.user_id || '')) || undefined;
+  const order_id = sanitizePlainText(String(raw.order_id || '')) || undefined;
+  const durationCandidate =
+    typeof raw.duration_ms === 'number'
+      ? raw.duration_ms
+      : typeof raw.durationMs === 'number'
+        ? raw.durationMs
+        : undefined;
+  const duration_ms =
+    typeof durationCandidate === 'number' && Number.isFinite(durationCandidate) && durationCandidate >= 0
+      ? Math.floor(durationCandidate)
+      : undefined;
+
+  const metadataRaw = raw.metadata && typeof raw.metadata === 'object' ? raw.metadata : {};
+  const metadata = sanitizeExternalValue(metadataRaw, 'metadata') as Record<string, unknown>;
+
+  return {
+    timestamp,
+    level: level as 'info' | 'warn' | 'error',
+    service,
+    event,
+    message,
+    request_id,
+    user_id,
+    order_id,
+    duration_ms,
+    metadata,
+  };
+}
+
+function extractExternalLogsPayload(payload: unknown): unknown[] {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+
+  if (payload && typeof payload === 'object' && Array.isArray((payload as { logs?: unknown[] }).logs)) {
+    return (payload as { logs: unknown[] }).logs;
+  }
+
+  if (payload && typeof payload === 'object') {
+    return [payload];
+  }
+
+  return [];
+}
+
 const BILLING_COMPANY_PATH_FRAGMENT = '([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})';
 const BILLING_AUDIT_PATH_RE = new RegExp(`^/ops/billing/company/${BILLING_COMPANY_PATH_FRAGMENT}/audit$`);
 const BILLING_SNAPSHOT_PATH_RE = new RegExp(`^/ops/billing/company/${BILLING_COMPANY_PATH_FRAGMENT}$`);
@@ -1714,7 +1857,7 @@ function respondInternalError(
     return;
   }
 
-  const accept = req.headers.accept ?? '';
+  const accept = sanitizePlainText(Array.isArray(req.headers.accept) ? req.headers.accept[0] : req.headers.accept ?? '');
   if (accept.includes('text/html')) {
     res.writeHead(500, { 'content-type': 'text/html; charset=utf-8' });
     res.end(renderBaseLayout('Erro interno', `
@@ -1798,6 +1941,105 @@ function startServer() {
             env: env.OPS_ENV,
           }),
         );
+        return;
+      }
+
+      if (req.method === 'POST' && path === '/api/logs') {
+        const inboundApiKeyRaw = req.headers['x-log-api-key'];
+        const inboundApiKey = Array.isArray(inboundApiKeyRaw) ? inboundApiKeyRaw[0] : inboundApiKeyRaw;
+        const expectedApiKey = env.OPS_LOG_API_KEY;
+
+        if (!expectedApiKey) {
+          logError('observability.external_logs_misconfigured', {
+            request_id: requestId,
+            statusCode: 503,
+            reason: 'OPS_LOG_API_KEY not configured',
+          });
+          respondJson(res, 503, { error: 'Servico de ingestao indisponivel.' });
+          return;
+        }
+
+        if (typeof inboundApiKey !== 'string' || inboundApiKey.trim() !== expectedApiKey) {
+          logWarn('observability.external_logs_unauthorized', {
+            request_id: requestId,
+            statusCode: 401,
+          });
+          respondJson(res, 401, { error: 'Nao autorizado.' });
+          return;
+        }
+
+        const rateKey = `logs:${Buffer.from(inboundApiKey).toString('base64').slice(0, 32)}`;
+        const rateLimitResult = await checkRateLimit(
+          rateKey,
+          env.OPS_LOG_RATE_LIMIT_MAX_ATTEMPTS,
+          env.OPS_LOG_RATE_LIMIT_WINDOW_MS,
+          { allowMemoryFallback: env.RATE_LIMIT_FALLBACK_ENABLED },
+        );
+
+        if (rateLimitResult.unavailableReason) {
+          logError('observability.external_logs_rate_limit_unavailable', {
+            request_id: requestId,
+            statusCode: 503,
+            reason: rateLimitResult.unavailableReason,
+          });
+          respondJson(res, 503, { error: 'Servico temporariamente indisponivel.' });
+          return;
+        }
+
+        if (!rateLimitResult.allowed) {
+          const retryAfter = Math.max(1, Math.floor(Number(rateLimitResult.retryAfterSeconds) || 1));
+          res.setHeader('Retry-After', String(retryAfter));
+          res.setHeader('X-RateLimit-Remaining', String(rateLimitResult.remaining));
+          res.setHeader('X-RateLimit-Reset', rateLimitResult.resetAt.toISOString());
+          logWarn('observability.external_logs_rate_limited', {
+            request_id: requestId,
+            statusCode: 429,
+            reason: `retry_after=${retryAfter}`,
+          });
+          respondJson(res, 429, { error: 'Muitas requisicoes de logs.', retryAfter });
+          return;
+        }
+
+        let accepted = 0;
+        let rejected = 0;
+
+        try {
+          const rawBody = await readBody(req);
+          const parsedBody = parseJsonBody<unknown>(rawBody);
+          const incoming = extractExternalLogsPayload(parsedBody).slice(0, EXTERNAL_LOG_MAX_BATCH_SIZE);
+
+          for (const entry of incoming) {
+            const normalized = normalizeIncomingLog(entry, requestId);
+            if (!normalized) {
+              rejected += 1;
+              continue;
+            }
+            enqueueLog(normalized);
+            accepted += 1;
+          }
+
+          logInfo('observability.external_logs_ingested', {
+            request_id: requestId,
+            statusCode: 202,
+            accepted,
+            rejected,
+            metadata: { total_received: incoming.length },
+          });
+
+          respondJson(res, 202, {
+            ok: true,
+            accepted,
+            rejected,
+            total: accepted + rejected,
+          });
+        } catch (err) {
+          logError('observability.external_logs_invalid_payload', {
+            request_id: requestId,
+            statusCode: 400,
+            error: err instanceof Error ? err.message : String(err),
+          });
+          respondJson(res, 400, { error: 'Payload de logs invalido.' });
+        }
         return;
       }
 
@@ -2849,7 +3091,7 @@ function startServer() {
       });
       respondInternalError(req, res, safePathForLog, requestId);
     }
-  });
+  }, env);
 
   server.on('clientError', (err: Error, socket: Socket) => {
     logError('http.client_error', {

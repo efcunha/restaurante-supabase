@@ -54,8 +54,13 @@ Centralizar gestao de clientes, contratos, metricas de uso e operacao financeira
 	- `OBS_SUPABASE_SERVICE_ROLE_KEY` (service role do projeto isolado)
 	- `OBS_DUAL_WRITE` (`true` para enviar logs para `ops_logs` no isolado)
 	- `OBS_READ_FROM_ISOLATED` (flag reservada para switch de leitura)
+	- `OPS_LOG_API_KEY` (autenticacao de `POST /api/logs`)
+	- `OPS_LOG_RATE_LIMIT_MAX_ATTEMPTS` e `OPS_LOG_RATE_LIMIT_WINDOW_MS` (rate limit por API key)
 	- `OPS_ENV=production`
 	- `OPS_PUBLIC_BASE_URL` (URL publica do servico)
+	- `OPS_ALLOW_PLAINTEXT_HTTP=false` (padrao seguro; habilite somente com TLS em proxy confiavel)
+	- `OPS_TRUST_PROXY_HEADERS=true` (confiar em `x-forwarded-*` apenas quando atras de proxy confiavel)
+	- `OPS_TLS_KEY_PEM` e `OPS_TLS_CERT_PEM` (quando terminar TLS no proprio servico)
 4. Railway injeta `PORT` automaticamente (ja suportado pelo app)
 
 Arquivo de deploy: `railway.json`.
