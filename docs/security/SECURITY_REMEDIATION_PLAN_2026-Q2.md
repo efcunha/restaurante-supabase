@@ -177,6 +177,13 @@ Os itens abaixo nao substituem o plano geral, mas representam o backlog de segur
 - Consulta direta via service role em `invoices` nao encontrou registros com `status in ('pending', 'failed')` no momento do smoke; por isso o replay de sucesso com `alreadyProcessed` permanece bloqueado sem mutacao adicional de dados.
 - Helper operacional disponivel: `npm run billing:candidates` em `restaurante-ops` lista invoices elegiveis assim que existirem.
 
+**Rerun de bloqueio (05/04/2026, 16:40 UTC):**
+
+- Comando executado: `cd restaurante-ops && npm run -s billing:candidates`
+- Resultado esperado: pelo menos uma invoice elegivel `pending` ou `failed` para executar replay de sucesso e confirmar `alreadyProcessed=true` sem duplicidade de efeitos.
+- Resultado observado: `count: 0` e mensagem `No pending/failed invoices found for OPS-4 success-path smoke.`
+- Proximo passo objetivo: repetir o comando em janela operacional com nova geracao de invoice elegivel e, assim que houver candidato, executar duas chamadas sequenciais ao reconcile com a mesma `idempotencyKey` para registrar o primeiro sucesso e a segunda resposta idempotente.
+
 **Critérios de aceite:**
 
 - [x] Nao ha caminho paralelo de escrita para reconcile fora da funcao atomica prevista.
