@@ -1126,7 +1126,7 @@ A Evolution API deve enviar webhook para `POST https://ops.restaurante-web.app.b
 - [ ] Criar `src/lib/evolution-logger.ts` — Logging de WhatsApp + endpoint webhook
 - [ ] Criar `src/lib/activepieces-logger.ts` — Logging de automações + endpoint webhook
 - [ ] Criar `src/lib/external-logs.ts` — Endpoint `POST /api/logs` para web/app
-- [ ] Criar `src/lib/logs-api.ts` — API de consulta de logs + métricas
+- [~] API de consulta implementada no `src/index.ts` (`GET /api/logs`, `/api/logs/metrics`, `/api/logs/trace/:requestId`, `/api/logs/order/:orderId`)
 - [ ] Criar `src/lib/alerts-engine.ts` — Engine de alertas
 - [ ] Criar `src/lib/alert-scheduler.ts` — Agendamento de verificação
 - [ ] Criar `src/views/observability.ts` — Dashboard web (Log Viewer + Métricas)
