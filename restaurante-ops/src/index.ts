@@ -184,8 +184,27 @@ function respondJson(
   statusCode: number,
   payload: unknown,
 ): void {
-  res.writeHead(statusCode, { 'content-type': 'application/json; charset=utf-8' });
-  res.end(JSON.stringify(sanitizeJsonValue(payload)));
+  res.writeHead(statusCode, {
+    'content-type': 'application/json; charset=utf-8',
+    'x-content-type-options': 'nosniff',
+  });
+  const safePayload = sanitizeJsonValue(payload);
+  const responseBody = JSON.stringify(safePayload);
+  const responseBuffer = Buffer.from(responseBody, 'utf-8');
+  res.end(responseBuffer);
+}
+
+function respondHtml(
+  res: import('node:http').ServerResponse,
+  statusCode: number,
+  html: string,
+): void {
+  res.writeHead(statusCode, {
+    'content-type': 'text/html; charset=utf-8',
+    'x-content-type-options': 'nosniff',
+    'content-security-policy': "default-src 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:;",
+  });
+  res.end(html);
 }
 
 function renderBaseLayout(title: string, body: string): string {
@@ -744,16 +763,13 @@ function renderHomeHtml(): string {
 }
 
 function renderQuickActionPanel(
-  user: OpsUser,
+  _user: OpsUser,
   title: string,
   subtitle: string,
   body: string,
 ): string {
-  const initials = (user.full_name ?? user.email)
-    .split(' ')
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? '')
-    .join('');
+  const initials = 'OP';
+  const operatorLabel = 'Operador autenticado';
 
   return `<!doctype html>
 <html lang="pt-BR">
@@ -967,7 +983,7 @@ function renderQuickActionPanel(
       </div>
       <div class="topbar-user">
         <div class="avatar">${escapeHtml(initials)}</div>
-        <span>${escapeHtml(user.email)}</span>
+        <span>${escapeHtml(operatorLabel)}</span>
         <a class="btn-logout" href="/auth/logout">Sair</a>
       </div>
     </header>
@@ -1627,24 +1643,26 @@ function respondBillingError(res: import('node:http').ServerResponse, err: unkno
       .replace(/sb_(publishable|secret)_[A-Za-z0-9_]+/g, '[REDACTED]');
 
     logWarn('billing.operation_error_detail', { message: safeMessage, code: err.code });
-    res.writeHead(err.statusCode, { 'content-type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify({
+    respondJson(res, err.statusCode, {
       code: safeBillingCode(err.code, 'BILLING_OPERATION_ERROR'),
-    }));
+    });
     return;
   }
 
-  res.writeHead(500, { 'content-type': 'application/json; charset=utf-8' });
-  res.end(JSON.stringify({
+  respondJson(res, 500, {
     error: 'Erro interno no billing. Tente novamente em instantes.',
     code: 'BILLING_INTERNAL_ERROR',
-  }));
+  });
 }
 
-function respondInternalError(req: IncomingMessage, res: import('node:http').ServerResponse): void {
+function respondInternalError(
+  req: IncomingMessage,
+  res: import('node:http').ServerResponse,
+  safePath: string,
+): void {
   logError('http.unhandled_error', {
     method: req.method,
-    path: req.url,
+    path: safePath,
     statusCode: 500,
   });
 
@@ -1666,8 +1684,7 @@ function respondInternalError(req: IncomingMessage, res: import('node:http').Ser
     return;
   }
 
-  res.writeHead(500, { 'content-type': 'application/json; charset=utf-8' });
-  res.end(JSON.stringify({ error: 'Internal Server Error' }));
+  respondJson(res, 500, { error: 'Internal Server Error' });
 }
 
 function startServer() {
@@ -1682,9 +1699,13 @@ function startServer() {
     });
 
   const server = createServer(async (req, res) => {
+    const rawRequestUrl = sanitizePlainText(req.url || '/');
+    const safeRequestUrl = rawRequestUrl.startsWith('/') ? rawRequestUrl : '/';
+    const safePathForLog = sanitizePlainText(safeRequestUrl.split('?')[0] || '/');
+
     try {
       applySecurityHeaders(res);
-      const url = new URL(req.url || '/', 'http://localhost');
+      const url = new URL(safeRequestUrl, 'http://localhost');
       const path = url.pathname;
 
       if (enforceHttpsInProduction(req, res, path, url.search)) {
@@ -2538,8 +2559,7 @@ function startServer() {
           fetchKpiCounts(),
           fetchRecentCompanies(20),
         ]);
-        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-        res.end(renderCustomersPanel(safeUser, kpis, companies));
+        respondHtml(res, 200, renderCustomersPanel(safeUser, kpis, companies));
         return;
       }
 
@@ -2552,8 +2572,7 @@ function startServer() {
           fetchBillingOpsMetrics(),
           fetchRecentInvoices(15),
         ]);
-        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-        res.end(renderBillingPanel(safeUser, stats, ops, invoices));
+        respondHtml(res, 200, renderBillingPanel(safeUser, stats, ops, invoices));
         return;
       }
 
@@ -2567,11 +2586,9 @@ function startServer() {
             fetchPlanConfigHistory('default_monthly', 20),
             fetchPlanConfigAudit('default_monthly', 50),
           ]);
-          res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-          res.end(renderPlanConfigPanel(safeUser, active, history, audit));
+          respondHtml(res, 200, renderPlanConfigPanel(safeUser, active, history, audit));
         } catch (err) {
-          res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-          res.end(renderPlanConfigPanel(safeUser, null, [], []));
+          respondHtml(res, 200, renderPlanConfigPanel(safeUser, null, [], []));
         }
         return;
       }
@@ -2585,8 +2602,7 @@ function startServer() {
           fetchSubscriptionBreakdown(),
           fetchRevenueSeries(6),
         ]);
-        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-        res.end(renderMetricsPanel(safeUser, metrics, breakdown, revenueSeries));
+        respondHtml(res, 200, renderMetricsPanel(safeUser, metrics, breakdown, revenueSeries));
         return;
       }
 
@@ -2598,8 +2614,7 @@ function startServer() {
           checkAllServices(),
           getSupabaseMetrics(),
         ]);
-        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-        res.end(renderServiceStatusPanel(safeUser, services, supabaseMetrics));
+        respondHtml(res, 200, renderServiceStatusPanel(safeUser, services, supabaseMetrics));
         return;
       }
 
@@ -2607,8 +2622,7 @@ function startServer() {
         const user = await requireAuth(req, res);
         if (!user) return;
         const safeUser = sanitizeOpsUserForHtml(user);
-        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-        res.end(renderApiStatusPanel(safeUser));
+        respondHtml(res, 200, renderApiStatusPanel(safeUser));
         return;
       }
 
@@ -2635,11 +2649,11 @@ function startServer() {
     } catch (err) {
       logError('http.route_failed', {
         method: req.method,
-        path: req.url,
+        path: safePathForLog,
         statusCode: 500,
         error: err instanceof Error ? err.message : 'Unknown error',
       });
-      respondInternalError(req, res);
+      respondInternalError(req, res, safePathForLog);
     }
   });
 
