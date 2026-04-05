@@ -58,6 +58,7 @@ import {
   type ActivatePlanConfigInput,
 } from './modules/billing-plan-config-operations.js';
 import { createOpsHttpServer } from './lib/httpServer.js';
+import { getMetrics as getLogMetrics, queryLogs, traceOrder, traceRequest } from './lib/log-storage.js';
 
 const env = buildEnv();
 const opsCompanyId = env.OPS_ALLOWED_COMPANY_ID || 'f85bfdc2-982a-4cf7-b176-bce68426f861';
@@ -1629,6 +1630,13 @@ function isUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
+function parseIntegerQuery(value: string | null, fallback: number, min: number, max: number): number {
+  if (!value) return fallback;
+  const parsed = Number.parseInt(value, 10);
+  if (Number.isNaN(parsed)) return fallback;
+  return Math.min(max, Math.max(min, parsed));
+}
+
 const BILLING_COMPANY_PATH_FRAGMENT = '([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})';
 const BILLING_AUDIT_PATH_RE = new RegExp(`^/ops/billing/company/${BILLING_COMPANY_PATH_FRAGMENT}/audit$`);
 const BILLING_SNAPSHOT_PATH_RE = new RegExp(`^/ops/billing/company/${BILLING_COMPANY_PATH_FRAGMENT}$`);
@@ -2184,6 +2192,118 @@ function startServer() {
       }
 
       // ---- Endpoints JSON administrativos (protegidos) ----
+      if (req.method === 'GET' && path === '/api/logs') {
+        const user = await requireAuth(req, res);
+        if (!user) return;
+
+        try {
+          const limit = parseIntegerQuery(url.searchParams.get('limit'), 50, 1, 200);
+          const offset = parseIntegerQuery(url.searchParams.get('offset'), 0, 0, 100000);
+          const service = sanitizePlainText(url.searchParams.get('service') || '');
+          const level = sanitizePlainText(url.searchParams.get('level') || '') as 'info' | 'warn' | 'error' | '';
+          const event = sanitizePlainText(url.searchParams.get('event') || '');
+          const from = sanitizePlainText(url.searchParams.get('from') || '');
+          const to = sanitizePlainText(url.searchParams.get('to') || '');
+          const request_id = sanitizePlainText(url.searchParams.get('request_id') || '');
+          const order_id = sanitizePlainText(url.searchParams.get('order_id') || '');
+          const user_id = sanitizePlainText(url.searchParams.get('user_id') || '');
+
+          const result = await queryLogs({
+            limit,
+            offset,
+            service: service || undefined,
+            level: level || undefined,
+            event: event || undefined,
+            from: from || undefined,
+            to: to || undefined,
+            request_id: request_id || undefined,
+            order_id: order_id || undefined,
+            user_id: user_id || undefined,
+          });
+
+          respondJson(res, 200, result);
+        } catch (err) {
+          logError('observability.logs_query_failed', {
+            request_id: requestId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+          respondJson(res, 500, { error: 'Nao foi possivel consultar logs.' });
+        }
+        return;
+      }
+
+      if (req.method === 'GET' && path.startsWith('/api/logs/trace/')) {
+        const user = await requireAuth(req, res);
+        if (!user) return;
+
+        const traceRequestId = sanitizePlainText(path.replace('/api/logs/trace/', ''));
+        if (!isUuid(traceRequestId)) {
+          respondJson(res, 400, { error: 'requestId invalido. Informe UUID valido.' });
+          return;
+        }
+
+        try {
+          const timeline = await traceRequest(traceRequestId);
+          respondJson(res, 200, {
+            request_id: traceRequestId,
+            timeline,
+          });
+        } catch (err) {
+          logError('observability.trace_request_failed', {
+            request_id: requestId,
+            trace_request_id: traceRequestId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+          respondJson(res, 500, { error: 'Nao foi possivel rastrear request_id.' });
+        }
+        return;
+      }
+
+      if (req.method === 'GET' && path.startsWith('/api/logs/order/')) {
+        const user = await requireAuth(req, res);
+        if (!user) return;
+
+        const traceOrderId = sanitizePlainText(path.replace('/api/logs/order/', ''));
+        if (!traceOrderId) {
+          respondJson(res, 400, { error: 'orderId obrigatorio.' });
+          return;
+        }
+
+        try {
+          const timeline = await traceOrder(traceOrderId);
+          respondJson(res, 200, {
+            order_id: traceOrderId,
+            timeline,
+          });
+        } catch (err) {
+          logError('observability.trace_order_failed', {
+            request_id: requestId,
+            order_id: traceOrderId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+          respondJson(res, 500, { error: 'Nao foi possivel rastrear order_id.' });
+        }
+        return;
+      }
+
+      if (req.method === 'GET' && path === '/api/logs/metrics') {
+        const user = await requireAuth(req, res);
+        if (!user) return;
+
+        try {
+          const periodHours = parseIntegerQuery(url.searchParams.get('hours'), 24, 1, 168);
+          const metrics = await getLogMetrics(periodHours);
+          respondJson(res, 200, metrics);
+        } catch (err) {
+          logError('observability.metrics_failed', {
+            request_id: requestId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+          respondJson(res, 500, { error: 'Nao foi possivel calcular metricas de logs.' });
+        }
+        return;
+      }
+
       if (req.method === 'GET' && path === '/ops/customers') {
         const user = await requireAuth(req, res);
         if (!user) return;

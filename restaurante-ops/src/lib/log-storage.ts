@@ -3,6 +3,35 @@ import { buildEnv } from '../config/env.js';
 
 type LogLevel = 'info' | 'warn' | 'error';
 
+export interface LogQueryFilter {
+  service?: string;
+  level?: LogLevel;
+  event?: string;
+  request_id?: string;
+  order_id?: string;
+  user_id?: string;
+  from?: string;
+  to?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface LogQueryResult {
+  total: number;
+  logs: LogEntry[];
+}
+
+export interface LogMetrics {
+  period: string;
+  total_logs: number;
+  by_level: Record<LogLevel, number>;
+  by_service: Record<string, number>;
+  error_rate: number;
+  avg_duration_ms: number;
+  p95_duration_ms: number;
+  top_errors: Array<{ event: string; count: number; last_seen: string }>;
+}
+
 export interface LogEntry {
   timestamp: string;
   level: LogLevel;
@@ -42,6 +71,13 @@ function dropOldestInfoLog(): boolean {
 
   queue.splice(infoIndex, 1);
   return true;
+}
+
+function requireClient(): SupabaseClient {
+  if (!supabase) {
+    throw new Error('Observability storage is disabled. Configure OBS_SUPABASE_URL and OBS_SUPABASE_SERVICE_ROLE_KEY.');
+  }
+  return supabase;
 }
 
 async function flushBatch(): Promise<void> {
@@ -109,4 +145,141 @@ export function enqueueLog(log: LogEntry): void {
   if (queue.length >= batchSize) {
     void flushBatch();
   }
+}
+
+export async function queryLogs(filter: LogQueryFilter): Promise<LogQueryResult> {
+  const client = requireClient();
+  const limit = Math.min(200, Math.max(1, filter.limit ?? 50));
+  const offset = Math.max(0, filter.offset ?? 0);
+
+  let query = client
+    .from('ops_logs')
+    .select(
+      'timestamp, level, service, event, message, request_id, user_id, order_id, duration_ms, metadata',
+      { count: 'exact' },
+    )
+    .order('timestamp', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (filter.service) query = query.eq('service', filter.service);
+  if (filter.level) query = query.eq('level', filter.level);
+  if (filter.event) query = query.eq('event', filter.event);
+  if (filter.request_id) query = query.eq('request_id', filter.request_id);
+  if (filter.order_id) query = query.eq('order_id', filter.order_id);
+  if (filter.user_id) query = query.eq('user_id', filter.user_id);
+  if (filter.from) query = query.gte('timestamp', filter.from);
+  if (filter.to) query = query.lte('timestamp', filter.to);
+
+  const { data, error, count } = await query;
+  if (error) {
+    throw new Error(`Failed to query logs: ${error.message}`);
+  }
+
+  return {
+    total: count ?? 0,
+    logs: (data ?? []) as LogEntry[],
+  };
+}
+
+export async function traceRequest(requestId: string): Promise<LogEntry[]> {
+  const client = requireClient();
+  const { data, error } = await client
+    .from('ops_logs')
+    .select('timestamp, level, service, event, message, request_id, user_id, order_id, duration_ms, metadata')
+    .eq('request_id', requestId)
+    .order('timestamp', { ascending: true })
+    .limit(1000);
+
+  if (error) {
+    throw new Error(`Failed to trace request: ${error.message}`);
+  }
+
+  return (data ?? []) as LogEntry[];
+}
+
+export async function traceOrder(orderId: string): Promise<LogEntry[]> {
+  const client = requireClient();
+  const { data, error } = await client
+    .from('ops_logs')
+    .select('timestamp, level, service, event, message, request_id, user_id, order_id, duration_ms, metadata')
+    .eq('order_id', orderId)
+    .order('timestamp', { ascending: true })
+    .limit(1000);
+
+  if (error) {
+    throw new Error(`Failed to trace order: ${error.message}`);
+  }
+
+  return (data ?? []) as LogEntry[];
+}
+
+export async function getMetrics(periodHours = 24): Promise<LogMetrics> {
+  const client = requireClient();
+  const since = new Date(Date.now() - periodHours * 60 * 60 * 1000).toISOString();
+
+  const { data, error } = await client
+    .from('ops_logs')
+    .select('timestamp, level, service, event, duration_ms')
+    .gte('timestamp', since)
+    .order('timestamp', { ascending: false })
+    .limit(5000);
+
+  if (error) {
+    throw new Error(`Failed to build log metrics: ${error.message}`);
+  }
+
+  const rows = data ?? [];
+  const byLevel: Record<LogLevel, number> = { info: 0, warn: 0, error: 0 };
+  const byService: Record<string, number> = {};
+  const durations: number[] = [];
+  const errorEvents = new Map<string, { count: number; lastSeen: string }>();
+
+  for (const row of rows) {
+    const level = String(row.level || 'info') as LogLevel;
+    if (level === 'info' || level === 'warn' || level === 'error') {
+      byLevel[level] += 1;
+    }
+
+    const service = String(row.service || 'unknown');
+    byService[service] = (byService[service] || 0) + 1;
+
+    if (typeof row.duration_ms === 'number' && Number.isFinite(row.duration_ms) && row.duration_ms >= 0) {
+      durations.push(row.duration_ms);
+    }
+
+    if (level === 'error') {
+      const event = String(row.event || 'unknown_error');
+      const current = errorEvents.get(event);
+      const seen = String(row.timestamp || new Date().toISOString());
+      if (!current) {
+        errorEvents.set(event, { count: 1, lastSeen: seen });
+      } else {
+        current.count += 1;
+        if (seen > current.lastSeen) current.lastSeen = seen;
+      }
+    }
+  }
+
+  durations.sort((a, b) => a - b);
+  const totalLogs = rows.length;
+  const totalErrors = byLevel.error;
+  const avgDuration = durations.length > 0 ? durations.reduce((acc, n) => acc + n, 0) / durations.length : 0;
+  const p95Index = durations.length > 0 ? Math.min(durations.length - 1, Math.floor(durations.length * 0.95)) : -1;
+  const p95Duration = p95Index >= 0 ? durations[p95Index] : 0;
+
+  const topErrors = [...errorEvents.entries()]
+    .map(([event, value]) => ({ event, count: value.count, last_seen: value.lastSeen }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10);
+
+  return {
+    period: `${periodHours}h`,
+    total_logs: totalLogs,
+    by_level: byLevel,
+    by_service: byService,
+    error_rate: totalLogs > 0 ? totalErrors / totalLogs : 0,
+    avg_duration_ms: Number(avgDuration.toFixed(2)),
+    p95_duration_ms: p95Duration,
+    top_errors: topErrors,
+  };
 }
