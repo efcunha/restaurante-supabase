@@ -6,7 +6,7 @@ import { Product, Cardapio } from '../types';
 import type { MenuItem } from '../types/index';
 import { getOrCreateMenuCategories, normalizeCategorySlug } from '../utils/menuCategories';
 
-const CARDAPIO_CACHE_KEY = 'cardapio_cache';
+const MENU_STORAGE_NAMESPACE = process.env.EXPO_PUBLIC_MENU_STORAGE_NAMESPACE ?? 'menu_data';
 
 export function useMenu() {
     const { user } = useAuth();
@@ -104,7 +104,7 @@ export function useMenu() {
             setCardapio(novoCardapio);
             
             // Cache Update
-            await AsyncStorage.setItem(CARDAPIO_CACHE_KEY, JSON.stringify({
+            await AsyncStorage.setItem(MENU_STORAGE_NAMESPACE, JSON.stringify({
                 data: novoCardapio,
                 flatItems: flatItems,
                 timestamp: Date.now()
@@ -113,7 +113,7 @@ export function useMenu() {
         } catch (error) {
             console.error('Erro ao carregar menu:', error);
             // Try cache fallback
-            const cached = await AsyncStorage.getItem(CARDAPIO_CACHE_KEY);
+            const cached = await AsyncStorage.getItem(MENU_STORAGE_NAMESPACE);
             if (cached) {
                 const parsed = JSON.parse(cached);
                 setCardapio(parsed.data);
