@@ -20,3 +20,8 @@ Este diretorio foi consolidado para reduzir dispersao de informacao.
 - Nao abrir um novo documento para cada ajuste pequeno.
 - Preferir atualizar o status semanal.
 - Criar documento novo apenas quando houver requisito regulatorio ou runbook operacional obrigatorio.
+
+## Runbooks operacionais existentes
+
+- OPS4_RECONCILE_SUCCESS_IDEMPOTENCY_RUNBOOK.md
+	Padrao de execucao e evidencia para o fechamento do `OPS-4` (billing/reconcile com sucesso idempotente).
