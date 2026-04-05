@@ -130,9 +130,12 @@ function patchEscPosAndroidBuildGradle() {
 `;
   const fixedSourceSetBlock = `  sourceSets {
     main {
-      if (!isNewArchitectureEnabled()) {
-        java.srcDirs += ['src/oldarch']
-      }
+      // Always include src/oldarch: it provides NativeEscPosPrinterSpec and
+      // NativeEscPosPrinterDiscoverySpec (package com.escposprinter) as
+      // old-arch-compatible AbstractClass stubs extending ReactContextBaseJavaModule.
+      // With com.facebook.react plugin removed (Patch 2) codegen does NOT run,
+      // so we rely on these pre-generated stubs to satisfy the Java imports.
+      java.srcDirs += ['src/oldarch']
     }
   }
 `;
