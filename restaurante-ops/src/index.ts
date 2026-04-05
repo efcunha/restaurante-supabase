@@ -1,4 +1,4 @@
-import { createServer, type IncomingMessage } from 'node:http';
+import type { IncomingMessage } from 'node:http';
 import { buildEnv } from './config/env.js';
 import { signInWithPassword } from './auth/supabase.js';
 import { setSessionCookie, clearSessionCookie } from './auth/session.js';
@@ -55,6 +55,7 @@ import {
   validateActivatePlanConfigInput,
   type ActivatePlanConfigInput,
 } from './modules/billing-plan-config-operations.js';
+import { createOpsHttpServer } from './lib/http-server.js';
 
 const env = buildEnv();
 const opsCompanyId = env.OPS_ALLOWED_COMPANY_ID || 'f85bfdc2-982a-4cf7-b176-bce68426f861';
@@ -1728,7 +1729,7 @@ function startServer() {
       logWarn('redis.init_failed', { detail: err instanceof Error ? err.message : String(err) });
     });
 
-  const server = createServer(async (req, res) => {
+  const server = createOpsHttpServer(async (req, res) => {
     const safeRequestUrl = sanitizeRequestTarget(req.url);
     const safePathForLog = sanitizePlainText(safeRequestUrl.split('?')[0] || '/');
 
