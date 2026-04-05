@@ -50,6 +50,10 @@ Centralizar gestao de clientes, contratos, metricas de uso e operacao financeira
 3. Configurar variaveis de ambiente:
 	- `SUPABASE_URL`
 	- `SUPABASE_SERVICE_ROLE_KEY`
+	- `OBS_SUPABASE_URL` (projeto isolado de observabilidade)
+	- `OBS_SUPABASE_SERVICE_ROLE_KEY` (service role do projeto isolado)
+	- `OBS_DUAL_WRITE` (`true` para enviar logs para `ops_logs` no isolado)
+	- `OBS_READ_FROM_ISOLATED` (flag reservada para switch de leitura)
 	- `OPS_ENV=production`
 	- `OPS_PUBLIC_BASE_URL` (URL publica do servico)
 4. Railway injeta `PORT` automaticamente (ja suportado pelo app)

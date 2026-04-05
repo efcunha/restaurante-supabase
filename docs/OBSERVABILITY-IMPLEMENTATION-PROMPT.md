@@ -30,19 +30,21 @@ Evolution API ────┤     (Coleta, Armazena,
 
 ### Stack do restaurante-ops
 
-| Camada | Tecnologia |
-|---|---|
-| **Runtime** | Node.js 20+ (ES Modules, `type: "module"`) |
-| **Linguagem** | TypeScript 5.9 (strict mode, target ES2022) |
+| Camada          | Tecnologia                                                  |
+|-----------------|-------------------------------------------------------------|
+| **Runtime**     | Node.js 20+ (ES Modules, `type: "module"`)                  |
+| **Linguagem**   | TypeScript 5.9 (strict mode, target ES2022)                 |
 | **HTTP Server** | `node:http` vanilla (zero frameworks — sem Express/Fastify) |
-| **Database** | Supabase (PostgreSQL) via `@supabase/supabase-js` 2.56 |
-| **Cache** | Redis (`redis` 4.7) com fallback in-memory |
-| **Build** | `tsx` (watch), `tsc` (build) |
-| **Deploy** | Railway |
+| **Database**    | Supabase (PostgreSQL) via `@supabase/supabase-js` 2.56      |
+| **Cache**       | Redis (`redis` 4.7) com fallback in-memory                  |
+| **Build**       | `tsx` (watch), `tsc` (build)                                |
+| **Deploy**      | Railway                                                     |
 
 ### Storage de Logs
 
-Os logs serão armazenados na **mesma tabela PostgreSQL do Supabase** já usada pelo projeto. Duas tabelas novas serão criadas:
+Os logs **não devem** ser armazenados no mesmo banco transacional de produção (`restaurante-web`/`restaurante-app`).
+
+Use um **projeto Supabase dedicado para observabilidade** (ou PostgreSQL dedicado equivalente), isolado por infraestrutura, com estas tabelas:
 
 **`ops_logs`** — armazena todos os logs coletados:
 
@@ -71,6 +73,24 @@ CREATE INDEX idx_ops_logs_request_id ON ops_logs (request_id);
  -- Índice composto para queries de "erros nas últimas Xh" (level + range de timestamp)
  CREATE INDEX idx_ops_logs_level_timestamp ON ops_logs (level, timestamp DESC);
 ```
+
+Opcional (recomendado para rastreabilidade multi-tenant em alto volume):
+
+```sql
+ALTER TABLE ops_logs ADD COLUMN company_id UUID;
+CREATE INDEX idx_ops_logs_company_id_timestamp ON ops_logs (company_id, timestamp DESC);
+```
+
+### Diretriz de performance (obrigatória)
+
+- Ingestão assíncrona: `POST /api/logs` responde rápido (`202 Accepted`) e persiste em background.
+- Escrita em lote: flush periódico (1-2s) ou por tamanho de lote (200-1000).
+- Backpressure: se fila crescer acima do limite, aplicar degradação controlada (drop de `info`/`debug` primeiro; nunca `error` crítico).
+- Retenção em camadas:
+  - hot: 7-15 dias indexados;
+  - warm: 30-90 dias com índices mínimos;
+  - cold: export para object storage para auditoria/LGPD.
+- Nunca executar consultas analíticas pesadas no banco de pedidos/pagamentos.
 
 **`ops_alerts`** e **`ops_alert_firings`** — gerenciamento de alertas:
 
@@ -188,7 +208,7 @@ Já existe um logger JSON com redaction de dados sensíveis. **Formato atual (ca
 Implementar no **restaurante-ops** um sistema completo de observabilidade que:
 
 * Colete logs de web, app, Supabase, Activepieces e Evolution API
-* Armazene em tabela PostgreSQL no Supabase
+* Armazene no PostgreSQL de observabilidade (Supabase dedicado, isolado do banco transacional)
 * Permita consulta via API com filtros avançados
 * Exiba um **dashboard web** para visualização de logs e métricas
 * Rastreie pedidos completos de início ao fim (via `request_id`)
@@ -222,27 +242,28 @@ Refatorar o logger existente para o seguinte formato:
 
 Criar suporte a logging para os seguintes eventos:
 
-| Evento | Origem | Descrição |
-|---|---|---|
-| `order_created` | web / app | Criação de pedido |
-| `order_updated` | web / ops | Atualização de status |
-| `order_cancelled` | web / ops | Cancelamento |
-| `payment_success` | ops / web | Pagamento confirmado |
-| `payment_failed` | ops / web | Falha no pagamento |
-| `webhook_received` | ops | Webhook recebido |
-| `webhook_failed` | ops | Falha ao processar webhook |
-| `automation_executed` | activepieces | Workflow executado |
-| `automation_failed` | activepieces | Falha em workflow |
-| `whatsapp_sent` | evolution | Mensagem enviada |
-| `whatsapp_failed` | evolution | Falha no envio |
-| `whatsapp_webhook` | evolution | Evento recebido |
-| `slow_query` | supabase | Query > 500ms |
-| `db_error` | supabase | Erro de query |
-| `app_error` | web / app | Erro JS via ErrorUtils (React Native — não `window.onerror`) |
-| `api_error` | web / app | Erro em chamada API |
-| `app_startup` | app | Inicialização do app |
-| `page_view` | web | Navegação (React Navigation) |
-| `http_request` | ops | Toda requisição HTTP |
+| Evento                | Origem       | Descrição                             |
+|-----------------------|--------------|---------------------------------------|
+| `order_created`       | web / app    | Criação de pedido                     |
+| `order_updated`       | web / ops    | Atualização de status                 |
+| `order_cancelled`     | web / ops    | Cancelamento                          |
+| `payment_success`     | ops / web    | Pagamento confirmado                  |
+| `payment_failed`      | ops / web    | Falha no pagamento                    |
+| `webhook_received`    | ops          | Webhook recebido                      |
+| `webhook_failed`      | ops          | Falha ao processar webhook            |
+| `automation_executed` | activepieces | Workflow executado                    |
+| `automation_failed`   | activepieces | Falha em workflow                     |
+| `whatsapp_sent`       | evolution    | Mensagem enviada                      |
+| `whatsapp_failed`     | evolution    | Falha no envio                        |
+| `whatsapp_webhook`    | evolution    | Evento recebido                       |
+| `slow_query`          | supabase     | Query > 500ms                         |
+| `db_error`            | supabase     | Erro de query                         |
+| `app_error`           | web / app    | Erro JS via ErrorUtils                | 
+|                       |              | (React Native — não `window.onerror`) |
+| `api_error`           | web / app    | Erro em chamada API                   |
+| `app_startup`         | app          | Inicialização do app                  |
+| `page_view`           | web          | Navegação (React Navigation)          |
+| `http_request`        | ops          | Toda requisição HTTP                  |
 
 ### 3. STORAGE DE LOGS
 
@@ -330,14 +351,14 @@ Criar `src/lib/external-logs.ts` com:
 
 Criar `src/lib/logs-api.ts` com rotas protegidas (requireAuth):
 
-| Método | Path | Descrição |
-|---|---|---|
-| `GET` | `/api/logs` | Listar logs com filtros |
-| `GET` | `/api/logs/trace/:requestId` | Rastrear requisição completa |
-| `GET` | `/api/logs/order/:orderId` | Rastrear pedido completo |
-| `GET` | `/api/logs/metrics` | Métricas agregadas |
-| `GET` | `/api/logs/alerts` | Listar alertas configurados |
-| `POST` | `/api/logs/alerts` | Criar alerta |
+| Método | Path                         | Descrição                    |
+|--------|------------------------------|------------------------------|
+| `GET`  | `/api/logs`                  | Listar logs com filtros      |
+| `GET`  | `/api/logs/trace/:requestId` | Rastrear requisição completa |
+| `GET`  | `/api/logs/order/:orderId`   | Rastrear pedido completo     |
+| `GET`  | `/api/logs/metrics`          | Métricas agregadas           |
+| `GET`  | `/api/logs/alerts`           | Listar alertas configurados  |
+| `POST` | `/api/logs/alerts`           | Criar alerta                 |
 
 ### 11. ENGINE DE ALERTAS
 
@@ -366,6 +387,19 @@ Atualizar `src/config/env.ts` (interface `OpsEnv`) e `.env.example` com:
 LOG_LEVEL=info
 SLOW_QUERY_THRESHOLD_MS=500
 LOG_RETENTION_DAYS=30
+
+# Storage observability (isolado)
+OBS_SUPABASE_URL=https://<observability-project>.supabase.co
+OBS_SUPABASE_SERVICE_ROLE_KEY=<service_role_observability>
+
+# Ingestão/flush
+LOG_INGEST_BUFFER_MAX=10000
+LOG_INGEST_BATCH_SIZE=500
+LOG_INGEST_FLUSH_INTERVAL_MS=1500
+
+# Rollout controlado
+OBS_DUAL_WRITE=false
+OBS_READ_FROM_ISOLATED=false
 
 # API Key para recebimento de logs externos (web/app)
 # Valor é exposto no bundle Expo — apenas escrita de logs, sem risco crítico
@@ -399,21 +433,23 @@ EXPO_PUBLIC_LOG_API_KEY=sk-ops-log-key-aqui
 ## 📦 ENTREGÁVEIS
 
 ### restaurante-ops (todos em `restaurante-ops/`)
-1. **SQL migration** em `database-backup/migrations/` — Tabelas `ops_logs`, `ops_alerts`, `ops_alert_firings` com RLS correta
-2. **`src/lib/log-storage.ts`** — Storage de logs no Supabase
- 3. **`src/lib/logger.ts`** (refatorado) — Renomear `ts`→`timestamp`, `durationMs`→`duration_ms`, adicionar `service`/`message` obrigatórios, integrar com storage
-4. **`src/lib/request-tracker.ts`** — Middleware de request tracking
-5. **`src/lib/supabase-logger.ts`** — Wrapper para queries Supabase
-6. **`src/lib/evolution-logger.ts`** — Logging + webhook Evolution API
-7. **`src/lib/activepieces-logger.ts`** — Logging + webhook Activepieces
-8. **`src/lib/external-logs.ts`** — Endpoint `POST /api/logs` para web/app
-9. **`src/lib/logs-api.ts`** — API de consulta de logs + métricas
-10. **`src/lib/alerts-engine.ts`** — Engine de alertas
-11. **`src/lib/alert-scheduler.ts`** — Agendamento de verificação de alertas
-12. **`src/views/observability.ts`** — Dashboard web de observabilidade
-13. **`src/config/env.ts`** (atualizado) — Adicionar `OPS_LOG_API_KEY`, `LOG_LEVEL`, etc. na interface `OpsEnv`
-14. **`.env.example`** (atualizado) — Documentação das novas variáveis
-15. **`src/index.ts`** (atualizado) — Integrar middlewares, rotas de webhook e dashboard
+1. **Provisionamento** de projeto Supabase dedicado para observabilidade
+2. **SQL migration** em `database-backup/migrations/` — Tabelas `ops_logs`, `ops_alerts`, `ops_alert_firings` com RLS correta
+3. **`src/lib/log-storage.ts`** — Storage de logs no Supabase de observabilidade
+4. **`src/lib/logger.ts`** (refatorado) — Renomear `ts`→`timestamp`, `durationMs`→`duration_ms`, adicionar `service`/`message` obrigatórios, integrar com storage
+5. **`src/lib/request-tracker.ts`** — Middleware de request tracking
+6. **`src/lib/supabase-logger.ts`** — Wrapper para queries Supabase
+7. **`src/lib/evolution-logger.ts`** — Logging + webhook Evolution API
+8. **`src/lib/activepieces-logger.ts`** — Logging + webhook Activepieces
+9. **`src/lib/external-logs.ts`** — Endpoint `POST /api/logs` para web/app
+10. **`src/lib/logs-api.ts`** — API de consulta de logs + métricas
+11. **`src/lib/alerts-engine.ts`** — Engine de alertas
+12. **`src/lib/alert-scheduler.ts`** — Agendamento de verificação de alertas
+13. **`src/views/observability.ts`** — Dashboard web de observabilidade
+14. **`src/config/env.ts`** (atualizado) — Adicionar `OPS_LOG_API_KEY`, `LOG_LEVEL`, `OBS_*` na interface `OpsEnv`
+15. **`.env.example`** (atualizado) — Documentação das novas variáveis
+16. **`src/index.ts`** (atualizado) — Integrar middlewares, rotas de webhook e dashboard
+17. **Feature flags de migração** — `OBS_DUAL_WRITE` e `OBS_READ_FROM_ISOLATED`
 
 ### restaurante-web e restaurante-app (Expo/React Native)
 16. **`restaurante-web/src/services/ObservabilityService.ts`** — Captura `app_error` + envio para ops
@@ -433,7 +469,8 @@ Ao final da implementação, o restaurante-ops deve permitir:
 * **Visualizar logs e métricas** via dashboard web
 * **Configurar alertas** com notificações
 * **Receber logs** do web, app e integrações externas
-* **Baixo impacto de performance** (< 10ms de overhead por requisição)
+* **Baixo impacto de performance** (< 10ms de overhead síncrono por requisição)
+* p95 ingest-to-persist <= 3s no ambiente de produção
 * Ser a **única fonte de verdade** para observabilidade — sem serviços externos
 
 ---
@@ -459,22 +496,38 @@ Ao final da implementação, o restaurante-ops deve permitir:
 
 ## 📋 ORDEM DE IMPLEMENTAÇÃO SUGERIDA
 
-1. Criar SQL migration das tabelas de logs e alertas
-2. Criar `src/lib/log-storage.ts` — Storage
-3. Criar types/interfaces para logs padronizados
-4. Refatorar `src/lib/logger.ts` para novo formato
-5. Criar middleware de request tracking
-6. Integrar logger + storage + request tracking no `src/index.ts`
-7. Criar wrapper Supabase
-8. Criar endpoint de logs externos (`POST /api/logs`)
-9. Criar webhook Activepieces
-10. Criar webhook Evolution API
-11. Criar API de consulta de logs (`GET /api/logs`, `/metrics`, `/trace`)
-12. Criar engine de alertas + scheduler
-13. Criar dashboard web de observabilidade
-14. Atualizar env config e `.env.example`
-15. Testar end-to-end (simular coleta, consulta e alertas)
-16. Documentar uso e exemplos
+1. Provisionar projeto Supabase dedicado para observabilidade
+2. Criar SQL migration das tabelas de logs e alertas no banco isolado
+3. Criar `src/lib/log-storage.ts` — Storage
+4. Criar types/interfaces para logs padronizados
+5. Refatorar `src/lib/logger.ts` para novo formato
+6. Criar middleware de request tracking
+7. Integrar logger + storage + request tracking no `src/index.ts`
+8. Criar wrapper Supabase
+9. Criar endpoint de logs externos (`POST /api/logs`)
+10. Criar webhook Activepieces
+11. Criar webhook Evolution API
+12. Criar API de consulta de logs (`GET /api/logs`, `/metrics`, `/trace`)
+13. Criar engine de alertas + scheduler
+14. Criar dashboard web de observabilidade
+15. Atualizar env config e `.env.example`
+16. Habilitar dual-write (`OBS_DUAL_WRITE=true`) por janela controlada
+17. Validar consistência (contagem/erros/traces) entre legado e isolado
+18. Ativar leitura do banco isolado (`OBS_READ_FROM_ISOLATED=true`)
+19. Desativar escrita legada após estabilidade
+20. Testar end-to-end (simular coleta, consulta e alertas)
+21. Documentar uso e exemplos
+
+### Critérios de corte para migração
+
+- Habilitar leitura no isolado somente se divergência de contagem em 24h < 0.5%.
+- Não pode haver perda de logs `error` durante dual-write.
+- Reverter para leitura antiga imediatamente se p95 de query do dashboard piorar > 30% por 30 min.
+
+### Artefatos de execução obrigatórios
+
+- Runbook de cutover: `docs/OBSERVABILITY-ISOLATED-CUTOVER-RUNBOOK.md`
+- SQL de referência (particionado): `docs/scripts/observability_partitioned_schema.sql`
 
 ---
 

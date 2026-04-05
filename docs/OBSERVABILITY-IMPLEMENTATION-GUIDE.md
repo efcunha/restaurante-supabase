@@ -121,19 +121,31 @@ Todos os logs devem seguir este formato JSON:
 
 ### 3.1 Storage de Logs (`src/lib/log-storage.ts`)
 
-**Responsabilidade:** Persistir e consultar logs localmente.
+**Responsabilidade:** Persistir e consultar logs com alto throughput sem competir recursos com o banco transacional de pedidos/pagamentos.
 
-**Opções de storage (escolher a mais adequada):**
+**Opções de storage (comparativo):**
 
 | Opção | Prós | Contras |
 |---|---|---|
-| **SQLite**                      | Zero configuração, arquivo único, queries SQL | Escrita sequencial, pode ser gargalo |
-| **JSONL (arquivo)**             | Simples, stream-friendly, sem overhead | Sem índices, queries lentas |
-| **PostgreSQL** (mesmo Supabase) | Queries poderosas, índices, já disponível | Depende de conexão externa |
+| **SQLite** | Zero configuração, arquivo único | Não escala para ingestão concorrente alta |
+| **JSONL (arquivo)** | Simples, barato, append rápido | Busca/filtro caros, sem índices robustos |
+| **PostgreSQL (instância isolada de observabilidade)** | SQL completo, índices, equipe já domina | Exige projeto/instância dedicada |
 
-**Recomendação:** Usar o mesmo **Supabase** (PostgreSQL) já disponível no projeto, com tabela `ops_logs`.
+**Recomendação (produção):** usar **PostgreSQL isolado para observabilidade** (Supabase dedicado ao `restaurante-ops`), separado do banco transacional de `restaurante-web` e `restaurante-app`.
 
-> **Multi-tenancy:** O `restaurante-ops` serve um único tenant operacional (`OPS_ALLOWED_COMPANY_ID`). A tabela `ops_logs` não precisa de `company_id` por design. Logs do `restaurante-web`/`restaurante-app` são identificados pelo campo `service` e por `company_id` no `metadata` quando relevante.
+**Motivo técnico:** logs são carga predominantemente de escrita e leitura analítica. Misturar com o banco transacional aumenta contenção de I/O, autovacuum, cache miss e risco de latência em fluxos críticos (Balcão, Mesa, Delivery, Billing).
+
+**Arquitetura recomendada para performance:**
+
+1. **Ingestão assíncrona no ops:** endpoint recebe `POST /api/logs`, valida e coloca em buffer em memória/Redis.
+2. **Flush em lote:** escrita em lotes (ex.: 200-1000 registros por batch ou a cada 1-2s) para reduzir round-trips.
+3. **Banco isolado de observabilidade:** tabelas `ops_logs`, `ops_alerts`, `ops_alert_firings` em projeto/instância dedicada.
+4. **Retenção em camadas:**
+  - hot: 7-15 dias com índices para troubleshooting rápido;
+  - warm: 30-90 dias com menos índices;
+  - cold: export (JSONL/Parquet em object storage) para compliance e auditoria longa.
+
+> **Multi-tenancy:** manter `company_id` no `metadata` (ou coluna dedicada indexada quando necessário para auditoria por tenant), sem violar isolamento entre empresas.
 
 #### Tabela `ops_logs`
 
@@ -153,6 +165,10 @@ CREATE TABLE ops_logs (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Opcional para auditoria por tenant com alto volume:
+-- adicionar coluna dedicada melhora filtros sem custo de parsing JSONB
+-- ALTER TABLE ops_logs ADD COLUMN company_id UUID;
+
 -- Índices para consulta rápida
 CREATE INDEX idx_ops_logs_timestamp ON ops_logs (timestamp DESC);
 CREATE INDEX idx_ops_logs_service ON ops_logs (service);
@@ -160,6 +176,7 @@ CREATE INDEX idx_ops_logs_event ON ops_logs (event);
 CREATE INDEX idx_ops_logs_level ON ops_logs (level);
 CREATE INDEX idx_ops_logs_request_id ON ops_logs (request_id);
 CREATE INDEX idx_ops_logs_order_id ON ops_logs (order_id);
+-- CREATE INDEX idx_ops_logs_company_id_timestamp ON ops_logs (company_id, timestamp DESC);
 -- Índice composto para a query frequente "erros nas últimas Xh" (level + range de timestamp)
 CREATE INDEX idx_ops_logs_level_timestamp ON ops_logs (level, timestamp DESC);
 
@@ -186,6 +203,13 @@ CREATE POLICY "ops_authenticated_read_logs" ON ops_logs
   - Ordenação: `timestamp DESC`
 - `getMetrics(): Promise<LogMetrics>` — contagens por serviço, nível, evento
 - `traceRequest(requestId: string): Promise<LogEntry[]>` — rastrear fluxo completo
+
+**Requisitos mínimos de tuning (produção):**
+
+- Inserção via batch obrigatório (`insertLogs`) com backpressure.
+- Janitor de retenção diário (`cleanupOldLogs`) com janela configurável por ambiente.
+- Query limits defensivos (`limit <= 200`) e time range obrigatório para buscas amplas.
+- Observabilidade do próprio pipeline: métricas de fila, taxa de ingestão, taxa de erro de flush e lag de persistência.
 
 ### 3.2 Logger Central (`src/lib/logger.ts` — refatorado)
 
@@ -587,6 +611,25 @@ ALERT_WEBHOOK_TIMEOUT_MS=5000
 
 # Retenção de logs (dias) - job de limpeza
 LOG_RETENTION_DAYS=30
+
+# ==========================================
+# Storage isolado de observabilidade
+# ==========================================
+# Projeto Supabase dedicado para logs/alertas
+OBS_SUPABASE_URL=https://<observability-project>.supabase.co
+OBS_SUPABASE_SERVICE_ROLE_KEY=<service_role_observability>
+
+# Fila e flush
+LOG_INGEST_BUFFER_MAX=10000
+LOG_INGEST_BATCH_SIZE=500
+LOG_INGEST_FLUSH_INTERVAL_MS=1500
+
+# Backpressure (proteger latencia do ops)
+LOG_BACKPRESSURE_DROP_INFO=true
+LOG_BACKPRESSURE_DROP_WARN=false
+
+# SLO operacional
+LOG_INGEST_TARGET_P95_MS=3000
 ```
 
 ### 6.2 Variáveis de Ambiente (restaurante-web `.env`)
@@ -610,6 +653,8 @@ EXPO_PUBLIC_LOG_API_KEY=sk-ops-log-key-aqui
 ```
 
 > **Segurança:** `OPS_LOG_API_KEY` exposta no cliente é intencional e de baixo risco (escrita de logs apenas). Não concede leitura nem acesso ao dashboard. Rate limiting no endpoint `/api/logs` mitiga abuso.
+
+> **Boas práticas para produção:** preferir emissão de token de ingestão de curta duração (mintado no ops após autenticação) em vez de chave estática no cliente.
 
 ---
 
@@ -664,6 +709,13 @@ CREATE POLICY "ops_authenticated_read_logs" ON ops_logs
  - `setImmediate()` para defer de flush imediato sem bloquear a resposta HTTP corrente
  - Batch de 50 logs por INSERT para reduzir queries
 
+Parâmetros recomendados para produção (ponto de partida):
+
+- `LOG_INGEST_BATCH_SIZE=500`
+- `LOG_INGEST_FLUSH_INTERVAL_MS=1500`
+- `LOG_INGEST_BUFFER_MAX=10000`
+- Backpressure: ao atingir 80% do buffer, reduzir prioridade de `info`; ao atingir 95%, aceitar apenas `error` e `warn` críticos.
+
 ### 8.2 Retenção e Limpeza
 
  - Job agendado para deletar logs antigos conforme `LOG_RETENTION_DAYS`
@@ -676,6 +728,54 @@ CREATE POLICY "ops_authenticated_read_logs" ON ops_logs
 - Overhead target: < 10ms por requisição
 - Inserção de log não deve bloquear response
 - Se storage falhar, fallback para stdout
+
+SLOs mínimos de ingestão:
+
+- p95 ingest-to-persist <= 3s
+- Taxa de perda aceitável: 0% para `error`, < 1% para `info` sob degradação controlada
+- Disponibilidade do endpoint `/api/logs`: >= 99.9%
+
+### 8.4 Topologia Recomendada (Isolamento)
+
+- Banco transacional (`restaurante-web`/`restaurante-app`): somente dados de negócio.
+- Banco observabilidade (`restaurante-ops`): somente `ops_logs`, `ops_alerts`, `ops_alert_firings`.
+- Queries de dashboard e alertas executam apenas no banco observability.
+- Export diário para camada cold (object storage) para auditoria e LGPD.
+
+### 8.5 Particionamento e Índices
+
+- Particionar `ops_logs` por faixa de data (mensal ou semanal, conforme volume).
+- Manter índices apenas nas partições hot; reduzir índices em warm para diminuir custo de escrita.
+- Rotina de manutenção: reindex e vacuum por janela fora de pico.
+
+SQL de referência (particionamento mensal):
+
+```sql
+CREATE TABLE ops_logs (
+  id BIGINT GENERATED ALWAYS AS IDENTITY,
+  timestamp TIMESTAMPTZ NOT NULL,
+  level TEXT NOT NULL,
+  service TEXT NOT NULL,
+  event TEXT NOT NULL,
+  message TEXT NOT NULL,
+  request_id UUID,
+  user_id TEXT,
+  order_id TEXT,
+  duration_ms INTEGER,
+  metadata JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id, timestamp)
+) PARTITION BY RANGE (timestamp);
+```
+
+### 8.6 Migração Sem Downtime (Banco Compartilhado -> Isolado)
+
+1. Provisionar banco observability e aplicar migrations das tabelas `ops_*`.
+2. Habilitar dual-write no `restaurante-ops` por feature flag (`OBS_DUAL_WRITE=true`).
+3. Validar consistência por amostragem (`count`, `error_rate`, `traceRequest`) entre origem e destino.
+4. Mudar leitura do dashboard para banco observability (`OBS_READ_FROM_ISOLATED=true`).
+5. Desligar escrita no banco antigo (`OBS_DUAL_WRITE=false`) e manter fallback por 7 dias.
+6. Remover tabelas antigas apenas após janela de estabilidade e evidência operacional.
 
 ---
 
@@ -729,14 +829,36 @@ restaurante-app/src/
 │
 docs/
 ├── OBSERVABILITY-IMPLEMENTATION-GUIDE.md  # Este documento (raiz do monorepo)
-└── OBSERVABILITY-IMPLEMENTATION-PROMPT.md # Prompt de implementação assistida
+├── OBSERVABILITY-IMPLEMENTATION-PROMPT.md # Prompt de implementação assistida
+├── OBSERVABILITY-ISOLATED-CUTOVER-RUNBOOK.md # Runbook de migração sem downtime
+└── scripts/observability_partitioned_schema.sql # SQL de referência (partições + RLS)
 ```
+
+## 10. Capacidade Inicial (Sizing)
+
+Premissas iniciais para dimensionamento:
+
+- Volume base: 30-80 logs/segundo em horário comercial.
+- Pico: 150-250 logs/segundo em incidentes ou campanhas.
+- Tamanho médio do log: 0.8-1.5 KB após serialização.
+
+Estimativa diária:
+
+- 100 logs/segundo médios ~= 8.64M logs/dia.
+- Em 1 KB médio ~= 8.6 GB/dia bruto (sem compressão).
+- Com retenção hot de 15 dias: ~129 GB bruto.
+
+Decisões práticas:
+
+- Manter hot curto e exportar warm/cold diariamente.
+- Evitar índices desnecessários em `metadata` no hot path.
+- Materializar métricas agregadas (hora/serviço/nível) para dashboard rápido.
 
 ---
 
-## 10. Instruções de Uso
+## 11. Instruções de Uso
 
-### 10.1 Backend (restaurante-ops — interno)
+### 11.1 Backend (restaurante-ops — interno)
 
 ```typescript
 import { logInfo, logError, logWarn } from './lib/logger.js';
@@ -766,7 +888,7 @@ logWarn('slow_query', {
 });
 ```
 
-### 10.2 Consulta de Logs (via API)
+### 11.2 Consulta de Logs (via API)
 
 ```bash
 # Listar logs de erro nas últimas 24h
@@ -786,7 +908,7 @@ curl -b ops_session=... \
   'https://ops.restaurante-web.app.br/api/logs/metrics'
 ```
 
-### 10.3 Frontend/App (restaurante-web e restaurante-app — Expo/React Native)
+### 11.3 Frontend/App (restaurante-web e restaurante-app — Expo/React Native)
 
 ```typescript
 // Importar do serviço correto (src/services/ObservabilityService.ts)
@@ -803,7 +925,7 @@ logApiError('/api/orders', {
 });
 ```
 
-### 10.4 Mobile (restaurante-app)
+### 11.4 Mobile (restaurante-app)
 
 ```typescript
 import { sendLogToOps, logAppEvent } from '../services/ObservabilityService';
@@ -816,7 +938,7 @@ logAppEvent('order_placed', {
 });
 ```
 
-### 10.5 Activepieces (via Webhook)
+### 11.5 Activepieces (via Webhook)
 
 O Activepieces deve enviar webhook para `POST https://ops.restaurante-web.app.br/webhooks/activepieces`:
 
@@ -831,7 +953,7 @@ O Activepieces deve enviar webhook para `POST https://ops.restaurante-web.app.br
 }
 ```
 
-### 10.6 Evolution API (via Webhook)
+### 11.6 Evolution API (via Webhook)
 
 A Evolution API deve enviar webhook para `POST https://ops.restaurante-web.app.br/webhooks/evolution`:
 
@@ -848,7 +970,7 @@ A Evolution API deve enviar webhook para `POST https://ops.restaurante-web.app.b
 
 ---
 
-## 11. Exemplos de Logs Gerados
+## 12. Exemplos de Logs Gerados
 
 ### order_created (origem: web)
 
@@ -991,11 +1113,12 @@ A Evolution API deve enviar webhook para `POST https://ops.restaurante-web.app.b
 
 ---
 
-## 12. Checklist de Implementação
+## 13. Checklist de Implementação
 
 ### restaurante-ops (Centro de Observabilidade)
 
-- [ ] Criar tabela `ops_logs` e `ops_alerts` no Supabase (SQL migration)
+- [ ] Provisionar projeto Supabase dedicado de observabilidade (isolado do banco transacional)
+- [ ] Criar tabela `ops_logs` e `ops_alerts` no banco de observabilidade (SQL migration)
 - [ ] Criar `src/lib/log-storage.ts` — Storage de logs no Supabase
 - [ ] Refatorar `src/lib/logger.ts` — Novo formato + integração com storage
 - [ ] Criar `src/lib/request-tracker.ts` — Middleware de request tracking
@@ -1011,6 +1134,7 @@ A Evolution API deve enviar webhook para `POST https://ops.restaurante-web.app.b
 - [ ] Atualizar `src/index.ts` — Integrar middlewares, rotas de webhook e dashboard
 - [ ] Atualizar `.env.example` — Documentar novas variáveis
 - [ ] Criar job de limpeza de logs antigos (cron ou agendador)
+- [ ] Executar rollout sem downtime (dual-write -> read switch -> disable old write)
 
 ### restaurante-web (Expo/React Native — não Next.js)
 
@@ -1032,11 +1156,11 @@ A Evolution API deve enviar webhook para `POST https://ops.restaurante-web.app.b
 
 ---
 
-## 13. Roadmap Futuro
+## 14. Roadmap Futuro
 
 | Fase | Objetivo |
 |---|---|
-| **Fase 1** (esta) | Coleta, armazenamento e consulta de logs centralizados |
+| **Fase 1** (esta) | Coleta, armazenamento e consulta de logs centralizados em banco isolado |
 | **Fase 2** | Dashboard web completo (gráficos, filtros avançados, export) |
 | **Fase 3** | Alertas configuráveis com notificações (email, Slack webhook) |
 | **Fase 4** | Métricas de negócio (funil de pedidos, conversão, ticket médio) |
@@ -1045,9 +1169,12 @@ A Evolution API deve enviar webhook para `POST https://ops.restaurante-web.app.b
 
 ---
 
-## 14. Referências
+## 15. Referências
 
 - [Structured Logging Best Practices](https://www.sematext.com/blog/structured-logging/)
 - [Node.js Logging Best Practices](https://nodejs.org/en/docs/guides/logging/)
 - [Supabase Documentation](https://supabase.com/docs)
 - [Railway Cron Jobs](https://docs.railway.app/deploy/cron-jobs)
+- `database-backup/migrations/20260405184919_create_observability_isolated_partitioned_logs.sql`
+- `docs/OBSERVABILITY-ISOLATED-CUTOVER-RUNBOOK.md`
+- `docs/scripts/observability_partitioned_schema.sql`
