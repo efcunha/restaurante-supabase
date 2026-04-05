@@ -44,15 +44,13 @@ Saida validada em 04/04/2026:
 ## Build/EAS status (04/04/2026)
 
 - Novo projectId EAS vinculado: `930f1e33-a6ec-4432-8c37-891f4eddcb1f`
-- Android build iniciado com sucesso (preview, no-wait):
-  - https://expo.dev/accounts/lumachadolp/projects/comandapraia-dona-cida/builds/47c4f6fe-4360-4942-8070-5a30fa6fe410
-  - Observacao: o slug da URL no painel Expo permanece legado; a referencia operacional correta e o `projectId` `930f1e33-a6ec-4432-8c37-891f4eddcb1f`.
-- iOS build de simulador iniciado com sucesso (preview, no-wait):
-  - https://expo.dev/accounts/lumachadolp/projects/comandapraia-dona-cida/builds/523cc6b1-a4d5-4573-8d74-6c7cd199eb6d
-  - Estrategia aplicada: `ios.simulator=true` no perfil `preview` para contornar a ausencia de time Apple Developer pago.
+- Rodada inicial (preview, no-wait): builds Android e iOS simulador iniciados com sucesso.
+- Rodada de validacao posterior (preview):
+  - Android concluido com sucesso: build id `1f4d36ec-66e0-4ff3-be51-6f3507ebea18`
+  - iOS simulador concluido com sucesso: build id `53f0d68e-4abd-48d7-8d2a-69f2aabc26b6`
+- Estrategia aplicada: `ios.simulator=true` no perfil `preview` para contornar a ausencia de time Apple Developer pago.
 
 ## Pendencias para fechamento do item
 
-- Acompanhar conclusao dos builds Android e iOS (simulador) no painel EAS.
 - Smoke controlado de conectividade (Supabase + Mercado Pago).
 - Teste MITM controlado documentado.

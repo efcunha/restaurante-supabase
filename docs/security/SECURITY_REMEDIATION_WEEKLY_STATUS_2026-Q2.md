@@ -55,7 +55,7 @@ Legenda de status:
 | Item | Escopo | Status | Evidencia | Observacoes |
 |------|--------|--------|-----------|-------------|
 | Certificate Pinning implementation | app | concluido | `restaurante-app/app.json`, `restaurante-app/android/app/src/main/AndroidManifest.xml`, `restaurante-app/android/app/src/main/res/xml/network_security_config.xml`, `restaurante-app/ios/Espeto/Info.plist`, `restaurante-app/package.json` | Implementado pinning para `supabase.co` (subdominios) e `api.mercadopago.com` com pin leaf + backup CA pin. Necessario manter runbook de rotacao de certificados e renovar pins antes de expiracao de `pin-set` (2027-12-31). |
-| Build nativo + MITM testing | app | em andamento | `restaurante-app/app.json`, `restaurante-app/android/app/src/main/res/xml/network_security_config.xml`, `restaurante-app/ios/Espeto/Info.plist`, `restaurante-app/eas.json`, `docs/security/PINNING_CERT_EVIDENCE_2026-04-04.md` | `projectId` EAS corrigido para `930f1e33-a6ec-4432-8c37-891f4eddcb1f`. Build Android iniciado com sucesso em 04/04 (`https://expo.dev/accounts/lumachadolp/projects/comandapraia-dona-cida/builds/47c4f6fe-4360-4942-8070-5a30fa6fe410`) e build iOS simulador tambem iniciado com sucesso (`https://expo.dev/accounts/lumachadolp/projects/comandapraia-dona-cida/builds/523cc6b1-a4d5-4573-8d74-6c7cd199eb6d`). Estrategia aplicada: `ios.simulator=true` no perfil `preview`, evitando dependencia de time Apple Developer pago para validacao tecnica. |
+| Build nativo + MITM testing | app | em andamento | `restaurante-app/app.json`, `restaurante-app/android/app/src/main/res/xml/network_security_config.xml`, `restaurante-app/ios/Espeto/Info.plist`, `restaurante-app/eas.json`, `docs/security/PINNING_CERT_EVIDENCE_2026-04-04.md` | `projectId` EAS corrigido para `930f1e33-a6ec-4432-8c37-891f4eddcb1f`. Build Android concluido com sucesso em 04/04 (build id `1f4d36ec-66e0-4ff3-be51-6f3507ebea18`) e build iOS simulador concluido com sucesso em 04/04 (build id `53f0d68e-4abd-48d7-8d2a-69f2aabc26b6`). Estrategia aplicada: `ios.simulator=true` no perfil `preview`, evitando dependencia de time Apple Developer pago para validacao tecnica. Pendente apenas evidencia de smoke MITM controlado. |
 
 ### Ops
 
@@ -112,7 +112,7 @@ Legenda de status:
 
 | Item | Escopo | Status | Evidencia | Observacoes |
 |------|--------|--------|-----------|-------------|
-| Evidencias consolidadas | monorepo | nao iniciado |  | Referenciar runbook interno quando existir |
+| Evidencias consolidadas | monorepo | em andamento | `docs/security/SECURITY_DOCUMENTATION_INDEX.md`, `docs/security/PINNING_CERT_EVIDENCE_2026-04-04.md`, `docs/security/EXECUTIVE_SUMMARY_PT.md` | Consolidacao documental iniciada em 04/04; pendente apenas anexar evidencia final de smoke MITM controlado. |
 | Pendencias residuais avaliadas | monorepo | nao iniciado |  | Decidir o que fica para proximo ciclo |
 
 ---
@@ -123,10 +123,12 @@ Legenda de status:
 |------|--------|------|---------------|
 | Railway CLI sem autenticacao valida para deploy de variaveis | aberto | time | Impacta o web no Railway. Executar deploy de `restaurante-web` via Railway UI enquanto `railway whoami` retorna `Unauthorized`; renovar com `railway login` quando possivel |
 | Ambiente de staging dedicado inexistente | aberto | time | Usar validacao controlada em producao ate existir ambiente formal |
-| Supabase Auth MFA TOTP ainda desabilitado em runtime | concluido (2026-04-02) | app + web | MFA TOTP validado end-to-end em producao. Enrollment, desafio e verificacao confirmados para roles privilegiadas em app e web. |
 | Validacao MITM automatizada para pinning ainda pendente | monitoramento | app | Executar EAS build e testes controlados de conectividade (Supabase/Mercado Pago) antes de promover mudanca como 100% validada em producao |
 | Credenciais iOS ausentes para build preview assinado | monitoramento | app | Contorno aplicado com `ios.simulator=true` no perfil `preview`; manter build assinado como pendencia apenas para distribuicao em device/App Store |
 | OPS-4 sem invoice elegivel para replay de sucesso | aberto | ops | Repetir smoke quando existir invoice `pending` ou `failed`; usar `npm run billing:candidates` para localizar candidatos antes do replay |
+
+Observacao historica:
+- MFA TOTP em app/web foi reativado e validado em producao em 02/04/2026 (item concluido, removido de bloqueios ativos).
 
 ---
 
