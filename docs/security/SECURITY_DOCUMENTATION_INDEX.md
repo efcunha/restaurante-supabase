@@ -56,8 +56,8 @@ Arquivos de item isolado/snapshot foram consolidados e removidos para evitar fra
 ## Estado Atual (resumo rapido)
 
 - Semana 1: concluida
-- Semana 2: pinning implementado; validacao final (build nativo + smoke MITM controlado) em andamento
-- Semana 3: planejamento MFA e session fixation pronto
+- Semana 2: pinning implementado; builds nativos concluidos; pendente evidencia final de smoke MITM controlado
+- Semana 3: MFA e session fixation concluidos e validados em producao
 - Bloqueio estrutural: sem staging dedicado
 
 ## Navegacao rapida por necessidade
