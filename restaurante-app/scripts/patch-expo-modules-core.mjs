@@ -195,33 +195,47 @@ function patchEscPosAndroidBuildGradle() {
 }
 
 function patchExpoModulesCoreJSI() {
-  // Patch 4: Add missing #include <ReactCommon/CallInvoker.h> to EXJSIUtils.h
+  // Patch 4: Add missing React includes to EXJSIUtils.h
   // In RN 0.84, TurboModuleUtils.h no longer transitively includes CallInvoker.h,
   // so react::CallInvoker is undefined when expo-modules-core is compiled.
   // Error: "no member named 'CallInvoker' in namespace 'facebook::react'"
-  // Fix: inject the direct include after the existing ReactCommon/TurboModuleUtils.h import.
+  // Also ensure CallbackWrapper.h is present for:
+  // Error: "no member named 'CallbackWrapper' in namespace 'facebook::react'"
+  // Fix: inject direct includes after ReactCommon/TurboModuleUtils.h import.
   if (!fs.existsSync(expoJSIUtilsHeaderPath)) {
     console.log('[postinstall] expo-modules-core EXJSIUtils.h not found, skipping patch');
     return;
   }
 
-  const original = fs.readFileSync(expoJSIUtilsHeaderPath, 'utf8');
+  let original = fs.readFileSync(expoJSIUtilsHeaderPath, 'utf8');
   const anchor = '#import <ReactCommon/TurboModuleUtils.h>';
-  const inject = '#include <ReactCommon/CallInvoker.h>';
-
-  if (original.includes(inject)) {
-    console.log('[postinstall] expo-modules-core EXJSIUtils.h CallInvoker patch already applied');
-    return;
-  }
+  const injectCallInvoker = '#include <ReactCommon/CallInvoker.h>';
+  const injectCallbackWrapper = '#include <react/bridging/CallbackWrapper.h>';
 
   if (!original.includes(anchor)) {
     console.log('[postinstall] expo-modules-core EXJSIUtils.h anchor not found, skipping patch');
     return;
   }
 
-  const updated = original.replace(anchor, `${anchor}\n${inject}`);
-  fs.writeFileSync(expoJSIUtilsHeaderPath, updated, 'utf8');
-  console.log('[postinstall] expo-modules-core EXJSIUtils.h CallInvoker patch applied');
+  let changed = false;
+
+  if (!original.includes(injectCallInvoker)) {
+    original = original.replace(anchor, `${anchor}\n${injectCallInvoker}`);
+    changed = true;
+  }
+
+  if (!original.includes(injectCallbackWrapper)) {
+    original = original.replace(anchor, `${anchor}\n${injectCallbackWrapper}`);
+    changed = true;
+  }
+
+  if (!changed) {
+    console.log('[postinstall] expo-modules-core EXJSIUtils.h React includes already patched');
+    return;
+  }
+
+  fs.writeFileSync(expoJSIUtilsHeaderPath, original, 'utf8');
+  console.log('[postinstall] expo-modules-core EXJSIUtils.h React includes patch applied');
 }
 
 patchExpoModulesCorePromise();
