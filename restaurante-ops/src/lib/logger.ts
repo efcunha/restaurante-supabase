@@ -1,3 +1,6 @@
+import { buildEnv } from '../config/env.js';
+import { enqueueLog } from './log-storage.js';
+
 type LogLevel = 'info' | 'warn' | 'error';
 
 const REDACTED = '[REDACTED]';
@@ -15,6 +18,8 @@ const SENSITIVE_KEY_FRAGMENTS = [
   'card',
   'cvv',
   'pix_qr',
+  'cpf',
+  'phone',
 ];
 
 interface LogContext {
@@ -25,10 +30,18 @@ interface LogContext {
   reason?: string;
   detail?: string;
   service?: string;
+  request_id?: string;
+  user_id?: string;
+  order_id?: string;
   durationMs?: number;
+  duration_ms?: number;
+  message?: string;
+  metadata?: Record<string, unknown>;
   error?: string;
   [key: string]: unknown;
 }
+
+const env = buildEnv();
 
 function maskEmail(email: string): string {
   const trimmedEmail = email.trim();
@@ -92,11 +105,58 @@ function sanitizeValue(value: unknown, keyHint?: string): unknown {
 }
 
 function writeLog(level: LogLevel, event: string, context: LogContext = {}): void {
+  const timestamp = new Date().toISOString();
+  const sanitized = sanitizeValue(context) as LogContext;
+  const service = typeof sanitized.service === 'string' ? sanitized.service : 'ops';
+  const requestId = typeof sanitized.request_id === 'string' ? sanitized.request_id : undefined;
+  const userId = typeof sanitized.user_id === 'string' ? sanitized.user_id : undefined;
+  const orderId = typeof sanitized.order_id === 'string' ? sanitized.order_id : undefined;
+  const durationMsRaw =
+    typeof sanitized.duration_ms === 'number'
+      ? sanitized.duration_ms
+      : typeof sanitized.durationMs === 'number'
+        ? sanitized.durationMs
+        : undefined;
+  const message =
+    typeof sanitized.message === 'string'
+      ? sanitized.message
+      : typeof sanitized.detail === 'string'
+        ? sanitized.detail
+        : typeof sanitized.reason === 'string'
+          ? sanitized.reason
+          : event;
+
+  const metadata: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(sanitized)) {
+    if (
+      key === 'service' ||
+      key === 'request_id' ||
+      key === 'user_id' ||
+      key === 'order_id' ||
+      key === 'durationMs' ||
+      key === 'duration_ms' ||
+      key === 'message' ||
+      key === 'metadata'
+    ) {
+      continue;
+    }
+    metadata[key] = value;
+  }
+  if (sanitized.metadata && typeof sanitized.metadata === 'object') {
+    Object.assign(metadata, sanitized.metadata);
+  }
+
   const payload = {
-    ts: new Date().toISOString(),
+    timestamp,
     level,
+    service,
     event,
-    ...(sanitizeValue(context) as LogContext),
+    message,
+    request_id: requestId,
+    user_id: userId,
+    order_id: orderId,
+    duration_ms: durationMsRaw,
+    metadata,
   };
 
   const line = JSON.stringify(payload);
@@ -111,6 +171,21 @@ function writeLog(level: LogLevel, event: string, context: LogContext = {}): voi
   }
 
   console.log(line);
+
+  if (env.OBS_DUAL_WRITE) {
+    enqueueLog({
+      timestamp,
+      level,
+      service,
+      event,
+      message,
+      request_id: requestId,
+      user_id: userId,
+      order_id: orderId,
+      duration_ms: durationMsRaw,
+      metadata,
+    });
+  }
 }
 
 export function logInfo(event: string, context?: LogContext): void {
