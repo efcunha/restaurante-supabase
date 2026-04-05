@@ -10,6 +10,9 @@ export interface OpsEnv {
   LOG_INGEST_BUFFER_MAX: number;
   LOG_INGEST_BATCH_SIZE: number;
   LOG_INGEST_FLUSH_INTERVAL_MS: number;
+  OPS_LOG_API_KEY?: string;
+  OPS_LOG_RATE_LIMIT_MAX_ATTEMPTS: number;
+  OPS_LOG_RATE_LIMIT_WINDOW_MS: number;
   OPS_PORT: number;
   OPS_ENV: string;
   OPS_ALLOWED_COMPANY_ID?: string;
@@ -21,6 +24,10 @@ export interface OpsEnv {
   RATE_LIMIT_FALLBACK_ENABLED: boolean;
   REDIS_URL?: string;
   OPS_PUBLIC_BASE_URL?: string;
+  OPS_ALLOW_PLAINTEXT_HTTP: boolean;
+  OPS_TRUST_PROXY_HEADERS: boolean;
+  OPS_TLS_KEY_PEM?: string;
+  OPS_TLS_CERT_PEM?: string;
   WEB_BASE_URL?: string;
   ACTIVEPIECES_BASE_URL?: string;
   EVOLUTION_API_BASE_URL?: string;
@@ -39,12 +46,16 @@ export function buildEnv(): OpsEnv {
   const parsedLogBufferMax = Number(process.env.LOG_INGEST_BUFFER_MAX || '10000');
   const parsedLogBatchSize = Number(process.env.LOG_INGEST_BATCH_SIZE || '500');
   const parsedLogFlushIntervalMs = Number(process.env.LOG_INGEST_FLUSH_INTERVAL_MS || '1500');
+  const parsedOpsLogRateLimitMaxAttempts = Number(process.env.OPS_LOG_RATE_LIMIT_MAX_ATTEMPTS || '1200');
+  const parsedOpsLogRateLimitWindowMs = Number(process.env.OPS_LOG_RATE_LIMIT_WINDOW_MS || '60000');
   const parsedMaxAttempts = Number(process.env.AUTH_RATE_LIMIT_MAX_ATTEMPTS || '8');
   const parsedWindowMs = Number(process.env.AUTH_RATE_LIMIT_WINDOW_MS || String(15 * 60 * 1000));
   const parsedBillingMaxAttempts = Number(process.env.RATE_LIMIT_BILLING_MAX_ATTEMPTS || '30');
   const parsedBillingWindowMs = Number(process.env.RATE_LIMIT_BILLING_WINDOW_MS || String(60 * 1000));
   const parsedFallbackEnabled = process.env.RATE_LIMIT_FALLBACK_ENABLED !== 'false';
   const parsedRequireMfa = process.env.OPS_REQUIRE_MFA === 'true';
+  const parsedAllowPlaintextHttp = process.env.OPS_ALLOW_PLAINTEXT_HTTP === 'true';
+  const parsedTrustProxyHeaders = process.env.OPS_TRUST_PROXY_HEADERS === 'true';
   const parsedObsDualWrite = process.env.OBS_DUAL_WRITE === 'true';
   const parsedObsReadFromIsolated = process.env.OBS_READ_FROM_ISOLATED === 'true';
 
@@ -58,6 +69,13 @@ export function buildEnv(): OpsEnv {
     LOG_INGEST_BUFFER_MAX: Number.isFinite(parsedLogBufferMax) ? parsedLogBufferMax : 10000,
     LOG_INGEST_BATCH_SIZE: Number.isFinite(parsedLogBatchSize) ? parsedLogBatchSize : 500,
     LOG_INGEST_FLUSH_INTERVAL_MS: Number.isFinite(parsedLogFlushIntervalMs) ? parsedLogFlushIntervalMs : 1500,
+    OPS_LOG_API_KEY: process.env.OPS_LOG_API_KEY,
+    OPS_LOG_RATE_LIMIT_MAX_ATTEMPTS: Number.isFinite(parsedOpsLogRateLimitMaxAttempts)
+      ? parsedOpsLogRateLimitMaxAttempts
+      : 1200,
+    OPS_LOG_RATE_LIMIT_WINDOW_MS: Number.isFinite(parsedOpsLogRateLimitWindowMs)
+      ? parsedOpsLogRateLimitWindowMs
+      : 60000,
     OPS_PORT: Number.isFinite(resolvedPort) ? resolvedPort : 4040,
     OPS_ENV: process.env.OPS_ENV || 'development',
     OPS_ALLOWED_COMPANY_ID: process.env.OPS_ALLOWED_COMPANY_ID,
@@ -69,6 +87,10 @@ export function buildEnv(): OpsEnv {
     RATE_LIMIT_FALLBACK_ENABLED: parsedFallbackEnabled,
     REDIS_URL: process.env.REDIS_URL,
     OPS_PUBLIC_BASE_URL: process.env.OPS_PUBLIC_BASE_URL,
+    OPS_ALLOW_PLAINTEXT_HTTP: parsedAllowPlaintextHttp,
+    OPS_TRUST_PROXY_HEADERS: parsedTrustProxyHeaders,
+    OPS_TLS_KEY_PEM: process.env.OPS_TLS_KEY_PEM,
+    OPS_TLS_CERT_PEM: process.env.OPS_TLS_CERT_PEM,
     WEB_BASE_URL: process.env.WEB_BASE_URL,
     ACTIVEPIECES_BASE_URL: process.env.ACTIVEPIECES_BASE_URL,
     EVOLUTION_API_BASE_URL: process.env.EVOLUTION_API_BASE_URL,
