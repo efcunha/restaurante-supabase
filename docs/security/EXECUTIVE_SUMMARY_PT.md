@@ -10,6 +10,13 @@ Para status operacional atual, usar como fonte de verdade:
 - `SECURITY_REMEDIATION_WEEKLY_STATUS_2026-Q2.md`
 - `SECURITY_REMEDIATION_PLAN_2026-Q2.md`
 
+### Atualizacao operacional em 05/04/2026
+
+- Certificate pinning mobile: concluido e validado com smoke MITM controlado.
+- MFA app/web e session hardening: concluidos e validados em producao.
+- `restaurante-ops` rate limit estrito (`429`/`503`): validado.
+- Pendencias reais remanescentes do ciclo: `OPS-4` sem invoice elegivel `pending/failed` para replay de sucesso idempotente e ausencia de staging dedicado.
+
 ---
 
 ## STATUS GERAL: 🔴 CRÍTICO — AÇÃO IMEDIATA REQUERIDA
@@ -174,9 +181,9 @@ KPIs:
 
 ## PRÓXIMO PASSO
 
-**Hoje:** Concluir validação full stack pós-hardening (incluindo cenários 429/503 no `restaurante-ops`)
+**Atual:** Executar `OPS-4` assim que existir invoice elegivel `pending` ou `failed`, registrando primeiro sucesso e segundo replay idempotente com a mesma `idempotencyKey`.
 
-**Próximo deploy:** Publicar com `RATE_LIMIT_FALLBACK_ENABLED=false` e monitorar disponibilidade Redis
+**Bloqueio estrutural:** Manter validacao controlada em producao enquanto nao existir ambiente de staging dedicado.
 
 **Após deploy:** Rodar smoke checks dos fluxos críticos (Balcao, Mesa, Delivery, Montagem) + billing
 
