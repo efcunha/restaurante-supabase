@@ -1,0 +1,41 @@
+{
+  "id": "53f0d68e-4abd-48d7-8d2a-69f2aabc26b6",
+  "status": "IN_PROGRESS",
+  "platform": "IOS",
+  "artifacts": {
+    "xcodeBuildLogsUrl": "https://job-logs.eascdn.net/production-xcode-logs/53f0d68e-4abd-48d7-8d2a-69f2aabc26b6?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260405%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260405T004152Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=a24d28f6d77e6659bee42bab3fa813d640d2b8fa88f5da1856dd76209d2e239bc56a244b6159be7fe892a26135f40c66bef3d0daf8bf0472cae88d1f75d86298a7869f93447bdf1d936b65523a5dde28bb080ac5ba21cc5c6d7fcfcbee4774ac68d226ff877ff634453285113d752cdf86a25d17864fd25e3359dde40e5d5a86a55c34b9ad38ac8a1171fe5f90a325a219e420ed74dfc6680ea685dc2a2c65634553d48b0c7c97a6b60f72edbebf193e62798aa386a28418dce17a8042b75215942d080f6f137503e11ea53f84f06bb43c83770217fa1206c8779fc1f979964d3327d9b21cc3946566ee9c5455ac1ee373b9de4b9756e8fcf431cd2e9b4537e9"
+  },
+  "fingerprint": {
+    "id": "019d5b11-e2ef-76a6-8e74-a99867c41927",
+    "hash": "d7979b525da3f0e55c2d42327541ec0d58ee5038"
+  },
+  "initiatingActor": {
+    "id": "83ded47a-b1e9-490f-81ae-e80fffb3af39",
+    "displayName": "lumachadolp"
+  },
+  "logFiles": [
+    "https://job-logs.eascdn.net/production/53f0d68e-4abd-48d7-8d2a-69f2aabc26b6/1775349392299-1ee38918-b7a7-49e0-8708-dbca54cff35e.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260405%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260405T004152Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=3e44322a7dc19e917eae38118a18f35138cd7969484ac250ed5da56dcbea4cb2a52ffcd384001b527ec74dccade8d8d582a37528790aa82eb2baf15489b24d0e4e7893c9da6bc6a43fd1b3c12b37fb8d715dfeb900508c8d951546674c63d1ae0b5af7ad39124e744326cbdf956aec712cb336ad6cde180704fce35fe329c368ec2bfe50fa1f279a5be065103ada3f6bba4a2448178889a2456fbf2ae2c661ef4056d0a1b79af392422a0ca7cde86cce9d82fb061231e4a133dd69578a24678ca9c369bcb252fda6252570431485a0fcf4458788950a44ef6bad91c716d5daa0b444abf77825ab64527d3ebeb8edf5c6cbe90ecaabae1b44c704b7876eb34cf5",
+    "https://job-logs.eascdn.net/production/53f0d68e-4abd-48d7-8d2a-69f2aabc26b6/1775349393195-f3160cee-f6b7-4c53-974c-791d463799dd.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260405%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260405T004152Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=18ad8cb0fc2d1a07b80ae8591b147958cebf16f47478ad410f19424794f9892ee9ff65e81445e260e0aa5f6dc25e5b5c1bb7bb5c585ee28276d604e9e621f2becf2591edfdb0de19088fc6eba2daa4f70aafb3d228dc13b45979aee64f5c56edf8283a5fc4fbaa84fb86cbe37adcfa06aaaf260819c5bb052e096e6d71bbf5b426f895fd4e62e196d6548f63f405ce7c00497280d64bbdc9a77815ca05b1f6183dd4fa139fc8915d91769f05d3beff9fbb73428dfc24ebd319200b8ec36339c2eadc61a309efc7a2f0bf63ed0c07a255a33db5f0190bec55a761a3ac3714490ec5b32834cf1d2a21a9889ea7089df69670c22e4d9c879882ed29f20698a5d9c2",
+    "https://job-logs.eascdn.net/production/53f0d68e-4abd-48d7-8d2a-69f2aabc26b6/1775349393431-d1a8d376-fc49-4cc6-bbc7-62373e0b95e1.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260405%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260405T004152Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=2e78337142d1bf2d0120b5c3111ed3224d23b22087e03c3923cf00da62a0cc1739d9b9b6fcdfa82a2f81d375e4d221dc7513b4f147d9dd35cbb038d39e095383f49ab957d7f2b711feaa4ce611eb2ca34c88626adbefdd2fcd2ec126370cf010561b010c61b212999fdf3bc1844e58eaf060ef0ef317a7c4adc9069a6806afad6edc149847904e50f2df2010e95e0e801481fe296491a0bf83db8c05cd0923ea06eaf89b69c77d99926860b9d2d6b72436f5406ea5f1a9d17c7207a24af624b90ddcdb4992605844c0e9d2b017e934c7f19da80226b84a3577ebaa3791dfdd9fead6ad2b50a3c8e0b0a598c49e716e66aba7b5eaae8f5bf5a38371fdb0a4ebb7",
+    "https://job-logs.eascdn.net/production/53f0d68e-4abd-48d7-8d2a-69f2aabc26b6/1775349393655-0f09ae80-a636-4c7a-9a38-c93571a3b974.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260405%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260405T004152Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=7f572f49d33f1b303a70cba2ae453167960c79dea696d7bc10d4e9f4f726fc64735bf889c8c31441bc718d4d4c7b172634467142825ea3cf47df1ebf3f1fa83d0c85ae045ff8651befd15362cea9018c30139b4ea2ae97588c0ac8423a7925f5334c46e6440668fd8a08ea545319d8675d0c9b1fd65b5f5431fa6baa38f932350a2f5e50d155cad384625c70ec1511ff803ff42d05ec262b11c336f7da6adc3ece237abfbe5e7f71d0723741d47dd9aa6e6437bf9b56c8eeb4b8ed918af3937ff7dcc27ad47eb8ce10f6b35c8c01534f6c83f2dd89b7dc279573aae04f6afb17e30e8d58fe2cf31bf226463aec9d384033cc22aecf84521afcca02b4466a55eb"
+  ],
+  "project": {
+    "id": "8384f741-18dd-41fb-b0ab-df0ece2acecf",
+    "name": "restaurante-app",
+    "slug": "restaurante-app",
+    "ownerAccount": {
+      "id": "78274571-4fa1-4f3a-a809-635e4af9bbf5",
+      "name": "lumachadolp"
+    }
+  },
+  "distribution": "INTERNAL",
+  "buildProfile": "preview",
+  "sdkVersion": "54.0.0",
+  "appVersion": "1.0.1",
+  "appBuildVersion": "1",
+  "priority": "NORMAL",
+  "createdAt": "2026-04-05T00:36:32.062Z",
+  "updatedAt": "2026-04-05T00:37:18.627Z",
+  "expirationDate": "2026-04-19T00:36:32.100Z",
+  "isForIosSimulator": true
+}
