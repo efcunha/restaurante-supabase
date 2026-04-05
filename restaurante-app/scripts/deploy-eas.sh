@@ -53,9 +53,21 @@ esac
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$APP_DIR"
 
-if ! command -v eas >/dev/null 2>&1; then
-  echo "[deploy-eas] EAS CLI nao encontrado no PATH."
-  echo "[deploy-eas] Instale com: npm i -g eas-cli"
+EAS_CMD=()
+
+if command -v eas >/dev/null 2>&1; then
+  EAS_CMD=(eas)
+elif [[ -x "$APP_DIR/node_modules/.bin/eas" ]]; then
+  EAS_CMD=("$APP_DIR/node_modules/.bin/eas")
+elif command -v npx >/dev/null 2>&1; then
+  # Fallback para ambientes sem instalacao global/local do EAS CLI.
+  EAS_CMD=(npx --yes eas-cli@latest)
+  echo "[deploy-eas] EAS CLI nao encontrado no PATH. Usando fallback via npx."
+else
+  echo "[deploy-eas] EAS CLI nao encontrado e npx indisponivel."
+  echo "[deploy-eas] Opcoes de instalacao:"
+  echo "[deploy-eas]   1) npm i -g eas-cli"
+  echo "[deploy-eas]   2) npm i -D eas-cli (em restaurante-app)"
   exit 1
 fi
 
@@ -67,7 +79,7 @@ fi
 run_build() {
   local target_platform="$1"
   echo "[deploy-eas] Disparando build $target_platform (profile=$PROFILE, wait=$WAIT_BUILD)"
-  EAS_NO_VCS=1 eas build --platform "$target_platform" "${COMMON_ARGS[@]}"
+  EAS_NO_VCS=1 "${EAS_CMD[@]}" build --platform "$target_platform" "${COMMON_ARGS[@]}"
 }
 
 if [[ "$PLATFORM" == "all" ]]; then
