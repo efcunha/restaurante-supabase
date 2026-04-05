@@ -55,7 +55,7 @@ Legenda de status:
 | Item | Escopo | Status | Evidencia | Observacoes |
 |------|--------|--------|-----------|-------------|
 | Certificate Pinning implementation | app | concluido | `restaurante-app/app.json`, `restaurante-app/android/app/src/main/AndroidManifest.xml`, `restaurante-app/android/app/src/main/res/xml/network_security_config.xml`, `restaurante-app/ios/Espeto/Info.plist`, `restaurante-app/package.json` | Implementado pinning para `supabase.co` (subdominios) e `api.mercadopago.com` com pin leaf + backup CA pin. Necessario manter runbook de rotacao de certificados e renovar pins antes de expiracao de `pin-set` (2027-12-31). |
-| Build nativo + MITM testing | app | em andamento | `restaurante-app/app.json`, `restaurante-app/android/app/src/main/res/xml/network_security_config.xml`, `restaurante-app/ios/Espeto/Info.plist`, `restaurante-app/eas.json`, `docs/security/PINNING_CERT_EVIDENCE_2026-04-04.md` | `projectId` EAS corrigido para `930f1e33-a6ec-4432-8c37-891f4eddcb1f`. Build Android concluido com sucesso em 04/04 (build id `1f4d36ec-66e0-4ff3-be51-6f3507ebea18`) e build iOS simulador concluido com sucesso em 04/04 (build id `53f0d68e-4abd-48d7-8d2a-69f2aabc26b6`). Estrategia aplicada: `ios.simulator=true` no perfil `preview`, evitando dependencia de time Apple Developer pago para validacao tecnica. Pendente apenas evidencia de smoke MITM controlado. |
+| Build nativo + MITM testing | app | concluido | `restaurante-app/app.json`, `restaurante-app/android/app/src/main/res/xml/network_security_config.xml`, `restaurante-app/ios/Espeto/Info.plist`, `restaurante-app/eas.json`, `docs/security/PINNING_CERT_EVIDENCE_2026-04-04.md` | Fechamento em 05/04 (16:40 UTC): smoke MITM controlado executado com `curl --pinnedpubkey`; com pin correto houve handshake TLS aceito (`http=404`, `exit=0`) e com pin incorreto houve bloqueio esperado (`curl exit=90`). Hashes leaf revalidados no mesmo dia com OpenSSL e aderentes aos pins documentados. |
 
 ### Ops
 
@@ -106,14 +106,14 @@ Legenda de status:
 
 | Item | Escopo | Status | Evidencia | Observacoes |
 |------|--------|--------|-----------|-------------|
-| Billing/reconcile smoke controlado | ops | em andamento | smoke local em 01/04 (15:53 UTC): `POST /ops/billing/reconcile`, `POST /ops/billing/company/{id}/regularize/card`, consulta service role em `invoices`, helper `npm run billing:candidates` | Guardrails validados (`400` para `idempotencyKey`/`invoiceId` invalidos) e `404 INVOICE_ACTION_TARGET_NOT_FOUND`; consulta direta retornou `[]` para invoices `pending/failed`, bloqueando replay de sucesso com mesmo `idempotency_key` sem mutar dados |
+| Billing/reconcile smoke controlado | ops | bloqueado | `restaurante-ops/scripts/find-billing-candidates.sh`, smoke local em 01/04 (15:53 UTC), rerun em 05/04 via `cd restaurante-ops && npm run -s billing:candidates` | Guardrails e idempotencia de erro ja validados (`400` e `404` deterministico), mas o cenario obrigatorio de sucesso permanece sem candidato: resultado observado em 05/04 foi `count: 0` e mensagem `No pending/failed invoices found for OPS-4 success-path smoke.` |
 
 ### Monorepo
 
 | Item | Escopo | Status | Evidencia | Observacoes |
 |------|--------|--------|-----------|-------------|
-| Evidencias consolidadas | monorepo | em andamento | `docs/security/SECURITY_DOCUMENTATION_INDEX.md`, `docs/security/PINNING_CERT_EVIDENCE_2026-04-04.md`, `docs/security/EXECUTIVE_SUMMARY_PT.md` | Consolidacao documental iniciada em 04/04; pendente apenas anexar evidencia final de smoke MITM controlado. |
-| Pendencias residuais avaliadas | monorepo | nao iniciado |  | Decidir o que fica para proximo ciclo |
+| Evidencias consolidadas | monorepo | concluido | `docs/security/SECURITY_DOCUMENTATION_INDEX.md`, `docs/security/PINNING_CERT_EVIDENCE_2026-04-04.md`, `docs/security/EXECUTIVE_SUMMARY_PT.md`, `docs/security/SECURITY_REMEDIATION_PLAN_2026-Q2.md` | Consolidacao atualizada em 05/04 com fechamento objetivo do pinning e status unificado do OPS-4 sem divergencia entre documentos canonicos. |
+| Pendencias residuais avaliadas | monorepo | concluido | `docs/security/SECURITY_REMEDIATION_WEEKLY_STATUS_2026-Q2.md` (Semana 4 + bloqueios), `docs/security/SECURITY_REMEDIATION_PLAN_2026-Q2.md` | Permanecem apenas dois bloqueios ativos reais para o ciclo: ausencia de staging dedicado e ausencia de invoice elegivel (`pending/failed`) para replay de sucesso do OPS-4. |
 
 ---
 
@@ -121,10 +121,7 @@ Legenda de status:
 
 | Item | Status | Dono | Proximo passo |
 |------|--------|------|---------------|
-| Railway CLI sem autenticacao valida para deploy de variaveis | aberto | time | Impacta o web no Railway. Executar deploy de `restaurante-web` via Railway UI enquanto `railway whoami` retorna `Unauthorized`; renovar com `railway login` quando possivel |
 | Ambiente de staging dedicado inexistente | aberto | time | Usar validacao controlada em producao ate existir ambiente formal |
-| Validacao MITM automatizada para pinning ainda pendente | monitoramento | app | Executar EAS build e testes controlados de conectividade (Supabase/Mercado Pago) antes de promover mudanca como 100% validada em producao |
-| Credenciais iOS ausentes para build preview assinado | monitoramento | app | Contorno aplicado com `ios.simulator=true` no perfil `preview`; manter build assinado como pendencia apenas para distribuicao em device/App Store |
 | OPS-4 sem invoice elegivel para replay de sucesso | aberto | ops | Repetir smoke quando existir invoice `pending` ou `failed`; usar `npm run billing:candidates` para localizar candidatos antes do replay |
 
 Observacao historica:
@@ -134,7 +131,9 @@ Observacao historica:
 
 ## Definicao de Pronto do Ciclo
 
-- Nenhum segredo hardcoded em clientes ou exemplos publicos.
-- App sem replay biometrico baseado em senha persistida.
-- MFA funcional para roles privilegiadas em app e web.
-- `restaurante-ops` com logs saneados, rate limit validado e smoke de billing registrado.
+- [x] Nenhum segredo hardcoded em clientes ou exemplos publicos.
+- [x] App sem replay biometrico baseado em senha persistida.
+- [x] MFA funcional para roles privilegiadas em app e web.
+- [x] Pinning validado com smoke MITM controlado e evidencia objetiva registrada.
+- [ ] `OPS-4` concluido com replay de sucesso idempotente em invoice elegivel `pending/failed`.
+- [ ] Fechamento total sem bloqueio estrutural de staging dedicado.

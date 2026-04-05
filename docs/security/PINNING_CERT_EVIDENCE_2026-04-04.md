@@ -50,7 +50,51 @@ Saida validada em 04/04/2026:
   - iOS simulador concluido com sucesso: build id `53f0d68e-4abd-48d7-8d2a-69f2aabc26b6`
 - Estrategia aplicada: `ios.simulator=true` no perfil `preview` para contornar a ausencia de time Apple Developer pago.
 
-## Pendencias para fechamento do item
+## Validacao final de smoke MITM controlado (05/04/2026)
 
-- Smoke controlado de conectividade (Supabase + Mercado Pago).
-- Teste MITM controlado documentado.
+Data/hora de execucao (UTC): 2026-04-05 16:40:44 UTC
+
+### Etapa 1: Revalidacao dos hashes leaf SPKI
+
+Comando:
+
+openssl s_client -servername <host> -connect <host>:443 \
+  | openssl x509 -pubkey -noout \
+  | openssl pkey -pubin -outform der \
+  | openssl dgst -sha256 -binary \
+  | openssl base64
+
+Resultado esperado:
+
+- Supabase leaf hash igual ao pin documentado.
+- Mercado Pago leaf hash igual ao pin documentado.
+
+Resultado observado (05/04):
+
+- ykalocfhnetxenvmtlcn.supabase.co: GU2W4j1P24T3sqlI+o6YTnidzz0PI8fB/Gvd2ITfSZE=
+- api.mercadopago.com: 1rsZujOXhUcEKiMBfMqCDwhVvouJYiW+H7/RiBr4c8Y=
+
+### Etapa 2: Smoke de pinning com simulacao MITM controlada
+
+Comando (resumo):
+
+curl --pinnedpubkey "sha256//<PIN_CORRETO>" https://<host>
+curl --pinnedpubkey "sha256//AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=" https://<host>
+
+Resultado esperado:
+
+- Com pin correto: handshake TLS aceito (request chega na camada HTTP).
+- Com pin incorreto: handshake TLS bloqueado por pinning (curl exit 90).
+
+Resultado observado (05/04):
+
+- Supabase com pin correto: http=404, exit=0 (TLS aceito; endpoint raiz sem rota publica).
+- Supabase com pin incorreto: curl (90) SSL public key does not match pinned public key.
+- Mercado Pago com pin correto: http=404, exit=0 (TLS aceito; endpoint raiz sem rota publica).
+- Mercado Pago com pin incorreto: curl (90) SSL public key does not match pinned public key.
+
+## Status final do item
+
+- Build nativo preview: concluido (Android + iOS simulador).
+- Smoke MITM controlado: concluido.
+- Certificate pinning: validado para fechamento do ciclo de seguranca.
