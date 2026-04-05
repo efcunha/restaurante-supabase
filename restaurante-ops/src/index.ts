@@ -230,7 +230,8 @@ function respondJson(
   const safePayload = sanitizeJsonValue(payload);
   const responseBody = JSON.stringify(safePayload);
   const responseBuffer = Buffer.from(responseBody, 'utf-8');
-  res.end(responseBuffer);
+  res.write(responseBuffer);
+  res.end();
 }
 
 function respondHtml(
@@ -802,7 +803,6 @@ function renderHomeHtml(): string {
 }
 
 function renderQuickActionPanel(
-  _user: OpsUser,
   title: string,
   subtitle: string,
   body: string,
@@ -1070,7 +1070,6 @@ function fmtDate(iso: string | null): string {
 }
 
 function renderCustomersPanel(
-  user: OpsUser,
   kpis: KpiCounts,
   companies: CompanyRow[],
 ): string {
@@ -1086,7 +1085,6 @@ function renderCustomersPanel(
         </tr>`).join('');
 
   return renderQuickActionPanel(
-    user,
     'Gerenciar clientes',
     'Lifecycle de contas e acompanhamento comercial.',
     `<section class="panel">
@@ -1123,7 +1121,6 @@ function renderCustomersPanel(
 }
 
 function renderBillingPanel(
-  user: OpsUser,
   stats: InvoiceStats,
   ops: BillingOpsMetrics,
   invoices: InvoiceRow[],
@@ -1145,7 +1142,6 @@ function renderBillingPanel(
         </tr>`).join('');
 
   return renderQuickActionPanel(
-    user,
     'Faturamento e invoices',
     'Visao operacional de pagamentos, invoices e conciliacao de assinaturas.',
     `<section class="panel">
@@ -1213,12 +1209,12 @@ function renderBillingPanel(
 }
 
 function renderPlanConfigPanel(
-  user: OpsUser,
+  canManagePlanConfig: boolean,
   active: import('./modules/billing-plan-config-operations.js').ActivePlanConfig | null,
   history: import('./modules/billing-plan-config-operations.js').ActivePlanConfig[],
   audit: import('./modules/billing-plan-config-operations.js').PlanConfigAuditEntry[],
 ): string {
-  const isAdmin = user.role === 'admin';
+  const isAdmin = canManagePlanConfig;
 
   const activeBrl = active
     ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(active.amount_cents / 100)
@@ -1361,7 +1357,6 @@ function renderPlanConfigPanel(
     </section>`;
 
   return renderQuickActionPanel(
-    user,
     'Configuração de Preço do Plano',
     'Gerencie o valor do plano mensal cobrado aos restaurantes. Alterações têm efeito imediato nas próximas cobranças.',
     `<section class="panel">
@@ -1410,7 +1405,6 @@ function renderPlanConfigPanel(
 }
 
 function renderMetricsPanel(
-  user: OpsUser,
   metrics: SaasMetrics,
   breakdown: SubscriptionBreakdown,
   revenueSeries: RevenuePoint[],
@@ -1423,7 +1417,6 @@ function renderMetricsPanel(
       .join('');
 
   return renderQuickActionPanel(
-    user,
     'Metricas SaaS',
     'Indicadores de crescimento, receita e saude da base.',
     `<section class="panel">
@@ -1485,7 +1478,7 @@ function renderMetricsPanel(
   );
 }
 
-function renderServiceStatusPanel(user: OpsUser, services: ServiceStatus[], supabaseMetrics: SupabaseMetrics): string {
+function renderServiceStatusPanel(services: ServiceStatus[], supabaseMetrics: SupabaseMetrics): string {
   const serviceRows = services
     .map(
       (svc) =>
@@ -1505,7 +1498,6 @@ function renderServiceStatusPanel(user: OpsUser, services: ServiceStatus[], supa
   const supabaseTime = supabaseMetrics.responseTime ? `${supabaseMetrics.responseTime}ms` : '—';
 
   return renderQuickActionPanel(
-    user,
     'Estado do servico',
     'Status do runtime de todos os servicos e endpoints essenciais de operacao.',
     `<section class="panel">
@@ -1559,7 +1551,7 @@ function renderServiceStatusPanel(user: OpsUser, services: ServiceStatus[], supa
   );
 }
 
-function renderApiStatusPanel(user: OpsUser): string {
+function renderApiStatusPanel(): string {
   const payload = {
     service: 'restaurante-ops',
     modules: ['customers', 'billing', 'metrics'],
@@ -1567,7 +1559,6 @@ function renderApiStatusPanel(user: OpsUser): string {
   };
 
   return renderQuickActionPanel(
-    user,
     'API status JSON',
     'Visualizacao do payload tecnico para diagnostico e automacoes.',
     `<section class="panel">
@@ -2506,17 +2497,14 @@ function startServer() {
         if (!user) return;
 
         const traceOrderId = sanitizePlainText(path.replace('/api/logs/order/', ''));
-        if (!traceOrderId) {
-          respondJson(res, 400, { error: 'orderId obrigatorio.' });
+        if (!isUuid(traceOrderId)) {
+          respondJson(res, 400, { error: 'orderId invalido. Informe UUID valido.' });
           return;
         }
 
         try {
           const timeline = await traceOrder(traceOrderId);
-          respondJson(res, 200, {
-            order_id: traceOrderId,
-            timeline,
-          });
+          respondJson(res, 200, { timeline });
         } catch (err) {
           logError('observability.trace_order_failed', {
             request_id: requestId,
@@ -2988,41 +2976,39 @@ function startServer() {
       if (path === '/customers') {
         const user = await requireAuth(req, res);
         if (!user) return;
-        const safeUser = sanitizeOpsUserForHtml(user);
         const [kpis, companies] = await Promise.all([
           fetchKpiCounts(),
           fetchRecentCompanies(20),
         ]);
-        respondHtml(res, 200, renderCustomersPanel(safeUser, kpis, companies));
+        respondHtml(res, 200, renderCustomersPanel(kpis, companies));
         return;
       }
 
       if (path === '/billing') {
         const user = await requireAuth(req, res);
         if (!user) return;
-        const safeUser = sanitizeOpsUserForHtml(user);
         const [stats, ops, invoices] = await Promise.all([
           fetchInvoiceStats(),
           fetchBillingOpsMetrics(),
           fetchRecentInvoices(15),
         ]);
-        respondHtml(res, 200, renderBillingPanel(safeUser, stats, ops, invoices));
+        respondHtml(res, 200, renderBillingPanel(stats, ops, invoices));
         return;
       }
 
       if (path === '/billing/plan-config') {
         const user = await requireAuth(req, res);
         if (!user) return;
-        const safeUser = sanitizeOpsUserForHtml(user);
+        const canManagePlanConfig = user.role === 'admin';
         try {
           const [active, history, audit] = await Promise.all([
             fetchActivePlanConfig(),
             fetchPlanConfigHistory('default_monthly', 20),
             fetchPlanConfigAudit('default_monthly', 50),
           ]);
-          respondHtml(res, 200, renderPlanConfigPanel(safeUser, active, history, audit));
+          respondHtml(res, 200, renderPlanConfigPanel(canManagePlanConfig, active, history, audit));
         } catch (err) {
-          respondHtml(res, 200, renderPlanConfigPanel(safeUser, null, [], []));
+          respondHtml(res, 200, renderPlanConfigPanel(canManagePlanConfig, null, [], []));
         }
         return;
       }
@@ -3030,33 +3016,30 @@ function startServer() {
       if (path === '/metrics') {
         const user = await requireAuth(req, res);
         if (!user) return;
-        const safeUser = sanitizeOpsUserForHtml(user);
         const [metrics, breakdown, revenueSeries] = await Promise.all([
           fetchSaasMetrics(),
           fetchSubscriptionBreakdown(),
           fetchRevenueSeries(6),
         ]);
-        respondHtml(res, 200, renderMetricsPanel(safeUser, metrics, breakdown, revenueSeries));
+        respondHtml(res, 200, renderMetricsPanel(metrics, breakdown, revenueSeries));
         return;
       }
 
       if (path === '/service-status') {
         const user = await requireAuth(req, res);
         if (!user) return;
-        const safeUser = sanitizeOpsUserForHtml(user);
         const [services, supabaseMetrics] = await Promise.all([
           checkAllServices(),
           getSupabaseMetrics(),
         ]);
-        respondHtml(res, 200, renderServiceStatusPanel(safeUser, services, supabaseMetrics));
+        respondHtml(res, 200, renderServiceStatusPanel(services, supabaseMetrics));
         return;
       }
 
       if (path === '/api-status') {
         const user = await requireAuth(req, res);
         if (!user) return;
-        const safeUser = sanitizeOpsUserForHtml(user);
-        respondHtml(res, 200, renderApiStatusPanel(safeUser));
+        respondHtml(res, 200, renderApiStatusPanel());
         return;
       }
 
