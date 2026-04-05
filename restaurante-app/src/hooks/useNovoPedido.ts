@@ -22,7 +22,7 @@ import {
     resolveConfiguredSubcategories,
 } from '../utils/menuCategories';
 
-const CARDAPIO_CACHE_KEY = 'cardapio_cache_v2';
+const MENU_STORAGE_NAMESPACE_V2 = process.env.EXPO_PUBLIC_MENU_STORAGE_NAMESPACE_V2 ?? 'menu_data_v2';
 const MENU_REFRESH_WINDOW_MS = 30 * 60 * 1000;
 
 export const fixDecimal = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
@@ -316,7 +316,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                 return pTime > max ? pTime : max;
             }, 0) || Date.now();
 
-            await AsyncStorage.setItem(CARDAPIO_CACHE_KEY, JSON.stringify({
+            await AsyncStorage.setItem(MENU_STORAGE_NAMESPACE_V2, JSON.stringify({
                 data: novoCardapio,
                 pizzaConfig: newPizzaConfig, // Cache config too
                 pizzaSubcategories: resolvedPizzaSubcategories,
@@ -360,7 +360,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
             const latestServerUpdate = Math.max(lastProductUpdate, lastExtraUpdate);
 
             // 2. Get local cache info
-            const cached = await AsyncStorage.getItem(CARDAPIO_CACHE_KEY);
+            const cached = await AsyncStorage.getItem(MENU_STORAGE_NAMESPACE_V2);
             if (!cached) return true; // No cache, load full
 
             const parsedCache = JSON.parse(cached);

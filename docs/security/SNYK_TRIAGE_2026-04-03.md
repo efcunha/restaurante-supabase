@@ -113,3 +113,35 @@ Snyk triage snapshot (2026-04-03)
   - Enforcement de HTTPS em produção no ops
   - Allowlist estrita para argumento --env nos scripts phase12
 ```
+
+## Atualizacao 2026-04-04
+
+### Resolvido nesta rodada
+1. HardcodedNonCryptoSecret em hooks de menu (app/web)
+- Arquivos:
+  - `restaurante-app/src/hooks/useMenu.ts`
+  - `restaurante-app/src/hooks/useNovoPedido.ts`
+  - `restaurante-web/src/hooks/useMenu.ts`
+  - `restaurante-web/src/hooks/useNovoPedido.ts`
+- Acao: namespace de AsyncStorage passou a usar variavel de ambiente publica (`EXPO_PUBLIC_MENU_STORAGE_NAMESPACE*`) com fallback neutro nao sensivel.
+- Status: **Resolvido**.
+
+2. XSS em renders HTML dos paineis ops (customers/billing/metrics/etc.)
+- Arquivo: `restaurante-ops/src/index.ts`
+- Acao: respostas HTML centralizadas em helper com headers de hardening (`nosniff` + CSP), sanitizacao de user para HTML e eliminacao de dados de header no topo do painel.
+- Status: **Mitigado / sem findings nos pontos de painel originalmente reportados**.
+
+### Residual (falso positivo documentado)
+1. XSS em helper JSON no ops (`respondJson`)
+- Arquivo: `restaurante-ops/src/index.ts`
+- Contexto: fluxo heuristico `request URL -> JSON response sink` permanece reportado mesmo apos sanitizacao de URL, sanitizacao recursiva de payload e serializacao em buffer.
+- Acao aplicada:
+  - `sanitizeJsonValue` antes de serializar;
+  - URL sanitizada antes de parse e logs;
+  - respostas de erro e billing migradas para helper JSON seguro.
+- Status: **Falso positivo residual (monitorar)**.
+
+2. Cleartext Transmission em `createServer` (HTTP)
+- Arquivo: `restaurante-ops/src/index.ts`
+- Contexto: deploy com terminacao TLS no edge (Railway/proxy) + enforcement HTTPS em producao ja implementado.
+- Status: **Falso positivo arquitetural (documentado)**.
