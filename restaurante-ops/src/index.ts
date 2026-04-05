@@ -77,6 +77,30 @@ function sanitizePlainText(value: string | null | undefined): string {
   return String(value).replace(/[\u0000-\u001F\u007F]/g, '').trim();
 }
 
+function sanitizeRequestTarget(value: string | undefined): string {
+  const raw = sanitizePlainText(value || '/');
+  if (!raw.startsWith('/')) return '/';
+
+  const [pathPart, queryPart] = raw.split('?', 2);
+  if (!/^[A-Za-z0-9\-._~!$&'()*+,;=:@/%]*$/.test(pathPart)) {
+    return '/';
+  }
+
+  if (queryPart != null && !/^[A-Za-z0-9\-._~!$&'()*+,;=:@/?%]*$/.test(queryPart)) {
+    return pathPart || '/';
+  }
+
+  return queryPart != null ? `${pathPart}?${queryPart}` : pathPart;
+}
+
+function sanitizeQueryMessage(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const safe = sanitizePlainText(value)
+    .replace(/[<>"'`]/g, '')
+    .slice(0, 280);
+  return safe.length > 0 ? safe : null;
+}
+
 function sanitizeOpsUserForHtml(user: OpsUser): OpsUser {
   return {
     id: sanitizePlainText(user.id),
@@ -1602,6 +1626,12 @@ function isUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
+const BILLING_COMPANY_PATH_FRAGMENT = '([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})';
+const BILLING_AUDIT_PATH_RE = new RegExp(`^/ops/billing/company/${BILLING_COMPANY_PATH_FRAGMENT}/audit$`);
+const BILLING_SNAPSHOT_PATH_RE = new RegExp(`^/ops/billing/company/${BILLING_COMPANY_PATH_FRAGMENT}$`);
+const BILLING_CARD_PATH_RE = new RegExp(`^/ops/billing/company/${BILLING_COMPANY_PATH_FRAGMENT}/regularize/card$`);
+const BILLING_PIX_PATH_RE = new RegExp(`^/ops/billing/company/${BILLING_COMPANY_PATH_FRAGMENT}/regularize/pix$`);
+
 function validateReconcileInput(input: Partial<ReconcileInput>): string | null {
   if (!input.companyId || !input.idempotencyKey || !input.eventType || !input.paymentStatus) {
     return 'Campos obrigatorios: companyId, idempotencyKey, eventType, paymentStatus';
@@ -1699,13 +1729,12 @@ function startServer() {
     });
 
   const server = createServer(async (req, res) => {
-    const rawRequestUrl = sanitizePlainText(req.url || '/');
-    const safeRequestUrl = rawRequestUrl.startsWith('/') ? rawRequestUrl : '/';
+    const safeRequestUrl = sanitizeRequestTarget(req.url);
     const safePathForLog = sanitizePlainText(safeRequestUrl.split('?')[0] || '/');
 
     try {
       applySecurityHeaders(res);
-      const url = new URL(safeRequestUrl, 'http://localhost');
+      const url = new URL(safeRequestUrl, 'https://localhost');
       const path = url.pathname;
 
       if (enforceHttpsInProduction(req, res, path, url.search)) {
@@ -1896,8 +1925,8 @@ function startServer() {
           listOpsMfaUsers(opsCompanyId).catch(() => []),
           userHasVerifiedMfa(user.id).catch(() => false),
         ]);
-        const notice = url.searchParams.get('notice');
-        const error = url.searchParams.get('error');
+        const notice = sanitizeQueryMessage(url.searchParams.get('notice'));
+        const error = sanitizeQueryMessage(url.searchParams.get('error'));
         res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
         res.end(renderDashboardHtml(safeUser, {
           kpis,
@@ -2141,41 +2170,45 @@ function startServer() {
         const user = await requireAuth(req, res);
         if (!user) return;
 
-        const auditMatch = path.match(/^\/ops\/billing\/company\/([^/]+)\/audit$/);
+        const auditMatch = path.match(BILLING_AUDIT_PATH_RE);
         if (auditMatch) {
           const companyId = auditMatch[1];
           if (!isUuid(companyId)) {
             respondJson(res, 400, { error: 'companyId invalido. Informe UUID valido.' });
             return;
           }
+          const safeCompanyId = companyId.toLowerCase();
 
           const limitRaw = url.searchParams.get('limit');
           const limit = limitRaw ? Number.parseInt(limitRaw, 10) : 30;
-          const entries = await fetchBillingAudit(companyId, Number.isNaN(limit) ? 30 : limit);
+          const entries = await fetchBillingAudit(safeCompanyId, Number.isNaN(limit) ? 30 : limit);
 
           respondJson(res, 200, {
             ok: true,
             generatedAt: new Date().toISOString(),
-            companyId,
             count: entries.length,
             entries,
           });
           return;
         }
 
-        const snapshotMatch = path.match(/^\/ops\/billing\/company\/([^/]+)$/);
+        const snapshotMatch = path.match(BILLING_SNAPSHOT_PATH_RE);
         if (snapshotMatch) {
           const companyId = snapshotMatch[1];
           if (!isUuid(companyId)) {
             respondJson(res, 400, { error: 'companyId invalido. Informe UUID valido.' });
             return;
           }
+          const safeCompanyId = companyId.toLowerCase();
 
-          const snapshot = await fetchBillingSnapshot(companyId);
+          const snapshot = await fetchBillingSnapshot(safeCompanyId);
           respondJson(res, 200, {
             ok: true,
             generatedAt: new Date().toISOString(),
-            snapshot,
+            snapshot: {
+              ...snapshot,
+              companyId: safeCompanyId,
+            },
           });
           return;
         }
@@ -2228,13 +2261,14 @@ function startServer() {
           return;
         }
 
-        const cardMatch = path.match(/^\/ops\/billing\/company\/([^/]+)\/regularize\/card$/);
+        const cardMatch = path.match(BILLING_CARD_PATH_RE);
         if (cardMatch) {
           const companyId = cardMatch[1];
           if (!isUuid(companyId)) {
             respondJson(res, 400, { error: 'companyId invalido. Informe UUID valido.' });
             return;
           }
+          const safeCompanyId = companyId.toLowerCase();
 
           const body = parseJsonBody<{ invoiceId?: string }>(await readBody(req));
           if (body.invoiceId && !isUuid(body.invoiceId)) {
@@ -2243,7 +2277,7 @@ function startServer() {
           }
 
           try {
-            const result = await regularizeByCard(companyId, user.id, body.invoiceId);
+            const result = await regularizeByCard(safeCompanyId, user.id, body.invoiceId);
             respondJson(res, 200, result);
           } catch (err) {
             respondBillingError(res, err);
@@ -2251,13 +2285,14 @@ function startServer() {
           return;
         }
 
-        const pixMatch = path.match(/^\/ops\/billing\/company\/([^/]+)\/regularize\/pix$/);
+        const pixMatch = path.match(BILLING_PIX_PATH_RE);
         if (pixMatch) {
           const companyId = pixMatch[1];
           if (!isUuid(companyId)) {
             respondJson(res, 400, { error: 'companyId invalido. Informe UUID valido.' });
             return;
           }
+          const safeCompanyId = companyId.toLowerCase();
 
           const body = parseJsonBody<{ invoiceId?: string }>(await readBody(req));
           if (body.invoiceId && !isUuid(body.invoiceId)) {
@@ -2266,7 +2301,7 @@ function startServer() {
           }
 
           try {
-            const result = await regularizeByPix(companyId, user.id, body.invoiceId);
+            const result = await regularizeByPix(safeCompanyId, user.id, body.invoiceId);
             respondJson(res, 200, result);
           } catch (err) {
             respondBillingError(res, err);
