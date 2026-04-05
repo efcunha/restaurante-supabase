@@ -8,6 +8,7 @@ Scripts específicos do app mobile React Native / Expo.
   - `build-android.sh`
   - `clean-gradle.sh`
   - `reinstall-sdk.sh`
+  - `deploy-eas.sh` (dispara build EAS Android/iOS)
 - assets / ícones / splash:
   - `generate-android-icons.js`
   - `generate-android-icons.sh`
@@ -28,3 +29,20 @@ Scripts específicos do app mobile React Native / Expo.
 
 - manter aqui apenas scripts que afetam exclusivamente o app mobile
 - scripts de monorepo devem ficar em `scripts/`
+
+## Deploy EAS (app)
+
+Script principal:
+- `scripts/deploy-eas.sh`
+
+Comportamento padrão:
+- Executar sem argumentos dispara build para `android` e `ios` (profile `preview`, `wait=false`).
+
+Comandos npm:
+- `npm run deploy:eas` (android + ios)
+- `npm run deploy:eas:android`
+- `npm run deploy:eas:ios`
+
+Exemplos diretos:
+- `bash scripts/deploy-eas.sh`
+- `bash scripts/deploy-eas.sh production true --platform ios`

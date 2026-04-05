@@ -24,7 +24,7 @@ Inventário estrutural dos scripts do monorepo após a reorganização de docume
 
 ### Projetos
 
-- `restaurante-app/scripts/`: build, assets, debug, seeds, phase12
+- `restaurante-app/scripts/`: build, deploy EAS, assets, debug, seeds, phase12
 - `restaurante-web/scripts/`: deploy e phase12
 - `restaurante-ops/scripts/`: deploy, inspeção e rate-limit smoke
 
@@ -46,9 +46,15 @@ Referências consistentes encontradas:
 
 Referências consistentes encontradas:
 - `scripts/phase12-profile.js`
+- `scripts/deploy-eas.sh`
 - `scripts/fix-icon-padding.js`
 - `scripts/generate-android-icons.js`
 - `scripts/update-splash-screen.js`
+
+Comandos de deploy EAS no app:
+- `deploy:eas` (padrão: android + ios)
+- `deploy:eas:android`
+- `deploy:eas:ios`
 
 ## 3. Inconsistências encontradas
 

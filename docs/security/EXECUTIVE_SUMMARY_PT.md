@@ -3,6 +3,15 @@
 
 ---
 
+## Aviso de Contexto
+
+Este documento e um snapshot historico da auditoria de 23/03/2026.
+Para status operacional atual, usar como fonte de verdade:
+- `SECURITY_REMEDIATION_WEEKLY_STATUS_2026-Q2.md`
+- `SECURITY_REMEDIATION_PLAN_2026-Q2.md`
+
+---
+
 ## STATUS GERAL: 🔴 CRÍTICO — AÇÃO IMEDIATA REQUERIDA
 
 **Score de Segurança:** 58/100  
