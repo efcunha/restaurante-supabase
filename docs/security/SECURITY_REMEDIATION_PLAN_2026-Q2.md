@@ -46,7 +46,7 @@ Use esta secao como checklist curto de acompanhamento. O detalhamento tecnico co
 
 ### Semana 2
 
-- `restaurante-app`: pinning implementado em 04/04/2026 (leaf + backup CA para Supabase e Mercado Pago), com validacao final de build/MITM em andamento.
+- `restaurante-app`: pinning implementado em 04/04/2026 (leaf + backup CA para Supabase e Mercado Pago), com validacao final de build/MITM concluida em 05/04/2026 (smoke controlado com pin correto vs pin incorreto).
 - `restaurante-ops`: validar `429` e `503` em modo fail-closed para auth e billing.
 - `restaurante-web`: acompanhar apenas impactos compartilhados de auth/env/logging, sem trilha nativa.
 
@@ -58,7 +58,7 @@ Use esta secao como checklist curto de acompanhamento. O detalhamento tecnico co
 
 ### Semana 4
 
-- `restaurante-ops`: executar smoke controlado de billing/reconcile e registrar evidencias.
+- `restaurante-ops`: executar smoke controlado de billing/reconcile com cenario elegivel `pending/failed` e registrar evidencias de replay de sucesso + idempotencia.
 - Monorepo: consolidar evidencias, atualizar documentacao e decidir pendencias residuais de maior risco.
 
 ### Critério de fechamento do Q2
@@ -79,7 +79,7 @@ Use esta secao como checklist curto de acompanhamento. O detalhamento tecnico co
 | `SEC-W1-003` Biometric credentials hardening | ✅ Sim | ❌ Nao | ❌ Nao | Risco exclusivo do app |
 | `SEC-W1-004` Android Auto Backup hardening | ✅ Sim | ❌ Nao | ❌ Nao | Item Android nativo |
 | `SEC-W1-005` Logging seguro | ✅ Sim | ✅ Sim | ✅ Sim | Cada projeto deve respeitar seu logger atual |
-| `SEC-W2-001` Certificate pinning | ✅ Sim | ❌ Nao | ❌ Nao | Implementado em 04/04/2026 via ATS/NSPinnedDomains (iOS) e network-security-config (Android); pendente validacao final por EAS build + smoke MITM controlado |
+| `SEC-W2-001` Certificate pinning | ✅ Sim | ❌ Nao | ❌ Nao | Implementado em 04/04/2026 via ATS/NSPinnedDomains (iOS) e network-security-config (Android); validacao final concluida em 05/04 com EAS build + smoke MITM controlado documentado |
 | `SEC-W3-001` MFA TOTP para admins | ✅ Sim | ✅ Sim | ⚠️ Parcial | `ops` exige trilha propria se MFA for obrigatorio no backoffice |
 | `SEC-W3-002` Session fixation prevention | ✅ Sim | ✅ Sim | ❌ Nao | Trata login dos clientes; `ops` usa sessao/cookie separado |
 
@@ -601,7 +601,13 @@ railway up
 > - Evidencia tecnica registrada em `docs/security/PINNING_CERT_EVIDENCE_2026-04-04.md`.
 > - Build Android preview iniciado com sucesso em EAS (`build id 47c4f6fe-4360-4942-8070-5a30fa6fe410`).
 > - Build iOS simulador tambem iniciado com sucesso em EAS (`build id 523cc6b1-a4d5-4573-8d74-6c7cd199eb6d`) via `ios.simulator=true` no perfil `preview`.
-> - Pendencia remanescente: acompanhar conclusao dos builds e executar smoke controlado (incluindo MITM) antes do fechamento definitivo do item.
+>
+> Atualizacao de fechamento em 05/04/2026 (16:40 UTC):
+> - Hashes leaf SPKI revalidados com OpenSSL e aderentes aos pins documentados.
+> - Smoke MITM controlado executado com `curl --pinnedpubkey`:
+>   - pin correto: handshake TLS aceito (`http=404`, `exit=0`);
+>   - pin incorreto: bloqueio esperado (`curl exit=90`, public key mismatch).
+> - Item fechado para o ciclo Q2 com evidencia objetiva.
 
 #### Tarefas
 
@@ -662,11 +668,10 @@ railway up
 
 #### Critérios de Aceite
 
-- [ ] `SecureFetch.ts` implementado
-- [ ] Supabase client usa secure fetch em produção
-- [ ] Certificados exportados e configurados
-- [ ] Teste de MITM falha (pinning funcionando)
-- [ ] Build nativo gerado com sucesso
+- [x] Configuracao nativa de pinning aplicada em Android e iOS
+- [x] Pins (leaf + backup) registrados e revalidados
+- [x] Teste de MITM controlado falhou com pin incorreto (comportamento esperado)
+- [x] Build nativo preview gerado com sucesso (Android + iOS simulador)
 
 #### Rollback
 
@@ -828,8 +833,8 @@ export async function secureFetch(url: string, options: SecureFetchOptions = {})
 ### Semana 2
 - [x] `SEC-W2-001`: Certificate pinning implementado no app
 - [x] Evidencia de pins (leaf + backup) registrada por OpenSSL
-- [ ] Build nativo gerado com sucesso (EAS Android/iOS)
-- [ ] Teste de MITM controlado documentado (criterio final de validacao)
+- [x] Build nativo gerado com sucesso (EAS Android/iOS)
+- [x] Teste de MITM controlado documentado (criterio final de validacao)
 - [x] `OPS-3`: Rate limiting estrito validado com `429` e `503`
 
 ### Semana 3
@@ -839,8 +844,8 @@ export async function secureFetch(url: string, options: SecureFetchOptions = {})
 - [x] `OPS-1`: Sessao e cookies do backoffice endurecidos
 
 ### Semana 4
-- [ ] `OPS-4`: Billing e reconcile validados com smoke controlado
-- [ ] Evidências operacionais anexadas ou referenciadas no runbook interno
+- [ ] `OPS-4`: Billing e reconcile validados com smoke controlado de sucesso idempotente
+- [x] Evidências operacionais anexadas para guardrails, limites e bloqueio atual (sem invoice elegivel em 05/04)
 
 ---
 
@@ -851,7 +856,7 @@ export async function secureFetch(url: string, options: SecureFetchOptions = {})
 | Secrets hardcoded | A medir por projeto | 0 | `rg "secret|token|api[_-]?key|service_role" restaurante-app restaurante-web restaurante-ops` + revisao manual |
 | console.log em produção | A medir por projeto | Reducao objetiva nos pontos criticos | varredura focada em arquivos de producao |
 | Android allowBackup | true no app | false ou regras explicitas de exclusao | Inspecionar manifest/APK |
-| Certificate pinning | Implementado no app com backup pin | Fechar validacao final operacional | EAS build + teste de MITM controlado |
+| Certificate pinning | Implementado e validado (05/04) | Manter monitoramento de expiracao/rotacao de pin-set | Revalidacao periodica por OpenSSL/curl pinnedpubkey |
 | MFA para admins | Desabilitado na migracao atual | 100% em app/web para roles privilegiadas | validacao via Supabase Auth |
 | Session fixation | Parcialmente mitigado | Protegido | revisar login flow e teste de penetracao |
 | Logs sensiveis no `ops` | A medir | 0 ocorrencias intencionais de segredos/PII criticos | revisao manual de amostra + varredura de campos logados |

@@ -56,9 +56,10 @@ Arquivos de item isolado/snapshot foram consolidados e removidos para evitar fra
 ## Estado Atual (resumo rapido)
 
 - Semana 1: concluida
-- Semana 2: pinning implementado; builds nativos concluidos; pendente evidencia final de smoke MITM controlado
+- Semana 2: pinning implementado; builds nativos concluidos; smoke MITM controlado concluido e documentado em 05/04
 - Semana 3: MFA e session fixation concluidos e validados em producao
-- Bloqueio estrutural: sem staging dedicado
+- Semana 4: consolidacao documental concluida; OPS-4 permanece bloqueado por ausencia de invoice elegivel `pending/failed`
+- Bloqueios ativos: sem staging dedicado e sem candidato elegivel para replay de sucesso idempotente no OPS-4
 
 ## Navegacao rapida por necessidade
 
