@@ -1160,6 +1160,15 @@ function renderServiceStatusTab(
     <p style="color:var(--ink-500);font-size:13px;margin-bottom:10px;">
       Endereços e paths são persistidos no banco em <strong>ops_monitored_services</strong>. Alterações aqui entram em vigor sem redeploy.
     </p>
+    <div style="background:#f5f7fa;border-left:4px solid #0c7a96;padding:12px;border-radius:8px;margin-bottom:12px;font-size:12px;color:#516675;">
+      <strong style="color:#1d2a35;">Campos editáveis:</strong>
+      <ul style="margin-top:6px;margin-left:16px;">
+        <li><strong>Timeout (ms)</strong> — tempo máximo de espera (500–30000 ms)</li>
+        <li><strong>HTTP esperado (min/max)</strong> — códigos HTTP considerados 'online' (100–599)</li>
+        <li><strong>Método</strong> — GET ou HEAD para o health check</li>
+        <li><strong>Ativo</strong> — marque para habilitar monitoramento, desmarque para pausar</li>
+      </ul>
+    </div>
     <div style="overflow-x:auto;">
       <table class="table">
         <thead>
@@ -1169,8 +1178,8 @@ function renderServiceStatusTab(
             <th>Base URL</th>
             <th>Path</th>
             <th>Método</th>
-            <th>Timeout (ms)</th>
-            <th>HTTP esperado (min/max)</th>
+            <th title="Tempo máximo de espera (ms)">Timeout (ms)</th>
+            <th title="Faixa de HTTP esperada (min-max)">HTTP esperado (min/max)</th>
             <th>Ativo</th>
             <th>Ação</th>
           </tr>
@@ -1301,26 +1310,72 @@ function renderServiceStatusTab(
 // ────────────────────────────────────────────────────────────
 // TAB: API STATUS
 // ────────────────────────────────────────────────────────────
-function renderApiStatusTab(): string {
-  const payload = {
-    service: 'restaurante-ops',
-    modules: ['customers', 'billing', 'metrics'],
-    status: 'operational',
-  };
+function renderApiStatusTab(apiStatus?: { service: string; env: string; status: string; lastChecked: string; services: Array<{ name: string; status: string; responseTime?: number; statusCode?: number; detail?: string }> }): string {
+  if (!apiStatus) {
+    return `
+    <section class="panel">
+      <h2>Erro ao carregar status</h2>
+      <p style="color:#991b1b;font-size:13px;">Nao foi possivel obter o status atual da API. Tente recarregar a pagina.</p>
+    </section>`;
+  }
+
+  const statusColor = apiStatus.status === 'operational' ? '#14532d' : apiStatus.status === 'degraded' ? '#b45309' : '#991b1b';
+  const statusBg = apiStatus.status === 'operational' ? '#f0fdf4' : apiStatus.status === 'degraded' ? '#fef3c7' : '#fef2f2';
+  const statusLabel = apiStatus.status === 'operational' ? 'Operacional' : apiStatus.status === 'degraded' ? 'Degradado' : 'Indisponível';
+  
+  const serviceRows = apiStatus.services
+    .map(
+      (svc) => `<tr>
+        <td><strong>${escapeHtml(svc.name)}</strong></td>
+        <td>${svc.status === 'online' ? '<span class="pill pill-ok">Online</span>' : svc.status === 'offline' ? '<span class="pill pill-error">Offline</span>' : '<span class="pill pill-warn">Unknown</span>'}</td>
+        <td>${svc.responseTime ? svc.responseTime + 'ms' : '—'}</td>
+        <td>${svc.statusCode ? 'HTTP ' + svc.statusCode : '—'}</td>
+        <td style="font-size:12px;color:#516675;">${escapeHtml(svc.detail ?? '—')}</td>
+      </tr>`,
+    )
+    .join('');
 
   return `
   <section class="panel">
-    <h2>Payload atual</h2>
-    <p style="color:var(--ink-500);font-size:13px;margin-bottom:8px;">Este JSON é o retorno do endpoint público <strong>/api/status</strong>.</p>
-    <pre class="mono" style="background:#f7fbfe;padding:12px;border-radius:8px;overflow-x:auto;border:1px solid #e5eef4;">${escapeHtml(JSON.stringify(payload, null, 2))}</pre>
+    <h2>Status agregado da API</h2>
+    <div style="background:${statusBg};border-left:4px solid ${statusColor};padding:16px;border-radius:8px;margin-bottom:16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="font-size:12px;font-weight:700;color:${statusColor};text-transform:uppercase;">Status atual</div>
+          <div style="font-size:24px;font-weight:700;color:${statusColor};margin-top:4px;">${statusLabel}</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:11px;color:#516675;">Última verificação</div>
+          <div style="font-size:13px;font-weight:500;color:#1d2a35;margin-top:4px;">${new Date(apiStatus.lastChecked).toLocaleString('pt-BR')}</div>
+        </div>
+      </div>
+    </div>
+    <p style="color:var(--ink-500);font-size:13px;">Status derivado de verificacoes de saude em tempo real dos servicos monitorados. Atualizado a cada requisicao.</p>
+  </section>
+
+  <section class="panel">
+    <h2>Servicos monitorados</h2>
+    <table class="table">
+      <thead>
+        <tr><th>Servico</th><th>Status</th><th>Tempo de resposta</th><th>HTTP</th><th>Detalhe</th></tr>
+      </thead>
+      <tbody>
+        ${serviceRows.length === 0 ? '<tr><td colspan="5" style="text-align:center;color:#516675;">Nenhum servico monitorado configurado.</td></tr>' : serviceRows}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="panel">
+    <h2>Payload do endpoint publico</h2>
+    <p style="color:var(--ink-500);font-size:13px;margin-bottom:8px;">Este JSON e o retorno de <strong>GET /api/status</strong> (sem autenticacao).</p>
+    <pre class="mono" style="background:#f7fbfe;padding:12px;border-radius:8px;overflow-x:auto;border:1px solid #e5eef4;font-size:11px;">${escapeHtml(JSON.stringify(apiStatus, null, 2))}</pre>
   </section>
 
   <section class="panel">
     <h2>Acoes rapidas de diagnostico</h2>
-    <p style="color:var(--ink-500);font-size:13px;margin-bottom:8px;">Use os comandos abaixo para monitoramento basico.</p>
+    <p style="color:var(--ink-500);font-size:13px;margin-bottom:8px;">Use os comandos abaixo para monitoramento publico.</p>
     <pre class="mono" style="background:#f7fbfe;padding:12px;border-radius:8px;overflow-x:auto;border:1px solid #e5eef4;">curl -sS https://ops.restaurante-web.app.br/healthz
-curl -sS https://ops.restaurante-web.app.br/api/status</pre>
-    <p style="margin-top:8px;">Status sugerido: <span class="pill pill-ok">Operacional</span></p>
+curl -sS https://ops.restaurante-web.app.br/api/status | jq .</pre>
   </section>`;
 }
 
@@ -1344,6 +1399,8 @@ export interface ObsDashboardOptions {
   traceType?: 'request' | 'order';
   // alerts tab
   alerts?: AlertRow[];
+  // api-status tab
+  apiStatus?: { service: string; env: string; status: string; lastChecked: string; services: Array<{ name: string; status: string; responseTime?: number; statusCode?: number; detail?: string }> };
   // service-status tab
   services?: ServiceStatus[];
   supabaseMetrics?: SupabaseMetrics;
@@ -1367,6 +1424,7 @@ export function renderObservabilityHtml(opts: ObsDashboardOptions): string {
     traceId = '',
     traceType = 'request',
     alerts = [],
+    apiStatus = undefined,
     services = [],
     supabaseMetrics = { status: 'unknown' } as SupabaseMetrics,
     monitoredServices = [],
@@ -1392,7 +1450,7 @@ export function renderObservabilityHtml(opts: ObsDashboardOptions): string {
       canManageObservabilitySettings,
     );
   } else if (tab === 'api-status') {
-    tabContent = renderApiStatusTab();
+    tabContent = renderApiStatusTab(apiStatus);
   } else {
     tabContent = renderLogsTab(logs, logsTotal, logsFilters);
   }

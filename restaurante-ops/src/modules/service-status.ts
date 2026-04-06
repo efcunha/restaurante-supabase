@@ -326,3 +326,50 @@ export async function checkAllServices(): Promise<ServiceStatus[]> {
 
   return Promise.all(services.map((service) => checkServiceHealth(service)));
 }
+
+export type AggregatedServiceStatus = 'operational' | 'degraded' | 'down';
+
+export interface ApiStatusPayload {
+  service: string;
+  env: string;
+  status: AggregatedServiceStatus;
+  lastChecked: string;
+  services: Array<{
+    name: string;
+    key?: string;
+    status: 'online' | 'offline' | 'unknown';
+    responseTime?: number;
+    statusCode?: number;
+    detail?: string;
+  }>;
+}
+
+export async function getApiStatus(): Promise<ApiStatusPayload> {
+  const serviceStatuses = await checkAllServices();
+  
+  // Agregacao: operational se todos online, degraded se mistura, down se nenhum essencial online
+  const onlineCount = serviceStatuses.filter((s) => s.status === 'online').length;
+  const offlineCount = serviceStatuses.filter((s) => s.status === 'offline').length;
+  
+  let aggregatedStatus: AggregatedServiceStatus = 'operational';
+  if (offlineCount > 0 && onlineCount > 0) {
+    aggregatedStatus = 'degraded';
+  } else if (offlineCount > 0 && onlineCount === 0) {
+    aggregatedStatus = 'down';
+  }
+
+  return {
+    service: 'restaurante-ops',
+    env: env.OPS_ENV,
+    status: aggregatedStatus,
+    lastChecked: new Date().toISOString(),
+    services: serviceStatuses.map((s) => ({
+      name: s.name,
+      key: s.key,
+      status: s.status,
+      responseTime: s.responseTime,
+      statusCode: s.statusCode,
+      detail: s.detail,
+    })),
+  };
+}

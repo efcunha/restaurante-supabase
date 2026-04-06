@@ -40,7 +40,9 @@ import {
   checkAllServices,
   listMonitoredServicesConfig,
   updateMonitoredServiceConfig,
+  getApiStatus,
   type ServiceStatus,
+  type ApiStatusPayload,
 } from './modules/service-status.js';
 import { getSupabaseMetrics, type SupabaseMetrics } from './modules/supabase-metrics.js';
 import { logError, logInfo, logWarn } from './lib/logger.js';
@@ -1874,14 +1876,18 @@ function startServer() {
       }
 
       if (path === '/api/status') {
-        res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
-        res.end(
-          JSON.stringify({
-            service: 'restaurante-ops',
-            modules: ['customers', 'billing', 'metrics'],
-            env: env.OPS_ENV,
-          }),
-        );
+        try {
+          const statusPayload = await getApiStatus();
+          res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify(statusPayload));
+        } catch (err) {
+          logError('observability.api_status_failed', {
+            request_id: requestId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+          res.writeHead(500, { 'content-type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ error: 'Falha ao obter status da API.' }));
+        }
         return;
       }
 
@@ -2823,7 +2829,8 @@ function startServer() {
             opts.observabilitySettings = observabilitySettings;
             opts.canManageObservabilitySettings = user.role === 'admin';
           } else if (tab === 'api-status') {
-            // API status não requer dados externos, renderização fixa
+            const statusPayload = await getApiStatus();
+            opts.apiStatus = statusPayload;
           }
 
           respondHtml(res, 200, renderObservabilityHtml(opts));
