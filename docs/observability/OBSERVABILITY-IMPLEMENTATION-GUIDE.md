@@ -396,6 +396,36 @@ Resposta:
 }
 ```
 
+#### Exemplo: `GET /api/observability/settings`
+
+Resposta:
+```json
+{
+  "ok": true,
+  "settings": {
+    "logRetentionDays": 30,
+    "staleMinutes": 60,
+    "source": "panel",
+    "envDefaultDays": 30,
+    "envDefaultStaleMinutes": 60
+  }
+}
+```
+
+#### Exemplo: `PUT /api/observability/settings/retention`
+
+Body (admin):
+```json
+{
+  "retention_days": 30,
+  "stale_minutes": 60
+}
+```
+
+Observações:
+- É possível enviar apenas `retention_days`, apenas `stale_minutes` ou ambos.
+- Se ambos estiverem ausentes/inválidos, a API retorna erro de validação.
+
 Resposta com timeline (`include_timeline=true`):
 ```json
 {
