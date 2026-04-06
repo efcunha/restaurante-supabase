@@ -32,7 +32,12 @@ import {
   type SubscriptionBreakdown,
   type KpiCounts,
 } from './modules/data.js';
-import { checkAllServices, type ServiceStatus } from './modules/service-status.js';
+import {
+  checkAllServices,
+  listMonitoredServicesConfig,
+  updateMonitoredServiceConfig,
+  type ServiceStatus,
+} from './modules/service-status.js';
 import { getSupabaseMetrics, type SupabaseMetrics } from './modules/supabase-metrics.js';
 import { logError, logInfo, logWarn } from './lib/logger.js';
 import { initRedis, checkRedisHealth } from './lib/redis.js';
@@ -1099,8 +1104,6 @@ function renderQuickActionPanel(
         <a class="nav-link" href="/customers">Gerenciar clientes</a>
         <a class="nav-link" href="/billing">Faturamento e invoices</a>
         <a class="nav-link" href="/billing/plan-config">Preço do plano</a>
-        <a class="nav-link" href="/service-status">Estado do servico</a>
-        <a class="nav-link" href="/api-status">API status JSON</a>
       </nav>
 
       ${body}
@@ -1534,105 +1537,6 @@ function renderMetricsPanel(
         </thead>
         <tbody>${revenueRows}</tbody>
       </table>
-    </section>`,
-  );
-}
-
-function renderServiceStatusPanel(services: ServiceStatus[], supabaseMetrics: SupabaseMetrics): string {
-  const serviceRows = services
-    .map(
-      (svc) =>
-        `<tr>
-          <td>${escapeHtml(svc.name)}</td>
-          <td>${svc.status === 'online' ? '<span class="pill ok">Online</span>' : svc.status === 'offline' ? '<span class="pill error">Offline</span>' : '<span class="pill warn">Unknown</span>'}</td>
-          <td>${svc.responseTime ? svc.responseTime + 'ms' : '—'}</td>
-          <td>${svc.url ? `<a href="${escapeHtml(svc.url)}" target="_blank" rel="noreferrer">Check</a>` : '—'}</td>
-          <td>${escapeHtml(svc.detail ?? '—')}</td>
-        </tr>`,
-    )
-    .join('');
-
-  const supabaseStatus = supabaseMetrics.status === 'online' ? '<span class="pill ok">Online</span>' : '<span class="pill error">Offline</span>';
-  const supabaseConnections = supabaseMetrics.activeConnections !== undefined ? `${supabaseMetrics.activeConnections} conexões` : '—';
-  const supabaseSize = supabaseMetrics.databaseSize ?? '—';
-  const supabaseTime = supabaseMetrics.responseTime ? `${supabaseMetrics.responseTime}ms` : '—';
-
-  return renderQuickActionPanel(
-    'Estado do servico',
-    'Status do runtime de todos os servicos e endpoints essenciais de operacao.',
-    `<section class="panel">
-      <h2>Saude operacional</h2>
-      <div class="grid">
-        <article class="metric">
-          <div class="metric-label">Ambiente</div>
-          <div class="metric-value">${escapeHtml(String(env.OPS_ENV ?? ''))}</div>
-          <div class="metric-hint">Runtime atual</div>
-        </article>
-        <article class="metric">
-          <div class="metric-label">Servicos online</div>
-          <div class="metric-value">${services.filter((s) => s.status === 'online').length}/${services.length}</div>
-          <div class="metric-hint">Disponibilidade</div>
-        </article>
-        <article class="metric">
-          <div class="metric-label">Banco de dados</div>
-          <div class="metric-value">${supabaseStatus}</div>
-          <div class="metric-hint">Supabase Postgres</div>
-        </article>
-      </div>
-    </section>
-
-    <section class="panel">
-      <h2>Status de servicos HTTP</h2>
-      <table class="table">
-        <thead>
-          <tr><th>Servico</th><th>Status</th><th>Tempo de resposta</th><th>Endpoint</th><th>Detalhe</th></tr>
-        </thead>
-        <tbody>
-          ${serviceRows}
-        </tbody>
-      </table>
-    </section>
-
-    <section class="panel">
-      <h2>Metricas do banco de dados</h2>
-      <table class="table">
-        <thead>
-          <tr><th>Metrica</th><th>Valor</th><th>Tempo de resposta</th></tr>
-        </thead>
-        <tbody>
-          <tr><td>Status da conexao</td><td>${supabaseStatus}</td><td>${supabaseTime}</td></tr>
-          <tr><td>Conexoes ativas</td><td>${supabaseConnections}</td><td>—</td></tr>
-          <tr><td>Tamanho do banco</td><td>${escapeHtml(supabaseSize)}</td><td>—</td></tr>
-        </tbody>
-      </table>
-      ${supabaseMetrics.detail ? `<p style="color:#516675;font-size:13px;margin-top:8px;">Detalhe: ${escapeHtml(supabaseMetrics.detail)}</p>` : ''}
-      ${supabaseMetrics.error ? `<p style="color:#dc2626;font-size:13px;margin-top:8px;">Erro: ${escapeHtml(supabaseMetrics.error)}</p>` : ''}
-    </section>`,
-  );
-}
-
-function renderApiStatusPanel(): string {
-  const payload = {
-    service: 'restaurante-ops',
-    modules: ['customers', 'billing', 'metrics'],
-    env: env.OPS_ENV,
-  };
-
-  return renderQuickActionPanel(
-    'API status JSON',
-    'Visualizacao do payload tecnico para diagnostico e automacoes.',
-    `<section class="panel">
-      <h2>Payload atual</h2>
-      <p>Este JSON e o retorno do endpoint publico <strong>/api/status</strong>.</p>
-      <pre class="mono">${escapeHtml(JSON.stringify(payload, null, 2))}</pre>
-    </section>
-
-    <section class="panel">
-      <h2>Acoes rapidas de diagnostico</h2>
-      <p>Use os comandos abaixo para monitoramento basico.</p>
-      <pre class="mono">curl -sS ${escapeHtml(env.OPS_PUBLIC_BASE_URL)}/healthz
-curl -sS ${escapeHtml(env.OPS_PUBLIC_BASE_URL)}/api/status</pre>
-      <p style="margin-top:8px;">Status sugerido: <span class="pill ok">Operacional</span></p>
     </section>`,
   );
 }
@@ -2669,6 +2573,58 @@ function startServer() {
         return;
       }
 
+      if (req.method === 'PUT' && path.startsWith('/api/observability/monitored-services/')) {
+        const user = await requireAuth(req, res);
+        if (!user) return;
+
+        if (user.role !== 'admin') {
+          respondJson(res, 403, { error: 'Acesso negado. Somente admin pode editar endpoints monitorados.' });
+          return;
+        }
+
+        const serviceKey = sanitizePlainText(path.replace('/api/observability/monitored-services/', ''));
+        if (!serviceKey) {
+          respondJson(res, 400, { error: 'service_key obrigatorio.' });
+          return;
+        }
+
+        try {
+          const rawBody = await readBody(req);
+          const body = parseJsonBody<Record<string, unknown>>(rawBody);
+
+          const baseUrl = sanitizePlainText(String(body.base_url ?? ''));
+          const healthPath = sanitizePlainText(String(body.health_path ?? '/'));
+          const method = sanitizePlainText(String(body.method ?? 'GET')).toUpperCase();
+          const timeoutMs = Number.parseInt(String(body.timeout_ms ?? '5000'), 10);
+          const expectedStatusMin = Number.parseInt(String(body.expected_status_min ?? '200'), 10);
+          const expectedStatusMax = Number.parseInt(String(body.expected_status_max ?? '399'), 10);
+          const enabled = body.enabled !== false;
+
+          const updated = await updateMonitoredServiceConfig({
+            service_key: serviceKey,
+            base_url: baseUrl,
+            health_path: healthPath,
+            method: method === 'HEAD' ? 'HEAD' : 'GET',
+            timeout_ms: Number.isNaN(timeoutMs) ? 5000 : timeoutMs,
+            expected_status_min: Number.isNaN(expectedStatusMin) ? 200 : expectedStatusMin,
+            expected_status_max: Number.isNaN(expectedStatusMax) ? 399 : expectedStatusMax,
+            enabled,
+          });
+
+          respondJson(res, 200, { ok: true, service: updated });
+        } catch (err) {
+          logError('observability.monitored_service_update_failed', {
+            request_id: requestId,
+            service_key: serviceKey,
+            error: err instanceof Error ? err.message : String(err),
+          });
+          respondJson(res, 400, {
+            error: err instanceof Error ? err.message : 'Nao foi possivel atualizar servico monitorado.',
+          });
+        }
+        return;
+      }
+
       // ---- Webhooks de integracao (Activepieces + Evolution) ----
       if (req.method === 'POST' && path === '/webhooks/activepieces') {
         await handleActivepiecesWebhook(req, res, requestId);
@@ -2741,6 +2697,18 @@ function startServer() {
             }
           } else if (tab === 'alerts') {
             opts.alerts = await listAlerts();
+          } else if (tab === 'service-status') {
+            const [services, supabaseMetrics, monitoredServices] = await Promise.all([
+              checkAllServices(),
+              getSupabaseMetrics(),
+              listMonitoredServicesConfig(),
+            ]);
+            opts.services = services;
+            opts.supabaseMetrics = supabaseMetrics;
+            opts.monitoredServices = monitoredServices;
+            opts.canManageMonitoredServices = user.role === 'admin';
+          } else if (tab === 'api-status') {
+            // API status não requer dados externos, renderização fixa
           }
 
           respondHtml(res, 200, renderObservabilityHtml(opts));
@@ -3246,23 +3214,7 @@ function startServer() {
         return;
       }
 
-      if (path === '/service-status') {
-        const user = await requireAuth(req, res);
-        if (!user) return;
-        const [services, supabaseMetrics] = await Promise.all([
-          checkAllServices(),
-          getSupabaseMetrics(),
-        ]);
-        respondHtml(res, 200, renderServiceStatusPanel(services, supabaseMetrics));
-        return;
-      }
 
-      if (path === '/api-status') {
-        const user = await requireAuth(req, res);
-        if (!user) return;
-        respondHtml(res, 200, renderApiStatusPanel());
-        return;
-      }
 
       // ---- Modo legacy: homepage publica ----
       if (path === '/home') {

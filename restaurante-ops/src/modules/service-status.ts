@@ -5,7 +5,7 @@ const env = buildEnv();
 
 type HealthMethod = 'GET' | 'HEAD';
 
-interface MonitoredServiceConfig {
+export interface MonitoredServiceConfig {
   service_key: string;
   service_name: string;
   base_url: string;
@@ -152,6 +152,93 @@ async function loadMonitoredServicesConfig(): Promise<MonitoredServiceConfig[]> 
     .filter((row): row is MonitoredServiceConfig => row != null);
 
   return normalized.length > 0 ? normalized : defaults;
+}
+
+export async function listMonitoredServicesConfig(): Promise<MonitoredServiceConfig[]> {
+  const defaults = getDefaultMonitoredServices();
+
+  const { data, error } = await supabase
+    .from('ops_monitored_services')
+    .select(
+      'service_key, service_name, base_url, health_path, method, timeout_ms, enabled, display_order, expected_status_min, expected_status_max',
+    )
+    .order('display_order', { ascending: true });
+
+  if (error || !data) {
+    return defaults;
+  }
+
+  const normalized = data
+    .map((row) => normalizeConfigRow(row as Record<string, unknown>))
+    .filter((row): row is MonitoredServiceConfig => row != null);
+
+  return normalized.length > 0 ? normalized : defaults;
+}
+
+export interface UpdateMonitoredServiceInput {
+  service_key: string;
+  base_url: string;
+  health_path: string;
+  method: HealthMethod;
+  timeout_ms: number;
+  expected_status_min: number;
+  expected_status_max: number;
+  enabled: boolean;
+}
+
+export async function updateMonitoredServiceConfig(input: UpdateMonitoredServiceInput): Promise<MonitoredServiceConfig> {
+  const serviceKey = String(input.service_key || '').trim();
+  if (!serviceKey) {
+    throw new Error('service_key obrigatorio.');
+  }
+
+  const method: HealthMethod = input.method === 'HEAD' ? 'HEAD' : 'GET';
+  const timeoutMs = Number.isFinite(input.timeout_ms)
+    ? Math.min(30000, Math.max(500, Math.trunc(input.timeout_ms)))
+    : 5000;
+  const expectedMin = Number.isFinite(input.expected_status_min)
+    ? Math.min(599, Math.max(100, Math.trunc(input.expected_status_min)))
+    : 200;
+  const expectedMax = Number.isFinite(input.expected_status_max)
+    ? Math.min(599, Math.max(100, Math.trunc(input.expected_status_max)))
+    : 399;
+  if (expectedMin > expectedMax) {
+    throw new Error('Faixa de status invalida: min maior que max.');
+  }
+
+  const payload = {
+    base_url: normalizeBaseUrl(input.base_url),
+    health_path: normalizeHealthPath(input.health_path),
+    method,
+    timeout_ms: timeoutMs,
+    expected_status_min: expectedMin,
+    expected_status_max: expectedMax,
+    enabled: input.enabled,
+  };
+
+  if (!payload.base_url) {
+    throw new Error('base_url obrigatoria.');
+  }
+
+  const { data, error } = await supabase
+    .from('ops_monitored_services')
+    .update(payload)
+    .eq('service_key', serviceKey)
+    .select(
+      'service_key, service_name, base_url, health_path, method, timeout_ms, enabled, display_order, expected_status_min, expected_status_max',
+    )
+    .single();
+
+  if (error || !data) {
+    throw new Error(error?.message || 'Falha ao atualizar configuracao do servico monitorado.');
+  }
+
+  const normalized = normalizeConfigRow(data as Record<string, unknown>);
+  if (!normalized) {
+    throw new Error('Configuracao retornada invalida apos update.');
+  }
+
+  return normalized;
 }
 
 async function checkServiceHealth(config: MonitoredServiceConfig): Promise<ServiceStatus> {
