@@ -1,5 +1,4 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { randomUUID } from 'node:crypto';
 import type { Socket } from 'node:net';
 import { buildEnv } from './config/env.js';
 import { signInWithPassword } from './auth/supabase.js';
@@ -70,10 +69,11 @@ import {
   type LogEntry,
   type AlertCondition,
 } from './lib/log-storage.js';
-import { startAlertScheduler } from './lib/alerts-engine.js';
+import { startAlertScheduler } from './lib/alert-scheduler.js';
 import { handleActivepiecesWebhook } from './lib/activepieces-logger.js';
 import { handleEvolutionWebhook } from './lib/evolution-logger.js';
 import { renderObservabilityHtml } from './views/observability.js';
+import { attachRequestTracking } from './lib/request-tracker.js';
 
 const env = buildEnv();
 const opsCompanyId = env.OPS_ALLOWED_COMPANY_ID || 'f85bfdc2-982a-4cf7-b176-bce68426f861';
@@ -1925,16 +1925,6 @@ function respondInternalError(
   respondJson(res, 500, { error: 'Internal Server Error' });
 }
 
-function resolveRequestId(req: IncomingMessage): string {
-  const raw = req.headers['x-request-id'];
-  const candidate = Array.isArray(raw) ? raw[0] : raw;
-  if (typeof candidate === 'string' && isUuid(candidate)) {
-    return candidate;
-  }
-
-  return randomUUID();
-}
-
 function startServer() {
   // Initialize Redis before starting server
   initRedis(env.REDIS_URL)
@@ -1951,24 +1941,7 @@ function startServer() {
   const server = createOpsHttpServer(async (req: IncomingMessage, res: ServerResponse) => {
     const safeRequestUrl = sanitizeRequestTarget(req.url);
     const safePathForLog = sanitizePlainText(safeRequestUrl.split('?')[0] || '/');
-    const requestId = resolveRequestId(req);
-    const startedAt = Date.now();
-
-    res.setHeader('X-Request-ID', requestId);
-    res.on('finish', () => {
-      const statusCode = res.statusCode;
-      const durationMs = Date.now() - startedAt;
-      const logFn = statusCode >= 400 ? logWarn : logInfo;
-
-      logFn('http_request', {
-        service: 'ops',
-        method: req.method,
-        path: safePathForLog,
-        statusCode,
-        request_id: requestId,
-        duration_ms: durationMs,
-      });
-    });
+    const { requestId } = attachRequestTracking(req, res, safePathForLog);
 
     try {
       applySecurityHeaders(res);
