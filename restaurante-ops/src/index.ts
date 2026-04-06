@@ -68,6 +68,7 @@ import {
   listAlerts,
   createAlert,
   updateAlert,
+  deleteAlert,
   queryLogs,
   traceOrder,
   traceRequest,
@@ -2500,6 +2501,11 @@ function startServer() {
         const user = await requireAuth(req, res);
         if (!user) return;
 
+        if (user.role !== 'admin') {
+          respondJson(res, 403, { error: 'Acesso negado. Somente admin pode criar alertas.' });
+          return;
+        }
+
         try {
           const rawBody = await readBody(req);
           const body = parseJsonBody<{
@@ -2541,6 +2547,11 @@ function startServer() {
         const user = await requireAuth(req, res);
         if (!user) return;
 
+        if (user.role !== 'admin') {
+          respondJson(res, 403, { error: 'Acesso negado. Somente admin pode editar alertas.' });
+          return;
+        }
+
         const alertIdRaw = sanitizePlainText(path.replace('/api/logs/alerts/', ''));
         const alertId = Number.parseInt(alertIdRaw, 10);
         if (Number.isNaN(alertId) || alertId <= 0) {
@@ -2569,6 +2580,36 @@ function startServer() {
             error: err instanceof Error ? err.message : String(err),
           });
           respondJson(res, 500, { error: 'Nao foi possivel atualizar o alerta.' });
+        }
+        return;
+      }
+
+      if (req.method === 'DELETE' && path.startsWith('/api/logs/alerts/')) {
+        const user = await requireAuth(req, res);
+        if (!user) return;
+
+        if (user.role !== 'admin') {
+          respondJson(res, 403, { error: 'Acesso negado. Somente admin pode excluir alertas.' });
+          return;
+        }
+
+        const alertIdRaw = sanitizePlainText(path.replace('/api/logs/alerts/', ''));
+        const alertId = Number.parseInt(alertIdRaw, 10);
+        if (Number.isNaN(alertId) || alertId <= 0) {
+          respondJson(res, 400, { error: 'ID de alerta invalido.' });
+          return;
+        }
+
+        try {
+          await deleteAlert(alertId);
+          respondJson(res, 200, { ok: true });
+        } catch (err) {
+          logError('observability.alert_delete_failed', {
+            request_id: requestId,
+            alert_id: alertId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+          respondJson(res, 500, { error: 'Nao foi possivel excluir o alerta.' });
         }
         return;
       }

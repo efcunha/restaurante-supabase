@@ -617,23 +617,80 @@ function renderTraceTab(
 function renderAlertsTab(alerts: AlertRow[]): string {
   const rows =
     alerts.length === 0
-      ? `<tr><td colspan="6" class="empty-state">Nenhum alerta configurado ainda.</td></tr>`
-      : alerts.map((a) => `
-          <tr>
-            <td>${escapeHtml(a.name)}</td>
-            <td style="font-size:12px;">${escapeHtml(a.description ?? '—')}</td>
-            <td>${a.enabled ? '<span class="pill pill-ok">ativo</span>' : '<span class="pill" style="background:#f1f5f9;color:#64748b;border:1px solid #cbd5e1;">inativo</span>'}</td>
-            <td><span class="trace-badge">${escapeHtml(a.channel)}</span></td>
-            <td class="mono" style="font-size:11px;">${escapeHtml(JSON.stringify(a.condition).slice(0, 80))}…</td>
+      ? `<tr><td colspan="8" class="empty-state">Nenhum alerta configurado ainda.</td></tr>`
+      : alerts.map((a) => {
+        const cfg = (a.channel_config ?? {}) as Record<string, unknown>;
+        const webhookUrl = typeof cfg.url === 'string' ? cfg.url : '';
+        const condition = (a.condition ?? {}) as unknown as Record<string, unknown>;
+        const condType = typeof condition.type === 'string' ? condition.type : 'error_rate';
+        const condWindow = Number.isFinite(Number(condition.window_minutes)) ? Number(condition.window_minutes) : 5;
+        const condThreshold = Number.isFinite(Number(condition.threshold)) ? Number(condition.threshold) : 1;
+        const condLevel = typeof condition.level === 'string' ? condition.level : '';
+        const condEvent = typeof condition.event === 'string' ? condition.event : '';
+        const condService = typeof condition.service === 'string' ? condition.service : '';
+        const alertId = a.id ?? 0;
+
+        return `
+          <tr data-alert-id="${alertId}">
+            <td>
+              <input data-field="name" type="text" value="${escapeHtml(a.name)}" style="width:220px;padding:6px 8px;border:1px solid #c8d7e1;border-radius:8px;" />
+              <div style="margin-top:6px;font-size:11px;color:#516675;">ID: ${alertId || 'n/a'}</div>
+            </td>
+            <td>
+              <input data-field="description" type="text" value="${escapeHtml(a.description ?? '')}" placeholder="Descrição" style="width:220px;padding:6px 8px;border:1px solid #c8d7e1;border-radius:8px;" />
+            </td>
+            <td>
+              <label style="display:flex;align-items:center;gap:6px;font-size:12px;">
+                <input data-field="enabled" type="checkbox" ${a.enabled ? 'checked' : ''} />
+                ${a.enabled ? 'Ativo' : 'Inativo'}
+              </label>
+            </td>
+            <td>
+              <select data-field="channel" style="padding:6px 8px;border:1px solid #c8d7e1;border-radius:8px;">
+                <option value="webhook"${a.channel === 'webhook' ? ' selected' : ''}>webhook</option>
+                <option value="slack"${a.channel === 'slack' ? ' selected' : ''}>slack</option>
+                <option value="internal"${a.channel === 'internal' ? ' selected' : ''}>internal</option>
+              </select>
+              <input data-field="webhook_url" type="url" value="${escapeHtml(webhookUrl)}" placeholder="https://..." style="display:block;width:220px;margin-top:6px;padding:6px 8px;border:1px solid #c8d7e1;border-radius:8px;" />
+            </td>
+            <td>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;min-width:280px;">
+                <select data-field="cond_type" style="padding:6px 8px;border:1px solid #c8d7e1;border-radius:8px;">
+                  <option value="error_rate"${condType === 'error_rate' ? ' selected' : ''}>error_rate</option>
+                  <option value="event_count"${condType === 'event_count' ? ' selected' : ''}>event_count</option>
+                  <option value="no_events"${condType === 'no_events' ? ' selected' : ''}>no_events</option>
+                </select>
+                <input data-field="cond_window" type="number" min="1" max="1440" value="${condWindow}" placeholder="janela" style="padding:6px 8px;border:1px solid #c8d7e1;border-radius:8px;" />
+                <input data-field="cond_threshold" type="number" min="0" value="${condThreshold}" placeholder="limiar" style="padding:6px 8px;border:1px solid #c8d7e1;border-radius:8px;" />
+                <select data-field="cond_level" style="padding:6px 8px;border:1px solid #c8d7e1;border-radius:8px;">
+                  <option value=""${condLevel === '' ? ' selected' : ''}>todos</option>
+                  <option value="error"${condLevel === 'error' ? ' selected' : ''}>error</option>
+                  <option value="warn"${condLevel === 'warn' ? ' selected' : ''}>warn</option>
+                  <option value="info"${condLevel === 'info' ? ' selected' : ''}>info</option>
+                </select>
+                <input data-field="cond_event" type="text" value="${escapeHtml(condEvent)}" placeholder="evento" style="padding:6px 8px;border:1px solid #c8d7e1;border-radius:8px;" />
+                <input data-field="cond_service" type="text" value="${escapeHtml(condService)}" placeholder="serviço" style="padding:6px 8px;border:1px solid #c8d7e1;border-radius:8px;" />
+              </div>
+            </td>
             <td style="font-size:11px;">${escapeHtml(fmtDate(a.created_at))}</td>
-          </tr>`).join('');
+            <td style="font-size:11px;">${escapeHtml(fmtDate(a.updated_at))}</td>
+            <td>
+              <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start;min-width:110px;">
+                <button type="button" class="btn-primary alert-save-btn" style="padding:6px 10px;">Salvar</button>
+                <button type="button" class="btn-primary alert-toggle-btn" style="padding:6px 10px;background:#0f766e;">${a.enabled ? 'Desativar' : 'Ativar'}</button>
+                <button type="button" class="btn-primary alert-delete-btn" style="padding:6px 10px;background:#b91c1c;">Excluir</button>
+                <div class="alert-row-msg" style="font-size:11px;color:#516675;"></div>
+              </div>
+            </td>
+          </tr>`;
+      }).join('');
 
   return `
   <div class="panel">
     <h2>Alertas configurados</h2>
     <div style="overflow-x:auto;">
       <table class="table">
-        <thead><tr><th>Nome</th><th>Descrição</th><th>Status</th><th>Canal</th><th>Condição</th><th>Criado em</th></tr></thead>
+        <thead><tr><th>Nome</th><th>Descrição</th><th>Status</th><th>Canal</th><th>Condição</th><th>Criado em</th><th>Atualizado em</th><th>Ações</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>
@@ -795,6 +852,134 @@ function renderAlertsTab(alerts: AlertRow[]): string {
           msg.style.border = type === 'ok' ? '1px solid #bbf7d0' : '1px solid #fecaca';
           msg.textContent = text;
         }
+
+        function rowField(row, field) {
+          return row.querySelector('[data-field="' + field + '"]');
+        }
+
+        function rowPayload(row) {
+          const channel = String(rowField(row, 'channel').value || 'internal');
+          const webhookUrl = String(rowField(row, 'webhook_url').value || '').trim();
+          const level = String(rowField(row, 'cond_level').value || '').trim();
+          const event = String(rowField(row, 'cond_event').value || '').trim();
+          const service = String(rowField(row, 'cond_service').value || '').trim();
+          return {
+            name: String(rowField(row, 'name').value || '').trim(),
+            description: String(rowField(row, 'description').value || '').trim(),
+            enabled: Boolean(rowField(row, 'enabled').checked),
+            channel,
+            channel_config: channel === 'internal' ? undefined : { url: webhookUrl },
+            condition: {
+              type: String(rowField(row, 'cond_type').value || 'error_rate'),
+              window_minutes: Number.parseInt(String(rowField(row, 'cond_window').value || '5'), 10),
+              threshold: Number.parseInt(String(rowField(row, 'cond_threshold').value || '1'), 10),
+              level: level || undefined,
+              event: event || undefined,
+              service: service || undefined,
+            },
+          };
+        }
+
+        async function updateRow(row, patch) {
+          const alertId = row.getAttribute('data-alert-id');
+          const msgEl = row.querySelector('.alert-row-msg');
+          if (!alertId || !msgEl) return;
+
+          msgEl.style.color = '#516675';
+          msgEl.textContent = 'Salvando...';
+
+          try {
+            const resp = await fetch('/api/logs/alerts/' + encodeURIComponent(alertId), {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(patch),
+            });
+            const data = await resp.json();
+            if (!resp.ok) {
+              msgEl.style.color = '#991b1b';
+              msgEl.textContent = data && data.error ? data.error : 'Falha ao salvar.';
+              return;
+            }
+            msgEl.style.color = '#14532d';
+            msgEl.textContent = 'Salvo com sucesso.';
+            setTimeout(() => window.location.reload(), 700);
+          } catch {
+            msgEl.style.color = '#991b1b';
+            msgEl.textContent = 'Erro de rede ao salvar.';
+          }
+        }
+
+        async function deleteRow(row) {
+          const alertId = row.getAttribute('data-alert-id');
+          const msgEl = row.querySelector('.alert-row-msg');
+          if (!alertId || !msgEl) return;
+          if (!confirm('Confirma exclusão deste alerta?')) return;
+
+          msgEl.style.color = '#516675';
+          msgEl.textContent = 'Excluindo...';
+
+          try {
+            const resp = await fetch('/api/logs/alerts/' + encodeURIComponent(alertId), {
+              method: 'DELETE',
+            });
+            const data = await resp.json();
+            if (!resp.ok) {
+              msgEl.style.color = '#991b1b';
+              msgEl.textContent = data && data.error ? data.error : 'Falha ao excluir.';
+              return;
+            }
+            msgEl.style.color = '#14532d';
+            msgEl.textContent = 'Excluído com sucesso.';
+            setTimeout(() => window.location.reload(), 400);
+          } catch {
+            msgEl.style.color = '#991b1b';
+            msgEl.textContent = 'Erro de rede ao excluir.';
+          }
+        }
+
+        document.querySelectorAll('.alert-save-btn').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            const row = btn.closest('tr[data-alert-id]');
+            if (!row) return;
+            const payload = rowPayload(row);
+            if (!payload.name) {
+              const msgEl = row.querySelector('.alert-row-msg');
+              if (msgEl) {
+                msgEl.style.color = '#991b1b';
+                msgEl.textContent = 'Nome é obrigatório.';
+              }
+              return;
+            }
+            if ((payload.channel === 'webhook' || payload.channel === 'slack') && (!payload.channel_config || !payload.channel_config.url || !String(payload.channel_config.url).startsWith('https://'))) {
+              const msgEl = row.querySelector('.alert-row-msg');
+              if (msgEl) {
+                msgEl.style.color = '#991b1b';
+                msgEl.textContent = 'Webhook deve iniciar com https://';
+              }
+              return;
+            }
+            void updateRow(row, payload);
+          });
+        });
+
+        document.querySelectorAll('.alert-toggle-btn').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            const row = btn.closest('tr[data-alert-id]');
+            if (!row) return;
+            const enabledInput = rowField(row, 'enabled');
+            const nextEnabled = !Boolean(enabledInput.checked);
+            enabledInput.checked = nextEnabled;
+            void updateRow(row, { enabled: nextEnabled });
+          });
+        });
+
+        document.querySelectorAll('.alert-delete-btn').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            const row = btn.closest('tr[data-alert-id]');
+            if (!row) return;
+            void deleteRow(row);
+          });
+        });
       })();
     </script>
   </div>`;
