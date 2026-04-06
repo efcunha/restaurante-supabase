@@ -320,9 +320,11 @@ function renderBars(rows: Array<{ label: string; value: number; hint?: string }>
 
 function renderOverviewTab(
   hours: number,
+  staleThresholdMinutes: number,
   selectedService: string,
   metrics: LogMetrics | null,
   timeline: LogTimelinePoint[],
+  knownServices: string[],
   saasMetrics: SaasMetrics | null,
   billingOpsMetrics: BillingOpsMetrics | null,
   services: ServiceStatus[],
@@ -346,6 +348,7 @@ function renderOverviewTab(
   ], 'Sem eventos por nível nesta janela.');
 
   const serviceOptions = Array.from(new Set([
+    ...knownServices,
     ...Object.keys(metrics.by_service),
     ...services.map((svc) => svc.key || svc.name),
   ]))
@@ -358,6 +361,16 @@ function renderOverviewTab(
     value: point.total,
     hint: `errors: ${point.errors} | warn: ${point.warns}`,
   }));
+
+  const latestPointWithData = [...timeline]
+    .reverse()
+    .find((point) => point.total > 0);
+  const latestDataIso = latestPointWithData?.bucket_start ?? null;
+  const latestDataDate = latestDataIso ? new Date(latestDataIso) : null;
+  const freshnessMinutes = latestDataDate
+    ? Math.max(0, Math.floor((Date.now() - latestDataDate.getTime()) / (60 * 1000)))
+    : null;
+  const isStaleData = freshnessMinutes == null || freshnessMinutes > staleThresholdMinutes;
 
   const timelineErrorRows = latestTimeline.map((point) => ({
     label: new Date(point.bucket_start).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
@@ -422,6 +435,9 @@ function renderOverviewTab(
     </div>`
     : '';
 
+  const metricsApiUrl = `/api/logs/metrics?hours=${hours}${selectedService ? `&service=${encodeURIComponent(selectedService)}` : ''}&include_timeline=true`;
+  const servicesApiUrl = '/api/logs/services?hours=168';
+
   return `
   <div class="panel">
     <h2>Overview técnico — últimas ${hours}h</h2>
@@ -465,6 +481,11 @@ function renderOverviewTab(
         <div class="metric-value">${alertsEnabled.toLocaleString('pt-BR')}</div>
         <div class="metric-hint">${serviceHealthHint}</div>
       </div>
+      <div class="metric">
+        <div class="metric-label">Atualização dos dados</div>
+        <div class="metric-value" style="font-size:18px;${isStaleData ? 'color:#b45309;' : ''}">${latestDataDate ? escapeHtml(fmtDate(latestDataIso || '')) : 'Sem dados'}</div>
+        <div class="metric-hint">${freshnessMinutes != null ? `${freshnessMinutes} min atrás` : 'Nenhum bucket com eventos'} | limiar: ${staleThresholdMinutes} min</div>
+      </div>
       ${saasKpi}
       ${billingKpi}
     </div>
@@ -474,6 +495,17 @@ function renderOverviewTab(
       <a href="/observability?tab=overview&hours=168${selectedService ? `&service=${encodeURIComponent(selectedService)}` : ''}" style="color:#0c7a96;">7d</a>
     </div>
   </div>
+
+  ${isStaleData
+    ? `<div class="panel" style="border-color:#fcd34d;background:#fffbeb;">
+    <h2 style="color:#92400e;">Atenção: dados defasados</h2>
+    <p style="font-size:13px;color:#78350f;">
+      A série temporal não recebeu eventos recentes no recorte atual.
+      Verifique ingestão em <span class="mono">POST /api/logs</span>, conectividade dos serviços e health checks.
+      Critério aplicado: sem eventos dentro de ${staleThresholdMinutes} minutos.
+    </p>
+  </div>`
+    : ''}
 
   <div class="panel">
     <h2>Série temporal técnica (últimas horas)</h2>
@@ -508,6 +540,49 @@ function renderOverviewTab(
   <div class="panel">
     <h2>Top erros da janela</h2>
     ${topErrors}
+  </div>
+
+  <div class="panel">
+    <h2>Ações rápidas de API</h2>
+    <p style="color:var(--ink-500);font-size:13px;margin-bottom:10px;">Atalhos para diagnóstico técnico e consumo analítico.</p>
+    <div style="display:grid;gap:10px;">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <span class="mono" style="font-size:12px;">GET ${escapeHtml(metricsApiUrl)}</span>
+        <a class="btn-logout" style="background:#0c7a96;border-color:#0c7a96;" href="${metricsApiUrl}" target="_blank" rel="noreferrer">Abrir</a>
+        <button type="button" class="btn-primary" data-copy-value="${escapeHtml(metricsApiUrl)}" style="padding:6px 10px;">Copiar</button>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <span class="mono" style="font-size:12px;">GET ${escapeHtml(servicesApiUrl)}</span>
+        <a class="btn-logout" style="background:#0c7a96;border-color:#0c7a96;" href="${servicesApiUrl}" target="_blank" rel="noreferrer">Abrir</a>
+        <button type="button" class="btn-primary" data-copy-value="${escapeHtml(servicesApiUrl)}" style="padding:6px 10px;">Copiar</button>
+      </div>
+    </div>
+    <div id="overview-copy-feedback" style="margin-top:8px;font-size:12px;color:#516675;"></div>
+    <script>
+      (function() {
+        const feedback = document.getElementById('overview-copy-feedback');
+        if (!feedback) return;
+
+        async function copyValue(value) {
+          try {
+            await navigator.clipboard.writeText(value);
+            feedback.style.color = '#14532d';
+            feedback.textContent = 'Endpoint copiado para a área de transferência.';
+          } catch {
+            feedback.style.color = '#991b1b';
+            feedback.textContent = 'Não foi possível copiar automaticamente.';
+          }
+        }
+
+        document.querySelectorAll('[data-copy-value]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            const value = btn.getAttribute('data-copy-value') || '';
+            if (!value) return;
+            void copyValue(value);
+          });
+        });
+      })();
+    </script>
   </div>`;
 }
 
@@ -1613,8 +1688,10 @@ export interface ObsDashboardOptions {
   userEmail: string;
   // overview tab
   overviewHours?: number;
+  overviewStaleMinutes?: number;
   overviewService?: string;
   overviewTimeline?: LogTimelinePoint[];
+  overviewServices?: string[];
   // logs tab
   logs?: LogEntry[];
   logsTotal?: number;
@@ -1645,8 +1722,10 @@ export function renderObservabilityHtml(opts: ObsDashboardOptions): string {
     tab,
     userEmail,
     overviewHours = 24,
+    overviewStaleMinutes = 60,
     overviewService = '',
     overviewTimeline = [],
+    overviewServices = [],
     logs = [],
     logsTotal = 0,
     logsFilters = {},
@@ -1670,9 +1749,11 @@ export function renderObservabilityHtml(opts: ObsDashboardOptions): string {
   if (tab === 'overview') {
     tabContent = renderOverviewTab(
       overviewHours,
+      overviewStaleMinutes,
       overviewService,
       metrics,
       overviewTimeline,
+      overviewServices,
       saasMetrics,
       billingOpsMetrics,
       services,
