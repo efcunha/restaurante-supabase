@@ -50,6 +50,10 @@ import PrinterService from './src/services/PrinterService';
 import { colorSystem } from './src/design-system';
 import { useEffect } from 'react';
 import logger from './src/utils/logger';
+import {
+  installGlobalErrorHandler,
+  logAppStartup,
+} from './src/services/ObservabilityService';
 
 // @ts-ignore
 import PagamentoScreen from './src/screens/PagamentoScreen';
@@ -205,6 +209,15 @@ function AuthStack() {
 function AppContent() {
   const { user, loading, isPasswordRecovery, initError, debugLog } = useAuth();
   const [forceAuthFallback, setForceAuthFallback] = React.useState(false);
+
+  useEffect(() => {
+    installGlobalErrorHandler();
+  }, []);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    logAppStartup(user.id, user.email);
+  }, [user?.id, user?.email]);
 
   useEffect(() => {
     setForceAuthFallback(false);

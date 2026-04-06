@@ -2720,7 +2720,14 @@ function startServer() {
             opts.logsFilters = filters;
           } else if (tab === 'metrics') {
             const hours = parseIntegerQuery(url.searchParams.get('hours'), 24, 1, 168);
-            opts.metrics = await getLogMetrics(hours);
+            const [logMetrics, saasMetrics, billingOpsMetrics] = await Promise.all([
+              getLogMetrics(hours),
+              fetchSaasMetrics(),
+              fetchBillingOpsMetrics(),
+            ]);
+            opts.metrics = logMetrics;
+            opts.saasMetrics = saasMetrics;
+            opts.billingOpsMetrics = billingOpsMetrics;
           } else if (tab === 'trace') {
             const traceId = sanitizePlainText(url.searchParams.get('trace_id') || '');
             const traceType = url.searchParams.get('trace_type') === 'order' ? 'order' : 'request';
