@@ -1,6 +1,6 @@
 # PROMPT DE IMPLEMENTAÇÃO — Observabilidade Centralizada (restaurante-ops)
 
-> **Instrução:** Copie este prompt inteiro e envie para o Qwen Code iniciar a implementação.
+> **Instrução:** Copie este prompt inteiro e envie para o GitHub Copilot iniciar a implementação.
 
 ---
 

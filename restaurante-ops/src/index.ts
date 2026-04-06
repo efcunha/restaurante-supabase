@@ -58,8 +58,22 @@ import {
   type ActivatePlanConfigInput,
 } from './modules/billing-plan-config-operations.js';
 import { createOpsHttpServer } from './lib/httpServer.js';
-import { getMetrics as getLogMetrics, queryLogs, traceOrder, traceRequest } from './lib/log-storage.js';
-import { enqueueLog, type LogEntry } from './lib/log-storage.js';
+import {
+  enqueueLog,
+  getMetrics as getLogMetrics,
+  listAlerts,
+  createAlert,
+  updateAlert,
+  queryLogs,
+  traceOrder,
+  traceRequest,
+  type LogEntry,
+  type AlertCondition,
+} from './lib/log-storage.js';
+import { startAlertScheduler } from './lib/alerts-engine.js';
+import { handleActivepiecesWebhook } from './lib/activepieces-logger.js';
+import { handleEvolutionWebhook } from './lib/evolution-logger.js';
+import { renderObservabilityHtml } from './views/observability.js';
 
 const env = buildEnv();
 const opsCompanyId = env.OPS_ALLOWED_COMPANY_ID || 'f85bfdc2-982a-4cf7-b176-bce68426f861';
@@ -1885,6 +1899,8 @@ function startServer() {
       logWarn('redis.init_failed', { detail: err instanceof Error ? err.message : String(err) });
     });
 
+  startAlertScheduler();
+
   const server = createOpsHttpServer(async (req: IncomingMessage, res: ServerResponse) => {
     const safeRequestUrl = sanitizeRequestTarget(req.url);
     const safePathForLog = sanitizePlainText(safeRequestUrl.split('?')[0] || '/');
@@ -2530,6 +2546,181 @@ function startServer() {
             error: err instanceof Error ? err.message : String(err),
           });
           respondJson(res, 500, { error: 'Nao foi possivel calcular metricas de logs.' });
+        }
+        return;
+      }
+
+      // ---- Observabilidade — alertas ----
+      if (req.method === 'GET' && path === '/api/logs/alerts') {
+        const user = await requireAuth(req, res);
+        if (!user) return;
+
+        try {
+          const enabled = url.searchParams.get('enabled');
+          const alerts = await listAlerts(enabled === 'true' ? true : enabled === 'false' ? false : undefined);
+          respondJson(res, 200, { ok: true, alerts });
+        } catch (err) {
+          logError('observability.alerts_list_failed', {
+            request_id: requestId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+          respondJson(res, 500, { error: 'Nao foi possivel listar alertas.' });
+        }
+        return;
+      }
+
+      if (req.method === 'POST' && path === '/api/logs/alerts') {
+        const user = await requireAuth(req, res);
+        if (!user) return;
+
+        try {
+          const rawBody = await readBody(req);
+          const body = parseJsonBody<{
+            name?: unknown;
+            description?: unknown;
+            enabled?: unknown;
+            channel?: unknown;
+            channel_config?: unknown;
+            condition?: unknown;
+          }>(rawBody);
+
+          const name = sanitizePlainText(String(body?.name ?? ''));
+          if (!name) {
+            respondJson(res, 400, { error: 'Campo name e obrigatorio.' });
+            return;
+          }
+
+          const alert = await createAlert({
+            name,
+            description: body?.description != null ? sanitizePlainText(String(body.description)) : undefined,
+            enabled: body?.enabled !== false,
+            channel: (body?.channel === 'webhook' || body?.channel === 'slack' ? body.channel : 'internal') as 'webhook' | 'slack' | 'internal',
+            channel_config: body?.channel_config as Record<string, string> | undefined,
+            condition: body?.condition as AlertCondition,
+          });
+
+          respondJson(res, 201, { ok: true, alert });
+        } catch (err) {
+          logError('observability.alert_create_failed', {
+            request_id: requestId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+          respondJson(res, 500, { error: 'Nao foi possivel criar o alerta.' });
+        }
+        return;
+      }
+
+      if (req.method === 'PUT' && path.startsWith('/api/logs/alerts/')) {
+        const user = await requireAuth(req, res);
+        if (!user) return;
+
+        const alertIdRaw = sanitizePlainText(path.replace('/api/logs/alerts/', ''));
+        const alertId = Number.parseInt(alertIdRaw, 10);
+        if (Number.isNaN(alertId) || alertId <= 0) {
+          respondJson(res, 400, { error: 'ID de alerta invalido.' });
+          return;
+        }
+
+        try {
+          const rawBody = await readBody(req);
+          const body = parseJsonBody<Record<string, unknown>>(rawBody);
+
+          const updates: Record<string, unknown> = {};
+          if (body?.name != null) updates.name = sanitizePlainText(String(body.name));
+          if (body?.description != null) updates.description = sanitizePlainText(String(body.description));
+          if (typeof body?.enabled === 'boolean') updates.enabled = body.enabled;
+          if (body?.channel != null) updates.channel = body.channel;
+          if (body?.channel_config != null) updates.channel_config = body.channel_config;
+          if (body?.condition != null) updates.condition = body.condition;
+
+          await updateAlert(alertId, updates);
+          respondJson(res, 200, { ok: true });
+        } catch (err) {
+          logError('observability.alert_update_failed', {
+            request_id: requestId,
+            alert_id: alertId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+          respondJson(res, 500, { error: 'Nao foi possivel atualizar o alerta.' });
+        }
+        return;
+      }
+
+      // ---- Webhooks de integracao (Activepieces + Evolution) ----
+      if (req.method === 'POST' && path === '/webhooks/activepieces') {
+        await handleActivepiecesWebhook(req, res, requestId);
+        return;
+      }
+
+      if (req.method === 'POST' && path === '/webhooks/evolution') {
+        await handleEvolutionWebhook(req, res, requestId);
+        return;
+      }
+
+      // ---- Dashboard de Observabilidade ----
+      if (req.method === 'GET' && path === '/observability') {
+        const user = await requireAuth(req, res);
+        if (!user) return;
+
+        const tab = sanitizePlainText(url.searchParams.get('tab') || 'logs');
+        const filters: Record<string, string> = {};
+        for (const key of ['service', 'level', 'event', 'request_id', 'order_id', 'from', 'to', 'limit', 'offset']) {
+          const v = sanitizePlainText(url.searchParams.get(key) || '');
+          if (v) filters[key] = v;
+        }
+
+        try {
+          const opts: Parameters<typeof renderObservabilityHtml>[0] = {
+            tab,
+            userEmail: user.email,
+          };
+
+          if (tab === 'logs') {
+            const limit = parseIntegerQuery(url.searchParams.get('limit'), 50, 1, 200);
+            const offset = parseIntegerQuery(url.searchParams.get('offset'), 0, 0, 100000);
+            filters.limit = String(limit);
+            filters.offset = String(offset);
+            const result = await queryLogs({
+              limit,
+              offset,
+              service: filters.service || undefined,
+              level: (filters.level as 'info' | 'warn' | 'error' | undefined) || undefined,
+              event: filters.event || undefined,
+              from: filters.from || undefined,
+              to: filters.to || undefined,
+              request_id: filters.request_id || undefined,
+              order_id: filters.order_id || undefined,
+            });
+            opts.logs = result.logs;
+            opts.logsTotal = result.total;
+            opts.logsFilters = filters;
+          } else if (tab === 'metrics') {
+            const hours = parseIntegerQuery(url.searchParams.get('hours'), 24, 1, 168);
+            opts.metrics = await getLogMetrics(hours);
+          } else if (tab === 'trace') {
+            const traceId = sanitizePlainText(url.searchParams.get('trace_id') || '');
+            const traceType = url.searchParams.get('trace_type') === 'order' ? 'order' : 'request';
+            opts.traceId = traceId;
+            opts.traceType = traceType;
+            if (traceId) {
+              opts.timeline = traceType === 'order'
+                ? await traceOrder(traceId)
+                : await traceRequest(traceId);
+            } else {
+              opts.timeline = [];
+            }
+          } else if (tab === 'alerts') {
+            opts.alerts = await listAlerts();
+          }
+
+          respondHtml(res, 200, renderObservabilityHtml(opts));
+        } catch (err) {
+          logError('observability.dashboard_failed', {
+            request_id: requestId,
+            tab,
+            error: err instanceof Error ? err.message : String(err),
+          });
+          respondJson(res, 500, { error: 'Erro ao renderizar dashboard de observabilidade.' });
         }
         return;
       }
