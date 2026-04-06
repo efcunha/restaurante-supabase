@@ -87,6 +87,10 @@ const batchSize = Math.max(10, env.LOG_INGEST_BATCH_SIZE);
 const flushIntervalMs = Math.max(250, env.LOG_INGEST_FLUSH_INTERVAL_MS);
 const isEnabled = Boolean(env.OBS_SUPABASE_URL && env.OBS_SUPABASE_SERVICE_ROLE_KEY);
 
+const primarySupabase = createClient(String(env.SUPABASE_URL), String(env.SUPABASE_SERVICE_ROLE_KEY), {
+  auth: { persistSession: false },
+});
+
 let supabase: SupabaseClient | null = null;
 let warnedMissingEnv = false;
 let isFlushing = false;
@@ -113,6 +117,13 @@ function requireClient(): SupabaseClient {
     throw new Error('Observability storage is disabled. Configure OBS_SUPABASE_URL and OBS_SUPABASE_SERVICE_ROLE_KEY.');
   }
   return supabase;
+}
+
+function getAlertsClient(): SupabaseClient {
+  if (env.OBS_READ_FROM_ISOLATED) {
+    return requireClient();
+  }
+  return primarySupabase;
 }
 
 async function flushBatch(): Promise<void> {
@@ -334,7 +345,7 @@ export async function cleanupOldLogs(olderThanDays: number): Promise<number> {
 }
 
 export async function listAlerts(enabled?: boolean): Promise<AlertRow[]> {
-  const client = requireClient();
+  const client = getAlertsClient();
   let query = client
     .from('ops_alerts')
     .select('id, name, description, condition, channel, channel_config, enabled, created_at, updated_at')
@@ -353,7 +364,7 @@ export async function listAlerts(enabled?: boolean): Promise<AlertRow[]> {
 }
 
 export async function createAlert(alert: Omit<AlertRow, 'id' | 'created_at' | 'updated_at'>): Promise<AlertRow> {
-  const client = requireClient();
+  const client = getAlertsClient();
   const { data, error } = await client
     .from('ops_alerts')
     .insert({
@@ -374,7 +385,7 @@ export async function createAlert(alert: Omit<AlertRow, 'id' | 'created_at' | 'u
 }
 
 export async function updateAlert(id: number, patch: Partial<Omit<AlertRow, 'id' | 'created_at'>>): Promise<AlertRow> {
-  const client = requireClient();
+  const client = getAlertsClient();
   const { data, error } = await client
     .from('ops_alerts')
     .update({ ...patch, updated_at: new Date().toISOString() })
@@ -389,7 +400,7 @@ export async function updateAlert(id: number, patch: Partial<Omit<AlertRow, 'id'
 }
 
 export async function insertAlertFiring(firing: Omit<AlertFiringRow, 'id' | 'fired_at'>): Promise<void> {
-  const client = requireClient();
+  const client = getAlertsClient();
   const { error } = await client.from('ops_alert_firings').insert({
     alert_id: firing.alert_id,
     context: firing.context,
