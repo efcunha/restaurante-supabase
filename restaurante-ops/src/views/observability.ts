@@ -1,11 +1,21 @@
 /**
  * observability.ts
- * Dashboard de observabilidade — Log Viewer, Métricas, Trace e Alertas.
+ * Dashboard de observabilidade — Log Viewer, Métricas, Trace, Alertas, Estado do Serviço e API Status.
  * Renderizado server-side seguindo o padrão de templates HTML do restaurante-ops.
  */
 
 import type { LogEntry, LogMetrics, AlertRow } from '../lib/log-storage.js';
 import type { SaasMetrics, BillingOpsMetrics } from '../modules/data.js';
+import type { ServiceStatus, MonitoredServiceConfig } from '../modules/service-status.js';
+
+export interface SupabaseMetrics {
+  status: 'online' | 'offline' | 'unknown';
+  activeConnections?: number;
+  databaseSize?: string;
+  responseTime?: number;
+  detail?: string;
+  error?: string;
+}
 
 function escapeHtml(value: string | null | undefined): string {
   if (value == null) return '';
@@ -258,6 +268,8 @@ function renderNavTabs(activeTab: string): string {
     { id: 'metrics', label: 'Métricas', href: '/observability?tab=metrics' },
     { id: 'trace', label: 'Trace', href: '/observability?tab=trace' },
     { id: 'alerts', label: 'Alertas', href: '/observability?tab=alerts' },
+    { id: 'service-status', label: 'Estado do Serviço', href: '/observability?tab=service-status' },
+    { id: 'api-status', label: 'API Status', href: '/observability?tab=api-status' },
   ];
 
   return `<nav class="nav-tabs">
@@ -789,6 +801,223 @@ function renderAlertsTab(alerts: AlertRow[]): string {
 }
 
 // ────────────────────────────────────────────────────────────
+// TAB: ESTADO DO SERVIÇO
+// ────────────────────────────────────────────────────────────
+function renderServiceStatusTab(
+  services: ServiceStatus[],
+  supabaseMetrics: SupabaseMetrics,
+  monitoredServices: MonitoredServiceConfig[],
+  canManageMonitoredServices: boolean,
+): string {
+  const serviceRows = services
+    .map(
+      (svc) =>
+        `<tr>
+          <td>${escapeHtml(svc.name)}</td>
+          <td>${svc.status === 'online' ? '<span class="pill pill-ok">Online</span>' : svc.status === 'offline' ? '<span class="pill pill-error">Offline</span>' : '<span class="pill pill-warn">Unknown</span>'}</td>
+          <td>${svc.responseTime ? svc.responseTime + 'ms' : '—'}</td>
+          <td>${svc.url ? `<a href="${escapeHtml(svc.url)}" target="_blank" rel="noreferrer" style="color:#0c7a96;">Check</a>` : '—'}</td>
+          <td>${escapeHtml(svc.detail ?? '—')}</td>
+        </tr>`,
+    )
+    .join('');
+
+  const supabaseStatus = supabaseMetrics.status === 'online' ? '<span class="pill pill-ok">Online</span>' : '<span class="pill pill-error">Offline</span>';
+  const supabaseConnections = supabaseMetrics.activeConnections !== undefined ? `${supabaseMetrics.activeConnections} conexões` : '—';
+  const supabaseSize = supabaseMetrics.databaseSize ?? '—';
+  const supabaseTime = supabaseMetrics.responseTime ? `${supabaseMetrics.responseTime}ms` : '—';
+  const statusByKey = new Map(services.map((svc) => [svc.key || svc.name, svc]));
+
+  const configRows = monitoredServices.length === 0
+    ? `<tr><td colspan="9" class="empty-state">Nenhuma configuração encontrada.</td></tr>`
+    : monitoredServices.map((cfg) => {
+      const live = statusByKey.get(cfg.service_key);
+      const liveStatus = live?.status === 'online'
+        ? '<span class="pill pill-ok">Online</span>'
+        : live?.status === 'offline'
+          ? '<span class="pill pill-error">Offline</span>'
+          : '<span class="pill pill-warn">Unknown</span>';
+      return `<tr data-service-key="${escapeHtml(cfg.service_key)}">
+        <td><strong>${escapeHtml(cfg.service_name)}</strong><div class="mono" style="margin-top:4px;">${escapeHtml(cfg.service_key)}</div></td>
+        <td>${liveStatus}</td>
+        <td><input type="url" data-field="base_url" value="${escapeHtml(cfg.base_url)}" ${canManageMonitoredServices ? '' : 'disabled'} style="width:260px;padding:6px 8px;border:1px solid #c8d7e1;border-radius:8px;background:#fff;" /></td>
+        <td><input type="text" data-field="health_path" value="${escapeHtml(cfg.health_path)}" ${canManageMonitoredServices ? '' : 'disabled'} style="width:130px;padding:6px 8px;border:1px solid #c8d7e1;border-radius:8px;background:#fff;" /></td>
+        <td>
+          <select data-field="method" ${canManageMonitoredServices ? '' : 'disabled'} style="padding:6px 8px;border:1px solid #c8d7e1;border-radius:8px;background:#fff;">
+            <option value="GET"${cfg.method === 'GET' ? ' selected' : ''}>GET</option>
+            <option value="HEAD"${cfg.method === 'HEAD' ? ' selected' : ''}>HEAD</option>
+          </select>
+        </td>
+        <td><input type="number" data-field="timeout_ms" min="500" max="30000" value="${cfg.timeout_ms}" ${canManageMonitoredServices ? '' : 'disabled'} style="width:100px;padding:6px 8px;border:1px solid #c8d7e1;border-radius:8px;background:#fff;" /></td>
+        <td><input type="number" data-field="expected_status_min" min="100" max="599" value="${cfg.expected_status_min}" ${canManageMonitoredServices ? '' : 'disabled'} style="width:80px;padding:6px 8px;border:1px solid #c8d7e1;border-radius:8px;background:#fff;" />
+            <input type="number" data-field="expected_status_max" min="100" max="599" value="${cfg.expected_status_max}" ${canManageMonitoredServices ? '' : 'disabled'} style="width:80px;padding:6px 8px;border:1px solid #c8d7e1;border-radius:8px;background:#fff;margin-left:4px;" /></td>
+        <td><input type="checkbox" data-field="enabled" ${cfg.enabled ? 'checked' : ''} ${canManageMonitoredServices ? '' : 'disabled'} /></td>
+        <td>
+          ${canManageMonitoredServices
+            ? '<button type="button" class="btn-primary save-service-btn" style="padding:6px 10px;">Salvar</button><div class="save-msg" style="font-size:11px;margin-top:6px;color:#516675;"></div>'
+            : '<span style="font-size:12px;color:#516675;">Somente leitura</span>'}
+        </td>
+      </tr>`;
+    }).join('');
+
+  const editorPanel = `<section class="panel">
+    <h2>Configuração dos endpoints monitorados</h2>
+    <p style="color:var(--ink-500);font-size:13px;margin-bottom:10px;">
+      Endereços e paths são persistidos no banco em <strong>ops_monitored_services</strong>. Alterações aqui entram em vigor sem redeploy.
+    </p>
+    <div style="overflow-x:auto;">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Serviço</th>
+            <th>Status</th>
+            <th>Base URL</th>
+            <th>Path</th>
+            <th>Método</th>
+            <th>Timeout (ms)</th>
+            <th>HTTP esperado (min/max)</th>
+            <th>Ativo</th>
+            <th>Ação</th>
+          </tr>
+        </thead>
+        <tbody>${configRows}</tbody>
+      </table>
+    </div>
+    ${canManageMonitoredServices
+      ? `<script>
+      (function () {
+        function getField(row, field) {
+          return row.querySelector('[data-field="' + field + '"]');
+        }
+
+        async function saveRow(row, button) {
+          const serviceKey = row.getAttribute('data-service-key');
+          const msg = row.querySelector('.save-msg');
+          if (!serviceKey || !msg) return;
+
+          const body = {
+            base_url: String(getField(row, 'base_url').value || '').trim(),
+            health_path: String(getField(row, 'health_path').value || '/').trim(),
+            method: String(getField(row, 'method').value || 'GET').toUpperCase(),
+            timeout_ms: Number.parseInt(String(getField(row, 'timeout_ms').value || '5000'), 10),
+            expected_status_min: Number.parseInt(String(getField(row, 'expected_status_min').value || '200'), 10),
+            expected_status_max: Number.parseInt(String(getField(row, 'expected_status_max').value || '399'), 10),
+            enabled: Boolean(getField(row, 'enabled').checked),
+          };
+
+          button.disabled = true;
+          msg.style.color = '#516675';
+          msg.textContent = 'Salvando...';
+
+          try {
+            const resp = await fetch('/api/observability/monitored-services/' + encodeURIComponent(serviceKey), {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(body),
+            });
+            const data = await resp.json();
+            if (!resp.ok) {
+              msg.style.color = '#991b1b';
+              msg.textContent = data && data.error ? data.error : 'Falha ao salvar.';
+              return;
+            }
+            msg.style.color = '#14532d';
+            msg.textContent = 'Salvo com sucesso.';
+          } catch (_err) {
+            msg.style.color = '#991b1b';
+            msg.textContent = 'Erro de rede ao salvar.';
+          } finally {
+            button.disabled = false;
+          }
+        }
+
+        document.querySelectorAll('.save-service-btn').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            const row = btn.closest('tr[data-service-key]');
+            if (!row) return;
+            void saveRow(row, btn);
+          });
+        });
+      })();
+      </script>`
+      : '<p style="color:#516675;font-size:12px;margin-top:10px;">Somente usuários admin podem editar endpoints monitorados.</p>'}
+  </section>`;
+
+  return `
+  <section class="panel">
+    <h2>Saude operacional</h2>
+    <div class="grid">
+      <article class="metric">
+        <div class="metric-label">Servicos online</div>
+        <div class="metric-value">${services.filter((s) => s.status === 'online').length}/${services.length}</div>
+        <div class="metric-hint">Disponibilidade</div>
+      </article>
+      <article class="metric">
+        <div class="metric-label">Banco de dados</div>
+        <div class="metric-value">${supabaseStatus}</div>
+        <div class="metric-hint">Supabase Postgres</div>
+      </article>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Status de servicos HTTP</h2>
+    <table class="table">
+      <thead>
+        <tr><th>Servico</th><th>Status</th><th>Tempo de resposta</th><th>Endpoint</th><th>Detalhe</th></tr>
+      </thead>
+      <tbody>
+        ${serviceRows}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="panel">
+    <h2>Metricas do banco de dados</h2>
+    <table class="table">
+      <thead>
+        <tr><th>Metrica</th><th>Valor</th><th>Tempo de resposta</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Status da conexao</td><td>${supabaseStatus}</td><td>${supabaseTime}</td></tr>
+        <tr><td>Conexoes ativas</td><td>${supabaseConnections}</td><td>—</td></tr>
+        <tr><td>Tamanho do banco</td><td>${escapeHtml(supabaseSize)}</td><td>—</td></tr>
+      </tbody>
+    </table>
+    ${supabaseMetrics.detail ? `<p style="color:#516675;font-size:13px;margin-top:8px;">Detalhe: ${escapeHtml(supabaseMetrics.detail)}</p>` : ''}
+    ${supabaseMetrics.error ? `<p style="color:#dc2626;font-size:13px;margin-top:8px;">Erro: ${escapeHtml(supabaseMetrics.error)}</p>` : ''}
+  </section>
+
+  ${editorPanel}`;
+}
+
+// ────────────────────────────────────────────────────────────
+// TAB: API STATUS
+// ────────────────────────────────────────────────────────────
+function renderApiStatusTab(): string {
+  const payload = {
+    service: 'restaurante-ops',
+    modules: ['customers', 'billing', 'metrics'],
+    status: 'operational',
+  };
+
+  return `
+  <section class="panel">
+    <h2>Payload atual</h2>
+    <p style="color:var(--ink-500);font-size:13px;margin-bottom:8px;">Este JSON é o retorno do endpoint público <strong>/api/status</strong>.</p>
+    <pre class="mono" style="background:#f7fbfe;padding:12px;border-radius:8px;overflow-x:auto;border:1px solid #e5eef4;">${escapeHtml(JSON.stringify(payload, null, 2))}</pre>
+  </section>
+
+  <section class="panel">
+    <h2>Acoes rapidas de diagnostico</h2>
+    <p style="color:var(--ink-500);font-size:13px;margin-bottom:8px;">Use os comandos abaixo para monitoramento basico.</p>
+    <pre class="mono" style="background:#f7fbfe;padding:12px;border-radius:8px;overflow-x:auto;border:1px solid #e5eef4;">curl -sS https://ops.restaurante-web.app.br/healthz
+curl -sS https://ops.restaurante-web.app.br/api/status</pre>
+    <p style="margin-top:8px;">Status sugerido: <span class="pill pill-ok">Operacional</span></p>
+  </section>`;
+}
+
+// ────────────────────────────────────────────────────────────
 // FUNÇÃO PRINCIPAL
 // ────────────────────────────────────────────────────────────
 export interface ObsDashboardOptions {
@@ -808,6 +1037,11 @@ export interface ObsDashboardOptions {
   traceType?: 'request' | 'order';
   // alerts tab
   alerts?: AlertRow[];
+  // service-status tab
+  services?: ServiceStatus[];
+  supabaseMetrics?: SupabaseMetrics;
+  monitoredServices?: MonitoredServiceConfig[];
+  canManageMonitoredServices?: boolean;
 }
 
 export function renderObservabilityHtml(opts: ObsDashboardOptions): string {
@@ -824,6 +1058,10 @@ export function renderObservabilityHtml(opts: ObsDashboardOptions): string {
     traceId = '',
     traceType = 'request',
     alerts = [],
+    services = [],
+    supabaseMetrics = { status: 'unknown' } as SupabaseMetrics,
+    monitoredServices = [],
+    canManageMonitoredServices = false,
   } = opts;
 
   let tabContent: string;
@@ -833,6 +1071,15 @@ export function renderObservabilityHtml(opts: ObsDashboardOptions): string {
     tabContent = renderTraceTab(timeline, traceId, traceType);
   } else if (tab === 'alerts') {
     tabContent = renderAlertsTab(alerts);
+  } else if (tab === 'service-status') {
+    tabContent = renderServiceStatusTab(
+      services,
+      supabaseMetrics,
+      monitoredServices,
+      canManageMonitoredServices,
+    );
+  } else if (tab === 'api-status') {
+    tabContent = renderApiStatusTab();
   } else {
     tabContent = renderLogsTab(logs, logsTotal, logsFilters);
   }
