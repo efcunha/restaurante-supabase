@@ -41,3 +41,40 @@ test('extractOpsObservabilitySettings usa fallback do ambiente quando painel nao
   assert.equal(extracted.envDefaultDays, 45);
   assert.equal(extracted.envDefaultStaleMinutes, 90);
 });
+
+test('extractOpsObservabilitySettings prioriza valores do painel quando presentes', async () => {
+  process.env.LOG_RETENTION_DAYS = '45';
+  process.env.OBS_STALE_MINUTES = '90';
+  const mod = await loadModule('panel-values');
+
+  const extracted = mod.extractOpsObservabilitySettings({
+    opsObservability: {
+      logRetentionDays: 120,
+      staleMinutes: 35,
+    },
+  });
+
+  assert.equal(extracted.logRetentionDays, 120);
+  assert.equal(extracted.staleMinutes, 35);
+  assert.equal(extracted.source, 'panel');
+  assert.equal(extracted.envDefaultDays, 45);
+  assert.equal(extracted.envDefaultStaleMinutes, 90);
+});
+
+test('extractOpsObservabilitySettings combina painel parcial com fallback de ambiente', async () => {
+  process.env.LOG_RETENTION_DAYS = '30';
+  process.env.OBS_STALE_MINUTES = '80';
+  const mod = await loadModule('panel-partial');
+
+  const extracted = mod.extractOpsObservabilitySettings({
+    opsObservability: {
+      staleMinutes: 25,
+    },
+  });
+
+  assert.equal(extracted.logRetentionDays, 30);
+  assert.equal(extracted.staleMinutes, 25);
+  assert.equal(extracted.source, 'panel');
+  assert.equal(extracted.envDefaultDays, 30);
+  assert.equal(extracted.envDefaultStaleMinutes, 80);
+});
