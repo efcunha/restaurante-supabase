@@ -159,7 +159,7 @@ function enforceHttpsInProduction(
   path: string,
   search: string,
 ): boolean {
-  if (env.OPS_ENV !== 'production' || isSecureTransport(req)) {
+  if (env.OPS_ENV !== 'production' || env.OPS_ALLOW_PLAINTEXT_HTTP || isSecureTransport(req)) {
     return false;
   }
 
