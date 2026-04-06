@@ -67,6 +67,8 @@ async function sendWebhookNotification(
 ): Promise<void> {
   const channelConfig = alert.channel_config ?? {};
   const webhookUrl = typeof channelConfig.url === 'string' ? channelConfig.url : null;
+  const provider = typeof channelConfig.provider === 'string' ? channelConfig.provider.toLowerCase() : 'slack';
+  const mention = typeof channelConfig.mention === 'string' ? channelConfig.mention.trim() : '';
 
   if (!webhookUrl) {
     logWarn('alerts.missing_webhook_url', {
@@ -85,7 +87,11 @@ async function sendWebhookNotification(
     return;
   }
 
-  const payload = {
+  const level = typeof (alert.condition as AlertCondition)?.level === 'string'
+    ? (alert.condition as AlertCondition).level
+    : 'info';
+
+  const slackPayload = {
     text: `*[restaurante-ops] Alerta disparado: ${alert.name}*`,
     blocks: [
       {
@@ -104,6 +110,31 @@ async function sendWebhookNotification(
       },
     ],
   };
+
+  const discordColor = level === 'error' ? 15158332 : level === 'warn' ? 16776960 : 3447003;
+  const discordPayload = {
+    username: 'restaurante-ops',
+    content: `${mention ? `${mention} ` : ''}[restaurante-ops] Alerta disparado: ${alert.name}`,
+    embeds: [
+      {
+        title: alert.name,
+        description: alert.description ?? 'Sem descricao',
+        color: discordColor,
+        fields: [
+          { name: 'Canal', value: alert.channel, inline: true },
+          { name: 'Nivel', value: level, inline: true },
+          {
+            name: 'Contexto',
+            value: `\`\`\`${JSON.stringify(context, null, 2).slice(0, 900)}\`\`\``,
+            inline: false,
+          },
+        ],
+        timestamp: new Date().toISOString(),
+      },
+    ],
+  };
+
+  const payload = provider === 'discord' ? discordPayload : slackPayload;
 
   const abortController = new AbortController();
   const timeout = setTimeout(
