@@ -191,6 +191,53 @@ function enforceHttpsInProduction(
   return true;
 }
 
+function enforceCanonicalHost(
+  req: IncomingMessage,
+  res: import('node:http').ServerResponse,
+  path: string,
+  search: string,
+): boolean {
+  if (env.OPS_ENV !== 'production') {
+    return false;
+  }
+
+  if (path === '/healthz' || path === '/api/status') {
+    return false;
+  }
+
+  const baseUrl = (env.OPS_PUBLIC_BASE_URL ?? '').trim();
+  if (!baseUrl) {
+    return false;
+  }
+
+  let canonicalUrl: URL;
+  try {
+    canonicalUrl = new URL(baseUrl);
+  } catch {
+    return false;
+  }
+
+  const hostHeader = req.headers.host;
+  const requestHost = (Array.isArray(hostHeader) ? hostHeader[0] : hostHeader ?? '').trim().toLowerCase();
+  const canonicalHost = canonicalUrl.host.trim().toLowerCase();
+
+  if (!requestHost || requestHost === canonicalHost) {
+    return false;
+  }
+
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    return false;
+  }
+
+  const target = `${canonicalUrl.origin}${path}${search}`;
+  res.writeHead(308, {
+    Location: target,
+    'content-type': 'text/plain; charset=utf-8',
+  });
+  res.end('Use canonical host');
+  return true;
+}
+
 function applySecurityHeaders(res: import('node:http').ServerResponse): void {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
@@ -1929,6 +1976,10 @@ function startServer() {
       const path = url.pathname;
 
       if (enforceHttpsInProduction(req, res, path, url.search)) {
+        return;
+      }
+
+      if (enforceCanonicalHost(req, res, path, url.search)) {
         return;
       }
 
