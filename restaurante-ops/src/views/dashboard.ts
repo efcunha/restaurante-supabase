@@ -534,7 +534,6 @@ export function renderDashboardHtml(user: OpsUser, data?: DashboardData): string
             <a class="quick-link" href="/customers">Gerenciar clientes</a>
             <a class="quick-link" href="/billing">Faturamento e invoices</a>
             <a class="quick-link" href="/billing/plan-config">Preco do plano</a>
-            <a class="quick-link" href="/metrics">Metricas SaaS</a>
             <a class="quick-link" href="/service-status">Estado do servico</a>
             <a class="quick-link" href="/api-status">API status JSON</a>
           </nav>
