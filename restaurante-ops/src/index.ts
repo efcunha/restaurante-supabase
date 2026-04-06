@@ -14,6 +14,10 @@ import {
   userHasVerifiedMfa,
 } from './modules/ops-security.js';
 import {
+  getOpsObservabilitySettings,
+  updateOpsLogRetentionDays,
+} from './modules/ops-observability-settings.js';
+import {
   fetchRecentCompanies,
   fetchInvoiceStats,
   fetchRecentInvoices,
@@ -76,6 +80,7 @@ import {
   type AlertCondition,
 } from './lib/log-storage.js';
 import { startAlertScheduler } from './lib/alert-scheduler.js';
+import { runRetentionCleanupCycle, startRetentionScheduler } from './lib/retention-scheduler.js';
 import { handleActivepiecesWebhook } from './lib/activepieces-logger.js';
 import { handleEvolutionWebhook } from './lib/evolution-logger.js';
 import { renderObservabilityHtml } from './views/observability.js';
@@ -1841,6 +1846,7 @@ function startServer() {
     });
 
   startAlertScheduler();
+  startRetentionScheduler(opsCompanyId);
 
   const server = createOpsHttpServer(async (req: IncomingMessage, res: ServerResponse) => {
     const safeRequestUrl = sanitizeRequestTarget(req.url);
@@ -2680,6 +2686,57 @@ function startServer() {
         return;
       }
 
+      if (req.method === 'PUT' && path === '/api/observability/settings/retention') {
+        const user = await requireAuth(req, res);
+        if (!user) return;
+
+        if (user.role !== 'admin') {
+          respondJson(res, 403, { error: 'Acesso negado. Somente admin pode editar a retencao de logs.' });
+          return;
+        }
+
+        try {
+          const rawBody = await readBody(req);
+          const body = parseJsonBody<Record<string, unknown>>(rawBody);
+          const retentionDays = Number.parseInt(String(body.retention_days ?? ''), 10);
+
+          if (Number.isNaN(retentionDays)) {
+            respondJson(res, 400, { error: 'retention_days obrigatorio.' });
+            return;
+          }
+
+          const settings = await updateOpsLogRetentionDays(opsCompanyId, retentionDays);
+          let cleanup: { deletedCount: number; retentionDays: number; source: 'panel' | 'env' } | null = null;
+
+          try {
+            cleanup = await runRetentionCleanupCycle(opsCompanyId);
+          } catch {
+            cleanup = null;
+          }
+
+          logInfo('observability.retention_updated', {
+            request_id: requestId,
+            user_id: user.id,
+            metadata: {
+              log_retention_days: settings.logRetentionDays,
+              source: settings.source,
+              env_default_days: settings.envDefaultDays,
+            },
+          });
+
+          respondJson(res, 200, { ok: true, settings, cleanup });
+        } catch (err) {
+          logError('observability.retention_update_failed', {
+            request_id: requestId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+          respondJson(res, 400, {
+            error: err instanceof Error ? err.message : 'Nao foi possivel atualizar a retencao de logs.',
+          });
+        }
+        return;
+      }
+
       // ---- Webhooks de integracao (Activepieces + Evolution) ----
       if (req.method === 'POST' && path === '/webhooks/activepieces') {
         await handleActivepiecesWebhook(req, res, requestId);
@@ -2753,15 +2810,18 @@ function startServer() {
           } else if (tab === 'alerts') {
             opts.alerts = await listAlerts();
           } else if (tab === 'service-status') {
-            const [services, supabaseMetrics, monitoredServices] = await Promise.all([
+            const [services, supabaseMetrics, monitoredServices, observabilitySettings] = await Promise.all([
               checkAllServices(),
               getSupabaseMetrics(),
               listMonitoredServicesConfig(),
+              getOpsObservabilitySettings(opsCompanyId),
             ]);
             opts.services = services;
             opts.supabaseMetrics = supabaseMetrics;
             opts.monitoredServices = monitoredServices;
             opts.canManageMonitoredServices = user.role === 'admin';
+            opts.observabilitySettings = observabilitySettings;
+            opts.canManageObservabilitySettings = user.role === 'admin';
           } else if (tab === 'api-status') {
             // API status não requer dados externos, renderização fixa
           }
