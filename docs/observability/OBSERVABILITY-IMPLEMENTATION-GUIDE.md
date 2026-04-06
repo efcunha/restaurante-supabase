@@ -382,6 +382,20 @@ Resposta:
 }
 ```
 
+#### Exemplo: `GET /api/logs/services`
+
+Query params suportados:
+- `hours` (opcional, default `168`, range `1..720`)
+
+Resposta:
+```json
+{
+  "ok": true,
+  "period": "168h",
+  "services": ["activepieces", "app", "evolution", "ops", "supabase", "web"]
+}
+```
+
 Resposta com timeline (`include_timeline=true`):
 ```json
 {

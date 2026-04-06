@@ -36,6 +36,7 @@ export interface OpsEnv {
   LOG_LEVEL: string;
   SLOW_QUERY_THRESHOLD_MS: number;
   LOG_RETENTION_DAYS: number;
+  OBS_STALE_MINUTES: number;
   ALERT_CHECK_INTERVAL_MS: number;
   ALERT_WEBHOOK_TIMEOUT_MS: number;
 }
@@ -67,6 +68,7 @@ export function buildEnv(): OpsEnv {
   const parsedObsReadFromIsolated = process.env.OBS_READ_FROM_ISOLATED === 'true';
   const parsedSlowQueryThreshold = Number(process.env.SLOW_QUERY_THRESHOLD_MS || '500');
   const parsedLogRetentionDays = Number(process.env.LOG_RETENTION_DAYS || '30');
+  const parsedObsStaleMinutes = Number(process.env.OBS_STALE_MINUTES || '60');
   const parsedAlertCheckInterval = Number(process.env.ALERT_CHECK_INTERVAL_MS || '60000');
   const parsedAlertWebhookTimeout = Number(process.env.ALERT_WEBHOOK_TIMEOUT_MS || '5000');
 
@@ -110,6 +112,9 @@ export function buildEnv(): OpsEnv {
     LOG_LEVEL: process.env.LOG_LEVEL || 'info',
     SLOW_QUERY_THRESHOLD_MS: Number.isFinite(parsedSlowQueryThreshold) ? parsedSlowQueryThreshold : 500,
     LOG_RETENTION_DAYS: Number.isFinite(parsedLogRetentionDays) ? parsedLogRetentionDays : 30,
+    OBS_STALE_MINUTES: Number.isFinite(parsedObsStaleMinutes)
+      ? Math.min(1440, Math.max(5, Math.trunc(parsedObsStaleMinutes)))
+      : 60,
     ALERT_CHECK_INTERVAL_MS: Number.isFinite(parsedAlertCheckInterval) ? parsedAlertCheckInterval : 60000,
     ALERT_WEBHOOK_TIMEOUT_MS: Number.isFinite(parsedAlertWebhookTimeout) ? parsedAlertWebhookTimeout : 5000,
   };

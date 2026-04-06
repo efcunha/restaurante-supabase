@@ -18,6 +18,10 @@ import {
   updateOpsLogRetentionDays,
 } from './modules/ops-observability-settings.js';
 import {
+  parseMetricsQueryParams,
+  parseServicesQueryParams,
+} from './modules/observability-query.js';
+import {
   fetchRecentCompanies,
   fetchInvoiceStats,
   fetchRecentInvoices,
@@ -71,6 +75,7 @@ import {
   enqueueLog,
   getMetrics as getLogMetrics,
   getMetricsTimeline as getLogMetricsTimeline,
+  listKnownServices as listKnownLogServices,
   listAlerts,
   createAlert,
   updateAlert,
@@ -2477,12 +2482,10 @@ function startServer() {
         if (!user) return;
 
         try {
-          const periodHours = parseIntegerQuery(url.searchParams.get('hours'), 24, 1, 168);
-          const serviceRaw = sanitizePlainText(url.searchParams.get('service') || '');
-          const serviceFilter = /^[A-Za-z0-9._:-]{1,64}$/.test(serviceRaw) ? serviceRaw : '';
-          const includeTimeline = ['1', 'true', 'yes'].includes(
-            sanitizePlainText(url.searchParams.get('include_timeline') || '').toLowerCase(),
-          );
+          const metricsQuery = parseMetricsQueryParams(url.searchParams);
+          const periodHours = metricsQuery.hours;
+          const serviceFilter = metricsQuery.service;
+          const includeTimeline = metricsQuery.includeTimeline;
 
           if (includeTimeline) {
             const [metrics, timeline] = await Promise.all([
@@ -2508,6 +2511,29 @@ function startServer() {
             error: err instanceof Error ? err.message : String(err),
           });
           respondJson(res, 500, { error: 'Nao foi possivel calcular metricas de logs.' });
+        }
+        return;
+      }
+
+      if (req.method === 'GET' && path === '/api/logs/services') {
+        const user = await requireAuth(req, res);
+        if (!user) return;
+
+        try {
+          const servicesQuery = parseServicesQueryParams(url.searchParams);
+          const periodHours = servicesQuery.hours;
+          const services = await listKnownLogServices(periodHours);
+          respondJson(res, 200, {
+            ok: true,
+            period: `${periodHours}h`,
+            services,
+          });
+        } catch (err) {
+          logError('observability.services_failed', {
+            request_id: requestId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+          respondJson(res, 500, { error: 'Nao foi possivel listar servicos observaveis.' });
         }
         return;
       }
@@ -2802,9 +2828,10 @@ function startServer() {
             const overviewServiceRaw = sanitizePlainText(url.searchParams.get('service') || '');
             const overviewService = /^[A-Za-z0-9._:-]{1,64}$/.test(overviewServiceRaw) ? overviewServiceRaw : '';
 
-            const [logMetrics, logTimeline, saasMetrics, billingOpsMetrics, services, alerts, statusPayload] = await Promise.all([
+            const [logMetrics, logTimeline, knownLogServices, saasMetrics, billingOpsMetrics, services, alerts, statusPayload] = await Promise.all([
               getLogMetrics(hours, overviewService || undefined),
               getLogMetricsTimeline(hours, overviewService || undefined),
+              listKnownLogServices(Math.max(hours, 168)),
               fetchSaasMetrics(),
               fetchBillingOpsMetrics(),
               checkAllServices(),
@@ -2812,9 +2839,11 @@ function startServer() {
               getApiStatus(),
             ]);
             opts.overviewHours = hours;
+            opts.overviewStaleMinutes = env.OBS_STALE_MINUTES;
             opts.overviewService = overviewService;
             opts.metrics = logMetrics;
             opts.overviewTimeline = logTimeline;
+            opts.overviewServices = knownLogServices;
             opts.saasMetrics = saasMetrics;
             opts.billingOpsMetrics = billingOpsMetrics;
             opts.services = services;

@@ -422,6 +422,31 @@ export async function getMetricsTimeline(periodHours = 24, serviceFilter?: strin
   });
 }
 
+export async function listKnownServices(periodHours = 168): Promise<string[]> {
+  const client = requireClient();
+  const since = new Date(Date.now() - periodHours * 60 * 60 * 1000).toISOString();
+
+  const { data, error } = await client
+    .from('ops_logs')
+    .select('service')
+    .gte('timestamp', since)
+    .order('timestamp', { ascending: false })
+    .limit(10000);
+
+  if (error) {
+    throw new Error(`Failed to list known services: ${error.message}`);
+  }
+
+  const unique = new Set<string>();
+  for (const row of data ?? []) {
+    const service = String((row as { service?: unknown }).service || '').trim();
+    if (!service) continue;
+    unique.add(service);
+  }
+
+  return [...unique].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}
+
 export async function cleanupOldLogs(olderThanDays: number): Promise<number> {
   const client = requireClient();
   const cutoff = new Date(Date.now() - olderThanDays * 24 * 60 * 60 * 1000).toISOString();
