@@ -94,7 +94,7 @@ insert into public.ops_monitored_services (
   (
     'evolution-api',
     'evolution-api',
-    'https://evolution-api-production-9ac1.up.railway.app/manager',
+    'https://evolution-api-production-203d4.up.railway.app/manager',
     '/',
     'GET',
     5000,
