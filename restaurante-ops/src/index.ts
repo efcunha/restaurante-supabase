@@ -70,6 +70,7 @@ import { createOpsHttpServer } from './lib/httpServer.js';
 import {
   enqueueLog,
   getMetrics as getLogMetrics,
+  getMetricsTimeline as getLogMetricsTimeline,
   listAlerts,
   createAlert,
   updateAlert,
@@ -2477,7 +2478,29 @@ function startServer() {
 
         try {
           const periodHours = parseIntegerQuery(url.searchParams.get('hours'), 24, 1, 168);
-          const metrics = await getLogMetrics(periodHours);
+          const serviceRaw = sanitizePlainText(url.searchParams.get('service') || '');
+          const serviceFilter = /^[A-Za-z0-9._:-]{1,64}$/.test(serviceRaw) ? serviceRaw : '';
+          const includeTimeline = ['1', 'true', 'yes'].includes(
+            sanitizePlainText(url.searchParams.get('include_timeline') || '').toLowerCase(),
+          );
+
+          if (includeTimeline) {
+            const [metrics, timeline] = await Promise.all([
+              getLogMetrics(periodHours, serviceFilter || undefined),
+              getLogMetricsTimeline(periodHours, serviceFilter || undefined),
+            ]);
+
+            respondJson(res, 200, {
+              ...metrics,
+              timeline,
+              filters: {
+                service: serviceFilter || null,
+              },
+            });
+            return;
+          }
+
+          const metrics = await getLogMetrics(periodHours, serviceFilter || undefined);
           respondJson(res, 200, metrics);
         } catch (err) {
           logError('observability.metrics_failed', {
@@ -2758,7 +2781,10 @@ function startServer() {
         const user = await requireAuth(req, res);
         if (!user) return;
 
-        const tab = sanitizePlainText(url.searchParams.get('tab') || 'logs');
+        const rawTab = sanitizePlainText(url.searchParams.get('tab') || 'overview');
+        const tab = ['overview', 'logs', 'metrics', 'trace', 'alerts', 'service-status', 'api-status'].includes(rawTab)
+          ? rawTab
+          : 'overview';
         const filters: Record<string, string> = {};
         for (const key of ['service', 'level', 'event', 'request_id', 'order_id', 'from', 'to', 'limit', 'offset']) {
           const v = sanitizePlainText(url.searchParams.get(key) || '');
@@ -2771,7 +2797,30 @@ function startServer() {
             userEmail: user.email,
           };
 
-          if (tab === 'logs') {
+          if (tab === 'overview') {
+            const hours = parseIntegerQuery(url.searchParams.get('hours'), 24, 1, 168);
+            const overviewServiceRaw = sanitizePlainText(url.searchParams.get('service') || '');
+            const overviewService = /^[A-Za-z0-9._:-]{1,64}$/.test(overviewServiceRaw) ? overviewServiceRaw : '';
+
+            const [logMetrics, logTimeline, saasMetrics, billingOpsMetrics, services, alerts, statusPayload] = await Promise.all([
+              getLogMetrics(hours, overviewService || undefined),
+              getLogMetricsTimeline(hours, overviewService || undefined),
+              fetchSaasMetrics(),
+              fetchBillingOpsMetrics(),
+              checkAllServices(),
+              listAlerts(),
+              getApiStatus(),
+            ]);
+            opts.overviewHours = hours;
+            opts.overviewService = overviewService;
+            opts.metrics = logMetrics;
+            opts.overviewTimeline = logTimeline;
+            opts.saasMetrics = saasMetrics;
+            opts.billingOpsMetrics = billingOpsMetrics;
+            opts.services = services;
+            opts.alerts = alerts;
+            opts.apiStatus = statusPayload;
+          } else if (tab === 'logs') {
             const limit = parseIntegerQuery(url.searchParams.get('limit'), 50, 1, 200);
             const offset = parseIntegerQuery(url.searchParams.get('offset'), 0, 0, 100000);
             filters.limit = String(limit);
