@@ -2740,6 +2740,25 @@ function startServer() {
         return;
       }
 
+      if (req.method === 'GET' && path === '/api/observability/settings') {
+        const user = await requireAuth(req, res);
+        if (!user) return;
+
+        try {
+          const settings = await getOpsObservabilitySettings(opsCompanyId);
+          respondJson(res, 200, { ok: true, settings });
+        } catch (err) {
+          logError('observability.settings_get_failed', {
+            request_id: requestId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+          respondJson(res, 500, {
+            error: err instanceof Error ? err.message : 'Nao foi possivel carregar as configuracoes de observabilidade.',
+          });
+        }
+        return;
+      }
+
       if (req.method === 'PUT' && path === '/api/observability/settings/retention') {
         const user = await requireAuth(req, res);
         if (!user) return;

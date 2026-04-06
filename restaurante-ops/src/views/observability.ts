@@ -437,6 +437,7 @@ function renderOverviewTab(
 
   const metricsApiUrl = `/api/logs/metrics?hours=${hours}${selectedService ? `&service=${encodeURIComponent(selectedService)}` : ''}&include_timeline=true`;
   const servicesApiUrl = '/api/logs/services?hours=168';
+  const observabilitySettingsApiUrl = '/api/observability/settings';
 
   return `
   <div class="panel">
@@ -555,6 +556,11 @@ function renderOverviewTab(
         <span class="mono" style="font-size:12px;">GET ${escapeHtml(servicesApiUrl)}</span>
         <a class="btn-logout" style="background:#0c7a96;border-color:#0c7a96;" href="${servicesApiUrl}" target="_blank" rel="noreferrer">Abrir</a>
         <button type="button" class="btn-primary" data-copy-value="${escapeHtml(servicesApiUrl)}" style="padding:6px 10px;">Copiar</button>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <span class="mono" style="font-size:12px;">GET ${escapeHtml(observabilitySettingsApiUrl)}</span>
+        <a class="btn-logout" style="background:#0c7a96;border-color:#0c7a96;" href="${observabilitySettingsApiUrl}" target="_blank" rel="noreferrer">Abrir</a>
+        <button type="button" class="btn-primary" data-copy-value="${escapeHtml(observabilitySettingsApiUrl)}" style="padding:6px 10px;">Copiar</button>
       </div>
     </div>
     <div id="overview-copy-feedback" style="margin-top:8px;font-size:12px;color:#516675;"></div>
