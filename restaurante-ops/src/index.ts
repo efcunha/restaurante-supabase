@@ -2611,6 +2611,20 @@ function startServer() {
             enabled,
           });
 
+          logInfo('observability.monitored_service_updated', {
+            request_id: requestId,
+            service_key: serviceKey,
+            user_id: user.id,
+            metadata: {
+              method: updated.method,
+              health_path: updated.health_path,
+              timeout_ms: updated.timeout_ms,
+              expected_status_min: updated.expected_status_min,
+              expected_status_max: updated.expected_status_max,
+              enabled: updated.enabled,
+            },
+          });
+
           respondJson(res, 200, { ok: true, service: updated });
         } catch (err) {
           logError('observability.monitored_service_update_failed', {
