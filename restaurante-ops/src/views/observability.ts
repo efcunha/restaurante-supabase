@@ -4,7 +4,7 @@
  * Renderizado server-side seguindo o padrão de templates HTML do restaurante-ops.
  */
 
-import type { LogEntry, LogMetrics, AlertRow } from '../lib/log-storage.js';
+import type { LogEntry, LogMetrics, LogTimelinePoint, AlertRow } from '../lib/log-storage.js';
 import type { SaasMetrics, BillingOpsMetrics } from '../modules/data.js';
 import type { ServiceStatus, MonitoredServiceConfig } from '../modules/service-status.js';
 import type { OpsObservabilitySettingsPayload } from '../modules/ops-observability-settings.js';
@@ -273,7 +273,8 @@ function renderTopbar(userEmail: string): string {
 
 function renderNavTabs(activeTab: string): string {
   const tabs = [
-    { id: 'logs', label: 'Logs', href: '/observability' },
+    { id: 'overview', label: 'Overview', href: '/observability' },
+    { id: 'logs', label: 'Logs', href: '/observability?tab=logs' },
     { id: 'metrics', label: 'Métricas', href: '/observability?tab=metrics' },
     { id: 'trace', label: 'Trace', href: '/observability?tab=trace' },
     { id: 'alerts', label: 'Alertas', href: '/observability?tab=alerts' },
@@ -292,6 +293,222 @@ function buildFilterHref(
 ): string {
   const params = new URLSearchParams({ ...base, ...Object.fromEntries(Object.entries(overrides).map(([k, v]) => [k, String(v)])) });
   return `/observability?tab=logs&${params.toString()}`;
+}
+
+function renderBars(rows: Array<{ label: string; value: number; hint?: string }>, emptyText: string): string {
+  const maxValue = rows.reduce((max, row) => Math.max(max, row.value), 0);
+  if (rows.length === 0 || maxValue <= 0) {
+    return `<div class="empty-state">${escapeHtml(emptyText)}</div>`;
+  }
+
+  return `<div style="display:grid;gap:8px;">
+    ${rows.map((row) => {
+      const widthPct = Math.max(2, Math.round((row.value / maxValue) * 100));
+      return `<div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:#2f4353;font-weight:700;margin-bottom:4px;gap:8px;">
+          <span>${escapeHtml(row.label)}</span>
+          <span>${row.value.toLocaleString('pt-BR')}</span>
+        </div>
+        <div style="height:10px;background:#e8f1f6;border-radius:999px;overflow:hidden;">
+          <div style="height:100%;width:${widthPct}%;background:#0c7a96;"></div>
+        </div>
+        ${row.hint ? `<div style="font-size:11px;color:#516675;margin-top:3px;">${escapeHtml(row.hint)}</div>` : ''}
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function renderOverviewTab(
+  hours: number,
+  selectedService: string,
+  metrics: LogMetrics | null,
+  timeline: LogTimelinePoint[],
+  saasMetrics: SaasMetrics | null,
+  billingOpsMetrics: BillingOpsMetrics | null,
+  services: ServiceStatus[],
+  alerts: AlertRow[],
+  apiStatus?: { status: string },
+): string {
+  if (!metrics) {
+    return `<div class="panel"><p class="empty-state">Overview indisponível. Verifique a conexão com o storage de observabilidade.</p></div>`;
+  }
+
+  const alertsEnabled = alerts.filter((alert) => alert.enabled).length;
+  const onlineServices = services.filter((svc) => svc.status === 'online').length;
+  const offlineServices = services.filter((svc) => svc.status === 'offline').length;
+  const warningServices = services.filter((svc) => svc.status === 'unknown').length;
+  const errorRatePct = (metrics.error_rate * 100).toFixed(2);
+
+  const levelBars = renderBars([
+    { label: 'Errors', value: metrics.by_level.error, hint: `${errorRatePct}% da janela` },
+    { label: 'Warnings', value: metrics.by_level.warn },
+    { label: 'Info', value: metrics.by_level.info },
+  ], 'Sem eventos por nível nesta janela.');
+
+  const serviceOptions = Array.from(new Set([
+    ...Object.keys(metrics.by_service),
+    ...services.map((svc) => svc.key || svc.name),
+  ]))
+    .filter((value) => Boolean(value))
+    .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+  const latestTimeline = timeline.slice(-24);
+  const timelineVolumeRows = latestTimeline.map((point) => ({
+    label: new Date(point.bucket_start).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+    value: point.total,
+    hint: `errors: ${point.errors} | warn: ${point.warns}`,
+  }));
+
+  const timelineErrorRows = latestTimeline.map((point) => ({
+    label: new Date(point.bucket_start).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+    value: point.errors,
+  }));
+
+  const timelineLatencyRows = latestTimeline.map((point) => ({
+    label: new Date(point.bucket_start).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+    value: Math.round(point.avg_duration_ms),
+    hint: `p95: ${point.p95_duration_ms}ms`,
+  }));
+
+  const serviceVolumeRows = Object.entries(metrics.by_service)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 8)
+    .map(([label, value]) => ({ label, value }));
+
+  const serviceStatusRows = services
+    .slice()
+    .sort((a, b) => {
+      const toScore = (status: ServiceStatus['status']) => (status === 'offline' ? 2 : status === 'unknown' ? 1 : 0);
+      return toScore(b.status) - toScore(a.status);
+    })
+    .map((svc) => ({
+      label: svc.name,
+      value: svc.responseTime ?? 0,
+      hint: svc.status === 'online' ? `HTTP ok${svc.statusCode ? ` (${svc.statusCode})` : ''}` : (svc.detail ?? 'Sem resposta'),
+    }));
+
+  const topErrors = metrics.top_errors.length === 0
+    ? '<div class="empty-state">Nenhum erro crítico na janela selecionada.</div>'
+    : `<table class="table">
+      <thead><tr><th>Evento</th><th>Ocorrências</th><th>Último visto</th></tr></thead>
+      <tbody>
+        ${metrics.top_errors.slice(0, 6).map((row) => `<tr><td class="mono">${escapeHtml(row.event)}</td><td><strong>${row.count}</strong></td><td class="mono" style="font-size:11px;">${escapeHtml(fmtDate(row.last_seen))}</td></tr>`).join('')}
+      </tbody>
+    </table>`;
+
+  const serviceHealthHint = apiStatus?.status === 'operational'
+    ? 'API status agregado: operacional'
+    : apiStatus?.status === 'degraded'
+      ? 'API status agregado: degradado'
+      : apiStatus?.status === 'down'
+        ? 'API status agregado: indisponível'
+        : 'API status agregado: sem informação';
+
+  const saasKpi = saasMetrics
+    ? `
+    <div class="metric">
+      <div class="metric-label">MRR estimado</div>
+      <div class="metric-value">${fmtMoneyBRL(saasMetrics.mrr)}</div>
+      <div class="metric-hint">Empresas ativas: ${saasMetrics.activeCompanies.toLocaleString('pt-BR')}</div>
+    </div>`
+    : '';
+
+  const billingKpi = billingOpsMetrics
+    ? `
+    <div class="metric">
+      <div class="metric-label">Billing overdue</div>
+      <div class="metric-value" style="color:#dc2626;">${billingOpsMetrics.overdueCount.toLocaleString('pt-BR')}</div>
+      <div class="metric-hint">${fmtMoneyBRL(billingOpsMetrics.overdueAmount)}</div>
+    </div>`
+    : '';
+
+  return `
+  <div class="panel">
+    <h2>Overview técnico — últimas ${hours}h</h2>
+    <form method="get" action="/observability" class="filter-bar" style="margin-bottom:12px;">
+      <input type="hidden" name="tab" value="overview" />
+      <input type="hidden" name="hours" value="${hours}" />
+      <div>
+        <label>Serviço (drill-down)</label>
+        <select name="service" style="min-width:240px;">
+          <option value="">Todos</option>
+          ${serviceOptions.map((service) => `<option value="${escapeHtml(service)}"${selectedService === service ? ' selected' : ''}>${escapeHtml(service)}</option>`).join('')}
+        </select>
+      </div>
+      <div style="padding-top:18px;">
+        <button type="submit" class="btn-primary">Aplicar filtro</button>
+      </div>
+    </form>
+    <div class="grid">
+      <div class="metric">
+        <div class="metric-label">Logs totais</div>
+        <div class="metric-value">${metrics.total_logs.toLocaleString('pt-BR')}</div>
+        <div class="metric-hint">Janela: ${escapeHtml(metrics.period)}${selectedService ? ` | filtro: ${escapeHtml(selectedService)}` : ''}</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Error rate</div>
+        <div class="metric-value" style="color:#dc2626;">${errorRatePct}%</div>
+        <div class="metric-hint">Errors: ${metrics.by_level.error.toLocaleString('pt-BR')}</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Latência média</div>
+        <div class="metric-value">${metrics.avg_duration_ms}ms</div>
+        <div class="metric-hint">p95: ${metrics.p95_duration_ms}ms</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Serviços online</div>
+        <div class="metric-value">${onlineServices}/${services.length}</div>
+        <div class="metric-hint">offline: ${offlineServices} | unknown: ${warningServices}</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Alertas ativos</div>
+        <div class="metric-value">${alertsEnabled.toLocaleString('pt-BR')}</div>
+        <div class="metric-hint">${serviceHealthHint}</div>
+      </div>
+      ${saasKpi}
+      ${billingKpi}
+    </div>
+    <div style="text-align:right;font-size:12px;color:var(--ink-500);margin-top:10px;">
+      <a href="/observability?tab=overview&hours=6${selectedService ? `&service=${encodeURIComponent(selectedService)}` : ''}" style="margin-right:8px;color:#0c7a96;">6h</a>
+      <a href="/observability?tab=overview&hours=24${selectedService ? `&service=${encodeURIComponent(selectedService)}` : ''}" style="margin-right:8px;color:#0c7a96;">24h</a>
+      <a href="/observability?tab=overview&hours=168${selectedService ? `&service=${encodeURIComponent(selectedService)}` : ''}" style="color:#0c7a96;">7d</a>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Série temporal técnica (últimas horas)</h2>
+    ${renderBars(timelineVolumeRows, 'Sem dados de throughput por hora para esta janela.')}
+  </div>
+
+  <div class="panel">
+    <h2>Erro por hora (últimas horas)</h2>
+    ${renderBars(timelineErrorRows, 'Sem erros por hora para esta janela.')}
+  </div>
+
+  <div class="panel">
+    <h2>Latência média por hora (ms)</h2>
+    ${renderBars(timelineLatencyRows, 'Sem dados de latência por hora para esta janela.')}
+  </div>
+
+  <div class="panel">
+    <h2>Distribuição por nível (visual analítico)</h2>
+    ${levelBars}
+  </div>
+
+  <div class="panel">
+    <h2>Volume por serviço</h2>
+    ${renderBars(serviceVolumeRows, 'Sem volume por serviço nesta janela.')}
+  </div>
+
+  <div class="panel">
+    <h2>Status técnico por serviço (latência)</h2>
+    ${renderBars(serviceStatusRows, 'Sem respostas de health check disponíveis.')}
+  </div>
+
+  <div class="panel">
+    <h2>Top erros da janela</h2>
+    ${topErrors}
+  </div>`;
 }
 
 // ────────────────────────────────────────────────────────────
@@ -1394,6 +1611,10 @@ curl -sS https://ops.restaurante-web.app.br/api/status | jq .</pre>
 export interface ObsDashboardOptions {
   tab: string;
   userEmail: string;
+  // overview tab
+  overviewHours?: number;
+  overviewService?: string;
+  overviewTimeline?: LogTimelinePoint[];
   // logs tab
   logs?: LogEntry[];
   logsTotal?: number;
@@ -1423,6 +1644,9 @@ export function renderObservabilityHtml(opts: ObsDashboardOptions): string {
   const {
     tab,
     userEmail,
+    overviewHours = 24,
+    overviewService = '',
+    overviewTimeline = [],
     logs = [],
     logsTotal = 0,
     logsFilters = {},
@@ -1443,7 +1667,19 @@ export function renderObservabilityHtml(opts: ObsDashboardOptions): string {
   } = opts;
 
   let tabContent: string;
-  if (tab === 'metrics') {
+  if (tab === 'overview') {
+    tabContent = renderOverviewTab(
+      overviewHours,
+      overviewService,
+      metrics,
+      overviewTimeline,
+      saasMetrics,
+      billingOpsMetrics,
+      services,
+      alerts,
+      apiStatus,
+    );
+  } else if (tab === 'metrics') {
     tabContent = renderMetricsTab(metrics, saasMetrics, billingOpsMetrics);
   } else if (tab === 'trace') {
     tabContent = renderTraceTab(timeline, traceId, traceType);
