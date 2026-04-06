@@ -67,6 +67,16 @@ export interface LogMetrics {
   top_errors: Array<{ event: string; count: number; last_seen: string }>;
 }
 
+export interface LogTimelinePoint {
+  bucket_start: string;
+  total: number;
+  errors: number;
+  warns: number;
+  infos: number;
+  avg_duration_ms: number;
+  p95_duration_ms: number;
+}
+
 export interface LogEntry {
   timestamp: string;
   level: LogLevel;
@@ -259,16 +269,22 @@ export async function traceOrder(orderId: string): Promise<LogEntry[]> {
   return (data ?? []) as LogEntry[];
 }
 
-export async function getMetrics(periodHours = 24): Promise<LogMetrics> {
+export async function getMetrics(periodHours = 24, serviceFilter?: string): Promise<LogMetrics> {
   const client = requireClient();
   const since = new Date(Date.now() - periodHours * 60 * 60 * 1000).toISOString();
 
-  const { data, error } = await client
+  let query = client
     .from('ops_logs')
     .select('timestamp, level, service, event, duration_ms')
     .gte('timestamp', since)
     .order('timestamp', { ascending: false })
     .limit(5000);
+
+  if (serviceFilter) {
+    query = query.eq('service', serviceFilter);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     throw new Error(`Failed to build log metrics: ${error.message}`);
@@ -328,6 +344,82 @@ export async function getMetrics(periodHours = 24): Promise<LogMetrics> {
     p95_duration_ms: p95Duration,
     top_errors: topErrors,
   };
+}
+
+export async function getMetricsTimeline(periodHours = 24, serviceFilter?: string): Promise<LogTimelinePoint[]> {
+  const client = requireClient();
+  const now = new Date();
+  const since = new Date(Date.now() - periodHours * 60 * 60 * 1000);
+  since.setMinutes(0, 0, 0);
+
+  let query = client
+    .from('ops_logs')
+    .select('timestamp, level, duration_ms, service')
+    .gte('timestamp', since.toISOString())
+    .order('timestamp', { ascending: true })
+    .limit(10000);
+
+  if (serviceFilter) {
+    query = query.eq('service', serviceFilter);
+  }
+
+  const { data, error } = await query;
+  if (error) {
+    throw new Error(`Failed to build log timeline: ${error.message}`);
+  }
+
+  const buckets = new Map<string, {
+    total: number;
+    errors: number;
+    warns: number;
+    infos: number;
+    durations: number[];
+  }>();
+
+  const cursor = new Date(since);
+  const end = new Date(now);
+  end.setMinutes(0, 0, 0);
+  while (cursor <= end) {
+    const key = cursor.toISOString();
+    buckets.set(key, { total: 0, errors: 0, warns: 0, infos: 0, durations: [] });
+    cursor.setHours(cursor.getHours() + 1);
+  }
+
+  for (const row of data ?? []) {
+    const ts = new Date(String(row.timestamp || ''));
+    if (Number.isNaN(ts.getTime())) continue;
+    ts.setMinutes(0, 0, 0);
+    const key = ts.toISOString();
+    const bucket = buckets.get(key);
+    if (!bucket) continue;
+
+    bucket.total += 1;
+    const level = String(row.level || 'info');
+    if (level === 'error') bucket.errors += 1;
+    else if (level === 'warn') bucket.warns += 1;
+    else bucket.infos += 1;
+
+    if (typeof row.duration_ms === 'number' && Number.isFinite(row.duration_ms) && row.duration_ms >= 0) {
+      bucket.durations.push(row.duration_ms);
+    }
+  }
+
+  return [...buckets.entries()].map(([bucket_start, bucket]) => {
+    const sorted = bucket.durations.slice().sort((a, b) => a - b);
+    const avg = sorted.length > 0 ? sorted.reduce((acc, value) => acc + value, 0) / sorted.length : 0;
+    const p95Index = sorted.length > 0 ? Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95)) : -1;
+    const p95 = p95Index >= 0 ? sorted[p95Index] : 0;
+
+    return {
+      bucket_start,
+      total: bucket.total,
+      errors: bucket.errors,
+      warns: bucket.warns,
+      infos: bucket.infos,
+      avg_duration_ms: Number(avg.toFixed(2)),
+      p95_duration_ms: p95,
+    };
+  });
 }
 
 export async function cleanupOldLogs(olderThanDays: number): Promise<number> {
