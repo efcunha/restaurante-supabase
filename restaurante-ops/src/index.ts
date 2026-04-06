@@ -15,7 +15,7 @@ import {
 } from './modules/ops-security.js';
 import {
   getOpsObservabilitySettings,
-  updateOpsLogRetentionDays,
+  updateOpsObservabilitySettings,
 } from './modules/ops-observability-settings.js';
 import {
   parseMetricsQueryParams,
@@ -2745,7 +2745,7 @@ function startServer() {
         if (!user) return;
 
         if (user.role !== 'admin') {
-          respondJson(res, 403, { error: 'Acesso negado. Somente admin pode editar a retencao de logs.' });
+          respondJson(res, 403, { error: 'Acesso negado. Somente admin pode editar as configuracoes de observabilidade.' });
           return;
         }
 
@@ -2753,13 +2753,17 @@ function startServer() {
           const rawBody = await readBody(req);
           const body = parseJsonBody<Record<string, unknown>>(rawBody);
           const retentionDays = Number.parseInt(String(body.retention_days ?? ''), 10);
+          const staleMinutes = Number.parseInt(String(body.stale_minutes ?? ''), 10);
 
-          if (Number.isNaN(retentionDays)) {
-            respondJson(res, 400, { error: 'retention_days obrigatorio.' });
+          if (Number.isNaN(retentionDays) && Number.isNaN(staleMinutes)) {
+            respondJson(res, 400, { error: 'Informe retention_days e/ou stale_minutes.' });
             return;
           }
 
-          const settings = await updateOpsLogRetentionDays(opsCompanyId, retentionDays);
+          const settings = await updateOpsObservabilitySettings(opsCompanyId, {
+            logRetentionDays: Number.isNaN(retentionDays) ? undefined : retentionDays,
+            staleMinutes: Number.isNaN(staleMinutes) ? undefined : staleMinutes,
+          });
           let cleanup: { deletedCount: number; retentionDays: number; source: 'panel' | 'env' } | null = null;
 
           try {
@@ -2773,8 +2777,10 @@ function startServer() {
             user_id: user.id,
             metadata: {
               log_retention_days: settings.logRetentionDays,
+              stale_minutes: settings.staleMinutes,
               source: settings.source,
               env_default_days: settings.envDefaultDays,
+              env_default_stale_minutes: settings.envDefaultStaleMinutes,
             },
           });
 
@@ -2785,7 +2791,7 @@ function startServer() {
             error: err instanceof Error ? err.message : String(err),
           });
           respondJson(res, 400, {
-            error: err instanceof Error ? err.message : 'Nao foi possivel atualizar a retencao de logs.',
+            error: err instanceof Error ? err.message : 'Nao foi possivel atualizar as configuracoes de observabilidade.',
           });
         }
         return;
@@ -2828,10 +2834,11 @@ function startServer() {
             const overviewServiceRaw = sanitizePlainText(url.searchParams.get('service') || '');
             const overviewService = /^[A-Za-z0-9._:-]{1,64}$/.test(overviewServiceRaw) ? overviewServiceRaw : '';
 
-            const [logMetrics, logTimeline, knownLogServices, saasMetrics, billingOpsMetrics, services, alerts, statusPayload] = await Promise.all([
+            const [logMetrics, logTimeline, knownLogServices, observabilitySettings, saasMetrics, billingOpsMetrics, services, alerts, statusPayload] = await Promise.all([
               getLogMetrics(hours, overviewService || undefined),
               getLogMetricsTimeline(hours, overviewService || undefined),
               listKnownLogServices(Math.max(hours, 168)),
+              getOpsObservabilitySettings(opsCompanyId),
               fetchSaasMetrics(),
               fetchBillingOpsMetrics(),
               checkAllServices(),
@@ -2839,7 +2846,7 @@ function startServer() {
               getApiStatus(),
             ]);
             opts.overviewHours = hours;
-            opts.overviewStaleMinutes = env.OBS_STALE_MINUTES;
+            opts.overviewStaleMinutes = observabilitySettings.staleMinutes;
             opts.overviewService = overviewService;
             opts.metrics = logMetrics;
             opts.overviewTimeline = logTimeline;
