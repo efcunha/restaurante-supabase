@@ -360,6 +360,11 @@ Resposta:
 
 #### Exemplo: `GET /api/logs/metrics`
 
+Query params suportados:
+- `hours` (opcional, default `24`, range `1..168`)
+- `service` (opcional, filtro exato de serviço)
+- `include_timeline` (opcional: `true|1|yes`) para retornar buckets por hora
+
 Resposta:
 ```json
 {
@@ -374,6 +379,37 @@ Resposta:
     { "event": "payment_failed", "count": 45, "last_seen": "2026-04-03T10:30:00.000Z" },
     { "event": "db_error", "count": 23, "last_seen": "2026-04-03T10:25:00.000Z" }
   ]
+}
+```
+
+Resposta com timeline (`include_timeline=true`):
+```json
+{
+  "period": "24h",
+  "total_logs": 45678,
+  "by_level": { "info": 40000, "warn": 4500, "error": 1178 },
+  "by_service": { "ops": 20000, "web": 15000, "app": 5000, "supabase": 3000, "activepieces": 1500, "evolution": 1178 },
+  "error_rate": 0.0258,
+  "avg_duration_ms": 187,
+  "p95_duration_ms": 890,
+  "top_errors": [
+    { "event": "payment_failed", "count": 45, "last_seen": "2026-04-03T10:30:00.000Z" },
+    { "event": "db_error", "count": 23, "last_seen": "2026-04-03T10:25:00.000Z" }
+  ],
+  "timeline": [
+    {
+      "bucket_start": "2026-04-03T09:00:00.000Z",
+      "total": 210,
+      "errors": 6,
+      "warns": 18,
+      "infos": 186,
+      "avg_duration_ms": 172.6,
+      "p95_duration_ms": 812
+    }
+  ],
+  "filters": {
+    "service": "ops"
+  }
 }
 ```
 
