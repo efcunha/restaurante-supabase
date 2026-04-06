@@ -1382,9 +1382,14 @@ function renderServiceStatusTab(
         <div class="metric-hint">dias em hot storage</div>
       </article>
       <article class="metric">
+        <div class="metric-label">Limiar stale</div>
+        <div class="metric-value">${observabilitySettings.staleMinutes}</div>
+        <div class="metric-hint">min sem evento para alerta</div>
+      </article>
+      <article class="metric">
         <div class="metric-label">Origem atual</div>
         <div class="metric-value" style="font-size:18px;">${observabilitySettings.source === 'panel' ? 'Painel ops' : 'Variavel de ambiente'}</div>
-        <div class="metric-hint">fallback deploy: ${observabilitySettings.envDefaultDays} dias</div>
+        <div class="metric-hint">fallback: ${observabilitySettings.envDefaultDays} dias | ${observabilitySettings.envDefaultStaleMinutes} min</div>
       </article>
     </div>
     <p style="color:var(--ink-500);font-size:13px;margin-bottom:12px;">
@@ -1396,9 +1401,13 @@ function renderServiceStatusTab(
           <label style="font-size:12px;font-weight:700;color:#2f4353;" for="retention-days">Retencao de logs (dias)</label>
           <input id="retention-days" type="number" min="1" max="3650" value="${observabilitySettings.logRetentionDays}" style="display:block;width:100%;margin-top:4px;padding:8px 10px;border:1px solid #c8d7e1;border-radius:8px;font-size:14px;background:#fff;" />
         </div>
+        <div>
+          <label style="font-size:12px;font-weight:700;color:#2f4353;" for="stale-minutes">Limiar stale (minutos)</label>
+          <input id="stale-minutes" type="number" min="5" max="1440" value="${observabilitySettings.staleMinutes}" style="display:block;width:100%;margin-top:4px;padding:8px 10px;border:1px solid #c8d7e1;border-radius:8px;font-size:14px;background:#fff;" />
+        </div>
         <div id="retention-form-msg" style="display:none;padding:10px;border-radius:8px;font-size:13px;font-weight:700;"></div>
         <div>
-          <button id="retention-submit-btn" type="submit" class="btn-primary">Salvar retencao</button>
+          <button id="retention-submit-btn" type="submit" class="btn-primary">Salvar configuracoes</button>
         </div>
       </form>
       <script>
@@ -1407,7 +1416,8 @@ function renderServiceStatusTab(
         const msg = document.getElementById('retention-form-msg');
         const btn = document.getElementById('retention-submit-btn');
         const input = document.getElementById('retention-days');
-        if (!form || !msg || !btn || !input) return;
+        const staleInput = document.getElementById('stale-minutes');
+        if (!form || !msg || !btn || !input || !staleInput) return;
 
         function showMsg(type, text) {
           msg.style.display = 'block';
@@ -1420,8 +1430,13 @@ function renderServiceStatusTab(
         form.addEventListener('submit', async function (event) {
           event.preventDefault();
           const retentionDays = Number.parseInt(String(input.value || ''), 10);
+          const staleMinutes = Number.parseInt(String(staleInput.value || ''), 10);
           if (!Number.isFinite(retentionDays) || retentionDays < 1 || retentionDays > 3650) {
             showMsg('error', 'Informe um valor entre 1 e 3650 dias.');
+            return;
+          }
+          if (!Number.isFinite(staleMinutes) || staleMinutes < 5 || staleMinutes > 1440) {
+            showMsg('error', 'Informe um limiar stale entre 5 e 1440 minutos.');
             return;
           }
 
@@ -1432,22 +1447,25 @@ function renderServiceStatusTab(
             const resp = await fetch('/api/observability/settings/retention', {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ retention_days: retentionDays }),
+              body: JSON.stringify({ retention_days: retentionDays, stale_minutes: staleMinutes }),
             });
             const data = await resp.json();
             if (!resp.ok) {
-              showMsg('error', data && data.error ? data.error : 'Falha ao salvar retencao.');
+              showMsg('error', data && data.error ? data.error : 'Falha ao salvar configuracoes.');
               return;
             }
             if (data && data.settings && Number.isFinite(Number(data.settings.logRetentionDays))) {
               input.value = String(data.settings.logRetentionDays);
             }
-            showMsg('ok', 'Retencao salva com sucesso.');
+            if (data && data.settings && Number.isFinite(Number(data.settings.staleMinutes))) {
+              staleInput.value = String(data.settings.staleMinutes);
+            }
+            showMsg('ok', 'Configuracoes salvas com sucesso.');
           } catch (_err) {
-            showMsg('error', 'Erro de rede ao salvar retencao.');
+            showMsg('error', 'Erro de rede ao salvar configuracoes.');
           } finally {
             btn.disabled = false;
-            btn.textContent = 'Salvar retencao';
+            btn.textContent = 'Salvar configuracoes';
           }
         });
       })();
@@ -1741,7 +1759,13 @@ export function renderObservabilityHtml(opts: ObsDashboardOptions): string {
     supabaseMetrics = { status: 'unknown' } as SupabaseMetrics,
     monitoredServices = [],
     canManageMonitoredServices = false,
-    observabilitySettings = { logRetentionDays: 30, source: 'env', envDefaultDays: 30 } as OpsObservabilitySettingsPayload,
+    observabilitySettings = {
+      logRetentionDays: 30,
+      staleMinutes: 60,
+      source: 'env',
+      envDefaultDays: 30,
+      envDefaultStaleMinutes: 60,
+    } as OpsObservabilitySettingsPayload,
     canManageObservabilitySettings = false,
   } = opts;
 
