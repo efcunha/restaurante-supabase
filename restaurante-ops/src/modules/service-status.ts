@@ -39,6 +39,31 @@ function normalizeHealthPath(path: string | undefined): string {
   return raw.startsWith('/') ? raw : `/${raw}`;
 }
 
+function normalizeMonitoredEndpointInput(baseUrl: string, healthPath: string): { baseUrl: string; healthPath: string } {
+  const rawBase = normalizeBaseUrl(baseUrl);
+  const rawHealth = normalizeHealthPath(healthPath);
+
+  // Permite que o usuário informe URL completa com path no campo base_url
+  // (ex: https://host/manager/) e converte para base_url=origin + health_path=/manager.
+  try {
+    const parsed = new URL(rawBase);
+    const origin = parsed.origin;
+    const parsedPath = normalizeHealthPath(parsed.pathname || '/');
+
+    if (parsedPath !== '/') {
+      const mergedPath = rawHealth === '/'
+        ? parsedPath
+        : normalizeHealthPath(`${parsedPath}${rawHealth}`);
+      return { baseUrl: origin, healthPath: mergedPath };
+    }
+
+    return { baseUrl: origin, healthPath: rawHealth };
+  } catch {
+    // Mantém comportamento anterior quando a URL não é parseável.
+    return { baseUrl: rawBase, healthPath: rawHealth };
+  }
+}
+
 function buildHealthUrl(baseUrl: string, healthPath: string): string {
   const normalizedBase = normalizeBaseUrl(baseUrl);
   const normalizedPath = normalizeHealthPath(healthPath);
@@ -207,9 +232,11 @@ export async function updateMonitoredServiceConfig(input: UpdateMonitoredService
     throw new Error('Faixa de status invalida: min maior que max.');
   }
 
+  const normalizedEndpoint = normalizeMonitoredEndpointInput(input.base_url, input.health_path);
+
   const payload = {
-    base_url: normalizeBaseUrl(input.base_url),
-    health_path: normalizeHealthPath(input.health_path),
+    base_url: normalizedEndpoint.baseUrl,
+    health_path: normalizedEndpoint.healthPath,
     method,
     timeout_ms: timeoutMs,
     expected_status_min: expectedMin,
@@ -221,10 +248,19 @@ export async function updateMonitoredServiceConfig(input: UpdateMonitoredService
     throw new Error('base_url obrigatoria.');
   }
 
+  const defaultConfig = getDefaultMonitoredServices().find((cfg) => cfg.service_key === serviceKey);
+
   const { data, error } = await supabase
     .from('ops_monitored_services')
-    .update(payload)
-    .eq('service_key', serviceKey)
+    .upsert(
+      {
+        service_key: serviceKey,
+        service_name: defaultConfig?.service_name ?? serviceKey,
+        display_order: defaultConfig?.display_order ?? 100,
+        ...payload,
+      },
+      { onConflict: 'service_key' },
+    )
     .select(
       'service_key, service_name, base_url, health_path, method, timeout_ms, enabled, display_order, expected_status_min, expected_status_max',
     )
