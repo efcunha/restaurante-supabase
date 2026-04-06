@@ -3,6 +3,41 @@ import { buildEnv } from '../config/env.js';
 
 type LogLevel = 'info' | 'warn' | 'error';
 
+export interface AlertRow {
+  id?: number;
+  name: string;
+  description?: string;
+  condition: AlertCondition;
+  channel: string;
+  channel_config?: Record<string, unknown>;
+  enabled: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface AlertCondition {
+  /** Tipo de condição: 'error_rate' | 'event_count' | 'no_events' */
+  type: string;
+  /** Nível de log alvo (opcional) */
+  level?: LogLevel;
+  /** Evento específico a monitorar (opcional) */
+  event?: string;
+  /** Serviço alvo (opcional) */
+  service?: string;
+  /** Janela de tempo em minutos */
+  window_minutes: number;
+  /** Limiar numérico */
+  threshold: number;
+}
+
+export interface AlertFiringRow {
+  id?: number;
+  alert_id: number;
+  fired_at?: string;
+  context?: Record<string, unknown>;
+  notified?: boolean;
+}
+
 export interface LogQueryFilter {
   service?: string;
   level?: LogLevel;
@@ -282,4 +317,109 @@ export async function getMetrics(periodHours = 24): Promise<LogMetrics> {
     p95_duration_ms: p95Duration,
     top_errors: topErrors,
   };
+}
+
+export async function cleanupOldLogs(olderThanDays: number): Promise<number> {
+  const client = requireClient();
+  const cutoff = new Date(Date.now() - olderThanDays * 24 * 60 * 60 * 1000).toISOString();
+  const { error, count } = await client
+    .from('ops_logs')
+    .delete({ count: 'exact' })
+    .lt('timestamp', cutoff);
+
+  if (error) {
+    throw new Error(`Failed to cleanup old logs: ${error.message}`);
+  }
+  return count ?? 0;
+}
+
+export async function listAlerts(enabled?: boolean): Promise<AlertRow[]> {
+  const client = requireClient();
+  let query = client
+    .from('ops_alerts')
+    .select('id, name, description, condition, channel, channel_config, enabled, created_at, updated_at')
+    .order('created_at', { ascending: false });
+
+  if (enabled !== undefined) {
+    query = query.eq('enabled', enabled);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    throw new Error(`Failed to list alerts: ${error.message}`);
+  }
+  return (data ?? []) as AlertRow[];
+}
+
+export async function createAlert(alert: Omit<AlertRow, 'id' | 'created_at' | 'updated_at'>): Promise<AlertRow> {
+  const client = requireClient();
+  const { data, error } = await client
+    .from('ops_alerts')
+    .insert({
+      name: alert.name,
+      description: alert.description,
+      condition: alert.condition,
+      channel: alert.channel,
+      channel_config: alert.channel_config,
+      enabled: alert.enabled,
+    })
+    .select('id, name, description, condition, channel, channel_config, enabled, created_at, updated_at')
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to create alert: ${error.message}`);
+  }
+  return data as AlertRow;
+}
+
+export async function updateAlert(id: number, patch: Partial<Omit<AlertRow, 'id' | 'created_at'>>): Promise<AlertRow> {
+  const client = requireClient();
+  const { data, error } = await client
+    .from('ops_alerts')
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select('id, name, description, condition, channel, channel_config, enabled, created_at, updated_at')
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to update alert: ${error.message}`);
+  }
+  return data as AlertRow;
+}
+
+export async function insertAlertFiring(firing: Omit<AlertFiringRow, 'id' | 'fired_at'>): Promise<void> {
+  const client = requireClient();
+  const { error } = await client.from('ops_alert_firings').insert({
+    alert_id: firing.alert_id,
+    context: firing.context,
+    notified: firing.notified ?? false,
+  });
+
+  if (error) {
+    throw new Error(`Failed to insert alert firing: ${error.message}`);
+  }
+}
+
+export async function countLogsInWindow(
+  windowMinutes: number,
+  filter?: { level?: LogLevel; event?: string; service?: string },
+): Promise<number> {
+  const client = requireClient();
+  const since = new Date(Date.now() - windowMinutes * 60 * 1000).toISOString();
+
+  let query = client
+    .from('ops_logs')
+    .select('id', { count: 'exact', head: true })
+    .gte('timestamp', since);
+
+  if (filter?.level) query = query.eq('level', filter.level);
+  if (filter?.event) query = query.eq('event', filter.event);
+  if (filter?.service) query = query.eq('service', filter.service);
+
+  const { error, count } = await query;
+  if (error) {
+    throw new Error(`Failed to count logs: ${error.message}`);
+  }
+  return count ?? 0;
 }

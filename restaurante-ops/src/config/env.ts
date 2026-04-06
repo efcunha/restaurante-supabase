@@ -30,7 +30,14 @@ export interface OpsEnv {
   OPS_TLS_CERT_PEM?: string;
   WEB_BASE_URL?: string;
   ACTIVEPIECES_BASE_URL?: string;
+  ACTIVEPIECES_WEBHOOK_SECRET?: string;
   EVOLUTION_API_BASE_URL?: string;
+  EVOLUTION_WEBHOOK_SECRET?: string;
+  LOG_LEVEL: string;
+  SLOW_QUERY_THRESHOLD_MS: number;
+  LOG_RETENTION_DAYS: number;
+  ALERT_CHECK_INTERVAL_MS: number;
+  ALERT_WEBHOOK_TIMEOUT_MS: number;
 }
 
 function required(name: string): string {
@@ -58,6 +65,10 @@ export function buildEnv(): OpsEnv {
   const parsedTrustProxyHeaders = process.env.OPS_TRUST_PROXY_HEADERS === 'true';
   const parsedObsDualWrite = process.env.OBS_DUAL_WRITE === 'true';
   const parsedObsReadFromIsolated = process.env.OBS_READ_FROM_ISOLATED === 'true';
+  const parsedSlowQueryThreshold = Number(process.env.SLOW_QUERY_THRESHOLD_MS || '500');
+  const parsedLogRetentionDays = Number(process.env.LOG_RETENTION_DAYS || '30');
+  const parsedAlertCheckInterval = Number(process.env.ALERT_CHECK_INTERVAL_MS || '60000');
+  const parsedAlertWebhookTimeout = Number(process.env.ALERT_WEBHOOK_TIMEOUT_MS || '5000');
 
   return {
     SUPABASE_URL: required('SUPABASE_URL'),
@@ -93,6 +104,13 @@ export function buildEnv(): OpsEnv {
     OPS_TLS_CERT_PEM: process.env.OPS_TLS_CERT_PEM,
     WEB_BASE_URL: process.env.WEB_BASE_URL,
     ACTIVEPIECES_BASE_URL: process.env.ACTIVEPIECES_BASE_URL,
+    ACTIVEPIECES_WEBHOOK_SECRET: process.env.ACTIVEPIECES_WEBHOOK_SECRET,
     EVOLUTION_API_BASE_URL: process.env.EVOLUTION_API_BASE_URL,
+    EVOLUTION_WEBHOOK_SECRET: process.env.EVOLUTION_WEBHOOK_SECRET,
+    LOG_LEVEL: process.env.LOG_LEVEL || 'info',
+    SLOW_QUERY_THRESHOLD_MS: Number.isFinite(parsedSlowQueryThreshold) ? parsedSlowQueryThreshold : 500,
+    LOG_RETENTION_DAYS: Number.isFinite(parsedLogRetentionDays) ? parsedLogRetentionDays : 30,
+    ALERT_CHECK_INTERVAL_MS: Number.isFinite(parsedAlertCheckInterval) ? parsedAlertCheckInterval : 60000,
+    ALERT_WEBHOOK_TIMEOUT_MS: Number.isFinite(parsedAlertWebhookTimeout) ? parsedAlertWebhookTimeout : 5000,
   };
 }
