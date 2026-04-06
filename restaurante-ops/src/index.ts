@@ -1099,7 +1099,6 @@ function renderQuickActionPanel(
         <a class="nav-link" href="/customers">Gerenciar clientes</a>
         <a class="nav-link" href="/billing">Faturamento e invoices</a>
         <a class="nav-link" href="/billing/plan-config">Preço do plano</a>
-        <a class="nav-link" href="/metrics">Metricas SaaS</a>
         <a class="nav-link" href="/service-status">Estado do servico</a>
         <a class="nav-link" href="/api-status">API status JSON</a>
       </nav>
