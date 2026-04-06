@@ -51,9 +51,16 @@ function normalizeMonitoredEndpointInput(baseUrl: string, healthPath: string): {
     const parsedPath = normalizeHealthPath(parsed.pathname || '/');
 
     if (parsedPath !== '/') {
-      const mergedPath = rawHealth === '/'
-        ? parsedPath
-        : normalizeHealthPath(`${parsedPath}${rawHealth}`);
+      if (rawHealth === '/') {
+        return { baseUrl: origin, healthPath: parsedPath };
+      }
+
+      // Evita duplicacao quando o path ja foi informado em ambos os campos.
+      if (rawHealth === parsedPath || rawHealth.startsWith(`${parsedPath}/`)) {
+        return { baseUrl: origin, healthPath: rawHealth };
+      }
+
+      const mergedPath = normalizeHealthPath(`${parsedPath}${rawHealth}`);
       return { baseUrl: origin, healthPath: mergedPath };
     }
 
