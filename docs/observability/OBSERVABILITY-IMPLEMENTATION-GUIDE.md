@@ -828,10 +828,11 @@ restaurante-app/src/
         # Complementa: src/services/LoggerService.ts (Sentry)
 │
 docs/
-├── OBSERVABILITY-IMPLEMENTATION-GUIDE.md  # Este documento (raiz do monorepo)
-├── OBSERVABILITY-IMPLEMENTATION-PROMPT.md # Prompt de implementação assistida
-├── OBSERVABILITY-ISOLATED-CUTOVER-RUNBOOK.md # Runbook de migração sem downtime
-└── scripts/observability_partitioned_schema.sql # SQL de referência (partições + RLS)
+└── observability/
+  ├── OBSERVABILITY-IMPLEMENTATION-GUIDE.md  # Este documento
+  ├── OBSERVABILITY-IMPLEMENTATION-PROMPT.md # Prompt de implementação assistida
+  ├── OBSERVABILITY-ISOLATED-CUTOVER-RUNBOOK.md # Runbook de migração sem downtime
+  └── observability_partitioned_schema.sql # SQL de referência (partições + RLS)
 ```
 
 ## 10. Capacidade Inicial (Sizing)
@@ -1176,5 +1177,5 @@ A Evolution API deve enviar webhook para `POST https://ops.restaurante-web.app.b
 - [Supabase Documentation](https://supabase.com/docs)
 - [Railway Cron Jobs](https://docs.railway.app/deploy/cron-jobs)
 - `database-backup/migrations/20260405184919_create_observability_isolated_partitioned_logs.sql`
-- `docs/OBSERVABILITY-ISOLATED-CUTOVER-RUNBOOK.md`
-- `docs/scripts/observability_partitioned_schema.sql`
+- `docs/observability/OBSERVABILITY-ISOLATED-CUTOVER-RUNBOOK.md`
+- `docs/observability/observability_partitioned_schema.sql`
