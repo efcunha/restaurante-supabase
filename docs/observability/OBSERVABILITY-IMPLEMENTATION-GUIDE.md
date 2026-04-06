@@ -211,6 +211,12 @@ CREATE POLICY "ops_authenticated_read_logs" ON ops_logs
 - Query limits defensivos (`limit <= 200`) e time range obrigatório para buscas amplas.
 - Observabilidade do próprio pipeline: métricas de fila, taxa de ingestão, taxa de erro de flush e lag de persistência.
 
+Estado atual do projeto:
+- O fallback inicial usa `LOG_RETENTION_DAYS` no ambiente do `restaurante-ops`.
+- Admins podem ajustar manualmente a retenção no painel `Observabilidade -> Estado do Serviço`.
+- O valor salvo no painel é persistido em `companies.settings.opsObservability.logRetentionDays`.
+- O scheduler de retenção roda diariamente no `restaurante-ops` e um cleanup adicional é disparado imediatamente após salvar uma nova retenção.
+
 ### 3.2 Logger Central (`src/lib/logger.ts` — refatorado)
 
 **Responsabilidade:** Interface única de logging para todo o ecossistema.
@@ -719,6 +725,8 @@ Parâmetros recomendados para produção (ponto de partida):
 ### 8.2 Retenção e Limpeza
 
  - Job agendado para deletar logs antigos conforme `LOG_RETENTION_DAYS`
+ - Admin pode sobrescrever esse valor no painel `Observabilidade -> Estado do Serviço`; o override fica salvo em `companies.settings.opsObservability.logRetentionDays`
+ - O `restaurante-ops` executa um scheduler diário de retenção e também dispara cleanup imediato quando a retenção é alterada pelo painel
  - **Deletar em batches** para evitar transações longas: `DELETE FROM ops_logs WHERE id IN (SELECT id FROM ops_logs WHERE timestamp < $cutoff LIMIT 1000)` — repetir até retornar 0 linhas
  - Rodar diariamente às 3h (ou configurar via cron no Railway)
 - Alternativa: partitionamento por mês na tabela `ops_logs`

@@ -7,6 +7,7 @@
 import type { LogEntry, LogMetrics, AlertRow } from '../lib/log-storage.js';
 import type { SaasMetrics, BillingOpsMetrics } from '../modules/data.js';
 import type { ServiceStatus, MonitoredServiceConfig } from '../modules/service-status.js';
+import type { OpsObservabilitySettingsPayload } from '../modules/ops-observability-settings.js';
 
 export interface SupabaseMetrics {
   status: 'online' | 'offline' | 'unknown';
@@ -993,6 +994,8 @@ function renderServiceStatusTab(
   supabaseMetrics: SupabaseMetrics,
   monitoredServices: MonitoredServiceConfig[],
   canManageMonitoredServices: boolean,
+  observabilitySettings: OpsObservabilitySettingsPayload,
+  canManageObservabilitySettings: boolean,
 ): string {
   const serviceRows = services
     .map(
@@ -1046,6 +1049,88 @@ function renderServiceStatusTab(
     }).join('');
 
   const editorPanel = `<section class="panel">
+    <h2>Retencao de logs</h2>
+    <div class="grid" style="margin-bottom:14px;">
+      <article class="metric">
+        <div class="metric-label">Retencao efetiva</div>
+        <div class="metric-value">${observabilitySettings.logRetentionDays}</div>
+        <div class="metric-hint">dias em hot storage</div>
+      </article>
+      <article class="metric">
+        <div class="metric-label">Origem atual</div>
+        <div class="metric-value" style="font-size:18px;">${observabilitySettings.source === 'panel' ? 'Painel ops' : 'Variavel de ambiente'}</div>
+        <div class="metric-hint">fallback deploy: ${observabilitySettings.envDefaultDays} dias</div>
+      </article>
+    </div>
+    <p style="color:var(--ink-500);font-size:13px;margin-bottom:12px;">
+      Ajuste manual da janela de retencao para o pipeline de observabilidade. O valor fica salvo no painel ops e pode ser consumido por rotina agendada de limpeza sem redeploy.
+    </p>
+    ${canManageObservabilitySettings
+      ? `<form id="retention-form" style="display:grid;gap:12px;max-width:420px;margin-bottom:18px;">
+        <div>
+          <label style="font-size:12px;font-weight:700;color:#2f4353;" for="retention-days">Retencao de logs (dias)</label>
+          <input id="retention-days" type="number" min="1" max="3650" value="${observabilitySettings.logRetentionDays}" style="display:block;width:100%;margin-top:4px;padding:8px 10px;border:1px solid #c8d7e1;border-radius:8px;font-size:14px;background:#fff;" />
+        </div>
+        <div id="retention-form-msg" style="display:none;padding:10px;border-radius:8px;font-size:13px;font-weight:700;"></div>
+        <div>
+          <button id="retention-submit-btn" type="submit" class="btn-primary">Salvar retencao</button>
+        </div>
+      </form>
+      <script>
+      (function () {
+        const form = document.getElementById('retention-form');
+        const msg = document.getElementById('retention-form-msg');
+        const btn = document.getElementById('retention-submit-btn');
+        const input = document.getElementById('retention-days');
+        if (!form || !msg || !btn || !input) return;
+
+        function showMsg(type, text) {
+          msg.style.display = 'block';
+          msg.style.background = type === 'ok' ? '#f0fdf4' : '#fef2f2';
+          msg.style.color = type === 'ok' ? '#14532d' : '#991b1b';
+          msg.style.border = type === 'ok' ? '1px solid #bbf7d0' : '1px solid #fecaca';
+          msg.textContent = text;
+        }
+
+        form.addEventListener('submit', async function (event) {
+          event.preventDefault();
+          const retentionDays = Number.parseInt(String(input.value || ''), 10);
+          if (!Number.isFinite(retentionDays) || retentionDays < 1 || retentionDays > 3650) {
+            showMsg('error', 'Informe um valor entre 1 e 3650 dias.');
+            return;
+          }
+
+          btn.disabled = true;
+          btn.textContent = 'Salvando...';
+
+          try {
+            const resp = await fetch('/api/observability/settings/retention', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ retention_days: retentionDays }),
+            });
+            const data = await resp.json();
+            if (!resp.ok) {
+              showMsg('error', data && data.error ? data.error : 'Falha ao salvar retencao.');
+              return;
+            }
+            if (data && data.settings && Number.isFinite(Number(data.settings.logRetentionDays))) {
+              input.value = String(data.settings.logRetentionDays);
+            }
+            showMsg('ok', 'Retencao salva com sucesso.');
+          } catch (_err) {
+            showMsg('error', 'Erro de rede ao salvar retencao.');
+          } finally {
+            btn.disabled = false;
+            btn.textContent = 'Salvar retencao';
+          }
+        });
+      })();
+      </script>`
+      : `<p style="color:#516675;font-size:12px;margin-bottom:18px;"><strong>Somente administradores</strong> podem ajustar a retencao manualmente.</p>`}
+  </section>
+
+  <section class="panel">
     <h2>Configuração dos endpoints monitorados</h2>
     <p style="color:var(--ink-500);font-size:13px;margin-bottom:10px;">
       Endereços e paths são persistidos no banco em <strong>ops_monitored_services</strong>. Alterações aqui entram em vigor sem redeploy.
@@ -1227,6 +1312,8 @@ export interface ObsDashboardOptions {
   supabaseMetrics?: SupabaseMetrics;
   monitoredServices?: MonitoredServiceConfig[];
   canManageMonitoredServices?: boolean;
+  observabilitySettings?: OpsObservabilitySettingsPayload;
+  canManageObservabilitySettings?: boolean;
 }
 
 export function renderObservabilityHtml(opts: ObsDashboardOptions): string {
@@ -1247,6 +1334,8 @@ export function renderObservabilityHtml(opts: ObsDashboardOptions): string {
     supabaseMetrics = { status: 'unknown' } as SupabaseMetrics,
     monitoredServices = [],
     canManageMonitoredServices = false,
+    observabilitySettings = { logRetentionDays: 30, source: 'env', envDefaultDays: 30 } as OpsObservabilitySettingsPayload,
+    canManageObservabilitySettings = false,
   } = opts;
 
   let tabContent: string;
@@ -1262,6 +1351,8 @@ export function renderObservabilityHtml(opts: ObsDashboardOptions): string {
       supabaseMetrics,
       monitoredServices,
       canManageMonitoredServices,
+      observabilitySettings,
+      canManageObservabilitySettings,
     );
   } else if (tab === 'api-status') {
     tabContent = renderApiStatusTab();
