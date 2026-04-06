@@ -1310,7 +1310,7 @@ function renderServiceStatusTab(
 // ────────────────────────────────────────────────────────────
 // TAB: API STATUS
 // ────────────────────────────────────────────────────────────
-function renderApiStatusTab(apiStatus?: { service: string; env: string; status: string; lastChecked: string; services: Array<{ name: string; status: string; responseTime?: number; statusCode?: number; detail?: string }> }): string {
+function renderApiStatusTab(apiStatus?: { service: string; env: string; status: string; lastChecked: string; services: Array<{ name: string; status: string; url?: string; responseTime?: number; statusCode?: number; detail?: string }> }): string {
   if (!apiStatus) {
     return `
     <section class="panel">
@@ -1330,6 +1330,7 @@ function renderApiStatusTab(apiStatus?: { service: string; env: string; status: 
         <td>${svc.status === 'online' ? '<span class="pill pill-ok">Online</span>' : svc.status === 'offline' ? '<span class="pill pill-error">Offline</span>' : '<span class="pill pill-warn">Unknown</span>'}</td>
         <td>${svc.responseTime ? svc.responseTime + 'ms' : '—'}</td>
         <td>${svc.statusCode ? 'HTTP ' + svc.statusCode : '—'}</td>
+        <td style="font-size:12px;max-width:280px;word-break:break-all;">${svc.url ? escapeHtml(svc.url) : '—'}</td>
         <td style="font-size:12px;color:#516675;">${escapeHtml(svc.detail ?? '—')}</td>
       </tr>`,
     )
@@ -1357,10 +1358,10 @@ function renderApiStatusTab(apiStatus?: { service: string; env: string; status: 
     <h2>Servicos monitorados</h2>
     <table class="table">
       <thead>
-        <tr><th>Servico</th><th>Status</th><th>Tempo de resposta</th><th>HTTP</th><th>Detalhe</th></tr>
+        <tr><th>Servico</th><th>Status</th><th>Tempo de resposta</th><th>HTTP</th><th>Endpoint checado</th><th>Detalhe</th></tr>
       </thead>
       <tbody>
-        ${serviceRows.length === 0 ? '<tr><td colspan="5" style="text-align:center;color:#516675;">Nenhum servico monitorado configurado.</td></tr>' : serviceRows}
+        ${serviceRows.length === 0 ? '<tr><td colspan="6" style="text-align:center;color:#516675;">Nenhum servico monitorado configurado.</td></tr>' : serviceRows}
       </tbody>
     </table>
   </section>
@@ -1400,7 +1401,7 @@ export interface ObsDashboardOptions {
   // alerts tab
   alerts?: AlertRow[];
   // api-status tab
-  apiStatus?: { service: string; env: string; status: string; lastChecked: string; services: Array<{ name: string; status: string; responseTime?: number; statusCode?: number; detail?: string }> };
+  apiStatus?: { service: string; env: string; status: string; lastChecked: string; services: Array<{ name: string; status: string; url?: string; responseTime?: number; statusCode?: number; detail?: string }> };
   // service-status tab
   services?: ServiceStatus[];
   supabaseMetrics?: SupabaseMetrics;

@@ -345,6 +345,7 @@ export interface ApiStatusPayload {
     name: string;
     key?: string;
     status: 'online' | 'offline' | 'unknown';
+    url?: string;
     responseTime?: number;
     statusCode?: number;
     detail?: string;
@@ -374,6 +375,7 @@ export async function getApiStatus(): Promise<ApiStatusPayload> {
       name: s.name,
       key: s.key,
       status: s.status,
+      url: s.url,
       responseTime: s.responseTime,
       statusCode: s.statusCode,
       detail: s.detail,

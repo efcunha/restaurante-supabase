@@ -42,7 +42,6 @@ import {
   updateMonitoredServiceConfig,
   getApiStatus,
   type ServiceStatus,
-  type ApiStatusPayload,
 } from './modules/service-status.js';
 import { getSupabaseMetrics, type SupabaseMetrics } from './modules/supabase-metrics.js';
 import { logError, logInfo, logWarn } from './lib/logger.js';
