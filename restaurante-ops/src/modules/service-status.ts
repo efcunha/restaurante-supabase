@@ -71,6 +71,34 @@ function normalizeMonitoredEndpointInput(baseUrl: string, healthPath: string): {
   }
 }
 
+const LEGACY_EVOLUTION_HOSTS = new Set([
+  'evolution-api-production-9ac1.up.railway.app',
+]);
+
+const FALLBACK_EVOLUTION_CANONICAL_BASE_URL = 'https://evolution-api-production-203d4.up.railway.app/manager';
+
+function applyEvolutionLegacyHostGuard(
+  serviceKey: string,
+  baseUrl: string,
+  healthPath: string,
+): { baseUrl: string; healthPath: string } {
+  if (serviceKey !== 'evolution-api') {
+    return { baseUrl, healthPath };
+  }
+
+  try {
+    const parsed = new URL(baseUrl);
+    if (!LEGACY_EVOLUTION_HOSTS.has(parsed.host.toLowerCase())) {
+      return { baseUrl, healthPath };
+    }
+
+    const canonicalRawBaseUrl = env.EVOLUTION_API_BASE_URL || FALLBACK_EVOLUTION_CANONICAL_BASE_URL;
+    return normalizeMonitoredEndpointInput(canonicalRawBaseUrl, '/');
+  } catch {
+    return { baseUrl, healthPath };
+  }
+}
+
 function buildHealthUrl(baseUrl: string, healthPath: string): string {
   const normalizedBase = normalizeBaseUrl(baseUrl);
   const normalizedPath = normalizeHealthPath(healthPath);
@@ -139,6 +167,7 @@ function normalizeConfigRow(row: Record<string, unknown>): MonitoredServiceConfi
   const serviceName = String(row.service_name || '').trim();
   const baseUrl = normalizeBaseUrl(String(row.base_url || ''));
   const healthPath = normalizeHealthPath(String(row.health_path || '/'));
+  const guardedEndpoint = applyEvolutionLegacyHostGuard(serviceKey, baseUrl, healthPath);
   const methodRaw = String(row.method || 'GET').toUpperCase();
   const method: HealthMethod = methodRaw === 'HEAD' ? 'HEAD' : 'GET';
   const timeoutMs = Number(row.timeout_ms ?? 5000);
@@ -147,15 +176,15 @@ function normalizeConfigRow(row: Record<string, unknown>): MonitoredServiceConfi
   const expectedMin = Number(row.expected_status_min ?? 200);
   const expectedMax = Number(row.expected_status_max ?? 399);
 
-  if (!serviceKey || !serviceName || !baseUrl) {
+  if (!serviceKey || !serviceName || !guardedEndpoint.baseUrl) {
     return null;
   }
 
   return {
     service_key: serviceKey,
     service_name: serviceName,
-    base_url: baseUrl,
-    health_path: healthPath,
+    base_url: guardedEndpoint.baseUrl,
+    health_path: guardedEndpoint.healthPath,
     method,
     timeout_ms: Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 5000,
     enabled,
@@ -240,10 +269,15 @@ export async function updateMonitoredServiceConfig(input: UpdateMonitoredService
   }
 
   const normalizedEndpoint = normalizeMonitoredEndpointInput(input.base_url, input.health_path);
+  const guardedEndpoint = applyEvolutionLegacyHostGuard(
+    serviceKey,
+    normalizedEndpoint.baseUrl,
+    normalizedEndpoint.healthPath,
+  );
 
   const payload = {
-    base_url: normalizedEndpoint.baseUrl,
-    health_path: normalizedEndpoint.healthPath,
+    base_url: guardedEndpoint.baseUrl,
+    health_path: guardedEndpoint.healthPath,
     method,
     timeout_ms: timeoutMs,
     expected_status_min: expectedMin,
