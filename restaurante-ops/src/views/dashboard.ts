@@ -530,6 +530,7 @@ export function renderDashboardHtml(user: OpsUser, data?: DashboardData): string
         <div class="panel">
           <div class="panel-title">Acoes rapidas</div>
           <nav class="quick-links">
+            <a class="quick-link" href="/observability">Observabilidade (logs, metricas e alertas)</a>
             <a class="quick-link" href="/customers">Gerenciar clientes</a>
             <a class="quick-link" href="/billing">Faturamento e invoices</a>
             <a class="quick-link" href="/billing/plan-config">Preco do plano</a>

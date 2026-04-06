@@ -5,6 +5,7 @@
  */
 
 import type { LogEntry, LogMetrics, AlertRow } from '../lib/log-storage.js';
+import type { SaasMetrics, BillingOpsMetrics } from '../modules/data.js';
 
 function escapeHtml(value: string | null | undefined): string {
   if (value == null) return '';
@@ -40,6 +41,13 @@ function fmtDate(iso: string | null | undefined): string {
   } catch {
     return iso;
   }
+}
+
+function fmtMoneyBRL(value: number): string {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  }).format(value);
 }
 
 function renderObsStyles(): string {
@@ -376,7 +384,11 @@ function renderLogsTab(
 // ────────────────────────────────────────────────────────────
 // TAB: MÉTRICAS
 // ────────────────────────────────────────────────────────────
-function renderMetricsTab(metrics: LogMetrics | null): string {
+function renderMetricsTab(
+  metrics: LogMetrics | null,
+  saasMetrics: SaasMetrics | null,
+  billingOpsMetrics: BillingOpsMetrics | null,
+): string {
   if (!metrics) {
     return `<div class="panel"><p class="empty-state">Métricas indisponíveis. Verifique a conexão com o banco de observabilidade.</p></div>`;
   }
@@ -396,6 +408,74 @@ function renderMetricsTab(metrics: LogMetrics | null): string {
     .sort(([, a], [, b]) => b - a)
     .map(([svc, count]) => `<tr><td><span class="trace-badge">${escapeHtml(svc)}</span></td><td><strong>${count}</strong></td></tr>`)
     .join('');
+
+  const saasSection = saasMetrics
+    ? `
+  <div class="panel">
+    <h2>Métricas SaaS (painel central)</h2>
+    <div class="grid">
+      <div class="metric">
+        <div class="metric-label">MRR estimado</div>
+        <div class="metric-value">${fmtMoneyBRL(saasMetrics.mrr)}</div>
+        <div class="metric-hint">Assinaturas ativas</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Total de empresas</div>
+        <div class="metric-value">${saasMetrics.totalCompanies.toLocaleString('pt-BR')}</div>
+        <div class="metric-hint">Base cadastrada</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Empresas pagantes</div>
+        <div class="metric-value">${saasMetrics.activeCompanies.toLocaleString('pt-BR')}</div>
+        <div class="metric-hint">Status active</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Cancelados no mês</div>
+        <div class="metric-value" style="color:#d97706;">${saasMetrics.cancelledThisMonth.toLocaleString('pt-BR')}</div>
+        <div class="metric-hint">Churn do ciclo atual</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Conversão trial</div>
+        <div class="metric-value">${escapeHtml(saasMetrics.conversionRate)}</div>
+        <div class="metric-hint">Indicador comercial</div>
+      </div>
+    </div>
+  </div>`
+    : '';
+
+  const billingSection = billingOpsMetrics
+    ? `
+  <div class="panel">
+    <h2>Billing Ops (resumo operacional)</h2>
+    <div class="grid">
+      <div class="metric">
+        <div class="metric-label">Pendentes</div>
+        <div class="metric-value">${billingOpsMetrics.pendingCount.toLocaleString('pt-BR')}</div>
+        <div class="metric-hint">${fmtMoneyBRL(billingOpsMetrics.pendingAmount)}</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Vencidas</div>
+        <div class="metric-value" style="color:#dc2626;">${billingOpsMetrics.overdueCount.toLocaleString('pt-BR')}</div>
+        <div class="metric-hint">${fmtMoneyBRL(billingOpsMetrics.overdueAmount)}</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">A vencer (7 dias)</div>
+        <div class="metric-value">${billingOpsMetrics.dueSoonCount.toLocaleString('pt-BR')}</div>
+        <div class="metric-hint">Acompanhamento proativo</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Falhas de cobrança</div>
+        <div class="metric-value" style="color:#d97706;">${billingOpsMetrics.failedCount.toLocaleString('pt-BR')}</div>
+        <div class="metric-hint">failed/cancelled</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Coletado no mês</div>
+        <div class="metric-value">${fmtMoneyBRL(billingOpsMetrics.collectedThisMonth)}</div>
+        <div class="metric-hint">Receita confirmada</div>
+      </div>
+    </div>
+  </div>`
+    : '';
 
   return `
   <div class="panel">
@@ -448,6 +528,10 @@ function renderMetricsTab(metrics: LogMetrics | null): string {
       </table>
     </div>
   </div>
+
+  ${saasSection}
+
+  ${billingSection}
 
   <div style="text-align:right;font-size:12px;color:var(--ink-500);margin-top:4px;">
     <a href="/observability?tab=metrics&hours=1" style="margin-right:8px;color:#0c7a96;">1h</a>
@@ -716,6 +800,8 @@ export interface ObsDashboardOptions {
   logsFilters?: Record<string, string>;
   // metrics tab
   metrics?: LogMetrics | null;
+  saasMetrics?: SaasMetrics | null;
+  billingOpsMetrics?: BillingOpsMetrics | null;
   // trace tab
   timeline?: LogEntry[];
   traceId?: string;
@@ -732,6 +818,8 @@ export function renderObservabilityHtml(opts: ObsDashboardOptions): string {
     logsTotal = 0,
     logsFilters = {},
     metrics = null,
+    saasMetrics = null,
+    billingOpsMetrics = null,
     timeline = [],
     traceId = '',
     traceType = 'request',
@@ -740,7 +828,7 @@ export function renderObservabilityHtml(opts: ObsDashboardOptions): string {
 
   let tabContent: string;
   if (tab === 'metrics') {
-    tabContent = renderMetricsTab(metrics);
+    tabContent = renderMetricsTab(metrics, saasMetrics, billingOpsMetrics);
   } else if (tab === 'trace') {
     tabContent = renderTraceTab(timeline, traceId, traceType);
   } else if (tab === 'alerts') {

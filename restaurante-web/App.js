@@ -50,6 +50,11 @@ import { colorSystem } from './src/design-system';
 import { useEffect } from 'react';
 import { WebSidebarTabBar, SIDEBAR_WIDTH } from './src/components/WebSidebarTabBar';
 import logger from './src/utils/logger';
+import {
+  installGlobalErrorHandler,
+  logAppStartup,
+  logPageView,
+} from './src/services/ObservabilityService';
 
 // @ts-ignore
 import PagamentoScreen from './src/screens/PagamentoScreen';
@@ -72,6 +77,15 @@ const GuardedCozinhaScreen = withOperationalGate(CozinhaScreen);
 const GuardedMontagemScreen = withOperationalGate(MontagemScreen);
 const GuardedPedidosProntosScreen = withOperationalGate(PedidosProntosScreen);
 const GuardedComandaStackScreen = withOperationalGate(ComandaStackScreen);
+
+function getActiveRouteName(state) {
+  if (!state?.routes?.length) return null;
+  const route = state.routes[state.index ?? 0];
+  if (route?.state) {
+    return getActiveRouteName(route.state);
+  }
+  return route?.name ?? null;
+}
 
 function ComandaStackScreen() {
   return (
@@ -144,9 +158,29 @@ function TabNavigator() {
 }
 
 function MainApp() {
+  const navigationRef = React.useRef(null);
+  const lastRouteNameRef = React.useRef(null);
+  const { user } = useAuth();
+
   return (
     <OrderProvider>
-      <NavigationContainer documentTitle={{ formatter: () => 'Restaurante Web' }}>
+      <NavigationContainer
+        ref={navigationRef}
+        documentTitle={{ formatter: () => 'Restaurante Web' }}
+        onReady={() => {
+          const currentRoute = navigationRef.current?.getCurrentRoute?.()?.name ?? null;
+          lastRouteNameRef.current = currentRoute;
+          if (currentRoute) {
+            logPageView(currentRoute, user?.id);
+          }
+        }}
+        onStateChange={() => {
+          const currentRoute = navigationRef.current?.getCurrentRoute?.()?.name ?? null;
+          if (!currentRoute || lastRouteNameRef.current === currentRoute) return;
+          lastRouteNameRef.current = currentRoute;
+          logPageView(currentRoute, user?.id);
+        }}
+      >
         <TabNavigator />
       </NavigationContainer>
     </OrderProvider>
@@ -186,6 +220,15 @@ function RootNavigator({ children }) {
 function AppContent() {
   const { user, loading, isPasswordRecovery } = useAuth();
 
+  useEffect(() => {
+    installGlobalErrorHandler();
+  }, []);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    logAppStartup(user.id, user.email);
+  }, [user?.id, user?.email]);
+
   // Tentar reconexao com impressora ao iniciar
   useEffect(() => {
     PrinterService.autoConnect();
@@ -223,6 +266,15 @@ function AppContent() {
       <SafeAreaProvider>
         <StatusBar barStyle="dark-content" backgroundColor={colorSystem.background} translucent={false} />
         <NavigationContainer
+          onReady={() => {
+            logPageView('Login');
+          }}
+          onStateChange={(state) => {
+            const routeName = getActiveRouteName(state);
+            if (routeName) {
+              logPageView(routeName);
+            }
+          }}
           documentTitle={{ formatter: (opts) => opts?.route?.name === 'PublicMenu' ? 'Cardápio' : 'Restaurante Web' }}
           linking={{
             prefixes: ['/'],
