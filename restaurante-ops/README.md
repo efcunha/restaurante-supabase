@@ -56,6 +56,7 @@ Centralizar gestao de clientes, contratos, metricas de uso e operacao financeira
 	- `OBS_READ_FROM_ISOLATED` (flag reservada para switch de leitura)
 	- `OPS_LOG_API_KEY` (autenticacao de `POST /api/logs`)
 	- `OPS_LOG_RATE_LIMIT_MAX_ATTEMPTS` e `OPS_LOG_RATE_LIMIT_WINDOW_MS` (rate limit por API key)
+	- `LOG_RETENTION_DAYS` (fallback inicial da retenção; admins podem sobrescrever no painel)
 	- `OPS_ENV=production`
 	- `OPS_PUBLIC_BASE_URL` (URL publica do servico)
 	- `OPS_ALLOW_PLAINTEXT_HTTP=false` (padrao seguro; habilite somente com TLS em proxy confiavel)

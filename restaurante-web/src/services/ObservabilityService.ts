@@ -175,6 +175,11 @@ export function installGlobalErrorHandler(): void {
   if (globalHandlerInstalled) return;
   globalHandlerInstalled = true;
 
+  // ErrorUtils não está disponível em ambiente web (browser) — apenas no runtime React Native.
+  if (!ErrorUtils || typeof ErrorUtils.getGlobalHandler !== 'function') {
+    return;
+  }
+
   const previousHandler = ErrorUtils.getGlobalHandler();
 
   ErrorUtils.setGlobalHandler((error: Error, isFatal?: boolean) => {

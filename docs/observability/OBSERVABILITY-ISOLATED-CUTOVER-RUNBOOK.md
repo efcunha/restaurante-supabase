@@ -48,6 +48,11 @@ Critério de baseline:
 3. Configurar limpeza/retenção (`LOG_RETENTION_DAYS`) e export cold storage.
 4. Publicar versão do ops com suporte a destino isolado, sem ativar uso ainda.
 
+Observação operacional:
+- O valor inicial continua vindo de `LOG_RETENTION_DAYS`.
+- Após o deploy, administradores podem sobrescrever a retenção no painel `Observabilidade -> Estado do Serviço`.
+- A retenção salva no painel passa a valer imediatamente para o cleanup e fica persistida em `companies.settings.opsObservability.logRetentionDays`.
+
 Validação:
 - Healthcheck do ops em estado verde.
 - Inserção manual de log de teste no destino com retorno bem-sucedido.
