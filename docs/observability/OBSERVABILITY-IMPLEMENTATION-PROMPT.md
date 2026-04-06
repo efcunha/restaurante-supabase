@@ -176,7 +176,8 @@ restaurante-ops/
 │   └── views/
 │       └── dashboard.ts                  # Template HTML do dashboard existente
 ├── docs/
-│   └── OBSERVABILITY-IMPLEMENTATION-GUIDE.md  # Guia completo de referência
+│   └── observability/
+│       └── OBSERVABILITY-IMPLEMENTATION-GUIDE.md  # Guia completo de referência
 ├── package.json
 ├── tsconfig.json
 └── railway.json
@@ -583,8 +584,8 @@ Ao final da implementação, o restaurante-ops deve permitir:
 
 ### Artefatos de execução obrigatórios
 
-- Runbook de cutover: `docs/OBSERVABILITY-ISOLATED-CUTOVER-RUNBOOK.md`
-- SQL de referência (particionado): `docs/scripts/observability_partitioned_schema.sql`
+- Runbook de cutover: `docs/observability/OBSERVABILITY-ISOLATED-CUTOVER-RUNBOOK.md`
+- SQL de referência (particionado): `docs/observability/observability_partitioned_schema.sql`
 
 ---
 
