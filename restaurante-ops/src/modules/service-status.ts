@@ -64,7 +64,8 @@ function getDefaultMonitoredServices(): MonitoredServiceConfig[] {
       service_key: 'restaurante-web',
       service_name: 'restaurante-web',
       base_url: normalizeBaseUrl(env.WEB_BASE_URL),
-      health_path: '/healthz',
+      // Expo web serve arquivos estáticos — não há /healthz; usar raiz que retorna 200.
+      health_path: '/',
       method: 'GET',
       timeout_ms: 5000,
       enabled: true,

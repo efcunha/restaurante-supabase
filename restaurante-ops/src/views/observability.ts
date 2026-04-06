@@ -660,6 +660,7 @@ function renderAlertsTab(alerts: AlertRow[]): string {
                   <option value="error_rate"${condType === 'error_rate' ? ' selected' : ''}>error_rate</option>
                   <option value="event_count"${condType === 'event_count' ? ' selected' : ''}>event_count</option>
                   <option value="no_events"${condType === 'no_events' ? ' selected' : ''}>no_events</option>
+                  <option value="service_offline"${condType === 'service_offline' ? ' selected' : ''}>service_offline</option>
                 </select>
                 <input data-field="cond_window" type="number" min="1" max="1440" value="${condWindow}" placeholder="janela" style="padding:6px 8px;border:1px solid #c8d7e1;border-radius:8px;" />
                 <input data-field="cond_threshold" type="number" min="0" value="${condThreshold}" placeholder="limiar" style="padding:6px 8px;border:1px solid #c8d7e1;border-radius:8px;" />
@@ -670,7 +671,7 @@ function renderAlertsTab(alerts: AlertRow[]): string {
                   <option value="info"${condLevel === 'info' ? ' selected' : ''}>info</option>
                 </select>
                 <input data-field="cond_event" type="text" value="${escapeHtml(condEvent)}" placeholder="evento" style="padding:6px 8px;border:1px solid #c8d7e1;border-radius:8px;" />
-                <input data-field="cond_service" type="text" value="${escapeHtml(condService)}" placeholder="serviço" style="padding:6px 8px;border:1px solid #c8d7e1;border-radius:8px;" />
+                <input data-field="cond_service" type="text" value="${escapeHtml(condService)}" placeholder="${condType === 'service_offline' ? 'service_key (ex: restaurante-web)' : 'serviço log'}" style="padding:6px 8px;border:1px solid #c8d7e1;border-radius:8px;" />
               </div>
             </td>
             <td style="font-size:11px;">${escapeHtml(fmtDate(a.created_at))}</td>
@@ -732,6 +733,7 @@ function renderAlertsTab(alerts: AlertRow[]): string {
             <option value="error_rate">error_rate</option>
             <option value="event_count">event_count</option>
             <option value="no_events">no_events</option>
+            <option value="service_offline">service_offline</option>
           </select>
         </div>
         <div>
@@ -758,16 +760,20 @@ function renderAlertsTab(alerts: AlertRow[]): string {
           <input id="alert-event" type="text" placeholder="ex: order_created" style="display:block;width:100%;margin-top:4px;padding:8px 10px;border:1px solid #c8d7e1;border-radius:8px;font-size:14px;" />
         </div>
         <div>
-          <label style="font-size:12px;font-weight:700;color:#2f4353;" for="alert-service">Serviço (opcional)</label>
-          <select id="alert-service" style="display:block;width:100%;margin-top:4px;padding:8px 10px;border:1px solid #c8d7e1;border-radius:8px;font-size:14px;">
-            <option value="">Todos</option>
-            <option value="ops">ops</option>
-            <option value="web">web</option>
-            <option value="app">app</option>
-            <option value="supabase">supabase</option>
-            <option value="activepieces">activepieces</option>
-            <option value="evolution">evolution</option>
-          </select>
+          <label style="font-size:12px;font-weight:700;color:#2f4353;" for="alert-service" id="alert-service-label">Serviço (opcional)</label>
+          <input id="alert-service" type="text" list="alert-service-list" placeholder="" style="display:block;width:100%;margin-top:4px;padding:8px 10px;border:1px solid #c8d7e1;border-radius:8px;font-size:14px;" />
+          <datalist id="alert-service-list">
+            <option value="ops">ops (log)</option>
+            <option value="web">web (log)</option>
+            <option value="app">app (log)</option>
+            <option value="supabase">supabase (log)</option>
+            <option value="activepieces">activepieces (log)</option>
+            <option value="evolution">evolution (log)</option>
+            <option value="restaurante-ops">restaurante-ops (service_key)</option>
+            <option value="restaurante-web">restaurante-web (service_key)</option>
+            <option value="evolution-api">evolution-api (service_key)</option>
+          </datalist>
+          <div id="alert-service-hint" style="font-size:11px;color:#516675;margin-top:4px;"></div>
         </div>
       </div>
       <div id="alert-form-msg" style="display:none;padding:10px;border-radius:8px;font-size:13px;font-weight:700;"></div>
@@ -784,6 +790,25 @@ function renderAlertsTab(alerts: AlertRow[]): string {
         });
         channelSel.dispatchEvent(new Event('change'));
 
+        const condTypeSel = document.getElementById('alert-cond-type');
+        const serviceInput = document.getElementById('alert-service');
+        const serviceLabel = document.getElementById('alert-service-label');
+        const serviceHint = document.getElementById('alert-service-hint');
+        function updateServiceField() {
+          const t = condTypeSel.value;
+          if (t === 'service_offline') {
+            serviceLabel.textContent = 'Service Key (opcional — vazio = todos)';
+            serviceInput.placeholder = 'ex: restaurante-web';
+            serviceHint.textContent = 'Use o service_key cadastrado em Estado do Serviço.';
+          } else {
+            serviceLabel.textContent = 'Serviço (opcional)';
+            serviceInput.placeholder = 'ex: web, ops, app';
+            serviceHint.textContent = 'Nome do serviço no log (campo service).';
+          }
+        }
+        condTypeSel.addEventListener('change', updateServiceField);
+        updateServiceField();
+
         const form = document.getElementById('alert-form');
         const msg = document.getElementById('alert-form-msg');
         const btn = document.getElementById('alert-submit-btn');
@@ -799,7 +824,7 @@ function renderAlertsTab(alerts: AlertRow[]): string {
           const threshold = parseInt(document.getElementById('alert-threshold').value, 10);
           const level = document.getElementById('alert-level').value;
           const event = document.getElementById('alert-event').value.trim();
-          const service = document.getElementById('alert-service').value;
+          const service = document.getElementById('alert-service').value.trim();
 
           if (!name) { showMsg('error', 'Nome é obrigatório.'); return; }
           if (channel === 'webhook' && !webhookUrl.startsWith('https://')) {
