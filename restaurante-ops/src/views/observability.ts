@@ -213,6 +213,14 @@ function renderObsStyles(): string {
       word-break: break-all;
       max-width: 280px;
     }
+    .mono-block {
+      display: block;
+      width: 100%;
+      max-width: none;
+      white-space: pre;
+      word-break: normal;
+      line-height: 1.45;
+    }
     .empty-state {
       text-align: center;
       color: var(--ink-500);
@@ -1369,13 +1377,13 @@ function renderApiStatusTab(apiStatus?: { service: string; env: string; status: 
   <section class="panel">
     <h2>Payload do endpoint publico</h2>
     <p style="color:var(--ink-500);font-size:13px;margin-bottom:8px;">Este JSON e o retorno de <strong>GET /api/status</strong> (sem autenticacao).</p>
-    <pre class="mono" style="background:#f7fbfe;padding:12px;border-radius:8px;overflow-x:auto;border:1px solid #e5eef4;font-size:11px;">${escapeHtml(JSON.stringify(apiStatus, null, 2))}</pre>
+    <pre class="mono mono-block" style="background:#f7fbfe;padding:12px;border-radius:8px;overflow-x:auto;border:1px solid #e5eef4;font-size:11px;">${escapeHtml(JSON.stringify(apiStatus, null, 2))}</pre>
   </section>
 
   <section class="panel">
     <h2>Acoes rapidas de diagnostico</h2>
     <p style="color:var(--ink-500);font-size:13px;margin-bottom:8px;">Use os comandos abaixo para monitoramento publico.</p>
-    <pre class="mono" style="background:#f7fbfe;padding:12px;border-radius:8px;overflow-x:auto;border:1px solid #e5eef4;">curl -sS https://ops.restaurante-web.app.br/healthz
+    <pre class="mono mono-block" style="background:#f7fbfe;padding:12px;border-radius:8px;overflow-x:auto;border:1px solid #e5eef4;">curl -sS https://ops.restaurante-web.app.br/healthz
 curl -sS https://ops.restaurante-web.app.br/api/status | jq .</pre>
   </section>`;
 }
