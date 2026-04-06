@@ -214,14 +214,21 @@ async function upsertAlert(client, definition) {
 }
 
 async function main() {
-  const supabaseUrl = requiredEnv('SUPABASE_URL');
-  const supabaseServiceRoleKey = requiredEnv('SUPABASE_SERVICE_ROLE_KEY');
+  const readFromIsolated = String(process.env.OBS_READ_FROM_ISOLATED || '').toLowerCase() === 'true';
+  const supabaseUrl = readFromIsolated
+    ? requiredEnv('OBS_SUPABASE_URL')
+    : requiredEnv('SUPABASE_URL');
+  const supabaseServiceRoleKey = readFromIsolated
+    ? requiredEnv('OBS_SUPABASE_SERVICE_ROLE_KEY')
+    : requiredEnv('SUPABASE_SERVICE_ROLE_KEY');
   const client = createClient(supabaseUrl, supabaseServiceRoleKey, {
     auth: { persistSession: false },
   });
 
   const definitions = buildAlertDefinitions();
   const summary = [];
+
+  console.log(`Alert target storage: ${readFromIsolated ? 'isolated_observability' : 'primary_ops'}`);
 
   for (const definition of definitions) {
     // eslint-disable-next-line no-await-in-loop
