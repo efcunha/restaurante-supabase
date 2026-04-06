@@ -1216,8 +1216,20 @@ function renderServiceStatusTab(
               msg.textContent = data && data.error ? data.error : 'Falha ao salvar.';
               return;
             }
+
+            const service = data && data.service ? data.service : null;
+            if (service) {
+              getField(row, 'base_url').value = String(service.base_url || body.base_url || '');
+              getField(row, 'health_path').value = String(service.health_path || body.health_path || '/');
+              getField(row, 'method').value = String(service.method || body.method || 'GET').toUpperCase();
+              getField(row, 'timeout_ms').value = String(service.timeout_ms || body.timeout_ms || 5000);
+              getField(row, 'expected_status_min').value = String(service.expected_status_min || body.expected_status_min || 200);
+              getField(row, 'expected_status_max').value = String(service.expected_status_max || body.expected_status_max || 399);
+              getField(row, 'enabled').checked = Boolean(service.enabled);
+            }
+
             msg.style.color = '#14532d';
-            msg.textContent = 'Salvo com sucesso.';
+            msg.textContent = 'Salvo com sucesso. Recarregue para atualizar o status HTTP.';
           } catch (_err) {
             msg.style.color = '#991b1b';
             msg.textContent = 'Erro de rede ao salvar.';
