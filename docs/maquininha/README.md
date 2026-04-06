@@ -24,6 +24,7 @@ Consolidar a especificacao tecnica de desenvolvimento da integracao de pagamento
 2. [Fluxos tecnicos de desenvolvimento](02-fluxos-tecnicos.md)
 3. [Contratos, seguranca e observabilidade](03-contratos-seguranca-observabilidade.md)
 4. [Plano de execucao, testes e rollout](04-plano-execucao-testes-rollout.md)
+5. [Prompt de inicializacao do projeto](PROMPT_INICIALIZACAO_PROJETO.md)
 
 ## Premissas de negocio (fixas)
 
