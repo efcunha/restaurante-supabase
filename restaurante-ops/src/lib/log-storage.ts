@@ -399,6 +399,18 @@ export async function updateAlert(id: number, patch: Partial<Omit<AlertRow, 'id'
   return data as AlertRow;
 }
 
+export async function deleteAlert(id: number): Promise<void> {
+  const client = getAlertsClient();
+  const { error } = await client
+    .from('ops_alerts')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    throw new Error(`Failed to delete alert: ${error.message}`);
+  }
+}
+
 export async function insertAlertFiring(firing: Omit<AlertFiringRow, 'id' | 'fired_at'>): Promise<void> {
   const client = getAlertsClient();
   const { error } = await client.from('ops_alert_firings').insert({
