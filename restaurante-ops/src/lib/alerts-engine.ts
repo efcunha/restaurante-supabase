@@ -14,6 +14,7 @@ import {
   type AlertCondition,
 } from './log-storage.js';
 import { logError, logInfo, logWarn } from './logger.js';
+import { checkAllServices } from '../modules/service-status.js';
 
 const env = buildEnv();
 
@@ -56,6 +57,17 @@ async function evaluateCondition(condition: AlertCondition): Promise<boolean> {
       service: condition.service,
     });
     return total === 0;
+  }
+
+  if (condition.type === 'service_offline') {
+    const statuses = await checkAllServices();
+    const serviceKey = condition.service?.trim();
+    if (serviceKey) {
+      const target = statuses.find((s) => s.key === serviceKey || s.name === serviceKey);
+      return target?.status === 'offline';
+    }
+    // Sem service_key especificado → dispara se QUALQUER serviço estiver offline.
+    return statuses.some((s) => s.status === 'offline');
   }
 
   return false;
@@ -180,6 +192,18 @@ async function evaluateAlert(alert: AlertRow): Promise<void> {
       threshold: (alert.condition as AlertCondition).threshold,
       evaluated_at: new Date().toISOString(),
     };
+
+    // Para service_offline, enriquecer o contexto com o status dos serviços.
+    if ((alert.condition as AlertCondition).type === 'service_offline') {
+      const statuses = await checkAllServices();
+      const offlineServices = statuses.filter((s) => s.status === 'offline');
+      context.offline_services = offlineServices.map((s) => ({
+        key: s.key,
+        name: s.name,
+        url: s.url,
+        detail: s.detail,
+      }));
+    }
 
     // Registra o firing no banco
     await insertAlertFiring({ alert_id: alert.id, context, notified: false });
