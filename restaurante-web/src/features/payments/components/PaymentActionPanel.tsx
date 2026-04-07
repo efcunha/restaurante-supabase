@@ -44,6 +44,9 @@ export const PaymentActionPanel = memo(function PaymentActionPanel({
   onConfirmPayment,
   onSplitByPeople,
   onSplitByItems,
+  onUseDevicePayment,
+  showDevicePaymentAction = false,
+  isDevicePaymentBusy = false,
   useUiNext = true,
 }: PaymentActionPanelProps) {
   return (
@@ -95,11 +98,36 @@ export const PaymentActionPanel = memo(function PaymentActionPanel({
         </View>
 
         {useUiNext ? (
-          <Button label="Confirmar Pagamento" onPress={onConfirmPayment} fullWidth />
+          <>
+            <Button label="Confirmar Pagamento" onPress={onConfirmPayment} fullWidth />
+            {showDevicePaymentAction && (
+              <Button
+                label={isDevicePaymentBusy ? 'Processando Maquininha...' : 'Usar Maquininha'}
+                onPress={onUseDevicePayment}
+                fullWidth
+                variant="ghost"
+                disabled={isDevicePaymentBusy}
+                style={styles.deviceButton}
+              />
+            )}
+          </>
         ) : (
-          <TouchableOpacity style={styles.legacyPrimaryButton} onPress={onConfirmPayment}>
-            <Text style={styles.legacyPrimaryButtonText}>Confirmar Pagamento</Text>
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity style={styles.legacyPrimaryButton} onPress={onConfirmPayment}>
+              <Text style={styles.legacyPrimaryButtonText}>Confirmar Pagamento</Text>
+            </TouchableOpacity>
+            {showDevicePaymentAction && (
+              <TouchableOpacity
+                style={[styles.legacySecondaryButton, styles.deviceButton]}
+                onPress={onUseDevicePayment}
+                disabled={isDevicePaymentBusy}
+              >
+                <Text style={styles.legacySecondaryButtonText}>
+                  {isDevicePaymentBusy ? 'Processando Maquininha...' : 'Usar Maquininha'}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </>
         )}
       </View>
 
@@ -203,6 +231,9 @@ const styles = StyleSheet.create({
   },
   splitActionButton: {
     flex: 1,
+  },
+  deviceButton: {
+    marginTop: 10,
   },
   legacyPrimaryButton: {
     backgroundColor: colors.primary,
