@@ -15,10 +15,9 @@ const cardTypeLabels: Record<ExternalPosCardType, string> = {
   cartao_credito: 'Crédito',
   cartao_debito: 'Débito',
   pix: 'PIX (QR na Maquininha)',
-  dinheiro: 'Dinheiro',
 };
 
-const cardTypes: ExternalPosCardType[] = ['cartao_credito', 'cartao_debito', 'pix', 'dinheiro'];
+const cardTypes: ExternalPosCardType[] = ['cartao_credito', 'cartao_debito', 'pix'];
 
 function genIdempotencyKey(): string {
   return `ext-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;

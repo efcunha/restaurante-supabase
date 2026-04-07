@@ -2,7 +2,7 @@ export type PaymentMethod = 'dinheiro' | 'pix' | 'cartao_credito' | 'cartao_debi
 
 export type PaymentMode = 'normal' | 'tef' | 'external_pos';
 
-export type ExternalPosCardType = 'cartao_credito' | 'cartao_debito' | 'pix' | 'dinheiro';
+export type ExternalPosCardType = 'cartao_credito' | 'cartao_debito' | 'pix';
 
 export interface ExternalPosPaymentData {
   amount: number;
