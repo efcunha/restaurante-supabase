@@ -1,9 +1,11 @@
-import React, { memo } from 'react';
+import React, { memo, useEffect, useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../../theme/colors';
 import { Button } from '../../../ui';
-import { PaymentActionPanelProps, PaymentMethod } from '../types';
+import { ExternalPosPaymentData, PaymentActionPanelProps, PaymentMethod, PaymentMode } from '../types';
+import { ExternalPosPaymentForm } from './ExternalPosPaymentForm';
+import { PaymentModeSelector } from './PaymentModeSelector';
 
 const paymentMethods: PaymentMethod[] = ['dinheiro', 'pix', 'cartao_credito', 'cartao_debito'];
 
@@ -47,85 +49,125 @@ export const PaymentActionPanel = memo(function PaymentActionPanel({
   onUseDevicePayment,
   showDevicePaymentAction = false,
   isDevicePaymentBusy = false,
+  onExternalPosPayment,
+  showExternalPosOption = false,
+  initialMode = 'normal',
   useUiNext = true,
 }: PaymentActionPanelProps) {
+  const [paymentMode, setPaymentMode] = useState<PaymentMode>(initialMode);
+
+  useEffect(() => {
+    setPaymentMode(initialMode);
+  }, [initialMode]);
+
+  const showModeSelector = showDevicePaymentAction || showExternalPosOption;
+
+  const handleExternalPosSubmit = async (data: ExternalPosPaymentData) => {
+    if (onExternalPosPayment) {
+      await onExternalPosPayment(data);
+    }
+  };
+
   return (
     <>
       <View style={styles.paymentSection}>
         <Text style={styles.sectionTitle}>Pagamento</Text>
 
-        <View style={styles.paymentRow}>
-          <Text style={styles.paymentLabel}>Valor (R$):</Text>
-          <TextInput
-            style={styles.paymentInput}
-            value={valor}
-            onChangeText={onChangeValor}
-            keyboardType="numeric"
-            placeholder="0,00"
+        {/* Seletor de modo: Normal | TEF | Externa */}
+        {showModeSelector && (
+          <PaymentModeSelector
+            mode={paymentMode}
+            onChangeMode={setPaymentMode}
+            showTef={showDevicePaymentAction}
+            showExternal={showExternalPosOption}
+            useUiNext={useUiNext}
           />
-        </View>
+        )}
 
-        <Text style={styles.subTitle}>Forma de Pagamento:</Text>
-        <View style={styles.formaBtnContainer}>
-          {paymentMethods.map((method) => {
-            const isSelected = forma === method;
-            const methodColors = getPaymentMethodColors(method, isSelected);
-
-            return (
-              <TouchableOpacity
-                key={method}
-                style={[
-                  styles.formaBtn,
-                  {
-                    backgroundColor: methodColors.backgroundColor,
-                    borderColor: methodColors.borderColor,
-                    borderWidth: isSelected ? 2 : 1,
-                  },
-                ]}
-                onPress={() => onChangeForma(method)}
-              >
-                <Text style={[styles.formaBtnText, { color: methodColors.textColor, fontWeight: isSelected ? 'bold' : 'normal' }]}>
-                  {method.replace('_', ' ').toUpperCase()}
-                </Text>
-                {isSelected && (
-                  <View style={styles.checkBadge}>
-                    <Ionicons name="checkmark" size={10} color="#FFF" />
-                  </View>
-                )}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        {useUiNext ? (
-          <>
-            <Button label="Confirmar Pagamento" onPress={onConfirmPayment} fullWidth />
-            {showDevicePaymentAction && (
-              <Button
-                label={isDevicePaymentBusy ? 'Processando Maquininha...' : 'Usar Maquininha'}
-                onPress={onUseDevicePayment}
-                fullWidth
-                variant="ghost"
-                disabled={isDevicePaymentBusy}
-                style={styles.deviceButton}
-              />
-            )}
-          </>
+        {/* Modo Maquininha Externa: formulário dedicado */}
+        {paymentMode === 'external_pos' ? (
+          <ExternalPosPaymentForm
+            defaultAmount={valor}
+            onSubmit={handleExternalPosSubmit}
+            isBusy={false}
+            useUiNext={useUiNext}
+          />
         ) : (
           <>
-            <TouchableOpacity style={styles.legacyPrimaryButton} onPress={onConfirmPayment}>
-              <Text style={styles.legacyPrimaryButtonText}>Confirmar Pagamento</Text>
-            </TouchableOpacity>
-            {showDevicePaymentAction && (
-              <TouchableOpacity
-                style={[styles.legacySecondaryButton, styles.deviceButton]}
-                onPress={onUseDevicePayment}
-                disabled={isDevicePaymentBusy}
-              >
-                <Text style={styles.legacySecondaryButtonText}>
-                  {isDevicePaymentBusy ? 'Processando Maquininha...' : 'Usar Maquininha'}
-                </Text>
-              </TouchableOpacity>
+            <View style={styles.paymentRow}>
+              <Text style={styles.paymentLabel}>Valor (R$):</Text>
+              <TextInput
+                style={styles.paymentInput}
+                value={valor}
+                onChangeText={onChangeValor}
+                keyboardType="numeric"
+                placeholder="0,00"
+              />
+            </View>
+
+            <Text style={styles.subTitle}>Forma de Pagamento:</Text>
+            <View style={styles.formaBtnContainer}>
+              {paymentMethods.map((method) => {
+                const isSelected = forma === method;
+                const methodColors = getPaymentMethodColors(method, isSelected);
+
+                return (
+                  <TouchableOpacity
+                    key={method}
+                    style={[
+                      styles.formaBtn,
+                      {
+                        backgroundColor: methodColors.backgroundColor,
+                        borderColor: methodColors.borderColor,
+                        borderWidth: isSelected ? 2 : 1,
+                      },
+                    ]}
+                    onPress={() => onChangeForma(method)}
+                  >
+                    <Text style={[styles.formaBtnText, { color: methodColors.textColor, fontWeight: isSelected ? 'bold' : 'normal' }]}>
+                      {method.replace('_', ' ').toUpperCase()}
+                    </Text>
+                    {isSelected && (
+                      <View style={styles.checkBadge}>
+                        <Ionicons name="checkmark" size={10} color="#FFF" />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {useUiNext ? (
+              <>
+                <Button label="Confirmar Pagamento" onPress={onConfirmPayment} fullWidth />
+                {paymentMode === 'tef' && showDevicePaymentAction && (
+                  <Button
+                    label={isDevicePaymentBusy ? 'Processando Maquininha...' : 'Usar Maquininha'}
+                    onPress={onUseDevicePayment}
+                    fullWidth
+                    variant="ghost"
+                    disabled={isDevicePaymentBusy}
+                    style={styles.deviceButton}
+                  />
+                )}
+              </>
+            ) : (
+              <>
+                <TouchableOpacity style={styles.legacyPrimaryButton} onPress={onConfirmPayment}>
+                  <Text style={styles.legacyPrimaryButtonText}>Confirmar Pagamento</Text>
+                </TouchableOpacity>
+                {paymentMode === 'tef' && showDevicePaymentAction && (
+                  <TouchableOpacity
+                    style={[styles.legacySecondaryButton, styles.deviceButton]}
+                    onPress={onUseDevicePayment}
+                    disabled={isDevicePaymentBusy}
+                  >
+                    <Text style={styles.legacySecondaryButtonText}>
+                      {isDevicePaymentBusy ? 'Processando Maquininha...' : 'Usar Maquininha'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </>
             )}
           </>
         )}

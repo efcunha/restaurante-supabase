@@ -19,6 +19,7 @@ export interface DevicePaymentRequest {
 export interface DevicePaymentResult {
   status: DevicePaymentStatus;
   transactionId?: string;
+  providerPaymentId?: string;
   authCode?: string;
   message: string;
 }

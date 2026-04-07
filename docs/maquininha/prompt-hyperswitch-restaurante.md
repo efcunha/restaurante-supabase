@@ -4,7 +4,13 @@
 
 Projeto: `restaurante-supabase` — POS/PDV full-stack para restaurantes brasileiros.
 Stack: React Native (Expo 54), TypeScript estrito, Supabase (PostgreSQL 15 + RLS + Realtime).
-Monorepo: `restaurante-app/` (nativo), `restaurante-web/` (Expo Web), `restaurante-ops/` (billing/admin).
+Monorepo (escopo desta fase): `restaurante-web/` (Expo Web) e `restaurante-ops/` (billing/admin).
+
+## Escopo da fase atual (definido)
+
+- Frontend: `restaurante-web` (PDV web, incluindo maquininha TEF e balanca).
+- Backend: `restaurante-ops` (API de orquestracao, webhook e integracao Hyperswitch).
+- Fora de escopo nesta fase: `restaurante-app` (mobile).
 
 ---
 
@@ -280,9 +286,9 @@ app.post('/webhooks/hyperswitch', async (req, res) => {
 
 ---
 
-### 4. Serviço no app/web — `src/services/paymentService.ts`
+### 4. Serviço no frontend web — `restaurante-web/src/services/paymentService.ts`
 
-Criar espelhado em `restaurante-app/src/services/` e `restaurante-web/src/services/`:
+Criar no `restaurante-web/src/services/`:
 
 ```typescript
 // paymentService.ts — chamado pelo PDV ao fechar comanda
@@ -333,7 +339,7 @@ export async function iniciarPagamentoPresencial(
 
 ### 5. Feature flag (Phase 12 / canary)
 
-Adicionar em `restaurante-app/src/config/featureFlags.ts` e espelhar em `restaurante-web/`:
+Adicionar em `restaurante-web/src/config/featureFlags.ts`:
 
 ```typescript
 // Adicionar à lista de flags existente
@@ -393,11 +399,12 @@ Após o deploy:
 - [ ] Webhook atualiza `payment_transactions` de forma idempotente
 - [ ] Nenhum dado sensível em `console.log` (SEC-06)
 
-### App / Web
-- [ ] `paymentService.ts` espelhado em app e web
-- [ ] Feature flag `hyperswitch_payment_enabled` criada e protegendo o fluxo
+### Frontend Web
+- [ ] `paymentService.ts` implementado no restaurante-web
+- [ ] Feature flag `hyperswitch_payment_enabled` criada no restaurante-web e protegendo o fluxo
 - [ ] Fluxo de pagamento atual preservado como fallback quando flag = false
-- [ ] Nenhuma chamada ao Hyperswitch ou adquirente feita diretamente do app (tudo via ops)
+- [ ] Nenhuma chamada ao Hyperswitch ou adquirente feita diretamente do frontend (tudo via ops)
+- [ ] Fluxo de balanca no PDV web preservado e compativel com o fluxo TEF (sem regressao)
 
 ### Infraestrutura
 - [ ] Hyperswitch rodando em ambiente isolado (não misturar com banco do app)
@@ -431,5 +438,5 @@ supabase migration repair --status reverted <timestamp>_add_payment_gateway_conf
 | Hyperswitch fora do ar | Fallback para fluxo manual com feature flag |
 | Credencial do adquirente vazar | Nunca armazenar no banco; usar Supabase Vault ou env server-side |
 | Webhook duplicado | Atualização idempotente por `hyperswitch_payment_id` |
-| Drift app/web | Implementar `paymentService.ts` espelhado no mesmo PR |
+| Drift web/ops | Manter contrato unico via restaurante-ops e validar compatibilidade do frontend web no mesmo PR |
 | RLS bypassado | Testar com usuário de `company_id` diferente antes de promover |

@@ -29,6 +29,8 @@ export type AuditEventType =
   | 'order.deleted'
   | 'order.payment_changed'
   | 'order.status_changed'
+  // Pagamentos
+  | 'payment.manual_recorded'
   // Usuários
   | 'user.created'
   | 'user.updated'

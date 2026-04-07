@@ -1,5 +1,18 @@
 export type PaymentMethod = 'dinheiro' | 'pix' | 'cartao_credito' | 'cartao_debito';
 
+export type PaymentMode = 'normal' | 'tef' | 'external_pos';
+
+export type ExternalPosCardType = 'cartao_credito' | 'cartao_debito' | 'pix' | 'dinheiro';
+
+export interface ExternalPosPaymentData {
+  amount: number;
+  cardType: ExternalPosCardType;
+  nsu?: string;
+  cardLast4?: string;
+  note?: string;
+  idempotencyKey: string;
+}
+
 export interface PaymentBalance {
   total: number;
   pago: number;
@@ -36,5 +49,8 @@ export interface PaymentActionPanelProps {
   onUseDevicePayment?: () => void;
   showDevicePaymentAction?: boolean;
   isDevicePaymentBusy?: boolean;
+  onExternalPosPayment?: (data: ExternalPosPaymentData) => Promise<void>;
+  showExternalPosOption?: boolean;
+  initialMode?: PaymentMode;
   useUiNext?: boolean;
 }

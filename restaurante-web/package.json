@@ -17,6 +17,7 @@
     "lint:fix": "eslint src --fix",
     "format": "prettier --write .",
     "test:e2e": "playwright test",
+    "test:e2e:pdv-maquininha": "playwright test e2e/pdv-maquininha-aprovado.spec.ts --workers=1 --reporter=line",
     "test:e2e:admin": "playwright test e2e/admin-gerenciar-cardapio.spec.ts --workers=1",
     "audit:e2e:integrity": "node scripts/audit-e2e-integrity.js",
     "test:e2e:mesa:concurrency": "playwright test e2e/mesa-concorrencia-garcons.spec.ts --workers=1",

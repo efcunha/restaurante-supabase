@@ -160,7 +160,61 @@ function TabNavigator() {
 function MainApp() {
   const navigationRef = React.useRef(null);
   const lastRouteNameRef = React.useRef(null);
+  const e2eRedirectDoneRef = React.useRef(false);
+  const e2eRedirectAttemptsRef = React.useRef(0);
   const { user } = useAuth();
+
+  const handleE2EPagamentoNavigation = React.useCallback((currentRoute) => {
+    if (Platform.OS !== 'web' || e2eRedirectDoneRef.current) return;
+    if (!navigationRef.current) return;
+
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const comandaFromQuery = (params.get('e2ePagamentoComanda') || '').trim();
+      if (!comandaFromQuery) return;
+
+      if (currentRoute === 'Pagamento') {
+        e2eRedirectDoneRef.current = true;
+        return;
+      }
+
+      if (e2eRedirectAttemptsRef.current >= 5) {
+        return;
+      }
+
+      e2eRedirectAttemptsRef.current += 1;
+      setTimeout(() => {
+        navigationRef.current?.navigate('Comandas', {
+          screen: 'Pagamento',
+          params: {
+            comandaNumber: comandaFromQuery,
+            returnScreen: 'ComandaGerenciamento',
+          },
+        });
+      }, 60);
+    } catch {
+      // Ignore invalid query parsing or navigation errors in non-test contexts.
+    }
+  }, []);
+
+  const exposeE2ENavigationHook = React.useCallback(() => {
+    if (Platform.OS !== 'web' || !navigationRef.current) return;
+
+    try {
+      window.__E2E_NAVIGATE_TO_PAYMENT__ = (comandaNumber) => {
+        if (!comandaNumber) return;
+        navigationRef.current?.navigate('Comandas', {
+          screen: 'Pagamento',
+          params: {
+            comandaNumber: String(comandaNumber),
+            returnScreen: 'ComandaGerenciamento',
+          },
+        });
+      };
+    } catch {
+      // ignore e2e hook exposure failures
+    }
+  }, []);
 
   return (
     <OrderProvider>
@@ -173,12 +227,16 @@ function MainApp() {
           if (currentRoute) {
             logPageView(currentRoute, user?.id);
           }
+          exposeE2ENavigationHook();
+          handleE2EPagamentoNavigation(currentRoute);
         }}
         onStateChange={() => {
           const currentRoute = navigationRef.current?.getCurrentRoute?.()?.name ?? null;
           if (!currentRoute || lastRouteNameRef.current === currentRoute) return;
           lastRouteNameRef.current = currentRoute;
           logPageView(currentRoute, user?.id);
+          exposeE2ENavigationHook();
+          handleE2EPagamentoNavigation(currentRoute);
         }}
       >
         <TabNavigator />

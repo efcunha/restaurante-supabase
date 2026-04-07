@@ -1,5 +1,8 @@
 # 04 - Plano de execucao, testes e rollout
 
+Escopo desta fase: `restaurante-web` + `restaurante-ops`.
+Fora de escopo desta fase: `restaurante-app`.
+
 ## 1. Roadmap por fases
 
 ### Fase 0 - Preparacao tecnica
@@ -17,6 +20,7 @@
 ### Fase 2 - Integracao frontend
 
 - Integrar fluxo da UI de pagamento no restaurante-web.
+- Integrar/validar fluxo de balanca no restaurante-web.
 - Exibir estados de processamento e falha.
 - Registrar telemetria operacional.
 
@@ -72,6 +76,7 @@ Cenarios minimos:
 2. Pagamento recusado com mensagem operacional.
 3. Timeout com reconsulta de status.
 4. Retry manual apos falha sem duplicidade de sucesso.
+5. Leitura de balanca estavel no PDV sem regressao do fluxo TEF.
 
 ## 3.4 Smoke tests de seguranca
 
@@ -87,6 +92,7 @@ Cenarios minimos:
 - Testes criticos aprovados.
 - Rollback testado por feature flag.
 - Evidencias de validacao registradas no ciclo.
+- Fluxos de maquininha TEF e balanca funcionando no frontend web sem dependencia do restaurante-app.
 
 ## 5. Go/No-Go para producao
 

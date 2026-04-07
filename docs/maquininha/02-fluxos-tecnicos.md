@@ -1,5 +1,8 @@
 # 02 - Fluxos tecnicos de desenvolvimento
 
+Escopo desta fase: `restaurante-web` (maquininha TEF + balanca) e `restaurante-ops`.
+Fora de escopo desta fase: `restaurante-app`.
+
 ## 1. Fluxo principal (happy path)
 
 ### 1.1 Iniciacao
@@ -111,3 +114,17 @@ Cada evento deve incluir:
 - payment_id
 - status
 - origem do evento (ui, api, webhook, reconciliation)
+
+## 9. Fluxo tecnico de balanca no PDV web
+
+1. Operador aciona leitura de peso na tela do PDV web.
+2. Frontend consulta o servico de balanca (bridge local) no dominio de `features/pdv`.
+3. UI exibe estado de leitura: reading, stable, unstable, timeout ou error.
+4. Quando o peso estabiliza, frontend confirma valor para composicao da venda.
+5. Em caso de timeout/erro, operador pode repetir a leitura sem perder o contexto da comanda.
+
+Regras:
+
+- Integracao de balanca permanece no frontend web nesta fase.
+- Nao introduzir dependencia do `restaurante-app` no fluxo.
+- Fluxo TEF nao pode quebrar o fluxo de balanca e vice-versa.
