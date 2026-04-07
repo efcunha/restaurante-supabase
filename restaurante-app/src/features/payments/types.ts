@@ -46,6 +46,9 @@ export interface PaymentActionPanelProps {
   onConfirmPayment: () => void;
   onSplitByPeople: () => void;
   onSplitByItems: () => void;
+  onUseDevicePayment?: () => void;
+  showDevicePaymentAction?: boolean;
+  isDevicePaymentBusy?: boolean;
   onExternalPosPayment?: (data: ExternalPosPaymentData) => Promise<void>;
   showExternalPosOption?: boolean;
   initialMode?: PaymentMode;

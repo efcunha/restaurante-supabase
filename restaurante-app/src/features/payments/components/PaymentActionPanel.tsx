@@ -46,6 +46,9 @@ export const PaymentActionPanel = memo(function PaymentActionPanel({
   onConfirmPayment,
   onSplitByPeople,
   onSplitByItems,
+  onUseDevicePayment,
+  showDevicePaymentAction = false,
+  isDevicePaymentBusy = false,
   onExternalPosPayment,
   showExternalPosOption = false,
   initialMode = 'normal',
@@ -56,6 +59,8 @@ export const PaymentActionPanel = memo(function PaymentActionPanel({
   useEffect(() => {
     setPaymentMode(initialMode);
   }, [initialMode]);
+
+  const showModeSelector = showDevicePaymentAction || showExternalPosOption;
 
   const handleExternalPosSubmit = async (data: ExternalPosPaymentData) => {
     if (onExternalPosPayment) {
@@ -68,11 +73,13 @@ export const PaymentActionPanel = memo(function PaymentActionPanel({
       <View style={styles.paymentSection}>
         <Text style={styles.sectionTitle}>Pagamento</Text>
 
-        {showExternalPosOption && (
+        {showModeSelector && (
           <PaymentModeSelector
             mode={paymentMode}
             onChangeMode={setPaymentMode}
+            showTef={showDevicePaymentAction}
             showExternal={showExternalPosOption}
+            useUiNext={useUiNext}
           />
         )}
 
@@ -80,6 +87,7 @@ export const PaymentActionPanel = memo(function PaymentActionPanel({
           <ExternalPosPaymentForm
             defaultAmount={valor}
             onSubmit={handleExternalPosSubmit}
+            isBusy={false}
             useUiNext={useUiNext}
           />
         ) : (
@@ -129,11 +137,36 @@ export const PaymentActionPanel = memo(function PaymentActionPanel({
             </View>
 
             {useUiNext ? (
-              <Button label="Confirmar Pagamento" onPress={onConfirmPayment} fullWidth />
+              <>
+                <Button label="Confirmar Pagamento" onPress={onConfirmPayment} fullWidth />
+                {paymentMode === 'tef' && showDevicePaymentAction && (
+                  <Button
+                    label={isDevicePaymentBusy ? 'Processando Maquininha...' : 'Usar Maquininha'}
+                    onPress={onUseDevicePayment}
+                    fullWidth
+                    variant="ghost"
+                    disabled={isDevicePaymentBusy}
+                    style={styles.deviceButton}
+                  />
+                )}
+              </>
             ) : (
-              <TouchableOpacity style={styles.legacyPrimaryButton} onPress={onConfirmPayment}>
-                <Text style={styles.legacyPrimaryButtonText}>Confirmar Pagamento</Text>
-              </TouchableOpacity>
+              <>
+                <TouchableOpacity style={styles.legacyPrimaryButton} onPress={onConfirmPayment}>
+                  <Text style={styles.legacyPrimaryButtonText}>Confirmar Pagamento</Text>
+                </TouchableOpacity>
+                {paymentMode === 'tef' && showDevicePaymentAction && (
+                  <TouchableOpacity
+                    style={[styles.legacySecondaryButton, styles.deviceButton]}
+                    onPress={onUseDevicePayment}
+                    disabled={isDevicePaymentBusy}
+                  >
+                    <Text style={styles.legacySecondaryButtonText}>
+                      {isDevicePaymentBusy ? 'Processando Maquininha...' : 'Usar Maquininha'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </>
             )}
           </>
         )}
@@ -241,6 +274,9 @@ const styles = StyleSheet.create({
   },
   splitActionButton: {
     flex: 1,
+  },
+  deviceButton: {
+    marginTop: 10,
   },
   legacyPrimaryButton: {
     backgroundColor: colors.primary,
