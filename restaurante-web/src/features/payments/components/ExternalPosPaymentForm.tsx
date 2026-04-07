@@ -23,10 +23,9 @@ const cardTypeLabels: Record<ExternalPosCardType, string> = {
   cartao_credito: 'Crédito',
   cartao_debito: 'Débito',
   pix: 'PIX (QR na Maquininha)',
-  dinheiro: 'Dinheiro',
 };
 
-const cardTypes: ExternalPosCardType[] = ['cartao_credito', 'cartao_debito', 'pix', 'dinheiro'];
+const cardTypes: ExternalPosCardType[] = ['cartao_credito', 'cartao_debito', 'pix'];
 
 /** Gera uma chave de idempotência simples baseada em timestamp. */
 function genIdempotencyKey(): string {

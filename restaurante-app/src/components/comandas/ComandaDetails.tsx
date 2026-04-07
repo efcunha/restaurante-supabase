@@ -504,23 +504,34 @@ export default function ComandaDetails({ comanda, cardapioDin, onClose, onPay, o
                             <Text style={styles.addBtnText}>RATEIO (DIVISÃO)</Text>
                         </TouchableOpacity>
 
-                        {externalPosEnabled && onOpenPdvMode && (
-                            <TouchableOpacity
-                                style={[styles.payBtn, styles.externalPosBtn]}
-                                onPress={() => onOpenPdvMode('external_pos')}
-                            >
-                                <Text style={[styles.payBtnText, { color: colors.white }]}>Maquininha Externa</Text>
-                            </TouchableOpacity>
-                        )}
+                        {(externalPosEnabled || tefEnabled) && onOpenPdvMode && (
+                            <View style={styles.pdvGrid}>
+                                {externalPosEnabled && (
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.pdvOptionBtn,
+                                            tefEnabled ? styles.pdvOptionHalf : styles.pdvOptionFull,
+                                            styles.externalPosBtn,
+                                        ]}
+                                        onPress={() => onOpenPdvMode('external_pos')}
+                                    >
+                                        <Text style={styles.pdvOptionText}>MAQUININHA EXTERNA</Text>
+                                    </TouchableOpacity>
+                                )}
 
-                        {tefEnabled && onOpenPdvMode && (
-                            <TouchableOpacity
-                                style={[styles.addBtn, styles.pdvBtn]}
-                                onPress={() => onOpenPdvMode('tef')}
-                            >
-                                <Text style={styles.addBtnIcon}>🏧</Text>
-                                <Text style={styles.addBtnText}>TEF INTEGRADO</Text>
-                            </TouchableOpacity>
+                                {tefEnabled && (
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.pdvOptionBtn,
+                                            externalPosEnabled ? styles.pdvOptionHalf : styles.pdvOptionFull,
+                                            styles.pdvBtn,
+                                        ]}
+                                        onPress={() => onOpenPdvMode('tef')}
+                                    >
+                                        <Text style={styles.pdvOptionText}>TEF INTEGRADO</Text>
+                                    </TouchableOpacity>
+                                )}
+                            </View>
                         )}
 
                         {(externalPosEnabled || tefEnabled) && (
@@ -731,6 +742,30 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         fontSize: 16,
     },
+    pdvGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+        marginBottom: 2,
+    },
+    pdvOptionBtn: {
+        padding: 15,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 10,
+    },
+    pdvOptionHalf: {
+        width: '48%',
+    },
+    pdvOptionFull: {
+        width: '100%',
+    },
+    pdvOptionText: {
+        color: colors.white,
+        fontWeight: 'bold',
+        fontSize: 15,
+    },
     paymentGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
@@ -760,5 +795,18 @@ const styles = StyleSheet.create({
     cancelBtnText: {
         color: colors.white,
         fontWeight: 'bold',
+    },
+    pdvBtn: {
+        backgroundColor: '#0F766E',
+    },
+    externalPosBtn: {
+        backgroundColor: '#7C3AED',
+    },
+    pdvHint: {
+        fontSize: 12,
+        lineHeight: 18,
+        color: colors.textSecondary,
+        marginTop: -2,
+        marginBottom: 16,
     },
 });
