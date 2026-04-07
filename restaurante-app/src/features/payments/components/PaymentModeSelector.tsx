@@ -6,8 +6,9 @@ import { PaymentMode } from '../types';
 interface PaymentModeSelectorProps {
   mode: PaymentMode;
   onChangeMode: (mode: PaymentMode) => void;
-  showTef?: boolean;
+  showTef: boolean;
   showExternal: boolean;
+  useUiNext?: boolean;
 }
 
 interface ModeOption {
@@ -18,12 +19,13 @@ interface ModeOption {
 export const PaymentModeSelector = memo(function PaymentModeSelector({
   mode,
   onChangeMode,
-  showTef = false,
+  showTef,
   showExternal,
+  useUiNext: _useUiNext = true,
 }: PaymentModeSelectorProps) {
   const options: ModeOption[] = [{ key: 'normal', label: 'Normal' }];
-  if (showExternal) options.push({ key: 'external_pos', label: 'Maquininha Externa' });
   if (showTef) options.push({ key: 'tef', label: 'TEF Integrado' });
+  if (showExternal) options.push({ key: 'external_pos', label: 'Maquininha Externa' });
 
   if (options.length <= 1) return null;
 
@@ -38,8 +40,12 @@ export const PaymentModeSelector = memo(function PaymentModeSelector({
               key={opt.key}
               style={[styles.tab, isActive && styles.tabActive]}
               onPress={() => onChangeMode(opt.key)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: isActive }}
             >
-              <Text style={[styles.tabText, isActive && styles.tabTextActive]}>{opt.label}</Text>
+              <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
+                {opt.label}
+              </Text>
             </TouchableOpacity>
           );
         })}
@@ -82,6 +88,6 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   tabTextActive: {
-    color: colors.white,
+    color: '#FFF',
   },
 });
