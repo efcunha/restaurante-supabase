@@ -77,6 +77,25 @@ const LEGACY_EVOLUTION_HOSTS = new Set([
 
 const FALLBACK_EVOLUTION_CANONICAL_BASE_URL = 'https://evolution-api-production-203d4.up.railway.app/manager';
 
+function resolveCanonicalEvolutionBaseUrl(): string {
+  const envValue = String(env.EVOLUTION_API_BASE_URL || '').trim();
+  if (!envValue) {
+    return FALLBACK_EVOLUTION_CANONICAL_BASE_URL;
+  }
+
+  try {
+    const parsed = new URL(envValue);
+    if (LEGACY_EVOLUTION_HOSTS.has(parsed.host.toLowerCase())) {
+      return FALLBACK_EVOLUTION_CANONICAL_BASE_URL;
+    }
+  } catch {
+    // Se a env estiver invalida, mantemos fallback canonico seguro.
+    return FALLBACK_EVOLUTION_CANONICAL_BASE_URL;
+  }
+
+  return envValue;
+}
+
 function applyEvolutionLegacyHostGuard(
   serviceKey: string,
   baseUrl: string,
@@ -92,7 +111,7 @@ function applyEvolutionLegacyHostGuard(
       return { baseUrl, healthPath };
     }
 
-    const canonicalRawBaseUrl = env.EVOLUTION_API_BASE_URL || FALLBACK_EVOLUTION_CANONICAL_BASE_URL;
+    const canonicalRawBaseUrl = resolveCanonicalEvolutionBaseUrl();
     return normalizeMonitoredEndpointInput(canonicalRawBaseUrl, '/');
   } catch {
     return { baseUrl, healthPath };
@@ -148,7 +167,7 @@ function getDefaultMonitoredServices(): MonitoredServiceConfig[] {
     {
       service_key: 'evolution-api',
       service_name: 'evolution-api',
-      base_url: normalizeBaseUrl(env.EVOLUTION_API_BASE_URL),
+      base_url: normalizeBaseUrl(resolveCanonicalEvolutionBaseUrl()),
       health_path: '/',
       method: 'GET',
       timeout_ms: 5000,
