@@ -10,6 +10,14 @@ function buildPaymentMethodLabel(paymentMethod: DevicePaymentRequest['paymentMet
   return paymentMethod === 'cartao_credito' ? 'credito' : 'debito';
 }
 
+function mapBackendStatusToDeviceStatus(status: unknown): DevicePaymentResult['status'] {
+  const normalized = typeof status === 'string' ? status.toLowerCase() : '';
+  if (normalized === 'succeeded' || normalized === 'approved') return 'approved';
+  if (normalized === 'failed' || normalized === 'cancelled' || normalized === 'declined') return 'declined';
+  if (normalized === 'processing' || normalized === 'pending') return 'processing';
+  return 'error';
+}
+
 export async function initiateDevicePayment(request: DevicePaymentRequest): Promise<DevicePaymentResult> {
   if (!isFeatureEnabled('pdv_enabled') || !isFeatureEnabled('pdv_devicePayment_enabled')) {
     return {
@@ -70,7 +78,7 @@ export async function initiateDevicePayment(request: DevicePaymentRequest): Prom
   }
 
   return {
-    status: (typeof payload.status === 'string' ? payload.status : 'processing') as DevicePaymentResult['status'],
+    status: mapBackendStatusToDeviceStatus(payload.status),
     transactionId: typeof payload.transactionId === 'string' ? payload.transactionId : undefined,
     authCode: typeof payload.authCode === 'string' ? payload.authCode : undefined,
     message: typeof payload.message === 'string' ? payload.message : 'Pagamento presencial iniciado com sucesso.',

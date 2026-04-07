@@ -3,6 +3,10 @@
 export interface OpsEnv {
   SUPABASE_URL: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
+  HYPERSWITCH_BASE_URL?: string;
+  HYPERSWITCH_API_KEY?: string;
+  HYPERSWITCH_WEBHOOK_SECRET?: string;
+  PDV_DEVICE_SIMULATION: boolean;
   OBS_SUPABASE_URL?: string;
   OBS_SUPABASE_SERVICE_ROLE_KEY?: string;
   OBS_DUAL_WRITE: boolean;
@@ -66,6 +70,7 @@ export function buildEnv(): OpsEnv {
   const parsedTrustProxyHeaders = process.env.OPS_TRUST_PROXY_HEADERS === 'true';
   const parsedObsDualWrite = process.env.OBS_DUAL_WRITE === 'true';
   const parsedObsReadFromIsolated = process.env.OBS_READ_FROM_ISOLATED === 'true';
+  const parsedPdvDeviceSimulation = process.env.PDV_DEVICE_SIMULATION === 'true';
   const parsedSlowQueryThreshold = Number(process.env.SLOW_QUERY_THRESHOLD_MS || '500');
   const parsedLogRetentionDays = Number(process.env.LOG_RETENTION_DAYS || '30');
   const parsedObsStaleMinutes = Number(process.env.OBS_STALE_MINUTES || '60');
@@ -75,6 +80,10 @@ export function buildEnv(): OpsEnv {
   return {
     SUPABASE_URL: required('SUPABASE_URL'),
     SUPABASE_SERVICE_ROLE_KEY: required('SUPABASE_SERVICE_ROLE_KEY'),
+    HYPERSWITCH_BASE_URL: process.env.HYPERSWITCH_BASE_URL,
+    HYPERSWITCH_API_KEY: process.env.HYPERSWITCH_API_KEY,
+    HYPERSWITCH_WEBHOOK_SECRET: process.env.HYPERSWITCH_WEBHOOK_SECRET,
+    PDV_DEVICE_SIMULATION: parsedPdvDeviceSimulation,
     OBS_SUPABASE_URL: process.env.OBS_SUPABASE_URL,
     OBS_SUPABASE_SERVICE_ROLE_KEY: process.env.OBS_SUPABASE_SERVICE_ROLE_KEY,
     OBS_DUAL_WRITE: parsedObsDualWrite,
