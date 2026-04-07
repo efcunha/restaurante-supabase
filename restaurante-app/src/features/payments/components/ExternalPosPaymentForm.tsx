@@ -14,7 +14,7 @@ interface ExternalPosPaymentFormProps {
 const cardTypeLabels: Record<ExternalPosCardType, string> = {
   cartao_credito: 'Crédito',
   cartao_debito: 'Débito',
-  pix: 'PIX',
+  pix: 'PIX (QR na Maquininha)',
   dinheiro: 'Dinheiro',
 };
 
@@ -72,7 +72,7 @@ export const ExternalPosPaymentForm = memo(function ExternalPosPaymentForm({
     <View style={styles.container}>
       <Text style={styles.title}>Registrar Maquininha Externa</Text>
       <Text style={styles.subtitle}>
-        Registre o recebimento feito fora do app para atualizar o saldo da comanda com auditoria.
+        Registre o recebimento feito fora do app (débito, crédito ou PIX por QR na maquininha) para atualizar o saldo com auditoria.
       </Text>
 
       <View style={styles.fieldRow}>

@@ -55,14 +55,6 @@ export default function PagamentoScreen({ route, navigation }: any) {
     setIsSplitModalVisible(true);
   };
 
-  // DEBUG: Log feature flags on mount
-  useEffect(() => {
-    console.log('[PagamentoScreen] Feature Flags:', {
-      pdvDevicePaymentEnabled,
-      pdvExternalPosEnabled,
-    });
-  }, [pdvDevicePaymentEnabled, pdvExternalPosEnabled]);
-
   // Carregar comanda se vier por navegação
   useEffect(() => {
     if (route.params?.comandaNumber) {
