@@ -14,6 +14,7 @@ import { ScreenScaffold } from '../layouts/ScreenScaffold';
 import { PaymentActionPanel, PaymentComandaSummary, PaymentOrderSummary, PaymentStepIndicator } from '../features/payments';
 import { isFeatureEnabled } from '../config/featureFlags';
 import { auditService } from '../services/AuditService';
+import { useDevicePayment } from '../features/pdv';
 
 // Usar função centralizada para consistência de data local
 const todayKey = getTodayKey;
@@ -21,6 +22,8 @@ const todayKey = getTodayKey;
 export default function PagamentoScreen({ route, navigation }: any) {
   const { user } = useAuth();
   const useUiNextPagamento = isFeatureEnabled('pagamento_uiNext');
+  const pdvDevicePaymentEnabled = isFeatureEnabled('pdv_enabled') && isFeatureEnabled('pdv_devicePayment_enabled');
+  const { isProcessing: isDevicePaymentProcessing, startPayment: startDevicePayment } = useDevicePayment();
   
   // Helper para formatar valores em Real brasileiro
   const formatarMoeda = (valor: any) => {
@@ -364,6 +367,46 @@ export default function PagamentoScreen({ route, navigation }: any) {
     }
   };
 
+  const pagarViaMaquininha = async () => {
+    try {
+      if (!pdvDevicePaymentEnabled) {
+        Alert.alert('Maquininha indisponível', 'Fluxo de maquininha desabilitado para esta empresa.');
+        return;
+      }
+
+      if (!user?.companyId || !comanda) {
+        Alert.alert('Erro', 'Selecione uma comanda válida antes de iniciar maquininha.');
+        return;
+      }
+
+      const valorPago = parseFloat(valor || '0');
+      if (!valor || Number.isNaN(valorPago) || valorPago <= 0) {
+        Alert.alert('Erro', 'Informe um valor válido para processar na maquininha.');
+        return;
+      }
+
+      const paymentMethod = forma === 'cartao_credito' ? 'cartao_credito' : 'cartao_debito';
+      const result = await startDevicePayment({
+        companyId: user.companyId,
+        comandaNumber: String(comanda),
+        amount: valorPago,
+        paymentMethod,
+      });
+
+      if (result.status !== 'approved') {
+        Alert.alert('Maquininha', result.message);
+        return;
+      }
+
+      Alert.alert(
+        'Maquininha aprovada',
+        'Transação autorizada. Confirme o pagamento para registrar na comanda.'
+      );
+    } catch (error: any) {
+      Alert.alert('Erro', error?.message || 'Falha ao processar pagamento presencial.');
+    }
+  };
+
   const handleBack = () => {
     try {
       if (route.params?.returnScreen === 'Mapa') {
@@ -433,6 +476,9 @@ export default function PagamentoScreen({ route, navigation }: any) {
             onConfirmPayment={pagar}
             onSplitByPeople={() => openSplitModal('pessoas')}
             onSplitByItems={() => openSplitModal('itens')}
+            onUseDevicePayment={pagarViaMaquininha}
+            showDevicePaymentAction={pdvDevicePaymentEnabled}
+            isDevicePaymentBusy={isDevicePaymentProcessing}
             useUiNext={useUiNextPagamento}
           />
         )}
