@@ -33,5 +33,8 @@ export interface PaymentActionPanelProps {
   onConfirmPayment: () => void;
   onSplitByPeople: () => void;
   onSplitByItems: () => void;
+  onUseDevicePayment?: () => void;
+  showDevicePaymentAction?: boolean;
+  isDevicePaymentBusy?: boolean;
   useUiNext?: boolean;
 }

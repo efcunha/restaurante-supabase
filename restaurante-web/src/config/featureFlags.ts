@@ -50,6 +50,14 @@ export interface FeatureFlags {
   billing_showBillingScreen: boolean;
   /** QA toggle: force operational block locally without changing DB subscription state */
   billing_forceBlock: boolean;
+
+  // Fase 7: PDV (maquininha + balanca)
+  /** Master toggle do modulo PDV no restaurante-web */
+  pdv_enabled: boolean;
+  /** Habilita fluxo de pagamento presencial por maquininha */
+  pdv_devicePayment_enabled: boolean;
+  /** Habilita leitura de peso via bridge da balanca */
+  pdv_scale_enabled: boolean;
 }
 
 /**
@@ -91,6 +99,11 @@ const defaultFlags: FeatureFlags = {
   billing_licenseGate: false,
   billing_showBillingScreen: false,
   billing_forceBlock: false,
+
+  // Fase 7: PDV (starts disabled)
+  pdv_enabled: false,
+  pdv_devicePayment_enabled: false,
+  pdv_scale_enabled: false,
 };
 
 /**
@@ -201,6 +214,17 @@ function loadFeatureFlagsFromEnv(): Partial<FeatureFlags> {
   }
   if (process.env.EXPO_PUBLIC_FEATURE_BILLING_FORCE_BLOCK !== undefined) {
     envFlags.billing_forceBlock = process.env.EXPO_PUBLIC_FEATURE_BILLING_FORCE_BLOCK === 'true';
+  }
+
+  // Fase 7: PDV
+  if (process.env.EXPO_PUBLIC_FEATURE_PDV_ENABLED !== undefined) {
+    envFlags.pdv_enabled = process.env.EXPO_PUBLIC_FEATURE_PDV_ENABLED === 'true';
+  }
+  if (process.env.EXPO_PUBLIC_FEATURE_PDV_DEVICE_PAYMENT !== undefined) {
+    envFlags.pdv_devicePayment_enabled = process.env.EXPO_PUBLIC_FEATURE_PDV_DEVICE_PAYMENT === 'true';
+  }
+  if (process.env.EXPO_PUBLIC_FEATURE_PDV_SCALE !== undefined) {
+    envFlags.pdv_scale_enabled = process.env.EXPO_PUBLIC_FEATURE_PDV_SCALE === 'true';
   }
 
   return envFlags;
