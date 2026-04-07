@@ -17,7 +17,7 @@ interface ComandaDetailsProps {
     onAddItems: () => void;
     onShare?: () => void;
     onFullPayment?: () => void;
-    onOpenPdvMode?: (mode: 'external_pos' | 'tef') => void;
+    onOpenPdvMode?: (mode: 'external_pos') => void;
     onCancelItem?: (pedido: any, itemId: string, itemName: string) => void;
 }
 
@@ -48,7 +48,6 @@ const isItemCancellable = (item: any) => {
 
 export default function ComandaDetails({ comanda, cardapioDin, onClose, onPay, onPrint, onCancel, onAddItems, onShare, onFullPayment, onOpenPdvMode, onCancelItem }: ComandaDetailsProps) {
     const externalPosEnabled = isFeatureEnabled('pdv_enabled') && isFeatureEnabled('pdv_externalPos_enabled');
-    const tefEnabled = isFeatureEnabled('pdv_enabled') && isFeatureEnabled('pdv_devicePayment_enabled');
     const clienteDisplay = useMemo(() => {
         const raw = String(comanda?.cliente || '').trim();
         const isPlaceholder = isInvalidHistoricoClient(raw);
@@ -504,39 +503,24 @@ export default function ComandaDetails({ comanda, cardapioDin, onClose, onPay, o
                             <Text style={styles.addBtnText}>RATEIO (DIVISÃO)</Text>
                         </TouchableOpacity>
 
-                        {(externalPosEnabled || tefEnabled) && onOpenPdvMode && (
+                        {externalPosEnabled && onOpenPdvMode && (
                             <View style={styles.pdvGrid}>
-                                {externalPosEnabled && (
-                                    <TouchableOpacity
-                                        style={[
-                                            styles.pdvOptionBtn,
-                                            tefEnabled ? styles.pdvOptionHalf : styles.pdvOptionFull,
-                                            styles.externalPosBtn,
-                                        ]}
-                                        onPress={() => onOpenPdvMode('external_pos')}
-                                    >
-                                        <Text style={styles.pdvOptionText}>MAQUININHA EXTERNA</Text>
-                                    </TouchableOpacity>
-                                )}
-
-                                {tefEnabled && (
-                                    <TouchableOpacity
-                                        style={[
-                                            styles.pdvOptionBtn,
-                                            externalPosEnabled ? styles.pdvOptionHalf : styles.pdvOptionFull,
-                                            styles.pdvBtn,
-                                        ]}
-                                        onPress={() => onOpenPdvMode('tef')}
-                                    >
-                                        <Text style={styles.pdvOptionText}>TEF INTEGRADO</Text>
-                                    </TouchableOpacity>
-                                )}
+                                <TouchableOpacity
+                                    style={[
+                                        styles.pdvOptionBtn,
+                                        styles.pdvOptionFull,
+                                        styles.externalPosBtn,
+                                    ]}
+                                    onPress={() => onOpenPdvMode('external_pos')}
+                                >
+                                    <Text style={styles.pdvOptionText}>MAQUININHA EXTERNA</Text>
+                                </TouchableOpacity>
                             </View>
                         )}
 
-                        {(externalPosEnabled || tefEnabled) && (
+                        {externalPosEnabled && (
                             <Text style={styles.pdvHint}>
-                                Dinheiro e PIX normal continuam no pagamento rápido. Cartão e PIX via maquininha externa, além de TEF, ficam em fluxos guiados.
+                                Dinheiro e PIX normal continuam no pagamento rápido. Cartão e PIX via maquininha externa ficam em fluxo guiado.
                             </Text>
                         )}
 

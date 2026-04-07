@@ -46,9 +46,6 @@ export const PaymentActionPanel = memo(function PaymentActionPanel({
   onConfirmPayment,
   onSplitByPeople,
   onSplitByItems,
-  onUseDevicePayment,
-  showDevicePaymentAction = false,
-  isDevicePaymentBusy = false,
   onExternalPosPayment,
   showExternalPosOption = false,
   initialMode = 'normal',
@@ -60,7 +57,8 @@ export const PaymentActionPanel = memo(function PaymentActionPanel({
     setPaymentMode(initialMode);
   }, [initialMode]);
 
-  const showModeSelector = showDevicePaymentAction || showExternalPosOption;
+  const isExternalFlowLocked = initialMode === 'external_pos' && showExternalPosOption;
+  const showModeSelector = showExternalPosOption && !isExternalFlowLocked;
 
   const handleExternalPosSubmit = async (data: ExternalPosPaymentData) => {
     if (onExternalPosPayment) {
@@ -77,13 +75,12 @@ export const PaymentActionPanel = memo(function PaymentActionPanel({
           <PaymentModeSelector
             mode={paymentMode}
             onChangeMode={setPaymentMode}
-            showTef={showDevicePaymentAction}
             showExternal={showExternalPosOption}
             useUiNext={useUiNext}
           />
         )}
 
-        {paymentMode === 'external_pos' ? (
+        {(isExternalFlowLocked || paymentMode === 'external_pos') ? (
           <ExternalPosPaymentForm
             defaultAmount={valor}
             onSubmit={handleExternalPosSubmit}
@@ -139,33 +136,12 @@ export const PaymentActionPanel = memo(function PaymentActionPanel({
             {useUiNext ? (
               <>
                 <Button label="Confirmar Pagamento" onPress={onConfirmPayment} fullWidth />
-                {paymentMode === 'tef' && showDevicePaymentAction && (
-                  <Button
-                    label={isDevicePaymentBusy ? 'Processando Maquininha...' : 'Usar Maquininha'}
-                    onPress={onUseDevicePayment}
-                    fullWidth
-                    variant="ghost"
-                    disabled={isDevicePaymentBusy}
-                    style={styles.deviceButton}
-                  />
-                )}
               </>
             ) : (
               <>
                 <TouchableOpacity style={styles.legacyPrimaryButton} onPress={onConfirmPayment}>
                   <Text style={styles.legacyPrimaryButtonText}>Confirmar Pagamento</Text>
                 </TouchableOpacity>
-                {paymentMode === 'tef' && showDevicePaymentAction && (
-                  <TouchableOpacity
-                    style={[styles.legacySecondaryButton, styles.deviceButton]}
-                    onPress={onUseDevicePayment}
-                    disabled={isDevicePaymentBusy}
-                  >
-                    <Text style={styles.legacySecondaryButtonText}>
-                      {isDevicePaymentBusy ? 'Processando Maquininha...' : 'Usar Maquininha'}
-                    </Text>
-                  </TouchableOpacity>
-                )}
               </>
             )}
           </>

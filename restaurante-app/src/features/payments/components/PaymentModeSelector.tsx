@@ -6,7 +6,6 @@ import { PaymentMode } from '../types';
 interface PaymentModeSelectorProps {
   mode: PaymentMode;
   onChangeMode: (mode: PaymentMode) => void;
-  showTef: boolean;
   showExternal: boolean;
   useUiNext?: boolean;
 }
@@ -19,12 +18,10 @@ interface ModeOption {
 export const PaymentModeSelector = memo(function PaymentModeSelector({
   mode,
   onChangeMode,
-  showTef,
   showExternal,
   useUiNext: _useUiNext = true,
 }: PaymentModeSelectorProps) {
   const options: ModeOption[] = [{ key: 'normal', label: 'Normal' }];
-  if (showTef) options.push({ key: 'tef', label: 'TEF Integrado' });
   if (showExternal) options.push({ key: 'external_pos', label: 'Maquininha Externa' });
 
   if (options.length <= 1) return null;
