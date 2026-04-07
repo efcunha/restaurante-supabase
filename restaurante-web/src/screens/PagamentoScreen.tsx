@@ -393,6 +393,14 @@ export default function PagamentoScreen({ route, navigation }: any) {
         paymentMethod,
       });
 
+      if (result.status === 'processing') {
+        Alert.alert(
+          'Maquininha em processamento',
+          result.message || 'Pagamento iniciado. Aguarde a confirmacao da maquininha.'
+        );
+        return;
+      }
+
       if (result.status !== 'approved') {
         Alert.alert('Maquininha', result.message);
         return;

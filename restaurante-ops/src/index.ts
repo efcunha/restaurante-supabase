@@ -70,6 +70,16 @@ import {
   validateActivatePlanConfigInput,
   type ActivatePlanConfigInput,
 } from './modules/billing-plan-config-operations.js';
+import {
+  authenticatePaymentOperator,
+  getPaymentStatus,
+  initiatePayment,
+  processHyperswitchWebhook,
+  respondPaymentGatewayError,
+  validateInitiatePaymentInput,
+  verifyHyperswitchSignature,
+  type InitiatePaymentInput,
+} from './modules/payment-gateway.js';
 import { createOpsHttpServer } from './lib/httpServer.js';
 import {
   enqueueLog,
@@ -265,6 +275,38 @@ function applySecurityHeaders(res: import('node:http').ServerResponse): void {
   if (env.OPS_ENV === 'production') {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   }
+}
+
+function getAllowedCorsOrigin(): string | null {
+  const configuredBaseUrl = sanitizePlainText(env.WEB_BASE_URL || '');
+  if (!configuredBaseUrl) return null;
+
+  try {
+    return new URL(configuredBaseUrl).origin;
+  } catch {
+    return null;
+  }
+}
+
+function applyPaymentCors(req: IncomingMessage, res: import('node:http').ServerResponse): boolean {
+  const allowedOrigin = getAllowedCorsOrigin();
+  const requestOrigin = sanitizePlainText(Array.isArray(req.headers.origin) ? req.headers.origin[0] : req.headers.origin || '');
+
+  if (allowedOrigin && requestOrigin && requestOrigin === allowedOrigin) {
+    res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+    res.setHeader('Vary', 'Origin');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Authorization,Content-Type,X-Hyperswitch-Signature');
+    res.setHeader('Access-Control-Max-Age', '600');
+  }
+
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204);
+    res.end();
+    return true;
+  }
+
+  return false;
 }
 
 function escapeHtml(value: string | null | undefined): string {
@@ -1753,6 +1795,7 @@ const BILLING_AUDIT_PATH_RE = new RegExp(`^/ops/billing/company/${BILLING_COMPAN
 const BILLING_SNAPSHOT_PATH_RE = new RegExp(`^/ops/billing/company/${BILLING_COMPANY_PATH_FRAGMENT}$`);
 const BILLING_CARD_PATH_RE = new RegExp(`^/ops/billing/company/${BILLING_COMPANY_PATH_FRAGMENT}/regularize/card$`);
 const BILLING_PIX_PATH_RE = new RegExp(`^/ops/billing/company/${BILLING_COMPANY_PATH_FRAGMENT}/regularize/pix$`);
+const PAYMENT_TRANSACTION_STATUS_PATH_RE = new RegExp(`^/payments/${BILLING_COMPANY_PATH_FRAGMENT}/status$`);
 
 function validateReconcileInput(input: Partial<ReconcileInput>): string | null {
   if (!input.companyId || !input.idempotencyKey || !input.eventType || !input.paymentStatus) {
@@ -1805,6 +1848,84 @@ function respondBillingError(res: import('node:http').ServerResponse, err: unkno
     error: 'Erro interno no billing. Tente novamente em instantes.',
     code: 'BILLING_INTERNAL_ERROR',
   });
+}
+
+async function requirePaymentApiAuth(
+  req: IncomingMessage,
+  res: import('node:http').ServerResponse,
+  path: string,
+  requestId?: string,
+) {
+  const operator = await authenticatePaymentOperator(req.headers.authorization);
+  if (operator) {
+    return operator;
+  }
+
+  logWarn('payments.unauthorized', {
+    method: req.method,
+    path,
+    request_id: requestId,
+  });
+  respondJson(res, 401, {
+    code: 'unauthorized',
+    message: 'Autenticacao invalida para pagamento presencial.',
+    correlation_id: requestId ?? null,
+  });
+  return null;
+}
+
+async function checkPaymentRateLimit(
+  req: IncomingMessage,
+  res: import('node:http').ServerResponse,
+  path: string,
+  rateKey: string,
+  requestId?: string,
+): Promise<boolean> {
+  const rateLimitResult = await checkRateLimit(
+    rateKey,
+    env.RATE_LIMIT_BILLING_MAX_ATTEMPTS,
+    env.RATE_LIMIT_BILLING_WINDOW_MS,
+    { allowMemoryFallback: env.RATE_LIMIT_FALLBACK_ENABLED },
+  );
+
+  if (rateLimitResult.unavailableReason) {
+    logError('payments.rate_limit_unavailable', {
+      method: req.method,
+      path,
+      statusCode: 503,
+      request_id: requestId,
+      reason: rateLimitResult.unavailableReason,
+    });
+    respondJson(res, 503, {
+      code: 'provider_unavailable',
+      message: 'Servico temporariamente indisponivel.',
+      correlation_id: requestId ?? null,
+    });
+    return false;
+  }
+
+  if (!rateLimitResult.allowed) {
+    const retryAfter = Math.max(1, Math.floor(Number(rateLimitResult.retryAfterSeconds) || 1));
+    res.setHeader('Retry-After', String(retryAfter));
+    res.setHeader('X-RateLimit-Remaining', String(rateLimitResult.remaining));
+    res.setHeader('X-RateLimit-Reset', rateLimitResult.resetAt.toISOString());
+    logWarn('payments.rate_limited', {
+      method: req.method,
+      path,
+      statusCode: 429,
+      request_id: requestId,
+      reason: `retry_after=${retryAfter}`,
+    });
+    respondJson(res, 429, {
+      code: 'rate_limited',
+      message: 'Muitas requisicoes de pagamento presencial. Aguarde e tente novamente.',
+      correlation_id: requestId ?? null,
+      retry_after: retryAfter,
+    });
+    return false;
+  }
+
+  return true;
 }
 
 function respondInternalError(
@@ -1991,6 +2112,168 @@ function startServer() {
             error: err instanceof Error ? err.message : String(err),
           });
           respondJson(res, 400, { error: 'Payload de logs invalido.' });
+        }
+        return;
+      }
+
+      if (path === '/payments/initiate' || PAYMENT_TRANSACTION_STATUS_PATH_RE.test(path)) {
+        const corsHandled = applyPaymentCors(req, res);
+        if (corsHandled) {
+          return;
+        }
+      }
+
+      if (req.method === 'POST' && path === '/payments/initiate') {
+        const operator = await requirePaymentApiAuth(req, res, path, requestId);
+        if (!operator) return;
+
+        const rateLimitAllowed = await checkPaymentRateLimit(
+          req,
+          res,
+          path,
+          `payments:initiate:${operator.companyId}:${operator.id}`,
+          requestId,
+        );
+        if (!rateLimitAllowed) return;
+
+        try {
+          const rawBody = await readBody(req);
+          const body = parseJsonBody<Partial<InitiatePaymentInput>>(rawBody);
+          const paymentMethod = body.paymentMethod === 'cartao_credito'
+            ? 'cartao_credito'
+            : body.paymentMethod === 'cartao_debito'
+              ? 'cartao_debito'
+              : '';
+          const input = {
+            companyId: sanitizePlainText(String(body.companyId || '')),
+            comandaNumber: sanitizePlainText(String(body.comandaNumber || '')),
+            amount: Number(body.amount),
+            paymentMethod,
+            idempotencyKey: sanitizePlainText(String(body.idempotencyKey || '')),
+          } as Partial<InitiatePaymentInput>;
+
+          const validationError = validateInitiatePaymentInput(input);
+          if (validationError) {
+            respondJson(res, 400, {
+              code: 'invalid_request',
+              message: validationError,
+              correlation_id: requestId ?? null,
+            });
+            return;
+          }
+
+          if (input.companyId !== operator.companyId) {
+            respondJson(res, 403, {
+              code: 'forbidden',
+              message: 'companyId nao corresponde ao tenant autenticado.',
+              correlation_id: requestId ?? null,
+            });
+            return;
+          }
+
+          const result = await initiatePayment(input as InitiatePaymentInput);
+          respondJson(res, 202, {
+            status: result.status,
+            transactionId: result.transactionId,
+            providerPaymentId: result.providerPaymentId,
+            nextAction: result.nextAction,
+            amount: result.amount,
+            paymentMethod: result.paymentMethod,
+            message: result.message,
+            correlation_id: result.correlationId,
+            created_at: result.createdAt,
+          });
+        } catch (err) {
+          const response = respondPaymentGatewayError(err, requestId);
+          respondJson(res, response.statusCode, response.payload);
+        }
+        return;
+      }
+
+      if (req.method === 'GET' && PAYMENT_TRANSACTION_STATUS_PATH_RE.test(path)) {
+        const operator = await requirePaymentApiAuth(req, res, path, requestId);
+        if (!operator) return;
+
+        const rateLimitAllowed = await checkPaymentRateLimit(
+          req,
+          res,
+          path,
+          `payments:status:${operator.companyId}:${operator.id}`,
+          requestId,
+        );
+        if (!rateLimitAllowed) return;
+
+        const transactionId = path.match(PAYMENT_TRANSACTION_STATUS_PATH_RE)?.[1] || '';
+        if (!isUuid(transactionId)) {
+          respondJson(res, 400, {
+            code: 'invalid_request',
+            message: 'transactionId invalido. Informe UUID valido.',
+            correlation_id: requestId ?? null,
+          });
+          return;
+        }
+
+        try {
+          const status = await getPaymentStatus(operator.companyId, transactionId);
+          respondJson(res, 200, {
+            transactionId: status.transactionId,
+            providerPaymentId: status.providerPaymentId,
+            status: status.status,
+            nextAction: status.nextAction,
+            amount: status.amount,
+            paymentMethod: status.paymentMethod,
+            message: status.message,
+            correlation_id: status.correlationId,
+            created_at: status.createdAt,
+            updated_at: status.updatedAt,
+          });
+        } catch (err) {
+          const response = respondPaymentGatewayError(err, requestId);
+          respondJson(res, response.statusCode, response.payload);
+        }
+        return;
+      }
+
+      if (req.method === 'POST' && path === '/webhooks/hyperswitch') {
+        try {
+          const rawBody = await readBody(req);
+          const signatureHeader = Array.isArray(req.headers['x-hyperswitch-signature'])
+            ? req.headers['x-hyperswitch-signature'][0]
+            : req.headers['x-hyperswitch-signature'];
+
+          if (!env.HYPERSWITCH_WEBHOOK_SECRET) {
+            respondJson(res, 503, {
+              code: 'provider_unavailable',
+              message: 'Webhook de maquininha indisponivel no momento.',
+              correlation_id: requestId ?? null,
+            });
+            return;
+          }
+
+          if (!verifyHyperswitchSignature(rawBody, signatureHeader, env.HYPERSWITCH_WEBHOOK_SECRET)) {
+            respondJson(res, 401, {
+              code: 'unauthorized',
+              message: 'Assinatura de webhook invalida.',
+              correlation_id: requestId ?? null,
+            });
+            return;
+          }
+
+          const payload = parseJsonBody<Record<string, unknown>>(rawBody);
+          const result = await processHyperswitchWebhook(payload);
+          respondJson(res, 200, {
+            ok: true,
+            applied: result.applied,
+            duplicate: result.duplicate,
+            transitionSkipped: result.transitionSkipped,
+            transactionId: result.transactionId,
+            providerPaymentId: result.providerPaymentId,
+            status: result.status,
+            correlation_id: requestId ?? null,
+          });
+        } catch (err) {
+          const response = respondPaymentGatewayError(err, requestId);
+          respondJson(res, response.statusCode, response.payload);
         }
         return;
       }
