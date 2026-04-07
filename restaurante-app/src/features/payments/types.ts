@@ -1,6 +1,6 @@
 export type PaymentMethod = 'dinheiro' | 'pix' | 'cartao_credito' | 'cartao_debito';
 
-export type PaymentMode = 'normal' | 'tef' | 'external_pos';
+export type PaymentMode = 'normal' | 'external_pos';
 
 export type ExternalPosCardType = 'cartao_credito' | 'cartao_debito' | 'pix';
 
@@ -46,9 +46,6 @@ export interface PaymentActionPanelProps {
   onConfirmPayment: () => void;
   onSplitByPeople: () => void;
   onSplitByItems: () => void;
-  onUseDevicePayment?: () => void;
-  showDevicePaymentAction?: boolean;
-  isDevicePaymentBusy?: boolean;
   onExternalPosPayment?: (data: ExternalPosPaymentData) => Promise<void>;
   showExternalPosOption?: boolean;
   initialMode?: PaymentMode;

@@ -8,6 +8,7 @@ import { ExternalPosPaymentForm } from './ExternalPosPaymentForm';
 import { PaymentModeSelector } from './PaymentModeSelector';
 
 const paymentMethods: PaymentMethod[] = ['dinheiro', 'pix', 'cartao_credito', 'cartao_debito'];
+const tefPaymentMethods: PaymentMethod[] = ['pix', 'cartao_credito', 'cartao_debito'];
 
 const getPaymentMethodColors = (method: PaymentMethod, isSelected: boolean) => {
   switch (method) {
@@ -60,7 +61,24 @@ export const PaymentActionPanel = memo(function PaymentActionPanel({
     setPaymentMode(initialMode);
   }, [initialMode]);
 
-  const showModeSelector = showDevicePaymentAction || showExternalPosOption;
+  const isTefFlowLocked = initialMode === 'tef' && showDevicePaymentAction;
+  const isExternalFlowLocked = initialMode === 'external_pos' && showExternalPosOption;
+  const isModeLocked = isTefFlowLocked || isExternalFlowLocked;
+  const showModeSelector = (showDevicePaymentAction || showExternalPosOption) && !isModeLocked;
+  const effectivePaymentMode: PaymentMode = isModeLocked ? initialMode : paymentMode;
+  const methodsForCurrentMode = effectivePaymentMode === 'tef' ? tefPaymentMethods : paymentMethods;
+  const modeLockLabel =
+    effectivePaymentMode === 'tef'
+      ? 'Fluxo TEF Integrado'
+      : effectivePaymentMode === 'external_pos'
+        ? 'Fluxo Maquininha Externa'
+        : null;
+
+  useEffect(() => {
+    if (effectivePaymentMode === 'tef' && forma === 'dinheiro') {
+      onChangeForma('cartao_debito');
+    }
+  }, [effectivePaymentMode, forma, onChangeForma]);
 
   const handleExternalPosSubmit = async (data: ExternalPosPaymentData) => {
     if (onExternalPosPayment) {
@@ -84,8 +102,12 @@ export const PaymentActionPanel = memo(function PaymentActionPanel({
           />
         )}
 
+        {isModeLocked && modeLockLabel && (
+          <Text style={styles.modeLockLabel}>{modeLockLabel}</Text>
+        )}
+
         {/* Modo Maquininha Externa: formulário dedicado */}
-        {paymentMode === 'external_pos' ? (
+        {effectivePaymentMode === 'external_pos' ? (
           <ExternalPosPaymentForm
             defaultAmount={valor}
             onSubmit={handleExternalPosSubmit}
@@ -107,7 +129,7 @@ export const PaymentActionPanel = memo(function PaymentActionPanel({
 
             <Text style={styles.subTitle}>Forma de Pagamento:</Text>
             <View style={styles.formaBtnContainer}>
-              {paymentMethods.map((method) => {
+              {methodsForCurrentMode.map((method) => {
                 const isSelected = forma === method;
                 const methodColors = getPaymentMethodColors(method, isSelected);
 
@@ -140,7 +162,7 @@ export const PaymentActionPanel = memo(function PaymentActionPanel({
             {useUiNext ? (
               <>
                 <Button label="Confirmar Pagamento" onPress={onConfirmPayment} fullWidth />
-                {paymentMode === 'tef' && showDevicePaymentAction && (
+                {effectivePaymentMode === 'tef' && showDevicePaymentAction && (
                   <Button
                     label={isDevicePaymentBusy ? 'Processando Maquininha...' : 'Usar Maquininha'}
                     onPress={onUseDevicePayment}
@@ -156,7 +178,7 @@ export const PaymentActionPanel = memo(function PaymentActionPanel({
                 <TouchableOpacity style={styles.legacyPrimaryButton} onPress={onConfirmPayment}>
                   <Text style={styles.legacyPrimaryButtonText}>Confirmar Pagamento</Text>
                 </TouchableOpacity>
-                {paymentMode === 'tef' && showDevicePaymentAction && (
+                {effectivePaymentMode === 'tef' && showDevicePaymentAction && (
                   <TouchableOpacity
                     style={[styles.legacySecondaryButton, styles.deviceButton]}
                     onPress={onUseDevicePayment}
@@ -235,6 +257,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     marginBottom: 10,
+  },
+  modeLockLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.primary,
+    backgroundColor: '#EEF2FF',
+    borderColor: '#C7D2FE',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    marginBottom: 10,
+    alignSelf: 'flex-start',
   },
   formaBtnContainer: {
     flexDirection: 'row',
