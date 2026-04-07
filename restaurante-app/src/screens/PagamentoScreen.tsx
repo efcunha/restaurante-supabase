@@ -15,12 +15,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { PaymentActionPanel, PaymentComandaSummary, PaymentOrderSummary, PaymentStepIndicator } from '../features/payments';
 import { isFeatureEnabled } from '../config/featureFlags';
 import { colors } from '../theme/colors';
+import { auditService } from '../services/AuditService';
+import type { ExternalPosPaymentData, PaymentMode } from '../features/payments/types';
 // Usar função centralizada para consistência de data local
 const todayKey = getTodayKey;
 
 export default function PagamentoScreen({ route, navigation }: any) {
   const { user } = useAuth();
+  const initialPaymentMode = (route.params?.paymentMode as PaymentMode | undefined) ?? 'normal';
   const useUiNextPagamento = isFeatureEnabled('pagamento_uiNext');
+  const pdvExternalPosEnabled = isFeatureEnabled('pdv_enabled') && isFeatureEnabled('pdv_externalPos_enabled');
   
   // Helper para formatar valores em Real brasileiro
   const formatarMoeda = (valor: any) => {
@@ -349,6 +353,51 @@ export default function PagamentoScreen({ route, navigation }: any) {
     }
   };
 
+  const registrarPagamentoExterno = async (data: ExternalPosPaymentData) => {
+    try {
+      if (!user?.companyId || !comanda) {
+        Alert.alert('Erro', 'Selecione uma comanda válida.');
+        return;
+      }
+
+      await PagamentosService.registrarPagamento({
+        companyId: user.companyId,
+        dateKey: todayKey(),
+        comandaNumber: comanda,
+        forma: data.cardType,
+        valor: data.amount,
+        usuarioId: user?.id || '',
+        usuarioNome: user?.nome || 'Usuário',
+      });
+
+      await auditService.log({
+        eventType: 'payment.manual_recorded',
+        resourceType: 'payment',
+        resourceId: String(comanda),
+        companyId: user.companyId,
+        metadata: {
+          source: 'EXTERNAL_POS',
+          comandaNumber: comanda,
+          amount: data.amount,
+          cardType: data.cardType,
+          nsu: data.nsu ?? null,
+          cardLast4: data.cardLast4 ?? null,
+          note: data.note ?? null,
+          idempotencyKey: data.idempotencyKey,
+          operatorId: user?.id,
+          operatorName: user?.nome,
+        },
+      });
+
+      await new Promise(resolve => setTimeout(resolve, 200));
+      await carregarDadosComanda();
+      setValor('');
+      Alert.alert('Sucesso', 'Recebimento externo registrado! Saldo atualizado.');
+    } catch (e: any) {
+      Alert.alert('Erro', e.message);
+    }
+  };
+
   const handleBack = () => {
     try {
       if (route.params?.returnScreen === 'Mapa') {
@@ -431,6 +480,9 @@ export default function PagamentoScreen({ route, navigation }: any) {
             onConfirmPayment={pagar}
             onSplitByPeople={() => openSplitModal('pessoas')}
             onSplitByItems={() => openSplitModal('itens')}
+            onExternalPosPayment={registrarPagamentoExterno}
+            showExternalPosOption={pdvExternalPosEnabled}
+            initialMode={initialPaymentMode}
             useUiNext={useUiNextPagamento}
           />
         )}

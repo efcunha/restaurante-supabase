@@ -6,6 +6,7 @@ import { Comanda } from '../../types';
 // Declare módulo para avoid error se o arquivo não tiver tipos
 import { calcularPrecoItem } from '../../utils/orderCalculator';
 import { colors } from '../../theme/colors';
+import { isFeatureEnabled } from '../../config/featureFlags';
 interface ComandaDetailsProps {
     comanda: Comanda;
     cardapioDin?: MenuItem[];
@@ -16,6 +17,7 @@ interface ComandaDetailsProps {
     onAddItems: () => void;
     onShare?: () => void;
     onFullPayment?: () => void;
+    onOpenPdvMode?: (mode: 'tef' | 'external_pos') => void;
     onCancelItem?: (pedido: any, itemId: string, itemName: string) => void;
 }
 
@@ -44,7 +46,10 @@ const isItemCancellable = (item: any) => {
     return !isCancelled && !isDelivered;
 };
 
-export default function ComandaDetails({ comanda, cardapioDin, onClose, onPay, onPrint, onCancel, onAddItems, onShare, onFullPayment, onCancelItem }: ComandaDetailsProps) {
+export default function ComandaDetails({ comanda, cardapioDin, onClose, onPay, onPrint, onCancel, onAddItems, onShare, onFullPayment, onOpenPdvMode, onCancelItem }: ComandaDetailsProps) {
+    const externalPosEnabled = isFeatureEnabled('pdv_enabled') && isFeatureEnabled('pdv_externalPos_enabled');
+    const tefEnabled = isFeatureEnabled('pdv_enabled') && isFeatureEnabled('pdv_devicePayment_enabled');
+
     const clienteDisplay = useMemo(() => {
         const raw = String(comanda?.cliente || '').trim();
         const isPlaceholder = isInvalidHistoricoClient(raw);
@@ -500,15 +505,38 @@ export default function ComandaDetails({ comanda, cardapioDin, onClose, onPay, o
                             <Text style={styles.addBtnText}>RATEIO (DIVISÃO)</Text>
                         </TouchableOpacity>
 
+                        {externalPosEnabled && onOpenPdvMode && (
+                            <TouchableOpacity
+                                style={[styles.payBtn, styles.externalPosBtn]}
+                                onPress={() => onOpenPdvMode('external_pos')}
+                            >
+                                <Text style={[styles.payBtnText, { color: colors.white }]}>Maquininha Externa</Text>
+                            </TouchableOpacity>
+                        )}
+
+                        {tefEnabled && onOpenPdvMode && (
+                            <TouchableOpacity
+                                style={[styles.addBtn, styles.pdvBtn]}
+                                onPress={() => onOpenPdvMode('tef')}
+                            >
+                                <Text style={styles.addBtnIcon}>🏧</Text>
+                                <Text style={styles.addBtnText}>TEF INTEGRADO</Text>
+                            </TouchableOpacity>
+                        )}
+
+                        {(externalPosEnabled || tefEnabled) && (
+                            <Text style={styles.pdvHint}>
+                                Dinheiro e PIX continuam no pagamento rápido. Cartão externo e TEF ficam em fluxos guiados.
+                            </Text>
+                        )}
+
                         <Text style={styles.sectionTitle}>Pagamento Rápido</Text>
                         <View style={styles.paymentGrid}>
-                            {['Dinheiro', 'Pix', 'Debito', 'Credito'].map((method) => {
+                            {['Dinheiro', 'Pix'].map((method) => {
                                 const getButtonStyle = (m: string) => {
                                     switch (m) {
                                         case 'Dinheiro': return { backgroundColor: colors.success, borderColor: colors.success }; // Verde
                                         case 'Pix': return { backgroundColor: colors.secondary, borderColor: colors.secondary }; // Verde/Azul Pix
-                                        case 'Debito': return { backgroundColor: colors.secondary, borderColor: colors.secondary }; // Azul
-                                        case 'Credito': return { backgroundColor: colors.primary, borderColor: colors.primary }; // Roxo/Indigo
                                         default: return {};
                                     }
                                 };
@@ -564,6 +592,21 @@ const styles = StyleSheet.create({
         color: colors.white,
         fontSize: 16,
         fontWeight: 'bold',
+    },
+    pdvBtn: {
+        backgroundColor: '#0F766E',
+        marginBottom: 10,
+    },
+    externalPosBtn: {
+        backgroundColor: '#7C3AED',
+        borderColor: '#7C3AED',
+    },
+    pdvHint: {
+        fontSize: 12,
+        lineHeight: 18,
+        color: colors.textSecondary,
+        marginTop: -2,
+        marginBottom: 16,
     },
     headerTitle: {
         color: colors.white,

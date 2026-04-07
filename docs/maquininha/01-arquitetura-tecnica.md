@@ -9,6 +9,8 @@ A integracao da maquininha sera organizada em arquitetura orientada a dominio, c
 - Camada Gateway (Hyperswitch): roteamento para adquirente configurado.
 - Camada Dados (Supabase): configuracao de gateway por empresa e trilha imutavel de transacoes.
 
+Escopo desta fase: somente `restaurante-web` + `restaurante-ops`.
+
 ## 2. Objetivos tecnicos
 
 - Isolamento multi-tenant por company_id em toda operacao.
@@ -97,16 +99,16 @@ Mapeamento de estados externos deve ser normalizado no backend para este conjunt
 
 Diretorio criado para evolucao gradual:
 
-- restaurante-web/src/features/maquininha/components/
-- restaurante-web/src/features/maquininha/hooks/
-- restaurante-web/src/features/maquininha/services/
-- restaurante-web/src/features/maquininha/types/
+- restaurante-web/src/features/pdv/components/
+- restaurante-web/src/features/pdv/hooks/
+- restaurante-web/src/features/pdv/services/
+- restaurante-web/src/features/pdv/types/
 
 Nesta etapa, somente estrutura e documentacao.
 
 ## 7. Decisoes arquiteturais
 
-1. Documentacao centralizada em docs/maquininha para evitar duplicidade app/web/ops.
+1. Documentacao centralizada em docs/maquininha para alinhar frontend web e backend ops na mesma fase.
 2. Dominio reservado no restaurante-web para facilitar evolucao incremental por PRs.
 3. Implementacao futura orientada por feature flag para rollout seguro.
 4. Reconciliacao assincrona obrigatoria via webhook idempotente.

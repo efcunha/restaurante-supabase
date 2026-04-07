@@ -592,6 +592,26 @@ export default function ComandaGerenciamentoScreen(props: any) {
               returnScreen: 'ComandaGerenciamento' // Explicit origin to prevent stale params
             });
           }}
+          onOpenPdvMode={(mode) => {
+            const comandaNum = comandaSelecionada.comandaNumber;
+            const isDelivery = comandaSelecionada.pedidos?.some((p: any) => p.order_type === 'delivery' || p.orderType === 'delivery') || String(comandaNum) === '0';
+
+            if (isDelivery) {
+              const msg = 'Aviso de Delivery: O recebimento de delivery continua na tela de Rotas Delivery, inclusive quando o entregador recebe via maquininha externa.';
+              if (Platform.OS === 'web') {
+                window.alert(msg);
+              } else {
+                Alert.alert('Aviso de Delivery', msg);
+              }
+              return;
+            }
+
+            props.navigation.navigate('Pagamento', {
+              comandaNumber: comandaNum,
+              returnScreen: 'ComandaGerenciamento',
+              paymentMode: mode,
+            });
+          }}
           onCancelItem={handleCancelItem}
         />
 

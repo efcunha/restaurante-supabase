@@ -1,0 +1,82 @@
+name: PDV Maquininha E2E
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'restaurante-web/**'
+      - '.github/workflows/pdv-maquininha-e2e.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'restaurante-web/**'
+      - '.github/workflows/pdv-maquininha-e2e.yml'
+
+jobs:
+  pdv-maquininha-e2e:
+    name: Web PDV Maquininha
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CI: 'true'
+      PLAYWRIGHT_BASE_URL: 'http://127.0.0.1:8081'
+      EXPO_PUBLIC_FEATURE_PDV_ENABLED: 'true'
+      EXPO_PUBLIC_FEATURE_PDV_DEVICE_PAYMENT: 'true'
+      PLAYWRIGHT_TEST_EMAIL: ${{ secrets.PLAYWRIGHT_TEST_EMAIL }}
+      PLAYWRIGHT_TEST_PASSWORD: ${{ secrets.PLAYWRIGHT_TEST_PASSWORD }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: restaurante-web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: restaurante-web
+        run: npm ci
+
+      - name: Install Playwright browser
+        working-directory: restaurante-web
+        run: npx playwright install --with-deps chromium
+
+      - name: Validate e2e credentials
+        run: |
+          if [ -z "$PLAYWRIGHT_TEST_EMAIL" ] || [ -z "$PLAYWRIGHT_TEST_PASSWORD" ]; then
+            echo "Secrets PLAYWRIGHT_TEST_EMAIL/PLAYWRIGHT_TEST_PASSWORD nao configurados" >&2
+            exit 1
+          fi
+
+      - name: Start web app
+        working-directory: restaurante-web
+        run: |
+          nohup npm run start:web -- --non-interactive > /tmp/web.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -fsS "$PLAYWRIGHT_BASE_URL" >/dev/null; then
+              echo "Aplicacao web disponivel"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Aplicacao web nao ficou disponivel em tempo habil"
+          tail -n 200 /tmp/web.log || true
+          exit 1
+
+      - name: Run maquininha e2e
+        working-directory: restaurante-web
+        run: npx playwright test e2e/pdv-maquininha-aprovado.spec.ts --workers=1 --reporter=line
+
+      - name: Upload Playwright artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdv-maquininha-playwright-artifacts
+          path: |
+            restaurante-web/playwright-report
+            restaurante-web/test-results
+          retention-days: 7
