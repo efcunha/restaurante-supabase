@@ -245,17 +245,6 @@ export const featureFlags: FeatureFlags = {
   ...loadFeatureFlagsFromEnv()
 };
 
-if (typeof window !== 'undefined') {
-  console.log('[FeatureFlags] Loaded:', {
-    pdv_enabled: featureFlags.pdv_enabled,
-    pdv_devicePayment_enabled: featureFlags.pdv_devicePayment_enabled,
-    pdv_externalPos_enabled: featureFlags.pdv_externalPos_enabled,
-    env_pdv_enabled: process.env.EXPO_PUBLIC_FEATURE_PDV_ENABLED,
-    env_pdv_device: process.env.EXPO_PUBLIC_FEATURE_PDV_DEVICE_PAYMENT,
-    env_pdv_external: process.env.EXPO_PUBLIC_FEATURE_PDV_EXTERNAL_POS,
-  });
-}
-
 /**
  * Verifica se uma feature está habilitada
  */

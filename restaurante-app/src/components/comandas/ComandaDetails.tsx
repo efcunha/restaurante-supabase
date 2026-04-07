@@ -525,7 +525,7 @@ export default function ComandaDetails({ comanda, cardapioDin, onClose, onPay, o
 
                         {(externalPosEnabled || tefEnabled) && (
                             <Text style={styles.pdvHint}>
-                                Dinheiro e PIX continuam no pagamento rápido. Cartão externo e TEF ficam em fluxos guiados.
+                                Dinheiro e PIX normal continuam no pagamento rápido. Cartão e PIX via maquininha externa, além de TEF, ficam em fluxos guiados.
                             </Text>
                         )}
 

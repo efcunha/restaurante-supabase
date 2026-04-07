@@ -10,6 +10,9 @@ import { EvolutionApiService } from '../services/EvolutionApiService';
 import OptimizedFlatList from '../components/OptimizedFlatList';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
+import PagamentosService from '../services/PagamentosService';
+import { auditService } from '../services/AuditService';
+import { isFeatureEnabled } from '../config/featureFlags';
 
 type DeliveryStatus = 'dispatched' | 'delivered' | 'failed_delivery' | 'returned' | 'refused';
 
@@ -18,11 +21,12 @@ const DELIVERY_NOTIFICATION_STATUSES: DeliveryStatus[] = ['dispatched', 'deliver
 export default function RotasDeliveryScreen() {
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
+  const externalPosEnabled = isFeatureEnabled('pdv_enabled') && isFeatureEnabled('pdv_externalPos_enabled');
   
   const [loading, setLoading] = useState(true);
   const [deliveryOrders, setDeliveryOrders] = useState<any[]>([]);
   const [processingItems, setProcessingItems] = useState(new Set());
-  const [confirmDelivery, setConfirmDelivery] = useState<{ orderId: string; label: string } | null>(null);
+  const [confirmDelivery, setConfirmDelivery] = useState<{ orderId: string; label: string; order: any } | null>(null);
 
   const ensureWhatsAppConnectionForDelivery = useCallback(async (status: DeliveryStatus) => {
     if (!user?.companyId || !DELIVERY_NOTIFICATION_STATUSES.includes(status)) {
@@ -215,6 +219,117 @@ export default function RotasDeliveryScreen() {
     }
   };
 
+  const finalizeDeliveredOrder = async (
+    order: any,
+    paymentMethod: 'dinheiro' | 'pix' | 'debito' | 'credito',
+    paymentOrigin: 'NORMAL' | 'EXTERNAL_POS' = 'NORMAL'
+  ) => {
+    if (!user?.companyId) return;
+
+    const nowIso = new Date().toISOString();
+    const businessDateKey = await getBusinessDateKey(user.companyId);
+    const orderAmount = Number(order?.total_amount || order?.totalAmount || 0);
+    const operatorName = user?.nome || user?.email || 'Motoboy';
+
+    const deliveredPayload: any = {
+      status: 'delivered',
+      updated_at: nowIso,
+      payment_method: paymentMethod,
+    };
+
+    if (order.itemsWithStatus) {
+      deliveredPayload.items_with_status = order.itemsWithStatus.map((item: any) => ({
+        ...item,
+        delivered: true,
+        deliveredAt: nowIso,
+      }));
+    }
+
+    const { error: deliveryError } = await supabase
+      .from('orders')
+      .update(deliveredPayload)
+      .eq('id', order.id)
+      .eq('company_id', user.companyId);
+
+    if (deliveryError) throw deliveryError;
+
+    if (orderAmount > 0 && order.comandaNumber) {
+      await PagamentosService.registrarPagamento({
+        companyId: user.companyId,
+        dateKey: businessDateKey,
+        comandaNumber: order.comandaNumber,
+        forma: paymentMethod,
+        valor: orderAmount,
+        usuarioId: user?.id || '',
+        usuarioNome: operatorName,
+      });
+
+      await PagamentosService.marcarPedidosComoPagos(user.companyId, [order.id], paymentMethod);
+    }
+
+    if (paymentOrigin === 'EXTERNAL_POS' && order.comandaNumber) {
+      await auditService.log({
+        eventType: 'payment.manual_recorded',
+        resourceType: 'payment',
+        resourceId: String(order.comandaNumber),
+        companyId: user.companyId,
+        metadata: {
+          source: 'EXTERNAL_POS',
+          deliveryOrderId: order.id,
+          comandaNumber: order.comandaNumber,
+          amount: orderAmount,
+          cardType: paymentMethod,
+          operatorId: user?.id,
+          operatorName,
+          note: 'Recebimento confirmado na entrega pelo web',
+        },
+      });
+    }
+
+    setDeliveryOrders(prev => prev.filter(o => o.id !== order.id));
+    await closeDeliveryComandaIfSettled({ ...order, status: 'delivered', is_paid: true });
+    fetchDeliveryOrders();
+    Alert.alert('Sucesso', 'Entrega e recebimento confirmados com sucesso.');
+  };
+
+  const promptDeliveredPaymentMethod = (order: any) => {
+    const options: Array<{ text: string; style?: 'cancel' | 'default' | 'destructive'; onPress: () => void }> = [
+      {
+        text: 'Recebi em Dinheiro',
+        onPress: () => finalizeDeliveredOrder(order, 'dinheiro', 'NORMAL')
+      },
+      {
+        text: 'Recebi via PIX (normal)',
+        onPress: () => finalizeDeliveredOrder(order, 'pix', 'NORMAL')
+      },
+    ];
+
+    if (externalPosEnabled) {
+      options.push(
+        {
+          text: 'Maquininha Externa PIX (QR Code)',
+          onPress: () => finalizeDeliveredOrder(order, 'pix', 'EXTERNAL_POS')
+        },
+        {
+          text: 'Maquininha Externa Débito',
+          onPress: () => finalizeDeliveredOrder(order, 'debito', 'EXTERNAL_POS')
+        },
+        {
+          text: 'Maquininha Externa Crédito',
+          onPress: () => finalizeDeliveredOrder(order, 'credito', 'EXTERNAL_POS')
+        }
+      );
+    }
+
+    options.push({ text: 'Cancelar', style: 'cancel', onPress: () => {} });
+
+    Alert.alert(
+      'Confirmar entrega e recebimento',
+      'Selecione como o pagamento foi recebido nesta entrega.',
+      options
+    );
+  };
+
   const updateOrderStatus = async (
     orderId: string,
     novoStatus: DeliveryStatus,
@@ -233,20 +348,9 @@ export default function RotasDeliveryScreen() {
         };
 
         const order = deliveryOrders.find(o => o.id === orderId);
-        // Ao confirmar entrega, baixa financeira e comanda para não manter Delivery em aberto no gerenciamento.
+        // Ao confirmar entrega, o recebimento deve passar por escolha explícita de método.
         if (order && novoStatus === 'delivered') {
-            updatePayload.is_paid = true;
-            updatePayload.comanda_status = 'fechada';
-
-            if (order.itemsWithStatus) {
-              updatePayload.items_with_status = order.itemsWithStatus.map((item: any) => ({
-                  ...item,
-                  delivered: true,
-                  deliveredAt: nowIso,
-                  paid: true,
-                  paid_quantity: Number(item.quantity || 1)
-              }));
-            }
+          return;
         }
 
         // Para falha/devolucao, registra motivo no campo de observacoes para auditoria operacional.
@@ -296,10 +400,6 @@ export default function RotasDeliveryScreen() {
             console.warn('[RotasDelivery] Erro ao enviar WhatsApp para status dispatched:', notificationError);
             // Não quebra o fluxo se o envio de WhatsApp falhar
           }
-        }
-
-        if (novoStatus === 'delivered' && order) {
-          await closeDeliveryComandaIfSettled(order);
         }
 
            // Revalida no fundo para manter consistencia com o banco/realtime.
@@ -365,7 +465,7 @@ export default function RotasDeliveryScreen() {
             const label = order.customerName
               ? `Confirmar entrega da comanda #${order.comandaNumber || '?'} para ${order.customerName}?`
               : `Confirmar entrega da comanda #${order.comandaNumber || '?'}?`;
-            setConfirmDelivery({ orderId: order.id, label });
+            setConfirmDelivery({ orderId: order.id, label, order });
             return;
           }
 
@@ -375,7 +475,7 @@ export default function RotasDeliveryScreen() {
             [
               { text: 'Cancelar', style: 'cancel' },
               { text: 'Nao entregue', style: 'destructive', onPress: () => handleUndeliveredAction(order) },
-              { text: 'Sim, entregue com sucesso', style: 'default', onPress: () => updateOrderStatus(order.id, 'delivered') }
+              { text: 'Sim, entregue com sucesso', style: 'default', onPress: () => promptDeliveredPaymentMethod(order) }
             ]
           );
       }
@@ -542,9 +642,9 @@ export default function RotasDeliveryScreen() {
                 <TouchableOpacity
                   style={[styles.confirmBtn, styles.confirmBtnOk]}
                   onPress={() => {
-                    const { orderId } = confirmDelivery;
+                    const { order } = confirmDelivery;
                     setConfirmDelivery(null);
-                    updateOrderStatus(orderId, 'delivered');
+                    promptDeliveredPaymentMethod(order);
                   }}
                 >
                   <Text style={styles.confirmBtnOkText}>✅ Confirmar</Text>
