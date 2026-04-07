@@ -17,6 +17,7 @@ import { isFeatureEnabled } from '../config/featureFlags';
 import { colors } from '../theme/colors';
 import { auditService } from '../services/AuditService';
 import type { ExternalPosPaymentData, PaymentMode } from '../features/payments/types';
+import { useDevicePayment } from '../features/pdv';
 // Usar função centralizada para consistência de data local
 const todayKey = getTodayKey;
 
@@ -24,7 +25,9 @@ export default function PagamentoScreen({ route, navigation }: any) {
   const { user } = useAuth();
   const initialPaymentMode = (route.params?.paymentMode as PaymentMode | undefined) ?? 'normal';
   const useUiNextPagamento = isFeatureEnabled('pagamento_uiNext');
+  const pdvDevicePaymentEnabled = isFeatureEnabled('pdv_enabled') && isFeatureEnabled('pdv_devicePayment_enabled');
   const pdvExternalPosEnabled = isFeatureEnabled('pdv_enabled') && isFeatureEnabled('pdv_externalPos_enabled');
+  const { isProcessing: isDevicePaymentProcessing, startPayment: startDevicePayment } = useDevicePayment();
   
   // Helper para formatar valores em Real brasileiro
   const formatarMoeda = (valor: any) => {
@@ -353,6 +356,54 @@ export default function PagamentoScreen({ route, navigation }: any) {
     }
   };
 
+  const pagarViaMaquininha = async () => {
+    try {
+      if (!pdvDevicePaymentEnabled) {
+        Alert.alert('Maquininha indisponível', 'Fluxo de maquininha desabilitado para esta empresa.');
+        return;
+      }
+
+      if (!user?.companyId || !comanda) {
+        Alert.alert('Erro', 'Selecione uma comanda válida antes de iniciar maquininha.');
+        return;
+      }
+
+      const valorPago = parseFloat(valor || '0');
+      if (!valor || Number.isNaN(valorPago) || valorPago <= 0) {
+        Alert.alert('Erro', 'Informe um valor válido para processar na maquininha.');
+        return;
+      }
+
+      const paymentMethod = forma === 'cartao_credito' ? 'cartao_credito' : 'cartao_debito';
+      const result = await startDevicePayment({
+        companyId: user.companyId,
+        comandaNumber: String(comanda),
+        amount: valorPago,
+        paymentMethod,
+      });
+
+      if (result.status === 'processing') {
+        Alert.alert(
+          'Maquininha em processamento',
+          result.message || 'Pagamento iniciado. Aguarde a confirmação da maquininha.'
+        );
+        return;
+      }
+
+      if (result.status !== 'approved') {
+        Alert.alert('Maquininha', result.message);
+        return;
+      }
+
+      Alert.alert(
+        'Maquininha aprovada',
+        'Transação autorizada. Confirme o pagamento para registrar na comanda.'
+      );
+    } catch (error: any) {
+      Alert.alert('Erro', error?.message || 'Falha ao processar pagamento presencial.');
+    }
+  };
+
   const registrarPagamentoExterno = async (data: ExternalPosPaymentData) => {
     try {
       if (!user?.companyId || !comanda) {
@@ -480,6 +531,9 @@ export default function PagamentoScreen({ route, navigation }: any) {
             onConfirmPayment={pagar}
             onSplitByPeople={() => openSplitModal('pessoas')}
             onSplitByItems={() => openSplitModal('itens')}
+            onUseDevicePayment={pagarViaMaquininha}
+            showDevicePaymentAction={pdvDevicePaymentEnabled}
+            isDevicePaymentBusy={isDevicePaymentProcessing}
             onExternalPosPayment={registrarPagamentoExterno}
             showExternalPosOption={pdvExternalPosEnabled}
             initialMode={initialPaymentMode}
