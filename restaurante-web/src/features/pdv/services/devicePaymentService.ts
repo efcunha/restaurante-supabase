@@ -18,6 +18,21 @@ function mapBackendStatusToDeviceStatus(status: unknown): DevicePaymentResult['s
   return 'error';
 }
 
+function getPayloadMessage(payload: Record<string, unknown>, fallback: string): string {
+  if (typeof payload.message === 'string' && payload.message.trim()) {
+    return payload.message;
+  }
+  if (typeof payload.error === 'string' && payload.error.trim()) {
+    return payload.error;
+  }
+  return fallback;
+}
+
+async function getAccessToken(): Promise<string | undefined> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  return sessionData.session?.access_token;
+}
+
 export async function initiateDevicePayment(request: DevicePaymentRequest): Promise<DevicePaymentResult> {
   if (!isFeatureEnabled('pdv_enabled') || !isFeatureEnabled('pdv_devicePayment_enabled')) {
     return {
@@ -50,8 +65,7 @@ export async function initiateDevicePayment(request: DevicePaymentRequest): Prom
     };
   }
 
-  const { data: sessionData } = await supabase.auth.getSession();
-  const accessToken = sessionData.session?.access_token;
+  const accessToken = await getAccessToken();
 
   const response = await fetch(`${baseUrl}/payments/initiate`, {
     method: 'POST',
@@ -73,14 +87,60 @@ export async function initiateDevicePayment(request: DevicePaymentRequest): Prom
   if (!response.ok) {
     return {
       status: 'error',
-      message: typeof payload.error === 'string' ? payload.error : 'Falha ao iniciar pagamento na maquininha.',
+      message: getPayloadMessage(payload, 'Falha ao iniciar pagamento na maquininha.'),
     };
   }
 
   return {
     status: mapBackendStatusToDeviceStatus(payload.status),
     transactionId: typeof payload.transactionId === 'string' ? payload.transactionId : undefined,
+    providerPaymentId: typeof payload.providerPaymentId === 'string' ? payload.providerPaymentId : undefined,
     authCode: typeof payload.authCode === 'string' ? payload.authCode : undefined,
-    message: typeof payload.message === 'string' ? payload.message : 'Pagamento presencial iniciado com sucesso.',
+    message: getPayloadMessage(payload, 'Pagamento presencial iniciado com sucesso.'),
+  };
+}
+
+export async function getDevicePaymentStatus(transactionId: string): Promise<DevicePaymentResult> {
+  const baseUrl = getOpsBaseUrl();
+  if (!baseUrl) {
+    return {
+      status: 'error',
+      message: 'EXPO_PUBLIC_OPS_BASE_URL nao configurada para consultar status da maquininha.',
+    };
+  }
+
+  const safeTransactionId = String(transactionId || '').trim();
+  if (!safeTransactionId) {
+    return {
+      status: 'error',
+      message: 'transactionId invalido para consulta de status.',
+    };
+  }
+
+  const accessToken = await getAccessToken();
+
+  const response = await fetch(`${baseUrl}/payments/${encodeURIComponent(safeTransactionId)}/status`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+    },
+  });
+
+  const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!response.ok) {
+    return {
+      status: 'error',
+      transactionId: safeTransactionId,
+      message: getPayloadMessage(payload, 'Falha ao consultar status da maquininha.'),
+    };
+  }
+
+  return {
+    status: mapBackendStatusToDeviceStatus(payload.status),
+    transactionId: typeof payload.transactionId === 'string' ? payload.transactionId : safeTransactionId,
+    providerPaymentId: typeof payload.providerPaymentId === 'string' ? payload.providerPaymentId : undefined,
+    authCode: typeof payload.authCode === 'string' ? payload.authCode : undefined,
+    message: getPayloadMessage(payload, 'Status da transacao atualizado.'),
   };
 }

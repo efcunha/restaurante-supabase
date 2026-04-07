@@ -49,6 +49,8 @@ export type AuditEventType =
   // Permissões
   | 'permission.denied'
   | 'permission.granted'
+  // Pagamentos
+  | 'payment.manual_recorded'
   // Sistema
   | 'system.error'
   | 'system.warning'

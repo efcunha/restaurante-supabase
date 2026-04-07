@@ -80,6 +80,7 @@ import {
   verifyHyperswitchSignature,
   type InitiatePaymentInput,
 } from './modules/payment-gateway.js';
+import { handleInitiatePaymentEndpoint } from './modules/payment-initiate-endpoint.js';
 import { createOpsHttpServer } from './lib/httpServer.js';
 import {
   enqueueLog,
@@ -1791,11 +1792,12 @@ function extractExternalLogsPayload(payload: unknown): unknown[] {
 }
 
 const BILLING_COMPANY_PATH_FRAGMENT = '([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})';
+const PAYMENT_TRANSACTION_ID_PATH_FRAGMENT = '([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})';
 const BILLING_AUDIT_PATH_RE = new RegExp(`^/ops/billing/company/${BILLING_COMPANY_PATH_FRAGMENT}/audit$`);
 const BILLING_SNAPSHOT_PATH_RE = new RegExp(`^/ops/billing/company/${BILLING_COMPANY_PATH_FRAGMENT}$`);
 const BILLING_CARD_PATH_RE = new RegExp(`^/ops/billing/company/${BILLING_COMPANY_PATH_FRAGMENT}/regularize/card$`);
 const BILLING_PIX_PATH_RE = new RegExp(`^/ops/billing/company/${BILLING_COMPANY_PATH_FRAGMENT}/regularize/pix$`);
-const PAYMENT_TRANSACTION_STATUS_PATH_RE = new RegExp(`^/payments/${BILLING_COMPANY_PATH_FRAGMENT}/status$`);
+const PAYMENT_TRANSACTION_STATUS_PATH_RE = new RegExp(`^/payments/${PAYMENT_TRANSACTION_ID_PATH_FRAGMENT}/status$`);
 
 function validateReconcileInput(input: Partial<ReconcileInput>): string | null {
   if (!input.companyId || !input.idempotencyKey || !input.eventType || !input.paymentStatus) {
@@ -2139,50 +2141,8 @@ function startServer() {
         try {
           const rawBody = await readBody(req);
           const body = parseJsonBody<Partial<InitiatePaymentInput>>(rawBody);
-          const paymentMethod = body.paymentMethod === 'cartao_credito'
-            ? 'cartao_credito'
-            : body.paymentMethod === 'cartao_debito'
-              ? 'cartao_debito'
-              : '';
-          const input = {
-            companyId: sanitizePlainText(String(body.companyId || '')),
-            comandaNumber: sanitizePlainText(String(body.comandaNumber || '')),
-            amount: Number(body.amount),
-            paymentMethod,
-            idempotencyKey: sanitizePlainText(String(body.idempotencyKey || '')),
-          } as Partial<InitiatePaymentInput>;
-
-          const validationError = validateInitiatePaymentInput(input);
-          if (validationError) {
-            respondJson(res, 400, {
-              code: 'invalid_request',
-              message: validationError,
-              correlation_id: requestId ?? null,
-            });
-            return;
-          }
-
-          if (input.companyId !== operator.companyId) {
-            respondJson(res, 403, {
-              code: 'forbidden',
-              message: 'companyId nao corresponde ao tenant autenticado.',
-              correlation_id: requestId ?? null,
-            });
-            return;
-          }
-
-          const result = await initiatePayment(input as InitiatePaymentInput);
-          respondJson(res, 202, {
-            status: result.status,
-            transactionId: result.transactionId,
-            providerPaymentId: result.providerPaymentId,
-            nextAction: result.nextAction,
-            amount: result.amount,
-            paymentMethod: result.paymentMethod,
-            message: result.message,
-            correlation_id: result.correlationId,
-            created_at: result.createdAt,
-          });
+          const response = await handleInitiatePaymentEndpoint(body, operator, requestId);
+          respondJson(res, response.statusCode, response.payload);
         } catch (err) {
           const response = respondPaymentGatewayError(err, requestId);
           respondJson(res, response.statusCode, response.payload);

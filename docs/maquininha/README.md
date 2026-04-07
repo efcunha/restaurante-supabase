@@ -1,8 +1,8 @@
-# Maquininha - Integracao tecnica no restaurante-web
+# Maquininha e Balanca - Integracao tecnica no restaurante-web
 
 ## Objetivo
 
-Consolidar a especificacao tecnica de desenvolvimento da integracao de pagamento presencial (maquininha) no restaurante-web, com Hyperswitch como camada de orquestracao entre PDV e adquirentes.
+Consolidar a especificacao tecnica de desenvolvimento da integracao de pagamento presencial (maquininha TEF) e leitura de balanca no restaurante-web, com Hyperswitch como camada de orquestracao entre PDV e adquirentes.
 
 ## Escopo desta documentacao
 
@@ -11,12 +11,14 @@ Consolidar a especificacao tecnica de desenvolvimento da integracao de pagamento
 - Contratos tecnicos (request, response, estados e erros)
 - Regras de seguranca, multi-tenant e LGPD
 - Plano de testes, rollout e rollback
+- Escopo atual de implementacao: `restaurante-web` + `restaurante-ops`
 
 ## Fora de escopo
 
 - Implementacao de codigo frontend/backend
 - Criacao de migration nesta etapa
 - Publicacao de endpoint em producao nesta etapa
+- Integracao no `restaurante-app` (mobile) nesta fase
 
 ## Indice
 
@@ -24,7 +26,8 @@ Consolidar a especificacao tecnica de desenvolvimento da integracao de pagamento
 2. [Fluxos tecnicos de desenvolvimento](02-fluxos-tecnicos.md)
 3. [Contratos, seguranca e observabilidade](03-contratos-seguranca-observabilidade.md)
 4. [Plano de execucao, testes e rollout](04-plano-execucao-testes-rollout.md)
-5. [Prompt de inicializacao do projeto](PROMPT_INICIALIZACAO_PROJETO.md)
+5. [Fluxo operacional PDV + balanca (discussao)](05-fluxo-operacional-pdv-balanca.md)
+6. [Prompt de inicializacao do projeto](PROMPT_INICIALIZACAO_PROJETO.md)
 
 ## Premissas de negocio (fixas)
 

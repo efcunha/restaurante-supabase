@@ -1,5 +1,8 @@
 # 03 - Contratos, seguranca e observabilidade
 
+Escopo desta fase: frontend em `restaurante-web` e backend em `restaurante-ops`.
+Fora de escopo desta fase: integracao no `restaurante-app`.
+
 ## 1. Contrato tecnico de iniciacao de pagamento
 
 ## 1.1 Request (frontend -> ops)
@@ -28,6 +31,29 @@ Regras:
 - status: pending | processing | succeeded | failed | cancelled
 - next_action: none | await_terminal | await_webhook | retry_allowed
 - created_at: ISO timestamp
+
+## 1.3 Contrato tecnico de leitura de balanca (frontend web)
+
+Estados recomendados:
+
+- idle
+- reading
+- stable
+- unstable
+- timeout
+- error
+
+Campos minimos de leitura estabilizada:
+
+- weight_kg: number
+- is_stable: boolean
+- captured_at: ISO timestamp
+
+Regras:
+
+- Leitura de balanca e tratada no frontend web nesta fase.
+- Nao depende de integracao mobile.
+- Falha de balanca nao pode impactar autenticacao nem contrato de pagamentos TEF.
 
 ## 2. Contrato tecnico de webhook (hyperswitch -> ops)
 

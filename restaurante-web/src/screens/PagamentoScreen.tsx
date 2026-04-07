@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Alert } from 'react-native';
+import { StyleSheet, Alert, Text, View } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 // @ts-ignore
@@ -12,6 +12,7 @@ import SplitPaymentModal from '../components/SplitPaymentModal';
 import { calcularPrecoItem, MenuItem } from '../utils/orderCalculator';
 import { ScreenScaffold } from '../layouts/ScreenScaffold';
 import { PaymentActionPanel, PaymentComandaSummary, PaymentOrderSummary, PaymentStepIndicator } from '../features/payments';
+import type { ExternalPosPaymentData, PaymentMode } from '../features/payments/types';
 import { isFeatureEnabled } from '../config/featureFlags';
 import { auditService } from '../services/AuditService';
 import { useDevicePayment } from '../features/pdv';
@@ -21,8 +22,10 @@ const todayKey = getTodayKey;
 
 export default function PagamentoScreen({ route, navigation }: any) {
   const { user } = useAuth();
+  const initialPaymentMode = (route.params?.paymentMode as PaymentMode | undefined) ?? 'normal';
   const useUiNextPagamento = isFeatureEnabled('pagamento_uiNext');
   const pdvDevicePaymentEnabled = isFeatureEnabled('pdv_enabled') && isFeatureEnabled('pdv_devicePayment_enabled');
+  const pdvExternalPosEnabled = isFeatureEnabled('pdv_enabled') && isFeatureEnabled('pdv_externalPos_enabled');
   const { isProcessing: isDevicePaymentProcessing, startPayment: startDevicePayment } = useDevicePayment();
   
   // Helper para formatar valores em Real brasileiro
@@ -51,6 +54,14 @@ export default function PagamentoScreen({ route, navigation }: any) {
     setSplitInitialMode(mode);
     setIsSplitModalVisible(true);
   };
+
+  // DEBUG: Log feature flags on mount
+  useEffect(() => {
+    console.log('[PagamentoScreen] Feature Flags:', {
+      pdvDevicePaymentEnabled,
+      pdvExternalPosEnabled,
+    });
+  }, [pdvDevicePaymentEnabled, pdvExternalPosEnabled]);
 
   // Carregar comanda se vier por navegação
   useEffect(() => {
@@ -415,6 +426,51 @@ export default function PagamentoScreen({ route, navigation }: any) {
     }
   };
 
+  const registrarPagamentoExterno = async (data: ExternalPosPaymentData) => {
+    try {
+      if (!user?.companyId || !comanda) {
+        Alert.alert('Erro', 'Selecione uma comanda válida.');
+        return;
+      }
+
+      await PagamentosService.registrarPagamento({
+        companyId: user.companyId,
+        dateKey: todayKey(),
+        comandaNumber: comanda,
+        forma: data.cardType,
+        valor: data.amount,
+        usuarioId: user?.id || '',
+        usuarioNome: user?.nome || 'Usuário',
+      });
+
+      await auditService.log({
+        eventType: 'payment.manual_recorded',
+        resourceType: 'payment',
+        resourceId: String(comanda),
+        companyId: user.companyId,
+        metadata: {
+          source: 'EXTERNAL_POS',
+          comandaNumber: comanda,
+          amount: data.amount,
+          cardType: data.cardType,
+          nsu: data.nsu ?? null,
+          cardLast4: data.cardLast4 ?? null,
+          note: data.note ?? null,
+          idempotencyKey: data.idempotencyKey,
+          operatorId: user?.id,
+          operatorName: user?.nome,
+        },
+      });
+
+      await new Promise(resolve => setTimeout(resolve, 200));
+      await carregarDadosComanda();
+      setValor('');
+      Alert.alert('Sucesso', 'Recebimento externo registrado! Saldo atualizado.');
+    } catch (e: any) {
+      Alert.alert('Erro', e.message);
+    }
+  };
+
   const handleBack = () => {
     try {
       if (route.params?.returnScreen === 'Mapa') {
@@ -487,8 +543,19 @@ export default function PagamentoScreen({ route, navigation }: any) {
             onUseDevicePayment={pagarViaMaquininha}
             showDevicePaymentAction={pdvDevicePaymentEnabled}
             isDevicePaymentBusy={isDevicePaymentProcessing}
+            onExternalPosPayment={registrarPagamentoExterno}
+            showExternalPosOption={pdvExternalPosEnabled}
+            initialMode={initialPaymentMode}
             useUiNext={useUiNextPagamento}
           />
+        )}
+
+        {saldo && saldo.aberto <= 0 && (pdvDevicePaymentEnabled || pdvExternalPosEnabled) && (
+          <View style={styles.infoBox}>
+            <Text style={styles.infoText}>
+              O PDV fica visivel apenas quando a comanda tem saldo em aberto. Esta comanda ja esta quitada.
+            </Text>
+          </View>
         )}
       
       <SplitPaymentModal
@@ -509,5 +576,16 @@ export default function PagamentoScreen({ route, navigation }: any) {
 const styles = StyleSheet.create({
   contentContainer: {
     padding: 20,
+  },
+  infoBox: {
+    marginTop: 12,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: '#EFF6FF',
+  },
+  infoText: {
+    color: '#1D4ED8',
+    fontSize: 14,
+    lineHeight: 20,
   },
 });

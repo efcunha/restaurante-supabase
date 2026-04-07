@@ -58,6 +58,8 @@ export interface FeatureFlags {
   pdv_devicePayment_enabled: boolean;
   /** Habilita leitura de peso via bridge da balanca */
   pdv_scale_enabled: boolean;
+  /** Habilita registro manual de recebimento por maquininha externa (sem TEF) */
+  pdv_externalPos_enabled: boolean;
 }
 
 /**
@@ -104,6 +106,7 @@ const defaultFlags: FeatureFlags = {
   pdv_enabled: false,
   pdv_devicePayment_enabled: false,
   pdv_scale_enabled: false,
+  pdv_externalPos_enabled: false,
 };
 
 /**
@@ -226,6 +229,9 @@ function loadFeatureFlagsFromEnv(): Partial<FeatureFlags> {
   if (process.env.EXPO_PUBLIC_FEATURE_PDV_SCALE !== undefined) {
     envFlags.pdv_scale_enabled = process.env.EXPO_PUBLIC_FEATURE_PDV_SCALE === 'true';
   }
+  if (process.env.EXPO_PUBLIC_FEATURE_PDV_EXTERNAL_POS !== undefined) {
+    envFlags.pdv_externalPos_enabled = process.env.EXPO_PUBLIC_FEATURE_PDV_EXTERNAL_POS === 'true';
+  }
 
   return envFlags;
 }
@@ -238,6 +244,17 @@ export const featureFlags: FeatureFlags = {
   ...defaultFlags,
   ...loadFeatureFlagsFromEnv()
 };
+
+if (typeof window !== 'undefined') {
+  console.log('[FeatureFlags] Loaded:', {
+    pdv_enabled: featureFlags.pdv_enabled,
+    pdv_devicePayment_enabled: featureFlags.pdv_devicePayment_enabled,
+    pdv_externalPos_enabled: featureFlags.pdv_externalPos_enabled,
+    env_pdv_enabled: process.env.EXPO_PUBLIC_FEATURE_PDV_ENABLED,
+    env_pdv_device: process.env.EXPO_PUBLIC_FEATURE_PDV_DEVICE_PAYMENT,
+    env_pdv_external: process.env.EXPO_PUBLIC_FEATURE_PDV_EXTERNAL_POS,
+  });
+}
 
 /**
  * Verifica se uma feature está habilitada
