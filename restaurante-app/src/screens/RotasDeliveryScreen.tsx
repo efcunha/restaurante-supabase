@@ -304,13 +304,17 @@ export default function RotasDeliveryScreen() {
         onPress: () => finalizeDeliveredOrder(order, 'dinheiro', 'NORMAL')
       },
       {
-        text: 'Recebi via PIX',
+        text: 'Recebi via PIX (normal)',
         onPress: () => finalizeDeliveredOrder(order, 'pix', 'NORMAL')
       },
     ];
 
     if (externalPosEnabled) {
       options.push(
+        {
+          text: 'Maquininha Externa PIX (QR Code)',
+          onPress: () => finalizeDeliveredOrder(order, 'pix', 'EXTERNAL_POS')
+        },
         {
           text: 'Maquininha Externa Débito',
           onPress: () => finalizeDeliveredOrder(order, 'debito', 'EXTERNAL_POS')

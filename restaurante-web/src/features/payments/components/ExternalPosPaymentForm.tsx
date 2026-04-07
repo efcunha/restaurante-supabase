@@ -22,7 +22,7 @@ interface ExternalPosPaymentFormProps {
 const cardTypeLabels: Record<ExternalPosCardType, string> = {
   cartao_credito: 'Crédito',
   cartao_debito: 'Débito',
-  pix: 'PIX',
+  pix: 'PIX (QR na Maquininha)',
   dinheiro: 'Dinheiro',
 };
 
@@ -84,7 +84,7 @@ export const ExternalPosPaymentForm = memo(function ExternalPosPaymentForm({
     <View style={styles.container}>
       <Text style={styles.title}>Registrar Maquininha Externa</Text>
       <Text style={styles.subtitle}>
-        O recebimento já aconteceu na maquininha própria. Registre aqui para atualizar o saldo da comanda.
+        O recebimento já aconteceu na maquininha própria (débito, crédito ou PIX por QR). Registre aqui para atualizar o saldo da comanda.
       </Text>
 
       {/* Valor */}
