@@ -1,4 +1,24 @@
-import { colorSystem } from '../design-system';
+// Single source of truth for project color palette.
+// All design-system tokens must consume this file, never redefine hex values elsewhere.
+export const colorSystem = {
+    primary: '#0E7490',
+    secondary: '#0F172A',
+    accent: '#F97316',
+    accentText: '#B45309',
+    background: '#F4F6FB',
+    surface: '#FFFFFF',
+    success: '#16A34A',
+    warning: '#D97706',
+    warningText: '#92400E',
+    error: '#DC2626',
+    text: '#0B1220',
+    textMuted: '#5B6472',
+    onPrimary: '#FFFFFF',
+    onSecondary: '#FFFFFF',
+    onAccent: '#0B1220',
+    border: '#D7DEEA',
+    overlay: 'rgba(11, 18, 32, 0.52)',
+};
 
 // Legacy compatibility bridge. Existing screens can keep importing `colors`
 // while new UI uses `colorSystem` directly.
@@ -15,6 +35,7 @@ export const colors = {
     warning: colorSystem.warningText,
     danger: colorSystem.error, // Also used for remove buttons
     onDanger: '#FFFFFF',
+    successSurface: '#ECFDF3',
     warningSurface: '#FFF7ED',
     dangerSurface: '#FEE2E2',
     primaryDivider: '#7A2828',

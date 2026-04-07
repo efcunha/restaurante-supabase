@@ -1,24 +1,8 @@
 import { Platform } from 'react-native';
+// Keep palette centralized in theme/colors to avoid duplicated hex definitions.
+import { colorSystem } from '../theme/colors';
 
-export const colorSystem = {
-  primary: '#0E7490',
-  secondary: '#0F172A',
-  accent: '#F97316',
-  accentText: '#B45309',
-  background: '#F4F6FB',
-  surface: '#FFFFFF',
-  success: '#16A34A',
-  warning: '#D97706',
-  warningText: '#92400E',
-  error: '#DC2626',
-  text: '#0B1220',
-  textMuted: '#5B6472',
-  onPrimary: '#FFFFFF',
-  onSecondary: '#FFFFFF',
-  onAccent: '#0B1220',
-  border: '#D7DEEA',
-  overlay: 'rgba(11, 18, 32, 0.52)',
-};
+export { colorSystem };
 
 export const colorUsageRules = {
   // Safe for normal text on white/surface (WCAG AA 4.5:1 or higher).
@@ -93,10 +77,7 @@ export const shadows = {
     },
     android: { elevation: 2 },
     web: {
-      shadowColor: '#0B1220',
-      shadowOpacity: 0.07,
-      shadowOffset: { width: 0, height: 2 },
-      shadowRadius: 6,
+      boxShadow: '0px 2px 6px rgba(11, 18, 32, 0.07)',
     },
   }) as object,
   medium: Platform.select({
@@ -108,10 +89,7 @@ export const shadows = {
     },
     android: { elevation: 5 },
     web: {
-      shadowColor: '#0B1220',
-      shadowOpacity: 0.12,
-      shadowOffset: { width: 0, height: 6 },
-      shadowRadius: 12,
+      boxShadow: '0px 6px 12px rgba(11, 18, 32, 0.12)',
     },
   }) as object,
   high: Platform.select({
@@ -123,10 +101,7 @@ export const shadows = {
     },
     android: { elevation: 8 },
     web: {
-      shadowColor: '#0B1220',
-      shadowOpacity: 0.18,
-      shadowOffset: { width: 0, height: 10 },
-      shadowRadius: 18,
+      boxShadow: '0px 10px 18px rgba(11, 18, 32, 0.18)',
     },
   }) as object,
   floating: Platform.select({
@@ -138,10 +113,7 @@ export const shadows = {
     },
     android: { elevation: 12 },
     web: {
-      shadowColor: '#0B1220',
-      shadowOpacity: 0.24,
-      shadowOffset: { width: 0, height: 14 },
-      shadowRadius: 24,
+      boxShadow: '0px 14px 24px rgba(11, 18, 32, 0.24)',
     },
   }) as object,
 };
