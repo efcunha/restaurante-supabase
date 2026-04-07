@@ -27,6 +27,14 @@ export default function RotasDeliveryScreen() {
   const [deliveryOrders, setDeliveryOrders] = useState<any[]>([]);
   const [processingItems, setProcessingItems] = useState(new Set());
   const [confirmDelivery, setConfirmDelivery] = useState<{ orderId: string; label: string; order: any } | null>(null);
+  const [paymentMethodDialog, setPaymentMethodDialog] = useState<{
+    order: any;
+    options: Array<{
+      text: string;
+      paymentMethod: 'dinheiro' | 'pix' | 'debito' | 'credito';
+      paymentOrigin: 'NORMAL' | 'EXTERNAL_POS';
+    }>;
+  } | null>(null);
 
   const ensureWhatsAppConnectionForDelivery = useCallback(async (status: DeliveryStatus) => {
     if (!user?.companyId || !DELIVERY_NOTIFICATION_STATUSES.includes(status)) {
@@ -293,14 +301,20 @@ export default function RotasDeliveryScreen() {
   };
 
   const promptDeliveredPaymentMethod = (order: any) => {
-    const options: Array<{ text: string; style?: 'cancel' | 'default' | 'destructive'; onPress: () => void }> = [
+    const options: Array<{
+      text: string;
+      paymentMethod: 'dinheiro' | 'pix' | 'debito' | 'credito';
+      paymentOrigin: 'NORMAL' | 'EXTERNAL_POS';
+    }> = [
       {
         text: 'Recebi em Dinheiro',
-        onPress: () => finalizeDeliveredOrder(order, 'dinheiro', 'NORMAL')
+        paymentMethod: 'dinheiro',
+        paymentOrigin: 'NORMAL',
       },
       {
         text: 'Recebi via PIX (normal)',
-        onPress: () => finalizeDeliveredOrder(order, 'pix', 'NORMAL')
+        paymentMethod: 'pix',
+        paymentOrigin: 'NORMAL',
       },
     ];
 
@@ -308,25 +322,38 @@ export default function RotasDeliveryScreen() {
       options.push(
         {
           text: 'Maquininha Externa PIX (QR Code)',
-          onPress: () => finalizeDeliveredOrder(order, 'pix', 'EXTERNAL_POS')
+          paymentMethod: 'pix',
+          paymentOrigin: 'EXTERNAL_POS',
         },
         {
           text: 'Maquininha Externa Débito',
-          onPress: () => finalizeDeliveredOrder(order, 'debito', 'EXTERNAL_POS')
+          paymentMethod: 'debito',
+          paymentOrigin: 'EXTERNAL_POS',
         },
         {
           text: 'Maquininha Externa Crédito',
-          onPress: () => finalizeDeliveredOrder(order, 'credito', 'EXTERNAL_POS')
+          paymentMethod: 'credito',
+          paymentOrigin: 'EXTERNAL_POS',
         }
       );
     }
 
-    options.push({ text: 'Cancelar', style: 'cancel', onPress: () => {} });
+    if (Platform.OS === 'web') {
+      setPaymentMethodDialog({ order, options });
+      return;
+    }
+
+    const alertOptions: Array<{ text: string; style?: 'cancel' | 'default' | 'destructive'; onPress: () => void }> = options.map((option) => ({
+      text: option.text,
+      onPress: () => finalizeDeliveredOrder(order, option.paymentMethod, option.paymentOrigin),
+    }));
+
+    alertOptions.push({ text: 'Cancelar', style: 'cancel', onPress: () => {} });
 
     Alert.alert(
       'Confirmar entrega e recebimento',
       'Selecione como o pagamento foi recebido nesta entrega.',
-      options
+      alertOptions
     );
   };
 
@@ -654,6 +681,42 @@ export default function RotasDeliveryScreen() {
           </View>
         </Modal>
       )}
+
+      {paymentMethodDialog && (
+        <Modal transparent animationType="fade" visible onRequestClose={() => setPaymentMethodDialog(null)}>
+          <View style={styles.confirmOverlay}>
+            <View style={styles.confirmBox}>
+              <Text style={styles.confirmTitle}>Recebimento da Entrega</Text>
+              <Text style={styles.confirmMessage}>
+                Selecione como o pagamento foi recebido.
+              </Text>
+
+              <View style={styles.paymentMethodList}>
+                {paymentMethodDialog.options.map((option) => (
+                  <TouchableOpacity
+                    key={option.text}
+                    style={styles.paymentMethodBtn}
+                    onPress={() => {
+                      const { order } = paymentMethodDialog;
+                      setPaymentMethodDialog(null);
+                      finalizeDeliveredOrder(order, option.paymentMethod, option.paymentOrigin);
+                    }}
+                  >
+                    <Text style={styles.paymentMethodBtnText}>{option.text}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <TouchableOpacity
+                style={[styles.confirmBtn, styles.confirmBtnCancel, styles.paymentCancelBtn]}
+                onPress={() => setPaymentMethodDialog(null)}
+              >
+                <Text style={styles.confirmBtnCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      )}
     </View>
     </LicenseGate>
   );
@@ -948,5 +1011,27 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontWeight: '700',
     fontSize: 15,
+  },
+  paymentMethodList: {
+    gap: 10,
+    marginBottom: 16,
+  },
+  paymentMethodBtn: {
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceMuted,
+    alignItems: 'center',
+  },
+  paymentMethodBtnText: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  paymentCancelBtn: {
+    flex: 0,
   },
 });
