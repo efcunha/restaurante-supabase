@@ -20,6 +20,11 @@ export const metadata: Metadata = {
   description: 'Plataforma full-stack de operação de restaurante — PDV/POS integrado com app mobile, web e backend SaaS. Multiempresa, seguro e em conformidade com LGPD.',
   keywords: ['restaurante', 'PDV', 'POS', 'gestão', 'delivery', 'comandas', 'mesas', 'software'],
   authors: [{ name: 'Machado & Cunha Soft House' }],
+  icons: {
+    icon: '/favicon.png',
+    shortcut: '/favicon.png',
+    apple: '/favicon.png',
+  },
   openGraph: {
     title: 'Machado & Cunha Soft House',
     description: 'Do balcão à cozinha, tudo sob controle.',
