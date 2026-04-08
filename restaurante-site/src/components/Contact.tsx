@@ -111,7 +111,7 @@ export function Contact() {
                 <div>
                   <p className="text-sm text-foreground-muted">WhatsApp</p>
                   <p className="text-foreground font-medium text-sm">
-                    (83) 9917-2452
+                    (83) 99917-2452
                   </p>
                 </div>
               </div>
@@ -196,7 +196,7 @@ export function Contact() {
                         type="tel"
                         value={form.phone}
                         onChange={handleChange}
-                        placeholder="(83) 9917-2452"
+                        placeholder="(83) 99917-2452"
                         className="w-full px-4 py-3 bg-surface-light border border-border rounded-lg text-foreground placeholder:text-foreground-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all duration-base"
                       />
                     </div>
