@@ -23,24 +23,24 @@ export function AdminActionCard({
       <TouchableOpacity onPress={onPress} disabled={disabled}>
         <Card
           padded={false}
-          style={[
+          style={StyleSheet.flatten([
             styles.reportCard,
             styles.reportCardUiNext,
             danger && styles.reportCardDanger,
             cardStyle,
-          ]}
+          ])}
         >
           <View style={styles.reportInner}>
             <View style={styles.reportLeft}>
               <Text style={styles.reportIcon}>{icon}</Text>
               <View>
-                <Text style={[styles.reportName, danger && styles.reportNameDanger, nameStyle as any]}>
+                <Text style={[styles.reportName, danger && styles.reportNameDanger, nameStyle]}>
                   {name}
                 </Text>
                 {!!subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
               </View>
             </View>
-            <Text style={[styles.reportArrow, danger && styles.reportArrowDanger, arrowStyle as any]}>›</Text>
+            <Text style={[styles.reportArrow, danger && styles.reportArrowDanger, arrowStyle]}>›</Text>
           </View>
         </Card>
       </TouchableOpacity>
@@ -61,13 +61,13 @@ export function AdminActionCard({
         <View style={styles.reportLeft}>
           <Text style={styles.reportIcon}>{icon}</Text>
           <View>
-            <Text style={[styles.reportName, danger && styles.reportNameDanger, nameStyle as any]}>
+            <Text style={[styles.reportName, danger && styles.reportNameDanger, nameStyle]}>
               {name}
             </Text>
             {!!subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
           </View>
         </View>
-        <Text style={[styles.reportArrow, danger && styles.reportArrowDanger, arrowStyle as any]}>›</Text>
+        <Text style={[styles.reportArrow, danger && styles.reportArrowDanger, arrowStyle]}>›</Text>
       </View>
     </TouchableOpacity>
   );

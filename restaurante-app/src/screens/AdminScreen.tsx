@@ -175,13 +175,14 @@ export default function AdminScreen() {
   useEffect(() => {
     // Listener para pedidos (atualiza estatísticas operacionais)
     if (!user?.companyId) return;
+    const companyId = user.companyId;
 
     let pedidosChannel: any = null;
     let comandasChannel: any = null;
     let disposed = false;
 
     const setupChannels = async () => {
-      const dateKey = await getBusinessDateKey(user.companyId);
+      const dateKey = await getBusinessDateKey(companyId);
       if (disposed) return;
 
       pedidosChannel = supabase
@@ -192,7 +193,7 @@ export default function AdminScreen() {
             event: '*',
             schema: 'public',
             table: 'orders',
-            filter: `company_id=eq.${user.companyId},date_key=eq.${dateKey}`
+              filter: `company_id=eq.${companyId},date_key=eq.${dateKey}`
           },
           () => {
             debounceReload();
@@ -208,7 +209,7 @@ export default function AdminScreen() {
             event: '*',
             schema: 'public',
             table: 'comandas',
-            filter: `company_id=eq.${user.companyId},date_key=gte.${dateKey}`
+              filter: `company_id=eq.${companyId},date_key=gte.${dateKey}`
           },
           () => {
             debounceReload();

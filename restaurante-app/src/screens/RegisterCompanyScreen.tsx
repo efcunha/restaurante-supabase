@@ -653,6 +653,9 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
   },
+  formField: {
+    marginBottom: 8,
+  },
   passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',

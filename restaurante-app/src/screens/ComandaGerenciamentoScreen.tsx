@@ -385,7 +385,8 @@ export default function ComandaGerenciamentoScreen(props: any) {
 
   const handleCancelItem = async (pedido: any, itemId: string, itemName: string) => {
     try {
-      if (!user?.companyId || !pedido) return;
+      const currentComanda = selectedComanda;
+      if (!user?.companyId || !pedido || !currentComanda) return;
 
       const OrderService = require('../services/OrderService').default;
       const ComandasService = require('../services/ComandasService').default;
@@ -405,7 +406,7 @@ export default function ComandaGerenciamentoScreen(props: any) {
       if (updateError) throw updateError;
 
       // 3. Recalcular totais da comanda
-      await ComandasService.recalcularTotalComandaAposItemCancelado(user.companyId, selectedComanda.comandaNumber);
+      await ComandasService.recalcularTotalComandaAposItemCancelado(user.companyId, currentComanda.comandaNumber);
 
       // 4. Atualizar a seleção da comanda e recarregar
       showToast(`${itemName} cancelado!`, 'success');
@@ -413,7 +414,7 @@ export default function ComandaGerenciamentoScreen(props: any) {
 
       // Reabrir a comanda selecionada
       const updatedComanda = comandasAbertas.find((c: any) => 
-        c.comandaNumber === selectedComanda.comandaNumber
+        c.comandaNumber === currentComanda.comandaNumber
       );
       if (updatedComanda) {
         setSelectedComanda(updatedComanda);

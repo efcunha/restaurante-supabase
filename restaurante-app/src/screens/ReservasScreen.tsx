@@ -150,22 +150,23 @@ export default function ReservasScreen() {
       if (error) throw error;
 
               let notificationWarning: string | null = null;
+              const companyIdSafe = companyId;
               const shouldNotify = Boolean(
-                companyId &&
+                companyIdSafe &&
                 reservaAtual?.telefone_cliente &&
                 (novoStatus === 'confirmada' || novoStatus === 'cancelada')
               );
 
               if (shouldNotify) {
                 try {
-                  const stateData = await EvolutionApiService.getConnectionState(companyId);
+                  const stateData = await EvolutionApiService.getConnectionState(companyIdSafe as string);
                   const instanceState = String((stateData as any)?.instance?.state || stateData?.state || '').toLowerCase();
 
                   if (instanceState && instanceState !== 'open' && instanceState !== 'connected') {
                     notificationWarning = `A reserva foi atualizada para ${novoStatus}, mas o WhatsApp não está conectado (${instanceState}).`;
                   } else {
                   await EvolutionApiService.sendReservationStatusNotification({
-                    companyId,
+                      companyId: companyIdSafe as string,
                     phone: reservaAtual.telefone_cliente,
                     nome: reservaAtual.nome_cliente,
                     quantidadePessoas: Number(reservaAtual.quantidade_pessoas || 0),

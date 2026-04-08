@@ -82,9 +82,20 @@ class MFAService {
       throw new Error('Nao foi possivel iniciar o cadastro de TOTP. Resposta vazia.');
     }
 
-    // TOTP data can be in different formats depending on Supabase version
-    const totpData = data.totp || data;
-    const uri = totpData.uri || totpData.totp?.uri;
+    // TOTP data can be in different formats depending on Supabase version.
+    const enrollmentData = data as {
+      id: string;
+      uri?: string;
+      qr_code?: string;
+      qrCode?: string;
+      totp?: {
+        uri?: string;
+        qr_code?: string;
+        qrCode?: string;
+      };
+    };
+    const totpData = enrollmentData.totp ?? enrollmentData;
+    const uri = totpData.uri;
     const qrCode = totpData.qr_code || totpData.qrCode || uri;
 
     if (!uri || !qrCode) {
