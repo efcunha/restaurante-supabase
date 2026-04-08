@@ -27,7 +27,8 @@ Consolidar a especificacao tecnica de desenvolvimento da integracao de pagamento
 3. [Contratos, seguranca e observabilidade](03-contratos-seguranca-observabilidade.md)
 4. [Plano de execucao, testes e rollout](04-plano-execucao-testes-rollout.md)
 5. [Fluxo operacional PDV + balanca (discussao)](05-fluxo-operacional-pdv-balanca.md)
-6. [Prompt de inicializacao do projeto](PROMPT_INICIALIZACAO_PROJETO.md)
+6. [Matriz de homologacao TEF + balanca](06-matriz-homologacao-tef-balanca.md)
+7. [Prompt de inicializacao do projeto](PROMPT_INICIALIZACAO_PROJETO.md)
 
 ## Premissas de negocio (fixas)
 
@@ -43,9 +44,17 @@ Consolidar a especificacao tecnica de desenvolvimento da integracao de pagamento
 - Documentacao centralizada em docs/maquininha/
 - Todas as futuras PRs da feature devem referenciar esta documentacao
 
+## Prompts operacionais
+
+- Prompt oficial de continuidade do estado atual: `docs/PROMPT_CONTINUACAO_DIA_SEGUINTE.md`
+- Matriz oficial de homologacao: `06-matriz-homologacao-tef-balanca.md`
+- `PROMPT_CONTINUACAO_MAQUININHA_2026-04-07.md` permanece apenas como registro historico de uma rodada anterior
+- `PROMPT_INICIALIZACAO_PROJETO.md` deve ser usado apenas para bootstrap de iniciativa, nao como continuidade do estado atual
+
 ## Status rapido (2026-04-08)
 
 - UX de maquininha simplificada no web e no app (mobile sem TEF, mantendo fluxo externo quando habilitado).
 - Deploy do `restaurante-web` em producao concluido.
 - Build Android `preview` do `restaurante-app` concluido para validacao funcional.
+- Matriz inicial de homologacao TEF + balanca documentada com separacao entre simulador local, mock automatizado e integracao real controlada.
 - Para progresso detalhado por fase, consultar `04-plano-execucao-testes-rollout.md`.

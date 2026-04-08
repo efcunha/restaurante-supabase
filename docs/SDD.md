@@ -1,8 +1,8 @@
 # Software Design Document (SDD)
 
 **Projeto:** restaurante-supabase  
-**Versão:** 1.0  
-**Data:** 2026-04-05  
+**Versão:** 1.1  
+**Data:** 2026-04-08  
 **Escopo:** Todo o sistema (app + web + ops + banco)  
 **Status:** Ativo — documento vivo, atualizar a cada mudança de arquitetura relevante
 
@@ -94,10 +94,10 @@ O sistema é **multi-tenant**: cada restaurante (empresa) opera em isolamento to
 ┌─────────────────────────────────────────────────────────────────────┐
 │                   SERVIÇOS EXTERNOS                                 │
 │                                                                     │
-│  ┌──────────────┐  ┌─────────────┐  ┌───────────────────────────┐   │
-│  │ Activepieces │  │ MercadoPago │  │ Evolution API (WhatsApp)  │   │
-│  │ (automações) │  │ (pagamentos)│  │ (notificações)            │   │
-│  └──────────────┘  └─────────────┘  └───────────────────────────┘   │
+│  ┌──────────────┐  ┌─────────────┐  ┌───────────────┐  ┌──────────┐ │
+│  │ Activepieces │  │ Hyperswitch │  │ balanca-bridge│  │ Evolution│ │
+│  │ (automações) │  │ (TEF / POS) │  │ (USB / serial)│  │ API      │ │
+│  └──────────────┘  └─────────────┘  └───────────────┘  └──────────┘ │
 └─────────────────────────────────────────────────────────────────────┘
               │
               │  Admin / Billing / Ops
@@ -172,6 +172,11 @@ restaurante-app/src/
 - **ScreenScaffold**: toda tela nova deve usar `src/layouts/ScreenScaffold.tsx` como base.
 - **Biometria e armazenamento seguro**: tokens JWT em `expo-secure-store` (nunca em `AsyncStorage`).
 
+#### Estado atual de PDV no app (2026-04-08)
+- O app mobile **não expõe TEF integrado** na UX atual.
+- `PaymentMode` no app permanece restrito a `'normal' | 'external_pos'`.
+- O fluxo de pagamento presencial no app, nesta fase, privilegia registro manual auditável de maquininha externa.
+
 ---
 
 ### 4.2 restaurante-web
@@ -195,7 +200,17 @@ mesa-consolidacao.spec.ts
 mesa-concorrencia-garcons.spec.ts
 pizza.spec.ts
 admin-gerenciar-cardapio.spec.ts
+pdv-maquininha-aprovado.spec.ts
+pdv-scale-regression.spec.ts
+pdv-device-payment-polling.spec.ts
 ```
+
+#### Estado atual de PDV no web (2026-04-08)
+- O web mantém `PaymentMode = 'normal' | 'tef' | 'external_pos'`.
+- O domínio técnico de PDV foi isolado em `restaurante-web/src/features/pdv/`.
+- O fluxo web já possui iniciação + polling para maquininha e leitura via bridge para balança, ambos atrás de feature flags.
+- Existe uma área de simuladores locais em `restaurante-web/src/features/dev-simulators/` para QA local, treinamento e validação visual, sem valor de prova para integração real.
+- A homologação atual é guiada por `docs/maquininha/06-matriz-homologacao-tef-balanca.md`.
 
 ---
 
@@ -429,11 +444,20 @@ CaixaAberturaScreen → registra sessão (caixa_sessions)
 ```
 PagamentoScreen recebe comanda
     → calcula open_balance
-    → seleciona método (dinheiro / cartão / Pix)
-    → registra em pagamentos
-    → se open_balance = 0 → fecha comanda
-    → emite comprovante (PrinterService → ESC/POS)
+    → seleciona modo de pagamento
+        → normal
+        → external_pos
+        → tef (apenas no web)
+    → normal/external_pos: registra em pagamentos
+    → tef: inicia /payments/initiate → polling/status → resultado final
+    → se open_balance = 0 e sem pendência TEF → fecha comanda
+    → emite comprovante quando aplicável (PrinterService → ESC/POS)
 ```
+
+**Estado atual de produto:**
+- Web mantém TEF integrado e maquininha externa.
+- App mobile mantém apenas pagamento normal e maquininha externa.
+- Validação de TEF e balança está em fase de homologação controlada, com matriz dedicada em `docs/maquininha/06-matriz-homologacao-tef-balanca.md`.
 
 ---
 
@@ -529,12 +553,25 @@ Verificações de role no frontend são **apenas UX**. A autorização real fica
 
 ### 8.2 MercadoPago
 
-- **Propósito:** Processador de pagamentos (cartão e Pix).
+- **Propósito:** Processador de pagamentos do domínio de billing/regularização SaaS (cartão e Pix).
 - **Integração:** via `restaurante-ops` (server-side).
 - **Webhook:** validado por assinatura HMAC; secret em variável de ambiente.
 - **Status:** billing não live em produção (2026-04-05).
 
-### 8.3 Evolution API (WhatsApp)
+### 8.3 Hyperswitch / TEF presencial
+
+- **Propósito:** Camada de orquestração da integração de maquininha presencial no PDV web.
+- **Escopo atual:** `restaurante-web` + `restaurante-ops`, conforme `docs/maquininha/README.md`.
+- **Status:** integração em validação controlada; frontend web já possui domínio técnico de PDV e matriz de homologação dedicada.
+- **Endpoints principais no fluxo atual:** `/payments/initiate` e `/payments/:id/status` expostos por `restaurante-ops`.
+
+### 8.4 balanca-bridge
+
+- **Propósito:** Processo local para leitura de balança USB/serial e exposição de API HTTP simples ao `restaurante-web`.
+- **Contrato atual no frontend:** `GET /peso/estavel` consumido por `scaleBridgeService.ts`.
+- **Status:** integração em fase inicial de validação controlada; sem staging dedicado.
+
+### 8.5 Evolution API (WhatsApp)
 
 - **Propósito:** Notificações de reservas e status de delivery via WhatsApp.
 - **Serviço:** `src/services/EvolutionApiService.ts` (app + web).
@@ -568,6 +605,17 @@ Verificações de role no frontend são **apenas UX**. A autorização real fica
 | `EXPO_PUBLIC_FEATURE_BILLING_FORCE_BLOCK` | `false`      | QA only — simula bloqueio sem alterar banco |
 
 > **Status:** `billing_enabled=false` em produção. Pré-requisito para ativar: `LicenseGate` deve envolver `NovoPedidoScreen`, `ComandaGerenciamentoScreen` e `RotasDeliveryScreen`.
+
+### Flags de PDV
+
+| Flag                                      | Valor padrão | Propósito |
+|-------------------------------------------|--------------|-----------|
+| `EXPO_PUBLIC_FEATURE_PDV_ENABLED`         | `false`      | Master toggle do módulo PDV no web |
+| `EXPO_PUBLIC_FEATURE_PDV_DEVICE_PAYMENT`  | `false`      | Habilita fluxo de maquininha / TEF no web |
+| `EXPO_PUBLIC_FEATURE_PDV_EXTERNAL_POS`    | `false`      | Habilita maquininha externa auditável |
+| `EXPO_PUBLIC_FEATURE_PDV_SCALE`           | `false`      | Habilita leitura por bridge de balança |
+
+> **Status atual:** em produção, o web já recebeu envs de PDV para continuação da validação controlada; o app mobile permanece sem TEF integrado na UX.
 
 ### Rollback total
 ```bash
@@ -630,7 +678,7 @@ Feature flags controlam **visibilidade de UI apenas**. Nunca controlam acesso a 
 | `OPS_ALLOWED_COMPANY_ID`        | ops       | Server-only                       |
 | `RATE_LIMIT_FALLBACK_ENABLED`   | ops       | Server-only (`false` em produção) |
 | `MERCADOPAGO_ACCESS_TOKEN`      | ops       | Server-only                       |
-| `EVOLUTION_API_KEY`             | app / web | Protegida                         |
+| `EVOLUTION_API_KEY`             | integrações server-side | Server-only              |
 
 ---
 
@@ -647,6 +695,9 @@ Feature flags controlam **visibilidade de UI apenas**. Nunca controlam acesso a 
 | `delivery.spec.ts`                  | Pedido Delivery completo           |
 | `pizza.spec.ts`                     | Fluxo pizza (adicionais, montagem) |
 | `admin-gerenciar-cardapio.spec.ts`  | Gestão de cardápio                 |
+| `pdv-maquininha-aprovado.spec.ts`   | Fluxo PDV web com initiate + polling mockado |
+| `pdv-scale-regression.spec.ts`      | Regressão de leitura de balança no PDV web |
+| `pdv-device-payment-polling.spec.ts`| Máquina de estados do polling de maquininha |
 
 Execução dos fluxos críticos:
 ```bash
@@ -686,6 +737,7 @@ npm run test:coverage             # Cobertura
 
 - Toda feature nova deve ter ao menos um teste unitário (lógica isolada) ou E2E (fluxo crítico).
 - Fluxos críticos (Balcão, Mesa, Delivery, Montagem, Billing) exigem cobertura E2E antes de merge.
+- Fluxos de PDV web (TEF e balança) devem seguir a matriz de homologação em `docs/maquininha/06-matriz-homologacao-tef-balanca.md`, distinguindo `SIM_LOCAL`, `MOCK_AUTO` e `INT_REAL`.
 - Smoke tests obrigatórios para mudanças em: auth, RLS, billing, CORS, rate limiting — executados na mesma sessão de trabalho.
 - Nunca remover ou comentar testes existentes sem justificativa explícita.
 
@@ -735,6 +787,11 @@ npx expo-doctor
 **Decisão:** Todos os tokens de sessão do app mobile armazenados em `expo-secure-store`.  
 **Consequência:** Dependência adicional nativa; não aplicável ao web (web usa sessionStorage ou cookie httpOnly).
 
+### ADR-008: TEF permanece no web, não no app mobile
+**Contexto:** O desktop/web é a superfície principal para integração TEF nesta fase; o app mobile prioriza operação simplificada e maquininha externa auditável.  
+**Decisão:** Manter `PaymentMode = 'normal' | 'tef' | 'external_pos'` no web e restringir o app a `PaymentMode = 'normal' | 'external_pos'`.  
+**Consequência:** Reduz complexidade operacional no mobile e concentra a homologação de TEF no `restaurante-web`.
+
 ---
 
 ## 13. Glossário
@@ -756,6 +813,10 @@ npx expo-doctor
 | **Phase 12**                       | Nome interno do rollout canário de UI com feature flags por wave.                       |
 | **Wave**                           | Grupo de features de UI promovidas juntas no rollout Phase 12.                          |
 | **LicenseGate**                    | Componente que bloqueia acesso a telas operacionais quando a licença SaaS está inativa. |
+| **TEF**                            | Transferência Eletrônica de Fundos; no projeto, fluxo de maquininha integrada no PDV web. |
+| **External POS**                   | Pagamento realizado fora do TEF integrado, com registro manual auditável no sistema.      |
+| **Hyperswitch**                    | Camada de orquestração do fluxo de pagamento presencial/TEF documentado para o PDV web.   |
+| **balanca-bridge**                 | Processo local que expõe leitura da balança USB/serial via API HTTP para o frontend web.  |
 | **idempotency_key**                | Chave única por operação de billing para evitar duplicidade em reconciliações.          |
 | **reconcile_billing_event_atomic** | Função PostgreSQL que é o único ponto de escrita de eventos de billing.                 |
 | **Activepieces**                   | Plataforma de automação usada no fluxo de pagamento de delivery.                        |
@@ -768,4 +829,4 @@ npx expo-doctor
 
 ---
 
-*Documento gerado em 2026-04-05. Atualizar este SDD sempre que houver mudança relevante de arquitetura, introdução de novo módulo, novo fluxo crítico ou decisão de design significativa.*
+*Documento atualizado em 2026-04-08. Atualizar este SDD sempre que houver mudança relevante de arquitetura, introdução de novo módulo, novo fluxo crítico ou decisão de design significativa.*

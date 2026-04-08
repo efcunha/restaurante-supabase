@@ -5,6 +5,7 @@ Este diretório centraliza a documentação transversal do monorepo.
 ## Status Atual (2026-04-08)
 
 - Simplificação de UX PDV concluída em app e web.
+- Matriz de homologação TEF + balança criada para separar simulador local, mocks automatizados e integração real controlada.
 - Deploy do `restaurante-web` concluído no Railway com healthcheck aprovado.
 - Build Android `preview` do `restaurante-app` concluído no EAS.
 - Gate TypeScript do app reabilitado (`npm run type-check` sem erros).
@@ -15,7 +16,8 @@ Este diretório centraliza a documentação transversal do monorepo.
 
 1. `docs/PROMPT_CONTINUACAO_DIA_SEGUINTE.md`
 2. `docs/maquininha/04-plano-execucao-testes-rollout.md`
-3. `docs/maquininha/README.md`
+3. `docs/maquininha/06-matriz-homologacao-tef-balanca.md`
+4. `docs/maquininha/README.md`
 
 ## Estrutura
 
@@ -33,4 +35,5 @@ Este diretório centraliza a documentação transversal do monorepo.
 3. `docs/observability/OBSERVABILITY-IMPLEMENTATION-GUIDE.md` para arquitetura e runbooks de observabilidade
 4. `docs/repository/DOMAINS.md` para mapa de domínios do monorepo
 5. `docs/maquininha/README.md` para especificação técnica consolidada da integração de maquininha
-6. `docs/balanca/README.md` para especificação técnica consolidada da integração de balança
+6. `docs/maquininha/06-matriz-homologacao-tef-balanca.md` para execução de homologação TEF + balança com separação entre simulador, mocks e integração real
+7. `docs/balanca/README.md` para especificação técnica consolidada da integração de balança
