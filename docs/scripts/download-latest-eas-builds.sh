@@ -87,22 +87,15 @@ if (!url) {
 }
 
 const id = (build.id || "unknown").replace(/[^a-zA-Z0-9_-]/g, "");
-let ext = "";
+let extGuess = "";
 
 try {
   const pathname = new URL(url).pathname;
   const match = pathname.match(/\.([a-zA-Z0-9]+)$/);
-  if (match) ext = match[1].toLowerCase();
+  if (match) extGuess = match[1].toLowerCase();
 } catch (_) {
-  // Sem ext por URL; usa fallback por plataforma.
+  // Sem ext por URL; segue sem palpite.
 }
-
-if (!ext) {
-  ext = platform === "android" ? "apk" : "ipa";
-}
-
-const fileLatest = `${platform}-latest.${ext}`;
-const fileVersioned = `${platform}-${id}.${ext}`;
 
 const out = {
   platform,
@@ -112,9 +105,8 @@ const out = {
   distribution: build.distribution || null,
   gitCommitHash: build.gitCommitHash || null,
   artifactUrl: url,
-  ext,
-  fileLatest,
-  fileVersioned,
+  extGuess,
+  fileStem: `${platform}-${id}`,
 };
 
 process.stdout.write(JSON.stringify(out));
@@ -130,23 +122,105 @@ download_artifact() {
 
   local platform
   local artifact_url
-  local file_latest
-  local file_versioned
+  local file_stem
+  local ext_guess
 
   platform="$(node -p "JSON.parse(process.argv[1]).platform" "$build_info_json")"
   artifact_url="$(node -p "JSON.parse(process.argv[1]).artifactUrl" "$build_info_json")"
-  file_latest="$(node -p "JSON.parse(process.argv[1]).fileLatest" "$build_info_json")"
-  file_versioned="$(node -p "JSON.parse(process.argv[1]).fileVersioned" "$build_info_json")"
+  file_stem="$(node -p "JSON.parse(process.argv[1]).fileStem" "$build_info_json")"
+  ext_guess="$(node -p "JSON.parse(process.argv[1]).extGuess || ''" "$build_info_json")"
 
-  local latest_path="${OUTPUT_DIR}/${file_latest}"
-  local versioned_path="${OUTPUT_DIR}/${file_versioned}"
+  local tmp_file
+  local tmp_dir
+  local selected_file
+  local selected_app_dir
+  local selected_ext
+  local latest_path
+  local versioned_path
 
-  echo "Baixando ${platform}: ${artifact_url}"
-  "$CURL_BIN" -fL "$artifact_url" -o "$versioned_path"
+  tmp_file="$(mktemp)"
+  tmp_dir="$(mktemp -d)"
+
+  cleanup_artifact_tmp() {
+    rm -f "$tmp_file"
+    rm -rf "$tmp_dir"
+  }
+
+  trap cleanup_artifact_tmp RETURN
+
+  echo "Baixando ${platform}: ${artifact_url}" >&2
+  "$CURL_BIN" -fL "$artifact_url" -o "$tmp_file"
+
+  selected_file=""
+  selected_app_dir=""
+  selected_ext=""
+
+  # EAS pode retornar tar.gz contendo APK/IPA/App.
+  if [[ "$artifact_url" == *.tar.gz || "$artifact_url" == *.tgz ]]; then
+    tar -xzf "$tmp_file" -C "$tmp_dir"
+
+    if [[ "$platform" == "android" ]]; then
+      selected_file="$(find "$tmp_dir" -type f \( -iname '*.apk' -o -iname '*.aab' \) | head -n 1 || true)"
+    else
+      selected_file="$(find "$tmp_dir" -type f -iname '*.ipa' | head -n 1 || true)"
+      if [[ -z "$selected_file" ]]; then
+        selected_app_dir="$(find "$tmp_dir" -type d -iname '*.app' | head -n 1 || true)"
+      fi
+    fi
+
+    if [[ -z "$selected_file" && -z "$selected_app_dir" ]]; then
+      selected_file="$(find "$tmp_dir" -type f \( -iname '*.apk' -o -iname '*.aab' -o -iname '*.ipa' -o -iname '*.app' \) | head -n 1 || true)"
+    fi
+
+    if [[ -z "$selected_file" && -z "$selected_app_dir" ]]; then
+      echo "Erro: archive do EAS nao contem artifact instalavel conhecido para ${platform}." >&2
+      exit 1
+    fi
+
+    if [[ -n "$selected_app_dir" ]]; then
+      selected_ext="app.tar.gz"
+    else
+      selected_ext="${selected_file##*.}"
+      selected_ext="${selected_ext,,}"
+    fi
+  else
+    if [[ -n "$ext_guess" ]]; then
+      selected_ext="$ext_guess"
+    else
+      selected_ext="$([[ "$platform" == "android" ]] && echo "apk" || echo "ipa")"
+    fi
+
+    selected_file="$tmp_file"
+  fi
+
+  latest_path="${OUTPUT_DIR}/${platform}-latest.${selected_ext}"
+  versioned_path="${OUTPUT_DIR}/${file_stem}.${selected_ext}"
+
+  if [[ -n "$selected_app_dir" ]]; then
+    tar -czf "$versioned_path" -C "$(dirname "$selected_app_dir")" "$(basename "$selected_app_dir")"
+  else
+    cp "$selected_file" "$versioned_path"
+  fi
   cp "$versioned_path" "$latest_path"
 
-  echo "Salvo em: ${versioned_path}"
-  echo "Atualizado latest: ${latest_path}"
+  echo "Artifact resolvido (${platform}): ${selected_ext}" >&2
+  echo "Salvo em: ${versioned_path}" >&2
+  echo "Atualizado latest: ${latest_path}" >&2
+
+  node -e '
+const info = JSON.parse(process.argv[1]);
+const ext = process.argv[2];
+const platform = process.argv[3];
+
+const out = {
+  ...info,
+  ext,
+  fileLatest: `${platform}-latest.${ext}`,
+  fileVersioned: `${info.fileStem}.${ext}`,
+};
+
+process.stdout.write(JSON.stringify(out));
+' "$build_info_json" "$selected_ext" "$platform"
 }
 
 main() {
@@ -173,8 +247,8 @@ main() {
   ios_json="$(run_eas_build_list "ios")"
   ios_info="$(extract_build_info "ios" "$ios_json")"
 
-  download_artifact "$android_info"
-  download_artifact "$ios_info"
+  android_info="$(download_artifact "$android_info")"
+  ios_info="$(download_artifact "$ios_info")"
 
   node -e '
 const fs = require("fs");
