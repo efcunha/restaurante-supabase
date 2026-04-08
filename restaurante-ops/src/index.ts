@@ -103,7 +103,6 @@ import { handleActivepiecesWebhook } from './lib/activepieces-logger.js';
 import { handleEvolutionWebhook } from './lib/evolution-logger.js';
 import { renderObservabilityHtml } from './views/observability.js';
 import { attachRequestTracking } from './lib/request-tracker.js';
-import { sanitizePlainText, sanitizeJsonValue, respondJson, respondHtml } from './lib/responders.js';
 
 const env = buildEnv();
 const opsCompanyId = env.OPS_ALLOWED_COMPANY_ID || 'f85bfdc2-982a-4cf7-b176-bce68426f861';
@@ -127,7 +126,60 @@ function getRequestIp(req: IncomingMessage): string {
   return req.socket.remoteAddress || 'unknown';
 }
 
-// sanitizePlainText, sanitizeJsonValue, respondJson, respondHtml are imported from './lib/responders.js'
+function sanitizePlainText(value: string | null | undefined): string {
+  if (!value) return '';
+  return String(value).replace(/[\u0000-\u001F\u007F]/g, '').trim();
+}
+
+function sanitizeJsonValue(value: unknown): unknown {
+  if (typeof value === 'string') {
+    return sanitizePlainText(value)
+      .replace(/</g, '\\u003c')
+      .replace(/>/g, '\\u003e')
+      .replace(/&/g, '\\u0026')
+      .replace(/'/g, '\\u0027')
+      .replace(/\u2028/g, '\\u2028')
+      .replace(/\u2029/g, '\\u2029');
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((entry) => sanitizeJsonValue(entry));
+  }
+
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>);
+    return Object.fromEntries(entries.map(([key, entry]) => [key, sanitizeJsonValue(entry)]));
+  }
+
+  return value;
+}
+
+function respondJson(
+  res: import('node:http').ServerResponse,
+  statusCode: number,
+  payload: unknown,
+): void {
+  res.writeHead(statusCode, {
+    'content-type': 'application/json; charset=utf-8',
+    'x-content-type-options': 'nosniff',
+  });
+  const safePayload = sanitizeJsonValue(payload);
+  const responseBody = JSON.stringify(safePayload);
+  res.end(responseBody, 'utf-8');
+}
+
+function respondHtml(
+  res: import('node:http').ServerResponse,
+  statusCode: number,
+  html: string,
+): void {
+  res.writeHead(statusCode, {
+    'content-type': 'text/html; charset=utf-8',
+    'x-content-type-options': 'nosniff',
+    'content-security-policy': "default-src 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:;",
+  });
+  res.end(html);
+}
 
 function sanitizeRequestTarget(value: string | undefined): string {
   const raw = sanitizePlainText(value || '/');
