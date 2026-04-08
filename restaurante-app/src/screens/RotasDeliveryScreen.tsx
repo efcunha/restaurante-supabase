@@ -326,7 +326,7 @@ export default function RotasDeliveryScreen() {
       );
     }
 
-    options.push({ text: 'Cancelar', style: 'cancel' as const, onPress: () => {} });
+    options.push({ text: 'Cancelar', onPress: async () => {} });
 
     Alert.alert(
       'Confirmar entrega e recebimento',

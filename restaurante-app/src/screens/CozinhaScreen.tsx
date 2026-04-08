@@ -29,14 +29,15 @@ export default function CozinhaScreen() {
   useEffect(() => {
     // @ts-ignore
     if (!user?.companyId) return;
+    const companyId = user.companyId;
 
     // Initial fetch
     const fetchOrders = async () => {
-      const today = await getBusinessDateKey(user.companyId);
+      const today = await getBusinessDateKey(companyId);
       const { data, error } = await supabase
         .from('orders')
         .select('*')
-        .eq('company_id', user.companyId)
+        .eq('company_id', companyId)
         .eq('date_key', today);
 
       if (!error && data) {
@@ -56,14 +57,14 @@ export default function CozinhaScreen() {
 
     // Subscribe to real-time changes
     const channel = supabase
-      .channel(`orders-cozinha-${user.companyId}`)
+      .channel(`orders-cozinha-${companyId}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'orders',
-          filter: `company_id=eq.${user.companyId}`
+          filter: `company_id=eq.${companyId}`
         },
         (payload) => {
           console.log('[Cozinha] 🔄 Recebeu atualização:', payload);

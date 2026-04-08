@@ -780,17 +780,4 @@ const styles = StyleSheet.create({
         color: colors.white,
         fontWeight: 'bold',
     },
-    pdvBtn: {
-        backgroundColor: '#0F766E',
-    },
-    externalPosBtn: {
-        backgroundColor: '#7C3AED',
-    },
-    pdvHint: {
-        fontSize: 12,
-        lineHeight: 18,
-        color: colors.textSecondary,
-        marginTop: -2,
-        marginBottom: 16,
-    },
 });

@@ -12,6 +12,7 @@ interface Props {
 
 export default function OperationalSettingsScreen({ onClose }: Props) {
   const { user } = useAuth();
+  const companyId = user?.companyId || '';
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -22,9 +23,13 @@ export default function OperationalSettingsScreen({ onClose }: Props) {
   }, []);
 
   const loadSettings = async () => {
+    if (!companyId) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
-      const settings = await CompanySettingsService.getSettings(user.companyId);
+      const settings = await CompanySettingsService.getSettings(companyId);
       setCutoffHour(settings.businessDayCutoff?.toString().padStart(2, '0') || '06');
     } catch (error) {
       console.error('Error loading settings:', error);
@@ -35,6 +40,10 @@ export default function OperationalSettingsScreen({ onClose }: Props) {
   };
 
   const handleSave = async () => {
+    if (!companyId) {
+      Alert.alert('Erro', 'Empresa não encontrada para salvar configurações.');
+      return;
+    }
     const hour = parseInt(cutoffHour, 10);
     if (isNaN(hour) || hour < 0 || hour > 23) {
       Alert.alert('Erro', 'Por favor, insira uma hora valida (00-23)');
@@ -42,7 +51,7 @@ export default function OperationalSettingsScreen({ onClose }: Props) {
     }
     try {
       setSaving(true);
-      await CompanySettingsService.updateSettings(user.companyId, { businessDayCutoff: hour });
+      await CompanySettingsService.updateSettings(companyId, { businessDayCutoff: hour });
       Alert.alert('Sucesso', 'Configuracoes salvas com sucesso!');
       onClose();
     } catch (error) {

@@ -106,9 +106,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setDebugLog(prev => [...prev.slice(-30), `${ts}  ${msg}`]);
   };
 
-  const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> => {
+  const withTimeout = async <T,>(
+    promise: PromiseLike<T>,
+    timeoutMs: number,
+    timeoutMessage: string
+  ): Promise<T> => {
     return Promise.race([
-      promise,
+      Promise.resolve(promise),
       new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs)
       ),
@@ -617,7 +621,7 @@ const { data: profile, error: profileError } = await withTimeout(
               const requiresMfa =
                 featureFlags.requireMFA &&
                 Boolean(normalizedRole) &&
-                MFAService.isRequiredForRole(normalizedRole);
+                MFAService.isRequiredForRole(normalizedRole ?? '');
 
               if (requiresMfa) {
                 const { data: assuranceData, error: assuranceError } =
