@@ -16,6 +16,12 @@ const navLinks = [
   { label: 'Contato', href: '#contato' },
 ]
 
+const EXTERNAL_LINKS = {
+  webLogin: 'https://restaurante-web.app.br/login',
+  appAndroid: 'https://expo.dev/accounts/lumachadolp/projects/restaurante-app/builds/cb8cfb99-dc57-47ce-8a78-c7846aef9ebc',
+  appIOS: '#', // TODO: add iOS build link when available
+} as const
+
 export function Header() {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -82,6 +88,9 @@ export function Header() {
             </a>
           ))}
           <div className="w-px h-6 bg-border mx-2" />
+          <Button variant="ghost" size="sm" as="a" href={EXTERNAL_LINKS.webLogin} target="_blank" rel="noopener noreferrer">
+            Acessar o sistema
+          </Button>
           <Button variant="outline" size="sm" as="a" href="#contato">
             Solicitar demonstração
           </Button>
@@ -118,7 +127,19 @@ export function Header() {
                   {link.label}
                 </a>
               ))}
-              <div className="mt-4 pt-4 border-t border-border-subtle">
+              <div className="mt-4 pt-4 border-t border-border-subtle space-y-3">
+                <Button
+                  variant="ghost"
+                  size="lg"
+                  fullWidth
+                  as="a"
+                  href={EXTERNAL_LINKS.webLogin}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  Acessar o sistema
+                </Button>
                 <Button
                   variant="primary"
                   size="lg"

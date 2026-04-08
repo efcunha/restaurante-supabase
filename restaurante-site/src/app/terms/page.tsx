@@ -140,8 +140,8 @@ export default function TermsPage() {
               </h2>
               <p>
                 Para dúvidas sobre estes Termos:{' '}
-                <a href="mailto:contato@machadoecunha.com.br" className="text-accent hover:underline">
-                  contato@machadoecunha.com.br
+                <a href="mailto:contato@restaurante-web.app.br" className="text-accent hover:underline">
+                  contato@restaurante-web.app.br
                 </a>
               </p>
             </section>

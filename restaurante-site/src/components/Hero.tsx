@@ -2,7 +2,13 @@
 
 import { motion } from 'framer-motion'
 import { Section, Button, Container } from '@/components/ui'
-import { FaMobileScreenButton, FaGlobe, FaServer } from 'react-icons/fa6'
+import { FaMobileScreenButton, FaGlobe, FaAndroid, FaApple } from 'react-icons/fa6'
+
+const EXTERNAL_LINKS = {
+  webLogin: 'https://restaurante-web.app.br/login',
+  appAndroid: 'https://expo.dev/accounts/lumachadolp/projects/restaurante-app/builds/cb8cfb99-dc57-47ce-8a78-c7846aef9ebc',
+  appIOS: '#',
+} as const
 
 const itemVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -73,25 +79,52 @@ export function Hero() {
         <motion.div
           custom={4}
           variants={itemVariants}
-          className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 max-w-4xl mx-auto"
+          className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 max-w-2xl mx-auto"
         >
           {[
             {
               icon: <FaMobileScreenButton size={24} />,
               title: 'App Mobile',
               description: 'React Native — balcão, mesa, delivery, comandas',
+              actions: (
+                <div className="flex items-center gap-2 mt-3">
+                  <a
+                    href={EXTERNAL_LINKS.appAndroid}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs text-accent hover:text-accent-hover transition-colors"
+                  >
+                    <FaAndroid size={12} />
+                    Android
+                  </a>
+                  <span className="text-foreground-disabled text-xs">|</span>
+                  <a
+                    href={EXTERNAL_LINKS.appIOS}
+                    className="inline-flex items-center gap-1.5 text-xs text-foreground-muted hover:text-accent transition-colors pointer-events-none opacity-50"
+                    aria-disabled="true"
+                  >
+                    <FaApple size={12} />
+                    iOS
+                  </a>
+                </div>
+              ),
             },
             {
               icon: <FaGlobe size={24} />,
               title: 'Interface Web',
               description: 'Expo Web — gestão e espelho das operações',
+              actions: (
+                <a
+                  href={EXTERNAL_LINKS.webLogin}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs text-accent hover:text-accent-hover transition-colors mt-3"
+                >
+                  Acessar o sistema →
+                </a>
+              ),
             },
-            {
-              icon: <FaServer size={24} />,
-              title: 'Backend SaaS',
-              description: 'Auth, billing, métricas e reconciliação',
-            },
-          ].map((item, i) => (
+          ].map((item) => (
             <div
               key={item.title}
               className="bg-surface border border-border rounded-xl p-6 text-left hover:border-strong transition-colors duration-base group"
@@ -103,6 +136,7 @@ export function Hero() {
                 {item.title}
               </h3>
               <p className="text-sm text-foreground-muted">{item.description}</p>
+              {item.actions}
             </div>
           ))}
         </motion.div>
