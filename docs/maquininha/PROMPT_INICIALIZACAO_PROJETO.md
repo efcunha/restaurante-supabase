@@ -2,6 +2,14 @@
 
 Use este prompt em outro dia para iniciar a implementacao tecnica da integracao de maquininha no restaurante-supabase.
 
+> **Uso correto:** este documento serve para bootstrap/arranque de uma iniciativa do zero.
+>
+> Para continuar o estado atual do projeto, usar preferencialmente:
+> - `docs/PROMPT_CONTINUACAO_DIA_SEGUINTE.md`
+> - `docs/maquininha/06-matriz-homologacao-tef-balanca.md`
+>
+> Isso evita retomar a feature por um plano inicial que ja nao reflete integralmente o momento atual.
+
 ---
 
 ## Prompt pronto para uso
@@ -55,3 +63,4 @@ Se houver conflito entre velocidade e seguranca, priorize seguranca e integridad
 
 - Este documento e operacional: pensado para iniciar sprint tecnica futura.
 - O detalhamento arquitetural e de fluxos permanece em docs/maquininha/.
+- Para continuidade do estado atual, o ponto de entrada oficial passou a ser `docs/PROMPT_CONTINUACAO_DIA_SEGUINTE.md`.

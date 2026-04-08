@@ -1,6 +1,17 @@
 # Prompt de Continuacao - Maquininha TEF + Balanca (2026-04-07)
 
-Use este prompt para retomar exatamente do ponto atual da implementacao.
+> **Status:** documento historico / supersedido em 2026-04-08.
+>
+> **Nao usar como prompt principal de continuidade.**
+>
+> Use no lugar:
+> - `docs/PROMPT_CONTINUACAO_DIA_SEGUINTE.md` para continuidade ativa da iteracao
+> - `docs/maquininha/06-matriz-homologacao-tef-balanca.md` para status dos cenarios e evidencias
+> - `docs/maquininha/04-plano-execucao-testes-rollout.md` para fase/rollout atual
+>
+> Este arquivo foi mantido apenas para rastreabilidade historica da rodada de 2026-04-07.
+
+Use este prompt apenas como referencia historica do estado da implementacao em 2026-04-07.
 
 ## Contexto e escopo fixo
 
