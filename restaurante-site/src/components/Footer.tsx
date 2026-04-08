@@ -7,7 +7,13 @@ import {
   FaWhatsapp,
   FaInstagram,
   FaLinkedin,
+  FaArrowUpRightFromSquare,
 } from 'react-icons/fa6'
+
+const EXTERNAL_LINKS = {
+  webLogin: 'https://restaurante-web.app.br/login',
+  appAndroid: 'https://expo.dev/accounts/lumachadolp/projects/restaurante-app/builds/cb8cfb99-dc57-47ce-8a78-c7846aef9ebc',
+} as const
 
 const footerLinks = [
   { label: 'Produto', href: '#produto' },
@@ -60,7 +66,7 @@ export function Footer() {
                 <FaLinkedin size={16} />
               </a>
               <a
-                href="mailto:contato@machadoecunha.com.br"
+                href="mailto:contato@restaurante-web.app.br"
                 aria-label="E-mail"
                 className="w-9 h-9 rounded-lg bg-surface-light border border-border flex items-center justify-center text-foreground-muted hover:text-accent hover:border-strong transition-colors duration-base"
               >
@@ -93,6 +99,26 @@ export function Footer() {
                 </li>
               ))}
             </ul>
+            {/* Access links */}
+            <div className="mt-6 pt-4 border-t border-border-subtle space-y-2">
+              <a
+                href={EXTERNAL_LINKS.webLogin}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-sm text-accent hover:text-accent-hover transition-colors"
+              >
+                <FaArrowUpRightFromSquare size={12} />
+                Acessar o sistema
+              </a>
+              <a
+                href={EXTERNAL_LINKS.appAndroid}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-sm text-accent hover:text-accent-hover transition-colors"
+              >
+                Baixar app Android
+              </a>
+            </div>
           </div>
 
           {/* Legal */}
