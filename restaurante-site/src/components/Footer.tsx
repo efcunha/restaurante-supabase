@@ -1,6 +1,7 @@
 'use client'
 
 import { Container } from '@/components/ui'
+import Image from 'next/image'
 import {
   FaEnvelope,
   FaWhatsapp,
@@ -26,8 +27,14 @@ export function Footer() {
           {/* Brand */}
           <div className="md:col-span-1">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center">
-                <span className="font-display text-background text-sm font-bold">MC</span>
+              <div className="w-8 h-8 rounded-lg overflow-hidden bg-accent flex items-center justify-center">
+                <Image
+                  src="/favicon.png"
+                  alt="Logo Machado e Cunha"
+                  width={32}
+                  height={32}
+                  className="w-8 h-8 object-cover"
+                />
               </div>
               <span className="font-display text-foreground text-base font-semibold">
                 Machado &amp; Cunha

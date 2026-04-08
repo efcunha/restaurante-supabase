@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui'
 import { FaBars, FaXmark } from 'react-icons/fa6'
+import Image from 'next/image'
 
 const navLinks = [
   { label: 'Produto', href: '#produto' },
@@ -54,8 +55,15 @@ export function Header() {
       <div className="mx-auto max-w-2xl px-4 sm:px-6 md:px-8 flex items-center justify-between h-16 md:h-20">
         {/* Logo */}
         <a href="#" className="flex items-center gap-3 group">
-          <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center">
-            <span className="font-display text-background text-sm font-bold">MC</span>
+          <div className="w-8 h-8 rounded-lg overflow-hidden bg-accent flex items-center justify-center">
+            <Image
+              src="/favicon.png"
+              alt="Logo Machado e Cunha"
+              width={32}
+              height={32}
+              className="w-8 h-8 object-cover"
+              priority
+            />
           </div>
           <span className="font-display text-foreground text-lg font-semibold tracking-tight hidden sm:inline">
             Machado &amp; Cunha
