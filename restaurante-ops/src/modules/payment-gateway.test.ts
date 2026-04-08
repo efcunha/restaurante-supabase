@@ -49,10 +49,11 @@ test('canTransitionPaymentStatus bloqueia regressao de estados finais', () => {
 test('verifyHyperswitchSignature valida HMAC sha256', async () => {
   const rawBody = JSON.stringify({ event_id: 'evt_1', payment_id: 'pay_1', status: 'processing' });
   const crypto = await import('node:crypto');
-  const digest = crypto.createHmac('sha256', 'super-secret').update(rawBody, 'utf-8').digest('hex');
+  const webhookSecret = crypto.randomBytes(32).toString('hex');
+  const digest = crypto.createHmac('sha256', webhookSecret).update(rawBody, 'utf-8').digest('hex');
 
-  assert.equal(mod.verifyHyperswitchSignature(rawBody, digest, 'super-secret'), true);
-  assert.equal(mod.verifyHyperswitchSignature(rawBody, 'bad-signature', 'super-secret'), false);
+  assert.equal(mod.verifyHyperswitchSignature(rawBody, digest, webhookSecret), true);
+  assert.equal(mod.verifyHyperswitchSignature(rawBody, 'bad-signature', webhookSecret), false);
 });
 
 test('processHyperswitchWebhook ignora replay por event_id e bloqueia regressao', async () => {
