@@ -59,6 +59,7 @@ export const PaymentActionPanel = memo(function PaymentActionPanel({
 
   const isExternalFlowLocked = initialMode === 'external_pos' && showExternalPosOption;
   const showModeSelector = showExternalPosOption && !isExternalFlowLocked;
+  const modeLockLabel = isExternalFlowLocked ? 'Fluxo Maquininha Externa' : null;
 
   const handleExternalPosSubmit = async (data: ExternalPosPaymentData) => {
     if (onExternalPosPayment) {
@@ -78,6 +79,10 @@ export const PaymentActionPanel = memo(function PaymentActionPanel({
             showExternal={showExternalPosOption}
             useUiNext={useUiNext}
           />
+        )}
+
+        {modeLockLabel && (
+          <Text style={styles.modeLockLabel}>{modeLockLabel}</Text>
         )}
 
         {(isExternalFlowLocked || paymentMode === 'external_pos') ? (
@@ -210,6 +215,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     marginBottom: 10,
+  },
+  modeLockLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.primary,
+    backgroundColor: '#EEF2FF',
+    borderColor: '#C7D2FE',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    marginBottom: 10,
+    alignSelf: 'flex-start',
   },
   formaBtnContainer: {
     flexDirection: 'row',
