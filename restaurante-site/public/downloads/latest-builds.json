@@ -1,0 +1,27 @@
+{
+  "generatedAtUtc": "2026-04-08T23:25:44Z",
+  "android": {
+    "platform": "android",
+    "buildId": "cb8cfb99-dc57-47ce-8a78-c7846aef9ebc",
+    "status": "FINISHED",
+    "profile": "preview",
+    "distribution": "INTERNAL",
+    "gitCommitHash": null,
+    "artifactUrl": "https://expo.dev/artifacts/eas/r8RbAEqKQWmcKPDB6DLMF3.tar.gz",
+    "ext": "gz",
+    "fileLatest": "android-latest.gz",
+    "fileVersioned": "android-cb8cfb99-dc57-47ce-8a78-c7846aef9ebc.gz"
+  },
+  "ios": {
+    "platform": "ios",
+    "buildId": "e38486e5-47c3-46fa-842e-b87e0f478abd",
+    "status": "FINISHED",
+    "profile": "preview",
+    "distribution": "INTERNAL",
+    "gitCommitHash": null,
+    "artifactUrl": "https://expo.dev/artifacts/eas/u6v64fcTfFHF69P3pigVc4.tar.gz",
+    "ext": "gz",
+    "fileLatest": "ios-latest.gz",
+    "fileVersioned": "ios-e38486e5-47c3-46fa-842e-b87e0f478abd.gz"
+  }
+}
