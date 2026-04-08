@@ -2,6 +2,20 @@
 
 Monorepo do ecossistema `restaurante-supabase`, com app POS, web POS, backoffice SaaS, billing, migrations e documentação operacional.
 
+## Status Atual (2026-04-08)
+
+- Integracao PDV (maquininha) com simplificacao de UX concluida em app e web.
+- `restaurante-web` publicado em producao no Railway com healthcheck OK.
+- Build Android `preview` concluido no EAS para `restaurante-app`.
+- Gate de TypeScript do `restaurante-app` reabilitado (`npm run type-check` sem erros).
+- Snyk Code Scan executado nos arquivos alterados sem novos issues.
+- Smoke E2E web de fluxos criticos (`balcao`, `mesa`, `pizza`, `delivery`, `mesa-consolidacao`) executado com sucesso.
+
+Referencias de continuidade:
+
+- `docs/PROMPT_CONTINUACAO_DIA_SEGUINTE.md`
+- `docs/maquininha/04-plano-execucao-testes-rollout.md`
+
 ## Estrutura principal
 
 - `restaurante-app/`: app mobile React Native + Expo

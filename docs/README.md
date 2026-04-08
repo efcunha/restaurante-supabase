@@ -2,6 +2,21 @@
 
 Este diretório centraliza a documentação transversal do monorepo.
 
+## Status Atual (2026-04-08)
+
+- Simplificação de UX PDV concluída em app e web.
+- Deploy do `restaurante-web` concluído no Railway com healthcheck aprovado.
+- Build Android `preview` do `restaurante-app` concluído no EAS.
+- Gate TypeScript do app reabilitado (`npm run type-check` sem erros).
+- Snyk Code Scan executado nos arquivos alterados sem novos issues.
+- Smoke E2E web de fluxos críticos executado com sucesso.
+
+## Continuidade recomendada
+
+1. `docs/PROMPT_CONTINUACAO_DIA_SEGUINTE.md`
+2. `docs/maquininha/04-plano-execucao-testes-rollout.md`
+3. `docs/maquininha/README.md`
+
 ## Estrutura
 
 - `observability/`: guias, prompt, runbook e SQL de referência da observabilidade centralizada
