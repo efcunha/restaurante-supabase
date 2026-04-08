@@ -19,6 +19,7 @@ require_cmd() {
 
 run_eas_build_list() {
   local platform="$1"
+  local ios_profile="${EAS_IOS_BUILD_PROFILE:-production}"
 
   if command -v eas >/dev/null 2>&1; then
     (
@@ -27,6 +28,7 @@ run_eas_build_list() {
         --platform "$platform" \
         --status finished \
         --limit 1 \
+        $([[ "$platform" == "ios" ]] && echo "--build-profile $ios_profile") \
         --non-interactive \
         --json
     )
@@ -39,6 +41,7 @@ run_eas_build_list() {
       --platform "$platform" \
       --status finished \
       --limit 1 \
+      $([[ "$platform" == "ios" ]] && echo "--build-profile $ios_profile") \
       --non-interactive \
       --json
   )
