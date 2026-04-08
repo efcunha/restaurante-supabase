@@ -1,0 +1,133 @@
+'use client'
+
+import { Container } from '@/components/ui'
+import {
+  FaEnvelope,
+  FaWhatsapp,
+  FaInstagram,
+  FaLinkedin,
+} from 'react-icons/fa6'
+
+const footerLinks = [
+  { label: 'Produto', href: '#produto' },
+  { label: 'Funcionalidades', href: '#funcionalidades' },
+  { label: 'Plano', href: '#plano' },
+  { label: 'Como funciona', href: '#como-funciona' },
+  { label: 'Segurança', href: '#seguranca' },
+  { label: 'FAQ', href: '#faq' },
+  { label: 'Contato', href: '#contato' },
+]
+
+export function Footer() {
+  return (
+    <footer className="bg-surface border-t border-border-subtle">
+      <div className="mx-auto max-w-2xl px-4 sm:px-6 md:px-8 py-12 md:py-16">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
+          {/* Brand */}
+          <div className="md:col-span-1">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center">
+                <span className="font-display text-background text-sm font-bold">MC</span>
+              </div>
+              <span className="font-display text-foreground text-base font-semibold">
+                Machado &amp; Cunha
+              </span>
+            </div>
+            <p className="text-foreground-muted text-sm leading-relaxed mb-4">
+              Do balcão à cozinha, tudo sob controle.
+            </p>
+            {/* Social */}
+            <div className="flex items-center gap-3">
+              <a
+                href="#"
+                aria-label="Instagram"
+                className="w-9 h-9 rounded-lg bg-surface-light border border-border flex items-center justify-center text-foreground-muted hover:text-accent hover:border-strong transition-colors duration-base"
+              >
+                <FaInstagram size={16} />
+              </a>
+              <a
+                href="#"
+                aria-label="LinkedIn"
+                className="w-9 h-9 rounded-lg bg-surface-light border border-border flex items-center justify-center text-foreground-muted hover:text-accent hover:border-strong transition-colors duration-base"
+              >
+                <FaLinkedin size={16} />
+              </a>
+              <a
+                href="mailto:contato@machadoecunha.com.br"
+                aria-label="E-mail"
+                className="w-9 h-9 rounded-lg bg-surface-light border border-border flex items-center justify-center text-foreground-muted hover:text-accent hover:border-strong transition-colors duration-base"
+              >
+                <FaEnvelope size={16} />
+              </a>
+              <a
+                href="#"
+                aria-label="WhatsApp"
+                className="w-9 h-9 rounded-lg bg-surface-light border border-border flex items-center justify-center text-foreground-muted hover:text-accent hover:border-strong transition-colors duration-base"
+              >
+                <FaWhatsapp size={16} />
+              </a>
+            </div>
+          </div>
+
+          {/* Links */}
+          <div>
+            <h4 className="font-display text-sm font-semibold text-foreground uppercase tracking-wider mb-4">
+              Navegação
+            </h4>
+            <ul className="space-y-2">
+              {footerLinks.map((link) => (
+                <li key={link.href}>
+                  <a
+                    href={link.href}
+                    className="text-sm text-foreground-muted hover:text-accent transition-colors duration-base"
+                  >
+                    {link.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Legal */}
+          <div>
+            <h4 className="font-display text-sm font-semibold text-foreground uppercase tracking-wider mb-4">
+              Legal
+            </h4>
+            <ul className="space-y-2">
+              <li>
+                <a
+                  href="/privacy"
+                  className="text-sm text-foreground-muted hover:text-accent transition-colors duration-base"
+                >
+                  Política de privacidade
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/terms"
+                  className="text-sm text-foreground-muted hover:text-accent transition-colors duration-base"
+                >
+                  Termos de uso
+                </a>
+              </li>
+            </ul>
+            <div className="mt-6 pt-4 border-t border-border-subtle">
+              <p className="text-xs text-foreground-muted leading-relaxed">
+                Machado &amp; Cunha Soft House
+                <br />
+                CNPJ: 00.000.000/0001-00
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Copyright */}
+        <div className="mt-10 pt-6 border-t border-border-subtle text-center">
+          <p className="text-xs text-foreground-muted">
+            &copy; 2025 Machado &amp; Cunha Soft House. Todos os direitos reservados.
+          </p>
+        </div>
+      </div>
+    </footer>
+  )
+}

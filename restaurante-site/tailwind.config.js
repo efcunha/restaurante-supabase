@@ -1,0 +1,112 @@
+import type { Config } from 'tailwindcss'
+
+const config: Config = {
+  content: [
+    './src/**/*.{js,ts,jsx,tsx,mdx}',
+  ],
+  theme: {
+    extend: {
+      colors: {
+        background: 'var(--color-bg-primary)',
+        surface: 'var(--color-bg-secondary)',
+        'surface-light': 'var(--color-bg-tertiary)',
+        'surface-elevated': 'var(--color-bg-elevated)',
+        foreground: 'var(--color-fg-primary)',
+        'foreground-secondary': 'var(--color-fg-secondary)',
+        'foreground-muted': 'var(--color-fg-muted)',
+        accent: 'var(--color-accent-primary)',
+        'accent-hover': 'var(--color-accent-hover)',
+        'accent-active': 'var(--color-accent-active)',
+        'accent-subtle': 'var(--color-accent-subtle)',
+        'accent-subtle-strong': 'var(--color-accent-subtle-strong)',
+        border: 'var(--color-border-default)',
+        'border-subtle': 'var(--color-border-subtle)',
+        'border-strong': 'var(--color-border-strong)',
+        success: 'var(--color-success)',
+        warning: 'var(--color-warning)',
+        error: 'var(--color-error)',
+        info: 'var(--color-info)',
+      },
+      fontFamily: {
+        display: ['var(--font-display)', 'serif'],
+        body: ['var(--font-body)', 'sans-serif'],
+      },
+      fontSize: {
+        xs: ['var(--text-xs)', { lineHeight: 'var(--leading-normal)' }],
+        sm: ['var(--text-sm)', { lineHeight: 'var(--leading-normal)' }],
+        base: ['var(--text-base)', { lineHeight: 'var(--leading-relaxed)' }],
+        lg: ['var(--text-lg)', { lineHeight: 'var(--leading-snug)' }],
+        xl: ['var(--text-xl)', { lineHeight: 'var(--leading-snug)' }],
+        '2xl': ['var(--text-2xl)', { lineHeight: 'var(--leading-tight)' }],
+        '3xl': ['var(--text-3xl)', { lineHeight: 'var(--leading-tight)' }],
+        '4xl': ['var(--text-4xl)', { lineHeight: 'var(--leading-tight)' }],
+        '5xl': ['var(--text-5xl)', { lineHeight: 'var(--leading-tight)' }],
+        '6xl': ['var(--text-6xl)', { lineHeight: 'var(--leading-tight)' }],
+        '7xl': ['var(--text-7xl)', { lineHeight: 'var(--leading-tight)' }],
+      },
+      spacing: {
+        1: 'var(--space-1)',
+        2: 'var(--space-2)',
+        3: 'var(--space-3)',
+        4: 'var(--space-4)',
+        5: 'var(--space-5)',
+        6: 'var(--space-6)',
+        8: 'var(--space-8)',
+        10: 'var(--space-10)',
+        12: 'var(--space-12)',
+        16: 'var(--space-16)',
+        20: 'var(--space-20)',
+        24: 'var(--space-24)',
+        32: 'var(--space-32)',
+      },
+      borderRadius: {
+        sm: 'var(--radius-sm)',
+        md: 'var(--radius-md)',
+        lg: 'var(--radius-lg)',
+        xl: 'var(--radius-xl)',
+        '2xl': 'var(--radius-2xl)',
+        full: 'var(--radius-full)',
+      },
+      boxShadow: {
+        sm: 'var(--shadow-sm)',
+        md: 'var(--shadow-md)',
+        lg: 'var(--shadow-lg)',
+        xl: 'var(--shadow-xl)',
+        glow: 'var(--shadow-glow)',
+        'glow-lg': 'var(--shadow-glow-lg)',
+      },
+      transitionDuration: {
+        fast: 'var(--transition-fast)',
+        base: 'var(--transition-base)',
+        slow: 'var(--transition-slow)',
+        slower: 'var(--transition-slower)',
+      },
+      zIndex: {
+        dropdown: 'var(--z-dropdown)',
+        sticky: 'var(--z-sticky)',
+        overlay: 'var(--z-overlay)',
+        modal: 'var(--z-modal)',
+        toast: 'var(--z-toast)',
+      },
+      maxWidth: {
+        sm: 'var(--container-sm)',
+        md: 'var(--container-md)',
+        lg: 'var(--container-lg)',
+        xl: 'var(--container-xl)',
+        '2xl': 'var(--container-max)',
+      },
+      animation: {
+        'fade-in': 'fadeIn 0.6s ease-out forwards',
+      },
+      keyframes: {
+        fadeIn: {
+          '0%': { opacity: '0', transform: 'translateY(20px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+      },
+    },
+  },
+  plugins: [],
+}
+
+export default config
