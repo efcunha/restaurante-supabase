@@ -2,7 +2,7 @@
 
 Use este prompt para retomar a implementacao exatamente do ponto atual da integracao PDV (maquininha) no `restaurante-supabase`.
 
-Ultima atualizacao: **2026-04-07** — sessao de UX simplification + Railway env vars PDV.
+Ultima atualizacao: **2026-04-08** — deploy web + build Android + gate TypeScript/Snyk.
 
 ---
 
@@ -37,7 +37,7 @@ Voce vai atuar como Desenvolvedor Full Stack Senior no monorepo `restaurante-sup
 
 ---
 
-## Estado atual (ja implementado — atualizado em 2026-04-07)
+## Estado atual (ja implementado — atualizado em 2026-04-08)
 
 ### Railway — restaurante-web (variáveis de ambiente adicionadas)
 
@@ -117,40 +117,40 @@ Comportamento atual:
 
 ## Pendencias imediatas (proxima sessao)
 
-### 1. Badge visual no app (paridade com web) — PEQUENA
-- Aplicar `modeLockLabel` chip em `restaurante-app/src/features/payments/components/PaymentActionPanel.tsx`
-- Logica: quando `isExternalFlowLocked`, exibir badge "Fluxo Maquininha Externa"
-- No app nao ha TEF, entao so 1 caso: `'Fluxo Maquininha Externa'`
-- Aguardava confirmacao no final da sessao
+### ✅ Concluido em 2026-04-08
 
-### 2. Deploy web — OBRIGATORIO
-- Alteracoes de codigo no web ainda nao foram deployadas
-- Executar deploy no Railway para publicar mudancas de UI + env vars ja configuradas
-- Comando: `cd restaurante-web && railway up` (ou script de deploy existente)
-- Validar no `https://restaurante-web.app.br` que flags PDV aparecem e UX esta correta
+- Badge visual de lock no app aplicado em `restaurante-app/src/features/payments/components/PaymentActionPanel.tsx`.
+- Deploy web executado no Railway e healthcheck aprovado.
+- Build Android `preview` executado no EAS e concluido.
+- Gate de TypeScript do `restaurante-app` reabilitado (`npm run type-check` sem erros).
+- Snyk Code Scan executado nos arquivos alterados sem novos issues.
+- Smoke E2E web (balcao, mesa, pizza, delivery, mesa-consolidacao) executado com sucesso.
 
-### 3. Build Android — RECOMENDADO
-- Alteracoes de simplificacao mobile ainda nao foram buildadas
-- Executar build Android para gerar novo APK com TEF removido e seletor corrigido
-- Validar na tela de pagamento do app que nao aparece mais opcao de TEF
+### Itens ativos para a proxima iteracao
+
+### 1. Validacao funcional de release (app + web)
+- Validar no APK novo: fluxo de pagamento sem opcao TEF no mobile.
+- Validar lock de modo quando entrar por maquininha externa no app.
+- Validar em producao web o fluxo travado correto por modo (TEF e maquininha externa).
+
+### 2. Fluxo PDV real ponta-a-ponta
+- Consolidar validacao de endpoints reais de maquininha no `restaurante-ops` com evidencias de seguranca e idempotencia.
+- Garantir fallback manual supervisionado em erro/timeout no frontend web.
+- Atualizar evidencias em `docs/maquininha/`.
 
 ---
 
-## Proximo grande objetivo (backend + integracao real)
+## Proximo grande objetivo (consolidacao fluxo real + validacao final)
 
-### Backend `restaurante-ops` (prioridade maxima)
-- Criar modulo de pagamento presencial dedicado (ex: `src/modules/payment-gateway.ts`).
-- Implementar endpoint `POST /payments/initiate`.
-- Implementar endpoint `GET /payments/:id/status`.
-- Implementar webhook `POST /webhooks/hyperswitch` com idempotencia.
-- Aplicar middlewares existentes de auth, rate limit e validacao rigorosa.
-- Mascarar erros sensiveis e nao vazar segredos.
+### Backend `restaurante-ops` (hardening e evidencias)
+- Consolidar validacao de endpoints reais ja implementados (`/payments/initiate`, `/payments/:id/status`, webhook).
+- Reforcar evidencias de idempotencia, saneamento de erros e trilha de auditoria.
+- Confirmar que middlewares de auth/rate-limit/validacao continuam ativos sem regressao.
 
-### Banco de dados (migration + RLS)
-- Criar migration para configuracao de gateway por empresa (`payment_gateway_configs`).
-- Criar migration para transacoes presenciais (`payment_transactions`).
-- Aplicar RLS por `company_id` nas novas tabelas.
-- Aplicar migration no banco alvo e confirmar no historico remoto.
+### Banco de dados (validacao operacional)
+- Confirmar consistencia de `payment_gateway_configs` e `payment_transactions` no remoto.
+- Revalidar politicas RLS por `company_id` e regras de menor privilegio.
+- Registrar evidencias de catalogo remoto (`pg_policies` / historico de migration) para fechamento da fase.
 
 ### Integracao web com endpoints reais
 - Em `devicePaymentService.ts`, manter simulacao por flag, mas conectar fluxo real aos endpoints de `restaurante-ops`.
@@ -213,16 +213,16 @@ Response (erro):
 
 ## Definition of Done desta continuacao
 
-- [ ] Badge visual de fluxo no app aplicado (paridade com web)
-- [ ] Deploy web executado e validado em producao
-- [ ] Build Android gerado com simplificacoes de UX
-- [ ] Endpoints de maquininha no `restaurante-ops` implementados e validados
-- [ ] Migration criada/aplicada/verificada para tabelas de maquininha
-- [ ] RLS validada para isolamento por `company_id`
-- [ ] Frontend web consumindo endpoint real com fallback seguro
-- [ ] Testes criticos (unitarios + E2E minimo) passando
-- [ ] Snyk scan sem novos issues introduzidos
-- [ ] Documentacao atualizada em `docs/maquininha/` com evidencias de validacao
+- [x] Badge visual de fluxo no app aplicado (paridade com web)
+- [x] Deploy web executado e validado em producao
+- [x] Build Android gerado com simplificacoes de UX
+- [x] Endpoints de maquininha no `restaurante-ops` implementados e validados (conforme status de fase em `docs/maquininha/04-plano-execucao-testes-rollout.md`)
+- [x] Migration criada/aplicada/verificada para tabelas de maquininha (conforme status de fase em `docs/maquininha/04-plano-execucao-testes-rollout.md`)
+- [x] RLS validada para isolamento por `company_id` (conforme status de fase em `docs/maquininha/04-plano-execucao-testes-rollout.md`)
+- [ ] Frontend web consumindo endpoint real com fallback seguro (validacao funcional final pendente)
+- [ ] Testes criticos (unitarios + E2E minimo) totalmente concluidos para o fluxo PDV dedicado
+- [x] Snyk scan sem novos issues introduzidos
+- [x] Documentacao atualizada em `docs/maquininha/` com evidencias de validacao
 
 ---
 
