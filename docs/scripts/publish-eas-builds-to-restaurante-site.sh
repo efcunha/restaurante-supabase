@@ -41,7 +41,7 @@ main() {
 
   # Limpa apenas arquivos de artefato antigos mantendo docs auxiliares.
   find "$TARGET_DIR" -maxdepth 1 -type f \
-    \( -name 'android-latest.*' -o -name 'ios-latest.*' -o -name 'android-*.apk' -o -name 'android-*.aab' -o -name 'ios-*.ipa' -o -name 'ios-*.app' \) \
+    \( -name 'android-latest.*' -o -name 'ios-latest.*' -o -name 'android-*.apk' -o -name 'android-*.aab' -o -name 'ios-*.ipa' -o -name 'ios-*.app' -o -name 'ios-*.app.tar.gz' \) \
     -delete
 
   cp "$SOURCE_DIR/latest-builds.json" "$TARGET_DIR/latest-builds.json"
