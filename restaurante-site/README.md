@@ -143,6 +143,9 @@ Scripts:
 - `bash docs/scripts/download-latest-eas-builds.sh`
 - `bash docs/scripts/publish-eas-builds-to-restaurante-site.sh`
 
+Deploy Railway (path-as-root em `restaurante-site`):
+- `bash scripts/sync-latest-eas-builds.sh`
+
 Fluxo recomendado:
 1. Baixar últimos builds Android/iOS do EAS para `docs/builds`.
 2. Publicar para `restaurante-site/public/downloads`.
