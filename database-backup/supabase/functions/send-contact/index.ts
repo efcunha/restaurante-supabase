@@ -23,7 +23,7 @@ function getCorsHeaders(req: Request): Record<string, string> {
     'Access-Control-Allow-Methods': ALLOWED_METHODS,
   };
 
-  if (origin && (allowed.length === 0 || allowed.includes(origin))) {
+  if (origin && allowed.includes(origin)) {
     headers['Access-Control-Allow-Origin'] = origin;
     headers['Vary'] = 'Origin';
   }
@@ -47,6 +47,21 @@ interface ContactPayload {
   phone: string;
   establishment: string;
   message: string;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function assertMaxLength(value: string, max: number, field: string): void {
+  if (value.length > max) {
+    throw new Error(`${field} excede o limite permitido.`);
+  }
 }
 
 function validatePayload(body: unknown): ContactPayload {
@@ -74,15 +89,21 @@ function validatePayload(body: unknown): ContactPayload {
     throw new Error('Nome do estabelecimento é obrigatório.');
   }
 
+  assertMaxLength(name, 120, 'Nome');
+  assertMaxLength(email, 160, 'E-mail');
+  assertMaxLength(phone, 32, 'Telefone');
+  assertMaxLength(establishment, 160, 'Estabelecimento');
+  assertMaxLength(message, 4000, 'Mensagem');
+
   return { name, email, phone, establishment, message };
 }
 
 function buildEmailHtml(data: ContactPayload): string {
   const rows = [
-    ['Nome', data.name],
-    ['E-mail', data.email],
-    ['Telefone', data.phone || 'Não informado'],
-    ['Estabelecimento', data.establishment],
+    ['Nome', escapeHtml(data.name)],
+    ['E-mail', escapeHtml(data.email)],
+    ['Telefone', escapeHtml(data.phone || 'Não informado')],
+    ['Estabelecimento', escapeHtml(data.establishment)],
   ];
 
   const tableRows = rows
@@ -104,7 +125,7 @@ function buildEmailHtml(data: ContactPayload): string {
       </table>
       <div style="margin-top: 16px;">
         <p style="color: #374151; font-weight: 600; margin-bottom: 4px;">Mensagem:</p>
-        <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; color: #111827; white-space: pre-wrap;">${data.message}</div>
+        <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; color: #111827; white-space: pre-wrap;">${escapeHtml(data.message)}</div>
       </div>
     </div>
   `;
@@ -146,12 +167,31 @@ async function sendEmail(data: ContactPayload): Promise<void> {
 }
 
 Deno.serve(async (req: Request): Promise<Response> => {
+  const origin = req.headers.get('Origin') || '';
+  const allowedOrigins = (Deno.env.get('CONTACT_CORS_ORIGINS') || '')
+    .split(',')
+    .map((o) => o.trim().replace(/\/+$/, ''))
+    .filter(Boolean);
+
   if (req.method === 'OPTIONS') {
+    if (!origin || !allowedOrigins.includes(origin)) {
+      return new Response('Forbidden', { status: 403, headers: getCorsHeaders(req) });
+    }
+
     return new Response('ok', { headers: getCorsHeaders(req) });
   }
 
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 });
+  }
+
+  if (!origin || !allowedOrigins.includes(origin)) {
+    return jsonResponse(403, { error: 'Origin não permitida.' }, req);
+  }
+
+  const contentType = req.headers.get('Content-Type') || '';
+  if (!contentType.toLowerCase().includes('application/json')) {
+    return jsonResponse(415, { error: 'Content-Type deve ser application/json.' }, req);
   }
 
   try {
