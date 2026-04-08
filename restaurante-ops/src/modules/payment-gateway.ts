@@ -169,6 +169,27 @@ function sanitizeProviderMessage(value: string | null | undefined): string | nul
   return safe || null;
 }
 
+function getPublicPaymentErrorMessage(err: PaymentGatewayError): string {
+  if (err.statusCode >= 500) {
+    return 'Falha interna ao processar pagamento presencial.';
+  }
+
+  switch (err.code) {
+    case 'invalid_request':
+      return 'Requisicao de pagamento invalida.';
+    case 'unauthorized':
+      return 'Autenticacao invalida para pagamento presencial.';
+    case 'gateway_not_configured':
+      return 'Gateway de pagamento nao configurado para este tenant.';
+    case 'payment_not_found':
+      return 'Transacao presencial nao encontrada.';
+    case 'provider_unavailable':
+      return 'Servico de pagamento temporariamente indisponivel.';
+    default:
+      return 'Falha ao processar pagamento presencial.';
+  }
+}
+
 function sanitizeErrorCode(value: string | null | undefined): string | null {
   const safe = sanitizeText(value, 64).replace(/[^A-Za-z0-9_.-]/g, '_');
   return safe || null;
@@ -891,7 +912,7 @@ export function respondPaymentGatewayError(err: unknown, correlationId?: string)
       statusCode: err.statusCode,
       payload: {
         code: sanitizeText(err.code, 40).toLowerCase() || 'internal_error',
-        message: sanitizeProviderMessage(err.message) || 'Falha ao processar pagamento presencial.',
+        message: getPublicPaymentErrorMessage(err),
         correlation_id: correlationId || null,
       },
     };

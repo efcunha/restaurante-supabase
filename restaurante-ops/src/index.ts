@@ -325,7 +325,10 @@ function sanitizeJsonValue(value: unknown): unknown {
     return sanitizePlainText(value)
       .replace(/</g, '\\u003c')
       .replace(/>/g, '\\u003e')
-      .replace(/&/g, '\\u0026');
+      .replace(/&/g, '\\u0026')
+      .replace(/'/g, '\\u0027')
+      .replace(/\u2028/g, '\\u2028')
+      .replace(/\u2029/g, '\\u2029');
   }
 
   if (Array.isArray(value)) {
@@ -351,9 +354,7 @@ function respondJson(
   });
   const safePayload = sanitizeJsonValue(payload);
   const responseBody = JSON.stringify(safePayload);
-  const responseBuffer = Buffer.from(responseBody, 'utf-8');
-  res.write(responseBuffer);
-  res.end();
+  res.end(responseBody, 'utf-8');
 }
 
 function respondHtml(
@@ -1998,23 +1999,20 @@ function startServer() {
 
       // ---- Healthcheck / API status (publicos) ----
       if (path === '/healthz') {
-        res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify({ ok: true, service: 'restaurante-ops', env: env.OPS_ENV }));
+        respondJson(res, 200, { ok: true, service: 'restaurante-ops', env: env.OPS_ENV });
         return;
       }
 
       if (path === '/api/status') {
         try {
           const statusPayload = await getApiStatus();
-          res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
-          res.end(JSON.stringify(statusPayload));
+          respondJson(res, 200, statusPayload);
         } catch (err) {
           logError('observability.api_status_failed', {
             request_id: requestId,
             error: err instanceof Error ? err.message : String(err),
           });
-          res.writeHead(500, { 'content-type': 'application/json; charset=utf-8' });
-          res.end(JSON.stringify({ error: 'Falha ao obter status da API.' }));
+          respondJson(res, 500, { error: 'Falha ao obter status da API.' });
         }
         return;
       }
@@ -3407,10 +3405,17 @@ function startServer() {
         const body = parseJsonBody<Partial<ReconcileInput>>(await readBody(req));
         const validationError = validateReconcileInput(body);
         if (validationError) {
-          res.writeHead(400, { 'content-type': 'application/json; charset=utf-8' });
-          res.end(JSON.stringify({
-            error: validationError,
-          }));
+          logWarn('billing.reconcile_invalid_input', {
+            method: req.method,
+            path,
+            statusCode: 400,
+            request_id: requestId,
+            reason: validationError,
+          });
+          respondJson(res, 400, {
+            error: 'Payload de reconciliacao invalido.',
+            code: 'BILLING_INVALID_REQUEST',
+          });
           return;
         }
 

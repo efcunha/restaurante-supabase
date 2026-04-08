@@ -28,6 +28,10 @@ function escapeHtml(value: string | null | undefined): string {
     .replace(/'/g, '&#x27;');
 }
 
+function escapeHtmlAttr(value: string | null | undefined): string {
+  return escapeHtml(value);
+}
+
 function levelPill(level: string): string {
   const map: Record<string, string> = {
     info: 'pill-info',
@@ -283,7 +287,7 @@ function renderNavTabs(activeTab: string): string {
   ];
 
   return `<nav class="nav-tabs">
-    ${tabs.map((t) => `<a class="nav-tab${activeTab === t.id ? ' active' : ''}" href="${t.href}">${t.label}</a>`).join('')}
+    ${tabs.map((t) => `<a class="nav-tab${activeTab === t.id ? ' active' : ''}" href="${escapeHtmlAttr(t.href)}">${t.label}</a>`).join('')}
   </nav>`;
 }
 
@@ -549,17 +553,17 @@ function renderOverviewTab(
     <div style="display:grid;gap:10px;">
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
         <span class="mono" style="font-size:12px;">GET ${escapeHtml(metricsApiUrl)}</span>
-        <a class="btn-logout" style="background:#0c7a96;border-color:#0c7a96;" href="${metricsApiUrl}" target="_blank" rel="noreferrer">Abrir</a>
+        <a class="btn-logout" style="background:#0c7a96;border-color:#0c7a96;" href="${escapeHtmlAttr(metricsApiUrl)}" target="_blank" rel="noreferrer">Abrir</a>
         <button type="button" class="btn-primary" data-copy-value="${escapeHtml(metricsApiUrl)}" style="padding:6px 10px;">Copiar</button>
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
         <span class="mono" style="font-size:12px;">GET ${escapeHtml(servicesApiUrl)}</span>
-        <a class="btn-logout" style="background:#0c7a96;border-color:#0c7a96;" href="${servicesApiUrl}" target="_blank" rel="noreferrer">Abrir</a>
+        <a class="btn-logout" style="background:#0c7a96;border-color:#0c7a96;" href="${escapeHtmlAttr(servicesApiUrl)}" target="_blank" rel="noreferrer">Abrir</a>
         <button type="button" class="btn-primary" data-copy-value="${escapeHtml(servicesApiUrl)}" style="padding:6px 10px;">Copiar</button>
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
         <span class="mono" style="font-size:12px;">GET ${escapeHtml(observabilitySettingsApiUrl)}</span>
-        <a class="btn-logout" style="background:#0c7a96;border-color:#0c7a96;" href="${observabilitySettingsApiUrl}" target="_blank" rel="noreferrer">Abrir</a>
+        <a class="btn-logout" style="background:#0c7a96;border-color:#0c7a96;" href="${escapeHtmlAttr(observabilitySettingsApiUrl)}" target="_blank" rel="noreferrer">Abrir</a>
         <button type="button" class="btn-primary" data-copy-value="${escapeHtml(observabilitySettingsApiUrl)}" style="padding:6px 10px;">Copiar</button>
       </div>
     </div>
@@ -614,7 +618,7 @@ function renderLogsTab(
       <select name="service">
         <option value="">Todos</option>
         ${['ops', 'web', 'app', 'supabase', 'activepieces', 'evolution'].map(
-          (s) => `<option value="${s}"${filters.service === s ? ' selected' : ''}>${s}</option>`,
+          (s) => `<option value="${escapeHtmlAttr(s)}"${filters.service === s ? ' selected' : ''}>${escapeHtml(s)}</option>`,
         ).join('')}
       </select>
     </div>
@@ -623,7 +627,7 @@ function renderLogsTab(
       <select name="level">
         <option value="">Todos</option>
         ${['info', 'warn', 'error'].map(
-          (l) => `<option value="${l}"${filters.level === l ? ' selected' : ''}>${l}</option>`,
+          (l) => `<option value="${escapeHtmlAttr(l)}"${filters.level === l ? ' selected' : ''}>${escapeHtml(l)}</option>`,
         ).join('')}
       </select>
     </div>
@@ -673,14 +677,14 @@ function renderLogsTab(
             <td><span class="trace-badge">${escapeHtml(log.service)}</span></td>
             <td class="mono">${escapeHtml(log.event)}</td>
             <td style="max-width:320px;">${escapeHtml(log.message)}</td>
-            <td class="mono" style="font-size:10px;">${log.request_id ? `<a href="${buildFilterHref(baseFilters, { request_id: log.request_id, offset: 0 })}" style="color:#0c7a96;">${escapeHtml(log.request_id.slice(0, 8))}…</a>` : '—'}</td>
+            <td class="mono" style="font-size:10px;">${log.request_id ? `<a href="${escapeHtmlAttr(buildFilterHref(baseFilters, { request_id: log.request_id, offset: 0 }))}" style="color:#0c7a96;">${escapeHtml(log.request_id.slice(0, 8))}…</a>` : '—'}</td>
             <td style="font-size:12px;">${log.duration_ms != null ? log.duration_ms + 'ms' : '—'}</td>
           </tr>`).join('');
 
   const pagination = `<div class="pagination">
-    <a href="${buildFilterHref(baseFilters, { offset: prevOffset })}" class="${hasPrev ? '' : 'disabled'}">← Anterior</a>
+    <a href="${escapeHtmlAttr(buildFilterHref(baseFilters, { offset: prevOffset }))}" class="${hasPrev ? '' : 'disabled'}">← Anterior</a>
     <span>Mostrando ${offset + 1}–${Math.min(offset + limit, total)} de ${total}</span>
-    <a href="${buildFilterHref(baseFilters, { offset: nextOffset })}" class="${hasNext ? '' : 'disabled'}">Próxima →</a>
+    <a href="${escapeHtmlAttr(buildFilterHref(baseFilters, { offset: nextOffset }))}" class="${hasNext ? '' : 'disabled'}">Próxima →</a>
   </div>`;
 
   return `${filterBar}

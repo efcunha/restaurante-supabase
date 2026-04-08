@@ -28,6 +28,29 @@ export interface ServiceStatus {
   detail?: string;
 }
 
+function sanitizePublicText(value: string | null | undefined, maxLength = 180): string {
+  return String(value ?? '')
+    .replace(/[\u0000-\u001F\u007F]/g, '')
+    .replace(/[<>`]/g, '')
+    .trim()
+    .slice(0, maxLength);
+}
+
+function sanitizePublicUrl(value: string | null | undefined): string | undefined {
+  const raw = sanitizePublicText(value, 512);
+  if (!raw) return undefined;
+
+  try {
+    const parsed = new URL(raw);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return undefined;
+    }
+    return parsed.toString();
+  } catch {
+    return undefined;
+  }
+}
+
 function normalizeBaseUrl(url: string | undefined): string {
   const raw = String(url || '').trim();
   return raw.replace(/\/+$/, '');
@@ -320,8 +343,8 @@ export async function updateMonitoredServiceConfig(input: UpdateMonitoredService
 }
 
 async function checkServiceHealth(config: MonitoredServiceConfig): Promise<ServiceStatus> {
-  const url = buildHealthUrl(config.base_url, config.health_path);
-  const name = config.service_name;
+  const url = sanitizePublicUrl(buildHealthUrl(config.base_url, config.health_path));
+  const name = sanitizePublicText(config.service_name, 80) || 'servico';
 
   if (!url) return { name, status: 'unknown', url };
 
@@ -337,11 +360,11 @@ async function checkServiceHealth(config: MonitoredServiceConfig): Promise<Servi
     const status = res.status >= config.expected_status_min && res.status <= config.expected_status_max
       ? 'online'
       : 'offline';
-    const detail = res.ok
+    const detail = sanitizePublicText(res.ok
       ? `HTTP ${res.status}`
-      : `HTTP ${res.status}${res.statusText ? ` ${res.statusText}` : ''}`;
+      : `HTTP ${res.status}${res.statusText ? ` ${res.statusText}` : ''}`);
     return {
-      key: config.service_key,
+      key: sanitizePublicText(config.service_key, 64) || undefined,
       name,
       status,
       responseTime,
@@ -350,12 +373,18 @@ async function checkServiceHealth(config: MonitoredServiceConfig): Promise<Servi
       detail,
     };
   } catch (_err) {
-    const detail = _err instanceof Error && _err.name === 'AbortError'
+    const detail = sanitizePublicText(_err instanceof Error && _err.name === 'AbortError'
       ? `Timeout apos ${config.timeout_ms}ms`
       : _err instanceof Error
         ? _err.message
-        : 'Falha desconhecida';
-    return { key: config.service_key, name, status: 'offline', url, detail };
+        : 'Falha desconhecida');
+    return {
+      key: sanitizePublicText(config.service_key, 64) || undefined,
+      name,
+      status: 'offline',
+      url,
+      detail,
+    };
   }
 }
 
@@ -402,17 +431,17 @@ export async function getApiStatus(): Promise<ApiStatusPayload> {
 
   return {
     service: 'restaurante-ops',
-    env: env.OPS_ENV,
+    env: sanitizePublicText(env.OPS_ENV, 32),
     status: aggregatedStatus,
     lastChecked: new Date().toISOString(),
     services: serviceStatuses.map((s) => ({
-      name: s.name,
-      key: s.key,
+      name: sanitizePublicText(s.name, 80),
+      key: s.key ? sanitizePublicText(s.key, 64) : undefined,
       status: s.status,
-      url: s.url,
+      url: sanitizePublicUrl(s.url),
       responseTime: s.responseTime,
       statusCode: s.statusCode,
-      detail: s.detail,
+      detail: sanitizePublicText(s.detail, 180) || undefined,
     })),
   };
 }
