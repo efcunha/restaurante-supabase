@@ -44,6 +44,7 @@ export default function PedidoDetalhesModal({ visible, orderId, orderIds = [], t
     .map(currentOrderId => getOrderById(currentOrderId))
     .filter(Boolean) as any[];
   const order = resolvedOrders[0];
+  const primaryOrderId = resolvedOrderIds[0] || null;
   const isTableAggregate = resolvedOrders.length > 1;
   const aggregateTableNumber = tableNumber || order?.mesa;
   const aggregateTotal = resolvedOrders.reduce((sum, currentOrder) => sum + (currentOrder.totalPrice || 0), 0);
@@ -152,10 +153,10 @@ export default function PedidoDetalhesModal({ visible, orderId, orderIds = [], t
   };
 
   const handleEdit = () => {
-    if (!order) return;
+    if (!order || !primaryOrderId) return;
     if (isEditing) {
       try {
-        editOrder(orderId, {
+        editOrder(primaryOrderId, {
           client: editedClient,
           observations: editedObservations,
         });

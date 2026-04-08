@@ -300,13 +300,14 @@ export default function PagamentoScreen({ route, navigation }: any) {
   };
 
   const pagar = async () => {
+    let valorPago = 0;
     try {
       if (!valor || parseFloat(valor) <= 0) {
         Alert.alert('Erro', 'Informe um valor válido.');
         return;
       }
 
-      const valorPago = parseFloat(valor);
+      valorPago = parseFloat(valor);
 
       await PagamentosService.registrarPagamento({
         companyId: user?.companyId || '',

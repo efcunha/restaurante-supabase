@@ -271,11 +271,7 @@ export default function BillingScreen({ onClose }: BillingScreenProps) {
       setShowCardModal(false);
       setPendingPublicKey(null);
 
-      const cardLabel = result.card
-        ? ` (${(result.card as { brand?: string }).brand?.toUpperCase() || 'Cartão'} •••• ${(result.card as { lastFour?: string }).lastFour || ''})`
-        : '';
-
-      Alert.alert('Cartão salvo', `Cartão cadastrado com sucesso${cardLabel}.`);
+      Alert.alert('Cartão salvo', result.message || 'Cartão cadastrado com sucesso.');
       await handleRefresh();
     } catch (error) {
       Alert.alert('Erro no cartão', error instanceof Error ? error.message : 'Falha ao salvar o cartão.');

@@ -92,9 +92,10 @@ export default function DeliveryOcorrenciasScreen({ onClose }: DeliveryOcorrenci
   useEffect(() => {
     let active = true;
     if (!user?.companyId || selectedDay) return;
+    const companyId = user.companyId;
 
     const loadBusinessDay = async () => {
-      const dateKey = await getBusinessDateKey(user.companyId);
+      const dateKey = await getBusinessDateKey(companyId);
       if (active) setSelectedDay(dateKey);
     };
 

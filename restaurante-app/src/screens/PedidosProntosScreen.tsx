@@ -57,10 +57,11 @@ export default function PedidosProntosScreen() {
   useEffect(() => {
     // @ts-ignore
     if (!user?.companyId) return;
+    const companyId = user.companyId;
 
     // Initial fetch
     const fetchOrders = async () => {
-      const today = await getBusinessDateKey(user.companyId);
+      const today = await getBusinessDateKey(companyId);
       const { data, error } = await supabase
         .from('orders')
         .select(`
@@ -69,7 +70,7 @@ export default function PedidosProntosScreen() {
             full_name
           )
         `)
-        .eq('company_id', user.companyId)
+        .eq('company_id', companyId)
         .eq('date_key', today)
         .in('status', ['preparing', 'ready'])
         .neq('order_type', 'delivery');
@@ -86,7 +87,7 @@ export default function PedidosProntosScreen() {
           const { data: comandasData, error: comandasError } = await supabase
             .from('comandas')
             .select('date_key, comanda_number, opened_by_name')
-            .eq('company_id', user.companyId)
+            .eq('company_id', companyId)
             .eq('date_key', today)
             .in('comanda_number', comandaNumbers);
 
