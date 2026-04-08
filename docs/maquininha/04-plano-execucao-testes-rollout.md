@@ -4,7 +4,7 @@ Escopo desta fase: `restaurante-web` + `restaurante-ops`.
 Fora de escopo desta fase (backend/gateway): `restaurante-app`.
 Nota: restaurante-app recebeu simplificacao de UX PDV em 2026-04-07 (TEF removido, seletor lock aplicado).
 
-Ultima atualizacao: **2026-04-07**
+Ultima atualizacao: **2026-04-08**
 
 ## 1. Roadmap por fases
 
@@ -27,7 +27,7 @@ Ultima atualizacao: **2026-04-07**
 
 - [x] Integrar fluxo da UI de pagamento no restaurante-web (iniciacao + polling).
 - [x] Simplificar UX: lock de modo, sem dinheiro no TEF, badge visual, auto-reset.
-- [ ] Deploy web publicado no Railway com as alteracoes.
+- [x] Deploy web publicado no Railway com as alteracoes.
 - [ ] Integrar/validar fluxo de balanca no restaurante-web sem regressao.
 - [ ] Exibir telemetria operacional (pendente).
 
@@ -35,9 +35,17 @@ Ultima atualizacao: **2026-04-07**
 
 - [ ] Testes unitarios do polling (useDevicePayment).
 - [ ] Teste de integracao do endpoint /payments/initiate.
-- [ ] E2E Playwright fluxo aprovado.
+- [x] Smoke E2E web de fluxos criticos executado (balcao, mesa, pizza, delivery, mesa-consolidacao).
+- [ ] E2E Playwright dedicado do fluxo PDV/maquininha aprovado.
 - [ ] Smoke test de balanca no PDV web.
 - [ ] Revisar criterios de go/no-go para producao.
+
+## 8. Snapshot operacional (2026-04-08)
+
+- Deploy do `restaurante-web` concluido em producao no Railway com healthcheck aprovado.
+- Build Android `preview` do `restaurante-app` concluido no EAS.
+- Gate TypeScript do `restaurante-app` reabilitado (type-check verde).
+- Snyk Code Scan sem novos issues nos arquivos alterados da rodada de simplificacao PDV.
 
 ### Fase 4 - Rollout progressivo [PENDENTE]
 

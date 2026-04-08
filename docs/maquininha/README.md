@@ -42,3 +42,10 @@ Consolidar a especificacao tecnica de desenvolvimento da integracao de pagamento
 - Dominio de feature reservado em restaurante-web/src/features/maquininha/
 - Documentacao centralizada em docs/maquininha/
 - Todas as futuras PRs da feature devem referenciar esta documentacao
+
+## Status rapido (2026-04-08)
+
+- UX de maquininha simplificada no web e no app (mobile sem TEF, mantendo fluxo externo quando habilitado).
+- Deploy do `restaurante-web` em producao concluido.
+- Build Android `preview` do `restaurante-app` concluido para validacao funcional.
+- Para progresso detalhado por fase, consultar `04-plano-execucao-testes-rollout.md`.
