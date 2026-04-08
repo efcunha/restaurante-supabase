@@ -18,8 +18,6 @@ const navLinks = [
 
 const EXTERNAL_LINKS = {
   webLogin: 'https://restaurante-web.app.br/login',
-  appAndroid: 'https://expo.dev/accounts/lumachadolp/projects/restaurante-app/builds/cb8cfb99-dc57-47ce-8a78-c7846aef9ebc',
-  appIOS: '#', // TODO: add iOS build link when available
 } as const
 
 export function Header() {

@@ -3,11 +3,10 @@
 import { motion } from 'framer-motion'
 import { Section, Button, Container } from '@/components/ui'
 import { FaMobileScreenButton, FaGlobe, FaAndroid, FaApple } from 'react-icons/fa6'
+import { useLatestBuildDownloads } from '@/utils/useLatestBuildDownloads'
 
 const EXTERNAL_LINKS = {
   webLogin: 'https://restaurante-web.app.br/login',
-  appAndroid: 'https://expo.dev/accounts/lumachadolp/projects/restaurante-app/builds/cb8cfb99-dc57-47ce-8a78-c7846aef9ebc',
-  appIOS: '#',
 } as const
 
 const itemVariants = {
@@ -20,6 +19,8 @@ const itemVariants = {
 }
 
 export function Hero() {
+  const { androidHref, iosHref, hasIOSManifest } = useLatestBuildDownloads()
+
   return (
     <Section
       id="hero"
@@ -89,7 +90,7 @@ export function Hero() {
               actions: (
                 <div className="flex items-center gap-2 mt-3">
                   <a
-                    href={EXTERNAL_LINKS.appAndroid}
+                    href={androidHref}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 text-xs text-accent hover:text-accent-hover transition-colors"
@@ -99,12 +100,19 @@ export function Hero() {
                   </a>
                   <span className="text-foreground-disabled text-xs">|</span>
                   <a
-                    href={EXTERNAL_LINKS.appIOS}
-                    className="inline-flex items-center gap-1.5 text-xs text-foreground-muted hover:text-accent transition-colors pointer-events-none opacity-50"
-                    aria-disabled="true"
+                    href={iosHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={[
+                      'inline-flex items-center gap-1.5 text-xs transition-colors',
+                      hasIOSManifest
+                        ? 'text-accent hover:text-accent-hover'
+                        : 'text-foreground-muted pointer-events-none opacity-50',
+                    ].join(' ')}
+                    aria-disabled={!hasIOSManifest}
                   >
                     <FaApple size={12} />
-                    iOS
+                    {hasIOSManifest ? 'iOS' : 'iOS em breve'}
                   </a>
                 </div>
               ),
