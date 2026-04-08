@@ -14,6 +14,15 @@ Este diretório concentra scripts utilitários de nível monorepo que não perte
 
 ## Scripts atualmente na raiz lógica do monorepo
 
+### `scripts/`
+
+- `download-latest-eas-builds.sh`
+	- Baixa o último build finalizado de Android e iOS no Expo EAS e salva em `docs/builds/`.
+	- Gera/atualiza `docs/builds/latest-builds.json` com metadados dos artifacts.
+- `publish-eas-builds-to-restaurante-site.sh`
+	- Publica os artifacts mais recentes de `docs/builds/` em `restaurante-site/public/downloads/`.
+	- Copia `latest-builds.json` para consumo público no site.
+
 ### `scripts/security/`
 
 - `check-cve-status.ps1`

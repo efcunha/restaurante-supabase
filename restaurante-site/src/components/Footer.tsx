@@ -9,10 +9,10 @@ import {
   FaLinkedin,
   FaArrowUpRightFromSquare,
 } from 'react-icons/fa6'
+import { useLatestBuildDownloads } from '@/utils/useLatestBuildDownloads'
 
 const EXTERNAL_LINKS = {
   webLogin: 'https://restaurante-web.app.br/login',
-  appAndroid: 'https://expo.dev/accounts/lumachadolp/projects/restaurante-app/builds/cb8cfb99-dc57-47ce-8a78-c7846aef9ebc',
 } as const
 
 const footerLinks = [
@@ -26,6 +26,8 @@ const footerLinks = [
 ]
 
 export function Footer() {
+  const { androidHref, iosHref, hasIOSManifest } = useLatestBuildDownloads()
+
   return (
     <footer className="bg-surface border-t border-border-subtle">
       <div className="mx-auto max-w-2xl px-4 sm:px-6 md:px-8 py-12 md:py-16">
@@ -111,12 +113,26 @@ export function Footer() {
                 Acessar o sistema
               </a>
               <a
-                href={EXTERNAL_LINKS.appAndroid}
+                href={androidHref}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 text-sm text-accent hover:text-accent-hover transition-colors"
               >
                 Baixar app Android
+              </a>
+              <a
+                href={iosHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={[
+                  'flex items-center gap-2 text-sm transition-colors',
+                  hasIOSManifest
+                    ? 'text-accent hover:text-accent-hover'
+                    : 'text-foreground-muted pointer-events-none opacity-50',
+                ].join(' ')}
+                aria-disabled={!hasIOSManifest}
+              >
+                {hasIOSManifest ? 'Baixar app iOS' : 'App iOS em breve'}
               </a>
             </div>
           </div>

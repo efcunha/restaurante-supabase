@@ -133,6 +133,21 @@ railway up --service restaurante-site
 
 `railway.json` configurado com `npx serve out -s`.
 
+## Downloads EAS (Android/iOS)
+
+Armazenamento no monorepo:
+- Artefatos baixados do EAS: `docs/builds/`
+- Publicação para o site: `restaurante-site/public/downloads/`
+
+Scripts:
+- `bash docs/scripts/download-latest-eas-builds.sh`
+- `bash docs/scripts/publish-eas-builds-to-restaurante-site.sh`
+
+Fluxo recomendado:
+1. Baixar últimos builds Android/iOS do EAS para `docs/builds`.
+2. Publicar para `restaurante-site/public/downloads`.
+3. Executar build/deploy do `restaurante-site`.
+
 ---
 
 ## External Links
