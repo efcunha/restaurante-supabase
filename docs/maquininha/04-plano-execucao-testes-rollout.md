@@ -33,7 +33,7 @@ Ultima atualizacao: **2026-04-08**
 
 ### Fase 3 - Validacao controlada [PENDENTE]
 
-- [ ] Testes unitarios do polling (useDevicePayment).
+- [x] Cobertura automatizada inicial do polling implementada (`pdv-device-payment-polling.spec.ts`).
 - [ ] Teste de integracao do endpoint /payments/initiate.
 - [x] Smoke E2E web de fluxos criticos executado (balcao, mesa, pizza, delivery, mesa-consolidacao).
 - [ ] E2E Playwright dedicado do fluxo PDV/maquininha aprovado.
@@ -46,6 +46,7 @@ Ultima atualizacao: **2026-04-08**
 - Build Android `preview` do `restaurante-app` concluido no EAS.
 - Gate TypeScript do `restaurante-app` reabilitado (type-check verde).
 - Snyk Code Scan sem novos issues nos arquivos alterados da rodada de simplificacao PDV.
+- Matriz de homologacao TEF + balanca documentada para guiar a validacao controlada da proxima rodada.
 
 ### Fase 4 - Rollout progressivo [PENDENTE]
 
@@ -55,15 +56,17 @@ Ultima atualizacao: **2026-04-08**
 
 ## 2. Feature flags recomendadas
 
-- FEATURE_PAYMENT_GATEWAY
-- FEATURE_CARD_MACHINE
-- FEATURE_PAYMENT_GATEWAY_SANDBOX
+- `EXPO_PUBLIC_FEATURE_PDV_ENABLED`
+- `EXPO_PUBLIC_FEATURE_PDV_DEVICE_PAYMENT`
+- `EXPO_PUBLIC_FEATURE_PDV_EXTERNAL_POS`
+- `EXPO_PUBLIC_FEATURE_PDV_SCALE`
 
 Regras:
 
 - Flags com default seguro (desligado em producao).
 - Mudanca de flag deve ser auditavel.
 - Rollback deve ser imediato por toggle.
+- Para homologacao, usar `06-matriz-homologacao-tef-balanca.md` para distinguir `SIM_LOCAL`, `MOCK_AUTO` e `INT_REAL`.
 
 ## 3. Plano de testes tecnicos
 

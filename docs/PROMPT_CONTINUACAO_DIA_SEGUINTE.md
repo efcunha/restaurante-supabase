@@ -19,11 +19,16 @@ Voce vai atuar como Desenvolvedor Full Stack Senior no monorepo `restaurante-sup
 - `docs/maquininha/02-fluxos-tecnicos.md`
 - `docs/maquininha/03-contratos-seguranca-observabilidade.md`
 - `docs/maquininha/04-plano-execucao-testes-rollout.md`
+- `docs/maquininha/06-matriz-homologacao-tef-balanca.md`
 - `docs/balanca/01-arquitetura-tecnica-camadas.md`
 - `docs/balanca/03-contratos-api-bridge.md`
 - `docs/balanca/04-dados-migracoes-rls.md`
 
-2. Guardrails inegociaveis:
+2. Nao usar prompts historicos como fonte principal de continuidade:
+- `docs/maquininha/PROMPT_CONTINUACAO_MAQUININHA_2026-04-07.md` e apenas referencia historica
+- `docs/maquininha/PROMPT_INICIALIZACAO_PROJETO.md` e prompt de bootstrap, nao de continuidade do estado atual
+
+3. Guardrails inegociaveis:
 - Multi-tenant por `company_id`.
 - RLS obrigatoria nas novas tabelas.
 - Sem hardcode de secrets.
@@ -31,7 +36,7 @@ Voce vai atuar como Desenvolvedor Full Stack Senior no monorepo `restaurante-sup
 - LGPD: sem PII em claro em logs.
 - Fluxo legado de pagamento nao pode quebrar.
 
-3. Antes de finalizar qualquer etapa:
+4. Antes de finalizar qualquer etapa:
 - Rodar validacao de erros de TypeScript nos arquivos alterados.
 - Rodar Snyk Code Scan nos arquivos novos/alterados.
 
@@ -128,6 +133,8 @@ Comportamento atual:
 
 ### Itens ativos para a proxima iteracao
 
+Use `docs/maquininha/06-matriz-homologacao-tef-balanca.md` como quadro de execucao da iteracao. Sempre que um cenario for validado ou automatizado, refletir o status e a evidencia documental.
+
 ### 1. Validacao funcional de release (app + web)
 - Validar no APK novo: fluxo de pagamento sem opcao TEF no mobile.
 - Validar lock de modo quando entrar por maquininha externa no app.
@@ -137,6 +144,16 @@ Comportamento atual:
 - Consolidar validacao de endpoints reais de maquininha no `restaurante-ops` com evidencias de seguranca e idempotencia.
 - Garantir fallback manual supervisionado em erro/timeout no frontend web.
 - Atualizar evidencias em `docs/maquininha/`.
+
+### 3. Pendencias mapeadas na matriz de homologacao
+
+Prioridade alta nesta continuidade:
+
+- TEF `MOCK_AUTO`: `TEF-08`, `TEF-09`, `TEF-10`
+- TEF `INT_REAL`: `TEF-11`, `TEF-12`, `TEF-13`, `TEF-14`, `TEF-15`
+- Balanca `MOCK_AUTO`: `BAL-06`, `BAL-07`, `BAL-08`
+- Balanca `INT_REAL`: `BAL-09`, `BAL-10`, `BAL-11`, `BAL-12`
+- Integrado PDV: `INT-02`, `INT-03`
 
 ---
 
@@ -170,6 +187,13 @@ Comportamento atual:
   - fluxo recusado/erro
   - fallback manual sem quebra
 - Confirmar sem regressao em Balcao, Mesa e Delivery (smoke).
+
+### Ordem recomendada de execucao nesta continuidade
+
+1. Cobrir primeiro cenarios `MOCK_AUTO` pendentes da matriz, porque reduzem risco e aumentam repetibilidade.
+2. Em seguida executar validacao `INT_REAL` controlada de TEF com evidencias sanitizadas.
+3. Depois executar validacao `INT_REAL` da balanca e os cenarios integrados PDV.
+4. Ao final, atualizar `docs/maquininha/06-matriz-homologacao-tef-balanca.md` e `docs/maquininha/04-plano-execucao-testes-rollout.md` com o status real.
 
 ### Seguranca e observabilidade
 - Garantir trilha de auditoria por `idempotency_key`.
@@ -223,6 +247,7 @@ Response (erro):
 - [ ] Testes criticos (unitarios + E2E minimo) totalmente concluidos para o fluxo PDV dedicado
 - [x] Snyk scan sem novos issues introduzidos
 - [x] Documentacao atualizada em `docs/maquininha/` com evidencias de validacao
+- [ ] Matriz de homologacao (`docs/maquininha/06-matriz-homologacao-tef-balanca.md`) atualizada com status e evidencias reais da rodada
 
 ---
 
