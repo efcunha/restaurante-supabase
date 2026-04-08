@@ -128,10 +128,28 @@ function getRequestIp(req: IncomingMessage): string {
 
 function sanitizePlainText(value: string | null | undefined): string {
   if (!value) return '';
-  return String(value).replace(/[\u0000-\u001F\u007F]/g, '').trim();
+  return String(value)
+    .replace(/[\u0000-\u001F\u007F]/g, '')
+    .replace(/[<>"'`]/g, '')
+    .trim();
 }
 
-function sanitizeJsonValue(value: unknown): unknown {
+type JsonSafeValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonSafeValue[]
+  | { [key: string]: JsonSafeValue };
+
+function sanitizeJsonValue(value: unknown): JsonSafeValue {
+  if (value instanceof Error) {
+    return {
+      code: 'INTERNAL_ERROR',
+      message: 'Erro interno.',
+    };
+  }
+
   if (typeof value === 'string') {
     return sanitizePlainText(value)
       .replace(/</g, '\\u003c')
@@ -142,16 +160,40 @@ function sanitizeJsonValue(value: unknown): unknown {
       .replace(/\u2029/g, '\\u2029');
   }
 
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : 0;
+  }
+
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
   if (Array.isArray(value)) {
     return value.map((entry) => sanitizeJsonValue(entry));
   }
 
   if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    const nameValue = typeof record.name === 'string' ? record.name.toLowerCase() : '';
+    const hasErrorShape =
+      Object.prototype.hasOwnProperty.call(record, 'stack')
+      || Object.prototype.hasOwnProperty.call(record, 'stackTrace')
+      || (nameValue.includes('error') && Object.prototype.hasOwnProperty.call(record, 'message'));
+
+    if (hasErrorShape) {
+      return {
+        code: 'INTERNAL_ERROR',
+        message: 'Erro interno.',
+      };
+    }
+
     const entries = Object.entries(value as Record<string, unknown>);
-    return Object.fromEntries(entries.map(([key, entry]) => [key, sanitizeJsonValue(entry)]));
+    return Object.fromEntries(
+      entries.map(([key, entry]) => [key, sanitizeJsonValue(entry)]),
+    ) as { [key: string]: JsonSafeValue };
   }
 
-  return value;
+  return null;
 }
 
 function respondJson(
@@ -163,8 +205,17 @@ function respondJson(
     'content-type': 'application/json; charset=utf-8',
     'x-content-type-options': 'nosniff',
   });
-  const safePayload = sanitizeJsonValue(payload);
-  const responseBody = JSON.stringify(safePayload);
+  const effectivePayload = statusCode >= 500
+    ? { error: 'Internal Server Error' }
+    : payload;
+  const safePayload = sanitizeJsonValue(effectivePayload);
+  const responseBody = JSON.stringify(safePayload)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026')
+    .replace(/'/g, '\\u0027')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
   res.end(responseBody, 'utf-8');
 }
 
@@ -185,6 +236,17 @@ function sanitizeRequestTarget(value: string | undefined): string {
   const raw = sanitizePlainText(value || '/');
   if (!raw.startsWith('/')) return '/';
 
+  const lowered = raw.toLowerCase();
+  if (
+    lowered.includes('%3c')
+    || lowered.includes('%3e')
+    || lowered.includes('%22')
+    || lowered.includes('%27')
+    || lowered.includes('%60')
+  ) {
+    return '/';
+  }
+
   const [pathPart, queryPart] = raw.split('?', 2);
   if (!/^[A-Za-z0-9\-._~!$&'()*+,;=:@/%]*$/.test(pathPart)) {
     return '/';
@@ -203,6 +265,13 @@ function sanitizeQueryMessage(value: string | null | undefined): string | null {
     .replace(/[<>"'`]/g, '')
     .slice(0, 280);
   return safe.length > 0 ? safe : null;
+}
+
+function sanitizeQueryToken(value: string | null | undefined, maxLen = 120): string {
+  if (!value) return '';
+  const trimmed = sanitizePlainText(value).slice(0, maxLen);
+  if (!trimmed) return '';
+  return /^[A-Za-z0-9._:@/+\- ]+$/.test(trimmed) ? trimmed : '';
 }
 
 function sanitizeOpsUserForHtml(user: OpsUser): OpsUser {
@@ -2440,8 +2509,7 @@ function startServer() {
           res.writeHead(302, { Location: buildDashboardRedirect(requireMfa ? 'Exigencia de MFA habilitada com sucesso no painel ops.' : 'Exigencia de MFA desabilitada com sucesso no painel ops.') });
           res.end();
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Nao foi possivel atualizar a configuracao de MFA do painel ops.';
-          res.writeHead(302, { Location: buildDashboardRedirect(undefined, message) });
+          res.writeHead(302, { Location: buildDashboardRedirect(undefined, 'Nao foi possivel atualizar a configuracao de MFA do painel ops.') });
           res.end();
         }
         return;
@@ -2473,8 +2541,7 @@ function startServer() {
           res.writeHead(302, { Location: buildDashboardRedirect(notice) });
           res.end();
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Nao foi possivel remover os autenticadores MFA do usuario.';
-          res.writeHead(302, { Location: buildDashboardRedirect(undefined, message) });
+          res.writeHead(302, { Location: buildDashboardRedirect(undefined, 'Nao foi possivel remover os autenticadores MFA do usuario.') });
           res.end();
         }
         return;
@@ -2977,7 +3044,7 @@ function startServer() {
             error: err instanceof Error ? err.message : String(err),
           });
           respondJson(res, 400, {
-            error: err instanceof Error ? err.message : 'Nao foi possivel atualizar servico monitorado.',
+            error: 'Nao foi possivel atualizar servico monitorado. Revise os campos enviados.',
           });
         }
         return;
@@ -2996,7 +3063,7 @@ function startServer() {
             error: err instanceof Error ? err.message : String(err),
           });
           respondJson(res, 500, {
-            error: err instanceof Error ? err.message : 'Nao foi possivel carregar as configuracoes de observabilidade.',
+            error: 'Nao foi possivel carregar as configuracoes de observabilidade.',
           });
         }
         return;
@@ -3053,7 +3120,7 @@ function startServer() {
             error: err instanceof Error ? err.message : String(err),
           });
           respondJson(res, 400, {
-            error: err instanceof Error ? err.message : 'Nao foi possivel atualizar as configuracoes de observabilidade.',
+            error: 'Nao foi possivel atualizar as configuracoes de observabilidade.',
           });
         }
         return;
@@ -3075,13 +3142,13 @@ function startServer() {
         const user = await requireAuth(req, res);
         if (!user) return;
 
-        const rawTab = sanitizePlainText(url.searchParams.get('tab') || 'overview');
+        const rawTab = sanitizeQueryToken(url.searchParams.get('tab') || 'overview', 32);
         const tab = ['overview', 'logs', 'metrics', 'trace', 'alerts', 'service-status', 'api-status'].includes(rawTab)
           ? rawTab
           : 'overview';
         const filters: Record<string, string> = {};
         for (const key of ['service', 'level', 'event', 'request_id', 'order_id', 'from', 'to', 'limit', 'offset']) {
-          const v = sanitizePlainText(url.searchParams.get(key) || '');
+          const v = sanitizeQueryToken(url.searchParams.get(key) || '', 180);
           if (v) filters[key] = v;
         }
 
@@ -3093,7 +3160,7 @@ function startServer() {
 
           if (tab === 'overview') {
             const hours = parseIntegerQuery(url.searchParams.get('hours'), 24, 1, 168);
-            const overviewServiceRaw = sanitizePlainText(url.searchParams.get('service') || '');
+            const overviewServiceRaw = sanitizeQueryToken(url.searchParams.get('service') || '', 64);
             const overviewService = /^[A-Za-z0-9._:-]{1,64}$/.test(overviewServiceRaw) ? overviewServiceRaw : '';
 
             const [logMetrics, logTimeline, knownLogServices, observabilitySettings, saasMetrics, billingOpsMetrics, services, alerts, statusPayload] = await Promise.all([
@@ -3148,7 +3215,7 @@ function startServer() {
             opts.saasMetrics = saasMetrics;
             opts.billingOpsMetrics = billingOpsMetrics;
           } else if (tab === 'trace') {
-            const traceId = sanitizePlainText(url.searchParams.get('trace_id') || '');
+            const traceId = sanitizeQueryToken(url.searchParams.get('trace_id') || '', 64);
             const traceType = url.searchParams.get('trace_type') === 'order' ? 'order' : 'request';
             opts.traceId = traceId;
             opts.traceType = traceType;
