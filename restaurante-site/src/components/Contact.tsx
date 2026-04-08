@@ -5,6 +5,11 @@ import { motion } from 'framer-motion'
 import { Section, Button, Badge, Card } from '@/components/ui'
 import { FaEnvelope, FaWhatsapp, FaClock, FaPaperPlane } from 'react-icons/fa6'
 
+const EDGE_FUNCTION_URL =
+  typeof window !== 'undefined'
+    ? `${process.env.NEXT_PUBLIC_SUPABASE_URL || ''}/functions/v1/send-contact`
+    : ''
+
 interface FormData {
   name: string
   email: string
@@ -23,7 +28,9 @@ const initialForm: FormData = {
 
 export function Contact() {
   const [form, setForm] = useState<FormData>(initialForm)
+  const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -32,14 +39,39 @@ export function Contact() {
     setForm((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    // TODO: integrate with actual form submission endpoint
-    setSubmitted(true)
-    setTimeout(() => {
-      setSubmitted(false)
-      setForm(initialForm)
-    }, 4000)
+    setError(null)
+    setSubmitting(true)
+
+    try {
+      if (!EDGE_FUNCTION_URL) {
+        throw new Error('URL do serviço de contato não configurada.')
+      }
+
+      const res = await fetch(EDGE_FUNCTION_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+
+      const json = await res.json()
+
+      if (!res.ok) {
+        throw new Error(json.error || 'Erro ao enviar mensagem.')
+      }
+
+      setSubmitted(true)
+      setTimeout(() => {
+        setSubmitted(false)
+        setForm(initialForm)
+      }, 5000)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Erro inesperado.'
+      setError(msg)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -68,7 +100,7 @@ export function Contact() {
                 <div>
                   <p className="text-sm text-foreground-muted">E-mail</p>
                   <p className="text-foreground font-medium text-sm">
-                    contato@machadoecunha.com.br
+                    contato@restaurante-web.app.br
                   </p>
                 </div>
               </div>
@@ -79,7 +111,7 @@ export function Contact() {
                 <div>
                   <p className="text-sm text-foreground-muted">WhatsApp</p>
                   <p className="text-foreground font-medium text-sm">
-                    (00) 00000-0000
+                    (83) 9917-2452
                   </p>
                 </div>
               </div>
@@ -164,7 +196,7 @@ export function Contact() {
                         type="tel"
                         value={form.phone}
                         onChange={handleChange}
-                        placeholder="(00) 00000-0000"
+                        placeholder="(83) 9917-2452"
                         className="w-full px-4 py-3 bg-surface-light border border-border rounded-lg text-foreground placeholder:text-foreground-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all duration-base"
                       />
                     </div>
@@ -201,9 +233,28 @@ export function Contact() {
                     />
                   </div>
 
-                  <Button variant="primary" size="lg" fullWidth type="submit">
-                    <FaPaperPlane size={16} />
-                    Enviar mensagem
+                  {/* Error message */}
+                  {error && (
+                    <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                      {error}
+                    </div>
+                  )}
+
+                  <Button variant="primary" size="lg" fullWidth type="submit" disabled={submitting}>
+                    {submitting ? (
+                      <>
+                        <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                        Enviando...
+                      </>
+                    ) : (
+                      <>
+                        <FaPaperPlane size={16} />
+                        Enviar mensagem
+                      </>
+                    )}
                   </Button>
                 </form>
               )}

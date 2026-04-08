@@ -135,6 +135,21 @@ railway up --service restaurante-site
 
 ---
 
+## External Links
+
+| Link | URL |
+|---|---|
+| Web POS Login | `https://restaurante-web.app.br/login` |
+| Android App (EAS) | `https://expo.dev/accounts/lumachadolp/projects/restaurante-app/builds/cb8cfb99-dc57-47ce-8a78-c7846aef9ebc` |
+| iOS App | _TODO: add when available_ |
+
+These links appear in:
+- **Header** — "Acessar o sistema" button + mobile menu
+- **Hero** — ecosystem cards with download/login CTAs
+- **Footer** — "Acessar o sistema" + "Baixar app Android"
+
+---
+
 ## What NOT to do
 
 - Visual genérico de "SaaS startup" com gradientes roxos

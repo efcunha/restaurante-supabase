@@ -1,29 +1,37 @@
 'use client'
 
-import { motion, type HTMLMotionProps } from 'framer-motion'
+import { type ReactNode } from 'react'
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'outline'
 type ButtonSize = 'sm' | 'md' | 'lg'
 
-interface ButtonBaseProps {
-  children: React.ReactNode
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  children: ReactNode
   variant?: ButtonVariant
   size?: ButtonSize
   fullWidth?: boolean
-}
-
-interface ButtonAsButton extends ButtonBaseProps {
   as?: 'button'
   href?: never
+  target?: never
+  rel?: never
+  type?: 'button' | 'submit' | 'reset'
+  disabled?: boolean
 }
 
-interface ButtonAsLink extends ButtonBaseProps {
+interface ButtonLinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> {
+  children: ReactNode
+  variant?: ButtonVariant
+  size?: ButtonSize
+  fullWidth?: boolean
   as: 'a'
   href: string
+  target?: string
+  rel?: string
+  type?: never
+  disabled?: boolean
 }
 
-type ButtonProps = (ButtonAsButton | ButtonAsLink) &
-  Omit<HTMLMotionProps<'button'>, 'children' | 'variant' | 'size' | 'fullWidth'>
+type ButtonAllProps = ButtonProps | ButtonLinkProps
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary: [
@@ -64,10 +72,13 @@ export function Button({
   fullWidth = false,
   as = 'button',
   href,
+  target,
+  rel,
+  type,
   className = '',
   disabled,
   ...props
-}: ButtonProps) {
+}: ButtonAllProps) {
   const baseClasses = [
     variantStyles[variant],
     sizeStyles[size],
@@ -79,31 +90,30 @@ export function Button({
     className,
   ].join(' ')
 
-  const tapProps = !disabled ? { whileTap: { scale: 0.98 } } : {}
-
   if (as === 'a' && href) {
-    const restProps = props as HTMLMotionProps<'a'>
+    const restProps = props as React.AnchorHTMLAttributes<HTMLAnchorElement>
     return (
-      <motion.a
+      <a
         href={href}
+        target={target}
+        rel={rel}
         className={baseClasses}
-        {...tapProps}
         {...restProps}
       >
         {children}
-      </motion.a>
+      </a>
     )
   }
 
-  const restProps = props as HTMLMotionProps<'button'>
+  const restProps = props as React.ButtonHTMLAttributes<HTMLButtonElement>
   return (
-    <motion.button
+    <button
+      type={type}
       className={baseClasses}
       disabled={disabled}
-      {...tapProps}
       {...restProps}
     >
       {children}
-    </motion.button>
+    </button>
   )
 }
