@@ -143,8 +143,9 @@ Scripts:
 - `bash docs/scripts/download-latest-eas-builds.sh`
 - `bash docs/scripts/publish-eas-builds-to-restaurante-site.sh`
 
-Deploy Railway (path-as-root em `restaurante-site`):
-- `bash scripts/sync-latest-eas-builds.sh`
+Observação importante:
+- O `eas build:list` em CI remoto exige contexto de projeto Expo configurado no diretório de build.
+- Neste monorepo, o fluxo recomendado é sincronizar os artefatos localmente (scripts acima) e depois fazer deploy do site estático.
 
 Fluxo recomendado:
 1. Baixar últimos builds Android/iOS do EAS para `docs/builds`.

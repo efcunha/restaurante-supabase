@@ -21,23 +21,27 @@ run_eas_build_list() {
   local platform="$1"
 
   if command -v eas >/dev/null 2>&1; then
-    eas build:list \
+    (
+      cd "$PROJECT_DIR"
+      eas build:list \
+        --platform "$platform" \
+        --status finished \
+        --limit 1 \
+        --non-interactive \
+        --json
+    )
+    return 0
+  fi
+
+  (
+    cd "$PROJECT_DIR"
+    npx --yes eas-cli build:list \
       --platform "$platform" \
       --status finished \
       --limit 1 \
       --non-interactive \
-      --json \
-      --project-dir "$PROJECT_DIR"
-    return 0
-  fi
-
-  npx --yes eas-cli build:list \
-    --platform "$platform" \
-    --status finished \
-    --limit 1 \
-    --non-interactive \
-    --json \
-    --project-dir "$PROJECT_DIR"
+      --json
+  )
 }
 
 extract_build_info() {
