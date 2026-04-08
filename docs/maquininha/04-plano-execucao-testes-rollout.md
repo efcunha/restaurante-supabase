@@ -1,36 +1,45 @@
 # 04 - Plano de execucao, testes e rollout
 
 Escopo desta fase: `restaurante-web` + `restaurante-ops`.
-Fora de escopo desta fase: `restaurante-app`.
+Fora de escopo desta fase (backend/gateway): `restaurante-app`.
+Nota: restaurante-app recebeu simplificacao de UX PDV em 2026-04-07 (TEF removido, seletor lock aplicado).
+
+Ultima atualizacao: **2026-04-07**
 
 ## 1. Roadmap por fases
 
-### Fase 0 - Preparacao tecnica
+### Fase 0 - Preparacao tecnica [CONCLUIDA]
 
-- Validar dependencias de arquitetura (ops, gateway, banco).
-- Confirmar politicas de seguranca e segredos.
-- Definir feature flags de controle.
+- [x] Validar dependencias de arquitetura (ops, gateway, banco).
+- [x] Confirmar politicas de seguranca e segredos.
+- [x] Definir feature flags de controle.
+- [x] Adicionar env vars PDV ao Railway restaurante-web.
 
-### Fase 1 - Fundacao backend
+### Fase 1 - Fundacao backend [CONCLUIDA]
 
-- Criar endpoints e contratos no restaurante-ops.
-- Implementar mapeamento de status canonicos.
-- Implementar idempotencia de webhook.
+- [x] Criar endpoints e contratos no restaurante-ops.
+- [x] Implementar mapeamento de status canonicos.
+- [x] Implementar idempotencia de webhook.
+- [x] Criar migration payment_gateway_configs e payment_transactions (aplicada remotamente).
+- [x] npm test ops: 15/15 passando.
 
-### Fase 2 - Integracao frontend
+### Fase 2 - Integracao frontend [PARCIALMENTE CONCLUIDA]
 
-- Integrar fluxo da UI de pagamento no restaurante-web.
-- Integrar/validar fluxo de balanca no restaurante-web.
-- Exibir estados de processamento e falha.
-- Registrar telemetria operacional.
+- [x] Integrar fluxo da UI de pagamento no restaurante-web (iniciacao + polling).
+- [x] Simplificar UX: lock de modo, sem dinheiro no TEF, badge visual, auto-reset.
+- [ ] Deploy web publicado no Railway com as alteracoes.
+- [ ] Integrar/validar fluxo de balanca no restaurante-web sem regressao.
+- [ ] Exibir telemetria operacional (pendente).
 
-### Fase 3 - Validacao controlada
+### Fase 3 - Validacao controlada [PENDENTE]
 
-- Executar testes E2E em fluxo critico.
-- Executar smoke test de seguranca e observabilidade.
-- Revisar criterios de go/no-go para producao.
+- [ ] Testes unitarios do polling (useDevicePayment).
+- [ ] Teste de integracao do endpoint /payments/initiate.
+- [ ] E2E Playwright fluxo aprovado.
+- [ ] Smoke test de balanca no PDV web.
+- [ ] Revisar criterios de go/no-go para producao.
 
-### Fase 4 - Rollout progressivo
+### Fase 4 - Rollout progressivo [PENDENTE]
 
 - Wave 1: sandbox interno.
 - Wave 2: grupo reduzido de restaurantes.
