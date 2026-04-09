@@ -93,3 +93,24 @@ Lista empresas com status operacional e billing.
 
 ### GET /ops/customers/:companyId
 Detalhe consolidado para suporte.
+
+## Integracoes Externas (planejado)
+
+### POST /webhooks/ifood
+Recebe eventos de pedidos/status originados no iFood.
+
+Regras:
+- validar assinatura do provedor antes de processar payload
+- validar idempotencia por `provider + eventId`
+- resolver `company_id` por mapeamento de merchant, nunca por campo livre do payload
+- registrar evento para auditoria e troubleshooting
+
+Resposta esperada:
+- `200` para evento aceito
+- `202` para processamento assincrono
+- `401` assinatura invalida
+- `409` evento duplicado
+
+Referencias:
+- `docs/ifood/CONTRATOS-API.md`
+- `docs/ifood/SEGURANCA-LGPD.md`
