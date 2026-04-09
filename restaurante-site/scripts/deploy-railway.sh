@@ -12,18 +12,24 @@ RAILWAY_PROJECT="${RAILWAY_PROJECT:-restaurante}"
 RAILWAY_ENVIRONMENT="${RAILWAY_ENVIRONMENT:-production}"
 RAILWAY_SERVICE="${RAILWAY_SERVICE:-restaurante-site}"
 
+SITE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+APK_OUTPUT="${SITE_DIR}/public/downloads/android-latest.apk"
+SKIP_BUILD="${SKIP_ANDROID_BUILD:-false}"
+
 print_usage() {
     cat <<'EOF'
 Uso: ./scripts/deploy-railway.sh [opcoes]
 
 Opcoes:
-    -h, --help     Exibe esta ajuda.
+    -h, --help            Exibe esta ajuda.
+    --skip-android-build  Pula o build/sync local do APK Android (usa o existente).
 
 Variaveis de ambiente opcionais:
     RAILWAY_WORKSPACE
     RAILWAY_PROJECT
     RAILWAY_ENVIRONMENT
     RAILWAY_SERVICE
+    SKIP_ANDROID_BUILD=true   Equivalente a --skip-android-build
 EOF
 }
 
@@ -32,6 +38,9 @@ while [ "$#" -gt 0 ]; do
         -h|--help)
             print_usage
             exit 0
+            ;;
+        --skip-android-build)
+            SKIP_BUILD="true"
             ;;
         *)
             echo "Opcao invalida: $1"
@@ -46,7 +55,30 @@ echo "======================================"
 echo "Iniciando deploy do Restaurante Site"
 echo "======================================"
 
-# Verifica se a CLI do Railway esta instalada.
+# -------------------------------------------------------
+# Etapa 1: Garantir APK Android local em public/downloads
+# -------------------------------------------------------
+if [[ "$SKIP_BUILD" == "true" ]]; then
+    echo "[Android] --skip-android-build ativo. Verificando APK existente..."
+    if [[ ! -f "$APK_OUTPUT" ]]; then
+        echo "Erro: android-latest.apk nao encontrado em ${APK_OUTPUT}."
+        echo "Execute sem --skip-android-build ou rode: npm run sync:android-local"
+        exit 1
+    fi
+    echo "[Android] APK encontrado ($(du -sh "$APK_OUTPUT" | cut -f1)). Usando existente."
+else
+    echo "[Android] Gerando e publicando APK local..."
+    bash "${SITE_DIR}/scripts/sync-local-android-build.sh"
+    if [[ ! -f "$APK_OUTPUT" ]]; then
+        echo "Erro: sync-local-android-build.sh concluiu sem gerar ${APK_OUTPUT}."
+        exit 1
+    fi
+    echo "[Android] APK pronto ($(du -sh "$APK_OUTPUT" | cut -f1))."
+fi
+
+# -------------------------------------------------------
+# Etapa 2: Verificar CLI do Railway
+# -------------------------------------------------------
 if ! command -v railway &> /dev/null; then
     echo "Railway CLI nao encontrado. Instalando globalmente via npm..."
     npm install -g @railway/cli

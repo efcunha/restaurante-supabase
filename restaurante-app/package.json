@@ -33,6 +33,7 @@
     "deploy:eas": "bash ./scripts/deploy-eas.sh",
     "deploy:eas:android": "bash ./scripts/deploy-eas.sh preview false --platform android",
     "deploy:eas:ios": "bash ./scripts/deploy-eas.sh preview false --platform ios",
+    "deploy:eas:ios:production": "bash ./scripts/deploy-eas.sh production false --platform ios",
     "fix-icon-padding": "node scripts/fix-icon-padding.js",
     "generate-icons": "node scripts/generate-android-icons.js",
     "update-splash": "node scripts/update-splash-screen.js",
