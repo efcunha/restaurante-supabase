@@ -10,7 +10,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "preview": "npx serve out -s"
+    "preview": "npx serve out -s",
+    "sync:android-local": "bash scripts/sync-local-android-build.sh"
   },
   "dependencies": {
     "framer-motion": "^11.0.0",

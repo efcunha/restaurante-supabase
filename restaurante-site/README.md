@@ -133,23 +133,22 @@ railway up --service restaurante-site
 
 `railway.json` configurado com `npx serve out -s`.
 
-## Downloads EAS (Android/iOS)
+## Downloads Locais (Android)
 
 Armazenamento no monorepo:
-- Artefatos baixados do EAS: `docs/builds/`
+- Build local do app: `restaurante-app/build/`
 - Publicação para o site: `restaurante-site/public/downloads/`
 
 Scripts:
-- `bash docs/scripts/download-latest-eas-builds.sh`
-- `bash docs/scripts/publish-eas-builds-to-restaurante-site.sh`
+- `cd restaurante-site && npm run sync:android-local`
 
 Observação importante:
-- O `eas build:list` em CI remoto exige contexto de projeto Expo configurado no diretório de build.
-- Neste monorepo, o fluxo recomendado é sincronizar os artefatos localmente (scripts acima) e depois fazer deploy do site estático.
+- O script acima executa `restaurante-app/scripts/build-android.sh` para gerar o APK localmente.
+- Em seguida, publica o arquivo como `restaurante-site/public/downloads/android-latest.apk`.
 
 Fluxo recomendado:
-1. Baixar últimos builds Android/iOS do EAS para `docs/builds`.
-2. Publicar para `restaurante-site/public/downloads`.
+1. Gerar APK local do Android com `npm run sync:android-local` em `restaurante-site`.
+2. Validar que existe `restaurante-site/public/downloads/android-latest.apk`.
 3. Executar build/deploy do `restaurante-site`.
 
 ---
