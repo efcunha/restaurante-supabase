@@ -34,6 +34,7 @@
     "deploy:eas:android": "bash ./scripts/deploy-eas.sh preview false --platform android",
     "deploy:eas:ios": "bash ./scripts/deploy-eas.sh preview false --platform ios",
     "deploy:eas:ios:production": "bash ./scripts/deploy-eas.sh production false --platform ios",
+    "deploy:eas:ios:production:interactive": "npx --yes eas-cli@latest build --platform ios --profile production",
     "fix-icon-padding": "node scripts/fix-icon-padding.js",
     "generate-icons": "node scripts/generate-android-icons.js",
     "update-splash": "node scripts/update-splash-screen.js",

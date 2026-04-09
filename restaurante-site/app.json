@@ -1,3 +1,15 @@
 {
-  "expo": {}
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "f356549d-5085-4294-bf6c-e36705c14d1f"
+      }
+    },
+    "ios": {
+      "bundleIdentifier": "com.lumachadolp.restaurantesite",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    }
+  }
 }
