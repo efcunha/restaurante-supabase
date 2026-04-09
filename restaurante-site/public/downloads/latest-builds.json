@@ -1,18 +1,13 @@
 {
-  "generatedAtUtc": "2026-04-08T23:41:06Z",
+  "generatedAtUtc": "2026-04-09T11:37:15.835Z",
   "android": {
     "platform": "android",
-    "buildId": "cb8cfb99-dc57-47ce-8a78-c7846aef9ebc",
-    "status": "FINISHED",
-    "profile": "preview",
-    "distribution": "INTERNAL",
-    "gitCommitHash": null,
-    "artifactUrl": "https://expo.dev/artifacts/eas/r8RbAEqKQWmcKPDB6DLMF3.tar.gz",
-    "extGuess": "gz",
-    "fileStem": "android-cb8cfb99-dc57-47ce-8a78-c7846aef9ebc",
-    "ext": "apk",
+    "source": "local",
     "fileLatest": "android-latest.apk",
-    "fileVersioned": "android-cb8cfb99-dc57-47ce-8a78-c7846aef9ebc.apk"
+    "fileVersioned": "Restaurante_v1.0.1_20260409_0833_arm64-v8a.apk",
+    "ext": "apk",
+    "arch": "arm64-v8a",
+    "version": "1.0.1"
   },
   "ios": {
     "platform": "ios",
