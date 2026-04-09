@@ -2,6 +2,7 @@
 set -euo pipefail
 
 # Baixa o ultimo build finalizado de Android e iOS no EAS e salva em docs/builds.
+# Para Android, quando o EAS falhar, usa fallback local via restaurante-app/scripts/build-android.sh.
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 PROJECT_DIR="${ROOT_DIR}/restaurante-app"
@@ -306,17 +307,21 @@ main() {
   fi
 
   echo "Consultando ultimo build iOS no EAS..."
-  ios_json="$(run_eas_build_list "ios")"
-  ios_info="$(extract_build_info "ios" "$ios_json")"
-
-  ios_info="$(download_artifact "$ios_info")"
+  if ios_json="$(run_eas_build_list "ios")" \
+    && ios_info="$(extract_build_info "ios" "$ios_json")" \
+    && ios_info="$(download_artifact "$ios_info")"; then
+    echo "iOS sincronizado via EAS." >&2
+  else
+    echo "Nenhum IPA iOS disponivel no momento. Mantendo iOS como indisponivel no manifesto." >&2
+    ios_info='null'
+  fi
 
   node -e '
 const fs = require("fs");
 const outputDir = process.argv[1];
 const nowUtc = process.argv[2];
 const androidInfo = JSON.parse(process.argv[3]);
-const iosInfo = JSON.parse(process.argv[4]);
+const iosInfo = process.argv[4] === "null" ? null : JSON.parse(process.argv[4]);
 const outPath = `${outputDir}/latest-builds.json`;
 
 const payload = {
