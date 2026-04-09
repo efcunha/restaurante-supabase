@@ -163,7 +163,9 @@ export function Footer() {
               <p className="text-xs text-foreground-muted leading-relaxed">
                 Machado &amp; Cunha Soft House
                 <br />
-                CNPJ: 00.000.000/0001-00
+                Nome Empresarial: E F CUNHA LTDA
+                <br />
+                CNPJ: 48.038.321/0001-01
               </p>
             </div>
           </div>
