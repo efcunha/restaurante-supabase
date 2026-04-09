@@ -15,7 +15,7 @@ type DownloadLinks = {
   androidHref: string
   iosHref: string
   hasAndroidManifest: boolean
-  hasIOSManifest: boolean
+  hasIOSIpa: boolean
 }
 
 const DEFAULT_ANDROID_FILE = 'android-latest.apk'
@@ -52,12 +52,13 @@ export function useLatestBuildDownloads(): DownloadLinks {
   return useMemo(() => {
     const androidFile = manifest?.android?.fileLatest || DEFAULT_ANDROID_FILE
     const iosFile = manifest?.ios?.fileLatest || DEFAULT_IOS_FILE
+    const hasIOSIpa = Boolean(manifest?.ios?.fileLatest?.toLowerCase().endsWith('.ipa'))
 
     return {
       androidHref: `${DOWNLOADS_BASE_PATH}/${androidFile}`,
       iosHref: `${DOWNLOADS_BASE_PATH}/${iosFile}`,
       hasAndroidManifest: Boolean(manifest?.android?.fileLatest),
-      hasIOSManifest: Boolean(manifest?.ios?.fileLatest),
+      hasIOSIpa,
     }
   }, [manifest])
 }
