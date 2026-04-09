@@ -131,7 +131,7 @@ export function Contact() {
 
           {/* Form */}
           <div className="lg:col-span-2">
-            <Card variant="elevated" padding="lg">
+            <Card variant="elevated" padding="md" className="sm:p-6 lg:p-8">
               {submitted ? (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
@@ -196,7 +196,7 @@ export function Contact() {
                         type="tel"
                         value={form.phone}
                         onChange={handleChange}
-                        placeholder="(83) 99917-2452"
+                        placeholder="(00) 00000-0000"
                         className="w-full px-4 py-3 bg-surface-light border border-border rounded-lg text-foreground placeholder:text-foreground-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all duration-base"
                       />
                     </div>

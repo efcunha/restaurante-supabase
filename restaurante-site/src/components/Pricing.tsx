@@ -40,13 +40,13 @@ export function Pricing() {
             <div className="relative">
               {/* Price */}
               <div className="mb-6">
-                <span className="text-foreground-muted text-lg">A partir de</span>
+                <span className="text-foreground-muted text-sm sm:text-lg">A partir de</span>
                 <div className="flex items-baseline justify-center gap-1 mt-1">
-                  <span className="text-foreground-muted text-lg">R$</span>
-                  <span className="font-display text-6xl md:text-7xl font-bold text-accent">
+                  <span className="text-foreground-muted text-sm sm:text-lg">R$</span>
+                  <span className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-accent">
                     149
                   </span>
-                  <span className="text-foreground-muted text-lg">/mês</span>
+                  <span className="text-foreground-muted text-sm sm:text-lg">/mês</span>
                 </div>
               </div>
 
