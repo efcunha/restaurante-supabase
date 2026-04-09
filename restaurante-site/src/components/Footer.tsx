@@ -30,10 +30,10 @@ export function Footer() {
 
   return (
     <footer className="bg-surface border-t border-border-subtle">
-      <div className="mx-auto max-w-2xl px-4 sm:px-6 md:px-8 py-12 md:py-16">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 md:px-8 py-12 md:py-16">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-12">
           {/* Brand */}
-          <div className="md:col-span-1">
+          <div className="lg:col-span-1">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-8 h-8 rounded-lg overflow-hidden bg-accent flex items-center justify-center">
                 <Image

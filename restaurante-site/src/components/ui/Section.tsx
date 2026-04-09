@@ -6,7 +6,7 @@ interface SectionProps extends HTMLMotionProps<'section'> {
   children: React.ReactNode
   className?: string
   id?: string
-  containerWidth?: 'sm' | 'md' | 'lg' | 'xl' | 'full'
+  containerWidth?: 'sm' | 'md' | 'lg' | 'xl' | '7xl' | 'full'
 }
 
 const containerVariants: Variants = {
@@ -21,8 +21,9 @@ const containerVariants: Variants = {
 const widthMap = {
   sm: 'max-w-sm',
   md: 'max-w-md',
-  lg: 'max-w-lg',
+  lg: 'max-w-7xl',
   xl: 'max-w-xl',
+  '7xl': 'max-w-7xl',
   full: 'max-w-full',
 }
 
@@ -40,7 +41,7 @@ export function Section({
       whileInView="visible"
       viewport={{ once: true, margin: '-80px', amount: 0.2 }}
       variants={containerVariants}
-      className={`w-full px-4 sm:px-6 md:px-8 py-16 md:py-24 ${className}`}
+      className={`w-full px-4 sm:px-6 md:px-8 py-12 md:py-16 ${className}`}
       {...props}
     >
       <div className={`mx-auto ${widthMap[containerWidth]}`}>

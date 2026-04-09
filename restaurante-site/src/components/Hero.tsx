@@ -24,7 +24,7 @@ export function Hero() {
   return (
     <Section
       id="hero"
-      className="pt-32 md:pt-40 pb-16 md:pb-24 min-h-screen flex items-center"
+      className="pt-24 sm:pt-32 md:pt-40 pb-12 sm:pb-16 md:pb-24 min-h-[80vh] md:min-h-screen flex items-center"
       containerWidth="full"
     >
       <Container className="text-center">
