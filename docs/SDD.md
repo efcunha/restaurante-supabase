@@ -578,6 +578,14 @@ Verificações de role no frontend são **apenas UX**. A autorização real fica
 - **Credenciais:** variável de ambiente, nunca hardcoded.
 - **Fallback:** se API indisponível, operação continua sem notificação (degradação graciosa).
 
+### 8.6 iFood (Marketplaces)
+
+- **Propósito:** canal externo para ingestão e sincronização de pedidos delivery.
+- **Status atual:** não implementado; permanece em roadmap.
+- **Diretriz arquitetural:** integração via `restaurante-ops` (webhook inbound + orquestração segura) e persistência no Supabase com RLS por `company_id`.
+- **Documentação técnica detalhada:** `docs/ifood/README.md`.
+- **Escopo do estudo:** arquitetura, contratos API, mapeamento de dados, segurança/LGPD, runbook operacional, rollout e backlog.
+
 ---
 
 ## 9. Feature Flags e Rollout Canário
