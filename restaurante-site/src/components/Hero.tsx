@@ -91,8 +91,7 @@ export function Hero() {
                 <div className="flex items-center gap-2 mt-3">
                   <a
                     href={androidHref}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    download="android-latest.apk"
                     className="inline-flex items-center gap-1.5 text-xs text-accent hover:text-accent-hover transition-colors"
                   >
                     <FaAndroid size={12} />

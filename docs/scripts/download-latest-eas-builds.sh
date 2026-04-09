@@ -120,6 +120,59 @@ ensure_output_dir() {
   mkdir -p "$OUTPUT_DIR"
 }
 
+build_android_local_fallback() {
+  local local_script="${PROJECT_DIR}/scripts/build-android.sh"
+
+  if [[ ! -f "$local_script" ]]; then
+    echo "Erro: fallback local indisponivel. Script nao encontrado: $local_script" >&2
+    return 1
+  fi
+
+  echo "Fallback Android: gerando APK local com scripts/build-android.sh..." >&2
+  (
+    cd "$PROJECT_DIR"
+    bash "$local_script"
+  )
+
+  local latest_local_apk
+  latest_local_apk="$(ls -t "${PROJECT_DIR}"/build/*.apk 2>/dev/null | head -n 1 || true)"
+
+  if [[ -z "$latest_local_apk" ]]; then
+    echo "Erro: build local concluiu sem gerar APK em ${PROJECT_DIR}/build." >&2
+    return 1
+  fi
+
+  local base_name
+  local versioned_name
+  base_name="$(basename "$latest_local_apk")"
+  versioned_name="android-local-$(date -u +%Y%m%dT%H%M%SZ).apk"
+
+  cp "$latest_local_apk" "${OUTPUT_DIR}/${versioned_name}"
+  cp "$latest_local_apk" "${OUTPUT_DIR}/android-latest.apk"
+
+  echo "APK local publicado em: ${OUTPUT_DIR}/android-latest.apk" >&2
+
+  node -e '
+const now = new Date().toISOString();
+const out = {
+  platform: "android",
+  buildId: null,
+  status: "LOCAL_FALLBACK",
+  profile: "local",
+  distribution: "local",
+  gitCommitHash: null,
+  artifactUrl: null,
+  ext: "apk",
+  fileLatest: "android-latest.apk",
+  fileVersioned: process.argv[1],
+  source: "restaurante-app/scripts/build-android.sh",
+  generatedAtUtc: now,
+  originalFile: process.argv[2],
+};
+process.stdout.write(JSON.stringify(out));
+' "$versioned_name" "$base_name"
+}
+
 download_artifact() {
   local build_info_json="$1"
 
@@ -243,14 +296,19 @@ main() {
   local ios_info
 
   echo "Consultando ultimo build Android no EAS..."
-  android_json="$(run_eas_build_list "android")"
-  android_info="$(extract_build_info "android" "$android_json")"
+  if android_json="$(run_eas_build_list "android")" \
+    && android_info="$(extract_build_info "android" "$android_json")" \
+    && android_info="$(download_artifact "$android_info")"; then
+    echo "Android sincronizado via EAS." >&2
+  else
+    echo "Falha ao sincronizar Android via EAS. Ativando fallback local." >&2
+    android_info="$(build_android_local_fallback)"
+  fi
 
   echo "Consultando ultimo build iOS no EAS..."
   ios_json="$(run_eas_build_list "ios")"
   ios_info="$(extract_build_info "ios" "$ios_json")"
 
-  android_info="$(download_artifact "$android_info")"
   ios_info="$(download_artifact "$ios_info")"
 
   node -e '
