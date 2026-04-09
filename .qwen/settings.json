@@ -3,7 +3,12 @@
     "allow": [
       "Bash(mkdir *)",
       "Bash(npm install)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "WebSearch",
+      "WebFetch(www.adspower.com)",
+      "WebFetch(www.w3cschool.cn)",
+      "WebFetch(lumadock.com)",
+      "WebFetch(almcorp.com)"
     ]
   },
   "$version": 3
