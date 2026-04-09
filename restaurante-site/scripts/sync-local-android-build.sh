@@ -40,8 +40,13 @@ find_latest_local_apk() {
     exit 1
   fi
 
+  # Prioridade: arm64-v8a mais recente; fallback para qualquer APK mais recente
   local latest_apk
-  latest_apk="$(find "${APP_BUILD_DIR}" -maxdepth 1 -type f -name '*.apk' -printf '%T@ %p\n' | sort -nr | head -n 1 | cut -d' ' -f2-)"
+  latest_apk="$(find "${APP_BUILD_DIR}" -maxdepth 1 -type f -name '*arm64-v8a*.apk' -printf '%T@ %p\n' | sort -nr | head -n 1 | cut -d' ' -f2-)"
+
+  if [[ -z "${latest_apk}" ]]; then
+    latest_apk="$(find "${APP_BUILD_DIR}" -maxdepth 1 -type f -name '*.apk' -printf '%T@ %p\n' | sort -nr | head -n 1 | cut -d' ' -f2-)"
+  fi
 
   if [[ -z "${latest_apk}" ]]; then
     echo "Erro: nenhum APK encontrado em ${APP_BUILD_DIR}" >&2
