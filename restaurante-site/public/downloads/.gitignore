@@ -2,3 +2,7 @@
 !.gitignore
 !README.md
 !latest-builds.json
+!android-latest.apk
+!android-latest.aab
+!ios-latest.ipa
+!ios-latest.app.tar.gz

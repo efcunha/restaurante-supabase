@@ -114,8 +114,7 @@ export function Footer() {
               </a>
               <a
                 href={androidHref}
-                target="_blank"
-                rel="noopener noreferrer"
+                download="android-latest.apk"
                 className="flex items-center gap-2 text-sm text-accent hover:text-accent-hover transition-colors"
               >
                 Baixar app Android
