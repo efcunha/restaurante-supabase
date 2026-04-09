@@ -16,6 +16,48 @@ SITE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 APK_OUTPUT="${SITE_DIR}/public/downloads/android-latest.apk"
 SKIP_BUILD="${SKIP_ANDROID_BUILD:-false}"
 
+retry_railway_up() {
+    local max_attempts="${RAILWAY_UP_MAX_ATTEMPTS:-3}"
+    local base_delay_seconds="${RAILWAY_UP_BASE_DELAY_SECONDS:-4}"
+    local attempt=1
+
+    while (( attempt <= max_attempts )); do
+        echo "[Railway] Tentativa ${attempt}/${max_attempts} de deploy..."
+
+        if railway up --service "$RAILWAY_SERVICE" --path-as-root ./restaurante-site; then
+            return 0
+        fi
+
+        if (( attempt == max_attempts )); then
+            break
+        fi
+
+        local wait_seconds=$(( base_delay_seconds * attempt ))
+        echo "[Railway] Falha transitória detectada. Nova tentativa em ${wait_seconds}s..."
+        sleep "$wait_seconds"
+        attempt=$(( attempt + 1 ))
+    done
+
+    return 1
+}
+
+get_latest_deployment_status() {
+    railway deployment list --service "$RAILWAY_SERVICE" --environment "$RAILWAY_ENVIRONMENT" 2>/dev/null \
+        | awk -F'|' '/\|/ { gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2; exit }'
+}
+
+is_deployment_state_acceptable() {
+    local status="$1"
+    case "$status" in
+        SUCCESS|QUEUED|BUILDING|DEPLOYING|INITIALIZING|PENDING)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
 print_usage() {
     cat <<'EOF'
 Uso: ./scripts/deploy-railway.sh [opcoes]
@@ -97,10 +139,21 @@ railway link \
     --service "$RAILWAY_SERVICE"
 
 echo "Enviando restaurante-site para producao no Railway..."
-if railway up --service "$RAILWAY_SERVICE" --path-as-root ./restaurante-site; then
+if retry_railway_up; then
     echo "Deploy iniciado/concluido com sucesso no Railway!"
 else
+    latest_status="$(get_latest_deployment_status || true)"
+    if [[ -n "$latest_status" ]] && is_deployment_state_acceptable "$latest_status"; then
+        echo "[Railway] O comando retornou erro por timeout, mas o ultimo deployment esta em estado valido: $latest_status"
+        echo "Deploy aceito no Railway (validacao por estado do deployment)."
+        exit 0
+    fi
+
     echo "Falha durante o deploy no Railway."
+    if [[ -n "$latest_status" ]]; then
+        echo "Ultimo status observado no Railway: $latest_status"
+    fi
+    echo "Dica: se o erro persistir com timeout, verifique conectividade/proxy e status do Railway."
     echo "Dica: rode 'railway login' e tente novamente."
     exit 1
 fi

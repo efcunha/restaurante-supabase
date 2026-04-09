@@ -88,7 +88,7 @@ manifest.android = {
 };
 
 fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n", "utf8");
-' "${manifestPath}" "${nowUtc}" "${source_name}"
+' "${MANIFEST_PATH}" "${DATE_UTC}" "${source_name}"
 }
 
 main() {
