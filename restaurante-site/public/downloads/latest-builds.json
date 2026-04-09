@@ -1,13 +1,11 @@
 {
-  "generatedAtUtc": "2026-04-09T11:37:15.835Z",
+  "generatedAtUtc": "2026-04-09T13:47:22Z",
   "android": {
     "platform": "android",
     "source": "local",
     "fileLatest": "android-latest.apk",
-    "fileVersioned": "Restaurante_v1.0.1_20260409_0833_arm64-v8a.apk",
-    "ext": "apk",
-    "arch": "arm64-v8a",
-    "version": "1.0.1"
+    "fileVersioned": "Restaurante_v1.0.1_20260409_1059_arm64-v8a.apk",
+    "ext": "apk"
   },
   "ios": {
     "platform": "ios",
