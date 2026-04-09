@@ -26,7 +26,7 @@ const footerLinks = [
 ]
 
 export function Footer() {
-  const { androidHref, iosHref, hasIOSManifest } = useLatestBuildDownloads()
+  const { androidHref, iosHref, hasIOSIpa } = useLatestBuildDownloads()
 
   return (
     <footer className="bg-surface border-t border-border-subtle">
@@ -126,13 +126,13 @@ export function Footer() {
                 rel="noopener noreferrer"
                 className={[
                   'flex items-center gap-2 text-sm transition-colors',
-                  hasIOSManifest
+                  hasIOSIpa
                     ? 'text-accent hover:text-accent-hover'
                     : 'text-foreground-muted pointer-events-none opacity-50',
                 ].join(' ')}
-                aria-disabled={!hasIOSManifest}
+                aria-disabled={!hasIOSIpa}
               >
-                {hasIOSManifest ? 'Baixar app iOS' : 'App iOS em breve'}
+                {hasIOSIpa ? 'Baixar app iOS' : 'App iOS em breve'}
               </a>
             </div>
           </div>
