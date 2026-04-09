@@ -19,7 +19,7 @@ const itemVariants = {
 }
 
 export function Hero() {
-  const { androidHref, iosHref, hasIOSManifest } = useLatestBuildDownloads()
+  const { androidHref, iosHref, hasIOSIpa } = useLatestBuildDownloads()
 
   return (
     <Section
@@ -105,14 +105,14 @@ export function Hero() {
                     rel="noopener noreferrer"
                     className={[
                       'inline-flex items-center gap-1.5 text-xs transition-colors',
-                      hasIOSManifest
+                      hasIOSIpa
                         ? 'text-accent hover:text-accent-hover'
                         : 'text-foreground-muted pointer-events-none opacity-50',
                     ].join(' ')}
-                    aria-disabled={!hasIOSManifest}
+                    aria-disabled={!hasIOSIpa}
                   >
                     <FaApple size={12} />
-                    {hasIOSManifest ? 'iOS' : 'iOS em breve'}
+                    {hasIOSIpa ? 'iOS' : 'iOS em breve'}
                   </a>
                 </div>
               ),
