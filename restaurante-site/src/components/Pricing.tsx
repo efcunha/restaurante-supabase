@@ -6,7 +6,7 @@ import { FaCheck, FaArrowRight } from 'react-icons/fa6'
 
 const included = [
   '1 restaurante cadastrado',
-  'App mobile completo (iOS e Android)',
+  'App mobile completo (Android, iOS em breve)',
   'Interface web de gestão',
   'Suporte via e-mail e chat',
 ]
