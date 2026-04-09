@@ -11,6 +11,7 @@ Este diretório centraliza a documentação transversal do monorepo.
 - Gate TypeScript do app reabilitado (`npm run type-check` sem erros).
 - Snyk Code Scan executado nos arquivos alterados sem novos issues.
 - Smoke E2E web de fluxos críticos executado com sucesso.
+- Estudo técnico de integração iFood consolidado em `docs/ifood/`.
 
 ## Continuidade recomendada
 
@@ -27,6 +28,8 @@ Este diretório centraliza a documentação transversal do monorepo.
 - `repository/`: documentação estrutural do monorepo e mapas de domínio
 - `maquininha/`: arquitetura, fluxos técnicos, contratos, segurança e rollout da integração de pagamento presencial
 - `balanca/`: arquitetura, fluxos, contratos, dados, segurança, testes e prompt de inicialização da integração de balança
+- `ifood/`: estudo técnico da integração iFood (arquitetura, contratos, dados, segurança, rollout e backlog)
+	- onboarding: `docs/ifood/CADASTRO-E-CREDENCIAIS-API.md`
 
 ## Ponto de entrada recomendado
 
@@ -37,3 +40,5 @@ Este diretório centraliza a documentação transversal do monorepo.
 5. `docs/maquininha/README.md` para especificação técnica consolidada da integração de maquininha
 6. `docs/maquininha/06-matriz-homologacao-tef-balanca.md` para execução de homologação TEF + balança com separação entre simulador, mocks e integração real
 7. `docs/balanca/README.md` para especificação técnica consolidada da integração de balança
+8. `docs/ifood/README.md` para estudo técnico consolidado da integração iFood
+9. `docs/ifood/CADASTRO-E-CREDENCIAIS-API.md` para processo de cadastro, habilitação e obtenção de credenciais API no iFood
