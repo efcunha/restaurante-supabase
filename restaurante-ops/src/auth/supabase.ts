@@ -24,6 +24,12 @@ export const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE
   auth: { persistSession: false },
 });
 
+function createAuthSessionClient() {
+  return createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false },
+  });
+}
+
 export interface OpsUser {
   id: string;
   email: string;
@@ -92,7 +98,10 @@ export async function signInWithPassword(
   requireMfa = false,
   mfaCode?: string,
 ): Promise<{ token: string; user: OpsUser }> {
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  // Use an isolated auth client so login/MFA session state never mutates
+  // the shared service-role client used for internal DB operations.
+  const authClient = createAuthSessionClient();
+  const { data, error } = await authClient.auth.signInWithPassword({ email, password });
 
   if (error) throw new Error(error.message);
   if (!data.session) throw new Error('Sessao nao criada');
@@ -101,9 +110,9 @@ export async function signInWithPassword(
   const userId = data.user.id;
 
   const profile = await fetchOpsProfile(userId);
-  await enforceOpsMfa(profile, requireMfa, mfaCode);
+  await enforceOpsMfa(authClient, profile, requireMfa, mfaCode);
 
-  const { data: sessionData } = await supabase.auth.getSession();
+  const { data: sessionData } = await authClient.auth.getSession();
   const resolvedToken = sessionData.session?.access_token ?? token;
 
   return {
@@ -118,7 +127,12 @@ export async function signInWithPassword(
   };
 }
 
-async function enforceOpsMfa(profile: OpsProfile, requireMfa: boolean, mfaCode?: string): Promise<void> {
+async function enforceOpsMfa(
+  authClient: ReturnType<typeof createAuthSessionClient>,
+  profile: OpsProfile,
+  requireMfa: boolean,
+  mfaCode?: string,
+): Promise<void> {
   if (!requireMfa) {
     return;
   }
@@ -128,7 +142,7 @@ async function enforceOpsMfa(profile: OpsProfile, requireMfa: boolean, mfaCode?:
     return;
   }
 
-  const { data, error } = await supabase.auth.mfa.listFactors();
+  const { data, error } = await authClient.auth.mfa.listFactors();
   if (error) {
     throw new Error('Falha ao validar MFA no restaurante-ops.');
   }
@@ -142,7 +156,7 @@ async function enforceOpsMfa(profile: OpsProfile, requireMfa: boolean, mfaCode?:
     throw new Error('Codigo MFA obrigatorio para acessar o restaurante-ops.');
   }
 
-  const { error: verifyError } = await supabase.auth.mfa.challengeAndVerify({
+  const { error: verifyError } = await authClient.auth.mfa.challengeAndVerify({
     factorId: verifiedTotp[0].id,
     code: mfaCode,
   });
