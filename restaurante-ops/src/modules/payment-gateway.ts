@@ -597,15 +597,132 @@ function readJsonSafe(value: string): Record<string, unknown> {
   }
 }
 
+interface ComandaRecord {
+  id: string;
+  status: string;
+  open_balance: number;
+}
+
+async function validateComandaAndBalance(
+  companyId: string,
+  comandaNumber: string,
+  amountCents: number,
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('comandas')
+    .select('id, status, open_balance')
+    .eq('company_id', companyId)
+    .eq('comanda_number', Number(comandaNumber))
+    .maybeSingle();
+
+  if (error && !isMissingRowError(error.code, error.message)) {
+    logWarn('payment.comanda_query_error', {
+      company_id: companyId,
+      comanda_number: comandaNumber,
+      error_code: error.code,
+      error_message: error.message,
+    });
+    return 'Erro ao validar comanda. Tente novamente.';
+  }
+
+  if (!data) {
+    return `Comanda ${sanitizeText(comandaNumber, 32)} nao encontrada.`;
+  }
+
+  const comanda = data as ComandaRecord;
+
+  if (comanda.status !== 'aberta') {
+    return `Comanda ${sanitizeText(comandaNumber, 32)} nao esta aberta (status: ${sanitizeText(comanda.status, 40)}).`;
+  }
+
+  const amountReais = amountCents / 100;
+  if ((comanda.open_balance ?? 0) < amountReais) {
+    return `Saldo insuficiente na comanda ${sanitizeText(comandaNumber, 32)}. Saldo: R$ ${(comanda.open_balance ?? 0).toFixed(2)}, Solicitado: R$ ${amountReais.toFixed(2)}.`;
+  }
+
+  return null;
+}
+
+function resolveSimulationFinalStatus(raw: string | null | undefined): PaymentStatus {
+  const normalized = sanitizeText(raw, 40).toLowerCase();
+  if (normalized === 'approved' || normalized === 'succeeded') return 'succeeded';
+  if (normalized === 'declined' || normalized === 'failed') return 'failed';
+  if (normalized === 'cancelled' || normalized === 'canceled') return 'cancelled';
+  return 'processing';
+}
+
+function getSimulationFinalizeAtIso(createdAtIso: string): string {
+  const createdAtMs = Date.parse(createdAtIso);
+  const safeBaseMs = Number.isFinite(createdAtMs) ? createdAtMs : Date.now();
+  const finalizeAtMs = safeBaseMs + env.PDV_DEVICE_SIMULATION_FINALIZE_AFTER_MS;
+  return new Date(finalizeAtMs).toISOString();
+}
+
+async function maybeResolveSimulatedFinalStatus(
+  transaction: PaymentTransactionRecord,
+  repository: PaymentGatewayRepository,
+): Promise<PaymentTransactionRecord> {
+  if (!env.PDV_DEVICE_SIMULATION) {
+    return transaction;
+  }
+
+  if (transaction.status !== 'processing' && transaction.status !== 'pending') {
+    return transaction;
+  }
+
+  const metadata = sanitizeMetadata(transaction.metadata);
+  const simulationMetadata = asRecord(metadata.simulation);
+  const finalStatus = resolveSimulationFinalStatus(
+    typeof simulationMetadata?.final_status === 'string'
+      ? simulationMetadata.final_status
+      : env.PDV_DEVICE_SIMULATION_FINAL_STATUS,
+  );
+
+  if (finalStatus === 'processing' || finalStatus === 'pending') {
+    return transaction;
+  }
+
+  const finalizeAtCandidate = typeof simulationMetadata?.finalize_at === 'string'
+    ? simulationMetadata.finalize_at
+    : getSimulationFinalizeAtIso(transaction.createdAt);
+  const finalizeAtMs = Date.parse(finalizeAtCandidate);
+  if (Number.isFinite(finalizeAtMs) && Date.now() < finalizeAtMs) {
+    return transaction;
+  }
+
+  if (!canTransitionPaymentStatus(transaction.status, finalStatus)) {
+    return transaction;
+  }
+
+  return repository.updateTransaction(transaction.id, {
+    providerStatus: finalStatus,
+    status: finalStatus,
+    metadata: {
+      ...metadata,
+      simulation: {
+        ...(simulationMetadata ?? {}),
+        final_status: finalStatus,
+        finalize_at: finalizeAtCandidate,
+        finalized_at: new Date().toISOString(),
+      },
+    },
+  });
+}
+
 const defaultGatewayClient: GatewayClient = {
   async initiatePayment(input) {
     if (env.PDV_DEVICE_SIMULATION) {
+      const simulationFinalStatus = resolveSimulationFinalStatus(env.PDV_DEVICE_SIMULATION_FINAL_STATUS);
+      const simulationFinalizeAt = getSimulationFinalizeAtIso(new Date().toISOString());
       return {
         providerPaymentId: `sim_${randomUUID()}`,
         providerStatus: 'processing',
         status: 'processing',
         raw: {
           simulation: true,
+          final_status: simulationFinalStatus,
+          finalize_after_ms: env.PDV_DEVICE_SIMULATION_FINALIZE_AFTER_MS,
+          finalize_at: simulationFinalizeAt,
           terminal_id: input.gatewayConfig.terminalId,
         },
       };
@@ -704,6 +821,13 @@ export async function initiatePayment(
   const repository = deps.repository ?? defaultRepository;
   const gatewayClient = deps.gatewayClient ?? defaultGatewayClient;
 
+  // Validate comanda exists and has sufficient balance before checking idempotency
+  // This ensures that even if idempotency key retries, invalid comandas are always rejected
+  const comandaValidationError = await validateComandaAndBalance(input.companyId, input.comandaNumber, input.amount);
+  if (comandaValidationError) {
+    throw new PaymentGatewayError(comandaValidationError, 'invalid_comanda', 400);
+  }
+
   const existing = await repository.findTransactionByIdempotencyKey(input.companyId, input.idempotencyKey);
   if (existing) {
     return {
@@ -782,7 +906,8 @@ export async function getPaymentStatus(
     throw new PaymentGatewayError('Transacao presencial nao encontrada.', 'payment_not_found', 404);
   }
 
-  return toStatusView(transaction);
+  const resolvedTransaction = await maybeResolveSimulatedFinalStatus(transaction, repository);
+  return toStatusView(resolvedTransaction);
 }
 
 export async function processHyperswitchWebhook(

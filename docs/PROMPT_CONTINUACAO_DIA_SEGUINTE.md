@@ -2,7 +2,7 @@
 
 Use este prompt para retomar a implementacao exatamente do ponto atual da integracao PDV (maquininha) no `restaurante-supabase`.
 
-Ultima atualizacao: **2026-04-08** — deploy web + build Android + gate TypeScript/Snyk.
+Ultima atualizacao: **2026-04-10** — TEF-12/TEF-13 validados em INT_REAL com evidencia de polling. TEF-14/TEF-15 implementados, aguardando deployment.
 
 ---
 
@@ -139,6 +139,13 @@ Use `docs/maquininha/06-matriz-homologacao-tef-balanca.md` como quadro de execuc
 - Validar no APK novo: fluxo de pagamento sem opcao TEF no mobile.
 - Validar lock de modo quando entrar por maquininha externa no app.
 - Validar em producao web o fluxo travado correto por modo (TEF e maquininha externa).
+- Evidencia atual web (`INT_REAL`): response real em `POST /payments/initiate` com `404` e payload `code=gateway_not_configured` para o tenant autenticado.
+- CORS de pagamentos validado apos deploy do `restaurante-ops` (`Access-Control-Allow-Origin` presente para origem canônica web).
+- Proximo desbloqueio para `TEF-11`: configurar `payment_gateway_configs` ativo no tenant autenticado e validar credenciais server-side do gateway (ou simulação controlada) para obter `processing`.
+- Atualizacao desta rodada: `payment_gateway_configs` ativo cadastrado no tenant do E2E; `POST /payments/initiate` evoluiu para `503` (erro server-side sanitizado), indicando bloqueio atual em infraestrutura/credenciais de gateway.
+- Atualizacao final desta rodada: `TEF-11` concluido em `INT_REAL` com response real `202` e `status=processing` apos habilitar simulação controlada (`PDV_DEVICE_SIMULATION=true`) no `restaurante-ops`.
+- Atualizacao desta rodada: `TEF-12` validado em `INT_REAL` com transicao observada no polling (`processing -> succeeded`) sem duplicidade de baixa da comanda.
+- Atualizacao desta rodada: `TEF-13` validado em `INT_REAL` com timeout operacional e polling ativo (`/payments/:id/status` com requests/responses observados), sem sucesso falso.
 
 ### 2. Fluxo PDV real ponta-a-ponta
 - Consolidar validacao de endpoints reais de maquininha no `restaurante-ops` com evidencias de seguranca e idempotencia.
@@ -150,7 +157,7 @@ Use `docs/maquininha/06-matriz-homologacao-tef-balanca.md` como quadro de execuc
 Prioridade alta nesta continuidade:
 
 - TEF `MOCK_AUTO`: `TEF-08`, `TEF-09`, `TEF-10`
-- TEF `INT_REAL`: `TEF-11`, `TEF-12`, `TEF-13`, `TEF-14`, `TEF-15`
+- TEF `INT_REAL`: `TEF-11`, `TEF-12`, `TEF-13` (cobertos); `TEF-14`, `TEF-15` (pendentes)
 - Balanca `MOCK_AUTO`: `BAL-06`, `BAL-07`, `BAL-08`
 - Balanca `INT_REAL`: `BAL-09`, `BAL-10`, `BAL-11`, `BAL-12`
 - Integrado PDV: `INT-02`, `INT-03`
@@ -172,6 +179,7 @@ Prioridade alta nesta continuidade:
 ### Integracao web com endpoints reais
 - Em `devicePaymentService.ts`, manter simulacao por flag, mas conectar fluxo real aos endpoints de `restaurante-ops`.
 - Em `PagamentoScreen.tsx`, quando `approved`, registrar pagamento de forma segura sem quebrar o fluxo atual.
+- Status atual: implementado registro automatico apos `approved` no web com fallback manual supervisionado. Validacoes `INT_REAL` de `TEF-11`, `TEF-12` e `TEF-13` concluidas; pendentes `TEF-14` e `TEF-15`.
 - Garantir fallback claro para erro/timeout (manual supervisionado).
 
 ### Balanca (fase inicial)
@@ -243,11 +251,50 @@ Response (erro):
 - [x] Endpoints de maquininha no `restaurante-ops` implementados e validados (conforme status de fase em `docs/maquininha/04-plano-execucao-testes-rollout.md`)
 - [x] Migration criada/aplicada/verificada para tabelas de maquininha (conforme status de fase em `docs/maquininha/04-plano-execucao-testes-rollout.md`)
 - [x] RLS validada para isolamento por `company_id` (conforme status de fase em `docs/maquininha/04-plano-execucao-testes-rollout.md`)
-- [ ] Frontend web consumindo endpoint real com fallback seguro (validacao funcional final pendente)
-- [ ] Testes criticos (unitarios + E2E minimo) totalmente concluidos para o fluxo PDV dedicado
+- [x] Frontend web consumindo endpoint real com fallback seguro (implementacao + validacao funcional `INT_REAL` para `TEF-11/12/13` concluidas)
+- [x] **TEF-14/TEF-15 implementados (2026-04-10)**:
+  - Backend validacoes adicionadas: `validateComandaAndBalance()` em `restaurante-ops/src/modules/payment-gateway.ts`
+  - E2E test suite criado: `restaurante-web/e2e/pdv-maquininha-validacao.spec.ts`
+  - Test scripts adicionados ao `package.json`: `test:e2e:pdv-validacao:int-real:*`
+  - Status: **Codigo pronto, deploy pendente** → Ver `docs/maquininha/07-deployment-tef14-tef15.md`
+- [ ] Testes criticos (unitarios + E2E minimo) totalmente concluidos para o fluxo PDV dedicado (`MOCK_AUTO` concluido; `INT_REAL` parcial com `TEF-11/12/13` concluido e `TEF-14/15` code-ready, validation-pending)
 - [x] Snyk scan sem novos issues introduzidos
 - [x] Documentacao atualizada em `docs/maquininha/` com evidencias de validacao
-- [ ] Matriz de homologacao (`docs/maquininha/06-matriz-homologacao-tef-balanca.md`) atualizada com status e evidencias reais da rodada
+- [ ] Matriz de homologacao (`docs/maquininha/06-matriz-homologacao-tef-balanca.md`) atualizada com status e evidencias reais da rodada (TEF-14/15 pendentes de execucao p/ evidencia)
+
+---
+
+## Proximos passos na continuacao
+
+### 1. Deployment de TEF-14/TEF-15 ⏳
+**Bloqueador atual**: Railway CLI token invalida no contexto. Alternativas:
+- [ ] Executar `railway login` com credenciais validas
+- [ ] Fazer deploy via Railway Web Dashboard manual
+- [ ] Usar git push + auto-deploy (se configurado)
+
+**Comando preferido**:
+```bash
+cd d:/restaurante-supabase
+railway up --service restaurante-ops --path-as-root ./restaurante-ops
+```
+
+### 2. Execucao de Testes INT_REAL ⏳
+Apos deployment:
+```bash
+cd restaurante-web
+
+# Todos os testes:
+npm run test:e2e:pdv-validacao:int-real:prod-web
+
+# Individual:
+npm run test:e2e:pdv-validacao:int-real:tef14:prod-web  # TEF-14: idempotencia
+npm run test:e2e:pdv-validacao:int-real:tef15:prod-web  # TEF-15: validacoes
+```
+
+### 3. Atualizacao de Matriz ⏳
+Pos-teste: atualizar `06-matriz-homologacao-tef-balanca.md`:
+- TEF-14 row status = "Coberto" com evidencia de transationId idênticos
+- TEF-15 row status = "Coberto" com evidencia de HTTP 400 errors
 
 ---
 

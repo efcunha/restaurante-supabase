@@ -7,6 +7,8 @@ export interface OpsEnv {
   HYPERSWITCH_API_KEY?: string;
   HYPERSWITCH_WEBHOOK_SECRET?: string;
   PDV_DEVICE_SIMULATION: boolean;
+  PDV_DEVICE_SIMULATION_FINAL_STATUS?: string;
+  PDV_DEVICE_SIMULATION_FINALIZE_AFTER_MS: number;
   OBS_SUPABASE_URL?: string;
   OBS_SUPABASE_SERVICE_ROLE_KEY?: string;
   OBS_DUAL_WRITE: boolean;
@@ -71,6 +73,7 @@ export function buildEnv(): OpsEnv {
   const parsedObsDualWrite = process.env.OBS_DUAL_WRITE === 'true';
   const parsedObsReadFromIsolated = process.env.OBS_READ_FROM_ISOLATED === 'true';
   const parsedPdvDeviceSimulation = process.env.PDV_DEVICE_SIMULATION === 'true';
+  const parsedPdvDeviceSimulationFinalizeAfterMs = Number(process.env.PDV_DEVICE_SIMULATION_FINALIZE_AFTER_MS || '4500');
   const parsedSlowQueryThreshold = Number(process.env.SLOW_QUERY_THRESHOLD_MS || '500');
   const parsedLogRetentionDays = Number(process.env.LOG_RETENTION_DAYS || '30');
   const parsedObsStaleMinutes = Number(process.env.OBS_STALE_MINUTES || '60');
@@ -84,6 +87,10 @@ export function buildEnv(): OpsEnv {
     HYPERSWITCH_API_KEY: process.env.HYPERSWITCH_API_KEY,
     HYPERSWITCH_WEBHOOK_SECRET: process.env.HYPERSWITCH_WEBHOOK_SECRET,
     PDV_DEVICE_SIMULATION: parsedPdvDeviceSimulation,
+    PDV_DEVICE_SIMULATION_FINAL_STATUS: process.env.PDV_DEVICE_SIMULATION_FINAL_STATUS,
+    PDV_DEVICE_SIMULATION_FINALIZE_AFTER_MS: Number.isFinite(parsedPdvDeviceSimulationFinalizeAfterMs)
+      ? Math.max(0, Math.trunc(parsedPdvDeviceSimulationFinalizeAfterMs))
+      : 4500,
     OBS_SUPABASE_URL: process.env.OBS_SUPABASE_URL,
     OBS_SUPABASE_SERVICE_ROLE_KEY: process.env.OBS_SUPABASE_SERVICE_ROLE_KEY,
     OBS_DUAL_WRITE: parsedObsDualWrite,
