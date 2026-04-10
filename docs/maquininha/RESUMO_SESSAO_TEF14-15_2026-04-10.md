@@ -129,3 +129,35 @@ cd d:/restaurante-supabase/restaurante-web
 bash scripts/run-tef14-15-tests.sh --token "<bearer>" --company "<company_uuid>" --comanda "999" --all
 ```
 
+---
+
+## Decisao formal Go/No-Go (2026-04-10)
+
+Decisao: **Go**
+
+Justificativa objetiva:
+- Reexecucao automatica concluida no ciclo atual com evidencias atualizadas (`tef14-15-int-real.json` + `tef14-15-int-real.md`).
+- Cenarios funcionais criticos aprovados em INT_REAL: TEF-14 (idempotencia 202 com mesmo transactionId), TEF-15a (400 comanda invalida), TEF-15b (400 saldo insuficiente).
+- Saude operacional do `restaurante-ops` validada em producao: `/healthz` e `/api/status` com HTTP 200.
+- Sanitizacao de mensagens e isolamento por `company_id` preservados no gateway de pagamento.
+
+## Plano de ativacao (hoje)
+
+1. Realizar ativacao na janela operacional definida com responsavel nomeado.
+2. Executar smoke imediato pos-ativacao com o comando automatico de evidencia.
+3. Monitorar por 30-60 min respostas de `/payments/initiate` e `/payments/status`.
+4. Registrar evidencias do ciclo de ativacao em `restaurante-web/tmp/evidencias/`.
+
+## Rollback imediato (executavel)
+
+Gatilhos de rollback imediato:
+- Qualquer falha de seguranca, isolamento multi-tenant ou divergencia de evidencia critica.
+- Aumento de erro operacional acima do baseline no monitoramento inicial.
+
+Acao:
+1. Desativar `FEATURE_CARD_MACHINE`.
+2. Manter metodos legados de pagamento ativos.
+3. Preservar trilha de auditoria e abrir incidente com causa raiz/plano corretivo.
+
+Referencia do procedimento: `docs/maquininha/04-plano-execucao-testes-rollout.md` (Secao 6).
+

@@ -177,6 +177,31 @@ npm run test:e2e:pdv-validacao:int-real:prod-web
 
 ---
 
+## ✅ Fechamento Formal Go/No-Go (Atualizado)
+
+- Decisao final: **Go**.
+- Base da decisao: rerun automatico de evidencia no ciclo atual + saude operacional do ops + checklist curto concluido sem falhas criticas.
+- Evidencias usadas:
+  - `restaurante-web/tmp/evidencias/tef14-15-int-real.json`
+  - `restaurante-web/tmp/evidencias/tef14-15-int-real.md`
+
+### Checklist curto final
+
+- Funcional (TEF-14, TEF-15a, TEF-15b): OK
+- Seguranca (sem vazamento sensivel, validacoes por company_id): OK
+- Operacao (`/healthz`, `/api/status`, rerun automatico): OK
+- Rollback (documentado e acionavel por feature flag): OK
+
+### Acoes imediatas para hoje
+
+1. Ativar TEF na janela operacional definida.
+2. Rodar smoke pos-ativacao com o runner automatico.
+3. Monitorar 30-60 min indicadores de erro e status de pagamentos.
+4. Acionar rollback imediato por flag se houver desvio critico.
+5. Registrar evidencias finais no pacote de release.
+
+---
+
 ## 💾 Backup & Commit
 
 Antes de próxima sessão:
