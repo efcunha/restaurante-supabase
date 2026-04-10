@@ -2,7 +2,7 @@
 
 Use este prompt para retomar a implementacao exatamente do ponto atual da integracao PDV (maquininha) no `restaurante-supabase`.
 
-Ultima atualizacao: **2026-04-10** — TEF-12/TEF-13 validados em INT_REAL com evidencia de polling. TEF-14/TEF-15 implementados em backend + suite E2E API-direct, aguardando deployment e execucao real.
+Ultima atualizacao: **2026-04-10 (noite)** — TEF-14/TEF-15 deployados e validados com snapshot 3/3 em `2026-04-10T19:40:20Z`. Ciclo Pix TEF + WebUSB implementado e deployado (ver `docs/maquininha/13-pix-tef-webusb-impressao-2026-04-10.md`). Validacoes manuais de Pix em producao e impressao WebUSB com hardware real permanecem pendentes.
 
 Atualizacao de handoff (turno da tarde):
 - Suite `restaurante-web/e2e/pdv-maquininha-validacao.spec.ts` foi consolidada como API-direct (sem login por UI).
@@ -258,6 +258,16 @@ Response (erro):
 - [x] Migration criada/aplicada/verificada para tabelas de maquininha (conforme status de fase em `docs/maquininha/04-plano-execucao-testes-rollout.md`)
 - [x] RLS validada para isolamento por `company_id` (conforme status de fase em `docs/maquininha/04-plano-execucao-testes-rollout.md`)
 - [x] Frontend web consumindo endpoint real com fallback seguro (implementacao + validacao funcional `INT_REAL` para `TEF-11/12/13` concluidas)
+- [x] **Ciclo Pix TEF + WebUSB (2026-04-10 noite)**:
+  - Bug Pix silencioso (`cartao_debito`) corrigido em `PagamentoScreen.tsx` (tri-way)
+  - `DevicePaymentMethod` estendido com `'pix'` no frontend e backend
+  - `PrinterService.ts` reescrito: WebUSB adapter real + fallback chain (native → USB → mock)
+  - `printPaymentReceipt()` adicionado; comprovante impresso apos TEF aprovado
+  - `/payments/initiate` aceita `paymentMethod: 'pix'` no backend
+  - Deploy ops + web executado com sucesso
+  - Snapshot pos-deploy: total=3 passed=3 (2026-04-10T19:40:20Z)
+  - Status: **Automatizado concluido; validacoes manuais (Pix em UI + USB hardware) pendentes**
+  - Ver: `docs/maquininha/13-pix-tef-webusb-impressao-2026-04-10.md`
 - [x] **TEF-14/TEF-15 implementados (2026-04-10)**:
   - Backend validacoes adicionadas: `validateComandaAndBalance()` em `restaurante-ops/src/modules/payment-gateway.ts`
   - E2E test suite API-direct criado: `restaurante-web/e2e/pdv-maquininha-validacao.spec.ts`
@@ -273,11 +283,20 @@ Response (erro):
 
 ## Proximos passos na continuacao
 
-### 1. Deployment de TEF-14/TEF-15 ⏳
-**Bloqueador atual**: Railway CLI token invalida no contexto. Alternativas:
-- [ ] Executar `railway login` com credenciais validas
-- [ ] Fazer deploy via Railway Web Dashboard manual
-- [ ] Usar git push + auto-deploy (se configurado)
+### 1. Validacoes manuais Pix TEF + WebUSB (bloqueado em hardware/UI)
+**Proximo prompt**: `docs/maquininha/PROMPT_CONTINUACAO_NOITE_PIX_WEBUSB_2026-04-10.md`
+
+- [ ] Pix TEF em UI de producao: abrir PagamentoScreen, selecionar Pix, confirmar `payment_method='pix'` gravado em Supabase
+- [ ] WebUSB com impressora termica real: Chrome/Edge HTTPS, testar `PrinterConfigScreen` → "Buscar Impressoras" → autorizar → imprimir
+
+### 2. Remediar XSS pre-existente (CWE-79)
+**Arquivo**: `restaurante-ops/src/index.ts:232`
+**Fingerprint Snyk**: `bc441d81...`
+**Acao**: sanitizar output antes de incluir em `res.send()`; rodar Snyk pos-fix para confirmar remocao.
+
+### 3. Deployment de TEF-14/TEF-15 ⏅ (concluido em 2026-04-10)
+~~**Bloqueador atual**: Railway CLI token invalida no contexto.~~
+Deploy concluido com sucesso. Snapshot 3/3 em producao.
 
 **Comando preferido**:
 ```bash
@@ -285,8 +304,14 @@ cd d:/restaurante-supabase
 railway up --service restaurante-ops --path-as-root ./restaurante-ops
 ```
 
-### 2. Execucao de Testes INT_REAL ⏳
-Apos deployment:
+### 2. Execucao diaria snapshot TEF (inicio de turno)
+```bash
+cd d:/restaurante-supabase/restaurante-web
+npm run ops:tef:snapshot:prod-web
+```
+Resultado esperado: `total=3 passed=3 failed=0 skipped=0`
+
+### 3. Execucao de Testes INT_REAL (referencia historica — ja concluido)
 ```bash
 cd restaurante-web
 
