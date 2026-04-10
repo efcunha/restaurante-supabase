@@ -16,6 +16,7 @@ import type { ExternalPosPaymentData, PaymentMode } from '../features/payments/t
 import { isFeatureEnabled } from '../config/featureFlags';
 import { auditService } from '../services/AuditService';
 import { useDevicePayment } from '../features/pdv';
+import PrinterService from '../services/PrinterService';
 
 // Usar função centralizada para consistência de data local
 const todayKey = getTodayKey;
@@ -388,7 +389,12 @@ export default function PagamentoScreen({ route, navigation }: any) {
         return;
       }
 
-      const paymentMethod = forma === 'cartao_credito' ? 'cartao_credito' : 'cartao_debito';
+      const paymentMethod =
+        forma === 'cartao_credito'
+          ? 'cartao_credito'
+          : forma === 'pix'
+            ? 'pix'
+            : 'cartao_debito';
       const result = await startDevicePayment({
         companyId: user.companyId,
         comandaNumber: String(comanda),
@@ -446,6 +452,19 @@ export default function PagamentoScreen({ route, navigation }: any) {
         await new Promise(resolve => setTimeout(resolve, 200));
         await carregarDadosComanda();
         setValor('');
+
+        if (PrinterService.getStatus().connected) {
+          await PrinterService.printPaymentReceipt({
+            comandaNumber: comanda,
+            paymentMethod: forma,
+            amount: valorPago,
+            operatorName: user?.nome || undefined,
+            transactionId: result.transactionId,
+            providerPaymentId: result.providerPaymentId,
+            authCode: result.authCode,
+            paidAt: new Date().toLocaleString('pt-BR'),
+          });
+        }
 
         Alert.alert('Sucesso', 'Pagamento aprovado na maquininha e registrado na comanda.');
       } catch (registerError: any) {

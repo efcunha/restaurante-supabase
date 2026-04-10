@@ -1,4 +1,4 @@
-export type DevicePaymentMethod = 'cartao_credito' | 'cartao_debito';
+export type DevicePaymentMethod = 'cartao_credito' | 'cartao_debito' | 'pix';
 
 export type DevicePaymentStatus =
   | 'idle'

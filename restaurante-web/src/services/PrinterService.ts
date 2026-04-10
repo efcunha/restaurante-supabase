@@ -17,11 +17,129 @@ if (Platform.OS !== 'web') {
     EscPosPrinter = require('./PrinterService.mock').default;
   }
 } else {
-  // Web sempre usa mock
-  EscPosPrinter = require('./PrinterService.mock').default;
+  EscPosPrinter = null;
 }
 
 const PRINTER_CONFIG_KEY = '@printer_config';
+
+type WebUsbDevice = any;
+
+function createWebUsbEscPosAdapter() {
+  if (typeof navigator === 'undefined' || !(navigator as any).usb) {
+    return null;
+  }
+
+  const encoder = new TextEncoder();
+  let connectedDevice: WebUsbDevice | null = null;
+  let connectedEndpoint: number | null = null;
+  let connectedInterface: number | null = null;
+
+  async function ensureClaimed(device: WebUsbDevice) {
+    if (!device.opened) {
+      await device.open();
+    }
+
+    if (!device.configuration) {
+      await device.selectConfiguration(1);
+    }
+
+    const configuration = device.configuration;
+    const interfaces = configuration?.interfaces || [];
+
+    for (const iface of interfaces) {
+      for (const alternate of iface.alternates || []) {
+        const endpoint = (alternate.endpoints || []).find(
+          (ep: any) => ep.direction === 'out' && (ep.type === 'bulk' || ep.type === 'interrupt'),
+        );
+
+        if (!endpoint) continue;
+
+        await device.claimInterface(iface.interfaceNumber);
+        connectedEndpoint = endpoint.endpointNumber;
+        connectedInterface = iface.interfaceNumber;
+        return;
+      }
+    }
+
+    throw new Error('Nenhum endpoint de escrita foi encontrado na impressora USB.');
+  }
+
+  async function writeRaw(data: Uint8Array) {
+    if (!connectedDevice || connectedEndpoint == null) {
+      throw new Error('Impressora USB nao conectada.');
+    }
+
+    await connectedDevice.transferOut(connectedEndpoint, data);
+  }
+
+  return {
+    async discover() {
+      try {
+        const requestedDevice = await (navigator as any).usb.requestDevice({ filters: [] });
+        if (!requestedDevice) return [];
+
+        return [
+          {
+            name: requestedDevice.productName || 'USB Thermal Printer',
+            target: `usb:${requestedDevice.vendorId || 'unknown'}:${requestedDevice.productId || 'unknown'}`,
+            transport: 'usb',
+            __webUsbDevice: requestedDevice,
+          },
+        ];
+      } catch (error: any) {
+        if (error?.name === 'NotFoundError') {
+          return [];
+        }
+        throw error;
+      }
+    },
+
+    async connect(printerRef: any) {
+      const device = printerRef?.__webUsbDevice;
+      if (!device) {
+        throw new Error('Selecione uma impressora USB valida.');
+      }
+
+      connectedDevice = device;
+      await ensureClaimed(device);
+      return true;
+    },
+
+    async disconnect() {
+      if (connectedDevice) {
+        try {
+          if (connectedInterface != null) {
+            await connectedDevice.releaseInterface(connectedInterface);
+          }
+        } catch {
+          // ignore
+        }
+
+        try {
+          await connectedDevice.close();
+        } catch {
+          // ignore
+        }
+      }
+
+      connectedDevice = null;
+      connectedEndpoint = null;
+      connectedInterface = null;
+    },
+
+    async printText(text: string) {
+      await writeRaw(encoder.encode(text));
+    },
+
+    async cutPaper() {
+      await writeRaw(Uint8Array.from([0x1d, 0x56, 0x41, 0x00]));
+    },
+  };
+}
+
+if (Platform.OS === 'web') {
+  EscPosPrinter = createWebUsbEscPosAdapter() ?? require('./PrinterService.mock').default;
+}
 
 interface PrinterDevice {
     name: string;
@@ -59,6 +177,17 @@ interface PedidoData {
     cliente?: string;
     horarioCriacao?: string;
     itens?: ItemPedido[];
+}
+
+interface PaymentReceiptData {
+  comandaNumber: string | number;
+  paymentMethod: string;
+  amount: number;
+  operatorName?: string;
+  transactionId?: string;
+  providerPaymentId?: string;
+  authCode?: string;
+  paidAt?: string;
 }
 
 class PrinterService {
@@ -107,10 +236,10 @@ class PrinterService {
   }
 
   /**
-   * Verifica se está disponível apenas em ambiente nativo
+   * Verifica se o mecanismo de impressão está disponível
    */
   isAvailable(): boolean {
-    return Platform.OS !== 'web' && EscPosPrinter !== null && EscPosPrinter !== undefined;
+    return EscPosPrinter !== null && EscPosPrinter !== undefined;
   }
 
   /**
@@ -118,7 +247,7 @@ class PrinterService {
    */
   async listPrinters(): Promise<PrinterDevice[]> {
     if (!this.isAvailable()) {
-      Alert.alert('Não disponível', 'Impressão via Bluetooth só funciona no app mobile.');
+      Alert.alert('Não disponível', 'Impressão indisponível neste dispositivo/navegador.');
       return [];
     }
 
@@ -136,7 +265,7 @@ class PrinterService {
    */
   async connect(printer: PrinterDevice, width: number = 48): Promise<boolean> {
     if (!this.isAvailable()) {
-      Alert.alert('Não disponível', 'Impressão via Bluetooth só funciona no app mobile.');
+      Alert.alert('Não disponível', 'Impressão indisponível neste dispositivo/navegador.');
       return false;
     }
 
@@ -215,7 +344,7 @@ class PrinterService {
    */
   async printComanda(comandaData: ComandaData): Promise<boolean> {
     if (!this.isAvailable()) {
-      Alert.alert('Não disponível', 'Impressão via Bluetooth só funciona no app mobile (Android/iOS).');
+      Alert.alert('Não disponível', 'Impressão indisponível neste dispositivo/navegador.');
       return false;
     }
 
@@ -379,6 +508,61 @@ class PrinterService {
       return true;
     } catch {
       Alert.alert('Erro', 'Falha ao imprimir pedido. Verifique a conexão.');
+      return false;
+    }
+  }
+
+  /**
+   * Imprime comprovante simples de pagamento presencial.
+   */
+  async printPaymentReceipt(data: PaymentReceiptData): Promise<boolean> {
+    if (!this.connectedPrinter) {
+      return false;
+    }
+
+    try {
+      const centerText = (text: string) => {
+        const padding = Math.floor((this.printerWidth - text.length) / 2);
+        return ' '.repeat(Math.max(0, padding)) + text;
+      };
+
+      const line = '='.repeat(this.printerWidth);
+      const methodLabel = String(data.paymentMethod || 'desconhecido').replace(/_/g, ' ').toUpperCase();
+      const amountLabel = `R$ ${Number(data.amount || 0).toFixed(2)}`;
+      const paidAt = data.paidAt || new Date().toLocaleString('pt-BR');
+
+      await EscPosPrinter.printText(line + '\n');
+      await EscPosPrinter.printText(centerText('COMPROVANTE TEF') + '\n', {
+        fontType: 1,
+        widthTimes: 1,
+        heightTimes: 1,
+      });
+      await EscPosPrinter.printText(line + '\n');
+      await EscPosPrinter.printText(`Comanda: ${data.comandaNumber}\n`);
+      await EscPosPrinter.printText(`Forma: ${methodLabel}\n`);
+      await EscPosPrinter.printText(`Valor: ${amountLabel}\n`);
+      await EscPosPrinter.printText(`Data: ${paidAt}\n`);
+
+      if (data.operatorName) {
+        await EscPosPrinter.printText(`Operador: ${data.operatorName}\n`);
+      }
+      if (data.transactionId) {
+        await EscPosPrinter.printText(`Transacao: ${data.transactionId}\n`);
+      }
+      if (data.providerPaymentId) {
+        await EscPosPrinter.printText(`Id provedor: ${data.providerPaymentId}\n`);
+      }
+      if (data.authCode) {
+        await EscPosPrinter.printText(`Autorizacao: ${data.authCode}\n`);
+      }
+
+      await EscPosPrinter.printText(line + '\n');
+      await EscPosPrinter.printText(centerText('VIA ESTABELECIMENTO') + '\n');
+      await EscPosPrinter.printText('\n\n\n');
+      await EscPosPrinter.cutPaper();
+
+      return true;
+    } catch {
       return false;
     }
   }

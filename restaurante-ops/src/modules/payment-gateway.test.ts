@@ -18,6 +18,18 @@ test('validateInitiatePaymentInput aceita payload valido', () => {
   assert.equal(error, null);
 });
 
+test('validateInitiatePaymentInput aceita pix no payload valido', () => {
+  const error = mod.validateInitiatePaymentInput({
+    companyId: '11111111-1111-4111-8111-111111111111',
+    comandaNumber: '124',
+    amount: 3390,
+    paymentMethod: 'pix',
+    idempotencyKey: 'company:124:pix12345',
+  });
+
+  assert.equal(error, null);
+});
+
 test('validateInitiatePaymentInput rejeita amount nao inteiro e comanda invalida', () => {
   assert.equal(
     mod.validateInitiatePaymentInput({
