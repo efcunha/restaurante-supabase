@@ -1,4 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
+import LicenseGate from '../components/LicenseGate';
 import { StyleSheet, Text, View, FlatList, TouchableOpacity, Alert, Platform } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useState, useEffect, useCallback, memo, useRef, useMemo } from 'react';
@@ -790,6 +791,7 @@ export default function MontagemScreen() {
   const keyExtractor = useCallback((item: any) => item.id, []);
 
   return (
+    <LicenseGate>
     <View style={styles.container}>
 
 
@@ -822,6 +824,7 @@ export default function MontagemScreen() {
 
       <StatusBar style="light" />
     </View>
+    </LicenseGate>
   );
 }
 
