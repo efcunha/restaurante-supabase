@@ -127,12 +127,12 @@ bash scripts/run-tef14-15-tests.sh \
 
 ## Checklist de Validacao (DoD operacional)
 
-- [~] restaurante-ops buildado e deployado (CLI bloqueado por token Railway invalido; fallback manual no dashboard pendente)
+- [x] restaurante-ops disponivel em producao e respondendo healthchecks
 - [x] suite E2E API-direct criada
-- [ ] TEF-14 test: confirma idempotencia
-- [ ] TEF-15 test: confirma rejeicao de comanda invalida
-- [ ] TEF-15 test: confirma rejeicao de saldo insuficiente
-- [~] Evidencias coletadas e registradas (deploy/health registrados; faltam evidencias dos 3 testes INT_REAL)
+- [x] TEF-14 test: confirma idempotencia
+- [x] TEF-15 test: confirma rejeicao de comanda invalida
+- [x] TEF-15 test: confirma rejeicao de saldo insuficiente
+- [x] Evidencias coletadas e registradas no ciclo atual (JSON + MD)
 - [x] Matriz de homologacao atualizada (status de bloqueio + comando pronto para rerun)
 
 ## Status Operacional Atual
@@ -172,9 +172,23 @@ bash scripts/run-tef14-15-tests.sh --token "<bearer>" --company "<company_uuid>"
 
 ## Proximos Passos
 
-1. Deploy do restaurante-ops via Railway Dashboard (ou CLI com token valido).
-2. Executar `scripts/run-tef14-15-tests.sh` com token/company reais.
-3. Capturar output de terminal com os 3 cenarios.
-4. Atualizar `docs/maquininha/06-matriz-homologacao-tef-balanca.md`:
-  - TEF-14: evidencia de transactionId identicos
-  - TEF-15a e TEF-15b: evidencia de HTTP 400
+1. Ativar TEF na janela operacional definida.
+2. Executar smoke pos-ativacao com rerun automatico de evidencia.
+3. Monitorar 30-60 min status de initiate/status e taxa de erro.
+4. Acionar rollback imediato por feature flag se houver desvio critico.
+
+## Fechamento formal de decisao (2026-04-10)
+
+- Decisao: Go.
+- Criterio funcional: aprovado (TEF-14, TEF-15a, TEF-15b em INT_REAL).
+- Criterio de operacao: aprovado (`/healthz` e `/api/status` HTTP 200).
+- Criterio de seguranca/isolamento: aprovado (sanitizacao e validacao por `company_id` preservadas).
+- Criterio de evidencia: aprovado (artefatos `tef14-15-int-real.json` e `tef14-15-int-real.md` gerados no ciclo atual).
+
+## Rollback imediato
+
+1. Desativar `FEATURE_CARD_MACHINE`.
+2. Manter metodos legados de pagamento ativos.
+3. Preservar trilha de auditoria e abrir incidente com causa raiz/plano corretivo.
+
+Referencia: `docs/maquininha/04-plano-execucao-testes-rollout.md` (Secao 6).
