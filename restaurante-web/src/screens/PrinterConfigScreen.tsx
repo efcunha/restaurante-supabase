@@ -42,7 +42,7 @@ export default function PrinterConfigScreen({ navigation }: Props) {
     if (!PrinterService.isAvailable()) {
       Alert.alert(
         'Não disponível',
-        'Impressão Bluetooth só funciona no app mobile (Android/iOS).'
+        'Impressão indisponível neste dispositivo/navegador.'
       );
       return;
     }
@@ -105,12 +105,12 @@ export default function PrinterConfigScreen({ navigation }: Props) {
       >
         <View style={styles.unavailableContainer}>
           <Text style={styles.unavailableText}>⚠️</Text>
-          <Text style={styles.unavailableTitle}>Não Disponível na Web</Text>
+          <Text style={styles.unavailableTitle}>Impressão Indisponível</Text>
           <Text style={styles.unavailableSubtext}>
-            A impressão via Bluetooth só funciona no app mobile (Android/iOS).
+            Este navegador/dispositivo não oferece suporte ao conector de impressão configurado.
           </Text>
           <Text style={styles.unavailableSubtext}>
-            Use a versão mobile para configurar a impressora.
+            No web, use um navegador compatível com WebUSB e HTTPS.
           </Text>
         </View>
         <StatusBar style="light" />
@@ -231,8 +231,8 @@ export default function PrinterConfigScreen({ navigation }: Props) {
         <View style={styles.instructionsCard}>
           <Text style={styles.instructionsTitle}>📋 Como Configurar:</Text>
           <Text style={styles.instructionText}>1. Ligue a impressora</Text>
-          <Text style={styles.instructionText}>2. Ative o Bluetooth do celular</Text>
-          <Text style={styles.instructionText}>3. Pareie a impressora (Config. do Android)</Text>
+          <Text style={styles.instructionText}>2. Mobile: ative o Bluetooth e faça o pareamento</Text>
+          <Text style={styles.instructionText}>3. Web: conecte via USB e autorize no seletor do navegador</Text>
           <Text style={styles.instructionText}>4. Clique em &quot;Buscar Impressoras&quot;</Text>
           <Text style={styles.instructionText}>5. Selecione sua impressora</Text>
           <Text style={styles.instructionText}>6. Faça um teste de impressão</Text>
