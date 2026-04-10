@@ -69,6 +69,57 @@ python scripts/get-auth-token.py \
 
 ## Executar Testes
 
+### Via Script Zero-to-Run (Automatico)
+
+Resolve automaticamente:
+
+- token bearer via Supabase Auth (usando credenciais de teste do `.env`),
+- `company_id` do usuario autenticado,
+- comanda aberta com saldo suficiente para TEF-14.
+
+Comando unico:
+
+```bash
+cd restaurante-web
+bash scripts/run-tef14-15-auto.sh --all
+```
+
+Variantes:
+
+```bash
+# Apenas TEF-14
+bash scripts/run-tef14-15-auto.sh --tef14
+
+# Apenas TEF-15
+bash scripts/run-tef14-15-auto.sh --tef15
+
+# Forcar comanda especifica
+bash scripts/run-tef14-15-auto.sh --all --comanda "10"
+```
+
+Atalho via npm:
+
+```bash
+npm run test:e2e:pdv-validacao:int-real:auto:prod-web
+```
+
+Gerar evidência em JSON (artefato para CI/documentacao):
+
+```bash
+npm run test:e2e:pdv-validacao:int-real:auto:json:prod-web
+```
+
+Gerar evidência completa (JSON + resumo Markdown):
+
+```bash
+npm run test:e2e:pdv-validacao:int-real:auto:evidence:prod-web
+```
+
+Arquivo gerado:
+
+- `tmp/evidencias/tef14-15-int-real.json`
+- `tmp/evidencias/tef14-15-int-real.md`
+
 ### Via Script de Auxiliar (Recomendado)
 
 ```bash
