@@ -56,4 +56,63 @@ test.describe('PDV balanca regressao', () => {
       globalThis.fetch = originalFetch;
     }
   });
+
+  test('BAL-06: leitura instavel retorna status unstable sem confirmar peso', async () => {
+    process.env.EXPO_PUBLIC_SCALE_BRIDGE_URL = 'http://scale-bridge.local';
+
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async () => {
+      return {
+        ok: true,
+        json: async () => ({
+          peso_kg: 0.842,
+          estavel: false,
+        }),
+      } as Response;
+    }) as typeof fetch;
+
+    try {
+      const result = await readStableScaleWeight(2000);
+      expect(result.status).toBe('unstable');
+      expect(result.reading?.weightKg).toBeCloseTo(0.842, 3);
+      expect(result.reading?.isStable).toBe(false);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test('BAL-07: erro inesperado do bridge retorna status error', async () => {
+    process.env.EXPO_PUBLIC_SCALE_BRIDGE_URL = 'http://scale-bridge.local';
+
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async () => {
+      throw new Error('Bridge failure');
+    }) as typeof fetch;
+
+    try {
+      const result = await readStableScaleWeight(2000);
+      expect(result.status).toBe('error');
+      expect(result.message).toContain('Erro inesperado');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test('BAL-08: feature flag de balanca desligada bloqueia chamada ao bridge', async () => {
+    process.env.EXPO_PUBLIC_SCALE_BRIDGE_URL = 'http://scale-bridge.local';
+    disableFeature('pdv_scale_enabled');
+
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async () => {
+      throw new Error('Nao deveria chamar bridge com flag desligada');
+    }) as typeof fetch;
+
+    try {
+      const result = await readStableScaleWeight(2000);
+      expect(result.status).toBe('error');
+      expect(result.message).toContain('feature flag');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
 });

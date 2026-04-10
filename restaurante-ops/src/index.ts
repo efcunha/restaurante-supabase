@@ -397,23 +397,35 @@ function applySecurityHeaders(res: import('node:http').ServerResponse): void {
   }
 }
 
-function getAllowedCorsOrigin(): string | null {
-  const configuredBaseUrl = sanitizePlainText(env.WEB_BASE_URL || '');
-  if (!configuredBaseUrl) return null;
+function getAllowedCorsOrigins(): string[] {
+  const origins = new Set<string>();
+  origins.add('https://restaurante-web.app.br');
 
-  try {
-    return new URL(configuredBaseUrl).origin;
-  } catch {
-    return null;
+  const configuredBaseUrl = sanitizePlainText(env.WEB_BASE_URL || '');
+  if (configuredBaseUrl) {
+    try {
+      origins.add(new URL(configuredBaseUrl).origin);
+    } catch {
+      logWarn('payment.cors_invalid_web_base_url', {
+        configuredBaseUrl,
+      });
+    }
   }
+
+  // Local development/e2e origin should never be exposed in production CORS.
+  if (env.OPS_ENV !== 'production') {
+    origins.add('http://localhost:8081');
+  }
+
+  return Array.from(origins);
 }
 
 function applyPaymentCors(req: IncomingMessage, res: import('node:http').ServerResponse): boolean {
-  const allowedOrigin = getAllowedCorsOrigin();
+  const allowedOrigins = getAllowedCorsOrigins();
   const requestOrigin = sanitizePlainText(Array.isArray(req.headers.origin) ? req.headers.origin[0] : req.headers.origin || '');
 
-  if (allowedOrigin && requestOrigin && requestOrigin === allowedOrigin) {
-    res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+  if (requestOrigin && allowedOrigins.includes(requestOrigin)) {
+    res.setHeader('Access-Control-Allow-Origin', requestOrigin);
     res.setHeader('Vary', 'Origin');
     res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Authorization,Content-Type,X-Hyperswitch-Signature');
