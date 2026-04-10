@@ -7,7 +7,7 @@ const env = buildEnv();
 
 const PAYMENT_OPERATOR_ROLES = new Set(['admin', 'gerente', 'garcom', 'caixa']);
 
-export type PaymentMethod = 'cartao_credito' | 'cartao_debito';
+export type PaymentMethod = 'cartao_credito' | 'cartao_debito' | 'pix';
 export type PaymentStatus = 'pending' | 'processing' | 'succeeded' | 'failed' | 'cancelled';
 export type PaymentNextAction = 'none' | 'await_terminal' | 'await_webhook' | 'retry_allowed';
 
@@ -283,8 +283,8 @@ export function validateInitiatePaymentInput(input: Partial<InitiatePaymentInput
     return 'amount deve ser inteiro positivo em centavos.';
   }
 
-  if (input.paymentMethod !== 'cartao_credito' && input.paymentMethod !== 'cartao_debito') {
-    return 'paymentMethod deve ser cartao_credito ou cartao_debito.';
+  if (input.paymentMethod !== 'cartao_credito' && input.paymentMethod !== 'cartao_debito' && input.paymentMethod !== 'pix') {
+    return 'paymentMethod deve ser cartao_credito, cartao_debito ou pix.';
   }
 
   const idempotencyKey = sanitizeText(input.idempotencyKey, 120);
@@ -760,6 +760,8 @@ const defaultGatewayClient: GatewayClient = {
         },
         description: `Comanda ${input.comandaNumber}`,
         payment_method_data: {
+          // O provedor presencial atual usa card_present para operacoes em terminal.
+          // Enquanto a rota PIX dedicada nao estiver disponivel, mapeamos PIX para debit no gateway.
           type: input.paymentMethod === 'cartao_credito' ? 'credit' : 'debit',
         },
       }),

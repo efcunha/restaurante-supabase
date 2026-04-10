@@ -29,9 +29,10 @@ function sanitizePlainText(value: string | null | undefined): string {
   return String(value).replace(/[\u0000-\u001F\u007F]/g, '').trim();
 }
 
-function sanitizePaymentMethod(rawPaymentMethod: unknown): '' | 'cartao_credito' | 'cartao_debito' {
+function sanitizePaymentMethod(rawPaymentMethod: unknown): '' | 'cartao_credito' | 'cartao_debito' | 'pix' {
   if (rawPaymentMethod === 'cartao_credito') return 'cartao_credito';
   if (rawPaymentMethod === 'cartao_debito') return 'cartao_debito';
+  if (rawPaymentMethod === 'pix') return 'pix';
   return '';
 }
 

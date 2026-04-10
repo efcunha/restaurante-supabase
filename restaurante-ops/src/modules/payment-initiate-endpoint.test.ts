@@ -106,3 +106,43 @@ test('handleInitiatePaymentEndpoint retorna 400 para payload invalido', async ()
   assert.equal(response.payload.code, 'invalid_request');
   assert.equal(response.payload.correlation_id, 'req-400');
 });
+
+test('handleInitiatePaymentEndpoint aceita paymentMethod pix', async () => {
+  const operator = {
+    id: 'op-4',
+    email: 'caixa2@example.com',
+    fullName: 'Caixa Pix',
+    role: 'caixa',
+    companyId: '11111111-1111-4111-8111-111111111111',
+  };
+
+  const response = await mod.handleInitiatePaymentEndpoint(
+    {
+      companyId: operator.companyId,
+      comandaNumber: '601',
+      amount: 1890,
+      paymentMethod: 'pix',
+      idempotencyKey: 'company:601:pix-123456',
+    },
+    operator,
+    'req-pix',
+    {
+      initiatePaymentFn: async () => ({
+        provider: 'stone',
+        transactionId: 'tx-pix-1',
+        providerPaymentId: 'pay-pix-1',
+        status: 'processing',
+        nextAction: 'await_webhook',
+        amount: 1890,
+        paymentMethod: 'pix',
+        message: 'Pagamento presencial em processamento na maquininha.',
+        createdAt: '2026-04-10T20:00:00.000Z',
+        updatedAt: '2026-04-10T20:00:00.000Z',
+        correlationId: 'corr-pix-1',
+      }),
+    },
+  );
+
+  assert.equal(response.statusCode, 202);
+  assert.equal(response.payload.paymentMethod, 'pix');
+});

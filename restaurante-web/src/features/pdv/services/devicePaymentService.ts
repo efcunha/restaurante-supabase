@@ -12,7 +12,9 @@ function getOpsBaseUrl(): string {
 }
 
 function buildPaymentMethodLabel(paymentMethod: DevicePaymentRequest['paymentMethod']): string {
-  return paymentMethod === 'cartao_credito' ? 'credito' : 'debito';
+  if (paymentMethod === 'cartao_credito') return 'credito';
+  if (paymentMethod === 'cartao_debito') return 'debito';
+  return 'pix';
 }
 
 function mapBackendStatusToDeviceStatus(status: unknown): DevicePaymentResult['status'] {
