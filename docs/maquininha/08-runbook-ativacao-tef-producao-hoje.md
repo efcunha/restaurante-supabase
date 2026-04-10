@@ -31,10 +31,18 @@ cd d:/restaurante-supabase/restaurante-web
 npm run test:e2e:pdv-validacao:int-real:auto:evidence:prod-web
 ```
 
+Opcao recomendada (snapshot completo de operacao + evidencia TEF):
+
+```bash
+cd d:/restaurante-supabase/restaurante-web
+npm run ops:tef:snapshot:prod-web
+```
+
 Resultado esperado:
 
 - total=3, passed=3, failed=0
 - artefatos atualizados em `tmp/evidencias/`
+- resumo de snapshot criado em `tmp/evidencias/tef-go-live-snapshot-<timestamp>.md`
 
 ## 4. Janela de observacao (30-60 min)
 
