@@ -30,12 +30,13 @@ Documentar tecnicamente a integracao de leitura de peso por balanca serial/USB n
 5. [Seguranca, LGPD e observabilidade](05-seguranca-lgpd-observabilidade.md)
 6. [Testes, rollout e rollback](06-testes-rollout-rollback.md)
 7. [Prompt de inicializacao do projeto](PROMPT_INICIALIZACAO_PROJETO.md)
+8. [Prompt curto de continuacao D+1](PROMPT_CONTINUACAO_D1_BALANCA_CURTO.md)
 
 ## Referencia fonte
 
 Documento base analisado:
 
-- ../BALANCA_IMPL_PROMPT.md
+- BALANCA_IMPL_PROMPT.md
 
 ## Diretriz de uso
 
