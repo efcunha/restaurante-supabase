@@ -9,10 +9,10 @@ const TEST_COMANDA_NUMBER = process.env.E2E_TEST_COMANDA || '999';
 const TEST_AUTH_TOKEN = process.env.E2E_TEST_TOKEN || process.env.PLAYWRIGHT_AUTH_TOKEN || '';
 
 test.describe('[E2E] TEF-14/15: Validação API (INT_REAL only)', () => {
-  test.beforeEach(({ skip }) => {
+  test.beforeEach(async ({}, testInfo) => {
     // Skip se não estiver em modo INT_REAL ou se faltar credenciais
     if (!isIntReal) {
-      skip();
+      testInfo.skip();
     }
     if (!TEST_AUTH_TOKEN) {
       console.warn(
@@ -21,11 +21,11 @@ test.describe('[E2E] TEF-14/15: Validação API (INT_REAL only)', () => {
         '   export E2E_TEST_TOKEN="seu-bearer-token"\n' +
         '   export E2E_TEST_COMPANY_ID="sua-company-uuid"\n'
       );
-      skip();
+      testInfo.skip();
     }
     if (!TEST_COMPANY_ID) {
       console.warn('[E2E] ⏭️ Skipping TEF-14/15: E2E_TEST_COMPANY_ID não configurado.');
-      skip();
+      testInfo.skip();
     }
   });
 

@@ -90,8 +90,21 @@ Os simuladores atuais ajudam em UX e treino operacional, mas nao cobrem integral
 | TEF-11 | INT_REAL | Iniciar transacao real controlada | Flags PDV habilitadas, usuario autenticado, OPS acessivel | `companyId`, comanda, valor e metodo validos | Iniciar maquininha a partir da UI | Backend aceita request e retorna `processing` ou estado equivalente | `npm run test:e2e:pdv-maquininha:int-real:prod-web` com response real `POST /payments/initiate => 202` e payload `status=processing` apos: (1) hardening CORS publicado; (2) `payment_gateway_configs` ativo no tenant; (3) `PDV_DEVICE_SIMULATION=true` em `restaurante-ops`. | Coberto |
 | TEF-12 | INT_REAL | Confirmar transacao aprovada | Mesmo contexto do item anterior | `transactionId` real | Aguardar polling ate finalizacao | Estado final `approved` sem duplicidade de baixa | `npx playwright test e2e/pdv-maquininha-aprovado.spec.ts` em `INT_REAL` com expectativa `approved` e evidencia de polling `processing -> succeeded` (`Statuses observados: ['processing','processing','succeeded']`) | Coberto |
 | TEF-13 | INT_REAL | Confirmar timeout operacional | Mesmo contexto do item anterior | `transactionId` com atraso/nao conclusao | Deixar polling expirar | Frontend mostra timeout e nao registra sucesso falso | `npx playwright test e2e/pdv-maquininha-aprovado.spec.ts` em `INT_REAL` com expectativa `timeout`, evidenciando polling ativo (`/status` requests/responses: `26/26`) e encerramento sem sucesso falso | Coberto |
-| TEF-14 | INT_REAL | Retry sem duplicidade de sucesso | Transacao anterior falhou/expirou | Nova tentativa para mesma comanda | Repetir acao controladamente | Nao ocorre duplicidade de quitacao ou sucesso fantasma | Evidencia de comanda, logs e trilha de status | Pendente |
-| TEF-15 | INT_REAL | Validar bloqueio por saldo/comanda invalida | Comanda sem saldo ou invalida | Entrada incoerente | Acionar fluxo TEF | UI e/ou backend impedem processamento | Evidencia de mensagem operacional e ausencia de registro indevido | Pendente |
+| TEF-14 | INT_REAL | Retry sem duplicidade de sucesso | Ops deployado com validacao ativa, token real e company real | Duas chamadas com mesma idempotencyKey | Executar suite API-direct de validacao TEF-14 | Mesmo transactionId retornado nas duas chamadas | Output de `e2e/pdv-maquininha-validacao.spec.ts` com transactionId identico e status 202 | Bloqueado (sem token/company no ambiente em 2026-04-10) |
+| TEF-15 | INT_REAL | Validar bloqueio por comanda invalida e saldo insuficiente | Ops deployado com validacao ativa, token real e company real | Comanda inexistente e valor acima do saldo | Executar suite API-direct de validacao TEF-15 | Backend retorna HTTP 400 e impede processamento indevido | Output de `e2e/pdv-maquininha-validacao.spec.ts` com TEF-15a e TEF-15b em 400 | Bloqueado (sem token/company no ambiente em 2026-04-10) |
+
+### Atualizacao de execucao - 2026-04-10 (turno da tarde)
+
+- Tentativa de deploy via CLI executada com o comando `railway up --service restaurante-ops --path-as-root ./restaurante-ops`.
+- Resultado do deploy CLI: bloqueado por autenticacao (`Invalid RAILWAY_TOKEN`).
+- Healthcheck validado em producao: `GET /healthz` = HTTP 200 e `GET /api/status` = HTTP 200 em `https://ops.restaurante-web.app.br`.
+- Execucao da suite TEF-14/15 nao iniciada por ausencia de `E2E_TEST_TOKEN`/`PLAYWRIGHT_AUTH_TOKEN` e `E2E_TEST_COMPANY_ID` no ambiente da sessao.
+- Comando pronto para reexecucao quando credenciais forem disponibilizadas:
+
+```bash
+cd d:/restaurante-supabase/restaurante-web
+bash scripts/run-tef14-15-tests.sh --token "<bearer>" --company "<company_uuid>" --comanda "999" --all
+```
 
 ## 8. Matriz balanca
 
