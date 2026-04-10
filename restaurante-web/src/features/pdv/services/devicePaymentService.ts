@@ -1,9 +1,14 @@
-import { supabase } from '../../../config/SupabaseConfig';
 import { isFeatureEnabled } from '../../../config/featureFlags';
 import { DevicePaymentRequest, DevicePaymentResult } from '../types';
 
 function getOpsBaseUrl(): string {
-  return (process.env.EXPO_PUBLIC_OPS_BASE_URL || '').replace(/\/$/, '');
+  const envValue = process.env.EXPO_PUBLIC_OPS_BASE_URL || '';
+  const runtimeValue =
+    typeof globalThis === 'object' && typeof (globalThis as { __PDV_OPS_BASE_URL__?: unknown }).__PDV_OPS_BASE_URL__ === 'string'
+      ? ((globalThis as { __PDV_OPS_BASE_URL__?: string }).__PDV_OPS_BASE_URL__ || '')
+      : '';
+
+  return (envValue || runtimeValue).replace(/\/$/, '');
 }
 
 function buildPaymentMethodLabel(paymentMethod: DevicePaymentRequest['paymentMethod']): string {
@@ -29,8 +34,13 @@ function getPayloadMessage(payload: Record<string, unknown>, fallback: string): 
 }
 
 async function getAccessToken(): Promise<string | undefined> {
-  const { data: sessionData } = await supabase.auth.getSession();
-  return sessionData.session?.access_token;
+  try {
+    const { supabase } = await import('../../../config/SupabaseConfig');
+    const { data: sessionData } = await supabase.auth.getSession();
+    return sessionData.session?.access_token;
+  } catch {
+    return undefined;
+  }
 }
 
 export async function initiateDevicePayment(request: DevicePaymentRequest): Promise<DevicePaymentResult> {

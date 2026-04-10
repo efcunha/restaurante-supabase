@@ -4,7 +4,7 @@ Escopo desta fase: `restaurante-web` + `restaurante-ops`.
 Fora de escopo desta fase (backend/gateway): `restaurante-app`.
 Nota: restaurante-app recebeu simplificacao de UX PDV em 2026-04-07 (TEF removido, seletor lock aplicado).
 
-Ultima atualizacao: **2026-04-08**
+Ultima atualizacao: **2026-04-10**
 
 ## 1. Roadmap por fases
 
@@ -27,6 +27,7 @@ Ultima atualizacao: **2026-04-08**
 
 - [x] Integrar fluxo da UI de pagamento no restaurante-web (iniciacao + polling).
 - [x] Simplificar UX: lock de modo, sem dinheiro no TEF, badge visual, auto-reset.
+- [x] Registrar pagamento automaticamente apos aprovacao da maquininha no web, com fallback manual supervisionado em caso de erro de registro.
 - [x] Deploy web publicado no Railway com as alteracoes.
 - [ ] Integrar/validar fluxo de balanca no restaurante-web sem regressao.
 - [ ] Exibir telemetria operacional (pendente).
@@ -34,10 +35,19 @@ Ultima atualizacao: **2026-04-08**
 ### Fase 3 - Validacao controlada [PENDENTE]
 
 - [x] Cobertura automatizada inicial do polling implementada (`pdv-device-payment-polling.spec.ts`).
+- [x] Cobertura MOCK_AUTO de iniciacao TEF para erro de endpoint, env ausente e feature flag (`pdv-device-payment-service.spec.ts`).
+- [x] Cobertura MOCK_AUTO de balanca para leitura instavel, erro inesperado e feature flag desligada (`pdv-scale-regression.spec.ts`).
 - [ ] Teste de integracao do endpoint /payments/initiate.
+- [~] Teste de integracao do endpoint /payments/initiate em `INT_REAL`: response real obtida em `POST /payments/initiate` com `404` e `code=gateway_not_configured` para o tenant autenticado.
+- [x] Hardening CORS aplicado e publicado no `restaurante-ops` (origem canônica web permitida + localhost apenas fora de producao), com preflight validado.
+- [~] Pre-requisitos remanescentes para aprovar `TEF-11`: (1) cadastrar/ativar `payment_gateway_configs` no tenant autenticado; (2) garantir credenciais server-side de gateway (Hyperswitch) ou simulação controlada para retorno `processing`.
+- [~] Progresso de desbloqueio `TEF-11`: `payment_gateway_configs` ativo criado para tenant do E2E; resposta evoluiu de `404 gateway_not_configured` para `503` server-side. Proximo passo: credenciais Hyperswitch ou `PDV_DEVICE_SIMULATION=true` em ambiente controlado.
+- [x] `TEF-11` validado em `INT_REAL` com response real `202` e payload `status=processing` no endpoint `/payments/initiate` (simulação controlada ativa no `restaurante-ops`).
+- [x] Validacao `INT_REAL` concluida para `TEF-12`/`TEF-13` (transicao `processing -> succeeded` e timeout operacional com evidencia de polling/status).
 - [x] Smoke E2E web de fluxos criticos executado (balcao, mesa, pizza, delivery, mesa-consolidacao).
-- [ ] E2E Playwright dedicado do fluxo PDV/maquininha aprovado.
+- [x] E2E Playwright dedicado do fluxo PDV/maquininha aprovado (modo controlado com mocks de endpoints PDV).
 - [ ] Smoke test de balanca no PDV web.
+- [ ] Proxima validacao `INT_REAL`: `TEF-14`/`TEF-15` (retry sem duplicidade e bloqueio por saldo/comanda invalida).
 - [ ] Revisar criterios de go/no-go para producao.
 
 ## 8. Snapshot operacional (2026-04-08)

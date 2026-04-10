@@ -405,14 +405,55 @@ export default function PagamentoScreen({ route, navigation }: any) {
       }
 
       if (result.status !== 'approved') {
-        Alert.alert('Maquininha', result.message);
+        Alert.alert(
+          'Maquininha',
+          `${result.message}\n\nSe necessario, registre o pagamento manualmente pelo botao "Confirmar Pagamento".`
+        );
         return;
       }
 
-      Alert.alert(
-        'Maquininha aprovada',
-        'Transação autorizada. Confirme o pagamento para registrar na comanda.'
-      );
+      try {
+        await PagamentosService.registrarPagamento({
+          companyId: user.companyId,
+          dateKey: todayKey(),
+          comandaNumber: comanda,
+          forma,
+          valor: valorPago,
+          usuarioId: user?.id || '',
+          usuarioNome: user?.nome || 'Usuário',
+          paidItemsIds: paidItemsIds.length > 0 ? paidItemsIds : undefined,
+        });
+
+        await auditService.log({
+          eventType: 'payment.device_recorded',
+          resourceType: 'payment',
+          resourceId: String(comanda),
+          companyId: user.companyId,
+          metadata: {
+            source: 'TEF_INTEGRATED',
+            comandaNumber: comanda,
+            amount: valorPago,
+            method: forma,
+            transactionId: result.transactionId ?? null,
+            providerPaymentId: result.providerPaymentId ?? null,
+            authCode: result.authCode ?? null,
+            operatorId: user?.id,
+            operatorName: user?.nome,
+          },
+        });
+
+        setPaidItemsIds([]);
+        await new Promise(resolve => setTimeout(resolve, 200));
+        await carregarDadosComanda();
+        setValor('');
+
+        Alert.alert('Sucesso', 'Pagamento aprovado na maquininha e registrado na comanda.');
+      } catch (registerError: any) {
+        Alert.alert(
+          'Aprovado na maquininha',
+          `A transacao foi aprovada, mas o registro automatico falhou.\n\nDetalhe: ${registerError?.message || 'erro interno'}\n\nUse "Confirmar Pagamento" para registrar manualmente.`
+        );
+      }
     } catch (error: any) {
       Alert.alert('Erro', error?.message || 'Falha ao processar pagamento presencial.');
     }
