@@ -2,7 +2,13 @@
 
 Use este prompt para retomar a implementacao exatamente do ponto atual da integracao PDV (maquininha) no `restaurante-supabase`.
 
-Ultima atualizacao: **2026-04-10** — TEF-12/TEF-13 validados em INT_REAL com evidencia de polling. TEF-14/TEF-15 implementados, aguardando deployment.
+Ultima atualizacao: **2026-04-10** — TEF-12/TEF-13 validados em INT_REAL com evidencia de polling. TEF-14/TEF-15 implementados em backend + suite E2E API-direct, aguardando deployment e execucao real.
+
+Atualizacao de handoff (turno da tarde):
+- Suite `restaurante-web/e2e/pdv-maquininha-validacao.spec.ts` foi consolidada como API-direct (sem login por UI).
+- Execucao INT_REAL depende de `E2E_TEST_TOKEN` e `E2E_TEST_COMPANY_ID`.
+- Helper disponivel: `restaurante-web/scripts/run-tef14-15-tests.sh`.
+- Evidencia final pendente: output com TEF-14 (transactionId igual) e TEF-15 (HTTP 400 nos dois cenarios).
 
 ---
 
@@ -254,9 +260,10 @@ Response (erro):
 - [x] Frontend web consumindo endpoint real com fallback seguro (implementacao + validacao funcional `INT_REAL` para `TEF-11/12/13` concluidas)
 - [x] **TEF-14/TEF-15 implementados (2026-04-10)**:
   - Backend validacoes adicionadas: `validateComandaAndBalance()` em `restaurante-ops/src/modules/payment-gateway.ts`
-  - E2E test suite criado: `restaurante-web/e2e/pdv-maquininha-validacao.spec.ts`
+  - E2E test suite API-direct criado: `restaurante-web/e2e/pdv-maquininha-validacao.spec.ts`
   - Test scripts adicionados ao `package.json`: `test:e2e:pdv-validacao:int-real:*`
-  - Status: **Codigo pronto, deploy pendente** → Ver `docs/maquininha/07-deployment-tef14-tef15.md`
+  - Helper de execucao adicionado: `restaurante-web/scripts/run-tef14-15-tests.sh`
+  - Status: **Codigo pronto, validacao INT_REAL pendente** → Ver `docs/maquininha/07-deployment-tef14-tef15.md`
 - [ ] Testes criticos (unitarios + E2E minimo) totalmente concluidos para o fluxo PDV dedicado (`MOCK_AUTO` concluido; `INT_REAL` parcial com `TEF-11/12/13` concluido e `TEF-14/15` code-ready, validation-pending)
 - [x] Snyk scan sem novos issues introduzidos
 - [x] Documentacao atualizada em `docs/maquininha/` com evidencias de validacao

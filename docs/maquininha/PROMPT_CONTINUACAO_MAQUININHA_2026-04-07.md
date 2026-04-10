@@ -6,6 +6,7 @@
 >
 > Use no lugar:
 > - `docs/PROMPT_CONTINUACAO_DIA_SEGUINTE.md` para continuidade ativa da iteracao
+> - `docs/maquininha/PROMPT_CONTINUACAO_TARDE_TEF14-15_2026-04-10.md` para handoff especifico de TEF-14/15
 > - `docs/maquininha/06-matriz-homologacao-tef-balanca.md` para status dos cenarios e evidencias
 > - `docs/maquininha/04-plano-execucao-testes-rollout.md` para fase/rollout atual
 >
