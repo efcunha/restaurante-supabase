@@ -1,4 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
+import LicenseGate from '../components/LicenseGate';
 import { StyleSheet, Text, View, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -281,6 +282,7 @@ export default function CozinhaScreen() {
   ), [grupos.length]);
 
   return (
+    <LicenseGate>
     <View style={styles.container}>
 
 
@@ -311,6 +313,7 @@ export default function CozinhaScreen() {
 
       <StatusBar style="dark" />
     </View>
+    </LicenseGate>
   );
 }
 
