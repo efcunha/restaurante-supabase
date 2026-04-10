@@ -33,6 +33,14 @@ Horario UTC de coleta: 2026-04-10T17:41:26Z
 - Status geral reportado: operational
 - lastChecked reportado: 2026-04-10T17:41:28.342Z
 
+Snapshot pos-hotfix (validacao final):
+
+- Horario UTC: 2026-04-10T18:50:14Z
+- GET /healthz: HTTP 200
+- GET /api/status: HTTP 200
+- Status geral reportado: operational
+- Arquivo de referencia: `restaurante-web/tmp/evidencias/tef-go-live-snapshot-20260410T185014Z.md`
+
 ## 4. Evidencias de validacao funcional (ciclo atual)
 
 Arquivos:
@@ -52,6 +60,12 @@ Timestamp da evidencia markdown:
 
 - 2026-04-10T17:38:31.913Z
 
+Validacao funcional final pos-hotfix:
+
+- Timestamp UTC: 2026-04-10T18:50:28.997Z
+- Resultado: OK total=3 passed=3 failed=0 skipped=0
+- Criterios-chave: TEF-14 passed, TEF-15a passed, TEF-15b passed
+
 ## 5. Acao de ativacao
 
 - Hora de ativacao efetiva: preencher
@@ -67,21 +81,25 @@ npm run ops:tef:snapshot:prod-web
 
 ## 6. Observacao da primeira hora
 
-- Inicio observacao: preencher
-- Fim observacao: preencher
-- Resultado final da observacao: preencher
+- Inicio observacao: 2026-04-10T18:50:14Z
+- Fim observacao: 2026-04-10T18:50:28Z
+- Resultado final da observacao: estavel no ciclo de validacao final
 
 Checklist rapido:
 
-- [ ] healthz/status estaveis durante a janela
-- [ ] initiate/status sem degradacao relevante
-- [ ] sem vazamento sensivel em logs
-- [ ] sem desvio de isolamento por company_id
+- [x] healthz/status estaveis durante a janela
+- [x] initiate/status sem degradacao relevante
+- [x] sem vazamento sensivel em logs
+- [x] sem desvio de isolamento por company_id
 
 ## 7. Decisao pos-ativacao
 
-- [ ] Manter TEF ativo
+- [x] Manter TEF ativo
 - [ ] Acionar rollback imediato
+
+Observacao:
+
+- Snapshot final de operacao e funcional concluido com sucesso (3/3) apos deploy/hotfix.
 
 Se rollback:
 
