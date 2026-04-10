@@ -15,6 +15,7 @@ RAILWAY_WORKSPACE="${RAILWAY_WORKSPACE:-Machado & Cunha Soft House}"
 RAILWAY_PROJECT="${RAILWAY_PROJECT:-restaurante}"
 RAILWAY_ENVIRONMENT="${RAILWAY_ENVIRONMENT:-production}"
 RAILWAY_SERVICE="${RAILWAY_SERVICE:-restaurante-ops}"
+FEATURE_CARD_MACHINE="${FEATURE_CARD_MACHINE:-true}"
 
 echo "======================================"
 echo "Iniciando Deploy para o Railway..."
@@ -91,6 +92,18 @@ cleanup_tmp_dir() {
     if [ -n "$dir_path" ] && [ -d "$dir_path" ]; then
         rm -rf "$dir_path"
     fi
+}
+
+apply_ops_feature_flags() {
+    echo ""
+    echo "Aplicando feature flags operacionais no restaurante-ops..."
+
+    railway variables \
+        --service "$RAILWAY_SERVICE" \
+        --environment "$RAILWAY_ENVIRONMENT" \
+        --set "FEATURE_CARD_MACHINE=$FEATURE_CARD_MACHINE"
+
+    echo "Feature flags aplicadas no servico $RAILWAY_SERVICE (FEATURE_CARD_MACHINE=$FEATURE_CARD_MACHINE)."
 }
 
 sync_forward_migrations_if_needed() {
@@ -303,6 +316,8 @@ railway link \
     --project "$RAILWAY_PROJECT" \
     --environment "$RAILWAY_ENVIRONMENT" \
     --service "$RAILWAY_SERVICE"
+
+apply_ops_feature_flags
 
 echo "Enviando restaurante-ops para producao no Railway..."
 if railway up --service "$RAILWAY_SERVICE" --path-as-root ./restaurante-ops; then

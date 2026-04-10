@@ -11,6 +11,8 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 DB_BACKUP_DIR="$ROOT_DIR/database-backup"
 MIGRATIONS_DIR="$DB_BACKUP_DIR/migrations"
 CHECK_SYNC_SCRIPT="$DB_BACKUP_DIR/check-migration-sync.sh"
+RAILWAY_SERVICE_WEB="${RAILWAY_SERVICE_WEB:-restaurante-web}"
+ENABLE_BILLING_FEATURE="${ENABLE_BILLING_FEATURE:-false}"
 
 echo "======================================"
 echo "🚀 Iniciando Deploy para o Railway..."
@@ -87,6 +89,34 @@ cleanup_tmp_dir() {
     if [ -n "$dir_path" ] && [ -d "$dir_path" ]; then
         rm -rf "$dir_path"
     fi
+}
+
+apply_web_feature_flags() {
+    echo ""
+    echo "⚙ Aplicando feature flags de producao para restaurante-web..."
+
+    # Guardrail obrigatorio do projeto: billing nao pode ser ativado em producao ainda.
+    if [ "$ENABLE_BILLING_FEATURE" = "true" ]; then
+        echo "❌ Bloqueado: ENABLE_BILLING_FEATURE=true nao permitido neste momento."
+        echo "❌ Regra do projeto: nao ativar EXPO_PUBLIC_FEATURE_BILLING em producao ate cobertura completa do LicenseGate."
+        exit 1
+    fi
+
+    railway variables --service "$RAILWAY_SERVICE_WEB" \
+        --set "EXPO_PUBLIC_FEATURE_LOGIN_UI_NEXT=true" \
+        --set "EXPO_PUBLIC_FEATURE_REGISTER_COMPANY_UI_NEXT=true" \
+        --set "EXPO_PUBLIC_FEATURE_NOVO_PEDIDO_UI_NEXT=true" \
+        --set "EXPO_PUBLIC_FEATURE_DELIVERY_UI_NEXT=true" \
+        --set "EXPO_PUBLIC_FEATURE_PAGAMENTO_UI_NEXT=true" \
+        --set "EXPO_PUBLIC_FEATURE_COMANDA_GERENCIAMENTO_UI_NEXT=true" \
+        --set "EXPO_PUBLIC_FEATURE_ADMIN_UI_NEXT=true" \
+        --set "EXPO_PUBLIC_FEATURE_PDV_ENABLED=true" \
+        --set "EXPO_PUBLIC_FEATURE_PDV_DEVICE_PAYMENT=true" \
+        --set "EXPO_PUBLIC_FEATURE_PDV_SCALE=true" \
+        --set "EXPO_PUBLIC_FEATURE_BILLING=false" \
+        --set "EXPO_PUBLIC_FEATURE_BILLING_FORCE_BLOCK=false"
+
+    echo "✅ Feature flags de producao aplicadas no servico $RAILWAY_SERVICE_WEB."
 }
 
 sync_forward_migrations_if_needed() {
@@ -297,6 +327,8 @@ echo ""
 echo "Verificando vínculo com o projeto Railway..."
 cd "$ROOT_DIR/restaurante-web"
 railway link
+
+apply_web_feature_flags
 
 # Executa o deploy para a nuvem
 echo "Enviando projeto para produção no Railway..."
