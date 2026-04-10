@@ -66,6 +66,13 @@ Validacao funcional final pos-hotfix:
 - Resultado: OK total=3 passed=3 failed=0 skipped=0
 - Criterios-chave: TEF-14 passed, TEF-15a passed, TEF-15b passed
 
+Revalidacao pos-deploy Pix/USB (ciclo atual):
+
+- Snapshot UTC: 2026-04-10T19:40:20Z
+- Resultado: OK total=3 passed=3 failed=0 skipped=0
+- Criterios-chave: TEF-14 passed, TEF-15a passed, TEF-15b passed
+- Arquivo de referencia: restaurante-web/tmp/evidencias/tef-go-live-snapshot-20260410T194020Z.md
+
 ## 5. Acao de ativacao
 
 - Hora de ativacao efetiva: preencher
@@ -82,8 +89,8 @@ npm run ops:tef:snapshot:prod-web
 ## 6. Observacao da primeira hora
 
 - Inicio observacao: 2026-04-10T18:50:14Z
-- Fim observacao: 2026-04-10T18:50:28Z
-- Resultado final da observacao: estavel no ciclo de validacao final
+- Fim observacao: 2026-04-10T19:40:20Z
+- Resultado final da observacao: estavel no ciclo de validacao final (incluindo revalidacao pos-deploy)
 
 Checklist rapido:
 
