@@ -1,4 +1,4 @@
-# TEF-14/TEF-15: Deployment e Execução (2026-04-10)
+# TEF-14/TEF-15: Deployment e Execucao (2026-04-10)
 
 ## Mudanças Implementadas
 
@@ -31,9 +31,9 @@ async function validateComandaAndBalance(
 
 ### 2. Frontend Tests (restaurante-web/e2e/pdv-maquininha-validacao.spec.ts)
 
-Três cenários de teste:
+Tres cenarios de teste:
 
-#### TEF-14: Idempotência
+#### TEF-14: Idempotencia
 ```
 POST /payments/initiate { companyId, comandaNumber, amount, idempotencyKey }
 POST /payments/initiate { SAME companyId, SAME comandaNumber, SAME amount, SAME idempotencyKey }
@@ -41,7 +41,7 @@ POST /payments/initiate { SAME companyId, SAME comandaNumber, SAME amount, SAME 
 Assert: Ambos retornam 202 com o MESMO transactionId
 ```
 
-#### TEF-15a: Comanda Inválida
+#### TEF-15a: Comanda Invalida
 ```
 POST /payments/initiate { companyId, invalidComandaNumber="99999", amount, idempotencyKey }
 
@@ -57,27 +57,32 @@ Assert: Response.status = 400
 Assert: Response.message contains "insuficiente"
 ```
 
+**Arquitetura de execucao (importante):**
+- A suite de validacao TEF-14/15 e API-direct.
+- Nao depende de login por UI nem de selectors do frontend.
+- Usa Bearer token via variaveis de ambiente (`E2E_TEST_TOKEN` ou `PLAYWRIGHT_AUTH_TOKEN`).
+
 ## Como Fazer o Deployment
 
-### Opção 1: Via Railway CLI (Preferido)
+### Opcao 1: Via Railway CLI (preferido)
 ```bash
 cd d:/restaurante-supabase
 
-# Autenticar (se não estiver logado):
+# Autenticar (se nao estiver logado):
 railway login
 
-# Deploy restaurante-ops com mudanças de validação:
+# Deploy restaurante-ops com mudancas de validacao:
 railway up --service restaurante-ops --path-as-root ./restaurante-ops
 ```
 
-### Opção 2: Via Railway Web Dashboard (Manual)
+### Opcao 2: Via Railway Web Dashboard (manual)
 1. Acesse https://railway.app/project/[PROJECT_ID]
 2. Selecione o serviço `restaurante-ops`
 3. Vá para "Deploy" → "Manual Deploy"
 4. Git: selecione branch atual (commit com mudanças em payment-gateway.ts)
 5. Clique "Deploy"
 
-### Opção 3: Via Git Push + Auto-Deploy
+### Opcao 3: Via Git Push + Auto-Deploy
 Se configurado no Railway:
 ```bash
 cd d:/restaurante-supabase
@@ -89,62 +94,82 @@ git push origin main
 
 ## Como Executar os Testes
 
-### Pré-requisitos
+### Pre-requisitos
 - restaurante-ops deployado com mudanças de validação
-- restaurante-web deployado com novos testes E2E
-- Acesso autenticado para o endpoint /payments/initiate
+- acesso autenticado para o endpoint /payments/initiate
+- variaveis de ambiente setadas para token/company
 
-### Executar todos os testes de validação
+### Executar todos os testes de validacao
 ```bash
 cd d:/restaurante-supabase/restaurante-web
 
-# Test 1: Idempotência (TEF-14)
+# Teste 1: Idempotencia (TEF-14)
 npm run test:e2e:pdv-validacao:int-real:tef14:prod-web
 
-# Test 2: Validação de Comanda (TEF-15)
+# Teste 2: Validacao de Comanda (TEF-15)
 npm run test:e2e:pdv-validacao:int-real:tef15:prod-web
 
 # Ou todos de uma vez:
 npm run test:e2e:pdv-validacao:int-real:prod-web
 ```
 
-## Checklist de Validação (DEF)
+### Execucao recomendada via helper script
 
-- [ ] restaurante-ops buildado e deployado
-- [ ] restaurante-web com novos E2E tests
-- [ ] TEF-14 test: confirma idempotência
-- [ ] TEF-15 test: confirma rejeição de comanda inválida
-- [ ] TEF-15 test: confirma rejeição de saldo insuficiente
-- [ ] Evidências coletadas e registradas
-- [ ] Matriz de homologação atualizada
+```bash
+cd d:/restaurante-supabase/restaurante-web
 
-## Status Operacional
+bash scripts/run-tef14-15-tests.sh \
+  --token "seu-bearer-token" \
+  --company "seu-company-uuid" \
+  --comanda "999" \
+  --all
+```
 
-**Mudanças Implementadas**: ✅
+## Checklist de Validacao (DoD operacional)
+
+- [~] restaurante-ops buildado e deployado (CLI bloqueado por token Railway invalido; fallback manual no dashboard pendente)
+- [x] suite E2E API-direct criada
+- [ ] TEF-14 test: confirma idempotencia
+- [ ] TEF-15 test: confirma rejeicao de comanda invalida
+- [ ] TEF-15 test: confirma rejeicao de saldo insuficiente
+- [~] Evidencias coletadas e registradas (deploy/health registrados; faltam evidencias dos 3 testes INT_REAL)
+- [x] Matriz de homologacao atualizada (status de bloqueio + comando pronto para rerun)
+
+## Status Operacional Atual
+
+**Mudancas Implementadas**: ✅
 - Backend validations (payment-gateway.ts)
-- E2E test suite (pdv-maquininha-validacao.spec.ts)
+- E2E test suite API-direct (pdv-maquininha-validacao.spec.ts)
 - Test scripts (package.json)
+- Helper script (scripts/run-tef14-15-tests.sh)
+- Guia de execucao (e2e/README_TEF14-15.md)
 
-**Deployment**: ⏳ Pendente
-- Railway CLI token inválido no contexto atual
-- Alternatives: Manual via Railway Web UI ou Git auto-deploy
+**Deployment**: ⏳ Parcial (bloqueio operacional)
+- Tentativa executada: `railway up --service restaurante-ops --path-as-root ./restaurante-ops`
+- Resultado: `Invalid RAILWAY_TOKEN` (exit code 1)
+- Fallback necessario: deploy manual via Railway Web UI
+- Disponibilidade atual em producao: `GET /healthz` = 200, `GET /api/status` = 200
 
-**Execução de Testes**: ⏳ Pendente
-- Aguardando deployment do restaurante-ops
-- Após deploy: executar npm scripts acima
+**Execucao de Testes**: ⏳ Bloqueada por credenciais
+- Variaveis ausentes no ambiente da sessao: `E2E_TEST_TOKEN`/`PLAYWRIGHT_AUTH_TOKEN` e `E2E_TEST_COMPANY_ID`
+- Sem essas credenciais, a suite INT_REAL TEF-14/15 nao pode ser executada
+- Comando pronto para rerun:
 
-## Documentação
+```bash
+cd d:/restaurante-supabase/restaurante-web
+bash scripts/run-tef14-15-tests.sh --token "<bearer>" --company "<company_uuid>" --comanda "999" --all
+```
 
-Todos os código incluí comentários explicativos:
-- TEF-14: Testa idempotência do backend
-- TEF-15: Testa validações de comanda e saldo
-- Sanitização de mensagens de erro para não expor PII
+## Observacoes
 
-## Próximos Passos
+- Fluxo de validacao real foi separado de qualquer dependencia de UI.
+- A suite atual e adequada para INT_REAL sem acoplamento a selectors da pagina.
 
-1. **Imediato**: Deploy via Railway Dashboard (ou CLI com token válido)
-2. **Após Deploy**: Executar testes E2E
-3. **Evidência**: Capturar output dos testes no console
-4. **Matriz**: Atualizar `docs/maquininha/06-matriz-homologacao-tef-balanca.md`
-   - TEF-14: evidência de `transactionId` idênticos
-   - TEF-15: evidência de `400` errors com mensagens apropriadas
+## Proximos Passos
+
+1. Deploy do restaurante-ops via Railway Dashboard (ou CLI com token valido).
+2. Executar `scripts/run-tef14-15-tests.sh` com token/company reais.
+3. Capturar output de terminal com os 3 cenarios.
+4. Atualizar `docs/maquininha/06-matriz-homologacao-tef-balanca.md`:
+  - TEF-14: evidencia de transactionId identicos
+  - TEF-15a e TEF-15b: evidencia de HTTP 400
