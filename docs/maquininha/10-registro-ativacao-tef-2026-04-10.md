@@ -58,6 +58,13 @@ Timestamp da evidencia markdown:
 - Operador executor: preencher
 - Evidencia da alteracao de flag: anexar referencia
 
+Comando recomendado para snapshot pos-ativacao:
+
+```bash
+cd d:/restaurante-supabase/restaurante-web
+npm run ops:tef:snapshot:prod-web
+```
+
 ## 6. Observacao da primeira hora
 
 - Inicio observacao: preencher
