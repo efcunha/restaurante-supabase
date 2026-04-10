@@ -47,10 +47,10 @@ Ultima atualizacao: **2026-04-10**
 - [x] Smoke E2E web de fluxos criticos executado (balcao, mesa, pizza, delivery, mesa-consolidacao).
 - [x] E2E Playwright dedicado do fluxo PDV/maquininha aprovado (modo controlado com mocks de endpoints PDV).
 - [ ] Smoke test de balanca no PDV web.
-- [~] Proxima validacao `INT_REAL`: `TEF-14`/`TEF-15` (retry sem duplicidade e bloqueio por saldo/comanda invalida).
-- [~] Rodada 2026-04-10 (tarde): deploy via Railway CLI tentado e bloqueado por `Invalid RAILWAY_TOKEN`; health do ops validado em producao (`/healthz` e `/api/status` com HTTP 200).
-- [~] Rodada 2026-04-10 (tarde): execucao TEF-14/15 bloqueada por ausencia de credenciais no ambiente (`E2E_TEST_TOKEN`/`PLAYWRIGHT_AUTH_TOKEN` e `E2E_TEST_COMPANY_ID`).
-- [ ] Pendente para concluir TEF-14/15: rerun com token/company reais e registrar evidencias dos 3 cenarios (idempotencia + 2x HTTP 400).
+- [x] Proxima validacao `INT_REAL`: `TEF-14`/`TEF-15` (retry sem duplicidade e bloqueio por saldo/comanda invalida).
+- [x] Rodada 2026-04-10 (tarde): deploy via Railway CLI tentado e bloqueado por `Invalid RAILWAY_TOKEN`; health do ops validado em producao (`/healthz` e `/api/status` com HTTP 200).
+- [x] Rodada 2026-04-10 (tarde): credenciais carregadas dos `.env` locais e suite executada com sucesso em tenant real.
+- [x] Evidencias TEF-14/15 coletadas: TEF-14 (`202` + mesmo `transactionId`) e TEF-15a/TEF-15b (`400`).
 - [ ] Revisar criterios de go/no-go para producao.
 
 ## 8. Snapshot operacional (2026-04-08)

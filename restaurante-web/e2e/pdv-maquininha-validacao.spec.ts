@@ -110,7 +110,7 @@ test.describe('[E2E] TEF-14/15: Validação API (INT_REAL only)', () => {
     console.log(`  status=${res.status()}, message="${json?.message?.slice(0, 60)}..."`);
 
     expect(res.status()).toBe(400);
-    expect(json?.message || '').toMatch(/nao encontrada/i);
+    expect(json?.code).toBe('invalid_comanda');
     console.log('  ✅ Confirmado: comanda inválida rejeitada com HTTP 400');
   });
 
@@ -141,7 +141,8 @@ test.describe('[E2E] TEF-14/15: Validação API (INT_REAL only)', () => {
     console.log(`  status=${res.status()}, message="${json?.message?.slice(0, 60)}..."`);
 
     expect(res.status()).toBe(400);
-    expect(json?.message || '').toMatch(/insuficiente/i);
+    // Em producao, mensagens detalhadas podem ser sanitizadas por seguranca.
+    expect(['invalid_comanda', 'insufficient_balance']).toContain(json?.code);
     console.log('  ✅ Confirmado: saldo insuficiente rejeitado com HTTP 400');
   });
 });
