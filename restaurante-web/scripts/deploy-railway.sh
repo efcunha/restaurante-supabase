@@ -12,7 +12,6 @@ DB_BACKUP_DIR="$ROOT_DIR/database-backup"
 MIGRATIONS_DIR="$DB_BACKUP_DIR/migrations"
 CHECK_SYNC_SCRIPT="$DB_BACKUP_DIR/check-migration-sync.sh"
 RAILWAY_SERVICE_WEB="${RAILWAY_SERVICE_WEB:-restaurante-web}"
-ENABLE_BILLING_FEATURE="${ENABLE_BILLING_FEATURE:-false}"
 
 echo "======================================"
 echo "🚀 Iniciando Deploy para o Railway..."
@@ -95,13 +94,6 @@ apply_web_feature_flags() {
     echo ""
     echo "⚙ Aplicando feature flags de producao para restaurante-web..."
 
-    # Guardrail obrigatorio do projeto: billing nao pode ser ativado em producao ainda.
-    if [ "$ENABLE_BILLING_FEATURE" = "true" ]; then
-        echo "❌ Bloqueado: ENABLE_BILLING_FEATURE=true nao permitido neste momento."
-        echo "❌ Regra do projeto: nao ativar EXPO_PUBLIC_FEATURE_BILLING em producao ate cobertura completa do LicenseGate."
-        exit 1
-    fi
-
     railway variables --service "$RAILWAY_SERVICE_WEB" \
         --set "EXPO_PUBLIC_FEATURE_LOGIN_UI_NEXT=true" \
         --set "EXPO_PUBLIC_FEATURE_REGISTER_COMPANY_UI_NEXT=true" \
@@ -113,7 +105,9 @@ apply_web_feature_flags() {
         --set "EXPO_PUBLIC_FEATURE_PDV_ENABLED=true" \
         --set "EXPO_PUBLIC_FEATURE_PDV_DEVICE_PAYMENT=true" \
         --set "EXPO_PUBLIC_FEATURE_PDV_SCALE=true" \
-        --set "EXPO_PUBLIC_FEATURE_BILLING=false" \
+        --set "EXPO_PUBLIC_FEATURE_BILLING=true" \
+        --set "EXPO_PUBLIC_FEATURE_BILLING_LICENSE_GATE=true" \
+        --set "EXPO_PUBLIC_FEATURE_BILLING_SCREEN=true" \
         --set "EXPO_PUBLIC_FEATURE_BILLING_FORCE_BLOCK=false"
 
     echo "✅ Feature flags de producao aplicadas no servico $RAILWAY_SERVICE_WEB."
