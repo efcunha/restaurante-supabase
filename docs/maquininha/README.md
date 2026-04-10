@@ -28,7 +28,10 @@ Consolidar a especificacao tecnica de desenvolvimento da integracao de pagamento
 4. [Plano de execucao, testes e rollout](04-plano-execucao-testes-rollout.md)
 5. [Fluxo operacional PDV + balanca (discussao)](05-fluxo-operacional-pdv-balanca.md)
 6. [Matriz de homologacao TEF + balanca](06-matriz-homologacao-tef-balanca.md)
-7. [Prompt de inicializacao do projeto](PROMPT_INICIALIZACAO_PROJETO.md)
+7. [Deployment TEF-14/15](07-deployment-tef14-tef15.md)
+8. [Runbook de ativacao TEF em producao (hoje)](08-runbook-ativacao-tef-producao-hoje.md)
+9. [Checklist de monitoramento da primeira hora](09-checklist-monitoramento-primeira-hora-tef.md)
+10. [Prompt de inicializacao do projeto](PROMPT_INICIALIZACAO_PROJETO.md)
 
 ## Premissas de negocio (fixas)
 
