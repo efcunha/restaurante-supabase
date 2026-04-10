@@ -150,10 +150,15 @@ bash scripts/run-tef14-15-tests.sh \
 - Fallback necessario: deploy manual via Railway Web UI
 - Disponibilidade atual em producao: `GET /healthz` = 200, `GET /api/status` = 200
 
-**Execucao de Testes**: ⏳ Bloqueada por credenciais
-- Variaveis ausentes no ambiente da sessao: `E2E_TEST_TOKEN`/`PLAYWRIGHT_AUTH_TOKEN` e `E2E_TEST_COMPANY_ID`
-- Sem essas credenciais, a suite INT_REAL TEF-14/15 nao pode ser executada
-- Comando pronto para rerun:
+**Execucao de Testes**: ✅ Concluida
+- Credenciais carregadas dos `.env` locais (sem exposicao de segredo em log/documentacao)
+- Tenant real resolvido e comanda valida utilizada para o teste de idempotencia/saldo
+- Resultado da suite `e2e/pdv-maquininha-validacao.spec.ts`: `3 passed`
+- Evidencias:
+  - TEF-14: duas chamadas com mesma chave retornaram mesmo `transactionId` e `status=202`
+  - TEF-15a: comanda inexistente retornou `status=400`
+  - TEF-15b: valor acima do saldo retornou `status=400`
+- Comando de rerun:
 
 ```bash
 cd d:/restaurante-supabase/restaurante-web
