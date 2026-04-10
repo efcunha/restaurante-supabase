@@ -111,6 +111,18 @@ cd d:/restaurante-supabase/restaurante-web
 bash scripts/run-tef14-15-tests.sh --token "<bearer>" --company "<company_uuid>" --comanda "999" --all
 ```
 
+### Fechamento Go/No-Go - 2026-04-10 (fim do dia)
+
+- Decisao formal: **Go** para ativacao de TEF em producao hoje.
+- Checklist funcional: **OK** (TEF-14, TEF-15a, TEF-15b aprovados em INT_REAL no ciclo atual).
+- Checklist de operacao: **OK** (`/healthz` e `/api/status` com HTTP 200).
+- Checklist de evidencia: **OK** (JSON e Markdown atualizados no rerun automatico).
+- Checklist de rollback: **OK** (procedimento por feature flag documentado em `04-plano-execucao-testes-rollout.md`, secao 6).
+
+Evidencias referenciais deste fechamento:
+- `restaurante-web/tmp/evidencias/tef14-15-int-real.json`
+- `restaurante-web/tmp/evidencias/tef14-15-int-real.md`
+
 ## 8. Matriz balanca
 
 | ID | Tipo | Cenario | Pre-condicao | Entrada | Passos resumidos | Resultado esperado | Evidencia minima | Status inicial |
