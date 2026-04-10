@@ -31,7 +31,8 @@ Consolidar a especificacao tecnica de desenvolvimento da integracao de pagamento
 7. [Deployment TEF-14/15](07-deployment-tef14-tef15.md)
 8. [Runbook de ativacao TEF em producao (hoje)](08-runbook-ativacao-tef-producao-hoje.md)
 9. [Checklist de monitoramento da primeira hora](09-checklist-monitoramento-primeira-hora-tef.md)
-10. [Prompt de inicializacao do projeto](PROMPT_INICIALIZACAO_PROJETO.md)
+10. [Registro de ativacao TEF em producao (2026-04-10)](10-registro-ativacao-tef-2026-04-10.md)
+11. [Prompt de inicializacao do projeto](PROMPT_INICIALIZACAO_PROJETO.md)
 
 ## Premissas de negocio (fixas)
 
