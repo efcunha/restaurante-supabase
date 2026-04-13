@@ -9,6 +9,7 @@ import { useAuth } from '../context/AuthContext';
 import PedidoDetalhesModal from './PedidoDetalhesModal';
 import { supabase } from '../config/SupabaseConfig';
 import { getBusinessDateKey } from '../services/BusinessDateService';
+import OrderService from '../services/OrderService';
 import OptimizedFlatList from '../components/OptimizedFlatList';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
@@ -142,7 +143,13 @@ export default function PedidosProntosScreen() {
   }, [user]);
 
   // Buscar pedidos com status preparing ou ready
-  const churrasqueiraOrders = allOrders.filter(o => o.status === 'preparing' || o.status === 'ready');
+  const churrasqueiraOrders = allOrders.filter(o => {
+    if (OrderService.shouldBypassOperationalQueues(o)) {
+      return false;
+    }
+
+    return o.status === 'preparing' || o.status === 'ready';
+  });
 
   // Extrair itens prontos individuais (que ainda NÃO foram entregues)
   const readyItems: any[] = [];

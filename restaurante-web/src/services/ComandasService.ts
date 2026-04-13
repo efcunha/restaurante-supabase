@@ -2,7 +2,7 @@
  * ComandasService - Gerencia contas abertas (comandas), totais e fechamento.
  */
 import { supabase } from '../config/SupabaseConfig';
-import { Comanda } from '../types';
+import { Comanda, SelfServiceFlowContext } from '../types';
 import { getBusinessDateKey } from './BusinessDateService';
 
 const TABLE_COMANDAS = 'comandas';
@@ -43,6 +43,9 @@ class ComandasService {
       canceladaPor: row.canceled_by,
       canceladaPorNome: row.canceled_by_name,
       motivoCancelamento: row.cancel_reason,
+      comandaOrigin: row.comanda_origin,
+      paymentMode: row.payment_mode,
+      closedAtScale: row.closed_at_scale,
 
       atualizado: row.updated_at
     };
@@ -57,7 +60,8 @@ class ComandasService {
     mesa: string = '',
     cliente: string = '',
     attemptCount: number = 0,
-    businessDateKey?: string
+    businessDateKey?: string,
+    flowContext?: SelfServiceFlowContext
   ): Promise<{ id: string; dateKey: string }> {
     console.log(`[ComandasService] ensureComandaAberta START - attempt ${attemptCount}, comanda ${comandaNumber}, mesa ${mesa}, cliente ${cliente}`);
     
@@ -116,6 +120,21 @@ class ComandasService {
         needsUpdate = true;
       }
 
+      if (flowContext?.comandaOrigin && existing.comanda_origin !== flowContext.comandaOrigin) {
+        updates.comanda_origin = flowContext.comandaOrigin;
+        needsUpdate = true;
+      }
+
+      if (flowContext?.paymentMode && existing.payment_mode !== flowContext.paymentMode) {
+        updates.payment_mode = flowContext.paymentMode;
+        needsUpdate = true;
+      }
+
+      if (typeof flowContext?.closedAtScale === 'boolean' && existing.closed_at_scale !== flowContext.closedAtScale) {
+        updates.closed_at_scale = flowContext.closedAtScale;
+        needsUpdate = true;
+      }
+
       if (needsUpdate) {
         console.log(`[ComandasService] Updating existing comanda ${existing.id} with:`, updates);
         const { error: updateError } = await supabase.from(TABLE_COMANDAS).update(updates).eq('id', existing.id);
@@ -146,7 +165,10 @@ class ComandasService {
         open_balance: 0,
         opened_by: usuarioId,
         opened_by_name: usuarioNome,
-        received_by: []
+        received_by: [],
+        comanda_origin: flowContext?.comandaOrigin || 'standard',
+        payment_mode: flowContext?.paymentMode || 'deferred',
+        closed_at_scale: flowContext?.closedAtScale ?? false
       })
       .select()
       .single();
@@ -164,7 +186,7 @@ class ComandasService {
           console.log('[ComandasService] Retry SELECT with params:', { companyId, dateK, numStr, mesa });
           // Add small delay to handle race condition timing
           await new Promise(resolve => setTimeout(resolve, 100));
-          return this.ensureComandaAberta(companyId, comandaNumber, usuarioId, usuarioNome, mesa, cliente, attemptCount + 1, dateK);
+          return this.ensureComandaAberta(companyId, comandaNumber, usuarioId, usuarioNome, mesa, cliente, attemptCount + 1, dateK, flowContext);
         } else {
           throw new Error('Failed to ensure comanda after 2 attempts');
         }

@@ -44,11 +44,13 @@ import { canAccessScreen } from './src/auth/roles';
 import OfflineNotice from './src/components/OfflineNotice';
 import OfflineQueueManager from './src/components/OfflineQueueManager';
 import { LicenseGate } from './src/components/LicenseGate';
+import { featureFlags } from './src/config/featureFlags';
 import './src/services/MontagemSyncService';
 import PrinterService from './src/services/PrinterService';
 import { colorSystem } from './src/design-system';
 import { useEffect } from 'react';
 import { WebSidebarTabBar, SIDEBAR_WIDTH } from './src/components/WebSidebarTabBar';
+import SimuladoresScreen from './src/features/dev-simulators/SimuladoresScreen';
 import logger from './src/utils/logger';
 import {
   installGlobalErrorHandler,
@@ -100,9 +102,11 @@ const Tab = createBottomTabNavigator();
 
 function TabNavigator() {
   const { user } = useAuth();
+  const showDevSimulators = Platform.OS === 'web' && __DEV__ && featureFlags.devSimulators;
   logger.debug('[TabNavigator] Rendering for user', {
     hasUser: Boolean(user),
     role: user?.funcao,
+    showDevSimulators,
   });
 
   return (
@@ -152,6 +156,13 @@ function TabNavigator() {
       )}
       {canAccessScreen(user?.funcao, 'Admin') && (
         <Tab.Screen name="Admin" component={AdminScreen} />
+      )}
+      {showDevSimulators && (
+        <Tab.Screen
+          name="Simuladores"
+          component={SimuladoresScreen}
+          options={{ tabBarLabel: 'Simuladores DEV' }}
+        />
       )}
     </Tab.Navigator>
   );

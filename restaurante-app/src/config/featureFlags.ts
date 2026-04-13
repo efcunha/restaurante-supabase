@@ -56,8 +56,12 @@ export interface FeatureFlags {
   pdv_enabled: boolean;
   /** Habilita fluxo de pagamento presencial por TEF */
   pdv_devicePayment_enabled: boolean;
+  /** Habilita leitura de peso via bridge da balanca */
+  pdv_scale_enabled: boolean;
   /** Habilita registro manual de recebimento via maquininha externa */
   pdv_externalPos_enabled: boolean;
+  /** Habilita semântica isolada do fluxo self-service por peso */
+  pdv_selfServiceScale_enabled: boolean;
 }
 
 /**
@@ -103,7 +107,9 @@ const defaultFlags: FeatureFlags = {
   // Fase 7: PDV
   pdv_enabled: false,
   pdv_devicePayment_enabled: false,
+  pdv_scale_enabled: false,
   pdv_externalPos_enabled: false,
+  pdv_selfServiceScale_enabled: false,
 };
 
 /**
@@ -222,8 +228,20 @@ function loadFeatureFlagsFromEnv(): Partial<FeatureFlags> {
   if (process.env.EXPO_PUBLIC_FEATURE_PDV_DEVICE_PAYMENT !== undefined) {
     envFlags.pdv_devicePayment_enabled = process.env.EXPO_PUBLIC_FEATURE_PDV_DEVICE_PAYMENT === 'true';
   }
+  if (process.env.EXPO_PUBLIC_FEATURE_PDV_SCALE !== undefined) {
+    envFlags.pdv_scale_enabled = process.env.EXPO_PUBLIC_FEATURE_PDV_SCALE === 'true';
+  }
+  if (process.env.EXPO_PUBLIC_FEATURE_PDV_SCALE_ENABLED !== undefined) {
+    envFlags.pdv_scale_enabled = process.env.EXPO_PUBLIC_FEATURE_PDV_SCALE_ENABLED === 'true';
+  }
+  if (process.env.EXPO_PUBLIC_FEATURE_BALANCA !== undefined) {
+    envFlags.pdv_scale_enabled = process.env.EXPO_PUBLIC_FEATURE_BALANCA === 'true';
+  }
   if (process.env.EXPO_PUBLIC_FEATURE_PDV_EXTERNAL_POS !== undefined) {
     envFlags.pdv_externalPos_enabled = process.env.EXPO_PUBLIC_FEATURE_PDV_EXTERNAL_POS === 'true';
+  }
+  if (process.env.EXPO_PUBLIC_FEATURE_PDV_SELF_SERVICE_SCALE !== undefined) {
+    envFlags.pdv_selfServiceScale_enabled = process.env.EXPO_PUBLIC_FEATURE_PDV_SELF_SERVICE_SCALE === 'true';
   }
 
   return envFlags;

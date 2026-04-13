@@ -8,7 +8,11 @@ async function globalSetup(config: FullConfig) {
   console.log('[GLOBAL SETUP] Iniciando setup global...');
   
   // Verifica se a aplicação está disponível
-  const baseURL = config.use?.baseURL || 'http://localhost:8081';
+  const baseURL =
+    process.env.PDV_E2E_START_URL ||
+    process.env.PLAYWRIGHT_BASE_URL ||
+    config.use?.baseURL ||
+    'http://localhost:8081';
   console.log(`[GLOBAL SETUP] Base URL: ${baseURL}`);
   
   // Opcionalmente, executa uma verificação de conectividade

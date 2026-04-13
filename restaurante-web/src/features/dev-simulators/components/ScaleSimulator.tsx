@@ -1,7 +1,26 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
-import Slider from '@react-native-community/slider';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, TextInput } from 'react-native';
 import type { ScaleReading, ScaleStatus } from '../types';
+
+type ScaleSimulatorSnapshot = {
+  rawGrams: number;
+  netGrams: number;
+  tareGrams: number;
+  status: ScaleStatus;
+  toledoString: string;
+  updatedAt: string;
+};
+
+type ScaleSimulatorApi = {
+  getSnapshot: () => ScaleSimulatorSnapshot;
+  applyTare: () => ScaleSimulatorSnapshot;
+};
+
+declare global {
+  interface Window {
+    __DEV_SCALE_SIMULATOR__?: ScaleSimulatorApi;
+  }
+}
 
 function toToledo(grams: number): string {
   const kg = (grams / 1000).toFixed(3).padStart(7, ' ');
@@ -18,15 +37,38 @@ interface Props {
 
 export default function ScaleSimulator({ onReading }: Props) {
   const [rawGrams, setRawGrams] = useState(0);
+  const [rawInput, setRawInput] = useState('0');
   const [tare, setTare] = useState(0);
   const [log, setLog] = useState<ScaleReading[]>([]);
   const [status, setStatus] = useState<ScaleStatus>('stable');
   const instabilidadeRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const rawGramsRef = useRef(0);
+  const tareRef = useRef(0);
+  const statusRef = useRef<ScaleStatus>('stable');
 
   const netGrams = Math.max(0, rawGrams - tare);
 
+  const buildSnapshot = useCallback((currentRaw: number, currentTare: number, currentStatus: ScaleStatus): ScaleSimulatorSnapshot => {
+    const currentNet = Math.max(0, currentRaw - currentTare);
+    return {
+      rawGrams: currentRaw,
+      netGrams: currentNet,
+      tareGrams: currentTare,
+      status: currentStatus,
+      toledoString: toToledo(currentNet),
+      updatedAt: new Date().toISOString(),
+    };
+  }, []);
+
+  const syncRefs = useCallback((currentRaw: number, currentTare: number, currentStatus: ScaleStatus) => {
+    rawGramsRef.current = currentRaw;
+    tareRef.current = currentTare;
+    statusRef.current = currentStatus;
+  }, []);
+
   function addReading(raw: number, currentTare: number, st: ScaleStatus) {
     const net = Math.max(0, raw - currentTare);
+    syncRefs(raw, currentTare, st);
     const reading: ScaleReading = {
       timestamp: new Date(),
       rawGrams: raw,
@@ -40,17 +82,33 @@ export default function ScaleSimulator({ onReading }: Props) {
     return reading;
   }
 
-  const handleSlider = useCallback((value: number) => {
-    const g = Math.round(value);
+  const applyRawGrams = useCallback((value: number) => {
+    const g = Math.max(0, Math.min(30000, Math.round(value)));
     setRawGrams(g);
+    setRawInput(String(g));
     addReading(g, tare, 'stable');
     setStatus('stable');
-  }, [tare]);
+  }, [tare, syncRefs]);
+
+  const handleRawInputChange = useCallback((value: string) => {
+    const sanitized = value.replace(/[^\d]/g, '');
+    setRawInput(sanitized);
+    if (sanitized.length === 0) {
+      setRawGrams(0);
+      return;
+    }
+
+    const parsed = Number.parseInt(sanitized, 10);
+    if (Number.isFinite(parsed)) {
+      applyRawGrams(parsed);
+    }
+  }, [applyRawGrams]);
 
   function tarar() {
     stopInstabilidade();
     setTare(rawGrams);
     setStatus('tared');
+    syncRefs(rawGrams, rawGrams, 'tared');
     const reading: ScaleReading = {
       timestamp: new Date(),
       rawGrams,
@@ -66,9 +124,7 @@ export default function ScaleSimulator({ onReading }: Props) {
   function pesoAleatorio() {
     stopInstabilidade();
     const g = Math.floor(Math.random() * 15000 + 100);
-    setRawGrams(g);
-    setStatus('stable');
-    addReading(g, tare, 'stable');
+    applyRawGrams(g);
   }
 
   function stopInstabilidade() {
@@ -82,17 +138,56 @@ export default function ScaleSimulator({ onReading }: Props) {
     if (instabilidadeRef.current) {
       stopInstabilidade();
       setStatus('stable');
+      syncRefs(rawGramsRef.current, tareRef.current, 'stable');
       return;
     }
     const base = rawGrams || 1000;
     setStatus('unstable');
+    syncRefs(rawGramsRef.current, tareRef.current, 'unstable');
     instabilidadeRef.current = setInterval(() => {
       const noise = Math.floor((Math.random() - 0.5) * 200);
       const g = Math.max(0, base + noise);
       setRawGrams(g);
+      setRawInput(String(g));
       addReading(g, tare, 'unstable');
     }, 800);
   }
+
+  useEffect(() => {
+    syncRefs(rawGrams, tare, status);
+  }, [rawGrams, tare, status, syncRefs]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !__DEV__) {
+      return;
+    }
+
+    window.__DEV_SCALE_SIMULATOR__ = {
+      getSnapshot: () => buildSnapshot(rawGramsRef.current, tareRef.current, statusRef.current),
+      applyTare: () => {
+        stopInstabilidade();
+        const nextRaw = rawGramsRef.current;
+        setTare(nextRaw);
+        setStatus('tared');
+        syncRefs(nextRaw, nextRaw, 'tared');
+        const reading: ScaleReading = {
+          timestamp: new Date(),
+          rawGrams: nextRaw,
+          netGrams: 0,
+          tare: nextRaw,
+          status: 'tared',
+          toledoString: toToledo(0),
+        };
+        setLog(prev => [...prev, reading]);
+        onReading?.(reading);
+        return buildSnapshot(nextRaw, nextRaw, 'tared');
+      },
+    };
+
+    return () => {
+      delete window.__DEV_SCALE_SIMULATOR__;
+    };
+  }, [buildSnapshot, onReading, syncRefs]);
 
   useEffect(() => () => stopInstabilidade(), []);
 
@@ -126,18 +221,30 @@ export default function ScaleSimulator({ onReading }: Props) {
 
       <View style={styles.sliderRow}>
         <Text style={styles.sliderLabel}>Peso bruto</Text>
-        <Slider
-          style={{ flex: 1 }}
-          minimumValue={0}
-          maximumValue={30000}
-          step={1}
-          value={rawGrams}
-          onValueChange={handleSlider}
-          minimumTrackTintColor="#185FA5"
-          maximumTrackTintColor="#D3D1C7"
-          thumbTintColor="#185FA5"
+        <TextInput
+          value={rawInput}
+          onChangeText={handleRawInputChange}
+          keyboardType="numeric"
+          style={styles.input}
+          placeholder="0"
+          maxLength={5}
         />
         <Text style={styles.sliderVal}>{rawGrams} g</Text>
+      </View>
+
+      <View style={styles.quickAdjustRow}>
+        <TouchableOpacity style={styles.quickAdjustButton} onPress={() => applyRawGrams(rawGrams + 50)}>
+          <Text style={styles.quickAdjustText}>+50 g</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.quickAdjustButton} onPress={() => applyRawGrams(rawGrams + 250)}>
+          <Text style={styles.quickAdjustText}>+250 g</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.quickAdjustButton} onPress={() => applyRawGrams(rawGrams + 1000)}>
+          <Text style={styles.quickAdjustText}>+1 kg</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.quickAdjustButton} onPress={() => applyRawGrams(Math.max(0, rawGrams - 250))}>
+          <Text style={styles.quickAdjustText}>-250 g</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.btnRow}>
@@ -174,7 +281,7 @@ export default function ScaleSimulator({ onReading }: Props) {
         })}
       </ScrollView>
 
-      <TouchableOpacity onPress={() => { setLog([]); setTare(0); setStatus('stable'); stopInstabilidade(); }}>
+      <TouchableOpacity onPress={() => { setLog([]); setTare(0); setStatus('stable'); syncRefs(rawGramsRef.current, 0, 'stable'); stopInstabilidade(); }}>
         <Text style={styles.clearBtn}>limpar log</Text>
       </TouchableOpacity>
     </View>
@@ -194,7 +301,28 @@ const styles = StyleSheet.create({
   tareLabel: { fontSize: 12, color: '#888', textAlign: 'center', marginBottom: 8 },
   sliderRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
   sliderLabel: { fontSize: 13, color: '#888', minWidth: 75 },
+  input: {
+    flex: 1,
+    minHeight: 40,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#D3D1C7',
+    paddingHorizontal: 12,
+    fontSize: 14,
+    color: '#222',
+    backgroundColor: '#FAFAF7',
+  },
   sliderVal: { fontSize: 13, fontWeight: '500', minWidth: 52, textAlign: 'right' },
+  quickAdjustRow: { flexDirection: 'row', gap: 8, marginBottom: 12, flexWrap: 'wrap' },
+  quickAdjustButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 0.5,
+    borderColor: 'rgba(0,0,0,0.12)',
+    backgroundColor: '#F2F5F8',
+  },
+  quickAdjustText: { fontSize: 12, fontWeight: '500', color: '#345' },
   btnRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
   btn: { flex: 1, paddingVertical: 8, borderRadius: 8, borderWidth: 0.5, borderColor: 'rgba(0,0,0,0.15)', alignItems: 'center' },
   btnInfo: { borderColor: '#185FA5', backgroundColor: '#E6F1FB' },
