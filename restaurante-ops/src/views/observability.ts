@@ -478,8 +478,8 @@ function renderOverviewTab(
       </div>
       <div class="metric">
         <div class="metric-label">Serviços online</div>
-        <div class="metric-value">${onlineServices}/${services.length}</div>
-        <div class="metric-hint">offline: ${offlineServices} | unknown: ${warningServices}</div>
+        <div class="metric-value" id="obs-ov-svc-count">${onlineServices}/${services.length}</div>
+        <div class="metric-hint" id="obs-ov-svc-hint">offline: ${offlineServices} | unknown: ${warningServices}</div>
       </div>
       <div class="metric">
         <div class="metric-label">Alertas ativos</div>
@@ -593,7 +593,24 @@ function renderOverviewTab(
         });
       })();
     </script>
-  </div>`;
+  </div>
+
+  <script>
+  (function () {
+    var countEl = document.getElementById('obs-ov-svc-count');
+    var hintEl = document.getElementById('obs-ov-svc-hint');
+    if (!countEl) return;
+    fetch('/api/status').then(function (r) { return r.ok ? r.json() : null; }).then(function (data) {
+      if (!data || !Array.isArray(data.services)) return;
+      var svcs = data.services;
+      var online = svcs.filter(function (s) { return s.status === 'online'; }).length;
+      var offline = svcs.filter(function (s) { return s.status === 'offline'; }).length;
+      var unknown = svcs.filter(function (s) { return s.status !== 'online' && s.status !== 'offline'; }).length;
+      countEl.textContent = online + '/' + svcs.length;
+      if (hintEl) { hintEl.textContent = 'offline: ' + offline + ' | unknown: ' + unknown; }
+    }).catch(function () {});
+  })();
+  </script>`;
 }
 
 // ────────────────────────────────────────────────────────────
@@ -1593,7 +1610,7 @@ function renderServiceStatusTab(
     <div class="grid">
       <article class="metric">
         <div class="metric-label">Servicos online</div>
-        <div class="metric-value">${services.filter((s) => s.status === 'online').length}/${services.length}</div>
+        <div class="metric-value" id="obs-svc-count">${services.filter((s) => s.status === 'online').length}/${services.length}</div>
         <div class="metric-hint">Disponibilidade</div>
       </article>
       <article class="metric">
@@ -1610,11 +1627,44 @@ function renderServiceStatusTab(
       <thead>
         <tr><th>Servico</th><th>Status</th><th>Tempo de resposta</th><th>Endpoint</th><th>Detalhe</th></tr>
       </thead>
-      <tbody>
+      <tbody id="obs-http-tbody">
         ${serviceRows}
       </tbody>
     </table>
   </section>
+
+  <script>
+  (function () {
+    var countEl = document.getElementById('obs-svc-count');
+    var tbody = document.getElementById('obs-http-tbody');
+    if (!countEl && !tbody) return;
+    function esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    function pill(s) {
+      if (s === 'online') return '<span class="pill pill-ok">Online</span>';
+      if (s === 'offline') return '<span class="pill pill-error">Offline</span>';
+      return '<span class="pill pill-warn">Unknown</span>';
+    }
+    fetch('/api/status').then(function (r) { return r.ok ? r.json() : null; }).then(function (data) {
+      if (!data) return;
+      var svcs = Array.isArray(data.services) ? data.services : [];
+      if (countEl) {
+        var online = svcs.filter(function (s) { return s.status === 'online'; }).length;
+        countEl.textContent = online + '/' + svcs.length;
+      }
+      if (tbody && svcs.length > 0) {
+        tbody.innerHTML = svcs.map(function (svc) {
+          return '<tr>'
+            + '<td>' + esc(svc.name) + '</td>'
+            + '<td>' + pill(svc.status) + '</td>'
+            + '<td>' + (svc.responseTime ? esc(svc.responseTime) + 'ms' : '\u2014') + '</td>'
+            + '<td>' + (svc.url ? '<a href="' + esc(svc.url) + '" target="_blank" rel="noreferrer" style="color:#0c7a96;">Check</a>' : '\u2014') + '</td>'
+            + '<td>' + esc(svc.detail || '\u2014') + '</td>'
+            + '</tr>';
+        }).join('');
+      }
+    }).catch(function () {});
+  })();
+  </script>
 
   <section class="panel">
     <h2>Metricas do banco de dados</h2>
@@ -1688,7 +1738,7 @@ function renderApiStatusTab(apiStatus?: { service: string; env: string; status: 
       <thead>
         <tr><th>Servico</th><th>Status</th><th>Tempo de resposta</th><th>HTTP</th><th>Endpoint checado</th><th>Detalhe</th></tr>
       </thead>
-      <tbody>
+      <tbody id="obs-api-svc-tbody">
         ${serviceRows.length === 0 ? '<tr><td colspan="6" style="text-align:center;color:#516675;">Nenhum servico monitorado configurado.</td></tr>' : serviceRows}
       </tbody>
     </table>
@@ -1697,8 +1747,41 @@ function renderApiStatusTab(apiStatus?: { service: string; env: string; status: 
   <section class="panel">
     <h2>Payload do endpoint publico</h2>
     <p style="color:var(--ink-500);font-size:13px;margin-bottom:8px;">Este JSON e o retorno de <strong>GET /api/status</strong> (sem autenticacao).</p>
-    <pre class="mono mono-block" style="background:#f7fbfe;padding:12px;border-radius:8px;overflow-x:auto;border:1px solid #e5eef4;font-size:11px;">${escapeHtml(JSON.stringify(apiStatus, null, 2))}</pre>
+    <pre id="obs-api-raw-pre" class="mono mono-block" style="background:#f7fbfe;padding:12px;border-radius:8px;overflow-x:auto;border:1px solid #e5eef4;font-size:11px;">${escapeHtml(JSON.stringify(apiStatus, null, 2))}</pre>
   </section>
+
+  <script>
+  (function () {
+    var tbody = document.getElementById('obs-api-svc-tbody');
+    var rawPre = document.getElementById('obs-api-raw-pre');
+    if (!tbody && !rawPre) return;
+    function esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    function pill(s) {
+      if (s === 'online') return '<span class="pill pill-ok">Online</span>';
+      if (s === 'offline') return '<span class="pill pill-error">Offline</span>';
+      return '<span class="pill pill-warn">Unknown</span>';
+    }
+    fetch('/api/status').then(function (r) { return r.ok ? r.json() : null; }).then(function (data) {
+      if (!data) return;
+      if (rawPre) { rawPre.textContent = JSON.stringify(data, null, 2); }
+      var svcs = Array.isArray(data.services) ? data.services : [];
+      if (tbody) {
+        tbody.innerHTML = svcs.length === 0
+          ? '<tr><td colspan="6" style="text-align:center;color:#516675;">Nenhum servico monitorado configurado.</td></tr>'
+          : svcs.map(function (svc) {
+              return '<tr>'
+                + '<td><strong>' + esc(svc.name) + '</strong></td>'
+                + '<td>' + pill(svc.status) + '</td>'
+                + '<td>' + (svc.responseTime ? esc(svc.responseTime) + 'ms' : '\u2014') + '</td>'
+                + '<td>' + (svc.statusCode ? 'HTTP ' + esc(svc.statusCode) : '\u2014') + '</td>'
+                + '<td style="font-size:12px;max-width:280px;word-break:break-all;">' + (svc.url ? esc(svc.url) : '\u2014') + '</td>'
+                + '<td style="font-size:12px;color:#516675;">' + esc(svc.detail || '\u2014') + '</td>'
+                + '</tr>';
+            }).join('');
+      }
+    }).catch(function () {});
+  })();
+  </script>
 
   <section class="panel">
     <h2>Acoes rapidas de diagnostico</h2>
