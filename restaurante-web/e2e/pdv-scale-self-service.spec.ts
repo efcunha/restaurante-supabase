@@ -24,8 +24,30 @@ type WeightedProduct = {
   vendido_por_peso?: boolean | null;
 };
 
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://ykalocfhnetxenvmtlcn.supabase.co';
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlrYWxvY2Zobmv0eHZtdGxjbiIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzA2MDMxMDAwLCJleHAiOjE4NjM3OTg4MDB9.fake_anon_key';
+const SUPABASE_URL = process.env.SUPABASE_URL?.trim() || '';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY?.trim() || '';
+
+function isSupabaseConfigReady(): boolean {
+  return SUPABASE_URL.length > 0 && SUPABASE_ANON_KEY.length > 0;
+}
+
+function getAuthStorageKeyFromSupabaseUrl(): string | null {
+  if (!SUPABASE_URL) {
+    return null;
+  }
+
+  try {
+    const hostname = new URL(SUPABASE_URL).hostname;
+    const projectRef = hostname.split('.')[0]?.trim();
+    if (!projectRef) {
+      return null;
+    }
+
+    return `sb-${projectRef}-auth-token`;
+  } catch {
+    return null;
+  }
+}
 
 async function loginIfNeeded(page: Page) {
   await page.goto('/');
@@ -55,7 +77,12 @@ async function loginIfNeeded(page: Page) {
 }
 
 async function getAuthSession(page: Page): Promise<AuthSessionToken> {
-  const raw = await page.evaluate(() => localStorage.getItem('sb-ykalocfhnetxenvmtlcn-auth-token'));
+  const authStorageKey = getAuthStorageKeyFromSupabaseUrl();
+  if (!authStorageKey) {
+    return {};
+  }
+
+  const raw = await page.evaluate((storageKey) => localStorage.getItem(storageKey), authStorageKey);
   return raw ? (JSON.parse(raw) as AuthSessionToken) : {};
 }
 
@@ -147,6 +174,11 @@ async function clickScaleButton(page: Page): Promise<boolean> {
 
 test.describe('Fluxo de Pagamento Self-Service Scale', () => {
   test.beforeEach(async ({ page }) => {
+    if (!isSupabaseConfigReady()) {
+      test.skip(true, 'SUPABASE_URL/SUPABASE_ANON_KEY nao configurados para testes E2E.');
+      return;
+    }
+
     enableFeature('pdv_enabled');
     enableFeature('pdv_scale_enabled');
     enableFeature('pdv_selfServiceScale_enabled');

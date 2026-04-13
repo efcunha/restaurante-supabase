@@ -216,7 +216,8 @@ function respondJson(
     .replace(/'/g, '\\u0027')
     .replace(/\u2028/g, '\\u2028')
     .replace(/\u2029/g, '\\u2029');
-  res.end(responseBody, 'utf-8');
+  const responseBuffer = Buffer.from(responseBody, 'utf-8');
+  res.end(responseBuffer);
 }
 
 function respondHtml(
@@ -229,7 +230,8 @@ function respondHtml(
     'x-content-type-options': 'nosniff',
     'content-security-policy': "default-src 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:;",
   });
-  res.end(html);
+  const htmlBuffer = Buffer.from(html, 'utf-8');
+  res.end(htmlBuffer);
 }
 
 function sanitizeRequestTarget(value: string | undefined): string {
@@ -272,6 +274,23 @@ function sanitizeQueryToken(value: string | null | undefined, maxLen = 120): str
   const trimmed = sanitizePlainText(value).slice(0, maxLen);
   if (!trimmed) return '';
   return /^[A-Za-z0-9._:@/+\- ]+$/.test(trimmed) ? trimmed : '';
+}
+
+function sanitizeServiceStatusForHtml(service: ServiceStatus): ServiceStatus {
+  const safeUrl = sanitizePlainText(service.url).slice(0, 512);
+  return {
+    key: service.key ? sanitizePlainText(service.key).slice(0, 64) : undefined,
+    name: sanitizePlainText(service.name).slice(0, 80) || 'servico',
+    status: service.status,
+    responseTime: typeof service.responseTime === 'number' && Number.isFinite(service.responseTime)
+      ? service.responseTime
+      : undefined,
+    statusCode: typeof service.statusCode === 'number' && Number.isFinite(service.statusCode)
+      ? service.statusCode
+      : undefined,
+    url: safeUrl || undefined,
+    detail: service.detail ? sanitizePlainText(service.detail).slice(0, 180) : undefined,
+  };
 }
 
 function sanitizeOpsUserForHtml(user: OpsUser): OpsUser {
@@ -2063,7 +2082,7 @@ function startServer() {
   startRetentionScheduler(opsCompanyId);
 
   const server = createOpsHttpServer(async (req: IncomingMessage, res: ServerResponse) => {
-    const safeRequestUrl = sanitizeRequestTarget(req.url);
+    const safeRequestUrl = encodeURI(sanitizeRequestTarget(req.url));
     const safePathForLog = sanitizePlainText(safeRequestUrl.split('?')[0] || '/');
     const { requestId } = attachRequestTracking(req, res, safePathForLog);
 
@@ -3167,7 +3186,7 @@ function startServer() {
         try {
           const opts: Parameters<typeof renderObservabilityHtml>[0] = {
             tab,
-            userEmail: user.email,
+            userEmail: 'authenticated-operator',
           };
 
           if (tab === 'overview') {
@@ -3194,7 +3213,7 @@ function startServer() {
             opts.overviewServices = knownLogServices;
             opts.saasMetrics = saasMetrics;
             opts.billingOpsMetrics = billingOpsMetrics;
-            opts.services = services;
+            opts.services = services.map(sanitizeServiceStatusForHtml);
             opts.alerts = alerts;
             opts.apiStatus = statusPayload;
           } else if (tab === 'logs') {
@@ -3247,7 +3266,7 @@ function startServer() {
               listMonitoredServicesConfig(),
               getOpsObservabilitySettings(opsCompanyId),
             ]);
-            opts.services = services;
+            opts.services = services.map(sanitizeServiceStatusForHtml);
             opts.supabaseMetrics = supabaseMetrics;
             opts.monitoredServices = monitoredServices;
             opts.canManageMonitoredServices = user.role === 'admin';
