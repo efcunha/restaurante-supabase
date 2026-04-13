@@ -1,11 +1,17 @@
 #!/usr/bin/env node
 
-import http from 'node:http';
+import https from 'node:https';
 import { createStorybookMcpHandler } from '@storybook/mcp';
 
 const port = Number.parseInt(process.env.PORT || '13316', 10);
 const storybookBaseUrl = (process.env.STORYBOOK_PUBLIC_BASE_URL || 'https://restaurante-web-storybook-production.up.railway.app').replace(/\/$/, '');
 const mcpFormat = process.env.STORYBOOK_MCP_FORMAT || 'markdown';
+const tlsKeyPem = (process.env.STORYBOOK_TLS_KEY_PEM || '').replace(/\\n/g, '\n').trim();
+const tlsCertPem = (process.env.STORYBOOK_TLS_CERT_PEM || '').replace(/\\n/g, '\n').trim();
+
+if (!tlsKeyPem || !tlsCertPem) {
+  throw new Error('STORYBOOK_TLS_KEY_PEM e STORYBOOK_TLS_CERT_PEM sao obrigatorios para subir o servidor HTTPS do Storybook MCP.');
+}
 
 const hopByHopHeaders = new Set([
   'connection',
@@ -77,9 +83,9 @@ const mcpHandler = await createStorybookMcpHandler({
   },
 });
 
-const server = http.createServer(async (nodeRequest, nodeResponse) => {
+const server = https.createServer({ key: tlsKeyPem, cert: tlsCertPem }, async (nodeRequest, nodeResponse) => {
   try {
-    const pathname = new URL(nodeRequest.url || '/', `http://127.0.0.1:${port}`).pathname;
+    const pathname = new URL(nodeRequest.url || '/', `https://127.0.0.1:${port}`).pathname;
     const requestBody = await readRequestBody(nodeRequest);
 
     if (pathname === '/healthz') {
@@ -95,7 +101,7 @@ const server = http.createServer(async (nodeRequest, nodeResponse) => {
     }
 
     if (pathname === '/mcp') {
-      const request = new Request(`http://127.0.0.1:${port}${nodeRequest.url || '/mcp'}`, {
+      const request = new Request(`https://127.0.0.1:${port}${nodeRequest.url || '/mcp'}`, {
         method: nodeRequest.method,
         headers: filterHeaders(nodeRequest.headers),
         body: requestBody && nodeRequest.method !== 'GET' && nodeRequest.method !== 'HEAD' ? requestBody : undefined,
@@ -121,6 +127,6 @@ const server = http.createServer(async (nodeRequest, nodeResponse) => {
 });
 
 server.listen(port, () => {
-  console.log(`[storybook-mcp] listening on http://127.0.0.1:${port}`);
+  console.log(`[storybook-mcp] listening on https://127.0.0.1:${port}`);
   console.log(`[storybook-mcp] proxying Storybook UI to ${storybookBaseUrl}`);
 });
