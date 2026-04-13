@@ -9,7 +9,9 @@
       "WebFetch(www.w3cschool.cn)",
       "WebFetch(lumadock.com)",
       "WebFetch(almcorp.com)",
-      "Read(c:\\Users\\ECUNHA\\.vscode\\extensions\\qwenlm.qwen-code-vscode-ide-companion-0.14.2-win32-x64\\dist\\qwen-cli\\bundled\\qc-helper\\docs\\features/**)"
+      "Read(c:\\Users\\ECUNHA\\.vscode\\extensions\\qwenlm.qwen-code-vscode-ide-companion-0.14.2-win32-x64\\dist\\qwen-cli\\bundled\\qc-helper\\docs\\features/**)",
+      "Bash(npx *)",
+      "Bash(node *)"
     ]
   },
   "$version": 3

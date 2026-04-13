@@ -83,6 +83,10 @@ export default function CozinhaScreen() {
     // Filtrar apenas pedidos em preparing
     if (order.status !== 'preparing') return false;
 
+    if (OrderService.shouldBypassOperationalQueues(order)) {
+      return false;
+    }
+
     // ✅ PROTEÇÃO: Se o pedido tem comandaStatus='cancelada', não mostrar
     if (order.comandaStatus === 'cancelada') {
       console.log('[Cozinha] 🚫 Pedido filtrado (comanda cancelada):', order.id);

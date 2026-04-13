@@ -16,7 +16,8 @@ import InventoryService from '../services/InventoryService';
 import CaixaService from '../services/CaixaService';
 import { getBusinessDateKey } from '../services/BusinessDateService';
 import { listarFuncionarios } from '../services/FuncionariosService';
-import { Product, Cardapio, PizzaConfig, Funcionario } from '../types';
+import { Product, Cardapio, PizzaConfig, Funcionario, SelfServiceFlowContext, SelfServicePaymentMode } from '../types';
+import { isFeatureEnabled } from '../config/featureFlags';
 import {
     getOrCreateMenuCategories,
     normalizeCategorySlug,
@@ -29,6 +30,31 @@ const MENU_STORAGE_NAMESPACE_V2 = process.env.EXPO_PUBLIC_MENU_STORAGE_NAMESPACE
 const MENU_REFRESH_WINDOW_MS = 30 * 60 * 1000;
 
 export const fixDecimal = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
+
+type WeightedItemMetadata = {
+    measurementType: 'weight';
+    weightKg: number;
+    weightSource: 'automatic' | 'manual';
+    unitPrice: number;
+    totalPrice: number;
+};
+
+interface SubmitOrderResultItem {
+    nome: string;
+    quantidade: number;
+    valor: number;
+    observacao?: string;
+}
+
+export interface SubmitOrderResult {
+    orderId: string;
+    comandaNumber: string;
+    clientName: string;
+    total: number;
+    businessDateKey: string;
+    flowContext?: SelfServiceFlowContext;
+    itens: SubmitOrderResultItem[];
+}
 
 interface UseNovoPedidoReturn {
     user: any;
@@ -48,9 +74,15 @@ interface UseNovoPedidoReturn {
     setObservations: (obs: string) => void;
     updateProduto: (itemName: string, delta: number) => void;
     total: number;
-    selectedItems: { text: string; price: number; name: string; accompanimentsText?: string }[];
+    selectedItems: {
+        text: string;
+        price: number;
+        name: string;
+        accompanimentsText?: string;
+        metadata?: WeightedItemMetadata;
+    }[];
     handleRemoveItem: (itemText: string) => void;
-    handleSubmit: () => Promise<void>;
+    handleSubmit: () => Promise<SubmitOrderResult | undefined>;
     isSubmitting: boolean;
     handleLogout: () => void;
     temperosCaldos: string[];
@@ -61,6 +93,10 @@ interface UseNovoPedidoReturn {
     pizzaConfig: PizzaConfig | null;
     addPizzaToOrder: (sizeName: string, flavors: Product[], selectedBorda?: any, selectedAdicionais?: any[]) => void;
     addPorcaoWithAdicionais: (baseName: string, basePrice: number, selectedAdicionais: SelectedAdicional[]) => void;
+    addWeightedItem: (product: Product, weightKg: number, source: 'automatic' | 'manual') => void;
+    enableSelfServiceScaleFlow: (options?: { servicePoint?: string; paymentMode?: SelfServicePaymentMode }) => void;
+    disableSelfServiceScaleFlow: () => void;
+    isSelfServiceScaleFlow: boolean;
     carregarCardapio: () => Promise<void>;
     refreshCardapio: () => Promise<void>;
     isRefreshingCardapio: boolean;
@@ -90,6 +126,10 @@ export function useNovoPedido(): UseNovoPedidoReturn {
     const [bebidaSubcategories, setBebidaSubcategories] = useState<string[]>([]);
     const [pizzaConfig, setPizzaConfig] = useState<PizzaConfig | null>(null);
     const [customPrices, setCustomPrices] = useState<Record<string, number>>({}); // { 'Pizza Grande (Calabresa)': 40.00 }
+    const [itemMetadataMap, setItemMetadataMap] = useState<Record<string, WeightedItemMetadata>>({});
+    const [isSelfServiceScaleFlow, setIsSelfServiceScaleFlow] = useState(false);
+    const [selfServiceScaleServicePoint, setSelfServiceScaleServicePoint] = useState<string | null>(null);
+    const [selfServiceScalePaymentMode, setSelfServiceScalePaymentMode] = useState<SelfServicePaymentMode>('deferred');
     const [loadingCardapio, setLoadingCardapio] = useState(true);
     const [isRefreshingCardapio, setIsRefreshingCardapio] = useState(false);
     const [extras, setExtras] = useState<any[]>([]); // Pizza extras (bordas and adicionais)
@@ -448,6 +488,12 @@ export function useNovoPedido(): UseNovoPedidoReturn {
             if (newQty === 0) {
                 const newObj = { ...prev };
                 delete newObj[itemName];
+                setItemMetadataMap((prevMetadata) => {
+                    if (!prevMetadata[itemName]) return prevMetadata;
+                    const nextMetadata = { ...prevMetadata };
+                    delete nextMetadata[itemName];
+                    return nextMetadata;
+                });
                 return newObj;
             }
             return { ...prev, [itemName]: newQty };
@@ -459,6 +505,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
             ...(cardapio.caldos || []),
             ...(cardapio.bebidas || []),
             ...(cardapio.comidas || []),
+            ...((cardapio['comida-balanca'] as Product[]) || []),
             ...(cardapio.porcoes || []),
             ...(cardapio.outros || []),
             ...(cardapio.espetinhosSimples || []),
@@ -516,7 +563,13 @@ export function useNovoPedido(): UseNovoPedidoReturn {
     }, [produtos, calculateItemPrice]);
 
     const selectedItems = useMemo(() => {
-        const items: { text: string; price: number; name: string; accompanimentsText?: string }[] = [];
+        const items: {
+            text: string;
+            price: number;
+            name: string;
+            accompanimentsText?: string;
+            metadata?: WeightedItemMetadata;
+        }[] = [];
 
         const resolveAccompanimentsText = (itemName: string): string | undefined => {
             const nomeBase = itemName.replace(/\s*\(.*\)$/, '');
@@ -536,12 +589,13 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                     text: `${qty}x ${name}`,
                     price: itemPrice * qty,
                     name: name, // Pass the KEY explicitly
-                    accompanimentsText: resolveAccompanimentsText(name)
+                    accompanimentsText: resolveAccompanimentsText(name),
+                    metadata: itemMetadataMap[name]
                 });
             }
         }
         return items;
-    }, [produtos, calculateItemPrice, cardapioCombinado]);
+    }, [produtos, calculateItemPrice, cardapioCombinado, itemMetadataMap]);
 
     const handleRemoveItem = useCallback((itemName: string) => {
         if (Platform.OS === 'web') {
@@ -552,6 +606,12 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                     if (newProdutos[itemName]) {
                         delete newProdutos[itemName];
                     }
+                    setItemMetadataMap((prevMetadata) => {
+                        if (!prevMetadata[itemName]) return prevMetadata;
+                        const nextMetadata = { ...prevMetadata };
+                        delete nextMetadata[itemName];
+                        return nextMetadata;
+                    });
                     return newProdutos;
                 });
             }
@@ -573,6 +633,12 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                             if (newProdutos[itemName]) {
                                 delete newProdutos[itemName];
                             }
+                            setItemMetadataMap((prevMetadata) => {
+                                if (!prevMetadata[itemName]) return prevMetadata;
+                                const nextMetadata = { ...prevMetadata };
+                                delete nextMetadata[itemName];
+                                return nextMetadata;
+                            });
                             return newProdutos;
                         });
                     }
@@ -710,6 +776,45 @@ export function useNovoPedido(): UseNovoPedidoReturn {
         );
     }, [showToast]);
 
+    const addWeightedItem = useCallback((product: Product, weightKg: number, source: 'automatic' | 'manual') => {
+        const normalizedWeightKg = Number(weightKg);
+        if (!Number.isFinite(normalizedWeightKg) || normalizedWeightKg <= 0) {
+            showToast('Peso invalido para adicionar item', 'warning');
+            return;
+        }
+
+        const unitPrice = Number(product.price || 0);
+        const finalPrice = fixDecimal(unitPrice * normalizedWeightKg);
+        const sourceLabel = source === 'manual' ? 'manual' : 'balanca';
+        const itemName = `${product.name} (${normalizedWeightKg.toFixed(3)}kg - ${sourceLabel})`;
+
+        setCustomPrices(prev => ({
+            ...prev,
+            [itemName]: finalPrice,
+        }));
+
+        setItemMetadataMap((prev) => ({
+            ...prev,
+            [itemName]: {
+                measurementType: 'weight',
+                weightKg: normalizedWeightKg,
+                weightSource: source,
+                unitPrice,
+                totalPrice: finalPrice,
+            },
+        }));
+
+        setProdutos(prev => ({
+            ...prev,
+            [itemName]: (prev[itemName] || 0) + 1,
+        }));
+
+        showToast(
+            `Item por peso adicionado (${normalizedWeightKg.toFixed(3)}kg)`,
+            'success'
+        );
+    }, [showToast]);
+
     const resetForm = useCallback(() => {
         console.log('🧹 [useNovoPedido] Resetting form state...');
         setClientName('');
@@ -719,14 +824,30 @@ export function useNovoPedido(): UseNovoPedidoReturn {
         setObservations('');
         setProdutos({});
         setCustomPrices({});
+        setItemMetadataMap({});
+        setIsSelfServiceScaleFlow(false);
+        setSelfServiceScaleServicePoint(null);
+        setSelfServiceScalePaymentMode('deferred');
     }, []);
 
-    const handleSubmit = async () => {
+    const enableSelfServiceScaleFlow = useCallback((options?: { servicePoint?: string; paymentMode?: SelfServicePaymentMode }) => {
+        setIsSelfServiceScaleFlow(true);
+        setSelfServiceScaleServicePoint(options?.servicePoint || 'balanca_01');
+        setSelfServiceScalePaymentMode(options?.paymentMode || 'deferred');
+    }, []);
+
+    const disableSelfServiceScaleFlow = useCallback(() => {
+        setIsSelfServiceScaleFlow(false);
+        setSelfServiceScaleServicePoint(null);
+        setSelfServiceScalePaymentMode('deferred');
+    }, []);
+
+    const handleSubmit = async (): Promise<SubmitOrderResult | undefined> => {
         console.log('[useNovoPedido] handleSubmit START');
         
         if (selectedItems.length === 0) {
             showToast('Adicione pelo menos um item ao pedido', 'warning');
-            return;
+            return undefined;
         }
 
         try {
@@ -749,7 +870,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                         'O caixa precisa estar aberto para criar pedidos.\n\nVá em "Caixa" > "Abertura" para abrir o caixa do dia.',
                         [{ text: 'Entendi' }]
                     );
-                    return;
+                    return undefined;
                 }
             }
 
@@ -775,7 +896,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                         'Mesa já ocupada',
                         `Alguém já abriu um pedido para a Mesa ${mesa} agora pouco. Por favor, volte ao Mapa de Mesas.`
                     );
-                    return;
+                    return undefined;
                 }
                 console.log('[useNovoPedido] Mesa livre, prosseguindo...');
             }
@@ -790,6 +911,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
             // OTIMIZAÇÃO: Criar mapa de preços e categorias para evitar busca redundante no Firestore
             const priceMap: Record<string, number> = {};
             const categoryMap: Record<string, string> = {};
+            const metadataMap: Record<string, WeightedItemMetadata> = {};
 
             // Populando com base nos itens SELECIONADOS (que já têm o preço total calculado corretamente)
             selectedItems.forEach(item => {
@@ -804,6 +926,11 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                     categoryMap[item.text.toLowerCase()] = produtoOriginal.category;
                     // Também mapear o nome limpo para garantir
                     categoryMap[nomeBase.toLowerCase()] = produtoOriginal.category;
+                }
+
+                if (item.metadata?.measurementType === 'weight') {
+                    metadataMap[item.name.toLowerCase()] = item.metadata;
+                    metadataMap[nomeBase.toLowerCase()] = item.metadata;
                 }
             });
 
@@ -821,8 +948,13 @@ export function useNovoPedido(): UseNovoPedidoReturn {
             console.log('🍕 [NovoPedido] Adicionando customPrices ao priceMap:', customPrices);
             Object.entries(customPrices).forEach(([name, price]) => {
                 const lowerName = name.toLowerCase();
+                if (lowerName.endsWith('__extras')) {
+                    return;
+                }
                 priceMap[lowerName] = price;
-                categoryMap[lowerName] = 'pizza'; // ✅ CRÍTICO: Pizzas customizadas precisam da categoria
+                if (!categoryMap[lowerName] && lowerName.includes('pizza')) {
+                    categoryMap[lowerName] = 'pizza';
+                }
             });
 
             console.log('📦 [NovoPedido] Items a serem enviados:', items);
@@ -837,6 +969,25 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                 mesa,
                 total: parseFloat(total.toString())
             });
+
+            const flowContext: SelfServiceFlowContext | undefined = isFeatureEnabled('pdv_selfServiceScale_enabled') && isSelfServiceScaleFlow
+                ? {
+                    orderOrigin: 'self_service_scale',
+                    operationalRoute: 'bypass_production',
+                    servicePoint: selfServiceScaleServicePoint || 'balanca_01',
+                    autoGeneratedComanda: true,
+                    comandaOrigin: 'self_service_scale',
+                    paymentMode: selfServiceScalePaymentMode,
+                    closedAtScale: selfServiceScalePaymentMode === 'immediate',
+                }
+                : undefined;
+
+            const submittedItems: SubmitOrderResultItem[] = selectedItems.map((item) => ({
+                nome: item.text,
+                quantidade: 1,
+                valor: Number(item.price || 0),
+                observacao: item.accompanimentsText,
+            }));
             
             const createdOrderId = await addOrder(
                 clientName.trim() || 'Cliente',
@@ -852,7 +1003,9 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                 categoryMap, // ✅ Passar mapa de categorias
                 tableId,
                 waiterId,
-                businessDateKey
+                businessDateKey,
+                metadataMap,
+                flowContext
             );
             console.log('[useNovoPedido] addOrder concluído, orderId:', createdOrderId);
 
@@ -874,6 +1027,16 @@ export function useNovoPedido(): UseNovoPedidoReturn {
 
             console.log('[useNovoPedido] Chamando showToast...');
             showToast(`Pedido criado! Comanda ${novoNumeroComanda}`, 'success');
+
+            const submitResult: SubmitOrderResult = {
+                orderId: createdOrderId,
+                comandaNumber: novoNumeroComanda,
+                clientName: clientName.trim() || 'Cliente',
+                total: parseFloat(total.toString()),
+                businessDateKey,
+                flowContext,
+                itens: submittedItems,
+            };
 
             resetForm();
 
@@ -920,6 +1083,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
                 }
             }, 100);
             // ---------------------------
+            return submitResult;
         } catch (error: any) {
             console.error('❌ Erro ao criar pedido:', error);
             if (error?.code === 'CAIXA_FECHADO') {
@@ -936,6 +1100,7 @@ export function useNovoPedido(): UseNovoPedidoReturn {
             } else {
                 showToast(error.message || 'Não foi possível criar o pedido', 'error');
             }
+            return undefined;
         } finally {
             setIsSubmitting(false);
         }
@@ -976,6 +1141,10 @@ export function useNovoPedido(): UseNovoPedidoReturn {
         pizzaConfig,
         addPizzaToOrder,
         addPorcaoWithAdicionais,
+        addWeightedItem,
+        enableSelfServiceScaleFlow,
+        disableSelfServiceScaleFlow,
+        isSelfServiceScaleFlow,
         carregarCardapio,
         refreshCardapio,
         isRefreshingCardapio,
