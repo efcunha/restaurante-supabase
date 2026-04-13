@@ -3194,16 +3194,14 @@ function startServer() {
             const overviewServiceRaw = sanitizeQueryToken(url.searchParams.get('service') || '', 64);
             const overviewService = /^[A-Za-z0-9._:-]{1,64}$/.test(overviewServiceRaw) ? overviewServiceRaw : '';
 
-            const [logMetrics, logTimeline, knownLogServices, observabilitySettings, saasMetrics, billingOpsMetrics, services, alerts, statusPayload] = await Promise.all([
+            const [logMetrics, logTimeline, knownLogServices, observabilitySettings, saasMetrics, billingOpsMetrics, alerts] = await Promise.all([
               getLogMetrics(hours, overviewService || undefined),
               getLogMetricsTimeline(hours, overviewService || undefined),
               listKnownLogServices(Math.max(hours, 168)),
               getOpsObservabilitySettings(opsCompanyId),
               fetchSaasMetrics(),
               fetchBillingOpsMetrics(),
-              checkAllServices(),
               listAlerts(),
-              getApiStatus(),
             ]);
             opts.overviewHours = hours;
             opts.overviewStaleMinutes = observabilitySettings.staleMinutes;
@@ -3213,9 +3211,9 @@ function startServer() {
             opts.overviewServices = knownLogServices;
             opts.saasMetrics = saasMetrics;
             opts.billingOpsMetrics = billingOpsMetrics;
-            opts.services = services.map(sanitizeServiceStatusForHtml);
+            opts.services = [];
             opts.alerts = alerts;
-            opts.apiStatus = statusPayload;
+            opts.apiStatus = undefined;
           } else if (tab === 'logs') {
             const limit = parseIntegerQuery(url.searchParams.get('limit'), 50, 1, 200);
             const offset = parseIntegerQuery(url.searchParams.get('offset'), 0, 0, 100000);
@@ -3260,21 +3258,25 @@ function startServer() {
           } else if (tab === 'alerts') {
             opts.alerts = await listAlerts();
           } else if (tab === 'service-status') {
-            const [services, supabaseMetrics, monitoredServices, observabilitySettings] = await Promise.all([
-              checkAllServices(),
+            const [supabaseMetrics, monitoredServices, observabilitySettings] = await Promise.all([
               getSupabaseMetrics(),
               listMonitoredServicesConfig(),
               getOpsObservabilitySettings(opsCompanyId),
             ]);
-            opts.services = services.map(sanitizeServiceStatusForHtml);
+            opts.services = [];
             opts.supabaseMetrics = supabaseMetrics;
             opts.monitoredServices = monitoredServices;
             opts.canManageMonitoredServices = user.role === 'admin';
             opts.observabilitySettings = observabilitySettings;
             opts.canManageObservabilitySettings = user.role === 'admin';
           } else if (tab === 'api-status') {
-            const statusPayload = await getApiStatus();
-            opts.apiStatus = statusPayload;
+            opts.apiStatus = {
+              service: 'restaurante-ops',
+              env: sanitizePlainText(env.OPS_ENV),
+              status: 'operational',
+              lastChecked: new Date().toISOString(),
+              services: [],
+            };
           }
 
           respondHtml(res, 200, renderObservabilityHtml(opts));
