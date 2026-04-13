@@ -1,0 +1,35 @@
+name: Storybook Public Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      storybook_public_base_url:
+        description: "URL publica do Storybook para smoke. Ex: https://restaurante-web-storybook-production.up.railway.app"
+        required: false
+        type: string
+  schedule:
+    - cron: "0 */6 * * *"
+
+jobs:
+  smoke-storybook-public:
+    name: Smoke Storybook Public URL
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout codigo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Validate figma node map (strict)
+        env:
+          REQUIRE_PUBLIC_DOCS_URL: "true"
+        run: node docs/design-system/validate-figma-node-map.mjs
+
+      - name: Smoke public Storybook URL + node map consistency
+        env:
+          STORYBOOK_PUBLIC_BASE_URL: ${{ inputs.storybook_public_base_url != '' && inputs.storybook_public_base_url || 'https://restaurante-web-storybook-production.up.railway.app' }}
+        run: node docs/design-system/smoke-storybook-public.mjs

@@ -109,3 +109,4 @@ __tests__*
 test-results*
 playwright-report*
 .env.local
+storybook-static/

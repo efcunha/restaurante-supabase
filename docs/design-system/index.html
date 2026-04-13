@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RestaurantOS Design System</title>
+<style>
+:root{--primary-50:#fff7ed;--primary-100:#ffedd5;--primary-200:#fed7aa;--primary-300:#fdba74;--primary-400:#fb923c;--primary-500:#f97316;--primary-600:#ea580c;--primary-700:#c2410c;--primary-800:#9a3412;--primary-900:#7c2d12;--neutral-50:#fafaf9;--neutral-100:#f5f5f4;--neutral-200:#e7e5e4;--neutral-300:#d6d3d1;--neutral-400:#a8a29e;--neutral-500:#78716c;--neutral-600:#57534e;--neutral-700:#44403c;--neutral-800:#292524;--neutral-900:#1c1917;--success-light:#dcfce7;--success:#16a34a;--success-dark:#166534;--warning-light:#fef3c7;--warning:#d97706;--warning-dark:#92400e;--error-light:#fee2e2;--error:#dc2626;--error-dark:#991b1b;--info-light:#dbeafe;--info:#2563eb;--info-dark:#1e40af;--surface-base:#f4f6fb;--surface-card:#fff;--text-primary:#0b1220;--text-secondary:#5b6472;--text-tertiary:#9aa4b2;--text-disabled:#9aa4b2;--text-inverse:#fff;--text-on-primary:#fff;--border-default:#d7deea;--border-subtle:#e7e5e4;--border-strong:#a8a29e;--border-focus:#f97316;--shadow-sm:0 1px 2px rgba(11,18,32,.08);--shadow-md:0 2px 8px rgba(11,18,32,.12);--shadow-lg:0 4px 16px rgba(11,18,32,.18);--radius-sm:4px;--radius-md:8px;--radius-lg:12px;--radius-xl:16px;--radius-full:9999px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',Roboto,sans-serif;background:var(--surface-base);color:var(--text-primary);line-height:1.5}
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:240px;background:var(--neutral-900);color:#fff;padding:24px 0;overflow-y:auto;z-index:100}
+.sidebar h1{font-size:18px;font-weight:700;padding:0 20px 20px;border-bottom:1px solid var(--neutral-700);letter-spacing:-.3px}
+.sidebar h1 span{color:var(--primary-400)}
+.sidebar nav a{display:block;padding:8px 20px;color:var(--neutral-300);text-decoration:none;font-size:13px;font-weight:500;border-left:3px solid transparent;transition:all .15s}
+.sidebar nav a:hover{background:var(--neutral-800);color:#fff;border-left-color:var(--primary-400)}
+.sidebar nav a.active{background:var(--neutral-800);color:var(--primary-400);border-left-color:var(--primary-400)}
+.sidebar nav .group{padding:16px 20px 4px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--neutral-500);font-weight:700}
+.main{margin-left:240px;padding:40px 48px}
+.section{margin-bottom:64px}
+.section-title{font-size:28px;font-weight:700;margin-bottom:8px;letter-spacing:-.5px}
+.section-desc{color:var(--text-secondary);font-size:15px;margin-bottom:32px;max-width:640px}
+.subsection-title{font-size:20px;font-weight:600;margin:32px 0 16px;padding-bottom:8px;border-bottom:1px solid var(--border-default)}
+.color-scale{display:flex;gap:2px;border-radius:var(--radius-md);overflow:hidden;margin-bottom:16px}
+.color-scale .step{flex:1;height:48px;display:flex;align-items:flex-end;padding:4px 6px;font-size:10px;font-weight:600;color:var(--text-primary)}
+.color-scale .step.dark-text{color:#fff}
+.color-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:16px;margin-bottom:24px}
+.color-swatch{border-radius:var(--radius-md);overflow:hidden;box-shadow:var(--shadow-sm)}
+.color-swatch .preview{height:64px;border:1px solid var(--border-subtle)}
+.color-swatch .info{padding:8px 10px;background:#fff}
+.color-swatch .name{font-size:12px;font-weight:600;color:var(--text-primary)}
+.color-swatch .hex{font-size:11px;color:var(--text-tertiary);font-family:monospace}
+.type-table{width:100%;border-collapse:collapse}
+.type-table td{padding:16px 0;border-bottom:1px solid var(--border-subtle);vertical-align:middle}
+.type-table .label{width:140px;font-size:12px;color:var(--text-tertiary);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.type-table .specs{width:180px;font-size:11px;color:var(--text-secondary);font-family:monospace}
+.spacing-grid{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end}
+.spacing-item{text-align:center}
+.spacing-bar{background:var(--primary-300);border:1px solid var(--primary-400);border-radius:4px 4px 0 0}
+.spacing-label{font-size:11px;color:var(--text-tertiary);margin-top:6px;font-weight:600}
+.shadow-grid{display:flex;gap:24px}
+.shadow-card{width:160px;height:100px;background:#fff;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text-secondary)}
+.shadow-card.sm{box-shadow:var(--shadow-sm)}
+.shadow-card.md{box-shadow:var(--shadow-md)}
+.shadow-card.lg{box-shadow:var(--shadow-lg)}
+.variant-row{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:16px;padding:16px;background:var(--surface-card);border-radius:var(--radius-lg);border:1px solid var(--border-subtle)}
+.variant-label{font-size:11px;color:var(--text-tertiary);font-weight:600;min-width:80px;text-transform:uppercase;letter-spacing:.5px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:var(--radius-md);font-weight:600;cursor:pointer;transition:all .15s;text-decoration:none;font-family:inherit}
+.btn-sm{height:32px;padding:0 12px;font-size:13px}
+.btn-md{height:40px;padding:0 16px;font-size:14px}
+.btn-lg{height:48px;padding:0 24px;font-size:16px}
+.btn-primary{background:var(--primary-500);color:#fff}
+.btn-primary:hover{background:var(--primary-600)}
+.btn-secondary{background:var(--surface-card);color:var(--text-primary);border:1px solid var(--border-default)}
+.btn-secondary:hover{background:var(--neutral-50);border-color:var(--border-strong)}
+.btn-ghost{background:transparent;color:var(--primary-500)}
+.btn-ghost:hover{background:var(--primary-50)}
+.btn-destructive{background:var(--error);color:#fff}
+.btn-destructive:hover{background:var(--error-dark)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-icon{width:40px;height:40px;padding:0;border-radius:var(--radius-md)}
+.input{height:40px;padding:0 12px;border:1px solid var(--border-default);border-radius:var(--radius-md);font-size:14px;font-family:inherit;outline:none;transition:border-color .15s;width:280px;background:var(--surface-card)}
+.input:focus{border-color:var(--border-focus);box-shadow:0 0 0 3px var(--primary-100)}
+.input.error{border-color:var(--error)}
+.input:disabled{background:var(--neutral-100);color:var(--text-disabled)}
+.input::placeholder{color:var(--text-tertiary)}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:var(--radius-full);font-size:12px;font-weight:600;white-space:nowrap}
+.badge-success{background:var(--success-light);color:var(--success-dark)}
+.badge-warning{background:var(--warning-light);color:var(--warning-dark)}
+.badge-error{background:var(--error-light);color:var(--error-dark)}
+.badge-info{background:var(--info-light);color:var(--info-dark)}
+.badge-neutral{background:var(--neutral-100);color:var(--neutral-700)}
+.card{background:var(--surface-card);border-radius:var(--radius-lg);border:1px solid var(--border-subtle);box-shadow:var(--shadow-sm);overflow:hidden}
+.product-card{width:180px}
+.product-card .img-placeholder{height:120px;background:linear-gradient(135deg,var(--primary-100),var(--primary-200));display:flex;align-items:center;justify-content:center;font-size:32px}
+.product-card .body{padding:12px}
+.product-card .name{font-size:14px;font-weight:600;margin-bottom:4px}
+.product-card .price{font-size:16px;font-weight:700;color:var(--primary-600);margin-bottom:8px}
+.order-card{width:320px}
+.order-card .header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border-subtle)}
+.order-card .order-num{font-size:14px;font-weight:700}
+.order-card .items{padding:12px 16px;font-size:13px;color:var(--text-secondary)}
+.order-card .footer{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-top:1px solid var(--border-subtle)}
+.order-card .total{font-size:16px;font-weight:700}
+.comanda-card{width:280px}
+.comanda-card .body{padding:16px}
+.comanda-card .table-label{font-size:13px;color:var(--text-tertiary);margin-bottom:4px}
+.comanda-card .table-name{font-size:18px;font-weight:700;margin-bottom:8px}
+.comanda-card .meta{display:flex;justify-content:space-between;font-size:13px;color:var(--text-secondary)}
+.comanda-card .total-row{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:var(--primary-50);border-top:1px solid var(--primary-100)}
+.comanda-card .total-val{font-size:18px;font-weight:700;color:var(--primary-700)}
+.kds-card{width:300px}
+.kds-card .header{padding:12px 16px;display:flex;justify-content:space-between;align-items:center}
+.kds-card .order-id{font-weight:700;font-size:14px}
+.kds-card .countdown{font-size:13px;font-weight:600;color:var(--warning)}
+.kds-card .countdown.urgent{color:var(--error);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.kds-card .items{padding:8px 16px 12px}
+.kds-card .item{font-size:13px;padding:4px 0;border-bottom:1px dashed var(--border-subtle)}
+.kds-card .item:last-child{border:none}
+.kds-card .qty{font-weight:700;margin-right:8px}
+.kds-card .actions{padding:12px 16px;display:flex;gap:8px}
+.toast{padding:12px 16px;border-radius:var(--radius-md);display:flex;align-items:center;gap:10px;font-size:14px;font-weight:500;box-shadow:var(--shadow-md);width:360px}
+.toast-success{background:var(--success-light);color:var(--success-dark);border-left:4px solid var(--success)}
+.toast-error{background:var(--error-light);color:var(--error-dark);border-left:4px solid var(--error)}
+.toast-warning{background:var(--warning-light);color:var(--warning-dark);border-left:4px solid var(--warning)}
+.toast-info{background:var(--info-light);color:var(--info-dark);border-left:4px solid var(--info)}
+.skeleton{background:linear-gradient(90deg,var(--neutral-200) 25%,var(--neutral-100) 50%,var(--neutral-200) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:var(--radius-sm)}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.skeleton-line{height:14px;margin-bottom:8px}
+.skeleton-line.w60{width:60%}.skeleton-line.w80{width:80%}.skeleton-line.w40{width:40%}
+.skeleton-circle{width:40px;height:40px;border-radius:50%;display:inline-block}
+.screen-frame{background:#fff;border-radius:var(--radius-xl);box-shadow:var(--shadow-lg);overflow:hidden;border:1px solid var(--border-default)}
+.screen-frame.mobile{width:375px}
+.screen-frame.tablet{width:768px}
+.screen-statusbar{height:24px;background:var(--primary-500);display:flex;align-items:center;justify-content:space-between;padding:0 16px;color:#fff;font-size:11px;font-weight:600}
+.screen-appbar{height:56px;background:var(--primary-500);display:flex;align-items:center;padding:0 16px;color:#fff;gap:12px}
+.screen-appbar .title{font-size:18px;font-weight:600;flex:1}
+.screen-content{padding:16px;min-height:400px;background:var(--surface-base)}
+.flow-diagram{display:flex;gap:0;align-items:center;flex-wrap:wrap;padding:24px;background:var(--surface-card);border-radius:var(--radius-lg);border:1px solid var(--border-subtle)}
+.flow-step{padding:16px 24px;background:var(--primary-50);border:2px solid var(--primary-400);border-radius:var(--radius-lg);font-size:14px;font-weight:600;text-align:center;min-width:140px}
+.flow-step span{font-size:11px;color:var(--text-secondary);font-weight:400;display:block;margin-top:4px}
+.flow-arrow{font-size:24px;color:var(--primary-400);padding:0 8px;font-weight:700}
+.spec-table{width:100%;border-collapse:collapse;font-size:13px}
+.spec-table th{text-align:left;padding:8px 12px;background:var(--neutral-50);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-tertiary);border-bottom:2px solid var(--border-default)}
+.spec-table td{padding:8px 12px;border-bottom:1px solid var(--border-subtle)}
+.spec-table code{font-family:'Fira Code',monospace;font-size:12px;background:var(--neutral-100);padding:2px 6px;border-radius:4px}
+.mapping-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.mapping-card{background:var(--surface-card);border-radius:var(--radius-lg);padding:20px;border:1px solid var(--border-subtle)}
+.mapping-card h4{font-size:14px;font-weight:700;margin-bottom:12px}
+.mapping-row{display:flex;justify-content:space-between;font-size:13px;padding:4px 0}
+.mapping-row .figma{color:var(--text-secondary);font-family:monospace}
+.mapping-row .code{color:var(--primary-600);font-family:monospace;font-weight:600}
+</style>
+</head>
+<body>
+<div class="sidebar">
+<h1>Restaurant<span>OS</span></h1>
+<nav>
+<div class="group">Foundations</div>
+<a href="#colors" class="active">🎨 Cores</a>
+<a href="#typography">🔤 Tipografia</a>
+<a href="#spacing">📐 Espaçamento</a>
+<a href="#shadows-radius">💫 Sombras &amp; Bordas</a>
+<div class="group">Components</div>
+<a href="#buttons">Buttons</a>
+<a href="#inputs">Form Elements</a>
+<a href="#badges">Badges &amp; Status</a>
+<a href="#cards">Cards</a>
+<a href="#feedback">Feedback</a>
+<div class="group">Screens</div>
+<a href="#screen-login">📱 Login</a>
+<a href="#screen-order">📱 Novo Pedido</a>
+<a href="#screen-kds">📱 Cozinha KDS</a>
+<div class="group">Flows &amp; Specs</div>
+<a href="#prototype">🔄 Prototype Flow</a>
+<a href="#handoff">📋 Handoff</a>
+</nav>
+</div>
+
+<div class="main">
+
+<!-- COLORS -->
+<div class="section" id="colors">
+<h2 class="section-title">🎨 Cores</h2>
+<p class="section-desc">Variáveis de cor com modos Light e Dark. Importar via Tokens Studio plugin → Import from JSON.</p>
+<h3 class="subsection-title">Primary (Amber) — Brand</h3>
+<div class="color-scale">
+<div class="step" style="background:#fff7ed">50</div>
+<div class="step" style="background:#ffedd5">100</div>
+<div class="step" style="background:#fed7aa">200</div>
+<div class="step" style="background:#fdba74">300</div>
+<div class="step" style="background:#fb923c">400</div>
+<div class="step dark-text" style="background:#f97316">500</div>
+<div class="step dark-text" style="background:#ea580c">600</div>
+<div class="step dark-text" style="background:#c2410c">700</div>
+<div class="step dark-text" style="background:#9a3412">800</div>
+<div class="step dark-text" style="background:#7c2d12">900</div>
+</div>
+<h3 class="subsection-title">Neutral (Warm Gray)</h3>
+<div class="color-scale">
+<div class="step" style="background:#fafaf9">50</div>
+<div class="step" style="background:#f5f5f4">100</div>
+<div class="step" style="background:#e7e5e4">200</div>
+<div class="step" style="background:#d6d3d1">300</div>
+<div class="step" style="background:#a8a29e">400</div>
+<div class="step dark-text" style="background:#78716c">500</div>
+<div class="step dark-text" style="background:#57534e">600</div>
+<div class="step dark-text" style="background:#44403c">700</div>
+<div class="step dark-text" style="background:#292524">800</div>
+<div class="step dark-text" style="background:#1c1917">900</div>
+</div>
+<h3 class="subsection-title">Semantic</h3>
+<div class="color-grid">
+<div class="color-swatch"><div class="preview" style="background:#dcfce7"></div><div class="info"><div class="name">Success Light</div><div class="hex">#dcfce7</div></div></div>
+<div class="color-swatch"><div class="preview" style="background:#16a34a"></div><div class="info"><div class="name">Success</div><div class="hex">#16a34a</div></div></div>
+<div class="color-swatch"><div class="preview" style="background:#166534"></div><div class="info"><div class="name">Success Dark</div><div class="hex">#166534</div></div></div>
+<div class="color-swatch"><div class="preview" style="background:#fef3c7"></div><div class="info"><div class="name">Warning Light</div><div class="hex">#fef3c7</div></div></div>
+<div class="color-swatch"><div class="preview" style="background:#d97706"></div><div class="info"><div class="name">Warning</div><div class="hex">#d97706</div></div></div>
+<div class="color-swatch"><div class="preview" style="background:#92400e"></div><div class="info"><div class="name">Warning Dark</div><div class="hex">#92400e</div></div></div>
+<div class="color-swatch"><div class="preview" style="background:#fee2e2"></div><div class="info"><div class="name">Error Light</div><div class="hex">#fee2e2</div></div></div>
+<div class="color-swatch"><div class="preview" style="background:#dc2626"></div><div class="info"><div class="name">Error</div><div class="hex">#dc2626</div></div></div>
+<div class="color-swatch"><div class="preview" style="background:#991b1b"></div><div class="info"><div class="name">Error Dark</div><div class="hex">#991b1b</div></div></div>
+<div class="color-swatch"><div class="preview" style="background:#dbeafe"></div><div class="info"><div class="name">Info Light</div><div class="hex">#dbeafe</div></div></div>
+<div class="color-swatch"><div class="preview" style="background:#2563eb"></div><div class="info"><div class="name">Info</div><div class="hex">#2563eb</div></div></div>
+<div class="color-swatch"><div class="preview" style="background:#1e40af"></div><div class="info"><div class="name">Info Dark</div><div class="hex">#1e40af</div></div></div>
+</div>
+<h3 class="subsection-title">Surface &amp; Text (Light Mode)</h3>
+<div class="color-grid">
+<div class="color-swatch"><div class="preview" style="background:#f4f6fb"></div><div class="info"><div class="name">Surface Base</div><div class="hex">#f4f6fb</div></div></div>
+<div class="color-swatch"><div class="preview" style="background:#fff;border:1px solid #e7e5e4"></div><div class="info"><div class="name">Surface Card</div><div class="hex">#ffffff</div></div></div>
+<div class="color-swatch"><div class="preview" style="background:#fff;border:1px solid #e7e5e4"></div><div class="info"><div class="name">Surface Elevated</div><div class="hex">#ffffff</div></div></div>
+<div class="color-swatch"><div class="preview" style="background:#0b1220"></div><div class="info"><div class="name">Text Primary</div><div class="hex">#0b1220</div></div></div>
+<div class="color-swatch"><div class="preview" style="background:#5b6472"></div><div class="info"><div class="name">Text Secondary</div><div class="hex">#5b6472</div></div></div>
+<div class="color-swatch"><div class="preview" style="background:#9aa4b2"></div><div class="info"><div class="name">Text Tertiary</div><div class="hex">#9aa4b2</div></div></div>
+</div>
+<h3 class="subsection-title">Border</h3>
+<div class="color-grid">
+<div class="color-swatch"><div class="preview" style="background:#d7deea"></div><div class="info"><div class="name">Border Default</div><div class="hex">#d7deea</div></div></div>
+<div class="color-swatch"><div class="preview" style="background:#e7e5e4"></div><div class="info"><div class="name">Border Subtle</div><div class="hex">#e7e5e4</div></div></div>
+<div class="color-swatch"><div class="preview" style="background:#a8a29e"></div><div class="info"><div class="name">Border Strong</div><div class="hex">#a8a29e</div></div></div>
+<div class="color-swatch"><div class="preview" style="background:#f97316"></div><div class="info"><div class="name">Border Focus</div><div class="hex">#f97316</div></div></div>
+</div>
+</div>
+
+<!-- TYPOGRAPHY -->
+<div class="section" id="typography">
+<h2 class="section-title">🔤 Tipografia</h2>
+<p class="section-desc">Crie como Figma Text Styles. Nome: Heading 1, Body, Label, etc.</p>
+<table class="type-table">
+<tr><td class="label">Display</td><td style="font-size:32px;font-weight:600;letter-spacing:-.5px;line-height:40px">Exibição Principal</td><td class="specs">32/40 · w600 · -0.5px</td></tr>
+<tr><td class="label">Heading 1</td><td style="font-size:24px;font-weight:600;line-height:32px">Título de Seção</td><td class="specs">24/32 · w600</td></tr>
+<tr><td class="label">Heading 2</td><td style="font-size:20px;font-weight:500;line-height:28px">Subtítulo da Página</td><td class="specs">20/28 · w500</td></tr>
+<tr><td class="label">Body Large</td><td style="font-size:16px;font-weight:400;line-height:24px">Texto corpo grande para leitura principal</td><td class="specs">16/24 · w400</td></tr>
+<tr><td class="label">Body</td><td style="font-size:14px;font-weight:400;line-height:20px">Texto corpo padrão do sistema</td><td class="specs">14/20 · w400</td></tr>
+<tr><td class="label">Caption</td><td style="font-size:12px;font-weight:400;line-height:16px">Legenda e textos auxiliares</td><td class="specs">12/16 · w400</td></tr>
+<tr><td class="label">Label</td><td style="font-size:12px;font-weight:500;line-height:16px;letter-spacing:.5px">RÓTULO DE CAMPO</td><td class="specs">12/16 · w500 · +0.5px</td></tr>
+</table>
+</div>
+
+<!-- SPACING -->
+<div class="section" id="spacing">
+<h2 class="section-title">📐 Espaçamento</h2>
+<p class="section-desc">Base 4px. No Figma, use Auto Layout com esses valores.</p>
+<div class="spacing-grid">
+<div class="spacing-item"><div class="spacing-bar" style="width:0;height:0"></div><div class="spacing-label">0</div></div>
+<div class="spacing-item"><div class="spacing-bar" style="width:4px;height:24px"></div><div class="spacing-label">4</div></div>
+<div class="spacing-item"><div class="spacing-bar" style="width:8px;height:24px"></div><div class="spacing-label">8</div></div>
+<div class="spacing-item"><div class="spacing-bar" style="width:12px;height:24px"></div><div class="spacing-label">12</div></div>
+<div class="spacing-item"><div class="spacing-bar" style="width:16px;height:24px"></div><div class="spacing-label">16</div></div>
+<div class="spacing-item"><div class="spacing-bar" style="width:20px;height:24px"></div><div class="spacing-label">20</div></div>
+<div class="spacing-item"><div class="spacing-bar" style="width:24px;height:24px"></div><div class="spacing-label">24</div></div>
+<div class="spacing-item"><div class="spacing-bar" style="width:32px;height:24px"></div><div class="spacing-label">32</div></div>
+<div class="spacing-item"><div class="spacing-bar" style="width:40px;height:24px"></div><div class="spacing-label">40</div></div>
+<div class="spacing-item"><div class="spacing-bar" style="width:48px;height:24px"></div><div class="spacing-label">48</div></div>
+<div class="spacing-item"><div class="spacing-bar" style="width:64px;height:24px"></div><div class="spacing-label">64</div></div>
+</div>
+</div>
+
+<!-- SHADOWS & RADIUS -->
+<div class="section" id="shadows-radius">
+<h2 class="section-title">💫 Sombras &amp; Border Radius</h2>
+<h3 class="subsection-title">Sombras (Elevation)</h3>
+<div class="shadow-grid">
+<div><div class="shadow-card sm">SM · 0 1 2</div><div style="text-align:center;font-size:11px;color:var(--text-tertiary);margin-top:8px">0 1px 2px rgba</div></div>
+<div><div class="shadow-card md">MD · 0 2 8</div><div style="text-align:center;font-size:11px;color:var(--text-tertiary);margin-top:8px">0 2px 8px rgba</div></div>
+<div><div class="shadow-card lg">LG · 0 4 16</div><div style="text-align:center;font-size:11px;color:var(--text-tertiary);margin-top:8px">0 4px 16px rgba</div></div>
+</div>
+<h3 class="subsection-title">Border Radius</h3>
+<div class="color-grid">
+<div class="color-swatch"><div class="preview" style="background:var(--primary-100);border-radius:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600">0</div><div class="info"><div class="name">none</div></div></div>
+<div class="color-swatch"><div class="preview" style="background:var(--primary-100);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600">4</div><div class="info"><div class="name">sm</div></div></div>
+<div class="color-swatch"><div class="preview" style="background:var(--primary-100);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600">8</div><div class="info"><div class="name">md</div></div></div>
+<div class="color-swatch"><div class="preview" style="background:var(--primary-100);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600">12</div><div class="info"><div class="name">lg</div></div></div>
+<div class="color-swatch"><div class="preview" style="background:var(--primary-100);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600">16</div><div class="info"><div class="name">xl</div></div></div>
+<div class="color-swatch"><div class="preview" style="background:var(--primary-100);border-radius:9999px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600">9999</div><div class="info"><div class="name">full</div></div></div>
+</div>
+</div>
+
+<!-- BUTTONS -->
+<div class="section" id="buttons">
+<h2 class="section-title">🔘 Buttons</h2>
+<p class="section-desc">5 variantes × 3 tamanhos × 5 estados. Figma: Component com variants.</p>
+<div class="variant-row">
+<span class="variant-label">Primary</span>
+<button class="btn btn-primary btn-sm">Small</button>
+<button class="btn btn-primary btn-md">Medium</button>
+<button class="btn btn-primary btn-lg">Large (PDV)</button>
+<button class="btn btn-primary btn-md" disabled>Disabled</button>
+</div>
+<div class="variant-row">
+<span class="variant-label">Secondary</span>
+<button class="btn btn-secondary btn-sm">Small</button>
+<button class="btn btn-secondary btn-md">Medium</button>
+<button class="btn btn-secondary btn-lg">Large</button>
+<button class="btn btn-secondary btn-md" disabled>Disabled</button>
+</div>
+<div class="variant-row">
+<span class="variant-label">Ghost</span>
+<button class="btn btn-ghost btn-sm">Small</button>
+<button class="btn btn-ghost btn-md">Medium</button>
+<button class="btn btn-ghost btn-lg">Large</button>
+</div>
+<div class="variant-row">
+<span class="variant-label">Destructive</span>
+<button class="btn btn-destructive btn-sm">Small</button>
+<button class="btn btn-destructive btn-md">Medium</button>
+<button class="btn btn-destructive btn-lg">Large</button>
+</div>
+<div class="variant-row">
+<span class="variant-label">Icon</span>
+<button class="btn btn-primary btn-icon">🔍</button>
+<button class="btn btn-secondary btn-icon">⚙</button>
+<button class="btn btn-ghost btn-icon">✕</button>
+</div>
+<table class="spec-table" style="margin-top:16px">
+<thead><tr><th>Prop</th><th>Values</th><th>Default</th></tr></thead>
+<tbody>
+<tr><td><code>variant</code></td><td>primary · secondary · ghost · destructive</td><td>primary</td></tr>
+<tr><td><code>size</code></td><td>sm (32px) · md (40px) · lg (48px)</td><td>md</td></tr>
+<tr><td><code>loading</code></td><td>boolean</td><td>false</td></tr>
+<tr><td><code>disabled</code></td><td>boolean</td><td>false</td></tr>
+</tbody>
+</table>
+</div>
+
+<!-- INPUTS -->
+<div class="section" id="inputs">
+<h2 class="section-title">📝 Form Elements</h2>
+<div class="variant-row"><span class="variant-label">Default</span><input class="input" placeholder="Digite aqui..." /></div>
+<div class="variant-row"><span class="variant-label">Focus</span><input class="input" value="Texto focado" style="border-color:var(--border-focus);box-shadow:0 0 0 3px var(--primary-100)" /></div>
+<div class="variant-row"><span class="variant-label">Error</span><input class="input error" value="Valor inválido" /><span style="font-size:12px;color:var(--error)">Campo obrigatório</span></div>
+<div class="variant-row"><span class="variant-label">Disabled</span><input class="input" disabled value="Não editável" /></div>
+</div>
+
+<!-- BADGES -->
+<div class="section" id="badges">
+<h2 class="section-title">🏷️ Badges &amp; Status</h2>
+<div class="variant-row">
+<span class="variant-label">Order</span>
+<span class="badge badge-info">Aberto</span>
+<span class="badge badge-warning">Em preparo</span>
+<span class="badge badge-success">Pronto</span>
+<span class="badge badge-neutral">Entregue</span>
+<span class="badge badge-error">Cancelado</span>
+</div>
+<div class="variant-row">
+<span class="variant-label">Payment</span>
+<span class="badge badge-warning">Pendente</span>
+<span class="badge badge-success">Pago</span>
+<span class="badge badge-info">Parcial</span>
+</div>
+<div class="variant-row">
+<span class="variant-label">Table</span>
+<span class="badge badge-success">Livre</span>
+<span class="badge badge-warning">Ocupada</span>
+<span class="badge badge-info">Reservada</span>
+</div>
+</div>
+
+<!-- CARDS -->
+<div class="section" id="cards">
+<h2 class="section-title">🃏 Cards</h2>
+<div style="display:flex;gap:24px;flex-wrap:wrap">
+<div><p style="font-size:12px;color:var(--text-tertiary);margin-bottom:8px;font-weight:600;text-transform:uppercase">Product Card</p>
+<div class="card product-card"><div class="img-placeholder">🍔</div><div class="body"><div class="name">X-Burger Especial</div><div class="price">R$ 28,90</div><button class="btn btn-primary btn-sm" style="width:100%">+ Adicionar</button></div></div></div>
+<div><p style="font-size:12px;color:var(--text-tertiary);margin-bottom:8px;font-weight:600;text-transform:uppercase">Order Card</p>
+<div class="card order-card"><div class="header"><span class="order-num">#1042</span><span class="badge badge-warning">Em preparo</span></div><div class="items">2× X-Burger · 1× Batata G · 2× Coca-Cola</div><div class="footer"><span class="total">R$ 87,70</span><span style="font-size:12px;color:var(--text-tertiary)">14:32</span></div></div></div>
+<div><p style="font-size:12px;color:var(--text-tertiary);margin-bottom:8px;font-weight:600;text-transform:uppercase">Comanda Card</p>
+<div class="card comanda-card"><div class="body"><div class="table-label">Mesa 07</div><div class="table-name">João Silva</div><div class="meta"><span>4 itens</span><span>Aberta 13:45</span></div></div><div class="total-row"><span class="total-val">R$ 127,50</span><button class="btn btn-primary btn-sm">Fechar</button></div></div></div>
+<div><p style="font-size:12px;color:var(--text-tertiary);margin-bottom:8px;font-weight:600;text-transform:uppercase">KDS Card (Cozinha)</p>
+<div class="card kds-card"><div class="header"><span class="order-id">#1042 · Mesa 07</span><span class="countdown">⏱ 12:34</span></div><div class="items"><div class="item"><span class="qty">2×</span>X-Burger (sem cebola)</div><div class="item"><span class="qty">1×</span>Batata G com cheddar</div><div class="item"><span class="qty">2×</span>Coca-Cola 350ml</div></div><div class="actions"><button class="btn btn-secondary btn-sm" style="flex:1">Pular</button><button class="btn btn-primary btn-sm" style="flex:2">Pronto ✓</button></div></div></div>
+</div>
+</div>
+
+<!-- FEEDBACK -->
+<div class="section" id="feedback">
+<h2 class="section-title">📢 Feedback</h2>
+<h3 class="subsection-title">Toast Notifications</h3>
+<div style="display:flex;flex-direction:column;gap:12px;margin-bottom:32px">
+<div class="toast toast-success">✅ Pedido #1042 enviado para cozinha</div>
+<div class="toast toast-error">❌ Erro ao processar pagamento</div>
+<div class="toast toast-warning">⚠️ Estoque baixo: Batata G (3 un.)</div>
+<div class="toast toast-info">ℹ️ Mesa 07 reservada para 19:00</div>
+</div>
+<h3 class="subsection-title">Loading Skeleton</h3>
+<div class="card" style="padding:16px;width:320px;margin-bottom:32px">
+<div style="display:flex;gap:12px;align-items:center;margin-bottom:16px"><div class="skeleton skeleton-circle"></div><div style="flex:1"><div class="skeleton skeleton-line w60"></div><div class="skeleton skeleton-line w40"></div></div></div>
+<div class="skeleton skeleton-line w80"></div><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line w60"></div>
+</div>
+<h3 class="subsection-title">Empty State</h3>
+<div class="card" style="padding:48px;text-align:center;max-width:400px">
+<div style="font-size:48px;margin-bottom:16px">📋</div>
+<h3 style="font-size:18px;font-weight:600;margin-bottom:8px">Nenhum pedido aberto</h3>
+<p style="color:var(--text-secondary);font-size:14px;margin-bottom:20px">Inicie um novo pedido para começar</p>
+<button class="btn btn-primary btn-md">+ Novo Pedido</button>
+</div>
+</div>
+
+<!-- SCREEN: LOGIN -->
+<div class="section" id="screen-login">
+<h2 class="section-title">📱 Screen: Login (Mobile)</h2>
+<p class="section-desc">375×812 · Autenticação com logo, campos e CTA.</p>
+<div style="display:flex;gap:32px;align-items:flex-start">
+<div class="screen-frame mobile">
+<div class="screen-statusbar"><span>9:41</span><span>📶 🔋</span></div>
+<div style="background:linear-gradient(180deg,var(--primary-500) 0%,var(--primary-600) 40%,var(--surface-base) 40%);display:flex;flex-direction:column;align-items:center;padding-top:48px;padding-bottom:32px">
+<div style="width:72px;height:72px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:32px;margin-bottom:12px;box-shadow:var(--shadow-md)">🍽</div>
+<div style="font-size:24px;font-weight:700;color:#fff;margin-bottom:4px">RestaurantOS</div>
+<div style="font-size:13px;color:rgba(255,255,255,.7);margin-bottom:48px">PDV Inteligente</div>
+<div style="width:calc(100% - 32px);background:#fff;border-radius:16px;padding:24px;box-shadow:var(--shadow-lg)">
+<div style="font-size:18px;font-weight:700;margin-bottom:4px">Bem-vindo</div>
+<div style="font-size:13px;color:var(--text-secondary);margin-bottom:24px">Faça login para continuar</div>
+<input class="input" style="width:100%;margin-bottom:12px" placeholder="Email" />
+<input class="input" style="width:100%;margin-bottom:20px" type="password" placeholder="Senha" />
+<button class="btn btn-primary btn-lg" style="width:100%;margin-bottom:12px">Entrar</button>
+<div style="text-align:center;font-size:12px;color:var(--text-tertiary)">Esqueceu a senha? <a href="#" style="color:var(--primary-500);text-decoration:none;font-weight:600">Recuperar</a></div>
+</div>
+</div>
+</div>
+<div style="font-size:13px;max-width:280px">
+<h4 style="font-size:14px;font-weight:700;margin-bottom:12px">Annotations</h4>
+<table class="spec-table" style="width:100%">
+<tr><td style="padding:6px 8px">Background</td><td style="padding:6px 8px"><code>primary.500→600</code> gradient top 40%</td></tr>
+<tr><td style="padding:6px 8px">Logo</td><td style="padding:6px 8px"><code>72×72</code> · <code>radius:full</code> · <code>shadow:md</code></td></tr>
+<tr><td style="padding:6px 8px">Card</td><td style="padding:6px 8px"><code>surface.card</code> · <code>radius:xl</code> · <code>shadow:lg</code></td></tr>
+<tr><td style="padding:6px 8px">Inputs</td><td style="padding:6px 8px"><code>width:100%</code> · <code>gap:12</code> · <code>radius:md</code></td></tr>
+<tr><td style="padding:6px 8px">CTA</td><td style="padding:6px 8px"><code>btn-primary lg</code> · <code>width:100%</code></td></tr>
+<tr><td style="padding:6px 8px">Padding</td><td style="padding:6px 8px">Card: <code>24px</code> all sides</td></tr>
+</table>
+</div>
+</div>
+</div>
+
+<!-- SCREEN: NOVO PEDIDO -->
+<div class="section" id="screen-order">
+<h2 class="section-title">📱 Screen: Novo Pedido (Mobile)</h2>
+<p class="section-desc">375×812 · Criação de pedido com categorias, produtos e carrinho.</p>
+<div style="display:flex;gap:32px;align-items:flex-start">
+<div class="screen-frame mobile">
+<div class="screen-statusbar"><span>9:41</span><span>📶 🔋</span></div>
+<div class="screen-appbar"><span style="font-size:20px">←</span><span class="title">Novo Pedido</span><span style="font-size:20px">🔍</span></div>
+<div style="padding:12px 0;display:flex;gap:8px;overflow-x:auto;padding-left:16px;padding-right:16px">
+<span class="badge" style="background:var(--primary-500);color:#fff">🍔 Lanches</span>
+<span class="badge badge-neutral">🍕 Pizzas</span>
+<span class="badge badge-neutral">🥤 Bebidas</span>
+<span class="badge badge-neutral">🍰 Sobremesas</span>
+</div>
+<div class="screen-content" style="padding-top:0">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+<div class="card product-card" style="width:auto"><div class="img-placeholder" style="height:80px">🍔</div><div class="body" style="padding:8px"><div class="name" style="font-size:12px">X-Burger</div><div class="price" style="font-size:14px">R$ 28,90</div></div></div>
+<div class="card product-card" style="width:auto"><div class="img-placeholder" style="height:80px">🍟</div><div class="body" style="padding:8px"><div class="name" style="font-size:12px">Batata G</div><div class="price" style="font-size:14px">R$ 18,90</div></div></div>
+<div class="card product-card" style="width:auto"><div class="img-placeholder" style="height:80px">🥤</div><div class="body" style="padding:8px"><div class="name" style="font-size:12px">Coca-Cola</div><div class="price" style="font-size:14px">R$ 8,00</div></div></div>
+<div class="card product-card" style="width:auto"><div class="img-placeholder" style="height:80px">🍰</div><div class="body" style="padding:8px"><div class="name" style="font-size:12px">Petit Gateau</div><div class="price" style="font-size:14px">R$ 24,00</div></div></div>
+</div>
+</div>
+<div style="padding:12px 16px;background:var(--surface-card);border-top:1px solid var(--border-default);display:flex;justify-content:space-between;align-items:center">
+<div><div style="font-size:12px;color:var(--text-tertiary)">3 itens</div><div style="font-size:18px;font-weight:700;color:var(--primary-600)">R$ 55,80</div></div>
+<button class="btn btn-primary btn-lg">Ver Carrinho →</button>
+</div>
+</div>
+<div style="font-size:13px;max-width:280px">
+<h4 style="font-size:14px;font-weight:700;margin-bottom:12px">Annotations</h4>
+<table class="spec-table" style="width:100%">
+<tr><td style="padding:6px 8px">AppBar</td><td style="padding:6px 8px"><code>primary.500</code> · h:56px · white text</td></tr>
+<tr><td style="padding:6px 8px">Category chips</td><td style="padding:6px 8px">Horizontal scroll · <code>gap:8</code> · active=primary</td></tr>
+<tr><td style="padding:6px 8px">Product grid</td><td style="padding:6px 8px">2 cols · <code>gap:12</code> · <code>padding:16</code></td></tr>
+<tr><td style="padding:6px 8px">Product img</td><td style="padding:6px 8px"><code>80px</code> height · gradient bg</td></tr>
+<tr><td style="padding:6px 8px">Cart footer</td><td style="padding:6px 8px"><code>surface.card</code> · border-top · sticky bottom</td></tr>
+<tr><td style="padding:6px 8px">Cart CTA</td><td style="padding:6px 8px"><code>btn-primary lg</code> · min-touch 48px</td></tr>
+</table>
+</div>
+</div>
+</div>
+
+<!-- SCREEN: KDS -->
+<div class="section" id="screen-kds">
+<h2 class="section-title">📱 Screen: Cozinha KDS</h2>
+<p class="section-desc">768px tablet · Kitchen Display System com countdown e ações.</p>
+<div style="display:flex;gap:32px;align-items:flex-start">
+<div class="screen-frame tablet">
+<div style="height:48px;background:var(--neutral-900);display:flex;align-items:center;padding:0 24px;color:#fff;justify-content:space-between">
+<span style="font-size:16px;font-weight:700">🍳 Cozinha</span>
+<div style="display:flex;gap:8px">
+<span class="badge badge-warning" style="font-size:11px">5 Pendentes</span>
+<span class="badge badge-success" style="font-size:11px">12 Prontos</span>
+</div>
+</div>
+<div style="display:flex;gap:8px;padding:8px 16px;background:var(--neutral-100);border-bottom:1px solid var(--border-default);overflow-x:auto">
+<span class="badge" style="background:var(--primary-500);color:#fff">Todos (5)</span>
+<span class="badge badge-neutral">Pendentes (3)</span>
+<span class="badge badge-neutral">Em preparo (2)</span>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:16px">
+<div class="card kds-card" style="width:auto;border-left:4px solid var(--error)"><div class="header"><span class="order-id">#1039 · Mesa 03</span><span class="countdown urgent">⏱ 18:45</span></div><div class="items"><div class="item"><span class="qty">1×</span>Pizzão Calabresa</div><div class="item"><span class="qty">2×</span>Coca-Cola 350ml</div></div><div class="actions"><button class="btn btn-secondary btn-sm" style="flex:1">Pular</button><button class="btn btn-primary btn-sm" style="flex:2">Pronto ✓</button></div></div>
+<div class="card kds-card" style="width:auto;border-left:4px solid var(--warning)"><div class="header"><span class="order-id">#1041 · Mesa 05</span><span class="countdown">⏱ 08:12</span></div><div class="items"><div class="item"><span class="qty">2×</span>X-Burger</div><div class="item"><span class="qty">1×</span>Batata G c/ cheddar</div><div class="item"><span class="qty">1×</span>Milkshake</div></div><div class="actions"><button class="btn btn-secondary btn-sm" style="flex:1">Pular</button><button class="btn btn-primary btn-sm" style="flex:2">Pronto ✓</button></div></div>
+<div class="card kds-card" style="width:auto;border-left:4px solid var(--success)"><div class="header"><span class="order-id">#1042 · Delivery</span><span class="countdown" style="color:var(--success)">⏱ 03:20</span></div><div class="items"><div class="item"><span class="qty">1×</span>Combo Família</div><div class="item"><span class="qty">4×</span>Coca-Cola 2L</div></div><div class="actions"><button class="btn btn-secondary btn-sm" style="flex:1">Pular</button><button class="btn btn-primary btn-sm" style="flex:2">Pronto ✓</button></div></div>
+<div class="card kds-card" style="width:auto;border-left:4px solid var(--warning)"><div class="header"><span class="order-id">#1043 · Mesa 01</span><span class="countdown">⏱ 02:05</span></div><div class="items"><div class="item"><span class="qty">1×</span>Salada Caesar</div><div class="item"><span class="qty">1×</span>Água s/ gás</div></div><div class="actions"><button class="btn btn-secondary btn-sm" style="flex:1">Pular</button><button class="btn btn-primary btn-sm" style="flex:2">Pronto ✓</button></div></div>
+</div>
+</div>
+<div style="font-size:13px;max-width:280px">
+<h4 style="font-size:14px;font-weight:700;margin-bottom:12px">Annotations</h4>
+<table class="spec-table" style="width:100%">
+<tr><td style="padding:6px 8px">Top bar</td><td style="padding:6px 8px"><code>neutral.900</code> · h:48px · badges</td></tr>
+<tr><td style="padding:6px 8px">Filter bar</td><td style="padding:6px 8px"><code>neutral.100</code> · chip scroll · active=primary</td></tr>
+<tr><td style="padding:6px 8px">Card grid</td><td style="padding:6px 8px">2 cols · <code>gap:16</code> · responsive</td></tr>
+<tr><td style="padding:6px 8px">Border left</td><td style="padding:6px 8px"><code>error</code>=overdue, <code>warning</code>=near, <code>success</code>=ok</td></tr>
+<tr><td style="padding:6px 8px">Countdown</td><td style="padding:6px 8px">MM:SS · <code>urgent</code> = pulse animation</td></tr>
+<tr><td style="padding:6px 8px">Actions</td><td style="padding:6px 8px">Skip (1/3) · Ready (2/3)</td></tr>
+</table>
+</div>
+</div>
+</div>
+
+<!-- PROTOTYPE FLOW -->
+<div class="section" id="prototype">
+<h2 class="section-title">🔄 Prototype Flows</h2>
+<p class="section-desc">Configure no Figma Prototype mode com Smart Animate.</p>
+<h3 class="subsection-title">Flow 1: Login → Novo Pedido → Confirmar</h3>
+<div class="flow-diagram">
+<div class="flow-step">Login Screen<span>Email + Senha</span></div>
+<div class="flow-arrow">→</div>
+<div class="flow-step">Home / Mesas<span>Selecionar mesa</span></div>
+<div class="flow-arrow">→</div>
+<div class="flow-step">Novo Pedido<span>Categoria + Produtos</span></div>
+<div class="flow-arrow">→</div>
+<div class="flow-step">Carrinho<span>Revisar itens</span></div>
+<div class="flow-arrow">→</div>
+<div class="flow-step">Pagamento<span>PIX / Cartão / Dinheiro</span></div>
+<div class="flow-arrow">→</div>
+<div class="flow-step">Confirmação<span>Toast success</span></div>
+</div>
+<h3 class="subsection-title">Flow 2: Cozinha (KDS)</h3>
+<div class="flow-diagram" style="margin-top:16px">
+<div class="flow-step">KDS Board<span>Ver pedidos</span></div>
+<div class="flow-arrow">→</div>
+<div class="flow-step">Selecionar<span>Expandir detalhes</span></div>
+<div class="flow-arrow">→</div>
+<div class="flow-step">Marcar Pronto<span>Btn "Pronto ✓"</span></div>
+<div class="flow-arrow">→</div>
+<div class="flow-step">Card Remove<span>Animate out</span></div>
+</div>
+</div>
+
+<!-- HANDOFF -->
+<div class="section" id="handoff">
+<h2 class="section-title">📋 Handoff — Token → TypeScript Mapping</h2>
+<p class="section-desc">Mapeamento direto entre tokens do Figma e código TypeScript.</p>
+<div class="mapping-grid">
+<div class="mapping-card">
+<h4>🎨 Colors → theme/colors.ts</h4>
+<div class="mapping-row"><span class="figma">core/primary/500</span><span class="code">designColors.primary[500]</span></div>
+<div class="mapping-row"><span class="figma">core/neutral/700</span><span class="code">designColors.neutral[700]</span></div>
+<div class="mapping-row"><span class="figma">semantic/success/default</span><span class="code">designColors.semantic.success</span></div>
+<div class="mapping-row"><span class="figma">surface/card</span><span class="code">designColors.surface.card</span></div>
+<div class="mapping-row"><span class="figma">text/primary</span><span class="code">designColors.text.primary</span></div>
+<div class="mapping-row"><span class="figma">border/default</span><span class="code">designColors.border.default</span></div>
+<div style="margin-top:12px;font-size:11px;color:var(--text-tertiary)">Legacy flat: <code>colors.primary</code>, <code>colors.white</code>, etc.</div>
+</div>
+<div class="mapping-card">
+<h4>📐 Spacing → design-system/tokens.ts</h4>
+<div class="mapping-row"><span class="figma">spacing/4</span><span class="code">spacing[1]</span></div>
+<div class="mapping-row"><span class="figma">spacing/8</span><span class="code">spacing[2]</span></div>
+<div class="mapping-row"><span class="figma">spacing/16</span><span class="code">spacing[4]</span></div>
+<div class="mapping-row"><span class="figma">spacing/24</span><span class="code">spacing[6]</span></div>
+<div class="mapping-row"><span class="figma">spacing/32</span><span class="code">spacing[8]</span></div>
+<div class="mapping-row"><span class="figma">spacing/48</span><span class="code">spacing[12]</span></div>
+<div style="margin-top:12px;font-size:11px;color:var(--text-tertiary)">Legacy: <code>spacing.s16</code>, <code>spacing.s24</code></div>
+</div>
+<div class="mapping-card">
+<h4>🔤 Typography → design-system/tokens.ts</h4>
+<div class="mapping-row"><span class="figma">font/size/3xl</span><span class="code">fontSizes['3xl'] (32)</span></div>
+<div class="mapping-row"><span class="figma">font/size/base</span><span class="code">fontSizes.base (16)</span></div>
+<div class="mapping-row"><span class="figma">font/size/sm</span><span class="code">fontSizes.sm (14)</span></div>
+<div class="mapping-row"><span class="figma">font/weight/semibold</span><span class="code">fontWeights.semibold</span></div>
+<div class="mapping-row"><span class="figma">font/lineHeight/normal</span><span class="code">lineHeights.normal (1.5)</span></div>
+<div style="margin-top:12px;font-size:11px;color:var(--text-tertiary)">Legacy: <code>typography.headingM</code></div>
+</div>
+<div class="mapping-card">
+<h4>💫 Shadows &amp; Radius → design-system/tokens.ts</h4>
+<div class="mapping-row"><span class="figma">shadow/sm</span><span class="code">shadows.sm</span></div>
+<div class="mapping-row"><span class="figma">shadow/md</span><span class="code">shadows.md</span></div>
+<div class="mapping-row"><span class="figma">shadow/lg</span><span class="code">shadows.lg</span></div>
+<div class="mapping-row"><span class="figma">borderRadius/md</span><span class="code">borderRadius.md</span></div>
+<div class="mapping-row"><span class="figma">borderRadius/lg</span><span class="code">borderRadius.lg</span></div>
+<div class="mapping-row"><span class="figma">borderRadius/xl</span><span class="code">borderRadius.xl</span></div>
+<div style="margin-top:12px;font-size:11px;color:var(--text-tertiary)">Legacy: <code>radius.medium</code></div>
+</div>
+</div>
+<h3 class="subsection-title" style="margin-top:32px">Como importar tokens no Figma</h3>
+<div class="card" style="padding:24px;max-width:800px">
+<ol style="font-size:14px;line-height:2;padding-left:20px">
+<li>No Figma, instale o plugin <strong>Tokens Studio for Figma</strong> (gratuito)</li>
+<li>Abra o plugin → <strong>Import from JSON</strong> → selecione <code>docs/design-system/figma-tokens.json</code></li>
+<li>Tokens serão importados como <strong>Variables</strong> com modos Light e Dark</li>
+<li>Crie <strong>Text Styles</strong> seguindo a tabela de Tipografia</li>
+<li>Crie componentes usando Auto Layout com spacing tokens</li>
+<li>Nomeie camadas com <strong>PascalCase</strong> (ProductCard, OrderBadge)</li>
+<li>Use <strong>Component Properties</strong> para variant/size/state</li>
+</ol>
+</div>
+</div>
+
+</div>
+
+<script>
+document.querySelectorAll('.sidebar nav a').forEach(function(a){a.addEventListener('click',function(e){e.preventDefault();var t=document.querySelector(this.getAttribute('href'));if(t)t.scrollIntoView({behavior:'smooth',block:'start'});document.querySelectorAll('.sidebar nav a').forEach(function(x){x.classList.remove('active')});this.classList.add('active')})});
+var sections=document.querySelectorAll('.section');var links=document.querySelectorAll('.sidebar nav a');window.addEventListener('scroll',function(){var current='';sections.forEach(function(s){if(window.scrollY>=s.offsetTop-100)current=s.id});links.forEach(function(l){l.classList.toggle('active',l.getAttribute('href')==='#'+current)})});
+</script>
+</body>
+</html>

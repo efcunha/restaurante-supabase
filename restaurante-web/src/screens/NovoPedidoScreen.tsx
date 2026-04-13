@@ -1,10 +1,10 @@
 import { StatusBar } from 'expo-status-bar';
 import LicenseGate from '../components/LicenseGate';
-import { StyleSheet, Text, View, SectionList, TouchableOpacity, TextInput, ActivityIndicator, LayoutAnimation, Platform, UIManager, SectionListRenderItem, Pressable } from 'react-native';
+import { Alert, Modal, StyleSheet, Text, View, SectionList, TouchableOpacity, TextInput, ActivityIndicator, LayoutAnimation, Platform, UIManager, SectionListRenderItem, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import React, { memo, useCallback, useState, useMemo, useEffect, useRef } from 'react';
 
-import { useNovoPedido } from '../hooks/useNovoPedido';
+import { useNovoPedido, type SubmitOrderResult } from '../hooks/useNovoPedido';
 import { usePerformanceMonitor } from '../hooks/usePerformanceMonitor';
 import { useResponsive } from '../hooks/useResponsive';
 import { Button, Navbar } from '../ui';
@@ -17,10 +17,12 @@ import { Product } from '../types';
 import { ProductAdicional, SelectedAdicional } from '../types/models';
 import { AdicionaisService } from '../services/AdicionaisService';
 import { NewOrderCartFooter, NewOrderHeaderForm, NewOrderListFooter, PizzaProductCard } from '../features/new-order';
+import { BalancaDisplay, useScaleReading } from '../features/pdv';
 // KeyboardWrapper removed to prevent touch stealing
 import { KeyboardAvoidingView } from 'react-native';
 import { colors } from '../theme/colors';
 import logger from '../utils/logger';
+import PDFService from '../services/PDFService';
 if (Platform.OS === 'android') {
   if (UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -188,6 +190,7 @@ const areStandardPropsEqual = (prev: StandardRowProps, next: StandardRowProps) =
 // Helper for other items (Comidas/Bebidas/Porcoes)
 const StandardRow = memo(({ item, produtos, onIncrement, onDecrement, type, temperos }: StandardRowProps) => {
   const isComida = type === 'comidas';
+  const detailsText = typeof item.description === 'string' ? item.description.trim() : '';
 
   if (isComida) {
     return (
@@ -197,6 +200,9 @@ const StandardRow = memo(({ item, produtos, onIncrement, onDecrement, type, temp
             <Text style={styles.produtoName}>{item.name}</Text>
             {item.ingredients && item.ingredients.length > 0 && (
               <Text style={styles.pizzaIngredientsText}>{item.ingredients.join(', ')}</Text>
+            )}
+            {!item.ingredients?.length && detailsText.length > 0 && (
+              <Text style={styles.pizzaIngredientsText}>{detailsText}</Text>
             )}
             <Text style={styles.produtoPrice}>R$ {item.price?.toFixed(2)}</Text>
           </View>
@@ -241,6 +247,9 @@ const StandardRow = memo(({ item, produtos, onIncrement, onDecrement, type, temp
   return (
     <View style={styles.verticalCard}>
       <Text style={styles.verticalName}>{item.name}</Text>
+      {detailsText.length > 0 && (
+        <Text style={styles.pizzaIngredientsText}>{detailsText}</Text>
+      )}
 
       <View style={styles.verticalControlsRow}>
         <Text style={styles.verticalPrice}>R$ {item.price?.toFixed(2)}</Text>
@@ -450,7 +459,7 @@ interface Section {
   original?: Product[];
 }
 
-export default function NovoPedidoScreen({ route }: any) {
+export default function NovoPedidoScreen({ route, navigation }: any) {
   const useUiNextNovoPedido = isFeatureEnabled('novoPedido_uiNext');
   const { isSmallPhone } = useResponsive();
   const [footerHeight, setFooterHeight] = useState(112);
@@ -487,6 +496,9 @@ export default function NovoPedidoScreen({ route }: any) {
     pizzaConfig,
     addPizzaToOrder,
     addPorcaoWithAdicionais,
+    addWeightedItem,
+    enableSelfServiceScaleFlow,
+    disableSelfServiceScaleFlow,
     carregarCardapio,
     refreshCardapio,
     isRefreshingCardapio,
@@ -495,6 +507,31 @@ export default function NovoPedidoScreen({ route }: any) {
 
   const [adicionaisMap, setAdicionaisMap] = useState<Record<string, ProductAdicional[]>>({});
   const [adicionaisPickerProduct, setAdicionaisPickerProduct] = useState<(Product & { price: number }) | null>(null);
+  const [weightedProductTarget, setWeightedProductTarget] = useState<Product | null>(null);
+  const [manualWeightKg, setManualWeightKg] = useState('');
+  const [manualFallbackVisible, setManualFallbackVisible] = useState(false);
+  const [selfServiceScaleModeEnabled, setSelfServiceScaleModeEnabled] = useState(false);
+  const [selfServiceScalePaymentMode, setSelfServiceScalePaymentMode] = useState<'immediate' | 'deferred'>('deferred');
+
+  const {
+    status: scaleStatus,
+    isReading: scaleIsReading,
+    isPolling: scaleIsPolling,
+    lastResult: scaleLastResult,
+    captureCurrentWeight,
+    captureStableWeight,
+    applyTare,
+    startPolling,
+    stopPolling,
+    reset: resetScale,
+    dispose: disposeScale,
+  } = useScaleReading();
+
+  const isScaleFeatureEnabled = isFeatureEnabled('pdv_enabled') && isFeatureEnabled('pdv_scale_enabled');
+  const isSelfServiceScaleFeatureEnabled = isScaleFeatureEnabled && isFeatureEnabled('pdv_selfServiceScale_enabled');
+  const scaleServicePoint = process.env.EXPO_PUBLIC_PDV_SCALE_SERVICE_POINT || 'balanca_01';
+  const tefEnabled = isFeatureEnabled('pdv_enabled') && isFeatureEnabled('pdv_devicePayment_enabled');
+  const externalPosEnabled = isFeatureEnabled('pdv_enabled') && isFeatureEnabled('pdv_externalPos_enabled');
 
   const [isRefreshHovered, setIsRefreshHovered] = useState(false);
   const [isRefreshFocused, setIsRefreshFocused] = useState(false);
@@ -574,6 +611,152 @@ export default function NovoPedidoScreen({ route }: any) {
       setWaiterId(route.params.waiterId);
     }
   }, [route?.params, setMesa, setTableId, setWaiterId]);
+
+  useEffect(() => {
+    return () => {
+      disposeScale();
+    };
+  }, [disposeScale]);
+
+  const cardapioCombinado = useMemo<Product[]>(() => [
+    ...(cardapio.caldos || []),
+    ...(cardapio.comidas || []),
+    ...((cardapio['comida-balanca'] as Product[]) || []),
+    ...(cardapio.bebidas || []),
+    ...(cardapio.porcoes || []),
+    ...(cardapio.outros || []),
+    ...(cardapio.espetinhosSimples || []),
+    ...(cardapio.espetinhosEspeciais || []),
+    ...(cardapio.pizzas || []),
+  ], [cardapio]);
+
+  const weightedProductNames = useMemo(() => {
+    const names = new Set<string>();
+    cardapioCombinado.forEach((product) => {
+      const unit = String(product.unit || '').toLowerCase();
+      const soldByWeightFlag = Boolean((product as unknown as { vendido_por_peso?: boolean }).vendido_por_peso);
+      if (soldByWeightFlag || unit.includes('kg') || unit.includes('quilo')) {
+        names.add(String(product.name || '').trim().toLowerCase());
+      }
+    });
+    return names;
+  }, [cardapioCombinado]);
+
+  const resolveProductByItemName = useCallback((itemName: string): Product | null => {
+    const baseName = itemName.split(' + ')[0].replace(/\s*\(.*\)$/, '').trim();
+    return cardapioCombinado.find((product) => product.name === baseName) || null;
+  }, [cardapioCombinado]);
+
+  const isSoldByWeight = useCallback((product: Product | null | undefined): boolean => {
+    if (!product) return false;
+
+    const unit = String(product.unit || '').toLowerCase();
+    const soldByWeightFlag = Boolean((product as unknown as { vendido_por_peso?: boolean }).vendido_por_peso);
+    const normalizedName = String(product.name || '').trim().toLowerCase();
+
+    return soldByWeightFlag || unit.includes('kg') || unit.includes('quilo') || weightedProductNames.has(normalizedName);
+  }, [weightedProductNames]);
+
+  const openScaleModal = useCallback((product: Product) => {
+    setWeightedProductTarget(product);
+    setManualWeightKg('');
+    setManualFallbackVisible(false);
+    resetScale();
+    startPolling(1200, 3000);
+  }, [resetScale, startPolling]);
+
+  const closeScaleModal = useCallback(() => {
+    stopPolling();
+    setWeightedProductTarget(null);
+    setManualWeightKg('');
+    setManualFallbackVisible(false);
+  }, [stopPolling]);
+
+  const syncScaleFlowMode = useCallback(() => {
+    if (!isSelfServiceScaleFeatureEnabled || !selfServiceScaleModeEnabled) {
+      disableSelfServiceScaleFlow();
+      return;
+    }
+
+    enableSelfServiceScaleFlow({
+      servicePoint: scaleServicePoint,
+      paymentMode: selfServiceScalePaymentMode,
+    });
+  }, [disableSelfServiceScaleFlow, enableSelfServiceScaleFlow, isSelfServiceScaleFeatureEnabled, scaleServicePoint, selfServiceScaleModeEnabled, selfServiceScalePaymentMode]);
+
+  const confirmAutomaticWeight = useCallback(() => {
+    if (!weightedProductTarget) return;
+
+    const reading = scaleLastResult?.reading;
+    if (!reading || !reading.isStable || reading.weightKg <= 0) {
+      Alert.alert('Leitura nao confirmada', 'Capture um peso estavel antes de confirmar.');
+      return;
+    }
+
+    syncScaleFlowMode();
+    addWeightedItem(weightedProductTarget, reading.weightKg, 'automatic');
+    closeScaleModal();
+  }, [weightedProductTarget, scaleLastResult, syncScaleFlowMode, addWeightedItem, closeScaleModal]);
+
+  const confirmManualWeight = useCallback(() => {
+    if (!weightedProductTarget) return;
+
+    const parsedWeightKg = Number(String(manualWeightKg).replace(',', '.'));
+    if (!Number.isFinite(parsedWeightKg) || parsedWeightKg <= 0) {
+      Alert.alert('Peso manual invalido', 'Informe um peso valido em kg para continuar.');
+      return;
+    }
+
+    syncScaleFlowMode();
+    addWeightedItem(weightedProductTarget, parsedWeightKg, 'manual');
+    closeScaleModal();
+  }, [weightedProductTarget, manualWeightKg, syncScaleFlowMode, addWeightedItem, closeScaleModal]);
+
+  useEffect(() => {
+    if (selectedItems.length !== 0 || weightedProductTarget) return;
+
+    setSelfServiceScaleModeEnabled(false);
+    setSelfServiceScalePaymentMode('deferred');
+    disableSelfServiceScaleFlow();
+  }, [disableSelfServiceScaleFlow, selectedItems.length, weightedProductTarget]);
+
+  const printSelfServiceComanda = useCallback((result: SubmitOrderResult) => {
+    const now = new Date();
+    const dia = String(now.getDate()).padStart(2, '0');
+    const mes = String(now.getMonth() + 1).padStart(2, '0');
+    const ano = now.getFullYear();
+    const hora = String(now.getHours()).padStart(2, '0');
+    const min = String(now.getMinutes()).padStart(2, '0');
+
+    PDFService.printOnWeb({
+      comandaNumber: result.comandaNumber,
+      cliente: result.clientName,
+      dataEmissao: `${dia}/${mes}/${ano} às ${hora}:${min}`,
+      totalConsumido: result.total,
+      totalPago: 0,
+      saldoAberto: result.total,
+      itens: result.itens,
+    }, user?.company as any);
+  }, [user?.company]);
+
+  const handleSubmitAndContinue = useCallback(async () => {
+    const result = await handleSubmit();
+    if (!result || result.flowContext?.orderOrigin !== 'self_service_scale') {
+      return;
+    }
+
+    if (result.flowContext.paymentMode === 'immediate') {
+      const paymentMode = tefEnabled ? 'tef' : externalPosEnabled ? 'external_pos' : 'normal';
+      navigation.navigate('Pagamento', {
+        comandaNumber: result.comandaNumber,
+        returnScreen: 'NovoPedido',
+        paymentMode,
+      });
+      return;
+    }
+
+    printSelfServiceComanda(result);
+  }, [externalPosEnabled, handleSubmit, navigation, printSelfServiceComanda, tefEnabled]);
 
 
   // Prepare sections for SectionList (Must be before conditional return)
@@ -694,6 +877,11 @@ export default function NovoPedidoScreen({ route }: any) {
       }
     }
 
+    const comidaBalanca = ((cardapio['comida-balanca'] as Product[]) || []).filter((item) => isActive(item));
+    if (comidaBalanca.length > 0) {
+      sectionsData.push({ title: '⚖️ Comida Balança', data: comidaBalanca, type: 'comida-balanca' });
+    }
+
     if (cardapio.porcoes && cardapio.porcoes.length > 0) {
       const activePorcoes = (cardapio.porcoes || []).filter(isActive);
       sectionsData.push({ title: '🍟 Porções', data: activePorcoes, type: 'porcoes' });
@@ -770,8 +958,13 @@ export default function NovoPedidoScreen({ route }: any) {
   
   // Memoized callbacks for increment/decrement
   const handleIncrement = useCallback((itemName: string) => {
+    const product = resolveProductByItemName(itemName);
+    if (isScaleFeatureEnabled && isSoldByWeight(product)) {
+      openScaleModal(product as Product);
+      return;
+    }
     updateProdutoAnimated(itemName, 1);
-  }, [updateProdutoAnimated]);
+  }, [resolveProductByItemName, isScaleFeatureEnabled, isSoldByWeight, openScaleModal, updateProdutoAnimated]);
   
   const handleDecrement = useCallback((itemName: string) => {
     updateProdutoAnimated(itemName, -1);
@@ -779,8 +972,12 @@ export default function NovoPedidoScreen({ route }: any) {
 
   // Open adicionais picker for porcoes — always show picker
   const handlePorcaoIncrement = useCallback((product: Product & { price: number }) => {
+    if (isScaleFeatureEnabled && isSoldByWeight(product)) {
+      openScaleModal(product);
+      return;
+    }
     setAdicionaisPickerProduct(product);
-  }, []);
+  }, [isScaleFeatureEnabled, isSoldByWeight, openScaleModal]);
   
   // Memoized keyExtractor for stable keys
   const keyExtractor = useCallback((item: SectionItem, index: number) => {
@@ -997,7 +1194,7 @@ export default function NovoPedidoScreen({ route }: any) {
 
       <NewOrderCartFooter
         total={total}
-        onSubmit={handleSubmit}
+        onSubmit={handleSubmitAndContinue}
         isSubmitting={isSubmitting}
         onHeightChange={setFooterHeight}
       />
@@ -1026,6 +1223,125 @@ export default function NovoPedidoScreen({ route }: any) {
           adicionais={adicionaisMap[adicionaisPickerProduct.id] || []}
         />
       )}
+
+      <Modal
+        animationType="slide"
+        transparent
+        visible={Boolean(weightedProductTarget)}
+        onRequestClose={closeScaleModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.scaleModalTitle}>Pesagem assistida</Text>
+            <Text style={styles.scaleModalSubtitle}>
+              {weightedProductTarget ? weightedProductTarget.name : ''}
+            </Text>
+
+            {isSelfServiceScaleFeatureEnabled && (
+              <View style={styles.scaleModeCard}>
+                <Text style={styles.scaleModeTitle}>Fluxo operacional desta pesagem</Text>
+                <View style={styles.scaleModeRow}>
+                  <TouchableOpacity
+                    style={[styles.scaleModeChip, !selfServiceScaleModeEnabled && styles.scaleModeChipActive]}
+                    onPress={() => {
+                      setSelfServiceScaleModeEnabled(false);
+                      disableSelfServiceScaleFlow();
+                    }}
+                  >
+                    <Text style={[styles.scaleModeChipText, !selfServiceScaleModeEnabled && styles.scaleModeChipTextActive]}>Pedido padrao</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.scaleModeChip, selfServiceScaleModeEnabled && styles.scaleModeChipActive]}
+                    onPress={() => {
+                      setSelfServiceScaleModeEnabled(true);
+                      enableSelfServiceScaleFlow({ servicePoint: scaleServicePoint, paymentMode: selfServiceScalePaymentMode });
+                    }}
+                  >
+                    <Text style={[styles.scaleModeChipText, selfServiceScaleModeEnabled && styles.scaleModeChipTextActive]}>Self-service</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {selfServiceScaleModeEnabled && (
+                  <View style={styles.scaleModeRow}>
+                    <TouchableOpacity
+                      style={[styles.scaleModeChip, selfServiceScalePaymentMode === 'deferred' && styles.scaleModeChipActive]}
+                      onPress={() => {
+                        setSelfServiceScalePaymentMode('deferred');
+                        enableSelfServiceScaleFlow({ servicePoint: scaleServicePoint, paymentMode: 'deferred' });
+                      }}
+                    >
+                      <Text style={[styles.scaleModeChipText, selfServiceScalePaymentMode === 'deferred' && styles.scaleModeChipTextActive]}>Comanda pendente</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.scaleModeChip, selfServiceScalePaymentMode === 'immediate' && styles.scaleModeChipActive]}
+                      onPress={() => {
+                        setSelfServiceScalePaymentMode('immediate');
+                        enableSelfServiceScaleFlow({ servicePoint: scaleServicePoint, paymentMode: 'immediate' });
+                      }}
+                    >
+                      <Text style={[styles.scaleModeChipText, selfServiceScalePaymentMode === 'immediate' && styles.scaleModeChipTextActive]}>Pagar no posto</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                <Text style={styles.scaleModeHint}>
+                  {selfServiceScaleModeEnabled
+                    ? `Origem self-service ativa em ${scaleServicePoint}.`
+                    : 'Mantem o fluxo legado e nao classifica a pesagem como self-service.'}
+                </Text>
+              </View>
+            )}
+
+            <BalancaDisplay
+              status={scaleStatus}
+              lastResult={scaleLastResult}
+              isReading={scaleIsReading}
+              isPolling={scaleIsPolling}
+              onCaptureCurrentWeight={() => {
+                void captureCurrentWeight();
+              }}
+              onCaptureStableWeight={() => {
+                void captureStableWeight();
+              }}
+              onStartPolling={() => {
+                startPolling(1200, 3000);
+              }}
+              onStopPolling={stopPolling}
+              onApplyTare={() => {
+                void applyTare();
+              }}
+              onUseManualFallback={() => {
+                setManualFallbackVisible(true);
+              }}
+            />
+
+            {manualFallbackVisible && (
+              <View style={styles.scaleManualWrapper}>
+                <Text style={styles.scaleManualHint}>Fallback manual supervisionado (kg)</Text>
+                <TextInput
+                  style={styles.scaleManualInput}
+                  keyboardType="decimal-pad"
+                  placeholder="Ex: 0,532"
+                  value={manualWeightKg}
+                  onChangeText={setManualWeightKg}
+                />
+                <TouchableOpacity style={styles.scaleSecondaryActionBtn} onPress={confirmManualWeight}>
+                  <Text style={styles.scaleSecondaryActionBtnText}>Confirmar peso manual</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            <View style={styles.scaleActionRow}>
+              <TouchableOpacity style={styles.scaleCancelBtn} onPress={closeScaleModal}>
+                <Text style={styles.scaleCancelBtnText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.scaleConfirmBtn} onPress={confirmAutomaticWeight}>
+                <Text style={styles.scaleConfirmBtnText}>Confirmar leitura estavel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <StatusBar style="dark" />
     </KeyboardAvoidingView>
@@ -1175,6 +1491,123 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     maxHeight: '70%',
     paddingBottom: 20,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+  scaleModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 4,
+  },
+  scaleModalSubtitle: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginBottom: 12,
+  },
+  scaleModeCard: {
+    borderWidth: 1,
+    borderColor: '#D7E3F4',
+    backgroundColor: '#F7FAFE',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+    gap: 10,
+  },
+  scaleModeTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  scaleModeRow: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  scaleModeChip: {
+    borderWidth: 1,
+    borderColor: '#B7C8DE',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 999,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  scaleModeChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  scaleModeChipText: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  scaleModeChipTextActive: {
+    color: colors.white,
+  },
+  scaleModeHint: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  scaleManualWrapper: {
+    marginTop: 12,
+    gap: 8,
+  },
+  scaleManualHint: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  scaleManualInput: {
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: colors.text,
+  },
+  scaleSecondaryActionBtn: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+    backgroundColor: colors.surfaceMuted,
+  },
+  scaleSecondaryActionBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  scaleActionRow: {
+    marginTop: 14,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  scaleCancelBtn: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+    backgroundColor: colors.white,
+  },
+  scaleCancelBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  scaleConfirmBtn: {
+    flex: 1,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+  },
+  scaleConfirmBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.white,
   },
   modalHeader: {
     flexDirection: 'row',

@@ -1,0 +1,17 @@
+{
+  "codeConnect": {
+    "parser": "react",
+    "include": [
+      "src/**/*.figma.ts",
+      "src/**/*.figma.tsx"
+    ],
+    "exclude": [
+      "node_modules/**",
+      "dist/**",
+      "build/**",
+      "coverage/**"
+    ],
+    "label": "restaurante-app",
+    "language": "typescript"
+  }
+}

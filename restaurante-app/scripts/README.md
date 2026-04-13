@@ -6,6 +6,7 @@ Scripts específicos do app mobile React Native / Expo.
 
 - build / manutenção Android:
   - `build-android.sh`
+  - `setup-android-release-keystore.sh` (gera keystore de release e configura `.env.local`)
   - `clean-gradle.sh`
   - `reinstall-sdk.sh`
   - `deploy-eas.sh` (dispara build EAS Android/iOS)

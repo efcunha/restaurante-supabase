@@ -1,0 +1,16 @@
+{
+  "nodes": {
+    "restaurante-app/src/ui/Button.figma.tsx": "1:1",
+    "restaurante-app/src/ui/Card.figma.tsx": "2:1",
+    "restaurante-app/src/ui/Badge.figma.tsx": "3:1",
+    "restaurante-app/src/ui/FormInput.figma.tsx": "4:1",
+    "restaurante-app/src/ui/ProductCard.figma.tsx": "5:1",
+    "restaurante-web/src/ui/Button.figma.tsx": "1:1",
+    "restaurante-web/src/ui/Card.figma.tsx": "2:1",
+    "restaurante-web/src/ui/Badge.figma.tsx": "3:1",
+    "restaurante-web/src/ui/FormInput.figma.tsx": "4:1",
+    "restaurante-web/src/ui/ProductCard.figma.tsx": "5:1",
+    "restaurante-site/src/components/Button.figma.tsx": "1:1",
+    "restaurante-site/src/components/Card.figma.tsx": "2:1"
+  }
+}

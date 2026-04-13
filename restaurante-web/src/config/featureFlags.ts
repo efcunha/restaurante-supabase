@@ -60,6 +60,22 @@ export interface FeatureFlags {
   pdv_scale_enabled: boolean;
   /** Habilita registro manual de recebimento por maquininha externa (sem TEF) */
   pdv_externalPos_enabled: boolean;
+  /** Habilita semântica isolada do fluxo self-service por peso */
+  pdv_selfServiceScale_enabled: boolean;
+  /** Habilita simuladores locais de TEF e balanca para homologacao manual */
+  devSimulators: boolean;
+}
+
+type FeatureFlagsTestApi = {
+  enable: (feature: keyof FeatureFlags) => void;
+  disable: (feature: keyof FeatureFlags) => void;
+  getAll: () => FeatureFlags;
+};
+
+declare global {
+  interface Window {
+    __E2E_FEATURE_FLAGS__?: FeatureFlagsTestApi;
+  }
 }
 
 /**
@@ -107,6 +123,8 @@ const defaultFlags: FeatureFlags = {
   pdv_devicePayment_enabled: false,
   pdv_scale_enabled: false,
   pdv_externalPos_enabled: false,
+  pdv_selfServiceScale_enabled: false,
+  devSimulators: false,
 };
 
 /**
@@ -229,8 +247,20 @@ function loadFeatureFlagsFromEnv(): Partial<FeatureFlags> {
   if (process.env.EXPO_PUBLIC_FEATURE_PDV_SCALE !== undefined) {
     envFlags.pdv_scale_enabled = process.env.EXPO_PUBLIC_FEATURE_PDV_SCALE === 'true';
   }
+  if (process.env.EXPO_PUBLIC_FEATURE_PDV_SCALE_ENABLED !== undefined) {
+    envFlags.pdv_scale_enabled = process.env.EXPO_PUBLIC_FEATURE_PDV_SCALE_ENABLED === 'true';
+  }
+  if (process.env.EXPO_PUBLIC_FEATURE_BALANCA !== undefined) {
+    envFlags.pdv_scale_enabled = process.env.EXPO_PUBLIC_FEATURE_BALANCA === 'true';
+  }
   if (process.env.EXPO_PUBLIC_FEATURE_PDV_EXTERNAL_POS !== undefined) {
     envFlags.pdv_externalPos_enabled = process.env.EXPO_PUBLIC_FEATURE_PDV_EXTERNAL_POS === 'true';
+  }
+  if (process.env.EXPO_PUBLIC_FEATURE_PDV_SELF_SERVICE_SCALE !== undefined) {
+    envFlags.pdv_selfServiceScale_enabled = process.env.EXPO_PUBLIC_FEATURE_PDV_SELF_SERVICE_SCALE === 'true';
+  }
+  if (process.env.EXPO_PUBLIC_FEATURE_DEV_SIMULATORS !== undefined) {
+    envFlags.devSimulators = process.env.EXPO_PUBLIC_FEATURE_DEV_SIMULATORS === 'true';
   }
 
   return envFlags;
@@ -264,6 +294,14 @@ export function enableFeature(feature: keyof FeatureFlags): void {
  */
 export function disableFeature(feature: keyof FeatureFlags): void {
   featureFlags[feature] = false;
+}
+
+if (typeof window !== 'undefined' && typeof __DEV__ !== 'undefined' && __DEV__) {
+  window.__E2E_FEATURE_FLAGS__ = {
+    enable: enableFeature,
+    disable: disableFeature,
+    getAll: () => ({ ...featureFlags }),
+  };
 }
 
 /**

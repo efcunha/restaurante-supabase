@@ -12,6 +12,7 @@ import { getBusinessDateKey } from '../services/BusinessDateService';
 import CaixaService from '../services/CaixaService';
 import offlineQueueService from '../services/OfflineQueueService';
 import { persistMontagemToggleItems } from '../services/MontagemSyncService';
+import OrderService from '../services/OrderService';
 import { colors } from '../theme/colors';
 
 const formatClockLabel = (value?: string | null) => {
@@ -408,6 +409,10 @@ export default function MontagemScreen() {
   const ordersRaw = useMemo(() => allOrders.filter(order => {
     // Filtrar apenas pedidos em preparing
     if (order.status !== 'preparing') return false;
+
+    if (OrderService.shouldBypassOperationalQueues(order)) {
+      return false;
+    }
 
     // ✅ PROTEÇÃO: Se o pedido tem comandaStatus='cancelada', não mostrar
     if (order.comandaStatus === 'cancelada') {

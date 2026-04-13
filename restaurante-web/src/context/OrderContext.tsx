@@ -8,10 +8,11 @@ import OrderFirestoreService from '../services/OrderFirestoreService';
 import { calcularPrecoItem, fixDecimal } from '../utils/orderCalculator';
 import { useAuth } from './AuthContext';
 import SyncService from '../services/SyncService';
-import { Order } from '../types';
+import { Order, SelfServiceFlowContext } from '../types';
 import CaixaService from '../services/CaixaService';
 import ComandasService from '../services/ComandasService';
 import { getBusinessDateKey } from '../services/BusinessDateService';
+import { isFeatureEnabled } from '../config/featureFlags';
 
 // Dynamic imports are great, but for types we might need to import them or use 'any' if services are JS.
 // Assuming services are JS or TS, we'll try to use standard imports for types if possible, 
@@ -33,7 +34,9 @@ interface OrderContextType {
     categoryMap?: any,
     tableId?: string,
     waiterId?: string,
-    businessDateKey?: string
+    businessDateKey?: string,
+    itemMetadataMap?: Record<string, any>,
+    flowContext?: SelfServiceFlowContext
   ) => Promise<string>;
   editOrder: (orderId: string, updatedData: Partial<Order>) => Promise<void>;
   deleteOrder: (orderId: string) => Promise<void>;
@@ -203,9 +206,12 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     clientName: string, items: string[], observations: string, comandaNumber: string = '',
     createdBy: string = '', createdByName: string = '', totalPrice: number = 0,
     _isPago: boolean = false, mesa: string = '', priceMap: any = null, categoryMap: any = null,
-    tableId: string = '', waiterId: string = '', businessDateKey?: string
+    tableId: string = '', waiterId: string = '', businessDateKey?: string,
+    itemMetadataMap: Record<string, any> = {},
+    flowContext?: SelfServiceFlowContext
   ) => {
     const orderId = OrderService.generateOrderId(orderCounter);
+    const effectiveFlowContext = isFeatureEnabled('pdv_selfServiceScale_enabled') ? flowContext : undefined;
 
     try {
       if (isOnline) {
@@ -246,7 +252,7 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         }
 
         console.log('[OrderContext] Chamando ensureComandaAberta...');
-        await ComandasService.ensureComandaAberta(user.companyId, comandaNumber, createdBy, createdByName, mesa, clientName, 0, businessDateKey);
+        await ComandasService.ensureComandaAberta(user.companyId, comandaNumber, createdBy, createdByName, mesa, clientName, 0, businessDateKey, effectiveFlowContext);
         console.log('[OrderContext] ensureComandaAberta concluído');
 
         // PRIORIDADE: Se o UI enviou um total calculado (totalPrice), usa ele.
@@ -258,7 +264,7 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         }
 
         // If _isPago is passed, we generally ignore it for new orders as they start unpaid, but let's keep it if needed for logic
-        const order = OrderService.createOrder(orderId, clientName, items, observations, comandaNumber, createdBy, createdByName, calculatedTotal, false, mesa, categoryMap, priceMap, tableId, waiterId, businessDateKey);
+        const order = OrderService.createOrder(orderId, clientName, items, observations, comandaNumber, createdBy, createdByName, calculatedTotal, false, mesa, categoryMap, priceMap, tableId, waiterId, businessDateKey, itemMetadataMap, effectiveFlowContext);
         const valorPedido = order.totalPrice || 0;
 
         console.log('🟢 [OrderContext] Chamando saveOrder com:', { companyId: user.companyId, orderId, itemsWithStatus: order.itemsWithStatus?.length });
@@ -274,7 +280,7 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         return orderId;
       } else {
         // Offline fallback
-        const order = OrderService.createOrder(orderId, clientName, items, observations, comandaNumber, createdBy, createdByName, totalPrice, false, mesa, categoryMap, priceMap, tableId, waiterId, businessDateKey);
+        const order = OrderService.createOrder(orderId, clientName, items, observations, comandaNumber, createdBy, createdByName, totalPrice, false, mesa, categoryMap, priceMap, tableId, waiterId, businessDateKey, itemMetadataMap, effectiveFlowContext);
         SyncService.addToQueue('ADD_ORDER', { companyId: user?.companyId, id: orderId, orderData: order });
         setOrders(prev => [order as Order, ...prev]);
         setOrderCounter(prev => prev + 1);
@@ -531,8 +537,10 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
 
   const getOrdersByStatus = useCallback((status: string) => {
-    if (status === 'cozinha') return orders.filter(o => o.status === 'preparing');
-    return orders.filter(o => o.status === status);
+    const visibleOrders = orders.filter(order => !OrderService.shouldBypassOperationalQueues(order));
+
+    if (status === 'cozinha') return visibleOrders.filter(o => o.status === 'preparing');
+    return visibleOrders.filter(o => o.status === status);
   }, [orders]);
 
   const getOrderById = useCallback((orderId: string) => OrderService.findOrderById(orders, orderId), [orders]);
