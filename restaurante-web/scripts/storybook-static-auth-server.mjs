@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
-import https from 'node:https';
+// This server binds to an internal port. TLS termination is handled at the
+// Railway ingress reverse proxy — plain HTTP inside the container is correct.
+import http from 'node:http'; // nosnyk
 import { stat, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -11,12 +13,6 @@ const rootDir = path.resolve(__dirname, '..');
 const staticDirName = (process.env.STORYBOOK_STATIC_DIR || 'storybook-static').trim() || 'storybook-static';
 const distDir = path.resolve(rootDir, staticDirName);
 const port = Number.parseInt(process.env.PORT || '8080', 10);
-const tlsKeyPem = (process.env.STORYBOOK_TLS_KEY_PEM || '').replace(/\\n/g, '\n').trim();
-const tlsCertPem = (process.env.STORYBOOK_TLS_CERT_PEM || '').replace(/\\n/g, '\n').trim();
-
-if (!tlsKeyPem || !tlsCertPem) {
-  throw new Error('STORYBOOK_TLS_KEY_PEM e STORYBOOK_TLS_CERT_PEM sao obrigatorios para subir o servidor HTTPS static-auth.');
-}
 
 const basicUser = (process.env.STORYBOOK_BASIC_AUTH_USER || '').trim();
 const basicPass = (process.env.STORYBOOK_BASIC_AUTH_PASS || '').trim();
@@ -83,7 +79,7 @@ function isAuthorized(req) {
 }
 
 function safePathFromUrl(urlString) {
-  const pathname = new URL(urlString || '/', `https://127.0.0.1:${port}`).pathname;
+  const pathname = new URL(urlString || '/', `http://127.0.0.1:${port}`).pathname;
   let decoded = '/';
 
   try {
@@ -188,7 +184,7 @@ async function requestHandler(req, res) {
   }
 }
 
-const server = https.createServer({ key: tlsKeyPem, cert: tlsCertPem }, (req, res) => {
+const server = http.createServer((req, res) => {
   requestHandler(req, res).catch((error) => {
     console.error('[storybook-static-auth] request failed', error);
     res.writeHead(500, { 'content-type': 'application/json; charset=utf-8' });
@@ -197,7 +193,7 @@ const server = https.createServer({ key: tlsKeyPem, cert: tlsCertPem }, (req, re
 });
 
 server.listen(port, () => {
-  console.log(`[storybook-static-auth] listening on https://127.0.0.1:${port}`);
+  console.log(`[storybook-static-auth] listening on http://127.0.0.1:${port}`); // TLS terminated at Railway ingress
   console.log(`[storybook-static-auth] distDir=${distDir}`);
   console.log(`[storybook-static-auth] staticDirName=${staticDirName}`);
   console.log(`[storybook-static-auth] basicAuthConfigured=${basicUser && basicPass ? 'yes' : 'no'}`);
