@@ -4,6 +4,8 @@ import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, StyleSheet,
 import { ProductFormData, ProductFormProps } from './types';
 import { colors } from '../../../theme/colors';
 import { isEspetinhoCategorySlug } from '../../../utils/menuCategories';
+import { FieldRow } from '../../../ui/FieldRow';
+import { FormSection } from '../../../ui/FormSection';
 export default function ProductForm({
   visible,
   onClose,
@@ -99,40 +101,53 @@ export default function ProductForm({
     const isEspetinho = isEspetinhoCategorySlug(category);
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={true}>
+        <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <View style={styles.content}>
+                <View style={styles.content} accessibilityViewIsModal accessibilityLabel="Modal de cadastro e edicao de produto">
            <View style={styles.header}>
              <Text style={styles.title}>{initialData ? '✏️ Editar Produto' : '✨ Novo Produto'}</Text>
-             <TouchableOpacity onPress={onClose}><Text style={styles.close}>✕</Text></TouchableOpacity>
+                         <TouchableOpacity
+                             onPress={onClose}
+                             accessibilityRole="button"
+                             accessibilityLabel="Fechar formulario de produto"
+                         >
+                             <Text style={styles.close}>✕</Text>
+                         </TouchableOpacity>
            </View>
 
            <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={styles.label}>Nome:</Text>
-              <TextInput 
-                style={styles.input} 
-                value={name} 
-                onChangeText={setName} 
-                placeholder="Nome do Produto" 
-                placeholderTextColor={colors.textSecondary}
-              />
+                  <FormSection title={initialData ? 'Editar produto' : 'Novo produto'} description="Preencha os dados para salvar o item no cardapio.">
+                     <FieldRow label="Nome" required>
+                        <TextInput 
+                          style={styles.input} 
+                          value={name} 
+                          onChangeText={setName} 
+                          placeholder="Nome do Produto" 
+                          placeholderTextColor={colors.textSecondary}
+                                                    accessibilityLabel="Nome do produto"
+                                                    autoFocus
+                        />
+                     </FieldRow>
 
-              <Text style={styles.label}>Categoria:</Text>
-              <View style={styles.catContainer}>
-                 {categories.map(cat => (
-                     <TouchableOpacity
-                        key={cat.value}
-                        style={[styles.catBtn, category === cat.value && styles.catBtnActive]}
-                        onPress={() => setCategory(cat.value)}
-                     >
-                        <Text style={[styles.catText, category === cat.value && styles.catTextActive]}>{cat.label}</Text>
-                     </TouchableOpacity>
-                 ))}
-              </View>
+                     <FieldRow label="Categoria" required>
+                        <View style={styles.catContainer}>
+                            {categories.map(cat => (
+                                 <TouchableOpacity
+                                     key={cat.value}
+                                     style={[styles.catBtn, category === cat.value && styles.catBtnActive]}
+                                     onPress={() => setCategory(cat.value)}
+                                     accessibilityRole="button"
+                                     accessibilityLabel={`Selecionar categoria ${cat.label}`}
+                                 >
+                                     <Text style={[styles.catText, category === cat.value && styles.catTextActive]}>{cat.label}</Text>
+                                 </TouchableOpacity>
+                            ))}
+                        </View>
+                     </FieldRow>
 
               {category === 'pizza' ? (
                   <View style={{ marginBottom: 15 }}>
-                      <Text style={styles.label}>Preços por Tamanho:</Text>
+                             <Text style={styles.label}>Precos por tamanho:</Text>
                       <View style={styles.grid}>
                         {pizzaConfig?.sizes?.map(size => (
                             <View key={size.name} style={styles.gridItem}>
@@ -144,6 +159,7 @@ export default function ProductForm({
                                   keyboardType="numeric"
                                   placeholder="0.00"
                                   placeholderTextColor={colors.textSecondary}
+                                                                    accessibilityLabel={`Preco para tamanho ${size.name}`}
                                 />
                             </View>
                         ))}
@@ -158,6 +174,7 @@ export default function ProductForm({
                             value={createVariations} 
                             onValueChange={setCreateVariations}
                                                         trackColor={{ false: colors.disabled, true: colors.primary }}
+                                                        accessibilityLabel="Criar variacoes automaticamente"
                           />
                       </View>
 
@@ -172,13 +189,14 @@ export default function ProductForm({
                                         onChangeText={t => setEspetinhoPrices(prev => ({ ...prev, [v]: t }))}
                                         keyboardType="numeric"
                                         placeholder="0.00"
+                                        accessibilityLabel={`Preco da variacao ${v}`}
                                     />
                                  </View>
                              ))}
                           </View>
                       ) : (
                           <View>
-                            <Text style={styles.label}>Preço:</Text>
+                                                        <Text style={styles.label}>Preco:</Text>
                             <TextInput
                                 style={styles.input}
                                 value={price}
@@ -186,13 +204,14 @@ export default function ProductForm({
                                 keyboardType="numeric"
                                 placeholder="0.00"
                                 placeholderTextColor={colors.textSecondary}
+                                accessibilityLabel="Preco do produto"
                             />
                         </View>
                       )}
                   </View>
               ) : (
                   <View>
-                      <Text style={styles.label}>Preço:</Text>
+                      <Text style={styles.label}>Preco:</Text>
                       <TextInput
                         style={styles.input}
                         value={price}
@@ -200,17 +219,30 @@ export default function ProductForm({
                         keyboardType="numeric"
                         placeholder="0.00"
                         placeholderTextColor={colors.textSecondary}
+                                                accessibilityLabel="Preco do produto"
                       />
                   </View>
               )}
+              </FormSection>
 
                {initialData && onOpenStock && (
-                   <TouchableOpacity style={styles.stockBtn} onPress={() => onOpenStock(initialData)}>
+                                     <TouchableOpacity
+                                         style={styles.stockBtn}
+                                         onPress={() => onOpenStock(initialData)}
+                                         accessibilityRole="button"
+                                         accessibilityLabel="Abrir configuracao de ficha tecnica e estoque"
+                                     >
                        <Text style={styles.stockText}>📦 Configurar Ficha Técnica / Estoque</Text>
                    </TouchableOpacity>
                )}
 
-               <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={isLoading}>
+                             <TouchableOpacity
+                                 style={styles.saveBtn}
+                                 onPress={handleSave}
+                                 disabled={isLoading}
+                                 accessibilityRole="button"
+                                 accessibilityLabel="Salvar dados do produto"
+                             >
                    {isLoading ? <ActivityIndicator color={colors.white} /> : <Text style={styles.saveText}>SALVAR DADOS</Text>}
                </TouchableOpacity>
            </ScrollView>

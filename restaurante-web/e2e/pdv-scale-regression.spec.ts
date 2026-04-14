@@ -14,8 +14,8 @@ test.describe('PDV balanca regressao', () => {
     disableFeature('pdv_scale_enabled');
     disableFeature('pdv_devicePayment_enabled');
     disableFeature('devSimulators');
-    delete process.env.EXPO_PUBLIC_SCALE_BRIDGE_URL;
-    delete (globalThis as typeof globalThis & { window?: { __DEV_SCALE_SIMULATOR__?: unknown } }).window;
+    Reflect.deleteProperty(process.env, 'EXPO_PUBLIC_SCALE_BRIDGE_URL');
+    Reflect.deleteProperty(globalThis, 'window');
   });
 
   test('leitura de peso estavel continua funcional com fluxo de maquininha desligado', async () => {
@@ -121,18 +121,29 @@ test.describe('PDV balanca regressao', () => {
   test('BAL-01 DEV: simulador local atende leitura estavel sem bridge configurado', async () => {
     enableFeature('devSimulators');
 
-    (globalThis as typeof globalThis & { window?: { __DEV_SCALE_SIMULATOR__?: unknown } }).window = {
-      __DEV_SCALE_SIMULATOR__: {
-        getSnapshot: () => ({
-          rawGrams: 1250,
-          netGrams: 1250,
-          tareGrams: 0,
-          status: 'stable',
-          toledoString: 'P:  1.250kg\r\n',
-          updatedAt: new Date().toISOString(),
-        }),
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      value: {
+        __DEV_SCALE_SIMULATOR__: {
+          getSnapshot: () => ({
+            rawGrams: 1250,
+            netGrams: 1250,
+            tareGrams: 0,
+            status: 'stable',
+            toledoString: 'P:  1.250kg\r\n',
+            updatedAt: new Date().toISOString(),
+          }),
+          applyTare: () => ({
+            rawGrams: 1250,
+            netGrams: 1250,
+            tareGrams: 0,
+            status: 'stable',
+            toledoString: 'P:  1.250kg\r\n',
+            updatedAt: new Date().toISOString(),
+          }),
+        },
       },
-    };
+    });
 
     const result = await readStableScaleWeight(2000);
     expect(result.status).toBe('stable');

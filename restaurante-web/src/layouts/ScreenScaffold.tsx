@@ -10,8 +10,10 @@ type NavbarAction = {
 };
 
 interface ScreenScaffoldProps {
-  title: string;
+  title?: string;
   subtitle?: string;
+  header?: { title: string; subtitle?: string };
+  onClose?: () => void;
   titleIcon?: ReactNode;
   leftAction?: NavbarAction;
   rightSlot?: ReactNode;
@@ -26,6 +28,8 @@ interface ScreenScaffoldProps {
 export function ScreenScaffold({
   title,
   subtitle,
+  header,
+  onClose,
   titleIcon,
   leftAction,
   rightSlot,
@@ -37,16 +41,18 @@ export function ScreenScaffold({
   bodyStyle,
 }: ScreenScaffoldProps) {
   const { user } = useAuth();
-  const resolvedSubtitle = subtitle ?? (user ? `Operador: ${user.nome || user.email}` : undefined);
+  const resolvedTitle = header?.title ?? title ?? '';
+  const resolvedSubtitle = header?.subtitle ?? subtitle ?? (user ? `Operador: ${user.nome || user.email}` : undefined);
+  const resolvedLeftAction = leftAction ?? (onClose ? { label: 'Voltar', onPress: onClose } : undefined);
 
   return (
     <View style={styles.container}>
       <View style={headerContainerStyle}>
         <Navbar
-          title={title}
+          title={resolvedTitle}
           subtitle={resolvedSubtitle}
           titleIcon={titleIcon}
-          leftAction={leftAction}
+          leftAction={resolvedLeftAction}
           rightSlot={rightSlot}
         />
       </View>

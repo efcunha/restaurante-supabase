@@ -722,6 +722,11 @@ export default function ComandaGerenciamentoScreen(props: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  emptyStateContainer: {
+    flex: 1,
+    paddingHorizontal: 16,
+    justifyContent: 'center',
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',

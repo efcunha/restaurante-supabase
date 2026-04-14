@@ -8,6 +8,9 @@ type ConfirmActionDialogProps = {
   title: string;
   message: string;
   danger?: boolean;
+  isDangerous?: boolean;
+  confirmText?: string;
+  cancelText?: string;
   onConfirm: () => void;
   onCancel: () => void;
 };
@@ -17,9 +20,15 @@ export function ConfirmActionDialog({
   title,
   message,
   danger = false,
+  isDangerous = false,
+  confirmText = 'Confirmar',
+  cancelText = 'Cancelar',
   onConfirm,
   onCancel,
 }: ConfirmActionDialogProps) {
+  const destructive = danger || isDangerous;
+  const confirmVariant: 'danger' | 'primary' = destructive ? 'danger' : 'primary';
+
   return (
     <Modal
       transparent
@@ -30,12 +39,12 @@ export function ConfirmActionDialog({
     >
       <View style={styles.backdrop}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onCancel} accessibilityRole="button" />
-        <View style={styles.dialog} accessibilityRole="alertdialog" accessibilityLabel={title}>
+        <View style={styles.dialog} accessible accessibilityRole="alert" accessibilityLabel={title}>
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.message}>{message}</Text>
           <View style={styles.actions}>
-            <Button label="Cancelar" onPress={onCancel} variant="ghost" />
-            <Button label="Confirmar" onPress={onConfirm} variant={danger ? 'danger' : 'primary'} />
+            <Button label={cancelText} onPress={onCancel} variant="ghost" />
+            <Button label={confirmText} onPress={onConfirm} variant={confirmVariant} />
           </View>
         </View>
       </View>

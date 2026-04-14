@@ -6,12 +6,13 @@ import { chromium, FullConfig } from '@playwright/test';
  */
 async function globalSetup(config: FullConfig) {
   console.log('[GLOBAL SETUP] Iniciando setup global...');
+  const projectBaseUrl = config.projects.find((project) => project.use?.baseURL)?.use?.baseURL;
   
   // Verifica se a aplicação está disponível
   const baseURL =
     process.env.PDV_E2E_START_URL ||
     process.env.PLAYWRIGHT_BASE_URL ||
-    config.use?.baseURL ||
+    projectBaseUrl ||
     'http://localhost:8081';
   console.log(`[GLOBAL SETUP] Base URL: ${baseURL}`);
   
