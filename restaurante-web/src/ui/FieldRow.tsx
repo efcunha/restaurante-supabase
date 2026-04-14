@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { designColors, fontSizes, fontWeights, spacing } from '../design-system';
+import { fontSizes, fontWeights, spacing } from '../design-system';
+import { colors } from '../theme/colors';
 
 type FieldRowProps = {
   label: string;
@@ -29,17 +30,17 @@ const styles = StyleSheet.create({
     gap: spacing[2],
   },
   label: {
-    color: designColors.text.primary,
+    color: colors.text,
     fontSize: fontSizes.sm,
     fontWeight: fontWeights.semibold,
   },
   helper: {
-    color: designColors.text.secondary,
+    color: colors.textSecondary,
     fontSize: fontSizes.xs,
     fontWeight: fontWeights.regular,
   },
   error: {
-    color: designColors.semantic.error.default,
+    color: colors.danger,
     fontSize: fontSizes.xs,
     fontWeight: fontWeights.medium,
   },

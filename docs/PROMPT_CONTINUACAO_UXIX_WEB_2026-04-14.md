@@ -41,6 +41,15 @@ Este complemento cobre especificidades de restaurante-web e o estado real apos a
 - ✅ Stories web/admin states adicionadas (Storybook agora indexa src/features/admin + stories de AdminActionCard/AdminSection/AdminStateViewMatrix)
 - ✅ Security: 0 TypeScript errors e 0 issues high no Snyk para os artefatos da Fase 6
 
+#### Fase 7: Public Menu (EM ANDAMENTO)
+- ✅ PublicMenuScreen refatorada para expo-image (lazy-load + transition + cachePolicy)
+- ✅ Grid responsivo por breakpoints: sm=1 coluna, md=2 colunas, lg=3 colunas
+- ✅ StateView aplicado para loading/error/empty/retry
+- ✅ Busca com debounce 300ms
+- ✅ Logger aplicado em carga do menu (success/not-found/error) sem PII
+- ✅ Seguranca: Snyk code test (severity high) = 0 issues no PublicMenuScreen
+- 🔄 Pendente para concluir Fase 7: smoke E2E da rota publica /menu/:slug e story da tela publica
+
 #### Fase 2: Ordering Screens (COMPLETO - Logger Integration)
 - ✅ PedidoDetalhesModal: Logger integration, error handling context, accessibility enhanced (5 logger calls)
 - ✅ NovoPedidoScreen: StateView, logger baseline verified (4 calls pre-existing)
@@ -226,12 +235,14 @@ Status atual:
 - ✅ Stories web das novas telas/admin states
 - **Gate**: admin_uiNext continua false ate feature-complete
 
-### Prioridade 3: Public Menu (restaurante-web) ✅ PROXIMA RECOMENDADA
+### Prioridade 3: Public Menu (restaurante-web) 🔄 EM ANDAMENTO
 PublicMenuScreen (/menu/:slug) - tela publica:
 - Mobile-first layout responsivo
 - Lazy load images (expo-image)
 - Public RLS query (sem dados sensiveis)
-- **Tempo estimado**: 1-2h (layout novo, sem dependencias operacionais)
+- StateView loading/empty/error + retry
+- Logger sem PII em falhas de carregamento
+- **Status**: implementacao principal concluida; faltam validacoes finais (E2E/story)
 
 ### Prioridade 4: Admin Sub-Screens (restaurante-web)
 Migracao de hardcodes para design tokens:

@@ -9,7 +9,8 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { Button } from '../components/ui-next/Button';
-import { borderRadius, borderWidth, designColors, fontSizes, fontWeights, spacing } from '../design-system';
+import { borderRadius, borderWidth, fontSizes, fontWeights, spacing } from '../design-system';
+import { colors } from '../theme/colors';
 
 export type StateViewState = 'loading' | 'empty' | 'error' | 'ready';
 
@@ -91,14 +92,14 @@ export function StateView({
 const styles = StyleSheet.create({
   container: {
     borderWidth: borderWidth.default,
-    borderColor: designColors.border.subtle,
+    borderColor: colors.border,
     borderRadius: borderRadius.lg,
-    backgroundColor: designColors.surface.card,
+    backgroundColor: colors.white,
     padding: spacing[4],
     gap: spacing[3],
   },
   message: {
-    color: designColors.text.secondary,
+    color: colors.textSecondary,
     fontSize: fontSizes.base,
     fontWeight: fontWeights.medium,
   },
@@ -109,13 +110,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[2],
   },
   linkLabel: {
-    color: designColors.primary[700],
+    color: colors.primary,
     fontSize: fontSizes.sm,
     fontWeight: fontWeights.semibold,
   },
   skeletonRow: {
     height: 16,
     borderRadius: borderRadius.md,
-    backgroundColor: designColors.neutral[200],
+    backgroundColor: '#E3E8EE',
   },
 });
