@@ -39,6 +39,9 @@ const config: StorybookConfig = {
       'react-native$': 'react-native-web',
       '@figma/code-connect$': false,
       '@': path.resolve(__dirname, '../src'),
+      // Mock expo-modules-core para evitar crash de native modules no ambiente web.
+      // @expo/vector-icons chama requireNativeModule('ExpoFontLoader') que não existe em web.
+      'expo-modules-core': path.resolve(__dirname, '../src/storybook-mocks/expo-modules-core.js'),
     };
     config.resolve.fallback = {
       ...(config.resolve.fallback || {}),
