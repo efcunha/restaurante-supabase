@@ -153,9 +153,10 @@ export default function LoginScreen({ navigation }: Props) {
               </FormSection>
 
               {!!submitError && (
-                <Text accessibilityRole="alert" style={styles.submitErrorText}>
-                  {submitError}
-                </Text>
+                <View style={styles.submitErrorBox} accessibilityRole="alert">
+                  <Ionicons name="alert-circle-outline" size={18} color={colors.danger} />
+                  <Text style={styles.submitErrorText}>{submitError}</Text>
+                </View>
               )}
 
               <TouchableOpacity style={[styles.loginBtn, loading && styles.loginBtnDisabled]} onPress={handleLogin} disabled={loading}>
@@ -759,11 +760,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   submitErrorText: {
-    marginTop: 12,
+    flex: 1,
     color: colorSystem.error,
     fontSize: 13,
     lineHeight: 18,
     fontWeight: '700',
+  },
+  submitErrorBox: {
+    marginTop: 12,
+    backgroundColor: colors.dangerSurface,
+    borderWidth: 1,
+    borderColor: '#F3B5B5',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
   },
   footerText: {
     color: 'rgba(230,247,251,0.72)',

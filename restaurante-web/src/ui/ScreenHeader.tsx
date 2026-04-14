@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { designColors, fontSizes, fontWeights, spacing } from '../design-system';
+import { fontSizes, fontWeights, spacing } from '../design-system';
+import { colors } from '../theme/colors';
 
 type HeaderAction = {
   label: string;
@@ -51,13 +52,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   title: {
-    color: designColors.text.primary,
+    color: colors.text,
     fontSize: fontSizes['2xl'],
     fontWeight: fontWeights.semibold,
   },
   subtitle: {
     marginTop: spacing[1],
-    color: designColors.text.secondary,
+    color: colors.textSecondary,
     fontSize: fontSizes.sm,
     fontWeight: fontWeights.regular,
   },
@@ -67,7 +68,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[2],
   },
   actionLabel: {
-    color: designColors.primary[700],
+    color: colors.primary,
     fontSize: fontSizes.sm,
     fontWeight: fontWeights.semibold,
   },
