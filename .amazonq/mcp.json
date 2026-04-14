@@ -1,75 +1,4 @@
 {
-	"servers": {
-		"supabaseMcpServer": {
-			"command": "npx",
-			"args": [
-				"-y",
-				"@supabase/mcp-server-supabase@latest",
-				"--access-token",
-				"${env:SUPABASE_ACCESS_TOKEN}"
-			],
-			"env": {},
-			"type": "stdio"
-		},
-		"playwrightMcp": {
-			"command": "npx",
-			"args": [
-				"-y",
-				"@playwright/mcp@latest"
-			],
-			"type": "stdio"
-		},
-		"railway": {
-			"type": "stdio",
-			"command": "npx",
-			"args": [
-				"-y",
-				"@railway/mcp-server"
-			],
-			"env": {
-				"RAILWAY_TOKEN": "${env:RAILWAY_TOKEN}"
-			}
-		},
-		"activepieces": {
-			"url": "https://activepieces-production-4e63.up.railway.app/api/v1/projects/aqW21pXGsiXLhvorLCeIo/mcp-server/http",
-			"headers": {
-				"Authorization": "Bearer ${env:ACTIVEPIECES_BEARER}"
-			},
-			"type": "http"
-		},
-		"context7": {
-			"command": "npx",
-			"args": [
-				"-y",
-				"@upstash/context7-mcp@latest",
-				"--api-key",
-				"${input:CONTEXT7_API_KEY}"
-			],
-			"type": "stdio"
-		},
-		"sentry": {
-			"url": "https://mcp.sentry.dev/mcp",
-			"type": "http"
-		},
-		"figma": {
-			"command": "npx",
-			"args": [
-				"-y",
-				"figma-developer-mcp",
-				"--figma-api-key",
-				"${input:FIGMA_API_KEY}",
-				"--stdio"
-			],
-			"type": "stdio"
-		},
-		"storybookMcp": {
-			"type": "http",
-			"url": "https://restaurante-web-storybook-mcp-production.up.railway.app/mcp",
-			"headers": {
-				"Authorization": "Bearer ${input:STORYBOOK_MCP_AUTH_TOKEN}"
-			}
-		}
-	},
 	"inputs": [
 		{
 			"id": "project-ref",
@@ -142,6 +71,104 @@
 			"type": "promptString",
 			"description": "SonarQube Cloud token for Sonar MCP server",
 			"password": true
+		},
+		{
+			"id": "SENTRY_ACCESS_TOKEN",
+			"type": "promptString",
+			"description": "Sentry access token for Sentry MCP server",
+			"password": true
+		},
+		{
+			"id": "OPENAI_API_KEY",
+			"type": "promptString",
+			"description": "OpenAI API key for Sentry AI-powered search tools",
+			"password": true
+		},
+		{
+			"id": "ANTHROPIC_API_KEY",
+			"type": "promptString",
+			"description": "Anthropic API key for Sentry AI-powered search tools",
+			"password": true
 		}
-	]
+	],
+	"servers": {
+		"supabaseMcpServer": {
+			"command": "npx",
+			"args": [
+				"-y",
+				"@supabase/mcp-server-supabase@latest",
+				"--access-token",
+				"${env:SUPABASE_ACCESS_TOKEN}"
+			],
+			"env": {},
+			"type": "stdio"
+		},
+		"playwrightMcp": {
+			"command": "npx",
+			"args": [
+				"-y",
+				"@playwright/mcp@latest"
+			],
+			"type": "stdio"
+		},
+		"railway": {
+			"type": "stdio",
+			"command": "npx",
+			"args": [
+				"-y",
+				"@railway/mcp-server"
+			],
+			"env": {
+				"RAILWAY_TOKEN": "${env:RAILWAY_TOKEN}"
+			}
+		},
+		"activepieces": {
+			"url": "https://activepieces-production-4e63.up.railway.app/api/v1/projects/aqW21pXGsiXLhvorLCeIo/mcp-server/http",
+			"headers": {
+				"Authorization": "Bearer ${env:ACTIVEPIECES_BEARER}"
+			},
+			"type": "http"
+		},
+		"context7": {
+			"command": "npx",
+			"args": [
+				"-y",
+				"@upstash/context7-mcp@latest",
+				"--api-key",
+				"${input:CONTEXT7_API_KEY}"
+			],
+			"type": "stdio"
+		},
+		"figma": {
+			"command": "npx",
+			"args": [
+				"-y",
+				"figma-developer-mcp",
+				"--figma-api-key",
+				"${input:FIGMA_API_KEY}",
+				"--stdio"
+			],
+			"type": "stdio"
+		},
+		"storybookMcp": {
+			"type": "http",
+			"url": "https://restaurante-web-storybook-mcp-production.up.railway.app/mcp",
+			"headers": {
+				"Authorization": "Bearer ${input:STORYBOOK_MCP_AUTH_TOKEN}"
+			}
+		},
+		"sentry": {
+			"command": "npx",
+			"args": [
+				"-y",
+				"@sentry/mcp-server@latest"
+			],
+			"env": {
+				"SENTRY_ACCESS_TOKEN": "${input:SENTRY_ACCESS_TOKEN}",
+				"OPENAI_API_KEY": "${input:OPENAI_API_KEY}",
+				"ANTHROPIC_API_KEY": "${input:ANTHROPIC_API_KEY}"
+			},
+			"type": "stdio"
+		}
+	}
 }
