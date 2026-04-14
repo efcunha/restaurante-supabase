@@ -2,16 +2,19 @@
 
 Este diretório centraliza a documentação transversal do monorepo.
 
-## Status Atual (2026-04-08)
+## Status Atual (2026-04-13)
 
 - Simplificação de UX PDV concluída em app e web.
 - Matriz de homologação TEF + balança criada para separar simulador local, mocks automatizados e integração real controlada.
+- Fluxo self-service por balança implementado de forma aditiva e sob feature flag no web.
+- Binding de dispositivos por terminal (`pos_device_bindings`) implementado no banco para TEF, balança e impressora.
 - Deploy do `restaurante-web` concluído no Railway com healthcheck aprovado.
 - Build Android `preview` do `restaurante-app` concluído no EAS.
 - Gate TypeScript do app reabilitado (`npm run type-check` sem erros).
 - Snyk Code Scan executado nos arquivos alterados sem novos issues.
 - Smoke E2E web de fluxos críticos executado com sucesso.
 - Estudo técnico de integração iFood consolidado em `docs/ifood/`.
+- SDD consolidado e atualizado para versão 1.2 com snapshot de arquitetura em 2026-04-13.
 
 ## Continuidade recomendada
 
