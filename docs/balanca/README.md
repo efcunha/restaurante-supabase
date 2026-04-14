@@ -29,8 +29,9 @@ Documentar tecnicamente a integracao de leitura de peso por balanca serial/USB n
 4. [Dados, migracoes e RLS](04-dados-migracoes-rls.md)
 5. [Seguranca, LGPD e observabilidade](05-seguranca-lgpd-observabilidade.md)
 6. [Testes, rollout e rollback](06-testes-rollout-rollback.md)
-7. [Prompt de inicializacao do projeto](PROMPT_INICIALIZACAO_PROJETO.md)
-8. [Prompt curto de continuacao D+1](PROMPT_CONTINUACAO_D1_BALANCA_CURTO.md)
+7. [Checklist de homologacao USB/Serial (TEF + balanca)](07-checklist-homologacao-usb-serial-tef-balanca.md)
+8. [Prompt de inicializacao do projeto](PROMPT_INICIALIZACAO_PROJETO.md)
+9. [Prompt curto de continuacao D+1](PROMPT_CONTINUACAO_D1_BALANCA_CURTO.md)
 
 ## Referencia fonte
 
