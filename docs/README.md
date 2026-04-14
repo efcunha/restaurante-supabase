@@ -19,8 +19,13 @@ Este diretório centraliza a documentação transversal do monorepo.
 2. `docs/maquininha/04-plano-execucao-testes-rollout.md`
 3. `docs/maquininha/06-matriz-homologacao-tef-balanca.md`
 4. `docs/maquininha/README.md`
-5. `docs/repository/HANDOFF_D1_POS_DEVICE_BINDINGS_2026-04-14.md`
-6. `docs/repository/PR_DESCRIPTION_POS_DEVICE_BINDINGS_2026-04-14.md`
+5. `docs/maquininha/17-plano-fechamento-int-real-balanca-tef.md`
+6. `docs/maquininha/18-checklist-operacional-int-real-t0-t1-t2.md`
+7. `docs/maquininha/18-checklist-operacional-int-real-t0-t1-t2.turno-2026-04-14.md`
+8. `docs/repository/HANDOFF_D1_POS_DEVICE_BINDINGS_2026-04-14.md`
+9. `docs/repository/PR_DESCRIPTION_POS_DEVICE_BINDINGS_2026-04-14.md`
+10. `docs/repository/PARECER_PRODUCAO_POS_DEVICE_BINDINGS_2026-04-14.md`
+11. `docs/balanca/08-runbook-recuperacao-bridge-bloqueio-t0.md`
 
 ## Estrutura
 

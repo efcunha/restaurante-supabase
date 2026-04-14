@@ -30,8 +30,10 @@ Documentar tecnicamente a integracao de leitura de peso por balanca serial/USB n
 5. [Seguranca, LGPD e observabilidade](05-seguranca-lgpd-observabilidade.md)
 6. [Testes, rollout e rollback](06-testes-rollout-rollback.md)
 7. [Checklist de homologacao USB/Serial (TEF + balanca)](07-checklist-homologacao-usb-serial-tef-balanca.md)
-8. [Prompt de inicializacao do projeto](PROMPT_INICIALIZACAO_PROJETO.md)
-9. [Prompt curto de continuacao D+1](PROMPT_CONTINUACAO_D1_BALANCA_CURTO.md)
+8. [Runbook de recuperacao do bridge (bloqueio T0)](08-runbook-recuperacao-bridge-bloqueio-t0.md)
+9. [Projeto balanca-bridge (servico local)](../../balanca-bridge/README.md)
+10. [Prompt de inicializacao do projeto](PROMPT_INICIALIZACAO_PROJETO.md)
+11. [Prompt curto de continuacao D+1](PROMPT_CONTINUACAO_D1_BALANCA_CURTO.md)
 
 ## Referencia fonte
 
