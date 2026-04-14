@@ -29,6 +29,7 @@ SUMMARY_MD="$EVIDENCE_DIR/pos-device-bindings-validation-summary-$STAMP_FILE.md"
 VERIFY_EXIT=0
 SMOKE_EXIT=0
 OVERALL_EXIT=0
+SMOKE_MODE="cross-tenant"
 
 echo "[1/2] Executando verificação estrutural..."
 set +e
@@ -41,9 +42,17 @@ if [[ $VERIFY_EXIT -ne 0 ]]; then
 fi
 
 SMOKE_SKIPPED="false"
-if [[ -z "${RLS_SMOKE_ADMIN_USER_ID:-}" || -z "${RLS_SMOKE_OTHER_COMPANY_USER_ID:-}" ]]; then
-  SMOKE_SKIPPED="true"
-  echo "[2/2] Smoke RLS pulado: variáveis RLS_SMOKE_* não definidas." | tee "$SMOKE_LOG" >/dev/null
+if [[ -z "${RLS_SMOKE_OTHER_COMPANY_USER_ID:-}" ]]; then
+  SMOKE_MODE="single-tenant-fallback"
+  echo "[2/2] Executando smoke RLS fallback (single-tenant)..."
+  set +e
+  bash "$SCRIPT_DIR/smoke-pos-device-bindings-rls-single-tenant.sh" >"$SMOKE_LOG" 2>&1
+  SMOKE_EXIT=$?
+  set -e
+
+  if [[ $SMOKE_EXIT -ne 0 ]]; then
+    OVERALL_EXIT=1
+  fi
 else
   echo "[2/2] Executando smoke RLS..."
   set +e
@@ -57,8 +66,8 @@ else
 fi
 
 SMOKE_INTERPRETATION="smoke_exit_code=0: isolamento entre tenants confirmado na prática."
-if [[ "$SMOKE_SKIPPED" == "true" ]]; then
-  SMOKE_INTERPRETATION="smoke_skipped=true: isolamento cross-tenant não foi validado nesta execução (faltaram variáveis/usuários de teste)."
+if [[ "$SMOKE_MODE" == "single-tenant-fallback" ]]; then
+  SMOKE_INTERPRETATION="smoke_mode=single-tenant-fallback: validou RLS no tenant ativo (admin consegue inserir/listar; usuário sem profile não lê)."
 fi
 
 cat > "$SUMMARY_MD" <<EOF
@@ -69,6 +78,7 @@ cat > "$SUMMARY_MD" <<EOF
 - verify_exit_code: $VERIFY_EXIT
 - smoke_exit_code: $SMOKE_EXIT
 - smoke_skipped: $SMOKE_SKIPPED
+- smoke_mode: $SMOKE_MODE
 - overall_result: $( [[ $OVERALL_EXIT -eq 0 ]] && echo "GO" || echo "NO-GO" )
 
 ## Artefatos
