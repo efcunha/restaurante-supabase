@@ -42,3 +42,9 @@ Documento base analisado:
 ## Diretriz de uso
 
 Cada PR futuro da feature balanca deve referenciar pelo menos um documento desta pasta para manter rastreabilidade tecnica e aderencia aos guardrails do monorepo.
+
+## Atualizacao operacional (2026-04-14)
+
+- Validacao de `pos_device_bindings` padronizada com `smoke_mode=cross-tenant-transactional` para ambientes single-tenant.
+- Evidencias consolidadas permanecem em `database-backup/logs/evidencias/` via `capture-pos-device-bindings-validation-evidence.sh`.
+- Runbook oficial de aplicacao/verificacao: `docs/maquininha/16-runbook-pos-device-bindings-apply-verification.md`.
