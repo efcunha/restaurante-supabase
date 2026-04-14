@@ -1,7 +1,9 @@
+import type { Meta, StoryObj } from '@storybook/react-webpack5';
+import React from 'react';
 import { Text, View } from 'react-native';
-import { Card } from './index';
+import { Card } from '../components/ui-next/Card';
 
-const meta = {
+const meta: Meta<typeof Card> = {
   title: 'UI/Card',
   component: Card,
   tags: ['autodocs'],
@@ -18,21 +20,23 @@ const meta = {
 };
 
 export default meta;
-export const Low = {};
+type Story = StoryObj<typeof Card>;
 
-export const Medium = {
+export const Low: Story = {};
+
+export const Medium: Story = {
   args: {
     elevated: 'medium',
   },
 };
 
-export const High = {
+export const High: Story = {
   args: {
     elevated: 'high',
   },
 };
 
-export const NoPadding = {
+export const NoPadding: Story = {
   args: {
     padded: false,
     children: (
@@ -44,7 +48,7 @@ export const NoPadding = {
   },
 };
 
-export const EmptyState = {
+export const EmptyState: Story = {
   args: {
     elevated: 'low',
     children: (
