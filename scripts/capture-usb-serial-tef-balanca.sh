@@ -10,6 +10,7 @@ mkdir -p "$OUT_DIR"
 
 STAMP_UTC="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 STAMP_FILE="$(date -u +"%Y%m%dT%H%M%SZ")"
+ENVIRONMENT="${ENVIRONMENT:-production}"
 
 SCALE_URL="${SCALE_URL:-http://localhost:3031}"
 API_KEY="${API_KEY:-}"
@@ -115,6 +116,7 @@ if command -v node >/dev/null 2>&1; then
 const out=process.argv[1];
 const payload={
   timestamp_utc: process.argv[2],
+    environment: process.argv[25] || '',
   scale: {
     base_url: process.argv[3],
     status_http: process.argv[4],
@@ -134,6 +136,7 @@ const payload={
   tef: {
     enabled: process.argv[15] === 'true',
     ops_url: process.argv[16] || null,
+    company_id: process.argv[26] || null,
     init_1_http: process.argv[17] || null,
     init_2_http: process.argv[18] || null,
     idempotency_ok: process.argv[19] === '' ? null : process.argv[19] === 'true',
@@ -147,13 +150,14 @@ const payload={
   }
 };
 fs.writeFileSync(out, JSON.stringify(payload, null, 2));" \
-  "$SUMMARY_JSON" "$STAMP_UTC" "$SCALE_URL" "$STATUS_HTTP" "$PESO_HTTP" "$PESO_ESTAVEL_HTTP" "$TARA_HTTP" "$SERIAL_ABERTA" "$BAUD_VALUE" "$PROTOCOLO_VALUE" "$STATUS_JSON" "$PESO_JSON" "$PESO_ESTAVEL_JSON" "$TARA_JSON" "$TEF_ENABLED" "$OPS_URL" "$TEF_INIT_1_HTTP" "$TEF_INIT_2_HTTP" "$TEF_IDEMPOTENCY_OK" "$TEF_TRANSACTION_ID" "$TEF_STATUS_HTTP" "$TEF_INIT_1_JSON" "$TEF_INIT_2_JSON" "$TEF_STATUS_JSON"
+  "$SUMMARY_JSON" "$STAMP_UTC" "$SCALE_URL" "$STATUS_HTTP" "$PESO_HTTP" "$PESO_ESTAVEL_HTTP" "$TARA_HTTP" "$SERIAL_ABERTA" "$BAUD_VALUE" "$PROTOCOLO_VALUE" "$STATUS_JSON" "$PESO_JSON" "$PESO_ESTAVEL_JSON" "$TARA_JSON" "$TEF_ENABLED" "$OPS_URL" "$TEF_INIT_1_HTTP" "$TEF_INIT_2_HTTP" "$TEF_IDEMPOTENCY_OK" "$TEF_TRANSACTION_ID" "$TEF_STATUS_HTTP" "$TEF_INIT_1_JSON" "$TEF_INIT_2_JSON" "$TEF_STATUS_JSON" "$ENVIRONMENT" "$COMPANY_ID"
 fi
 
 cat > "$SUMMARY_MD" <<EOF
 # Evidencia USB/Serial - TEF + Balanca
 
 - timestamp_utc: $STAMP_UTC
+- environment: $ENVIRONMENT
 - scale_url: $SCALE_URL
 - bridge_status_http: $STATUS_HTTP
 - bridge_peso_http: $PESO_HTTP
