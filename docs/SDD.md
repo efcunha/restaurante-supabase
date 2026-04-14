@@ -1,8 +1,8 @@
 # Software Design Document (SDD)
 
 **Projeto:** restaurante-supabase  
-**Versão:** 1.1  
-**Data:** 2026-04-08  
+**Versão:** 1.2  
+**Data:** 2026-04-13  
 **Escopo:** Todo o sistema (app + web + ops + banco)  
 **Status:** Ativo — documento vivo, atualizar a cada mudança de arquitetura relevante
 
@@ -205,12 +205,15 @@ pdv-scale-regression.spec.ts
 pdv-device-payment-polling.spec.ts
 ```
 
-#### Estado atual de PDV no web (2026-04-08)
+#### Estado atual de PDV no web (2026-04-13)
 - O web mantém `PaymentMode = 'normal' | 'tef' | 'external_pos'`.
 - O domínio técnico de PDV foi isolado em `restaurante-web/src/features/pdv/`.
 - O fluxo web já possui iniciação + polling para maquininha e leitura via bridge para balança, ambos atrás de feature flags.
+- O fluxo de self-service por balança foi implementado de forma aditiva (sem quebra do legado), controlado por `EXPO_PUBLIC_FEATURE_PDV_SELF_SERVICE_SCALE`.
+- O backend já suporta binding de dispositivos por terminal (`pos_device_bindings`) para TEF, balança e impressora.
 - Existe uma área de simuladores locais em `restaurante-web/src/features/dev-simulators/` para QA local, treinamento e validação visual, sem valor de prova para integração real.
 - A homologação atual é guiada por `docs/maquininha/06-matriz-homologacao-tef-balanca.md`.
+- Para o fluxo self-service por balança, os artefatos de referência estão em `docs/TEF-Balança/` (blueprint, validação PR1 e smoke PR3).
 
 ---
 
@@ -298,6 +301,9 @@ restaurante-ops/src/
 | `subscriptions`      | Assinaturas SaaS por empresa                   |
 | `invoices`           | Faturas de cobrança                            |
 | `payment_methods`    | Métodos de pagamento cadastrados               |
+| `payment_gateway_configs` | Configuração do gateway presencial por empresa |
+| `payment_transactions` | Transações presenciais (TEF/maquininha) com idempotência |
+| `pos_device_bindings` | Binding de hardware por terminal (TEF, balança, impressora) |
 | `webhook_events`     | Log de eventos de webhook (idempotência)       |
 | `billing_audit_log`  | Trilha de auditoria de billing                 |
 | `clientes_delivery`  | Dados de clientes de delivery                  |
@@ -622,8 +628,9 @@ Verificações de role no frontend são **apenas UX**. A autorização real fica
 | `EXPO_PUBLIC_FEATURE_PDV_DEVICE_PAYMENT`  | `false`      | Habilita fluxo de maquininha / TEF no web |
 | `EXPO_PUBLIC_FEATURE_PDV_EXTERNAL_POS`    | `false`      | Habilita maquininha externa auditável |
 | `EXPO_PUBLIC_FEATURE_PDV_SCALE`           | `false`      | Habilita leitura por bridge de balança |
+| `EXPO_PUBLIC_FEATURE_PDV_SELF_SERVICE_SCALE` | `false`   | Habilita semântica isolada de self-service por peso |
 
-> **Status atual:** em produção, o web já recebeu envs de PDV para continuação da validação controlada; o app mobile permanece sem TEF integrado na UX.
+> **Status atual:** em produção, o web já recebeu envs de PDV para validação controlada e canário de self-service por peso; o app mobile permanece sem TEF integrado na UX.
 
 ### Rollback total
 ```bash
@@ -673,6 +680,12 @@ Feature flags controlam **visibilidade de UI apenas**. Nunca controlam acesso a 
 - **NÃO** instalar via `npm install -g supabase`.
 - Migrations em: `database-backup/migrations/`
 - Verificação de drift: `database-backup/check-migration-sync.sh`
+
+Migrations recentes relevantes (2026-04-13):
+- `20260413120000_add_unit_and_weight_fields_to_products.sql`
+- `20260413120000_fix_cardapio_pesavel_categories.sql`
+- `20260413194500_add_self_service_scale_flow_columns.sql`
+- `20260413233000_create_pos_device_bindings.sql`
 
 ### 10.5 Variáveis de ambiente críticas
 
@@ -837,4 +850,4 @@ npx expo-doctor
 
 ---
 
-*Documento atualizado em 2026-04-08. Atualizar este SDD sempre que houver mudança relevante de arquitetura, introdução de novo módulo, novo fluxo crítico ou decisão de design significativa.*
+*Documento atualizado em 2026-04-13. Atualizar este SDD sempre que houver mudança relevante de arquitetura, introdução de novo módulo, novo fluxo crítico ou decisão de design significativa.*
