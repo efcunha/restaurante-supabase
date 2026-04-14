@@ -7,7 +7,8 @@ Param(
   [string]$ComandaNumber = "10",
   [int]$AmountCents = 1000,
   [string]$PaymentMethod = "cartao_credito",
-  [string]$OutDir = ""
+  [string]$OutDir = "",
+  [string]$Environment = "production"
 )
 
 $ErrorActionPreference = "Stop"
@@ -145,6 +146,7 @@ else {
 
 $SummaryObj = [ordered]@{
   timestamp_utc = $StampUtc
+  environment = $Environment
   scale = [ordered]@{
     base_url = $ScaleUrl
     status_http = $StatusHttp
@@ -163,6 +165,7 @@ $SummaryObj = [ordered]@{
   }
   tef = [ordered]@{
     enabled = $TefEnabled
+    company_id = if ([string]::IsNullOrWhiteSpace($CompanyId)) { $null } else { $CompanyId }
     ops_url = if ([string]::IsNullOrWhiteSpace($OpsUrl)) { $null } else { $OpsUrl }
     init_1_http = $TefInit1Http
     init_2_http = $TefInit2Http

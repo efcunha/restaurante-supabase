@@ -1,0 +1,247 @@
+openapi: 3.0.3
+info:
+  title: TEF Local Bridge API
+  version: 1.0.0
+  description: |
+    Contrato para bridge local de TEF USB no caixa.
+    Escopo: mapeamento de dispositivo, iniciacao e consulta de status de pagamento.
+servers:
+  - url: http://localhost:3041
+security:
+  - ApiKeyAuth: []
+paths:
+  /tef/status:
+    get:
+      summary: Status do bridge TEF local
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TefBridgeStatus'
+  /tef/devices:
+    get:
+      summary: Lista dispositivos USB detectados
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UsbDevice'
+  /tef/bindings/resolve:
+    post:
+      summary: Resolve binding por role/fingerprint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResolveBindingRequest'
+      responses:
+        '200':
+          description: Binding resolvido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResolveBindingResponse'
+        '404':
+          description: Binding nao encontrado
+  /tef/payments/initiate:
+    post:
+      summary: Inicia pagamento no pinpad USB
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InitiatePaymentRequest'
+      responses:
+        '202':
+          description: Pagamento em processamento
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+        '400':
+          description: Requisicao invalida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflito de idempotencia/estado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /tef/payments/{transactionId}/status:
+    get:
+      summary: Consulta status de pagamento
+      parameters:
+        - in: path
+          name: transactionId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Status atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+        '404':
+          description: Transacao nao encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /tef/payments/{transactionId}/cancel:
+    post:
+      summary: Solicita cancelamento
+      parameters:
+        - in: path
+          name: transactionId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Cancelamento solicitado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+        '409':
+          description: Estado nao permite cancelamento
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-api-key
+  schemas:
+    TefBridgeStatus:
+      type: object
+      required:
+        - online
+        - timestamp
+      properties:
+        online:
+          type: boolean
+        bridge_version:
+          type: string
+        mapped_terminal:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+    UsbDevice:
+      type: object
+      required:
+        - path
+      properties:
+        path:
+          type: string
+        vendorId:
+          type: string
+        productId:
+          type: string
+        serialNumber:
+          type: string
+        manufacturer:
+          type: string
+        productName:
+          type: string
+    ResolveBindingRequest:
+      type: object
+      required:
+        - company_id
+        - terminal_id
+        - device_role
+      properties:
+        company_id:
+          type: string
+          format: uuid
+        terminal_id:
+          type: string
+        device_role:
+          type: string
+          enum: [tef_terminal, scale, receipt_printer]
+    ResolveBindingResponse:
+      type: object
+      required:
+        - resolved
+      properties:
+        resolved:
+          type: boolean
+        binding_id:
+          type: string
+          format: uuid
+        device:
+          $ref: '#/components/schemas/UsbDevice'
+    InitiatePaymentRequest:
+      type: object
+      required:
+        - company_id
+        - terminal_id
+        - amount_cents
+        - payment_method
+        - idempotency_key
+      properties:
+        company_id:
+          type: string
+          format: uuid
+        terminal_id:
+          type: string
+        comanda_number:
+          type: string
+        amount_cents:
+          type: integer
+          minimum: 1
+        payment_method:
+          type: string
+          enum: [cartao_credito, cartao_debito, pix]
+        idempotency_key:
+          type: string
+    PaymentResponse:
+      type: object
+      required:
+        - transaction_id
+        - status
+        - timestamp
+      properties:
+        transaction_id:
+          type: string
+        provider_payment_id:
+          type: string
+        status:
+          type: string
+          enum: [pending, processing, approved, declined, cancelled, timeout, error]
+        auth_code:
+          type: string
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+    ErrorResponse:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        correlation_id:
+          type: string

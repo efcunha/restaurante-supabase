@@ -34,7 +34,13 @@ Consolidar a especificacao tecnica de desenvolvimento da integracao de pagamento
 10. [Registro de ativacao TEF em producao (2026-04-10)](10-registro-ativacao-tef-2026-04-10.md)
 11. [Encerramento executivo TEF (2026-04-10)](11-encerramento-executivo-tef-2026-04-10.md)
 12. [Handoff D+1 (Plantonista) - 2026-04-11](12-handoff-d1-plantao-2026-04-11.md)
-13. [Prompt de inicializacao do projeto](PROMPT_INICIALIZACAO_PROJETO.md)
+13. [Guia operacional: 3 USBs no caixa (TEF + balanca + impressora)](14-guia-3-usbs-caixa-tef-balanca-impressora.md)
+14. [Blueprint: TEF local USB + device binding](15-blueprint-tef-local-usb-device-binding.md)
+15. [Prompt de inicializacao do projeto](PROMPT_INICIALIZACAO_PROJETO.md)
+
+## Contratos complementares
+
+- OpenAPI (bridge TEF local): `docs/maquininha/contracts/tef-local-bridge.openapi.yaml`
 
 ## Premissas de negocio (fixas)
 
