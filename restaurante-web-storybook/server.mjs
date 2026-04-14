@@ -88,7 +88,7 @@ function safePathFromUrl(urlString) {
     return null;
   }
 
-  if (!/^\/[A-Za-z0-9._\/-]*$/.test(decoded)) {
+  if (!/^\/[A-Za-z0-9._~\/-]*$/.test(decoded)) {
     return null;
   }
 
