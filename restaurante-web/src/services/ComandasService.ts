@@ -289,12 +289,13 @@ class ComandasService {
 
   async listarComandasAbertas(companyId: string): Promise<Comanda[]> {
     if (!companyId) return [];
+    const dateK = await getBusinessDateKey(companyId);
 
     const { data } = await supabase
       .from(TABLE_COMANDAS)
       .select('*')
       .eq('company_id', companyId)
-      .eq('date_key', todayKey())
+      .eq('date_key', dateK)
       .eq('status', 'aberta');
 
     // Ordenação numérica no cliente para evitar bug lexicográfico (ex: 1, 10, 2 se TEXT)
@@ -309,7 +310,7 @@ class ComandasService {
 
   async sincronizarTotalComanda(companyId: string, comandaNumber: string | number, totalReal: number) {
     if (!companyId) return;
-    const dateK = todayKey();
+    const dateK = await getBusinessDateKey(companyId);
     const numStr = String(comandaNumber);
 
     const { data: comanda } = await supabase
@@ -339,7 +340,7 @@ class ComandasService {
    */
   async recalcularTotalComandaAposItemCancelado(companyId: string, comandaNumber: string | number) {
     if (!companyId) return;
-    const dateK = todayKey();
+    const dateK = await getBusinessDateKey(companyId);
 
     // Buscar todos os pedidos da comanda (excluindo cancelados no nível do pedido)
     const { data: orders, error } = await supabase

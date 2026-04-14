@@ -14,6 +14,10 @@ import {
 import { colors } from '../../../theme/colors';
 import { AdicionaisService } from '../../../services/AdicionaisService';
 import { ProductAdicional } from '../../../types/models';
+import { DataListItem } from '../../../ui/DataListItem';
+import { FieldRow } from '../../../ui/FieldRow';
+import { FormSection } from '../../../ui/FormSection';
+import { StateView } from '../../../ui/StateView';
 
 const CATEGORIES: { value: ProductAdicional['category']; label: string }[] = [
   { value: 'molhos', label: '🥫 Molhos' },
@@ -344,10 +348,15 @@ export default function AdicionaisConfigModal({ visible, onClose, product, compa
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <View style={styles.container}>
+        <View style={styles.container} accessibilityViewIsModal accessibilityLabel="Modal de configuracao de adicionais">
           <View style={styles.header}>
             <Text style={styles.title}>🍟 Adicionais — {product.name}</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+            <TouchableOpacity
+              onPress={onClose}
+              style={styles.closeBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Fechar configuracao de adicionais"
+            >
               <Text style={styles.closeBtnText}>✕</Text>
             </TouchableOpacity>
           </View>
@@ -361,6 +370,8 @@ export default function AdicionaisConfigModal({ visible, onClose, product, compa
                   setActiveTab(cat.value);
                   if (!editingId) applyCategorySettingsToForm(cat.value);
                 }}
+                accessibilityRole="button"
+                accessibilityLabel={`Selecionar categoria ${cat.label}`}
               >
                 <Text style={[styles.tabText, activeTab === cat.value && styles.tabTextActive]}>
                   {cat.label}
@@ -371,7 +382,7 @@ export default function AdicionaisConfigModal({ visible, onClose, product, compa
 
           <ScrollView style={styles.scrollView} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
             {loading ? (
-              <ActivityIndicator color={colors.primary} style={{ marginVertical: 20 }} />
+              <StateView state="loading" message="Carregando adicionais..." />
             ) : (
               <>
                 {/* ── Configuração da categoria ─────────────────────── */}
@@ -392,6 +403,8 @@ export default function AdicionaisConfigModal({ visible, onClose, product, compa
                             },
                           }))
                         }
+                        accessibilityRole="button"
+                        accessibilityLabel={`Tipo de selecao ${st.label}`}
                       >
                         <Text style={[styles.segmentText, categorySettings[activeTab].selectionType === st.value && styles.segmentTextActive]}>
                           {st.label}
@@ -410,11 +423,14 @@ export default function AdicionaisConfigModal({ visible, onClose, product, compa
                     keyboardType="number-pad"
                     placeholder={categorySettings[activeTab].selectionType === 'unico' ? '—' : 'Ex: 3'}
                     placeholderTextColor={colors.disabled}
+                    accessibilityLabel="Maximo de escolhas da categoria"
                   />
                   <TouchableOpacity
                     style={[styles.categoryCfgPrimaryBtn, categoryApplying && { opacity: 0.6 }]}
                     onPress={handleSaveCategorySettings}
                     disabled={categoryApplying}
+                    accessibilityRole="button"
+                    accessibilityLabel="Aplicar configuracao da categoria"
                   >
                     {categoryApplying
                       ? <ActivityIndicator color={colors.white} size="small" />
@@ -423,21 +439,17 @@ export default function AdicionaisConfigModal({ visible, onClose, product, compa
                   </TouchableOpacity>
                 </View>
                 {filtered.length === 0 && (
-                  <Text style={styles.emptyText}>Nenhum adicional nesta categoria ainda.</Text>
+                  <StateView state="empty" message="Nenhum adicional nesta categoria ainda." />
                 )}
                 {filtered.map(item => (
                   <View key={item.id} style={[styles.itemRow, !item.active && styles.itemRowInactive]}>
                     <View style={styles.itemInfo}>
-                      <Text style={styles.itemName}>{item.name}</Text>
-                      {item.description ? (
-                        <Text style={styles.itemDesc}>{item.description}</Text>
-                      ) : null}
-                      <Text style={styles.itemPrice}>
-                        {item.price === 0 ? 'Grátis' : `R$ ${item.price.toFixed(2)}`}
-                        {' · '}
-                        {item.selectionType === 'unico' ? 'Único' : 'Múltiplo'}
-                        {item.maxChoices ? ` · máx ${item.maxChoices}` : ''}
-                      </Text>
+                      <DataListItem
+                        title={item.name}
+                        subtitle={item.description || undefined}
+                        meta={`${item.price === 0 ? 'Gratis' : `R$ ${item.price.toFixed(2)}`} · ${item.selectionType === 'unico' ? 'Unico' : 'Multiplo'}${item.maxChoices ? ` · max ${item.maxChoices}` : ''}`}
+                        status={item.active ? 'success' : 'warning'}
+                      />
                     </View>
                     <View style={styles.itemActions}>
                       <Switch
@@ -445,49 +457,65 @@ export default function AdicionaisConfigModal({ visible, onClose, product, compa
                         onValueChange={() => handleToggleActive(item)}
                         trackColor={{ false: colors.disabled, true: colors.success }}
                         thumbColor={colors.white}
+                        accessibilityLabel={`Alternar status do adicional ${item.name}`}
                       />
-                      <TouchableOpacity onPress={() => startEdit(item)} style={styles.iconBtn}>
+                      <TouchableOpacity
+                        onPress={() => startEdit(item)}
+                        style={styles.iconBtn}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Editar adicional ${item.name}`}
+                      >
                         <Text style={styles.iconBtnText}>✏️</Text>
                       </TouchableOpacity>
-                      <TouchableOpacity onPress={() => handleDelete(item)} style={styles.iconBtn}>
+                      <TouchableOpacity
+                        onPress={() => handleDelete(item)}
+                        style={styles.iconBtn}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Remover adicional ${item.name}`}
+                      >
                         <Text style={styles.iconBtnText}>🗑️</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
                 ))}
 
-                <View style={styles.formSection}>
-                  <Text style={styles.formTitle}>{editingId ? '✏️ Editar adicional' : '➕ Novo adicional'}</Text>
+                <FormSection title={editingId ? 'Editar adicional' : 'Novo adicional'}>
+                  <FieldRow label="Nome" required>
+                    <TextInput
+                      style={styles.input}
+                      value={form.name}
+                      onChangeText={v => setField('name', v)}
+                      placeholder="Ex: Bacon crocante"
+                      placeholderTextColor={colors.disabled}
+                      accessibilityLabel="Nome do adicional"
+                      autoFocus
+                    />
+                  </FieldRow>
 
-                  <Text style={styles.label}>Nome *</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={form.name}
-                    onChangeText={v => setField('name', v)}
-                    placeholder="Ex: Bacon crocante"
-                    placeholderTextColor={colors.disabled}
-                  />
+                  <FieldRow label="Descricao">
+                    <TextInput
+                      style={styles.input}
+                      value={form.description}
+                      onChangeText={v => setField('description', v)}
+                      placeholder="Opcional"
+                      placeholderTextColor={colors.disabled}
+                      accessibilityLabel="Descricao do adicional"
+                    />
+                  </FieldRow>
 
-                  <Text style={styles.label}>Descrição</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={form.description}
-                    onChangeText={v => setField('description', v)}
-                    placeholder="Opcional"
-                    placeholderTextColor={colors.disabled}
-                  />
+                  <FieldRow label="Preco (R$)" required>
+                    <TextInput
+                      style={styles.input}
+                      value={form.price}
+                      onChangeText={v => setField('price', v)}
+                      keyboardType="decimal-pad"
+                      placeholder="0.00"
+                      placeholderTextColor={colors.disabled}
+                      accessibilityLabel="Preco do adicional"
+                    />
+                  </FieldRow>
 
-                  <Text style={styles.label}>Preço (R$) *</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={form.price}
-                    onChangeText={v => setField('price', v)}
-                    keyboardType="decimal-pad"
-                    placeholder="0.00"
-                    placeholderTextColor={colors.disabled}
-                  />
-
-                  <Text style={styles.label}>Categoria</Text>
+                  <FieldRow label="Categoria">
                   <View style={styles.segmentRow}>
                     {CATEGORIES.map(cat => (
                       <TouchableOpacity
@@ -501,6 +529,8 @@ export default function AdicionaisConfigModal({ visible, onClose, product, compa
                           setActiveTab(cat.value);
                           applyCategorySettingsToForm(cat.value);
                         }}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Selecionar categoria do adicional ${cat.label}`}
                       >
                         <Text style={[styles.segmentText, form.category === cat.value && styles.segmentTextActive]}>
                           {cat.label}
@@ -508,6 +538,7 @@ export default function AdicionaisConfigModal({ visible, onClose, product, compa
                       </TouchableOpacity>
                     ))}
                   </View>
+                  </FieldRow>
 
                   <View style={styles.activeRow}>
                     <Text style={styles.label}>Ativo</Text>
@@ -516,12 +547,18 @@ export default function AdicionaisConfigModal({ visible, onClose, product, compa
                       onValueChange={v => setField('active', v)}
                       trackColor={{ false: colors.disabled, true: colors.success }}
                       thumbColor={colors.white}
+                      accessibilityLabel="Definir adicional como ativo"
                     />
                   </View>
 
                   <View style={styles.formButtons}>
                     {editingId && (
-                      <TouchableOpacity style={styles.cancelBtn} onPress={cancelEdit}>
+                      <TouchableOpacity
+                        style={styles.cancelBtn}
+                        onPress={cancelEdit}
+                        accessibilityRole="button"
+                        accessibilityLabel="Cancelar edicao de adicional"
+                      >
                         <Text style={styles.cancelBtnText}>Cancelar</Text>
                       </TouchableOpacity>
                     )}
@@ -529,6 +566,8 @@ export default function AdicionaisConfigModal({ visible, onClose, product, compa
                       style={[styles.saveBtn, saving && { opacity: 0.6 }]}
                       onPress={handleSave}
                       disabled={saving}
+                      accessibilityRole="button"
+                      accessibilityLabel={editingId ? 'Salvar alteracoes do adicional' : 'Adicionar novo adicional'}
                     >
                       {saving ? (
                         <ActivityIndicator color={colors.white} size="small" />
@@ -537,7 +576,7 @@ export default function AdicionaisConfigModal({ visible, onClose, product, compa
                       )}
                     </TouchableOpacity>
                   </View>
-                </View>
+                </FormSection>
               </>
             )}
           </ScrollView>

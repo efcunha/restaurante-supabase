@@ -4,6 +4,10 @@ import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, StyleSheet 
 import { Ionicons } from '@expo/vector-icons';
 import { Product } from '../../../types';
 import { colors } from '../../../theme/colors';
+import { DataListItem } from '../../../ui/DataListItem';
+import { FieldRow } from '../../../ui/FieldRow';
+import { FormSection } from '../../../ui/FormSection';
+import { StateView } from '../../../ui/StateView';
 interface VariacaoItemProps {
   variacao: Product; // Or partial
   onSalvar: (produto: Product, novoPreco: string, novoNome: string) => void;
@@ -23,25 +27,40 @@ function VariacaoItem({ variacao, onSalvar }: VariacaoItemProps) {
     <View style={styles.itemRow}>
       {editando ? (
         <View style={{ flex: 1, flexDirection: 'row', gap: 5 }}>
-          <TextInput
-            style={[styles.inputSmall, { flex: 2 }]}
-            value={novoNome}
-            onChangeText={setNovoNome}
-          />
-          <TextInput
-            style={[styles.inputSmall, { flex: 1 }]}
-            value={novoPreco}
-            onChangeText={setNovoPreco}
-            keyboardType="numeric"
-          />
-          <TouchableOpacity onPress={handleSalvar}>
+          <View style={{ flex: 2 }}>
+            <FieldRow label="Nome" required>
+              <TextInput
+                style={styles.inputSmall}
+                value={novoNome}
+                onChangeText={setNovoNome}
+                accessibilityLabel="Nome da variacao"
+                autoFocus
+              />
+            </FieldRow>
+          </View>
+          <View style={{ flex: 1 }}>
+            <FieldRow label="Preco" required>
+              <TextInput
+                style={styles.inputSmall}
+                value={novoPreco}
+                onChangeText={setNovoPreco}
+                keyboardType="numeric"
+                accessibilityLabel="Preco da variacao"
+              />
+            </FieldRow>
+          </View>
+          <TouchableOpacity onPress={handleSalvar} accessibilityRole="button" accessibilityLabel="Salvar variacao">
             <Ionicons name="checkmark-circle" size={28} color="green" />
           </TouchableOpacity>
         </View>
       ) : (
         <>
-          <Text style={styles.itemText}>{variacao.name} - R$ {Number(variacao.price).toFixed(2)}</Text>
-          <TouchableOpacity onPress={() => setEditando(true)}>
+          <DataListItem
+            title={variacao.name}
+            subtitle={`R$ ${Number(variacao.price).toFixed(2)}`}
+            status={variacao.active === false ? 'warning' : 'default'}
+          />
+          <TouchableOpacity onPress={() => setEditando(true)} accessibilityRole="button" accessibilityLabel={`Editar variacao ${variacao.name}`}>
             <Ionicons name="pencil" size={20} color={colors.text} />
           </TouchableOpacity>
         </>
@@ -67,33 +86,51 @@ export default function VariationManager({
 }: VariationManagerProps) {
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={true}>
+    <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <View style={styles.content}>
+        <View style={styles.content} accessibilityViewIsModal accessibilityLabel="Modal de edicao de variacoes">
            <View style={styles.header}>
              <Text style={styles.title}>✏️ Editar Variações</Text>
-             <TouchableOpacity onPress={onClose}><Text style={styles.close}>✕</Text></TouchableOpacity>
+             <TouchableOpacity
+               onPress={onClose}
+               accessibilityRole="button"
+               accessibilityLabel="Fechar modal de variacoes"
+             >
+               <Text style={styles.close}>✕</Text>
+             </TouchableOpacity>
            </View>
 
-           <ScrollView style={styles.list}>
-              {variations.map(variacao => (
-                <View key={variacao.id} style={styles.variacaoContainer}>
-                  <VariacaoItem
-                    variacao={variacao}
-                    onSalvar={onSaveVariation}
-                  />
-                  {/* Stock specific to variation */}
-                  <TouchableOpacity
-                    style={styles.miniStockBtn}
-                    onPress={() => onOpenStock(variacao)}
-                  >
-                    <Text style={styles.miniStockText}>📦 Ficha Técnica ({variacao.inventoryItems?.length || 0} itens)</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
-           </ScrollView>
+           <FormSection title="Variacoes" description="Edite nome, preco e acesse a ficha tecnica de cada variacao.">
+             <ScrollView style={styles.list}>
+                {variations.length === 0 ? (
+                  <StateView state="empty" message="Nenhuma variacao encontrada." />
+                ) : (
+                  variations.map(variacao => (
+                    <View key={variacao.id} style={styles.variacaoContainer}>
+                      <VariacaoItem
+                        variacao={variacao}
+                        onSalvar={onSaveVariation}
+                      />
+                      <TouchableOpacity
+                        style={styles.miniStockBtn}
+                        onPress={() => onOpenStock(variacao)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Abrir ficha tecnica da variacao ${variacao.name}`}
+                      >
+                        <Text style={styles.miniStockText}>📦 Ficha Tecnica ({variacao.inventoryItems?.length || 0} itens)</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))
+                )}
+             </ScrollView>
+           </FormSection>
 
-           <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
+           <TouchableOpacity
+             style={styles.closeBtn}
+             onPress={onClose}
+             accessibilityRole="button"
+             accessibilityLabel="Fechar edicao de variacoes"
+           >
                <Text style={styles.closeBtnText}>FECHAR</Text>
            </TouchableOpacity>
         </View>
@@ -111,7 +148,6 @@ const styles = StyleSheet.create({
     list: { marginBottom: 15 },
     variacaoContainer: { marginBottom: 15, borderBottomWidth: 1, borderColor: colors.border, paddingBottom: 10 },
     itemRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 },
-    itemText: { fontSize: 16, color: colors.text },
     inputSmall: { borderWidth: 1, borderColor: colors.border, borderRadius: 5, padding: 5, fontSize: 14, color: colors.text },
     miniStockBtn: { backgroundColor: colors.surfaceMuted, padding: 8, borderRadius: 6, alignItems: 'center', alignSelf: 'flex-start' },
     miniStockText: { fontSize: 12, color: colors.textSecondary, fontWeight: 'bold' },

@@ -433,7 +433,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               const normalizedRole = await resolveUserRole(data.session.user.id);
               const requiresMfa =
                 featureFlags.requireMFA &&
-                Boolean(normalizedRole) &&
+                normalizedRole !== null &&
                 MFAService.isRequiredForRole(normalizedRole);
 
               if (requiresMfa) {

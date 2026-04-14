@@ -148,18 +148,22 @@ export default function AdminScreen() {
     }, 300); // Aguarda 300ms antes de recarregar
   };
 
-  const normalizedRole = normalizeRole((user as any)?.role);
+  const normalizedRole = normalizeRole(
+    (user as any)?.role ||
+    (user as any)?.funcao ||
+    (user as any)?.customClaims?.role
+  );
   const canAccessAdmin = normalizedRole === Roles.ADMIN || normalizedRole === Roles.GERENTE;
 
   useEffect(() => {
-    if (!canAccessAdmin && user?.id) {
+    if (!canAccessAdmin && user?.uid) {
       LoggerService.warn('Tentativa de acesso ao AdminScreen sem permissao', {
-        userId: user.id,
+        userId: user.uid,
         role: normalizedRole,
         companyId: user.companyId,
       });
     }
-  }, [canAccessAdmin, normalizedRole, user?.companyId, user?.id]);
+  }, [canAccessAdmin, normalizedRole, user?.companyId, user?.uid]);
 
   // Carregar estatísticas ao montar o componente
   useEffect(() => {
@@ -195,14 +199,15 @@ export default function AdminScreen() {
   // 🔴 LISTENERS EM TEMPO REAL para atualizar estatísticas automaticamente
   useEffect(() => {
     // Listener para pedidos (atualiza estatísticas operacionais)
-    if (!user?.companyId) return;
+    const companyId = user?.companyId;
+    if (!companyId) return;
 
     let pedidosChannel: any = null;
     let comandasChannel: any = null;
     let disposed = false;
 
     const setupChannels = async () => {
-      const dateKey = await getBusinessDateKey(user.companyId);
+      const dateKey = await getBusinessDateKey(companyId);
       if (disposed) return;
 
       pedidosChannel = supabase
@@ -213,7 +218,7 @@ export default function AdminScreen() {
             event: '*',
             schema: 'public',
             table: 'orders',
-            filter: `company_id=eq.${user.companyId},date_key=eq.${dateKey}`
+            filter: `company_id=eq.${companyId},date_key=eq.${dateKey}`
           },
           () => {
             debounceReload();
@@ -229,7 +234,7 @@ export default function AdminScreen() {
             event: '*',
             schema: 'public',
             table: 'comandas',
-            filter: `company_id=eq.${user.companyId},date_key=gte.${dateKey}`
+            filter: `company_id=eq.${companyId},date_key=gte.${dateKey}`
           },
           () => {
             debounceReload();

@@ -1,0 +1,147 @@
+{
+	"servers": {
+		"supabaseMcpServer": {
+			"command": "npx",
+			"args": [
+				"-y",
+				"@supabase/mcp-server-supabase@latest",
+				"--access-token",
+				"${env:SUPABASE_ACCESS_TOKEN}"
+			],
+			"env": {},
+			"type": "stdio"
+		},
+		"playwrightMcp": {
+			"command": "npx",
+			"args": [
+				"-y",
+				"@playwright/mcp@latest"
+			],
+			"type": "stdio"
+		},
+		"railway": {
+			"type": "stdio",
+			"command": "npx",
+			"args": [
+				"-y",
+				"@railway/mcp-server"
+			],
+			"env": {
+				"RAILWAY_TOKEN": "${env:RAILWAY_TOKEN}"
+			}
+		},
+		"activepieces": {
+			"url": "https://activepieces-production-4e63.up.railway.app/api/v1/projects/aqW21pXGsiXLhvorLCeIo/mcp-server/http",
+			"headers": {
+				"Authorization": "Bearer ${env:ACTIVEPIECES_BEARER}"
+			},
+			"type": "http"
+		},
+		"context7": {
+			"command": "npx",
+			"args": [
+				"-y",
+				"@upstash/context7-mcp@latest",
+				"--api-key",
+				"${input:CONTEXT7_API_KEY}"
+			],
+			"type": "stdio"
+		},
+		"sentry": {
+			"url": "https://mcp.sentry.dev/mcp",
+			"type": "http"
+		},
+		"figma": {
+			"command": "npx",
+			"args": [
+				"-y",
+				"figma-developer-mcp",
+				"--figma-api-key",
+				"${input:FIGMA_API_KEY}",
+				"--stdio"
+			],
+			"type": "stdio"
+		},
+		"storybookMcp": {
+			"type": "http",
+			"url": "https://restaurante-web-storybook-mcp-production.up.railway.app/mcp",
+			"headers": {
+				"Authorization": "Bearer ${input:STORYBOOK_MCP_AUTH_TOKEN}"
+			}
+		}
+	},
+	"inputs": [
+		{
+			"id": "project-ref",
+			"type": "promptString",
+			"description": "Supabase project reference ID",
+			"password": false
+		},
+		{
+			"id": "read-only",
+			"type": "promptString",
+			"description": "Enable read-only mode",
+			"password": false
+		},
+		{
+			"id": "features",
+			"type": "promptString",
+			"description": "Comma-separated list of features to enable",
+			"password": false
+		},
+		{
+			"id": "api-url",
+			"type": "promptString",
+			"description": "Custom API URL",
+			"password": false
+		},
+		{
+			"id": "SUPABASE_ACCESS_TOKEN",
+			"type": "promptString",
+			"description": "Personal access token for Supabase API",
+			"password": true
+		},
+		{
+			"id": "RAILWAY_TOKEN",
+			"type": "promptString",
+			"description": "Personal access token for Railway API",
+			"password": true
+		},
+		{
+			"id": "FIGMA_API_KEY",
+			"type": "promptString",
+			"description": "Figma API key (Personal Access Token)",
+			"password": true
+		},
+		{
+			"id": "ACTIVEPIECES_BEARER",
+			"type": "promptString",
+			"description": "Bearer token for Activepieces MCP endpoint",
+			"password": true
+		},
+		{
+			"id": "N8N_AUTH_BEARER",
+			"type": "promptString",
+			"description": "Bearer token for the n8n MCP endpoint",
+			"password": true
+		},
+		{
+			"id": "STORYBOOK_MCP_AUTH_TOKEN",
+			"type": "promptString",
+			"description": "Bearer token for restaurante-web-storybook-mcp",
+			"password": true
+		},
+		{
+			"id": "CONTEXT7_API_KEY",
+			"type": "promptString",
+			"description": "Context7 API key (optional; increases rate limits)",
+			"password": true
+		},
+		{
+			"id": "SONARQUBE_TOKEN",
+			"type": "promptString",
+			"description": "SonarQube Cloud token for Sonar MCP server",
+			"password": true
+		}
+	]
+}

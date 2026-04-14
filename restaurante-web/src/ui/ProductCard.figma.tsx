@@ -12,9 +12,10 @@ figma.connect('https://figma.com/design/xpfdEjj5NJ7bQ7zDuCBbqw/RestaurantOS-Desi
   example: () => (
     <ProductCard
       name="Pizza Marguerita"
-      price="R$ 49,90"
-      imageUrl="https://images.unsplash.com/photo-1513104890138-7c749659a591"
-      onAdd={() => {}}
+      description="Molho artesanal, mussarela e manjericao"
+      category="Pizza"
+      priceLabel="R$ 49,90"
+      onPress={() => {}}
     />
   ),
 });

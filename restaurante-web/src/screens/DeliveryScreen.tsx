@@ -121,10 +121,10 @@ const areStandardPropsEqual = (prev: any, next: any) => {
   const prefix = prev.item.name;
   const prevTotal = Object.entries(prev.produtos)
     .filter(([k]) => k === prefix || k.startsWith(prefix + ' + '))
-    .reduce((s, [, v]) => s + v, 0);
+    .reduce((s, [, v]) => s + Number(v || 0), 0);
   const nextTotal = Object.entries(next.produtos)
     .filter(([k]) => k === prefix || k.startsWith(prefix + ' + '))
-    .reduce((s, [, v]) => s + v, 0);
+    .reduce((s, [, v]) => s + Number(v || 0), 0);
   return prevTotal === nextTotal;
 };
 
@@ -156,7 +156,7 @@ const StandardRow = memo(({ item, produtos, onIncrement, onDecrement, type, temp
 
   const qty = Object.entries(produtos)
     .filter(([k]) => k === item.name || k.startsWith(item.name + ' + '))
-    .reduce((sum, [, v]) => sum + v, 0);
+    .reduce((sum, [, v]) => sum + Number(v || 0), 0);
   const handleInc = useCallback(() => onIncrement(item.name), [onIncrement, item.name]);
   const handleDec = useCallback(() => onDecrement(item.name), [onDecrement, item.name]);
 

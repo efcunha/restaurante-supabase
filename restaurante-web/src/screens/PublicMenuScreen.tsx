@@ -277,12 +277,22 @@ export default function PublicMenuScreen({ slug, route }: Props) {
     );
   }
 
+  if (!menu) {
+    return (
+      <View style={styles.centered}>
+        <StateView state="empty" message="Cardapio nao encontrado para este endereco." onRetry={loadMenu} />
+      </View>
+    );
+  }
+
+  const company = menu.company;
+
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
-      {menu.company.menu_banner_url ? (
+      {company.menu_banner_url ? (
         <View style={{ height: heroHeight }}>
           <Image
-            source={{ uri: menu.company.menu_banner_url }}
+            source={{ uri: company.menu_banner_url }}
             style={StyleSheet.absoluteFillObject}
             contentFit="cover"
             transition={220}
@@ -296,9 +306,9 @@ export default function PublicMenuScreen({ slug, route }: Props) {
                 : undefined,
             ]}
           />
-          {menu.company.menu_logo_url ? (
+          {company.menu_logo_url ? (
             <Image
-              source={{ uri: menu.company.menu_logo_url }}
+              source={{ uri: company.menu_logo_url }}
               style={styles.logoOverlay}
               contentFit="contain"
               transition={180}
@@ -308,13 +318,13 @@ export default function PublicMenuScreen({ slug, route }: Props) {
         </View>
       ) : (
         <View style={[styles.heroFallback, { height: heroHeight, backgroundColor: primaryColor }]}>
-          <Text style={styles.heroFallbackName}>{menu.company.name}</Text>
+          <Text style={styles.heroFallbackName}>{company.name}</Text>
         </View>
       )}
 
       <View style={styles.companyInfo}>
-        <Text style={styles.companyName}>{menu.company.name}</Text>
-        {menu.company.city ? <Text style={styles.companyCity}>{menu.company.city}</Text> : null}
+        <Text style={styles.companyName}>{company.name}</Text>
+        {company.city ? <Text style={styles.companyCity}>{company.city}</Text> : null}
       </View>
 
       <View style={styles.searchWrapper}>

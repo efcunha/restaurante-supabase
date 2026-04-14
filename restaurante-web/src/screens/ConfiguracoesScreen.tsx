@@ -9,7 +9,7 @@
  * - Security (change password, logout)
  */
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator } from 'react-native';
@@ -71,15 +71,54 @@ export default function ConfiguracoesScreen({ onClose }: ConfiguracoesScreenProp
 
   // Dialog state
   const [showConfirmRemove, setShowConfirmRemove] = useState<string | null>(null);
+  const profileLoadedRef = useRef(false);
+  const debouncedProfileName = useDebounce(profileName, DEBOUNCE_MS);
+  const debouncedProfilePhone = useDebounce(profilePhone, DEBOUNCE_MS);
+
+  const debouncedSaveProfile = useCallback(
+    async (name: string, phone: string) => {
+      if (!user?.uid) return;
+
+      try {
+        setSavingProfile(true);
+        const { error } = await supabase
+          .from('profiles')
+          .update({ full_name: name, phone })
+          .eq('id', user.uid);
+
+        if (error) throw error;
+
+        LoggerService.logInfo('Perfil atualizado', 'ConfiguracoesScreen#saveProfile', {
+          nameChanged: !!name,
+          phoneChanged: !!phone,
+        });
+      } catch (err) {
+        const error = err as Error;
+        LoggerService.logError(error, 'ConfiguracoesScreen#saveProfile');
+        Alert.alert('Erro', 'Não foi possível salvar o perfil');
+      } finally {
+        setSavingProfile(false);
+      }
+    },
+    [user?.uid]
+  );
 
   // Load initial data
   useEffect(() => {
     loadSettings();
-  }, [user?.id]);
+  }, [user?.uid]);
+
+  useEffect(() => {
+    if (!profileLoadedRef.current || !user?.uid) {
+      return;
+    }
+
+    void debouncedSaveProfile(debouncedProfileName, debouncedProfilePhone);
+  }, [debouncedProfileName, debouncedProfilePhone, debouncedSaveProfile, user?.uid]);
 
   const loadSettings = async () => {
     try {
-      if (!user?.id || !user?.companyId) {
+      if (!user?.uid || !user?.companyId) {
         setErrorMsg('Usuário ou empresa não identificada.');
         setState('error');
         return;
@@ -92,7 +131,7 @@ export default function ConfiguracoesScreen({ onClose }: ConfiguracoesScreenProp
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('full_name, phone')
-        .eq('id', user.id)
+        .eq('id', user.uid)
         .single();
 
       if (profileError && profileError.code !== 'PGRST116') {
@@ -103,6 +142,7 @@ export default function ConfiguracoesScreen({ onClose }: ConfiguracoesScreenProp
         setProfileName(profileData.full_name || '');
         setProfilePhone(profileData.phone || '');
       }
+      profileLoadedRef.current = true;
 
       // Load team members
       const { data: teamData, error: teamError } = await supabase
@@ -128,36 +168,6 @@ export default function ConfiguracoesScreen({ onClose }: ConfiguracoesScreenProp
     }
   };
 
-  // Save profile changes (debounced)
-  const debouncedSaveProfile = useMemo(
-    () =>
-      async (name: string, phone: string) => {
-        if (!user?.id) return;
-
-        try {
-          setSavingProfile(true);
-          const { error } = await supabase
-            .from('profiles')
-            .update({ full_name: name, phone })
-            .eq('id', user.id);
-
-          if (error) throw error;
-
-          LoggerService.logInfo('Perfil atualizado', 'ConfiguracoesScreen#saveProfile', {
-            nameChanged: name !== user.email,
-            phoneChanged: !!phone,
-          });
-        } catch (err) {
-          const error = err as Error;
-          LoggerService.logError(error, 'ConfiguracoesScreen#saveProfile');
-          Alert.alert('Erro', 'Não foi possível salvar o perfil');
-        } finally {
-          setSavingProfile(false);
-        }
-      },
-    [user?.id]
-  );
-
   const handleProfileChange = useCallback(
     (name: string, phone: string) => {
       setProfileName(name);
@@ -177,20 +187,15 @@ export default function ConfiguracoesScreen({ onClose }: ConfiguracoesScreenProp
       setAddingMember(true);
 
       // Call edge function to add user
-      const response = await fetch(`${supabase.supabaseUrl}/functions/v1/add-team-member`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${supabase.auth.session?.access_token || ''}`,
-        },
-        body: JSON.stringify({
+      const { error } = await supabase.functions.invoke('add-team-member', {
+        body: {
           email: newMemberEmail,
           companyId: user?.companyId,
-        }),
+        },
       });
 
-      if (!response.ok) {
-        throw new Error(await response.text());
+      if (error) {
+        throw error;
       }
 
       LoggerService.logInfo('Membro adicionado à equipe', 'ConfiguracoesScreen#addMember', {
@@ -242,7 +247,7 @@ export default function ConfiguracoesScreen({ onClose }: ConfiguracoesScreenProp
         onPress: async () => {
           try {
             LoggerService.logInfo('Usuário realizou logout', 'ConfiguracoesScreen#logout', {
-              userId: user?.id,
+              userId: user?.uid,
             });
 
             await logout();
@@ -284,7 +289,7 @@ export default function ConfiguracoesScreen({ onClose }: ConfiguracoesScreenProp
             title="Meu Perfil"
             description="Atualize seus dados pessoais"
           >
-            <FieldRow label="Email" helper={user?.email}>
+            <FieldRow label="Email" helper={user?.email ?? undefined}>
               <Text style={styles.staticValue}>{user?.email}</Text>
             </FieldRow>
 
@@ -293,7 +298,7 @@ export default function ConfiguracoesScreen({ onClose }: ConfiguracoesScreenProp
                 style={styles.input}
                 placeholder="Seu nome"
                 value={profileName}
-                onChangeText={handleProfileChange}
+                onChangeText={(name) => handleProfileChange(name, profilePhone)}
                 editable={!savingProfile}
                 placeholderTextColor={designColors.text.secondary}
               />
@@ -400,9 +405,9 @@ export default function ConfiguracoesScreen({ onClose }: ConfiguracoesScreenProp
                     title={member.email}
                     subtitle={roleLabel(member.role)}
                     meta={`Desde ${new Date(member.created_at).toLocaleDateString('pt-BR')}`}
-                    status={member.id === user?.id ? 'success' : 'default'}
+                    status={member.id === user?.uid ? 'success' : 'default'}
                     onPress={
-                      member.id !== user?.id
+                      member.id !== user?.uid
                         ? () => setShowConfirmRemove(member.id)
                         : undefined
                     }
@@ -472,7 +477,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[2],
     fontSize: fontSizes.base,
     color: designColors.text.primary,
-    backgroundColor: designColors.surface.input,
+    backgroundColor: designColors.surface.card,
   },
   addMemberRow: {
     flexDirection: 'row',
@@ -510,7 +515,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[3],
     paddingHorizontal: spacing[3],
     borderRadius: 8,
-    backgroundColor: designColors.semantic.error.tint,
+    backgroundColor: designColors.semantic.error.light,
   },
   logoutButtonText: {
     color: designColors.semantic.error.default,

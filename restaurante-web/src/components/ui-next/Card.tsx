@@ -1,12 +1,12 @@
 import React, { ReactNode } from 'react';
-import { StyleSheet, View, ViewStyle } from 'react-native';
+import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import { colorSystem, radius, shadows, spacing } from '../../design-system';
 
 type CardProps = {
   children: ReactNode;
   padded?: boolean;
   elevated?: 'low' | 'medium' | 'high';
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 };
 
 export function Card({ children, padded = true, elevated = 'low', style }: CardProps) {

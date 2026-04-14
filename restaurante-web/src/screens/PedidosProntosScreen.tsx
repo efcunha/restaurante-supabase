@@ -125,7 +125,7 @@ export default function PedidosProntosScreen() {
 
       setAllOrders(mappedOrders);
     } catch (error: any) {
-      logger.error('[PedidosProntosScreen] failed to load ready orders');
+      logger.error('[PedidosProntosScreen] failed to load ready orders', error);
       setOrdersError(error?.message || 'Falha ao carregar pedidos prontos.');
       setAllOrders([]);
     } finally {
@@ -249,7 +249,7 @@ export default function PedidosProntosScreen() {
         return;
       }
     } catch (e) {
-      logger.error('[PedidosProntosScreen] failed to verify caixa before delivery');
+      logger.error('[PedidosProntosScreen] failed to verify caixa before delivery', e);
     }
 
     try {
@@ -315,7 +315,7 @@ export default function PedidosProntosScreen() {
       });
 
     } catch (error: any) {
-      logger.error('[PedidosProntosScreen] failed to mark item as delivered');
+      logger.error('[PedidosProntosScreen] failed to mark item as delivered', error);
       if (Platform.OS === 'web') window.alert('Erro: ' + error.message);
       else Alert.alert('Erro', 'Não foi possível marcar como entregue: ' + error.message);
 

@@ -1,6 +1,5 @@
 import React, { useEffect, useRef } from 'react';
 import {
-  ActivityIndicator,
   Animated,
   Pressable,
   StyleSheet,
@@ -12,13 +11,16 @@ import { Button } from '../components/ui-next/Button';
 import { borderRadius, borderWidth, fontSizes, fontWeights, spacing } from '../design-system';
 import { colors } from '../theme/colors';
 
-export type StateViewState = 'loading' | 'empty' | 'error' | 'ready';
+export type StateViewState = 'loading' | 'empty' | 'error' | 'ready' | 'success';
 
 type StateViewProps = {
   state: StateViewState;
   message?: string;
+  errorMessage?: string | null;
+  details?: string;
   onRetry?: () => void;
   skeletonRows?: number;
+  loadingComponent?: React.ReactNode;
   children?: React.ReactNode;
   style?: ViewStyle;
 };
@@ -26,8 +28,11 @@ type StateViewProps = {
 export function StateView({
   state,
   message,
+  errorMessage,
+  details,
   onRetry,
   skeletonRows = 4,
+  loadingComponent,
   children,
   style,
 }: StateViewProps) {
@@ -52,24 +57,38 @@ export function StateView({
     };
   }, [pulse, state]);
 
-  if (state === 'ready') {
+  if (state === 'ready' || state === 'success') {
     return <>{children}</>;
   }
 
   if (state === 'loading') {
     return (
-      <View style={[styles.container, style]} accessibilityRole="status" accessibilityLabel="Carregando dados">
-        {Array.from({ length: Math.max(1, skeletonRows) }).map((_, index) => (
-          <Animated.View key={`skeleton-${index}`} style={[styles.skeletonRow, { opacity: pulse }]} />
-        ))}
+      <View
+        style={[styles.container, style]}
+        accessibilityLabel="Carregando dados"
+      >
+        {loadingComponent ? (
+          loadingComponent
+        ) : (
+          Array.from({ length: Math.max(1, skeletonRows) }).map((_, index) => (
+            <Animated.View
+              key={`skeleton-${index}`}
+              style={[styles.skeletonRow, { opacity: pulse }]}
+            />
+          ))
+        )}
       </View>
     );
   }
 
   if (state === 'error') {
     return (
-      <View style={[styles.container, style]} accessibilityRole="alert" accessibilityLabel="Erro ao carregar dados">
-        <Text style={styles.message}>{message ?? 'Nao foi possivel carregar os dados.'}</Text>
+      <View
+        style={[styles.container, style]}
+        accessibilityLabel="Erro ao carregar dados"
+      >
+        <Text style={styles.message}>{errorMessage ?? message ?? 'Nao foi possivel carregar os dados.'}</Text>
+        {!!details && <Text style={styles.details}>{details}</Text>}
         {!!onRetry && (
           <Button label="Tentar novamente" onPress={onRetry} variant="secondary" />
         )}
@@ -78,8 +97,12 @@ export function StateView({
   }
 
   return (
-    <View style={[styles.container, style]} accessibilityRole="summary" accessibilityLabel="Nenhum dado encontrado">
+    <View
+      style={[styles.container, style]}
+      accessibilityLabel="Nenhum dado encontrado"
+    >
       <Text style={styles.message}>{message ?? 'Nenhum registro encontrado.'}</Text>
+      {!!details && <Text style={styles.details}>{details}</Text>}
       {!!onRetry && (
         <Pressable onPress={onRetry} accessibilityRole="button" style={styles.linkButton}>
           <Text style={styles.linkLabel}>Atualizar</Text>
@@ -102,6 +125,11 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: fontSizes.base,
     fontWeight: fontWeights.medium,
+  },
+  details: {
+    color: colors.textSecondary,
+    fontSize: fontSizes.sm,
+    fontWeight: fontWeights.regular,
   },
   linkButton: {
     alignSelf: 'flex-start',

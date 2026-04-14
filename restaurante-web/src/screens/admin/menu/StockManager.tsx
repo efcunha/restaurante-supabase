@@ -5,6 +5,10 @@ import { Product } from '../../../types';
 
 import { StockItem } from './types';
 import { colors } from '../../../theme/colors';
+import { DataListItem } from '../../../ui/DataListItem';
+import { FieldRow } from '../../../ui/FieldRow';
+import { FormSection } from '../../../ui/FormSection';
+import { StateView } from '../../../ui/StateView';
 interface StockManagerProps {
   visible: boolean;
   onClose: () => void;
@@ -39,42 +43,55 @@ export default function StockManager({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={true}>
+        <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <View style={styles.content}>
+                <View style={styles.content} accessibilityViewIsModal accessibilityLabel="Modal de ficha tecnica e estoque">
            <View style={styles.header}>
              <Text style={styles.title}>📦 Ficha Técnica</Text>
-             <TouchableOpacity onPress={onClose}><Text style={styles.close}>✕</Text></TouchableOpacity>
+                         <TouchableOpacity
+                             onPress={onClose}
+                             accessibilityRole="button"
+                             accessibilityLabel="Fechar ficha tecnica"
+                         >
+                             <Text style={styles.close}>✕</Text>
+                         </TouchableOpacity>
            </View>
 
            <Text style={styles.subtitle}>Produto: <Text style={{fontWeight: 'bold'}}>{product?.name}</Text></Text>
 
-           {/* Selector */}
-           <Text style={styles.label}>Adicionar Ingrediente do Estoque:</Text>
+           <FormSection title="Adicionar ingrediente" description="Selecione um item do estoque e informe a quantidade da receita.">
            <ScrollView style={styles.listContainer}>
                {stockItems.map(item => (
                    <TouchableOpacity
                        key={item.id}
                        style={[styles.itemRow, selectedStockId === item.id && styles.itemRowActive]}
                        onPress={() => setSelectedStockId(item.id)}
+                       accessibilityRole="button"
+                       accessibilityLabel={`Selecionar item de estoque ${item.nome}`}
                    >
-                    <Text style={{color: selectedStockId === item.id ? colors.primary : colors.text}}>
-                           {item.nome} ({item.unidadeOriginal})
-                       </Text>
+                     <DataListItem
+                       title={item.nome}
+                       subtitle={`Unidade base: ${item.unidadeOriginal}`}
+                       status={selectedStockId === item.id ? 'success' : 'default'}
+                     />
                    </TouchableOpacity>
                ))}
-               {stockItems.length === 0 && <Text style={styles.emptyText}>Nenhum item no estoque.</Text>}
+               {stockItems.length === 0 && <StateView state="empty" message="Nenhum item no estoque." />}
            </ScrollView>
 
            {/* Inputs */}
            <View style={styles.inputRow}>
+               <FieldRow label="Quantidade da receita" required>
                <TextInput
                    style={[styles.input, { flex: 0.4 }]}
                    placeholder="Qtd (Receita)"
                    value={qty}
                    onChangeText={setQty}
                    keyboardType="numeric"
+                   accessibilityLabel="Quantidade da receita"
+                   autoFocus
                />
+               </FieldRow>
                <View style={{ flex: 0.6 }}>
                    <View style={styles.tabs}>
                        {['QUANTITY', 'VOLUME', 'MASS'].map(t => (
@@ -82,6 +99,8 @@ export default function StockManager({
                              key={t} 
                              onPress={() => setUnitType(t as any)}
                              style={[styles.tab, unitType === t && styles.tabActive]}
+                                                         accessibilityRole="button"
+                                                         accessibilityLabel={`Selecionar tipo de unidade ${t}`}
                            >
                                <Text style={[styles.tabText, unitType === t && styles.tabTextActive]}>
                                    {t === 'QUANTITY' ? 'Unid' : t === 'VOLUME' ? 'Vol' : 'Peso'}
@@ -95,6 +114,8 @@ export default function StockManager({
                                key={u} 
                                style={[styles.unitBtn, unit === u && styles.unitBtnActive]}
                                onPress={() => setUnit(u)}
+                               accessibilityRole="button"
+                               accessibilityLabel={`Selecionar unidade ${u}`}
                            >
                             <Text style={{color: unit === u ? colors.white : colors.text, fontWeight: 'bold'}}>{u}</Text>
                            </TouchableOpacity>
@@ -103,20 +124,30 @@ export default function StockManager({
                </View>
            </View>
 
-           <TouchableOpacity style={styles.addBtn} onPress={handleAdd}>
+                     <TouchableOpacity
+                         style={styles.addBtn}
+                         onPress={handleAdd}
+                         accessibilityRole="button"
+                         accessibilityLabel="Adicionar ingrediente a ficha tecnica"
+                     >
                <Text style={styles.addBtnText}>+ Adicionar Ingrediente</Text>
            </TouchableOpacity>
+           </FormSection>
 
            {/* Linked List */}
-           <Text style={[styles.label, { marginTop: 20 }]}>Ingredientes Vinculados:</Text>
+           <Text style={[styles.label, { marginTop: 20 }]}>Ingredientes vinculados:</Text>
            <ScrollView style={{ maxHeight: 200 }}>
                 {(!product?.inventoryItems || product.inventoryItems.length === 0) ? (
-                    <Text style={styles.emptyText}>Nenhum ingrediente vinculado.</Text>
+                    <StateView state="empty" message="Nenhum ingrediente vinculado." />
                 ) : (
                     product.inventoryItems.map((ing: any, idx: number) => (
                         <View key={idx} style={styles.linkedRow}>
                             <Text style={{ flex: 1 }}>{ing.nome} - {ing.qt} {ing.un}</Text>
-                            <TouchableOpacity onPress={() => onRemoveIngredient(ing.id)}>
+                                                        <TouchableOpacity
+                                                            onPress={() => onRemoveIngredient(ing.id)}
+                                                            accessibilityRole="button"
+                                                            accessibilityLabel={`Remover ingrediente ${ing.nome}`}
+                                                        >
                                 <Text style={{ color: colors.danger }}>🗑️</Text>
                             </TouchableOpacity>
                         </View>

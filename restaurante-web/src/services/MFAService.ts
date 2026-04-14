@@ -30,6 +30,17 @@ interface MFASetupResult {
   backupCodes: string[];
 }
 
+interface SupabaseEnrollData {
+  id: string;
+  totp?: {
+    uri?: string;
+    qr_code?: string;
+  };
+  uri?: string;
+  qr_code?: string;
+  qrCode?: string;
+}
+
 class MFAService {
   private readonly BACKUP_CODES_COUNT = 10;
   private readonly BACKUP_CODES_KEY_PREFIX = 'mfa_backup_codes_v1:';
@@ -83,12 +94,12 @@ class MFAService {
     }
 
     // TOTP data can be in different formats depending on Supabase version
-    const totpData = data.totp || data;
-    const uri = totpData.uri || totpData.totp?.uri;
-    const qrCode = totpData.qr_code || totpData.qrCode || uri;
+    const enrollData = data as SupabaseEnrollData;
+    const uri = enrollData.totp?.uri || enrollData.uri;
+    const qrCode = enrollData.totp?.qr_code || enrollData.qr_code || enrollData.qrCode || uri;
 
     if (!uri || !qrCode) {
-      console.error('MFA Enrollment Response:', { data, totpData });
+      console.error('MFA Enrollment Response:', { data, enrollData });
       throw new Error('Nao foi possivel iniciar o cadastro de TOTP. Dados incompletos.');
     }
 
