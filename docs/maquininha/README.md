@@ -36,7 +36,8 @@ Consolidar a especificacao tecnica de desenvolvimento da integracao de pagamento
 12. [Handoff D+1 (Plantonista) - 2026-04-11](12-handoff-d1-plantao-2026-04-11.md)
 13. [Guia operacional: 3 USBs no caixa (TEF + balanca + impressora)](14-guia-3-usbs-caixa-tef-balanca-impressora.md)
 14. [Blueprint: TEF local USB + device binding](15-blueprint-tef-local-usb-device-binding.md)
-15. [Prompt de inicializacao do projeto](PROMPT_INICIALIZACAO_PROJETO.md)
+15. [Runbook: apply e verificacao da migration pos_device_bindings](16-runbook-pos-device-bindings-apply-verification.md)
+16. [Prompt de inicializacao do projeto](PROMPT_INICIALIZACAO_PROJETO.md)
 
 ## Contratos complementares
 

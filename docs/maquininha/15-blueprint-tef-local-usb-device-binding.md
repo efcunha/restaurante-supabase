@@ -140,7 +140,8 @@ Cada evento com:
 
 ## 9. Checklist de rollout
 
-1. Criar migration real com RLS em `pos_device_bindings`.
+1. Aplicar migration real com RLS em `pos_device_bindings`.
+  - Arquivo criado no repositorio: `database-backup/migrations/20260413233000_create_pos_device_bindings.sql`
 2. Implementar endpoints de bridge TEF local com auth e idempotencia.
 3. Implementar tela de mapeamento inicial (3 USBs) por terminal.
 4. Rodar smoke test de ponta a ponta:
