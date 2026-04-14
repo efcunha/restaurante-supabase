@@ -1,4 +1,4 @@
-import { Button } from './index';
+import { Button } from '../components/ui-next/Button';
 
 const meta = {
   title: 'UI/Button',

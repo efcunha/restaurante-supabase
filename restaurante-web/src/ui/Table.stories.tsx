@@ -1,5 +1,5 @@
 import { Text } from 'react-native';
-import { Table } from './index';
+import { Table } from '../components/ui-next/Table';
 
 type Row = {
   id: string;

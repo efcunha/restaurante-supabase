@@ -118,8 +118,11 @@ Exemplo de objeto:
 1. Build local do Storybook:
 - cd restaurante-web && npm run storybook:build -- --disable-telemetry
 2. Publicar no servico dedicado:
-- railway up --service restaurante-web-storybook --path-as-root /tmp/storybook-railway-deploy --ci
-3. Garantir dominio publico:
+- bash restaurante-web/scripts/deploy-storybook-railway.sh
+3. Se quiser apenas preparar o payload versionado sem publicar:
+- bash restaurante-web/scripts/deploy-storybook-railway.sh --prepare-only
+4. O servico publicado usa o diretório versionado `restaurante-web-storybook/` como raiz de deploy, evitando dependencia de `/tmp/storybook-railway-deploy` e de pastas ignoradas no upload.
+5. Garantir dominio publico:
 - railway domain --service restaurante-web-storybook --json
 
 ### Rollback rapido

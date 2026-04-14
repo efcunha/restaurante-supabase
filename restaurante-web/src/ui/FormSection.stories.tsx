@@ -1,4 +1,5 @@
-import { FormInput, FormSection } from './index';
+import { FormInput } from '../components/ui-next/FormInput';
+import { FormSection } from './FormSection';
 
 const meta = {
   title: 'UI/FormSection',

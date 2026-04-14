@@ -1,4 +1,5 @@
-import { FormInput, FieldRow } from './index';
+import { FormInput } from '../components/ui-next/FormInput';
+import { FieldRow } from './FieldRow';
 
 const meta = {
   title: 'UI/FieldRow',
