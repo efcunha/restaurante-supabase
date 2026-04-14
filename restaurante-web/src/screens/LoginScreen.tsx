@@ -23,6 +23,14 @@ interface Props {
 export default function LoginScreen({ navigation }: Props) {
   const { login, loginWithBiometric, biometricAvailable, biometricType, mfaResolver, setMfaResolver } = useAuth();
   const { showToast } = useToast();
+
+  const maskEmail = (value: string): string => {
+    const normalized = String(value || '').trim().toLowerCase();
+    const [local, domain] = normalized.split('@');
+    if (!local || !domain) return 'invalid-email';
+    if (local.length <= 2) return `${local[0] || '*'}***@${domain}`;
+    return `${local.slice(0, 2)}***@${domain}`;
+  };
   const windowWidth = Dimensions.get('window').width;
   const windowHeight = Dimensions.get('window').height;
   const isDesktop = windowWidth >= 1080;
@@ -47,12 +55,13 @@ export default function LoginScreen({ navigation }: Props) {
 
     setLoading(true);
     const emailTrimmed = email.toLowerCase().trim();
+    const emailMasked = maskEmail(emailTrimmed);
     try {
-      logger.info('[LoginScreen] login attempt initiated', { email: emailTrimmed });
+      logger.info('[LoginScreen] login attempt initiated', { emailMasked });
       await login(emailTrimmed, senha);
-      logger.info('[LoginScreen] login successful', { email: emailTrimmed });
+      logger.info('[LoginScreen] login successful', { emailMasked });
     } catch (error: any) {
-      logger.error('[LoginScreen] login failed', error, { email: emailTrimmed });
+      logger.error('[LoginScreen] login failed', error, { emailMasked });
       const userMessage = getUserFriendlyMessage(error);
       setSubmitError(userMessage);
       Alert.alert('Erro no Login', userMessage);
@@ -199,7 +208,7 @@ export default function LoginScreen({ navigation }: Props) {
 
                   const validation = validateEmail(email.trim());
                   if (!validation.isValid) {
-                    logger.warn('[LoginScreen] password reset requested with invalid email', { email: email.trim() });
+                    logger.warn('[LoginScreen] password reset requested with invalid email', { emailMasked: maskEmail(email.trim()) });
                     Alert.alert('Email Inválido', validation.error || 'Por favor, digite um email valido.');
                     return;
                   }
@@ -213,15 +222,15 @@ export default function LoginScreen({ navigation }: Props) {
                         text: 'Enviar Email',
                         onPress: async () => {
                           try {
-                            logger.info('[LoginScreen] password reset email requested', { email: email.trim() });
+                            logger.info('[LoginScreen] password reset email requested', { emailMasked: maskEmail(email.trim()) });
                             const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
                               redirectTo: getPasswordResetRedirectUrl(),
                             });
                             if (error) throw error;
-                            logger.info('[LoginScreen] password reset email sent successfully', { email: email.trim() });
+                            logger.info('[LoginScreen] password reset email sent successfully', { emailMasked: maskEmail(email.trim()) });
                             Alert.alert('Sucesso', 'Email enviado. Verifique sua caixa de entrada e spam para redefinir a senha.');
                           } catch (resetError: any) {
-                            logger.error('[LoginScreen] password reset email failed', resetError, { email: email.trim() });
+                            logger.error('[LoginScreen] password reset email failed', resetError, { emailMasked: maskEmail(email.trim()) });
                             Alert.alert('Erro', 'Nao foi possivel enviar: ' + resetError.message);
                           }
                         },
