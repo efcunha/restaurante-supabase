@@ -67,6 +67,7 @@ export const PaymentActionPanel = memo(function PaymentActionPanel({
   const showModeSelector = (showDevicePaymentAction || showExternalPosOption) && !isModeLocked;
   const effectivePaymentMode: PaymentMode = isModeLocked ? initialMode : paymentMode;
   const methodsForCurrentMode = effectivePaymentMode === 'tef' ? tefPaymentMethods : paymentMethods;
+  const canUseDevicePayment = effectivePaymentMode === 'tef' && showDevicePaymentAction && !!onUseDevicePayment;
   const modeLockLabel =
     effectivePaymentMode === 'tef'
       ? 'Fluxo TEF Integrado'
@@ -162,7 +163,7 @@ export const PaymentActionPanel = memo(function PaymentActionPanel({
             {useUiNext ? (
               <>
                 <Button label="Confirmar Pagamento" onPress={onConfirmPayment} fullWidth />
-                {effectivePaymentMode === 'tef' && showDevicePaymentAction && (
+                {canUseDevicePayment && (
                   <Button
                     label={isDevicePaymentBusy ? 'Processando Maquininha...' : 'Usar Maquininha'}
                     onPress={onUseDevicePayment}
@@ -178,7 +179,7 @@ export const PaymentActionPanel = memo(function PaymentActionPanel({
                 <TouchableOpacity style={styles.legacyPrimaryButton} onPress={onConfirmPayment}>
                   <Text style={styles.legacyPrimaryButtonText}>Confirmar Pagamento</Text>
                 </TouchableOpacity>
-                {effectivePaymentMode === 'tef' && showDevicePaymentAction && (
+                {canUseDevicePayment && (
                   <TouchableOpacity
                     style={[styles.legacySecondaryButton, styles.deviceButton]}
                     onPress={onUseDevicePayment}

@@ -109,6 +109,24 @@ class LoggerService {
   }
 
   /**
+   * Backward-compatible info logger used by older screens.
+   */
+  logInfo(message: string, context: string = '', extra: SentryExtra = {}): void {
+    this.log(message, 'info');
+
+    if (__DEV__) {
+      console.log(`[${context || 'INFO'}]`, message, extra);
+    }
+
+    Sentry.addBreadcrumb({
+      message,
+      level: 'info',
+      category: context || 'app',
+      data: this.scrubData(extra),
+    });
+  }
+
+  /**
    * Log warning message
    */
   warn(message: string, context?: LogContext): void {

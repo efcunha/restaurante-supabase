@@ -447,7 +447,7 @@ export default function PagamentoScreen({ route, navigation }: any) {
         });
 
         await auditService.log({
-          eventType: 'payment.device_recorded',
+          eventType: 'payment.manual_recorded',
           resourceType: 'payment',
           resourceId: String(comanda),
           companyId: user.companyId,

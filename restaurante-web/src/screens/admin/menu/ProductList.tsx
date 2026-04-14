@@ -3,6 +3,8 @@ import React, { useState, useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { Product } from '../../../types';
 import { colors } from '../../../theme/colors';
+import { DataListItem } from '../../../ui/DataListItem';
+import { StateView } from '../../../ui/StateView';
 interface ProductListProps {
   products: Product[];
   categories: { label: string; value: string }[];
@@ -47,10 +49,7 @@ export default function ProductList({
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Carregando produtos...</Text>
-      </View>
+      <StateView state="loading" message="Carregando produtos..." />
     );
   }
 
@@ -77,9 +76,7 @@ export default function ProductList({
 
       {/* List */}
       {Object.keys(groupedProducts).length === 0 ? (
-         <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>Nenhum produto cadastrado.</Text>
-         </View>
+         <StateView state="empty" message="Nenhum produto cadastrado." />
       ) : (
           Object.keys(groupedProducts).map(baseName => {
               const variations = groupedProducts[baseName];
@@ -88,15 +85,16 @@ export default function ProductList({
 
               return (
                   <View key={baseName} style={styles.card}>
-                      {/* LEFT: Info */}
-                      <View style={styles.cardInfo}>
-                          <Text style={styles.cardTitle}>{baseName}</Text>
-                          <Text style={styles.cardSubtitle}>
-                             {variations.length === 1
-                                ? `R$ ${Number(first.price).toFixed(2)}`
-                                : `${variations.length} variações`}
-                          </Text>
-                      </View>
+                      <DataListItem
+                        title={baseName}
+                        subtitle={
+                          variations.length === 1
+                            ? `R$ ${Number(first.price).toFixed(2)}`
+                            : `${variations.length} variacoes`
+                        }
+                        status={isVisualActive ? 'success' : 'warning'}
+                        meta={first.category}
+                      />
 
                       {/* RIGHT: Actions */}
                       <View style={styles.cardActions}>
@@ -135,57 +133,29 @@ const styles = StyleSheet.create({
     filterBtnText: { color: colors.textSecondary, fontWeight: '600', fontSize: 14 },
     filterBtnTextActive: { color: colors.white },
     
-    loadingContainer: { padding: 40, alignItems: 'center', backgroundColor: colors.white, borderRadius: 15 },
-    loadingText: { color: colors.textSecondary, marginTop: 15, fontSize: 14 },
-    
-    emptyContainer: { padding: 40, alignItems: 'center', backgroundColor: colors.white, borderRadius: 15 },
-    emptyText: { color: colors.textSecondary, fontSize: 16 },
-    
-    // Original Card Style Restoration
     card: { 
         backgroundColor: colors.white, 
         borderRadius: 15, 
         padding: 15, 
-        marginBottom: 12, 
-        flexDirection: 'row', // Side by Side
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
+      marginBottom: 12,
         shadowColor: colors.shadow, 
         shadowOffset: { width: 0, height: 2 }, 
         shadowOpacity: 0.08, 
         shadowRadius: 10, 
         elevation: 3 
     },
-    cardInfo: { 
-        flex: 1, 
-        marginRight: 10 
-    },
-    cardTitle: { 
-        fontSize: 16, 
-        fontWeight: '700', 
-        color: colors.text, 
-        marginBottom: 4 
-    },
-    cardSubtitle: { 
-        color: colors.textSecondary, 
-        fontSize: 12 
-    },
-    
     cardActions: { 
-        flexDirection: 'row', 
+      marginTop: 10,
+      flexDirection: 'row',
         gap: 8, 
-        justifyContent: 'flex-end', 
-        flexWrap: 'wrap', 
-        maxWidth: '50%' 
+      flexWrap: 'wrap'
     },
     
     actionBtn: { 
         paddingVertical: 8, 
         paddingHorizontal: 16, 
         borderRadius: 8, 
-        width: '48%', // Approx half of 50%?? No, let's use fixed width or flex to match behavior
-        // Original used fixed width 130. If we use flexWrap with maxWidth 50%, fixed width might not fit two side-by-side unless container is wide.
-        // Let's use flexible width but similar styling
+        width: '48%',
         minWidth: 100,
         alignItems: 'center', 
         justifyContent: 'center',

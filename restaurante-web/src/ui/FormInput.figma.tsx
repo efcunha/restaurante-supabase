@@ -13,8 +13,6 @@ figma.connect('https://figma.com/design/xpfdEjj5NJ7bQ7zDuCBbqw/RestaurantOS-Desi
     <FormInput
       label="Nome do cliente"
       placeholder="Digite o nome"
-      state="default"
-      icon="person"
       helperText="Campo obrigatorio"
       value=""
       onChangeText={() => {}}

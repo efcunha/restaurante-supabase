@@ -7,7 +7,7 @@
  */
 
 import { test, expect, type Page } from '@playwright/test';
-import { enableFeature, disableFeature } from '../src/config/featureFlags';
+import { disableFeature, enableFeature, featureFlags } from '../src/config/featureFlags';
 
 type AuthSessionToken = {
   access_token?: string;
@@ -186,7 +186,7 @@ test.describe('Fluxo de Pagamento Self-Service Scale', () => {
     enableFeature('devSimulators');
 
     // Registra flags no window global do navegador
-    await page.addInitScript(() => {
+    await page.addInitScript((baseFlags) => {
       if (typeof window !== 'undefined') {
         window.__E2E_FEATURE_FLAGS__ = {
           enable: (feature: string) => {
@@ -196,6 +196,7 @@ test.describe('Fluxo de Pagamento Self-Service Scale', () => {
             console.log(`Desabilitando flag: ${feature}`);
           },
           getAll: () => ({
+            ...baseFlags,
             pdv_enabled: true,
             pdv_scale_enabled: true,
             pdv_selfServiceScale_enabled: true,
@@ -204,7 +205,7 @@ test.describe('Fluxo de Pagamento Self-Service Scale', () => {
           }),
         };
       }
-    });
+    }, featureFlags);
   });
 
   test.afterEach(() => {

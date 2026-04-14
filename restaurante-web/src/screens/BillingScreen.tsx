@@ -267,15 +267,14 @@ export default function BillingScreen({ onClose }: BillingScreenProps) {
 
       setShowCardModal(false);
       setPendingPublicKey(null);
-
-      const cardLabel = result.card
-        ? ` (${(result.card as { brand?: string }).brand?.toUpperCase() || 'Cartão'} •••• ${(result.card as { lastFour?: string }).lastFour || ''})`
-        : '';
+      const maskedLastFour = digits.slice(-4);
+      const cardLabel = maskedLastFour ? ` (Cartão •••• ${maskedLastFour})` : '';
 
       // Security logging: card tokenization
       LoggerService.logInfo('Cartão cadastrado com sucesso', 'BillingScreen#saveCard', {
-        brand: (result.card as { brand?: string })?.brand || 'unknown',
-        lastFour: (result.card as { lastFour?: string })?.lastFour || 'unknown',
+        hasPublicKey: !!pendingPublicKey,
+        lastFour: maskedLastFour || 'unknown',
+        companyId,
       });
 
       Alert.alert('Cartão salvo', `Cartão cadastrado com sucesso${cardLabel}.`);

@@ -94,10 +94,11 @@ export default function DeliveryOcorrenciasScreen({ onClose }: DeliveryOcorrenci
 
   useEffect(() => {
     let active = true;
-    if (!user?.companyId || selectedDay) return;
+    const companyId = user?.companyId;
+    if (!companyId || selectedDay) return;
 
     const loadBusinessDay = async () => {
-      const dateKey = await getBusinessDateKey(user.companyId);
+      const dateKey = await getBusinessDateKey(companyId);
       if (active) setSelectedDay(dateKey);
     };
 
@@ -247,7 +248,7 @@ export default function DeliveryOcorrenciasScreen({ onClose }: DeliveryOcorrenci
         <View style={styles.filtersContainer}>
           <View style={styles.filtersHeaderRow}>
             <Text style={styles.filtersTitle}>Filtro por dia</Text>
-            <TouchableOpacity style={styles.refreshButton} onPress={fetchOccurrences}>
+            <TouchableOpacity style={styles.refreshButton} onPress={() => { void fetchOccurrences(); }}>
               <Ionicons name="refresh" size={14} color={colors.white} />
               <Text style={styles.refreshButtonText}>Atualizar</Text>
             </TouchableOpacity>

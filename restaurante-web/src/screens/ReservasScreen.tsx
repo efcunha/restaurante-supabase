@@ -154,7 +154,7 @@ export default function ReservasScreen({ navigation: _navigation }: any) {
         (novoStatus === 'confirmada' || novoStatus === 'cancelada')
       );
 
-      if (shouldNotify) {
+      if (shouldNotify && companyId && reservaAtual?.telefone_cliente) {
         try {
           const stateData = await EvolutionApiService.getConnectionState(companyId);
           const instanceState = String((stateData as any)?.instance?.state || stateData?.state || '').toLowerCase();

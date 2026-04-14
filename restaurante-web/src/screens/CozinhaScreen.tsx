@@ -64,7 +64,7 @@ export default function CozinhaScreen() {
 
       setAllOrders(mappedOrders);
     } catch (error: any) {
-      logger.error('[CozinhaScreen] failed to load orders for kitchen');
+      logger.error('[CozinhaScreen] failed to load orders for kitchen', error);
       setOrdersError(error?.message || 'Falha ao carregar pedidos da cozinha.');
       setAllOrders([]);
     } finally {

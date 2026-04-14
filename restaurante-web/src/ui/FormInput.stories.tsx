@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import type { Meta, StoryObj } from '@storybook/react';
 import { FormInput } from './index';
 
-const meta = {
+const meta: Meta<typeof FormInput> = {
   title: 'UI/FormInput',
   component: FormInput,
   tags: ['autodocs'],
@@ -19,16 +20,18 @@ const meta = {
 };
 
 export default meta;
-export const Default = {};
+type Story = StoryObj<typeof meta>;
 
-export const Error = {
+export const Default: Story = {};
+
+export const Error: Story = {
   args: {
     error: 'Nome obrigatorio',
     helperText: '',
   },
 };
 
-export const Password = {
+export const Password: Story = {
   args: {
     label: 'Senha de acesso',
     placeholder: 'Digite sua senha',
@@ -38,7 +41,7 @@ export const Password = {
   },
 };
 
-export const WithLongValue = {
+export const WithLongValue: Story = {
   args: {
     label: 'Observacoes',
     placeholder: 'Adicione observacoes',
