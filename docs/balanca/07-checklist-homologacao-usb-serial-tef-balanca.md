@@ -215,3 +215,33 @@ bash scripts/run-homologacao-usb-serial-tef-balanca-interactive.sh
 cd d:/restaurante-supabase
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-homologacao-usb-serial-tef-balanca-interactive.ps1
 ```
+
+## 12. Parecer automatico Go/No-Go
+
+Depois da coleta, execute o analisador para obter decisao automatica:
+
+```bash
+cd d:/restaurante-supabase
+bash scripts/analyze-homologacao-usb-serial-tef-balanca.sh
+```
+
+```powershell
+cd d:/restaurante-supabase
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/analyze-homologacao-usb-serial-tef-balanca.ps1
+```
+
+Opcionalmente, informar um arquivo especifico:
+
+```bash
+bash scripts/analyze-homologacao-usb-serial-tef-balanca.sh d:/restaurante-supabase/tmp/evidencias d:/restaurante-supabase/tmp/evidencias/homologacao-usb-serial-tef-balanca-AAAAMMDDTHHMMSSZ.json
+```
+
+Para exportar automaticamente uma linha para CSV:
+
+```bash
+bash scripts/analyze-homologacao-usb-serial-tef-balanca.sh d:/restaurante-supabase/tmp/evidencias "" d:/restaurante-supabase/docs/balanca/07-checklist-homologacao-usb-serial-tef-balanca.template.csv
+```
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/analyze-homologacao-usb-serial-tef-balanca.ps1 -OutDir "d:/restaurante-supabase/tmp/evidencias" -CsvOut "d:/restaurante-supabase/docs/balanca/07-checklist-homologacao-usb-serial-tef-balanca.template.csv"
+```
