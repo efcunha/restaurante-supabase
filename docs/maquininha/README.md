@@ -37,7 +37,10 @@ Consolidar a especificacao tecnica de desenvolvimento da integracao de pagamento
 13. [Guia operacional: 3 USBs no caixa (TEF + balanca + impressora)](14-guia-3-usbs-caixa-tef-balanca-impressora.md)
 14. [Blueprint: TEF local USB + device binding](15-blueprint-tef-local-usb-device-binding.md)
 15. [Runbook: apply e verificacao da migration pos_device_bindings](16-runbook-pos-device-bindings-apply-verification.md)
-16. [Prompt de inicializacao do projeto](PROMPT_INICIALIZACAO_PROJETO.md)
+16. [Plano enxuto de fechamento INT_REAL (balanca + integracao TEF)](17-plano-fechamento-int-real-balanca-tef.md)
+17. [Checklist operacional INT_REAL por turno (T0/T1/T2)](18-checklist-operacional-int-real-t0-t1-t2.md)
+18. [Checklist de execucao do turno 2026-04-14 (T0/T1/T2)](18-checklist-operacional-int-real-t0-t1-t2.turno-2026-04-14.md)
+19. [Prompt de inicializacao do projeto](PROMPT_INICIALIZACAO_PROJETO.md)
 
 ## Contratos complementares
 
