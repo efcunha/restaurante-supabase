@@ -1,12 +1,14 @@
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../config/SupabaseConfig';
 import { getBusinessDateKey } from '../services/BusinessDateService';
 import { ScreenScaffold } from '../layouts/ScreenScaffold';
 import { colors } from '../theme/colors';
+import { StateView } from '../ui';
+import logger from '../utils/logger';
 
 type DeliveryFailureStatus = 'failed_delivery' | 'returned' | 'refused';
 
@@ -84,9 +86,11 @@ const extractOperatorAndReason = (observations?: string | null): { operatorName:
 export default function DeliveryOcorrenciasScreen({ onClose }: DeliveryOcorrenciasScreenProps) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<string>('');
   const [operatorFilter, setOperatorFilter] = useState('');
   const [occurrences, setOccurrences] = useState<DeliveryOccurrence[]>([]);
+  const realtimeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -104,10 +108,13 @@ export default function DeliveryOcorrenciasScreen({ onClose }: DeliveryOcorrenci
     };
   }, [selectedDay, user?.companyId]);
 
-  const fetchOccurrences = useCallback(async () => {
+  const fetchOccurrences = useCallback(async (silent = false) => {
     try {
       if (!user?.companyId) return;
-      setLoading(true);
+      if (!silent) {
+        setLoading(true);
+      }
+      setFetchError(null);
 
       let query = supabase
         .from('orders')
@@ -143,12 +150,25 @@ export default function DeliveryOcorrenciasScreen({ onClose }: DeliveryOcorrenci
 
       setOccurrences(mapped);
     } catch (err) {
-      console.error('[DeliveryOcorrencias] erro ao buscar ocorrencias:', err);
+      logger.error('[DeliveryOcorrenciasScreen] failed to fetch delivery occurrences', err);
+      setFetchError((err as any)?.message || 'Falha ao carregar ocorrencias de entrega.');
       setOccurrences([]);
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
-  }, [selectedDay, user]);
+  }, [selectedDay, user?.companyId]);
+
+  const scheduleRealtimeRefresh = useCallback(() => {
+    if (realtimeDebounceRef.current) {
+      clearTimeout(realtimeDebounceRef.current);
+    }
+
+    realtimeDebounceRef.current = setTimeout(() => {
+      fetchOccurrences(true);
+    }, 300);
+  }, [fetchOccurrences]);
 
   useEffect(() => {
     fetchOccurrences();
@@ -174,16 +194,19 @@ export default function DeliveryOcorrenciasScreen({ onClose }: DeliveryOcorrenci
             ['failed_delivery', 'returned', 'refused'].includes(oldStatus);
 
           if (isFailureStatus) {
-            fetchOccurrences();
+            scheduleRealtimeRefresh();
           }
         }
       )
       .subscribe();
 
     return () => {
+      if (realtimeDebounceRef.current) {
+        clearTimeout(realtimeDebounceRef.current);
+      }
       channel.unsubscribe();
     };
-  }, [fetchOccurrences, user]);
+  }, [fetchOccurrences, scheduleRealtimeRefresh, user?.companyId]);
 
   const dayOptions = useMemo(() => {
     const uniqueDays = Array.from(new Set(occurrences.map(item => item.dateKey))).sort((a, b) => b.localeCompare(a));
@@ -254,16 +277,33 @@ export default function DeliveryOcorrenciasScreen({ onClose }: DeliveryOcorrenci
           />
         </View>
 
+        <View
+          {...(Platform.OS === 'web' ? ({ 'aria-live': 'polite' } as any) : {})}
+          style={styles.liveRegionContainer}
+        >
+          <Text style={styles.liveRegionText}>
+            {occurrences.length > 0
+              ? `${occurrences.length} ocorrencias de entrega listadas com atualizacao em tempo real.`
+              : 'Nenhuma ocorrencia de entrega registrada para os filtros atuais.'}
+          </Text>
+        </View>
+
         {loading ? (
           <View style={styles.loadingState}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.loadingText}>Carregando ocorrencias...</Text>
+            <StateView state="loading" message="Carregando ocorrencias..." skeletonRows={4} />
+          </View>
+        ) : fetchError ? (
+          <View style={styles.loadingState}>
+            <StateView state="error" message={fetchError} onRetry={() => fetchOccurrences()} />
           </View>
         ) : orderedDays.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>🛵</Text>
-            <Text style={styles.emptyTitle}>Nenhuma ocorrencia encontrada</Text>
-            <Text style={styles.emptySubtitle}>Ajuste os filtros ou aguarde novas atualizacoes.</Text>
+            <StateView
+              state="empty"
+              message="Nenhuma ocorrencia encontrada"
+              details="Ajuste os filtros ou aguarde novas atualizacoes."
+              onRetry={() => fetchOccurrences()}
+            />
           </View>
         ) : (
           <ScrollView contentContainerStyle={styles.content}>
@@ -479,30 +519,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  loadingText: {
-    marginTop: 8,
+  liveRegionContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
+  liveRegionText: {
     color: colors.textSecondary,
+    fontSize: 12,
   },
   emptyState: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
-  },
-  emptyIcon: {
-    fontSize: 56,
-    marginBottom: 10,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.primary,
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    textAlign: 'center',
   },
 });

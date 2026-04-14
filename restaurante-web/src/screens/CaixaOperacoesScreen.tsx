@@ -69,6 +69,8 @@ export default function CaixaOperacoesScreen() {
           style={[styles.btn, loadingReforco && styles.btnDisabled]}
           onPress={reforco}
           disabled={loadingReforco}
+          accessibilityRole="button"
+          accessibilityLabel="Registrar reforco de caixa"
         >
           {loadingReforco ? (
             <ActivityIndicator color={colors.text} />
@@ -95,6 +97,8 @@ export default function CaixaOperacoesScreen() {
           style={[styles.btn, { backgroundColor: colors.primary }, loadingSangria && styles.btnDisabled]}
           onPress={sangria}
           disabled={loadingSangria}
+          accessibilityRole="button"
+          accessibilityLabel="Registrar sangria de caixa"
         >
           {loadingSangria ? (
             <ActivityIndicator color={colors.white} />

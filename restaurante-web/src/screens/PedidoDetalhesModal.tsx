@@ -20,6 +20,8 @@ import { calcularPrecoItem, MenuItem } from '../utils/orderCalculator';
 
 import { getBusinessDateKey } from '../services/BusinessDateService';
 import { colors } from '../theme/colors';
+import { StateView } from '../ui';
+import logger from '../utils/logger';
 interface Props {
   visible: boolean;
   orderId?: string;
@@ -49,7 +51,13 @@ export default function PedidoDetalhesModal({ visible, orderId, orderIds = [], t
 
   const handleTransfer = async (newTable: string) => {
     try {
+      logger.info('[PedidoDetalhesModal] transferring order(s)', {
+        orderCount: resolvedOrderIds.length,
+        fromTable: aggregateTableNumber,
+        toTable: newTable
+      });
       await Promise.all(resolvedOrderIds.map(currentOrderId => transferOrder(currentOrderId, newTable)));
+      logger.info('[PedidoDetalhesModal] order transfer completed successfully');
       Alert.alert(
         'Sucesso',
         isTableAggregate
@@ -59,6 +67,7 @@ export default function PedidoDetalhesModal({ visible, orderId, orderIds = [], t
       setIsTransferModalVisible(false);
       onClose();
     } catch (error: any) {
+      logger.error('[PedidoDetalhesModal] order transfer failed', error);
       Alert.alert('Erro', 'Falha ao transferir pedido: ' + error.message);
     }
   };
@@ -75,6 +84,7 @@ export default function PedidoDetalhesModal({ visible, orderId, orderIds = [], t
   const [editedClient, setEditedClient] = useState('');
   const [editedObservations, setEditedObservations] = useState('');
   const [comandaData, setComandaData] = useState<any>(null);
+  const [comandaState, setComandaState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [cardapioDin, setCardapioDin] = useState<MenuItem[]>([]);
 
   // Fetch Comanda Data
@@ -82,11 +92,19 @@ export default function PedidoDetalhesModal({ visible, orderId, orderIds = [], t
       if (visible && order && !isTableAggregate) {
           const fetchComanda = async () => {
               if (order && (order.comandaNumber || order.numeroComanda)) {
+                  if (!user?.companyId) {
+                    logger.warn('[PedidoDetalhesModal] cannot fetch comanda: missing company_id');
+                    setComandaData(null);
+                    setComandaState('error');
+                    return;
+                  }
                   const num = order.comandaNumber || order.numeroComanda;
                   // Use order's dateKey if available, otherwise today
-                  const dateKey = order.dateKey || await getBusinessDateKey(user?.companyId || '');
+                  const dateKey = order.dateKey || await getBusinessDateKey(user.companyId);
+                  setComandaState('loading');
+                  logger.debug('[PedidoDetalhesModal] fetching comanda data', { comandaNumber: num, dateKey });
                   
-                    const { data } = await supabase
+                    const { data, error } = await supabase
                       .from('comandas')
                       .select('total_consumed, total_paid, open_balance')
                       .eq('company_id', user?.companyId) // Added company_id check for safety
@@ -94,17 +112,33 @@ export default function PedidoDetalhesModal({ visible, orderId, orderIds = [], t
                       .eq('date_key', dateKey) // CRITICAL FIX: Filter by date!
                       .limit(1)
                       .maybeSingle();
+
+                  if (error) {
+                    logger.error('[PedidoDetalhesModal] failed to fetch comanda data', error);
+                    setComandaData(null);
+                    setComandaState('error');
+                    return;
+                  }
                   
                   if (data) {
+                      logger.debug('[PedidoDetalhesModal] comanda data loaded', {
+                        comandaNumber: num,
+                        totalPaid: data.total_paid,
+                        openBalance: data.open_balance
+                      });
                       setComandaData(data);
+                      setComandaState('ready');
                   } else {
+                      logger.debug('[PedidoDetalhesModal] no comanda found for order', { comandaNumber: num });
                       setComandaData(null); // Clear incompatible data
+                      setComandaState('ready');
                   }
               }
           };
           fetchComanda();
           } else {
             setComandaData(null);
+            setComandaState('idle');
       }
         }, [visible, order, isTableAggregate]);
 
@@ -112,17 +146,28 @@ export default function PedidoDetalhesModal({ visible, orderId, orderIds = [], t
   React.useEffect(() => {
     if (visible && user?.companyId) {
       const fetchProducts = async () => {
-        const { data } = await supabase
-          .from('products')
-          .select('name, price')
-          .eq('company_id', user.companyId)
-          .eq('available', true);
-        
-        if (data) {
-          setCardapioDin(data.map(p => ({
-            name: p.name,
-            price: Number(p.price)
-          })));
+        try {
+          logger.debug('[PedidoDetalhesModal] fetching active products for pricing');
+          const { data, error } = await supabase
+            .from('products')
+            .select('name, price')
+            .eq('company_id', user.companyId)
+            .eq('available', true);
+          
+          if (error) {
+            logger.error('[PedidoDetalhesModal] failed to fetch products', error);
+            return;
+          }
+          
+          if (data) {
+            logger.debug('[PedidoDetalhesModal] products loaded', { count: data.length });
+            setCardapioDin(data.map(p => ({
+              name: p.name,
+              price: Number(p.price)
+            })));
+          }
+        } catch (e) {
+          logger.error('[PedidoDetalhesModal] unexpected error fetching products', e);
         }
       };
       fetchProducts();
@@ -154,13 +199,16 @@ export default function PedidoDetalhesModal({ visible, orderId, orderIds = [], t
     if (!order) return;
     if (isEditing) {
       try {
-        editOrder(orderId, {
+        logger.info('[PedidoDetalhesModal] updating order', { orderId: order.id });
+        editOrder(order.id, {
           client: editedClient,
           observations: editedObservations,
         });
+        logger.info('[PedidoDetalhesModal] order updated successfully', { orderId: order.id });
         Alert.alert('Sucesso', 'Pedido atualizado com sucesso!');
         setIsEditing(false);
       } catch (error: any) {
+        logger.error('[PedidoDetalhesModal] order update failed', error);
         Alert.alert('Erro', error.message);
       }
     } else {
@@ -224,7 +272,12 @@ export default function PedidoDetalhesModal({ visible, orderId, orderIds = [], t
                 </View>
                 <Text style={styles.viewModeText}>{viewModeLabel}</Text>
               </View>
-              <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+              <TouchableOpacity
+                onPress={onClose}
+                style={styles.closeBtn}
+                accessibilityRole="button"
+                accessibilityLabel="Fechar detalhes do pedido"
+              >
                 <Text style={styles.closeBtnText}>✕</Text>
               </TouchableOpacity>
             </View>
@@ -427,16 +480,26 @@ export default function PedidoDetalhesModal({ visible, orderId, orderIds = [], t
 
               {/* --- COMANDA BALANCE INFO (NEW) --- */}
               {/* Shows partial payments that are not allocated to specific items yet */}
-              {!isTableAggregate && !!comandaData && comandaData.total_paid > 0 && (
-                   <View style={[styles.section, { marginTop: 10, padding: 10, backgroundColor: colors.surfaceMuted, borderRadius: 8 }]}>
-                      <Text style={[styles.sectionTitle, { fontSize: 14, marginBottom: 5 }]}>Status Financeiro da Comanda</Text>
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                          <Text style={{ color: colors.textSecondary }}>Total Pago (Geral):</Text>
-                          <Text style={{ color: colors.success, fontWeight: 'bold' }}>{formatarMoeda(comandaData.total_paid)}</Text>
+              {!isTableAggregate && (comandaState === 'loading' || comandaState === 'error') && (
+                <View style={styles.section}>
+                  <StateView
+                    state={comandaState === 'loading' ? 'loading' : 'error'}
+                    message={comandaState === 'error' ? 'Nao foi possivel carregar o status financeiro da comanda.' : undefined}
+                    skeletonRows={2}
+                  />
+                </View>
+              )}
+
+              {!isTableAggregate && comandaState === 'ready' && !!comandaData && comandaData.total_paid > 0 && (
+                   <View style={[styles.section, styles.comandaFinancialCard]}>
+                      <Text style={[styles.sectionTitle, styles.comandaFinancialTitle]}>Status Financeiro da Comanda</Text>
+                      <View style={styles.comandaFinancialRow}>
+                          <Text style={styles.comandaFinancialLabel}>Total Pago (Geral):</Text>
+                          <Text style={styles.comandaFinancialPaid}>{formatarMoeda(comandaData.total_paid)}</Text>
                       </View>
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
-                          <Text style={{ color: colors.textSecondary }}>Saldo Devedor:</Text>
-                          <Text style={{ color: colors.danger, fontWeight: 'bold' }}>{formatarMoeda(comandaData.open_balance)}</Text>
+                      <View style={[styles.comandaFinancialRow, styles.comandaFinancialRowSpaced]}>
+                          <Text style={styles.comandaFinancialLabel}>Saldo Devedor:</Text>
+                          <Text style={styles.comandaFinancialOpen}>{formatarMoeda(comandaData.open_balance)}</Text>
                       </View>
                    </View>
                 )}
@@ -497,6 +560,9 @@ export default function PedidoDetalhesModal({ visible, orderId, orderIds = [], t
                   <TouchableOpacity
                     style={[styles.actionBtn, { backgroundColor: colors.warning, flex: 1 }]}
                     onPress={() => setIsTransferModalVisible(true)}
+                    accessibilityRole="button"
+                    accessibilityLabel={isTableAggregate ? 'Mover mesa para outra numeração' : 'Transferir pedido para outra mesa'}
+                    accessible={true}
                   >
                     <Text style={styles.actionBtnText}>{isTableAggregate ? '🔄 Mover Mesa' : '🔄 Mover'}</Text>
                   </TouchableOpacity>
@@ -505,6 +571,9 @@ export default function PedidoDetalhesModal({ visible, orderId, orderIds = [], t
                   <TouchableOpacity
                     style={[styles.actionBtn, styles.editBtn, { flex: 1 }]}
                     onPress={handleEdit}
+                    accessibilityRole="button"
+                    accessibilityLabel={isEditing ? 'Salvar alterações do pedido' : 'Editar cliente e observações do pedido'}
+                    accessible={true}
                   >
                     <Text style={styles.actionBtnText}>
                       {isEditing ? '💾 Salvar' : '✏️ Editar'}
@@ -518,6 +587,7 @@ export default function PedidoDetalhesModal({ visible, orderId, orderIds = [], t
               <TouchableOpacity
                 style={[styles.actionBtn, { backgroundColor: colors.success, flex: 1 }]}
                 onPress={() => {
+                  logger.info('[PedidoDetalhesModal] navigating to payment', { orderId: order.id });
                   onClose();
                   setTimeout(() => {
                     // Navegar para a Tab Comandas, e dentro dela para a tela Pagamento
@@ -531,6 +601,9 @@ export default function PedidoDetalhesModal({ visible, orderId, orderIds = [], t
                     });
                   }, 300);
                 }}
+                accessibilityRole="button"
+                accessibilityLabel="Proceder para pagamento do pedido"
+                accessible={true}
               >
                 <Text style={styles.actionBtnText}>💰 Pagar</Text>
               </TouchableOpacity>
@@ -540,6 +613,9 @@ export default function PedidoDetalhesModal({ visible, orderId, orderIds = [], t
                 <TouchableOpacity
                   style={[styles.actionBtn, styles.cancelBtn, { flex: 1 }]}
                   onPress={() => setIsEditing(false)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cancelar edição do pedido"
+                  accessible={true}
                 >
                   <Text style={styles.actionBtnText}>Cancelar</Text>
                 </TouchableOpacity>
@@ -789,6 +865,34 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.warning,
     textAlign: 'center',
+  },
+  comandaFinancialCard: {
+    marginTop: 10,
+    padding: 10,
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 8,
+  },
+  comandaFinancialTitle: {
+    fontSize: 14,
+    marginBottom: 5,
+  },
+  comandaFinancialRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  comandaFinancialRowSpaced: {
+    marginTop: 4,
+  },
+  comandaFinancialLabel: {
+    color: colors.textSecondary,
+  },
+  comandaFinancialPaid: {
+    color: colors.success,
+    fontWeight: 'bold',
+  },
+  comandaFinancialOpen: {
+    color: colors.danger,
+    fontWeight: 'bold',
   },
   itemPaidText: {
     textDecorationLine: 'line-through',

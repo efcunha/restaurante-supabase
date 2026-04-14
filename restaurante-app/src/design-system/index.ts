@@ -7,6 +7,7 @@ export {
   borderRadius,
   shadows,
   layout,
+  breakpoints,
   fontSizes,
   fontWeights,
   lineHeights,

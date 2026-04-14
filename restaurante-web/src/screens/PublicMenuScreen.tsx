@@ -1,80 +1,82 @@
-import React, {
-  useState,
-  useEffect,
-  useRef,
-  useMemo,
-} from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-  Image,
-  TouchableOpacity,
-  TextInput,
-  ActivityIndicator,
-  Dimensions,
   Platform,
+  ScrollView,
   SectionList,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  useWindowDimensions,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   fetchPublicMenu,
   filterProducts,
   PublicMenu,
-  PublicProduct,
   PublicMenuCategory,
-  normalizeSearch,
+  PublicProduct,
 } from '../services/PublicMenuService';
+import { StateView } from '../ui';
+import logger, { LOG_CATEGORY } from '../utils/logger';
+import {
+  borderRadius,
+  breakpoints,
+  designColors,
+  fontSizes,
+  fontWeights,
+  lineHeights,
+  shadows,
+  spacing,
+} from '../design-system';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_IMAGE_RATIO = 3 / 4; // largura / altura = 4:3
-const CARD_IMAGE_HEIGHT = (SCREEN_WIDTH / 2 - 24) * CARD_IMAGE_RATIO;
+const CARD_IMAGE_RATIO = 3 / 4;
 const CHIP_HEIGHT = 36;
-const HERO_MAX_RATIO = 0.35; // maximo 35% da viewport
+const HERO_MAX_RATIO = 0.35;
+const SEARCH_DEBOUNCE_MS = 300;
 
 interface Props {
   slug?: string;
   route?: { params?: { slug?: string } };
 }
 
-// ─────────────────────────────────────────────
-// Sub-componente: ProductCard
-// ─────────────────────────────────────────────
+type ProductRow = PublicProduct[];
+type ProductSection = { title: string; slug: string; data: ProductRow[] };
+
 interface ProductCardProps {
   product: PublicProduct;
   primaryColor: string;
+  imageHeight: number;
 }
 
-function ProductCard({ product, primaryColor }: ProductCardProps) {
+function ProductCard({ product, primaryColor, imageHeight }: ProductCardProps) {
   const [imgLoaded, setImgLoaded] = useState(false);
   const [imgError, setImgError] = useState(false);
-
-  const hasImage = product.image_url && !imgError;
+  const hasImage = Boolean(product.image_url) && !imgError;
 
   return (
     <View style={styles.card}>
-      {/* Foto */}
-      <View style={[styles.cardImageContainer, { height: CARD_IMAGE_HEIGHT }]}>
-        {!imgLoaded && !imgError && (
-          <View style={[styles.imagePlaceholder, { height: CARD_IMAGE_HEIGHT }]} />
-        )}
+      <View style={[styles.cardImageContainer, { height: imageHeight }]}>
+        {!imgLoaded && !imgError && <View style={[styles.imagePlaceholder, { height: imageHeight }]} />}
         {hasImage ? (
           <Image
             source={{ uri: product.image_url! }}
-            style={[styles.cardImage, { height: CARD_IMAGE_HEIGHT }]}
+            style={[styles.cardImage, { height: imageHeight }]}
+            contentFit="cover"
+            transition={220}
+            cachePolicy="memory-disk"
             onLoad={() => setImgLoaded(true)}
             onError={() => setImgError(true)}
             accessibilityLabel={product.photo_alt || product.name}
-            resizeMode="cover"
           />
         ) : (
-          <View style={[styles.imageFallback, { height: CARD_IMAGE_HEIGHT }]}>
-            <Text style={styles.imageFallbackIcon}>🍽️</Text>
+          <View style={[styles.imageFallback, { height: imageHeight }]}>
+            <Text style={styles.imageFallbackLabel}>Sem imagem</Text>
           </View>
         )}
-        {/* Badges */}
-        {product.tags && product.tags.length > 0 && (
+        {product.tags?.length ? (
           <View style={styles.badgeRow}>
             {product.tags.slice(0, 2).map((tag) => (
               <View key={tag} style={styles.badge}>
@@ -82,183 +84,227 @@ function ProductCard({ product, primaryColor }: ProductCardProps) {
               </View>
             ))}
           </View>
-        )}
+        ) : null}
       </View>
 
-      {/* Info */}
       <View style={styles.cardBody}>
         <Text style={styles.cardName} numberOfLines={2}>
           {product.name}
         </Text>
-        {product.ingredients && product.ingredients.length > 0 ? (
+        {product.ingredients?.length ? (
           <Text style={styles.cardDescription} numberOfLines={2}>
-            {product.ingredients.join(", ")}
+            {product.ingredients.join(', ')}
           </Text>
         ) : product.description ? (
           <Text style={styles.cardDescription} numberOfLines={1}>
             {product.description}
           </Text>
         ) : null}
-
-        <View style={styles.cardFooter}>
-          <Text style={[styles.cardPrice, { color: primaryColor }]}>
-            {formatPrice(product)}
-          </Text>
-        </View>
+        <Text style={[styles.cardPrice, { color: primaryColor }]}>{formatPrice(product)}</Text>
       </View>
     </View>
   );
 }
 
-// ─────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────
 function formatPrice(product: PublicProduct): string {
   if (product.prices && Object.keys(product.prices).length > 0) {
     const prices = Object.values(product.prices).filter((v) => v > 0);
-    if (prices.length === 0) return `R$ ${product.price?.toFixed(2) ?? '0,00'}`;
+    if (!prices.length) {
+      return Number(product.price || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
     const min = Math.min(...prices);
     const max = Math.max(...prices);
-    if (min === max) return `R$ ${min.toFixed(2)}`;
-    return `R$ ${min.toFixed(2)} – ${max.toFixed(2)}`;
+    if (min === max) {
+      return min.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+    return `${min.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} - ${max.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
   }
-  return `R$ ${product.price?.toFixed(2) ?? '0,00'}`;
+  return Number(product.price || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
 const TAG_LABELS: Record<string, string> = {
-  vegano: '🌱 Vegano',
-  vegetariano: '🥗 Veg',
-  sem_gluten: 'S/ Glúten',
-  organico: '♻️ Orgânico',
-  picante: '🌶️ Picante',
-  novidade: '✨ Novo',
-  mais_pedido: '⭐ +Pedido',
+  vegano: 'Vegano',
+  vegetariano: 'Vegetariano',
+  sem_gluten: 'Sem gluten',
+  organico: 'Organico',
+  picante: 'Picante',
+  novidade: 'Novo',
+  mais_pedido: 'Mais pedido',
 };
 
 function formatTag(tag: string): string {
   return TAG_LABELS[tag] || tag;
 }
 
-// ─────────────────────────────────────────────
-// Tela principal: PublicMenuScreen
-// ─────────────────────────────────────────────
+function chunkProducts(products: PublicProduct[], columns: number): ProductRow[] {
+  const rows: ProductRow[] = [];
+  for (let i = 0; i < products.length; i += columns) {
+    rows.push(products.slice(i, i + columns));
+  }
+  return rows;
+}
+
 export default function PublicMenuScreen({ slug, route }: Props) {
   const resolvedSlug = slug || route?.params?.slug || '';
   const insets = useSafeAreaInsets();
+  const { width: viewportWidth, height: viewportHeight } = useWindowDimensions();
 
   const [menu, setMenu] = useState<PublicMenu | null>(null);
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('');
 
-  const sectionListRef = useRef<SectionList>(null);
-  const chipScrollRef = useRef<ScrollView>(null);
-  const sectionOffsets = useRef<Record<string, number>>({});
+  const sectionListRef = useRef<SectionList<ProductRow, ProductSection>>(null);
 
-  // Carregar menu
   useEffect(() => {
-    if (!resolvedSlug) {
-      setNotFound(true);
-      setLoading(false);
-      return;
-    }
-    fetchPublicMenu(resolvedSlug).then((data) => {
-      if (data) {
-        setMenu(data);
-        if (data.categories.length > 0) {
-          setActiveCategory(data.categories[0].slug);
-        }
-      } else {
+    const timeout = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timeout);
+  }, [searchQuery]);
+
+  const loadMenu = async () => {
+    try {
+      setLoading(true);
+      setErrorMessage(null);
+      setNotFound(false);
+
+      if (!resolvedSlug) {
         setNotFound(true);
+        return;
       }
+
+      const data = await fetchPublicMenu(resolvedSlug);
+      if (!data) {
+        setNotFound(true);
+        logger.warn('PublicMenuScreen menu nao encontrado', {
+          category: LOG_CATEGORY.MENU,
+          slug: resolvedSlug,
+        });
+        return;
+      }
+
+      setMenu(data);
+      setActiveCategory(data.categories[0]?.slug || '');
+      logger.info('PublicMenuScreen menu carregado', {
+        category: LOG_CATEGORY.MENU,
+        slug: resolvedSlug,
+        categories: data.categories.length,
+      });
+    } catch (error) {
+      setErrorMessage('Nao foi possivel carregar o cardapio agora.');
+      logger.error('PublicMenuScreen falha ao carregar menu', error, {
+        category: LOG_CATEGORY.MENU,
+        slug: resolvedSlug,
+      });
+    } finally {
       setLoading(false);
-    });
+    }
+  };
+
+  useEffect(() => {
+    void loadMenu();
   }, [resolvedSlug]);
 
-  const primaryColor = menu?.company?.menu_primary_color || '#E85D04';
+  const primaryColor = menu?.company?.menu_primary_color || designColors.primary[700];
+  const columns = viewportWidth >= breakpoints.lg ? 3 : viewportWidth >= breakpoints.md ? 2 : 1;
+  const gridGap = spacing[2];
+  const horizontalPadding = spacing[3] * 2;
+  const cardWidth = (viewportWidth - horizontalPadding - (columns - 1) * gridGap) / columns;
+  const cardImageHeight = Math.max(120, Math.floor(cardWidth * CARD_IMAGE_RATIO));
+  const heroHeight = Math.round(viewportHeight * HERO_MAX_RATIO);
 
-  // Categorias filtradas por busca
   const filteredCategories = useMemo((): PublicMenuCategory[] => {
     if (!menu) return [];
-    if (!searchQuery.trim()) return menu.categories;
+    if (!debouncedSearchQuery.trim()) return menu.categories;
     return menu.categories
       .map((cat) => ({
         ...cat,
-        products: filterProducts(cat.products, searchQuery),
+        products: filterProducts(cat.products, debouncedSearchQuery),
       }))
       .filter((cat) => cat.products.length > 0);
-  }, [menu, searchQuery]);
+  }, [menu, debouncedSearchQuery]);
 
-  // Sections para SectionList
-  const sections = filteredCategories.map((cat) => ({
-    title: cat.label,
-    slug: cat.slug,
-    data: cat.products,
-  }));
+  const sections = useMemo(
+    () =>
+      filteredCategories.map((cat) => ({
+        title: cat.label,
+        slug: cat.slug,
+        data: chunkProducts(cat.products, columns),
+      })),
+    [filteredCategories, columns],
+  );
 
-  const handleCategoryChip = (slug: string) => {
-    setActiveCategory(slug);
-    const offset = sectionOffsets.current[slug];
-    if (offset !== undefined) {
+  const topState: 'loading' | 'error' | 'empty' | 'ready' = loading
+    ? 'loading'
+    : errorMessage
+      ? 'error'
+      : notFound || !menu
+        ? 'empty'
+        : 'ready';
+
+  const handleCategoryChip = (categorySlug: string) => {
+    setActiveCategory(categorySlug);
+    const sectionIndex = sections.findIndex((s) => s.slug === categorySlug);
+    if (sectionIndex >= 0) {
       sectionListRef.current?.scrollToLocation({
-        sectionIndex: sections.findIndex((s) => s.slug === slug),
+        sectionIndex,
         itemIndex: 0,
         animated: true,
-        viewOffset: CHIP_HEIGHT + 48,
+        viewOffset: CHIP_HEIGHT + spacing[4],
       });
     }
   };
 
-  // ─── Render ───
-  if (loading) {
+  if (topState !== 'ready') {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#E85D04" />
-        <Text style={styles.loadingText}>Carregando cardápio...</Text>
+        <StateView
+          state={topState}
+          message={
+            topState === 'loading'
+              ? 'Carregando cardapio...'
+              : topState === 'error'
+                ? errorMessage || 'Falha ao carregar cardapio.'
+                : 'Cardapio nao encontrado para este endereco.'
+          }
+          onRetry={loadMenu}
+        />
       </View>
     );
   }
-
-  if (notFound || !menu) {
-    return (
-      <View style={styles.centered}>
-        <Text style={styles.notFoundIcon}>🍽️</Text>
-        <Text style={styles.notFoundTitle}>Cardápio não encontrado</Text>
-        <Text style={styles.notFoundSub}>
-          Verifique o QR code ou o endereço do cardápio.
-        </Text>
-      </View>
-    );
-  }
-
-  const heroHeight = Math.round(Dimensions.get('window').height * HERO_MAX_RATIO);
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
-      {/* ── HERO ── */}
       {menu.company.menu_banner_url ? (
         <View style={{ height: heroHeight }}>
           <Image
             source={{ uri: menu.company.menu_banner_url }}
             style={StyleSheet.absoluteFillObject}
-            resizeMode="cover"
+            contentFit="cover"
+            transition={220}
+            cachePolicy="memory-disk"
           />
           <View
             style={[
               styles.heroGradient,
               Platform.OS === 'web'
-                ? ({ background: 'linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.55) 100%)' } as any)
+                ? ({ background: 'linear-gradient(to bottom, transparent 35%, rgba(0,0,0,0.58) 100%)' } as any)
                 : undefined,
             ]}
           />
-          {menu.company.menu_logo_url && (
+          {menu.company.menu_logo_url ? (
             <Image
               source={{ uri: menu.company.menu_logo_url }}
               style={styles.logoOverlay}
-              resizeMode="contain"
+              contentFit="contain"
+              transition={180}
+              cachePolicy="memory-disk"
             />
-          )}
+          ) : null}
         </View>
       ) : (
         <View style={[styles.heroFallback, { height: heroHeight, backgroundColor: primaryColor }]}>
@@ -266,22 +312,18 @@ export default function PublicMenuScreen({ slug, route }: Props) {
         </View>
       )}
 
-      {/* ── INFO DA EMPRESA ── */}
       <View style={styles.companyInfo}>
         <Text style={styles.companyName}>{menu.company.name}</Text>
-        {menu.company.city ? (
-          <Text style={styles.companyCity}>📍 {menu.company.city}</Text>
-        ) : null}
+        {menu.company.city ? <Text style={styles.companyCity}>{menu.company.city}</Text> : null}
       </View>
 
-      {/* ── BUSCA ── */}
       <View style={styles.searchWrapper}>
         <View style={styles.searchBox}>
-          <Text style={styles.searchIcon}>🔍</Text>
+          <Text style={styles.searchIcon}>Buscar</Text>
           <TextInput
             style={styles.searchInput}
-            placeholder="Buscar no cardápio..."
-            placeholderTextColor="#9E9E9E"
+            placeholder="Buscar no cardapio..."
+            placeholderTextColor={designColors.text.tertiary}
             value={searchQuery}
             onChangeText={setSearchQuery}
             returnKeyType="search"
@@ -291,10 +333,8 @@ export default function PublicMenuScreen({ slug, route }: Props) {
         </View>
       </View>
 
-      {/* ── CHIPS DE CATEGORIA (sticky) ── */}
-      <View style={[styles.chipBar, { backgroundColor: '#FFFFFF' }]}>
+      <View style={styles.chipBar}>
         <ScrollView
-          ref={chipScrollRef}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.chipBarContent}
@@ -312,13 +352,9 @@ export default function PublicMenuScreen({ slug, route }: Props) {
               ]}
               onPress={() => handleCategoryChip(cat.slug)}
               activeOpacity={0.75}
+              accessibilityLabel={`Categoria ${cat.label}`}
             >
-              <Text
-                style={[
-                  styles.chipText,
-                  activeCategory === cat.slug && styles.chipTextActive,
-                ]}
-              >
+              <Text style={[styles.chipText, activeCategory === cat.slug && styles.chipTextActive]}>
                 {cat.label}
               </Text>
             </TouchableOpacity>
@@ -326,70 +362,44 @@ export default function PublicMenuScreen({ slug, route }: Props) {
         </ScrollView>
       </View>
 
-      {/* ── LISTA DE PRODUTOS ── */}
       {sections.length === 0 ? (
-        <View style={styles.emptySearch}>
-          <Text style={styles.emptySearchIcon}>🔍</Text>
-          <Text style={styles.emptySearchText}>
-            Nenhum produto encontrado para "{searchQuery}"
-          </Text>
+        <View style={styles.emptySearchContainer}>
+          <StateView
+            state="empty"
+            message={`Nenhum produto encontrado para \"${debouncedSearchQuery}\".`}
+            onRetry={() => setSearchQuery('')}
+          />
         </View>
       ) : (
         <SectionList
           ref={sectionListRef}
           sections={sections}
-          keyExtractor={(item) => item.id}
-          extraData={primaryColor}
-          contentContainerStyle={[
-            styles.listContent,
-            { paddingBottom: 24 + insets.bottom },
-          ]}
+          keyExtractor={(item, index) => `${item.map((p) => p.id).join('-')}-${index}`}
+          extraData={`${primaryColor}-${columns}`}
           stickySectionHeadersEnabled={false}
+          contentContainerStyle={[styles.listContent, { paddingBottom: spacing[6] + insets.bottom }]}
           onViewableItemsChanged={({ viewableItems }) => {
-            if (viewableItems.length > 0) {
-              const first = viewableItems[0];
-              const secIdx = first.section?.slug;
-              if (secIdx && secIdx !== activeCategory) {
-                setActiveCategory(secIdx);
-              }
+            if (!viewableItems.length) return;
+            const slug = viewableItems[0].section?.slug;
+            if (slug && slug !== activeCategory) {
+              setActiveCategory(slug);
             }
           }}
           viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
           renderSectionHeader={({ section }) => (
-            <View
-              style={styles.sectionHeader}
-              onLayout={(e) => {
-                sectionOffsets.current[section.slug] = e.nativeEvent.layout.y;
-              }}
-            >
+            <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>{section.title}</Text>
             </View>
           )}
-          renderItem={({ item, index, section }) => {
-            // Grid 2 colunas: renderizar par como linha
-            if (index % 2 !== 0) return null;
-            const next = section.data[index + 1];
-            return (
-              <View style={styles.cardRow}>
-                <View style={styles.cardCell}>
-                  <ProductCard
-                    product={item}
-                    primaryColor={primaryColor}
-                  />
+          renderItem={({ item }) => (
+            <View style={styles.cardRow}>
+              {item.map((product) => (
+                <View key={product.id} style={[styles.cardCell, { width: `${100 / columns}%` }]}>
+                  <ProductCard product={product} primaryColor={primaryColor} imageHeight={cardImageHeight} />
                 </View>
-                <View style={styles.cardCell}>
-                  {next ? (
-                    <ProductCard
-                      product={next}
-                      primaryColor={primaryColor}
-                    />
-                  ) : (
-                    <View style={styles.cardPlaceholder} />
-                  )}
-                </View>
-              </View>
-            );
-          }}
+              ))}
+            </View>
+          )}
         />
       )}
     </View>
@@ -399,167 +409,143 @@ export default function PublicMenuScreen({ slug, route }: Props) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#FAFAF8',
+    backgroundColor: designColors.neutral[50],
   },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FAFAF8',
-    padding: 32,
+    padding: spacing[6],
+    backgroundColor: designColors.neutral[50],
   },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 15,
-    color: '#6B6B6B',
-  },
-  notFoundIcon: { fontSize: 56, marginBottom: 16 },
-  notFoundTitle: { fontSize: 20, fontWeight: '700', color: '#1A1A1A', marginBottom: 8 },
-  notFoundSub: { fontSize: 14, color: '#6B6B6B', textAlign: 'center', lineHeight: 20 },
-
-  // Hero
   heroGradient: {
     ...StyleSheet.absoluteFillObject,
-    // Linear gradient overlay handled via a web-only inline style applied in JSX
     backgroundColor: 'transparent',
   },
   heroFallback: {
     justifyContent: 'flex-end',
     alignItems: 'flex-start',
-    paddingHorizontal: 16,
-    paddingBottom: 14,
+    paddingHorizontal: spacing[4],
+    paddingBottom: spacing[3],
   },
   heroFallbackName: {
-    color: '#FFF',
-    fontSize: 26,
+    color: designColors.text.inverse,
+    fontSize: fontSizes['2xl'],
     fontWeight: '800',
   },
   logoOverlay: {
     position: 'absolute',
-    bottom: 12,
-    left: 16,
+    bottom: spacing[3],
+    left: spacing[4],
     width: 64,
     height: 64,
-    borderRadius: 12,
-    backgroundColor: '#FFF',
+    borderRadius: borderRadius.lg,
+    backgroundColor: designColors.surface.card,
   },
-
-  // Empresa
   companyInfo: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
-    backgroundColor: '#FFFFFF',
+    paddingHorizontal: spacing[4],
+    paddingTop: spacing[3],
+    paddingBottom: spacing[2],
+    backgroundColor: designColors.surface.card,
   },
   companyName: {
-    fontSize: 22,
+    fontSize: fontSizes['2xl'],
     fontWeight: '800',
-    color: '#1A1A1A',
+    color: designColors.text.primary,
     marginBottom: 2,
   },
   companyCity: {
-    fontSize: 13,
-    color: '#6B6B6B',
+    fontSize: fontSizes.sm,
+    color: designColors.text.secondary,
   },
-
-  // Busca
   searchWrapper: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingBottom: 10,
+    backgroundColor: designColors.surface.card,
+    paddingHorizontal: spacing[4],
+    paddingBottom: spacing[3],
   },
   searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F2F2F0',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    height: 42,
+    backgroundColor: designColors.surface.elevated,
+    borderRadius: borderRadius.lg,
+    paddingHorizontal: spacing[3],
+    minHeight: 42,
+    borderWidth: 1,
+    borderColor: designColors.border.subtle,
   },
-  searchIcon: { fontSize: 16, marginRight: 6 },
+  searchIcon: {
+    fontSize: fontSizes.sm,
+    color: designColors.text.tertiary,
+    marginRight: spacing[2],
+  },
   searchInput: {
     flex: 1,
-    fontSize: 15,
-    color: '#1A1A1A',
+    fontSize: fontSizes.base,
+    color: designColors.text.primary,
     paddingVertical: 0,
   },
-
-  // Chips
   chipBar: {
     borderBottomWidth: 1,
-    borderBottomColor: '#EFEFEF',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
+    borderBottomColor: designColors.border.subtle,
+    backgroundColor: designColors.surface.card,
   },
   chipBarContent: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    gap: 8,
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[2],
     flexDirection: 'row',
+    gap: spacing[2],
   },
   chip: {
     height: CHIP_HEIGHT,
-    paddingHorizontal: 14,
+    paddingHorizontal: spacing[3],
     borderRadius: CHIP_HEIGHT / 2,
-    borderWidth: 1.5,
-    borderColor: '#D0D0D0',
-    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: designColors.border.default,
+    backgroundColor: designColors.surface.card,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 8,
   },
   chipText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#4A4A4A',
+    fontSize: fontSizes.sm,
+    fontWeight: fontWeights.semibold,
+    color: designColors.text.secondary,
   },
   chipTextActive: {
-    color: '#FFFFFF',
+    color: designColors.text.inverse,
   },
-
-  // Lista
   listContent: {
-    paddingHorizontal: 12,
-    paddingTop: 8,
+    paddingHorizontal: spacing[3],
+    paddingTop: spacing[2],
   },
   sectionHeader: {
-    paddingHorizontal: 4,
-    paddingTop: 16,
-    paddingBottom: 8,
+    paddingHorizontal: spacing[1],
+    paddingTop: spacing[4],
+    paddingBottom: spacing[2],
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: fontSizes.xl,
     fontWeight: '800',
-    color: '#1A1A1A',
+    color: designColors.text.primary,
   },
   cardRow: {
     flexDirection: 'row',
-    marginBottom: 12,
+    marginBottom: spacing[2],
   },
   cardCell: {
-    flex: 1,
-    marginHorizontal: 4,
+    paddingHorizontal: spacing[1],
   },
-  cardPlaceholder: { flex: 1 },
-
-  // Card
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: designColors.surface.card,
+    borderRadius: borderRadius.lg,
     overflow: 'hidden',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
+    borderWidth: 1,
+    borderColor: designColors.border.subtle,
+    ...(shadows.sm as object),
   },
   cardImageContainer: {
     position: 'relative',
     width: '100%',
-    backgroundColor: '#F2F2F0',
+    backgroundColor: designColors.neutral[100],
   },
   cardImage: {
     width: '100%',
@@ -567,129 +553,63 @@ const styles = StyleSheet.create({
   imagePlaceholder: {
     position: 'absolute',
     width: '100%',
-    backgroundColor: '#EBEBEB',
+    backgroundColor: designColors.neutral[200],
     top: 0,
     left: 0,
   },
   imageFallback: {
     width: '100%',
-    backgroundColor: '#F5F0EB',
+    backgroundColor: designColors.neutral[100],
     justifyContent: 'center',
     alignItems: 'center',
   },
-  imageFallbackIcon: { fontSize: 36 },
+  imageFallbackLabel: {
+    color: designColors.text.secondary,
+    fontSize: fontSizes.sm,
+    fontWeight: fontWeights.medium,
+  },
   badgeRow: {
     position: 'absolute',
-    bottom: 6,
-    left: 6,
+    bottom: spacing[1],
+    left: spacing[1],
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 4,
+    gap: spacing[1],
   },
   badge: {
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    borderRadius: 8,
-    paddingHorizontal: 6,
+    backgroundColor: 'rgba(0,0,0,0.58)',
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing[1],
     paddingVertical: 2,
   },
   badgeText: {
-    color: '#FFF',
-    fontSize: 10,
-    fontWeight: '600',
+    color: designColors.text.inverse,
+    fontSize: fontSizes.xs,
+    fontWeight: fontWeights.semibold,
   },
   cardBody: {
-    padding: 10,
+    padding: spacing[2],
   },
   cardName: {
-    fontSize: 13,
+    fontSize: fontSizes.sm,
     fontWeight: '700',
-    color: '#1A1A1A',
-    lineHeight: 18,
+    color: designColors.text.primary,
+    lineHeight: fontSizes.base * lineHeights.tight,
     marginBottom: 2,
   },
   cardDescription: {
-    fontSize: 12,
-    color: '#6B6B6B',
-    lineHeight: 16,
-    marginBottom: 6,
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 4,
+    fontSize: fontSizes.xs,
+    color: designColors.text.secondary,
+    lineHeight: fontSizes.sm * lineHeights.tight,
+    marginBottom: spacing[1],
   },
   cardPrice: {
-    fontSize: 15,
+    fontSize: fontSizes.base,
     fontWeight: '800',
+    marginTop: spacing[1],
   },
-  addButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  addButtonText: {
-    color: '#FFF',
-    fontSize: 20,
-    fontWeight: '700',
-    lineHeight: 22,
-  },
-
-  // Sem resultado
-  emptySearch: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 32,
-    paddingTop: 48,
-  },
-  emptySearchIcon: { fontSize: 42, marginBottom: 12 },
-  emptySearchText: {
-    fontSize: 15,
-    color: '#6B6B6B',
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-
-  // Carrinho flutuante
-  cartBar: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    borderRadius: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-  },
-  cartBarText: {
-    color: '#FFF',
-    fontSize: 14,
-    fontWeight: '700',
-    flex: 1,
-  },
-  cartBarSubtotal: {
-    color: 'rgba(255,255,255,0.85)',
-    fontSize: 14,
-    fontWeight: '600',
-    marginRight: 12,
-  },
-  cartBarButton: {
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  cartBarButtonText: {
-    color: '#FFF',
-    fontSize: 13,
-    fontWeight: '700',
+  emptySearchContainer: {
+    paddingHorizontal: spacing[3],
+    paddingTop: spacing[4],
   },
 });

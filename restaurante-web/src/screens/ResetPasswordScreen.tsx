@@ -5,6 +5,8 @@ import { supabase } from '../config/SupabaseConfig';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { colorSystem, radius, shadows, spacing, typography } from '../design-system';
+import { FieldRow, FormSection, ScreenHeader } from '../ui';
+import logger from '../utils/logger';
 
 const validateNewCredential = (candidate: string) => {
   if (candidate.length < 8) {
@@ -23,17 +25,21 @@ export default function ResetPasswordScreen() {
   const [newCredential, setNewCredential] = useState('');
   const [confirmCredential, setConfirmCredential] = useState('');
   const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleSubmit = async () => {
+    setSubmitError(null);
     const credentialError = validateNewCredential(newCredential.trim());
     if (credentialError) {
+      logger.warn('[ResetPasswordScreen] password reset failed - invalid password', { reason: credentialError });
       Alert.alert('Nova senha', credentialError);
       return;
     }
 
     if (newCredential !== confirmCredential) {
+      logger.warn('[ResetPasswordScreen] password reset failed - passwords don\'t match');
       Alert.alert('Confirmacao de senha', 'As senhas digitadas nao conferem.');
       return;
     }
@@ -41,14 +47,18 @@ export default function ResetPasswordScreen() {
     setLoading(true);
 
     try {
+      logger.info('[ResetPasswordScreen] password reset attempt initiated');
       const { error } = await supabase.auth.updateUser({ password: newCredential.trim() });
       if (error) {
         throw error;
       }
 
+      logger.info('[ResetPasswordScreen] password reset successful');
       showToast('Senha redefinida com sucesso. Faca login novamente.', 'success');
       await clearPasswordRecovery();
     } catch (error: any) {
+      logger.error('[ResetPasswordScreen] password reset failed', error);
+      setSubmitError(error?.message || 'Nao foi possivel atualizar a senha.');
       Alert.alert('Erro ao redefinir senha', error?.message || 'Nao foi possivel atualizar a senha.');
     } finally {
       setLoading(false);
@@ -56,6 +66,7 @@ export default function ResetPasswordScreen() {
   };
 
   const handleCancel = async () => {
+    logger.info('[ResetPasswordScreen] password recovery cancelled by user');
     await clearPasswordRecovery();
   };
 
@@ -79,45 +90,64 @@ export default function ResetPasswordScreen() {
 
           <View style={[styles.authColumn, isDesktop && styles.authColumnDesktop]}>
             <View style={styles.formCard}>
-              <Text style={styles.formEyebrow}>Recuperacao de acesso</Text>
-              <Text style={styles.formTitle}>Defina a nova senha</Text>
-              <Text style={styles.formSubtitle}>Use uma senha com no minimo 8 caracteres para concluir a recuperacao.</Text>
+              <ScreenHeader
+                title="Defina a nova senha"
+                subtitle="Use uma senha com no minimo 8 caracteres para concluir a recuperacao."
+              />
 
-              <View style={styles.fieldGroup}>
-                <Text style={styles.label}>Nova senha</Text>
-                <View style={styles.passwordContainer}>
-                  <TextInput
-                    style={styles.passwordInput}
-                    placeholder="••••••••"
-                    placeholderTextColor={colorSystem.textMuted}
-                    value={newCredential}
-                    onChangeText={setNewCredential}
-                    secureTextEntry={!showPassword}
-                    autoCapitalize="none"
-                  />
-                  <TouchableOpacity style={styles.eyeButton} onPress={() => setShowPassword((current) => !current)}>
-                    <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={22} color={colorSystem.primary} />
-                  </TouchableOpacity>
-                </View>
-              </View>
+              <FormSection title="Recuperacao de acesso">
+                <FieldRow label="Nova senha" required>
+                  <View style={styles.passwordContainer}>
+                    <TextInput
+                      style={styles.passwordInput}
+                      placeholder="••••••••"
+                      placeholderTextColor={colorSystem.textMuted}
+                      value={newCredential}
+                      onChangeText={setNewCredential}
+                      secureTextEntry={!showPassword}
+                      autoCapitalize="none"
+                      textContentType="newPassword"
+                    />
+                    <TouchableOpacity
+                      style={styles.eyeButton}
+                      onPress={() => setShowPassword((current) => !current)}
+                      accessibilityRole="button"
+                      accessibilityLabel={showPassword ? 'Ocultar nova senha' : 'Mostrar nova senha'}
+                    >
+                      <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={22} color={colorSystem.primary} />
+                    </TouchableOpacity>
+                  </View>
+                </FieldRow>
 
-              <View style={styles.fieldGroup}>
-                <Text style={styles.label}>Confirmar nova senha</Text>
-                <View style={styles.passwordContainer}>
-                  <TextInput
-                    style={styles.passwordInput}
-                    placeholder="••••••••"
-                    placeholderTextColor={colorSystem.textMuted}
-                    value={confirmCredential}
-                    onChangeText={setConfirmCredential}
-                    secureTextEntry={!showConfirmPassword}
-                    autoCapitalize="none"
-                  />
-                  <TouchableOpacity style={styles.eyeButton} onPress={() => setShowConfirmPassword((current) => !current)}>
-                    <Ionicons name={showConfirmPassword ? 'eye-off' : 'eye'} size={22} color={colorSystem.primary} />
-                  </TouchableOpacity>
-                </View>
-              </View>
+                <FieldRow label="Confirmar nova senha" required>
+                  <View style={styles.passwordContainer}>
+                    <TextInput
+                      style={styles.passwordInput}
+                      placeholder="••••••••"
+                      placeholderTextColor={colorSystem.textMuted}
+                      value={confirmCredential}
+                      onChangeText={setConfirmCredential}
+                      secureTextEntry={!showConfirmPassword}
+                      autoCapitalize="none"
+                      textContentType="newPassword"
+                    />
+                    <TouchableOpacity
+                      style={styles.eyeButton}
+                      onPress={() => setShowConfirmPassword((current) => !current)}
+                      accessibilityRole="button"
+                      accessibilityLabel={showConfirmPassword ? 'Ocultar confirmacao de senha' : 'Mostrar confirmacao de senha'}
+                    >
+                      <Ionicons name={showConfirmPassword ? 'eye-off' : 'eye'} size={22} color={colorSystem.primary} />
+                    </TouchableOpacity>
+                  </View>
+                </FieldRow>
+              </FormSection>
+
+              {!!submitError && (
+                <Text accessibilityRole="alert" style={styles.submitErrorText}>
+                  {submitError}
+                </Text>
+              )}
 
               <TouchableOpacity style={[styles.primaryButton, loading && styles.primaryButtonDisabled]} onPress={handleSubmit} disabled={loading}>
                 <Text style={styles.primaryButtonText}>{loading ? 'ATUALIZANDO...' : 'ATUALIZAR SENHA'}</Text>
@@ -227,31 +257,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colorSystem.border,
     padding: spacing.s24,
+    gap: spacing.s12,
     ...shadows.medium,
-  },
-  formEyebrow: {
-    ...typography.small,
-    color: colorSystem.primary,
-    textTransform: 'uppercase',
-    marginBottom: spacing.s8,
-  },
-  formTitle: {
-    ...typography.headingM,
-    color: colorSystem.text,
-    marginBottom: spacing.s8,
-  },
-  formSubtitle: {
-    ...typography.body,
-    color: colorSystem.textMuted,
-    marginBottom: spacing.s24,
-  },
-  fieldGroup: {
-    marginBottom: spacing.s16,
-  },
-  label: {
-    ...typography.small,
-    color: colorSystem.text,
-    marginBottom: spacing.s8,
   },
   passwordContainer: {
     flexDirection: 'row',
@@ -278,7 +285,6 @@ const styles = StyleSheet.create({
     backgroundColor: colorSystem.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: spacing.s8,
   },
   primaryButtonDisabled: {
     opacity: 0.7,
@@ -286,6 +292,10 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     ...typography.button,
     color: colorSystem.onPrimary,
+  },
+  submitErrorText: {
+    ...typography.small,
+    color: colorSystem.error,
   },
   secondaryButton: {
     minHeight: 48,

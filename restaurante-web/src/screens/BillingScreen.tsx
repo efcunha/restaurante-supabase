@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Linking, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Linking, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenScaffold } from '../layouts/ScreenScaffold';
 import { useAuth } from '../context/AuthContext';
 import { useBilling } from '../context/BillingContext';
+import { StateView } from '../ui';
 import {
   BillingInvoice,
   BillingPaymentMethod,
@@ -21,6 +22,7 @@ import {
   tokenizeCardWithMp,
 } from '../services/BillingService';
 import { colors } from '../theme/colors';
+import LoggerService from '../services/LoggerService';
 
 interface BillingScreenProps {
   onClose?: () => void;
@@ -270,9 +272,19 @@ export default function BillingScreen({ onClose }: BillingScreenProps) {
         ? ` (${(result.card as { brand?: string }).brand?.toUpperCase() || 'Cartão'} •••• ${(result.card as { lastFour?: string }).lastFour || ''})`
         : '';
 
+      // Security logging: card tokenization
+      LoggerService.logInfo('Cartão cadastrado com sucesso', 'BillingScreen#saveCard', {
+        brand: (result.card as { brand?: string })?.brand || 'unknown',
+        lastFour: (result.card as { lastFour?: string })?.lastFour || 'unknown',
+      });
+
       Alert.alert('Cartão salvo', `Cartão cadastrado com sucesso${cardLabel}.`);
       await handleRefresh();
     } catch (error) {
+      LoggerService.logError(error as Error, 'BillingScreen#saveCard', {
+        companyId,
+        action: 'tokenize_and_save',
+      });
       Alert.alert('Erro no cartão', error instanceof Error ? error.message : 'Falha ao salvar o cartão.');
     } finally {
       setActionLoading(null);
@@ -290,9 +302,20 @@ export default function BillingScreen({ onClose }: BillingScreenProps) {
       const pixSummary = result.pixQrCodeText
         ? `\n\nPix disponível até ${formatDateTime(result.pixExpiresAt)}.`
         : '';
+      
+      // Security logging: Pix fallback request
+      LoggerService.logInfo('Regularização via Pix solicitada', 'BillingScreen#pixFallback', {
+        hasQrCode: !!result.pixQrCodeText,
+        companyId,
+      });
+      
       Alert.alert('Regularização via Pix', result.message + pixSummary + (result.nextStep ? `\n\nPróximo passo: ${result.nextStep}` : ''));
       await handleRefresh();
     } catch (error) {
+      LoggerService.logError(error as Error, 'BillingScreen#pixFallback', {
+        companyId,
+        action: 'request_pix',
+      });
       Alert.alert('Cobrança', error instanceof Error ? error.message : 'Falha ao iniciar a regularização via Pix.');
     } finally {
       setActionLoading(null);
@@ -320,8 +343,19 @@ export default function BillingScreen({ onClose }: BillingScreenProps) {
     setSettingDefaultId(methodId);
     try {
       await setDefaultPaymentMethod(companyId, methodId);
+      
+      // Security logging: default payment method change
+      LoggerService.logInfo('Método de pagamento padrão alterado', 'BillingScreen#setDefaultCard', {
+        methodId,
+        companyId,
+      });
+      
       await loadData();
     } catch (error) {
+      LoggerService.logError(error as Error, 'BillingScreen#setDefaultCard', {
+        methodId,
+        companyId,
+      });
       Alert.alert('Cartão', error instanceof Error ? error.message : 'Falha ao definir cartão padrão.');
     } finally {
       setSettingDefaultId(null);
@@ -351,8 +385,20 @@ export default function BillingScreen({ onClose }: BillingScreenProps) {
             setDeletingCardId(method.id);
             try {
               await deletePaymentMethod(companyId, method.id);
+              
+              // Security logging: payment method deletion
+              LoggerService.logInfo('Método de pagamento removido', 'BillingScreen#deleteCard', {
+                methodId: method.id,
+                methodType: method.type,
+                companyId,
+              });
+              
               await loadData();
             } catch (err) {
+              LoggerService.logError(err as Error, 'BillingScreen#deleteCard', {
+                methodId: method.id,
+                companyId,
+              });
               Alert.alert('Cartão', err instanceof Error ? err.message : 'Falha ao excluir o cartão.');
             } finally {
               setDeletingCardId(null);
