@@ -1,0 +1,2 @@
+data_hora,ambiente,company_id,modelo_balanca,porta,baud,protocolo,serial_aberta,leitura_estavel_ok,tara_ok,tef_init_status,tef_idempotencia_ok,tef_status_final,resultado,observacoes
+,,,,,,,,,,,,,,
