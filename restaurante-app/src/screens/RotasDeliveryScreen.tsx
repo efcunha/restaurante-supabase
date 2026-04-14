@@ -2,7 +2,7 @@ import { StatusBar } from 'expo-status-bar';
 import LicenseGate from '../components/LicenseGate';
 import { StyleSheet, Text, View, TouchableOpacity, Alert, Platform, Linking, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../config/SupabaseConfig';
 import { getBusinessDateKey } from '../services/BusinessDateService';
@@ -15,6 +15,7 @@ import { colors } from '../theme/colors';
 import PagamentosService from '../services/PagamentosService';
 import { auditService } from '../services/AuditService';
 import { isFeatureEnabled } from '../config/featureFlags';
+import logger from '../utils/logger';
 
 type DeliveryStatus = 'dispatched' | 'delivered' | 'failed_delivery' | 'returned' | 'refused';
 
@@ -29,6 +30,7 @@ export default function RotasDeliveryScreen() {
   const [loading, setLoading] = useState(true);
   const [deliveryOrders, setDeliveryOrders] = useState<any[]>([]);
   const [processingItems, setProcessingItems] = useState(new Set());
+  const realtimeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const ensureWhatsAppConnectionForDelivery = useCallback(async (status: DeliveryStatus) => {
     if (!user?.companyId || !DELIVERY_NOTIFICATION_STATUSES.includes(status)) {
@@ -49,7 +51,7 @@ export default function RotasDeliveryScreen() {
       );
       return true;
     } catch (error) {
-      console.warn('[RotasDelivery] Falha ao verificar conexão WhatsApp:', error);
+      logger.warn('[RotasDeliveryScreen] failed to verify WhatsApp connection');
       return true;
     }
   }, [user?.companyId]);
@@ -100,11 +102,21 @@ export default function RotasDeliveryScreen() {
         setDeliveryOrders(mappedOrders);
       }
     } catch (e: any) {
-      console.error('[RotasDelivery] Error fetching orders:', e);
+      logger.error('[RotasDeliveryScreen] error fetching delivery orders', e);
     } finally {
       setLoading(false);
     }
   }, [user]);
+
+  const scheduleRealtimeRefresh = useCallback(() => {
+    if (realtimeDebounceRef.current) {
+      clearTimeout(realtimeDebounceRef.current);
+    }
+
+    realtimeDebounceRef.current = setTimeout(() => {
+      fetchDeliveryOrders(true);
+    }, 300);
+  }, [fetchDeliveryOrders]);
 
   useEffect(() => {
     fetchDeliveryOrders();
@@ -129,16 +141,19 @@ export default function RotasDeliveryScreen() {
              (payload.new && (payload.new as any).order_type === 'delivery') ||
              (payload.old && (payload.old as any).order_type === 'delivery');
            if (isDelivery || !payload.old) {
-              fetchDeliveryOrders();
+              scheduleRealtimeRefresh();
            }
         }
       )
       .subscribe();
 
     return () => {
+      if (realtimeDebounceRef.current) {
+        clearTimeout(realtimeDebounceRef.current);
+      }
       channel.unsubscribe();
     };
-  }, [fetchDeliveryOrders, user]);
+  }, [fetchDeliveryOrders, scheduleRealtimeRefresh, user?.companyId]);
 
   const openWhatsApp = (phone: string, customerName: string) => {
     if (!phone) {
@@ -220,7 +235,7 @@ export default function RotasDeliveryScreen() {
         .eq('comanda_number', comandaNumber)
         .neq('status', 'cancelada');
     } catch (error) {
-      console.error('[RotasDelivery] Falha ao fechar comanda de delivery:', error);
+      logger.error('[RotasDeliveryScreen] failed to close delivery comanda', error);
     }
   };
 
@@ -401,9 +416,9 @@ export default function RotasDeliveryScreen() {
             const message = `Olá ${customerName}! O motoboy saiu com sua entrega da comanda ${comandaNumber}. Acompanhe o status em tempo real!`;
             
             await EvolutionApiService.sendTextMessage(user.companyId, order.customer_phone, message);
-            console.log('[RotasDelivery] WhatsApp enviado com sucesso para status dispatched');
+            logger.info('[RotasDeliveryScreen] WhatsApp notification sent for dispatched order');
           } catch (notificationError) {
-            console.warn('[RotasDelivery] Erro ao enviar WhatsApp para status dispatched:', notificationError);
+            logger.warn('[RotasDeliveryScreen] failed to send WhatsApp notification for dispatched order');
             // Não quebra o fluxo se o envio de WhatsApp falhar
           }
         }
@@ -412,7 +427,7 @@ export default function RotasDeliveryScreen() {
         fetchDeliveryOrders();
 
       } catch (e: any) {
-        console.error('❌ Erro atualizar entrega:', e);
+        logger.error('[RotasDeliveryScreen] failed to update delivery status', e);
         Alert.alert('Erro', 'Falha ao atualizar status: ' + e.message);
       } finally {
         setProcessingItems(prev => {

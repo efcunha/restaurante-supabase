@@ -1,7 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import LicenseGate from '../components/LicenseGate';
 import { StyleSheet, Text, View, FlatList, TouchableOpacity, Alert, Platform } from 'react-native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect, useCallback, memo, useRef, useMemo } from 'react';
 import { useOrders } from '../context/OrderContext';
 import { useAuth } from '../context/AuthContext';
@@ -12,6 +12,8 @@ import offlineQueueService from '../services/OfflineQueueService';
 import { persistMontagemToggleItems } from '../services/MontagemSyncService';
 import OrderService from '../services/OrderService';
 import { colors } from '../theme/colors';
+import { StateView } from '../ui';
+import logger from '../utils/logger';
 
 const formatClockLabel = (value?: string | null) => {
   if (!value) return '--:--';
@@ -232,6 +234,8 @@ export default function MontagemScreen() {
   useOrders(); // mantido para não quebrar contexto
   const { user, hasPermission, Permissions } = useAuth();
   const [allOrders, setAllOrders] = useState<any[]>([]);
+  const [isLoadingOrders, setIsLoadingOrders] = useState<boolean>(false);
+  const [ordersError, setOrdersError] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
 
   // ✅ Guarda IDs marcados como prontos nesta sessão para proteger contra race condition do Realtime
@@ -240,6 +244,7 @@ export default function MontagemScreen() {
   const fetchSeq = useRef(0);
   // ✅ Preserva toggle otimista por item durante a janela inicial de realtime/fetch concorrente
   const pendingItemOverrides = useRef<Map<string, { checked: boolean; timestamp: string; mutationId: string; queueOperationId?: string }>>(new Map());
+  const realtimeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -250,31 +255,40 @@ export default function MontagemScreen() {
   }, []);
 
   // Initial fetch — busca APENAS pedidos em 'preparing' para evitar race conditions
-  const fetchOrders = useCallback(async () => {
-    // @ts-ignore
-    if (!user?.companyId) return;
-    const seq = ++fetchSeq.current;
-    const queuedOperationIds = new Set(offlineQueueService.getOperations().map(op => op.id));
-    const today = await getBusinessDateKey(user.companyId);
+  const fetchOrders = useCallback(async (silent = false) => {
+    if (!user?.companyId) {
+      setAllOrders([]);
+      setOrdersError(null);
+      return;
+    }
 
-    const { data, error } = await supabase
-      .from('orders')
-      .select(`
-        *,
-        profiles:created_by (
-          full_name
-        )
-      `)
-      .eq('company_id', user.companyId)
-      .eq('date_key', today)
-      .eq('status', 'preparing'); // ✅ CRITICAL FIX: filtrar no banco, não só no cliente
+    if (!silent) {
+      setIsLoadingOrders(true);
+    }
+    setOrdersError(null);
 
-    // ✅ RACE GUARD: se um fetchOrders mais recente foi disparado, descartar este resultado
-    if (seq !== fetchSeq.current) return;
+    try {
+      const seq = ++fetchSeq.current;
+      const queuedOperationIds = new Set(offlineQueueService.getOperations().map(op => op.id));
+      const today = await getBusinessDateKey(user.companyId);
 
-    if (!error && data) {
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          profiles:created_by (
+            full_name
+          )
+        `)
+        .eq('company_id', user.companyId)
+        .eq('date_key', today)
+        .eq('status', 'preparing');
+
+      if (seq !== fetchSeq.current) return;
+      if (error) throw error;
+
       const comandaNumbers = Array.from(new Set(
-        data
+        (data || [])
           .map(order => Number(order.comanda_number))
           .filter(value => Number.isFinite(value) && value > 0)
       ));
@@ -289,7 +303,6 @@ export default function MontagemScreen() {
           .in('comanda_number', comandaNumbers);
 
         if (seq !== fetchSeq.current) return;
-
         if (!comandasError && comandasData) {
           comandasData.forEach(comanda => {
             comandaCreatorsMap.set(`${comanda.date_key}:${comanda.comanda_number}`, comanda.opened_by_name || '');
@@ -297,93 +310,91 @@ export default function MontagemScreen() {
         }
       }
 
-      // Map snake_case to camelCase, ignorando IDs já marcados localmente como prontos
-      const mappedOrders = data
-        .filter(order => !locallyMarkedReady.current.has(order.id)) // ✅ proteção anti-race
+      const mappedOrders = (data || [])
+        .filter(order => !locallyMarkedReady.current.has(order.id))
         .map(order => {
           const timeReference = order.time_in_montagem || order.created_at || null;
           const fallbackCreatorName = comandaCreatorsMap.get(`${order.date_key || today}:${order.comanda_number}`) || '';
           const createdByName = order.profiles?.full_name || fallbackCreatorName || '';
 
           return {
-          ...order,
-          // ✅ GERAR IDs ÚNICOS POR PEDIDO: combina o UUID do pedido com o ID do item
-          // Isso evita que itens com o mesmo ID de produto (ex: 'item_coca_cola') em pedidos
-          // de delivery diferentes colidam no estado local e causem marcação cruzada.
-          itemsWithStatus: (order.items_with_status || []).map((item: any, itemIndex: number) => {
-            const uiKey = getItemUiKey(order.id, item.id, itemIndex);
-            const pendingOverride = pendingItemOverrides.current.get(uiKey);
+            ...order,
+            itemsWithStatus: (order.items_with_status || []).map((item: any, itemIndex: number) => {
+              const uiKey = getItemUiKey(order.id, item.id, itemIndex);
+              const pendingOverride = pendingItemOverrides.current.get(uiKey);
 
-            if (pendingOverride) {
-              const isConfirmedRemotely =
-                item.checked === pendingOverride.checked &&
-                item.clientMutationId === pendingOverride.mutationId;
-              const wasQueuedButRemoved = !!pendingOverride.queueOperationId
-                && !queuedOperationIds.has(pendingOverride.queueOperationId);
+              if (pendingOverride) {
+                const isConfirmedRemotely =
+                  item.checked === pendingOverride.checked &&
+                  item.clientMutationId === pendingOverride.mutationId;
+                const wasQueuedButRemoved = !!pendingOverride.queueOperationId
+                  && !queuedOperationIds.has(pendingOverride.queueOperationId);
 
-              if (isConfirmedRemotely) {
-                pendingItemOverrides.current.delete(uiKey);
-              } else if (wasQueuedButRemoved) {
-                pendingItemOverrides.current.delete(uiKey);
+                if (isConfirmedRemotely || wasQueuedButRemoved) {
+                  pendingItemOverrides.current.delete(uiKey);
+                }
               }
-            }
 
-            const activeOverride = pendingItemOverrides.current.get(uiKey);
+              const activeOverride = pendingItemOverrides.current.get(uiKey);
 
-            return {
-              ...item,
-              checked: activeOverride ? activeOverride.checked : item.checked,
-              timestamp: activeOverride ? activeOverride.timestamp : item.timestamp,
-              _isPendingSync: !!activeOverride,
-              // ID composto de UI: orderId::itemId::index (garante unicidade mesmo com item.id repetido)
-              id: uiKey,
-              _originalItemId: item.id,       // preservar ID original para persistência no DB
-              _itemIndex: itemIndex,
-              originalOrderId: order.id       // Guardar UUID REAL para envio seguro no clique
-            };
-          }),
-          comandaNumber: order.comanda_number,
-          mesa: (order.table_number && order.table_number !== 0) ? order.table_number.toString() : '',
-          comandaStatus: order.comanda_status,
-          orderType: order.order_type || order.orderType || 'local',
-          client: order.client_name || order.client || 'Cliente',
-          timestamp: timeReference,
-          createdAt: order.created_at,
-          horarioCriacao: formatClockLabel(timeReference),
-          timeInMontagem: order.time_in_montagem || null,
-          createdByName,
-          criadoPorNome: createdByName,
-          movidoParaMontagemPorNome: order.movido_para_montagem_por_nome || order.movidoParaMontagemPorNome || null,
-          displayTimeReference: timeReference,
-          allCreatorNames: createdByName ? [createdByName] : [],
-          allMovedByNames: order.movido_para_montagem_por_nome ? [order.movido_para_montagem_por_nome] : []
-        };
+              return {
+                ...item,
+                checked: activeOverride ? activeOverride.checked : item.checked,
+                timestamp: activeOverride ? activeOverride.timestamp : item.timestamp,
+                _isPendingSync: !!activeOverride,
+                id: uiKey,
+                _originalItemId: item.id,
+                _itemIndex: itemIndex,
+                originalOrderId: order.id
+              };
+            }),
+            comandaNumber: order.comanda_number,
+            mesa: (order.table_number && order.table_number !== 0) ? order.table_number.toString() : '',
+            comandaStatus: order.comanda_status,
+            orderType: order.order_type || order.orderType || 'local',
+            client: order.client_name || order.client || 'Cliente',
+            timestamp: timeReference,
+            createdAt: order.created_at,
+            horarioCriacao: formatClockLabel(timeReference),
+            timeInMontagem: order.time_in_montagem || null,
+            createdByName,
+            criadoPorNome: createdByName,
+            movidoParaMontagemPorNome: order.movido_para_montagem_por_nome || order.movidoParaMontagemPorNome || null,
+            displayTimeReference: timeReference,
+            allCreatorNames: createdByName ? [createdByName] : [],
+            allMovedByNames: order.movido_para_montagem_por_nome ? [order.movido_para_montagem_por_nome] : []
+          };
         });
-      
-      // DEBUG: Log delivery orders to check comanda_number
-      const deliveryOrders = mappedOrders.filter(o => o.orderType === 'delivery');
-      if (deliveryOrders.length > 0) {
-        console.log('[Montagem] 🚚 Pedidos delivery:', deliveryOrders.map(o => ({
-          id: o.id.substring(0, 8),
-          client: o.client,
-          comandaNumber: o.comandaNumber,
-          orderType: o.orderType
-        })));
-      }
-      
+
       setAllOrders(mappedOrders);
+    } catch (error: any) {
+      logger.error('[MontagemScreen] failed to load orders for assembly queue', error);
+      setOrdersError(error?.message || 'Falha ao carregar pedidos da montagem.');
+      setAllOrders([]);
+    } finally {
+      if (!silent) {
+        setIsLoadingOrders(false);
+      }
     }
-  }, [user]);
+  }, [user?.companyId]);
+
+  const scheduleRealtimeRefresh = useCallback(() => {
+    if (realtimeDebounceRef.current) {
+      clearTimeout(realtimeDebounceRef.current);
+    }
+
+    realtimeDebounceRef.current = setTimeout(() => {
+      fetchOrders(true);
+    }, 300);
+  }, [fetchOrders]);
 
 
   // ✅ TEMPO REAL: Listener para multi-usuários
   useEffect(() => {
     fetchOrders();
 
-    // @ts-ignore
     if (!user?.companyId) return;
 
-    // Subscribe to real-time changes
     const channel = supabase
       .channel(`orders-montagem-${user.companyId}`)
       .on(
@@ -395,15 +406,18 @@ export default function MontagemScreen() {
           filter: `company_id=eq.${user.companyId}`
         },
         () => {
-          fetchOrders();
+          scheduleRealtimeRefresh();
         }
       )
       .subscribe();
 
     return () => {
+      if (realtimeDebounceRef.current) {
+        clearTimeout(realtimeDebounceRef.current);
+      }
       channel.unsubscribe();
     };
-  }, [user]);
+  }, [user?.companyId, fetchOrders, scheduleRealtimeRefresh]);
 
   // ✅ FILTRO SEGURO: Excluir pedidos de comandas canceladas usando comandaStatus do pedido
   const ordersRaw = useMemo(() => allOrders.filter(order => {
@@ -415,10 +429,7 @@ export default function MontagemScreen() {
     }
 
     // ✅ PROTEÇÃO: Se o pedido tem comandaStatus='cancelada', não mostrar
-    if (order.comandaStatus === 'cancelada') {
-      console.log('[Montagem] 🚫 Pedido filtrado (comanda cancelada):', order.id);
-      return false;
-    }
+    if (order.comandaStatus === 'cancelada') return false;
 
     return true;
   }), [allOrders]);
@@ -521,7 +532,7 @@ export default function MontagemScreen() {
         return;
       }
     } catch (e) {
-      console.error('[Montagem] Erro ao verificar caixa:', e);
+      logger.error('[MontagemScreen] failed to verify open caixa before toggle', e);
     }
 
     try {
@@ -541,7 +552,7 @@ export default function MontagemScreen() {
       });
 
       if (Object.keys(updatesByRealOrder).length === 0) {
-        console.warn('[Montagem] Nenhum ID composto válido (orderId::itemId) encontrado:', idsToUpdate);
+        logger.warn('[MontagemScreen] no valid compound item ids received for toggle');
         return;
       }
 
@@ -549,7 +560,7 @@ export default function MontagemScreen() {
       // This prevents cross-marking if groupedIds somehow got mixed
       const orderIds = Object.keys(updatesByRealOrder);
       if (orderIds.length > 1) {
-        console.error('[Montagem] ❌ ERRO: Tentativa de marcar itens de múltiplos pedidos simultaneamente:', orderIds);
+        logger.error('[MontagemScreen] attempted toggle across multiple orders', new Error('multiple_order_toggle'));
         return;
       }
 
@@ -566,19 +577,17 @@ export default function MontagemScreen() {
         const sourceOrder = prevOrders.find(o => o.id === firstRealOrderId);
         
         if (!sourceOrder) {
-          console.error('[Montagem] ❌ ERRO: Pedido não encontrado no estado:', firstRealOrderId);
+          logger.error('[MontagemScreen] source order not found for toggle', new Error('source_order_not_found'));
           return prevOrders; // Abort update
         }
         
         const sourceItem = sourceOrder.itemsWithStatus.find((i: any) => i.id === firstCompoundId);
         if (!sourceItem) {
-          console.error('[Montagem] ❌ ERRO: Item não encontrado no pedido:', firstCompoundId);
+          logger.error('[MontagemScreen] source item not found for toggle', new Error('source_item_not_found'));
           return prevOrders; // Abort update
         }
         
         newChecked = !sourceItem?.checked;
-
-        console.log('[Montagem] ✅ Toggle direto ->', newChecked, 'pedido:', firstRealOrderId, 'item:', firstCompoundId);
 
         // 3. ATUALIZAÇÃO OTIMISTA LOCAL — usa os IDs COMPOSTOS para identificar os itens no estado
         const now = new Date().toISOString();
@@ -632,7 +641,7 @@ export default function MontagemScreen() {
 
       // ✅ FIX: Validate that itemsToSaveByOrder was populated before persisting
       if (Object.keys(itemsToSaveByOrder).length === 0) {
-        console.error('[Montagem] ❌ ERRO: Nenhum item preparado para salvar. Abortando persistência.');
+        logger.error('[MontagemScreen] no items prepared for persistence in toggle', new Error('empty_persist_payload'));
         return;
       }
 
@@ -640,8 +649,6 @@ export default function MontagemScreen() {
       //    Usa os dados preparados durante a atualização do estado
       const now = new Date().toISOString();
       const persistPromises = Object.entries(itemsToSaveByOrder).map(async ([realOrderId, itemsToSave]) => {
-        console.log('[Montagem] 💾 Salvando pedido:', realOrderId, 'itens:', itemsToSave.length);
-
         // Merge defensivo com estado mais recente do banco para evitar sobrescrita concorrente
         const entry = updatesByRealOrder[realOrderId];
         const targetMeta = (entry?.uiKeys || []).map((uiKey: string) => {
@@ -660,7 +667,7 @@ export default function MontagemScreen() {
           .single();
 
         if (fetchError || !latestOrder?.items_with_status || !Array.isArray(latestOrder.items_with_status)) {
-          console.error('[Montagem] ❌ Falha ao buscar items_with_status para merge. Abortando persistência.', fetchError?.message);
+          logger.error('[MontagemScreen] failed to fetch latest items_with_status before merge', fetchError || new Error('missing_items_with_status'));
           throw new Error('Falha ao buscar estado atual do pedido para merge seguro.');
         }
 
@@ -692,8 +699,6 @@ export default function MontagemScreen() {
                 checked: newChecked,
                 timestamp: now
               };
-            } else {
-              console.warn('[Montagem] ⚠️ Item não encontrado no DB para merge:', originalItemId, 'índice:', itemIndex);
             }
           });
 
@@ -721,11 +726,11 @@ export default function MontagemScreen() {
       });
 
       await Promise.all(persistPromises);
-      console.log('[Montagem] ✅ Persistência concluída com sucesso');
+      logger.info('[MontagemScreen] toggle persistence completed successfully');
 
     } catch (error: any) {
       idsToUpdate.forEach((uiKey: string) => pendingItemOverrides.current.delete(String(uiKey)));
-      console.error('[Montagem] Erro inesperado no toggle:', error);
+      logger.error('[MontagemScreen] unexpected error while toggling montagem item', error);
       if (Platform.OS === 'web') window.alert('Erro: ' + error.message);
       else Alert.alert('Erro', 'Não foi possível atualizar o item: ' + error.message);
       // Reverter em caso de erro real
@@ -742,7 +747,6 @@ export default function MontagemScreen() {
 
     try {
       const orderIds = order.allOrderIds || [order.id];
-      console.log('[Montagem] Marcando como pronto (Direto no DB):', orderIds);
 
       // Bloqueio otimista
       orderIds.forEach((id: string) => locallyMarkedReady.current.add(id));
@@ -757,30 +761,24 @@ export default function MontagemScreen() {
 
       if (error) throw error;
 
-      console.log('[Montagem] Status gravado no banco com sucesso!');
+      logger.info('[MontagemScreen] order marked as ready successfully');
     } catch (error: any) {
-      console.error('Erro ao mover para prontos:', error);
+      logger.error('[MontagemScreen] failed to mark order as ready', error);
       Alert.alert('Erro', 'Não foi possível salvar no banco: ' + error.message);
       // Reverter estado local em caso de erro real
       fetchOrders();
     }
-  }, [hasPermission, Permissions, user, supabase, fetchOrders]);
+  }, [hasPermission, Permissions, user, fetchOrders]);
 
   // Componente de lista vazia memoizado
   const ListEmptyComponent = useCallback(() => (
-    <View style={styles.emptyState}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
-        <MaterialCommunityIcons name="silverware-fork-knife" size={40} color={colors.primary} style={{ marginRight: -10, transform: [{ rotate: '-15deg' }] }} />
-        <View style={{ alignItems: 'center', zIndex: 1 }}>
-          <MaterialCommunityIcons name="chef-hat" size={80} color={colors.secondary} />
-          <MaterialCommunityIcons name="food-variant" size={50} color={colors.text} style={{ marginTop: -15 }} />
-        </View>
-        <MaterialCommunityIcons name="food-turkey" size={45} color={colors.danger} style={{ marginLeft: -15, marginTop: 20 }} />
-      </View>
-      <Text style={styles.emptyText}>Nenhum pedido para montar</Text>
-      <Text style={styles.emptySubtext}>Os pedidos da cozinha aparecerão aqui</Text>
-    </View>
-  ), []);
+    <StateView
+      state="empty"
+      message="Nenhum pedido para montar"
+      details="Os pedidos da cozinha aparecerão aqui"
+      onRetry={() => fetchOrders()}
+    />
+  ), [fetchOrders]);
 
   // RenderItem memoizado
   const renderItem = useCallback(({ item }: { item: any }) => (
@@ -813,19 +811,40 @@ export default function MontagemScreen() {
         <View style={styles.logoutBtn} />
       </View>
 
-      <FlatList
-        data={orders}
-        renderItem={renderItem}
-        keyExtractor={keyExtractor}
-        ListEmptyComponent={ListEmptyComponent}
-        style={styles.list}
-        contentContainerStyle={styles.content}
-        initialNumToRender={8}
-        windowSize={3}
-        maxToRenderPerBatch={5}
-        updateCellsBatchingPeriod={100}
-        removeClippedSubviews={true}
-      />
+      <View
+        {...(Platform.OS === 'web' ? ({ 'aria-live': 'polite' } as any) : {})}
+        style={styles.liveRegionContainer}
+      >
+        <Text style={styles.liveRegionText}>
+          {orders.length > 0
+            ? `${orders.length} pedidos em montagem atualizados em tempo real.`
+            : 'Nenhum pedido em montagem no momento.'}
+        </Text>
+      </View>
+
+      {isLoadingOrders ? (
+        <View style={styles.stateContainer}>
+          <StateView state="loading" message="Carregando pedidos da montagem..." skeletonRows={4} />
+        </View>
+      ) : ordersError ? (
+        <View style={styles.stateContainer}>
+          <StateView state="error" message={ordersError} onRetry={() => fetchOrders()} />
+        </View>
+      ) : (
+        <FlatList
+          data={orders}
+          renderItem={renderItem}
+          keyExtractor={keyExtractor}
+          ListEmptyComponent={ListEmptyComponent}
+          style={styles.list}
+          contentContainerStyle={styles.content}
+          initialNumToRender={8}
+          windowSize={3}
+          maxToRenderPerBatch={5}
+          updateCellsBatchingPeriod={100}
+          removeClippedSubviews={true}
+        />
+      )}
 
       <StatusBar style="light" />
     </View>
@@ -898,6 +917,19 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: 20,
     paddingBottom: 100,
+  },
+  stateContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  liveRegionContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 10,
+  },
+  liveRegionText: {
+    color: colors.textSecondary,
+    fontSize: 12,
   },
   orderCard: {
     backgroundColor: colors.white,

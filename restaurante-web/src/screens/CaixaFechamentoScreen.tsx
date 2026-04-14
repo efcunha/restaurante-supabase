@@ -8,6 +8,8 @@ import { getUserFriendlyMessage } from '../utils/errors';
 import { Caixa, Comanda } from '../types';
 import { supabase } from '../config/SupabaseConfig';
 import { colors } from '../theme/colors';
+import { StateView } from '../ui';
+import logger from '../utils/logger';
 interface FechamentoResult {
   saldoEsperado: number;
   saldoReal: number;
@@ -20,7 +22,12 @@ export default function CaixaFechamentoScreen() {
   const [caixasAbertos, setCaixasAbertos] = useState<Caixa[]>([]);
   const [selectedCaixa, setSelectedCaixa] = useState<Caixa | null>(null);
   const [saldoReal, setSaldoReal] = useState<string>('');
-  const [loading, setLoading] = useState<boolean>(false);
+  const [isLoadingCaixas, setIsLoadingCaixas] = useState<boolean>(false);
+  const [isLoadingCancelados, setIsLoadingCancelados] = useState<boolean>(false);
+  const [isSubmittingFechamento, setIsSubmittingFechamento] = useState<boolean>(false);
+  const [isPrinting, setIsPrinting] = useState<boolean>(false);
+  const [caixasError, setCaixasError] = useState<string | null>(null);
+  const [canceladosError, setCanceladosError] = useState<string | null>(null);
   const [fechamentoResult, setFechamentoResult] = useState<FechamentoResult | null>(null); // Para mostrar modal de sucesso/impressão
   const [blindClosing, setBlindClosing] = useState<boolean>(false); // Configuração de Fechamento Cego
   const [totalCancelado, setTotalCancelado] = useState<number>(0); // ✅ Novo estado para exibir na tela
@@ -47,32 +54,43 @@ export default function CaixaFechamentoScreen() {
         setBlindClosing(data.value.blind_closing || false);
       }
     } catch (e) {
-      console.error("Erro ao carregar config financeira:", e);
+      logger.error('[CaixaFechamentoScreen] failed to load finance config', e);
     }
   };
 
   const loadCaixas = async () => {
     if (!user?.companyId) return;
-    setLoading(true);
-    const abertos = await CaixaService.getCaixasAbertos(user.companyId);
-    setCaixasAbertos(abertos);
-    setLoading(false);
+    setIsLoadingCaixas(true);
+    setCaixasError(null);
+    try {
+      const abertos = await CaixaService.getCaixasAbertos(user.companyId);
+      setCaixasAbertos(abertos || []);
+    } catch (error: any) {
+      logger.error('[CaixaFechamentoScreen] failed to load open caixas', error);
+      setCaixasError(error?.message || 'Falha ao carregar caixas pendentes.');
+      setCaixasAbertos([]);
+    } finally {
+      setIsLoadingCaixas(false);
+    }
   };
 
   const handleSelectCaixa = async (caixa: Caixa) => {
     if (!user?.companyId) return;
     setSelectedCaixa(caixa);
     setSaldoReal('');
+    setCanceladosError(null);
 
     // ✅ Buscar total cancelado ao selecionar o caixa
-    setLoading(true);
+    setIsLoadingCancelados(true);
     try {
       const total = await CaixaService.getTotalCancelados(user.companyId, caixa.data);
       setTotalCancelado(total);
     } catch (e) {
-      console.error('Erro ao buscar cancelados:', e);
+      logger.error('[CaixaFechamentoScreen] failed to load canceled total', e);
+      setCanceladosError('Falha ao carregar total de cancelados.');
+      setTotalCancelado(0);
     } finally {
-      setLoading(false);
+      setIsLoadingCancelados(false);
     }
   };
 
@@ -93,11 +111,11 @@ export default function CaixaFechamentoScreen() {
       );
 
       const confirmFechamento = async () => {
-        setLoading(true);
+        setIsSubmittingFechamento(true);
         try {
           const companyId = user?.companyId;
           if (!companyId) {
-            setLoading(false);
+            setIsSubmittingFechamento(false);
             return;
           }
 
@@ -110,11 +128,11 @@ export default function CaixaFechamentoScreen() {
             selectedCaixa.id
           );
           setFechamentoResult({ ...r, caixaData: selectedCaixa });
-          setLoading(false);
+          setIsSubmittingFechamento(false);
           setSelectedCaixa(null);
           loadCaixas();
         } catch (e: any) {
-          setLoading(false);
+          setIsSubmittingFechamento(false);
           alert('❌ Erro Detalhado: ' + (e.message || String(e)));
         }
       };
@@ -134,7 +152,7 @@ export default function CaixaFechamentoScreen() {
       await confirmFechamento();
 
     } catch (e: any) {
-      setLoading(false);
+      setIsSubmittingFechamento(false);
       alert('❌ Erro: ' + e.message);
     }
   };
@@ -223,21 +241,22 @@ export default function CaixaFechamentoScreen() {
 
   const imprimir = async () => {
     try {
-      setLoading(true);
+      setIsPrinting(true);
       const html = await gerarRelatorioHTML();
       await Print.printAsync({ html });
-      setLoading(false);
+      setIsPrinting(false);
     } catch (e: any) {
-      setLoading(false);
+      setIsPrinting(false);
       alert('Erro ao imprimir: ' + getUserFriendlyMessage(e));
     }
   };
 
-  if (loading && !selectedCaixa && caixasAbertos.length === 0) {
+  if (isLoadingCaixas && !selectedCaixa && caixasAbertos.length === 0) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}><Text style={styles.headerTitle}>Carregando...</Text></View>
-        <ActivityIndicator size="large" color={colors.secondary} style={{ marginTop: 50 }} />
+        <View style={styles.loadingContainer}>
+          <StateView state="loading" message="Carregando caixas pendentes..." skeletonRows={4} />
+        </View>
       </View>
     );
   }
@@ -250,11 +269,21 @@ export default function CaixaFechamentoScreen() {
         {!selectedCaixa && (
           <View>
             <Text style={styles.sectionTitle}>Caixas Pendentes de Fechamento</Text>
-            {caixasAbertos.length === 0 ? (
-              <Text style={{ color: colors.textSecondary, fontStyle: 'italic', marginTop: 10 }}>Nenhum caixa aberto encontrado.</Text>
+            {isLoadingCaixas ? (
+              <StateView state="loading" message="Carregando caixas pendentes..." skeletonRows={3} />
+            ) : caixasError ? (
+              <StateView state="error" message={caixasError} onRetry={loadCaixas} />
+            ) : caixasAbertos.length === 0 ? (
+              <StateView state="empty" message="Nenhum caixa aberto encontrado." onRetry={loadCaixas} />
             ) : (
               caixasAbertos.map((c) => (
-                <TouchableOpacity key={c.id} style={styles.cardItem} onPress={() => handleSelectCaixa(c)}>
+                <TouchableOpacity
+                  key={c.id}
+                  style={styles.cardItem}
+                  onPress={() => handleSelectCaixa(c)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Selecionar caixa de ${c.data} para fechamento`}
+                >
                   <View>
                     <Text style={styles.cardDate}>{c.data}</Text>
                     <Text style={styles.cardStatus}>Aberto por: {c.abertoPorNome}</Text>
@@ -278,7 +307,12 @@ export default function CaixaFechamentoScreen() {
         {/* DETALHES DO CAIXA SELECIONADO */}
         {selectedCaixa && (
           <View>
-            <TouchableOpacity onPress={() => setSelectedCaixa(null)} style={styles.backLink}>
+            <TouchableOpacity
+              onPress={() => setSelectedCaixa(null)}
+              style={styles.backLink}
+              accessibilityRole="button"
+              accessibilityLabel="Voltar para lista de caixas pendentes"
+            >
               <Text style={{ color: colors.primary, fontWeight: 'bold' }}>← Voltar para lista</Text>
             </TouchableOpacity>
 
@@ -309,8 +343,16 @@ export default function CaixaFechamentoScreen() {
               {/* ✅ Exibir Total Cancelado (Informativo) */}
               <View style={[styles.resumoRow, { marginTop: 4 }]}>
                 <Text style={[styles.resumoLabel, { color: colors.textSecondary, fontStyle: 'italic' }]}>Cancelado (Info):</Text>
-                <Text style={[styles.resumoValue, { color: colors.textSecondary, fontStyle: 'italic' }]}>R$ {totalCancelado?.toFixed(2)}</Text>
+                <Text style={[styles.resumoValue, { color: colors.textSecondary, fontStyle: 'italic' }]}>
+                  {isLoadingCancelados ? 'Carregando...' : `R$ ${totalCancelado?.toFixed(2)}`}
+                </Text>
               </View>
+
+              {!!canceladosError && (
+                <Text style={styles.canceladosErrorText} accessibilityRole="alert">
+                  {canceladosError}
+                </Text>
+              )}
 
               <View style={styles.divider} />
 
@@ -347,14 +389,17 @@ export default function CaixaFechamentoScreen() {
               value={saldoReal}
               onChangeText={setSaldoReal}
               placeholder="Ex: 150.00"
+              accessibilityLabel="Saldo real contado no caixa"
             />
 
             <TouchableOpacity
-              style={[styles.btn, loading && styles.btnDisabled]}
+              style={[styles.btn, isSubmittingFechamento && styles.btnDisabled]}
               onPress={fechar}
-              disabled={loading}
+              disabled={isSubmittingFechamento}
+              accessibilityRole="button"
+              accessibilityLabel="Concluir fechamento de caixa"
             >
-              {loading ? (
+              {isSubmittingFechamento ? (
                 <ActivityIndicator color={colors.text} />
               ) : (
                 <Text style={styles.btnText}>CONCLUIR FECHAMENTO</Text>
@@ -365,7 +410,7 @@ export default function CaixaFechamentoScreen() {
       </ScrollView>
 
       {/* MODAL DE SUCESSO / IMPRESSÃO */}
-      <Modal visible={!!fechamentoResult} transparent animationType="slide">
+      <Modal visible={!!fechamentoResult} transparent animationType="slide" accessibilityViewIsModal>
         <View style={styles.modalBg}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>✅ Caixa Fechado!</Text>
@@ -374,17 +419,38 @@ export default function CaixaFechamentoScreen() {
               <View style={{ marginVertical: 15 }}>
                 <Text>Saldo Esperado: R$ {fechamentoResult.saldoEsperado.toFixed(2)}</Text>
                 <Text>Saldo Real: R$ {fechamentoResult.saldoReal.toFixed(2)}</Text>
-                <Text style={{ fontWeight: 'bold', marginTop: 5, color: fechamentoResult.diferenca !== 0 ? 'red' : 'green' }}>
+                <Text
+                  style={{
+                    fontWeight: 'bold',
+                    marginTop: 5,
+                    color: fechamentoResult.diferenca !== 0 ? colors.danger : colors.success
+                  }}
+                >
                   Diferença: R$ {fechamentoResult.diferenca.toFixed(2)}
                 </Text>
               </View>
             )}
 
-            <TouchableOpacity style={[styles.btn, { marginBottom: 10 }]} onPress={imprimir}>
-              <Text style={styles.btnText}>🖨️ IMPRIMIR RELATÓRIO</Text>
+            <TouchableOpacity
+              style={[styles.btn, { marginBottom: 10 }, isPrinting && styles.btnDisabled]}
+              onPress={imprimir}
+              disabled={isPrinting}
+              accessibilityRole="button"
+              accessibilityLabel="Imprimir relatório de fechamento"
+            >
+              {isPrinting ? (
+                <ActivityIndicator color={colors.text} />
+              ) : (
+                <Text style={styles.btnText}>🖨️ IMPRIMIR RELATÓRIO</Text>
+              )}
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => setFechamentoResult(null)} style={{ padding: 15 }}>
+            <TouchableOpacity
+              onPress={() => setFechamentoResult(null)}
+              style={{ padding: 15 }}
+              accessibilityRole="button"
+              accessibilityLabel="Fechar modal e sair"
+            >
               <Text style={{ color: colors.textSecondary }}>Fechar e Sair</Text>
             </TouchableOpacity>
           </View>
@@ -398,8 +464,7 @@ export default function CaixaFechamentoScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  header: { alignItems: 'center', justifyContent: 'center' }, // Adicionado para fallback do header se loading
-  headerTitle: { fontSize: 20, color: colors.text },
+  loadingContainer: { flex: 1, justifyContent: 'center', paddingHorizontal: 20 },
   sectionTitle: { fontSize: 18, fontWeight: 'bold', color: colors.primary, marginBottom: 15 },
   cardItem: { backgroundColor: colors.white, padding: 15, borderRadius: 10, marginBottom: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderColor: colors.border, borderWidth: 1 },
   cardDate: { fontSize: 16, fontWeight: 'bold', color: colors.text },
@@ -420,8 +485,9 @@ const styles = StyleSheet.create({
   resumoValueBold: { fontSize: 16, fontWeight: 'bold', color: colors.text },
   totalLabel: { marginTop: 5 },
   totalValue: { marginTop: 5, fontSize: 18, color: colors.success }, // Highlight esperado
+  canceladosErrorText: { marginTop: 6, color: colors.danger, fontSize: 12, fontWeight: '600' },
   divider: { height: 1, backgroundColor: colors.border, marginVertical: 8 },
-  modalBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+  modalBg: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', alignItems: 'center' },
   modalCard: { backgroundColor: colors.white, width: '85%', padding: 25, borderRadius: 15, alignItems: 'center' },
   modalTitle: { fontSize: 22, fontWeight: 'bold', color: colors.text },
 });

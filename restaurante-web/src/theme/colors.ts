@@ -50,6 +50,13 @@ const semanticRaw = {
 } as const;
 
 /* ------------------------------------------------------------------ */
+/*  Migration guidance                                                  */
+/*  USE: designColors                                                   */
+/*  LEGADO: colors (flat)                                               */
+/*  NAO USE: colorSystem em telas novas                                */
+/* ------------------------------------------------------------------ */
+
+/* ------------------------------------------------------------------ */
 /*  Legacy colorSystem — preserved for backward compatibility.         */
 /* ------------------------------------------------------------------ */
 
@@ -206,6 +213,9 @@ export const designColors: typeof _lightDesignColors | typeof _darkDesignColors 
   const scheme = getScheme();
   return scheme === 'dark' ? _darkDesignColors : _lightDesignColors;
 })();
+
+/** Explicit alias for new code paths while legacy screens still use flat colors. */
+export const uiColors = designColors;
 
 /* ------------------------------------------------------------------ */
 /*  Legacy compatibility alias.                                        */

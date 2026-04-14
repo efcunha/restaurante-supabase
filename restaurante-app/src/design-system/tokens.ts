@@ -246,6 +246,18 @@ export const shadows = {
 } as const;
 
 /* ------------------------------------------------------------------ */
+/*  Breakpoints (app parity with web)                                  */
+/* ------------------------------------------------------------------ */
+
+/** Responsive breakpoints in pixels for cross-platform layout parity. */
+export const breakpoints = {
+  sm: 640,
+  md: 768,
+  lg: 1024,
+  xl: 1280,
+} as const;
+
+/* ------------------------------------------------------------------ */
 /*  Layout                                                             */
 /* ------------------------------------------------------------------ */
 
@@ -265,3 +277,4 @@ export type LetterSpacingToken = keyof typeof letterSpacings;
 export type BorderRadiusToken = keyof typeof borderRadius;
 export type BorderWidthToken = keyof typeof borderWidth;
 export type ShadowToken = keyof typeof shadows;
+export type BreakpointToken = keyof typeof breakpoints;

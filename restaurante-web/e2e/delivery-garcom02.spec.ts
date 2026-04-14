@@ -41,15 +41,52 @@ test.describe('Fluxo de Pedido Delivery - Garcom 02', () => {
     });
 
     // 1. Navega para Pedido Delivery
-    // Sidebar web usa Pressable com role="button"; mantemos fallback para link.
+    // Sidebar web usa Pressable com role="button"; adicionamos fallback robusto para variações do menu.
     console.log('STEP 1: click Pedido Delivery');
-    const deliveryNavButton = page.getByRole('button', { name: /Pedido Delivery|Delivery/i }).first();
-    const deliveryNavLink = page.getByRole('link', { name: /Pedido Delivery|Delivery/i }).first();
+    const navCandidates = [
+      page.getByRole('button', { name: /^Pedido Delivery$/ }).first(),
+      page.getByRole('button', { name: /Pedido Delivery|Delivery/i }).first(),
+      page.getByLabel('Pedido Delivery').first(),
+      page.getByText('Pedido Delivery', { exact: true }).first(),
+      page.getByRole('link', { name: /Pedido Delivery|Delivery/i }).first(),
+    ];
 
-    if (await deliveryNavButton.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await deliveryNavButton.click();
-    } else {
-      await deliveryNavLink.click();
+    let clicked = false;
+    for (const candidate of navCandidates) {
+      if (await candidate.isVisible({ timeout: 1500 }).catch(() => false)) {
+        await candidate.click();
+        clicked = true;
+        break;
+      }
+    }
+
+    if (!clicked) {
+      const clickedViaDom = await page.evaluate(() => {
+        const selectors = [
+          '[aria-label="Pedido Delivery"]',
+          'button[aria-label="Pedido Delivery"]',
+          '[role="button"][aria-label="Pedido Delivery"]',
+        ];
+
+        for (const selector of selectors) {
+          const el = document.querySelector(selector) as HTMLElement | null;
+          if (el) {
+            el.click();
+            return true;
+          }
+        }
+
+        const textNode = Array.from(document.querySelectorAll('button, [role="button"], a, div, span'))
+          .find((node) => (node.textContent || '').trim() === 'Pedido Delivery') as HTMLElement | undefined;
+        if (textNode) {
+          textNode.click();
+          return true;
+        }
+
+        return false;
+      });
+
+      expect(clickedViaDom).toBeTruthy();
     }
 
     // 2. Aguarda o formulário carregar

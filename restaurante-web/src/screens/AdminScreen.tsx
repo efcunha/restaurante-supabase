@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, View, ScrollView, AppState, Platform } from 'react-native';
+import { StyleSheet, View, ScrollView, AppState, Platform, Text } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { supabase } from '../config/SupabaseConfig';
 import { getTodayKey, getDateKeyRange, Period } from '../utils/dateUtils'; // Migrated from FirebaseOptimizations
 import { getBusinessDateKey } from '../services/BusinessDateService';
+import LoggerService from '../services/LoggerService';
+import { StateView } from '../ui';
+import { normalizeRole, Roles } from '../auth/roles';
 
 // @ts-ignore
 import FuncionariosScreen from './FuncionariosScreen';
@@ -128,6 +131,7 @@ export default function AdminScreen() {
   });
 
   const [loadingVendas, setLoadingVendas] = useState(true);
+  const [adminError, setAdminError] = useState<string | null>(null);
 
   // Ref para detectar quando o app volta ao foreground
   const appState = useRef(AppState.currentState);
@@ -141,8 +145,21 @@ export default function AdminScreen() {
     reloadTimeout.current = setTimeout(() => {
       carregarEstatisticas();
       carregarEstatisticasVendas();
-    }, 1000); // Aguarda 1s antes de recarregar
+    }, 300); // Aguarda 300ms antes de recarregar
   };
+
+  const normalizedRole = normalizeRole((user as any)?.role);
+  const canAccessAdmin = normalizedRole === Roles.ADMIN || normalizedRole === Roles.GERENTE;
+
+  useEffect(() => {
+    if (!canAccessAdmin && user?.id) {
+      LoggerService.warn('Tentativa de acesso ao AdminScreen sem permissao', {
+        userId: user.id,
+        role: normalizedRole,
+        companyId: user.companyId,
+      });
+    }
+  }, [canAccessAdmin, normalizedRole, user?.companyId, user?.id]);
 
   // Carregar estatísticas ao montar o componente
   useEffect(() => {
@@ -243,7 +260,11 @@ export default function AdminScreen() {
     // Previously measured by PerformanceService (removed - Firebase specific)
     try {
       setLoadingStats(true);
-      if (!user?.companyId) return;
+      setAdminError(null);
+      if (!user?.companyId) {
+        setAdminError('Empresa nao identificada para carregar estatisticas do admin.');
+        return;
+      }
 
       const today = await getBusinessDateKey(user.companyId);
       const { data: pedidos, error } = await supabase
@@ -303,7 +324,10 @@ export default function AdminScreen() {
       });
 
     } catch (error) {
-      console.error('❌ Erro ao carregar estatísticas:', error);
+      LoggerService.logError(error as Error, 'AdminScreen#carregarEstatisticas', {
+        companyId: user?.companyId,
+      });
+      setAdminError('Erro ao carregar estatisticas operacionais.');
     } finally {
       setLoadingStats(false);
     }
@@ -320,9 +344,13 @@ export default function AdminScreen() {
     // Previously measured by PerformanceService (removed - Firebase specific)
     try {
       setLoadingVendas(true);
+      setAdminError(null);
 
       const { startKey: dateKeyInicio, endKey: dateKeyFim } = getDateKeyRange(periodoSelecionado);
-      if (!user?.companyId) return;
+      if (!user?.companyId) {
+        setAdminError('Empresa nao identificada para carregar vendas.');
+        return;
+      }
 
       // Fetch concurrently
       const [salesResult, canceledResult] = await Promise.all([
@@ -372,7 +400,11 @@ export default function AdminScreen() {
       });
 
     } catch (error) {
-      console.error('❌ Erro ao carregar estatísticas de vendas:', error);
+      LoggerService.logError(error as Error, 'AdminScreen#carregarEstatisticasVendas', {
+        companyId: user?.companyId,
+        period: periodoSelecionado,
+      });
+      setAdminError('Erro ao carregar estatisticas de vendas.');
     } finally {
       setLoadingVendas(false);
     }
@@ -427,29 +459,49 @@ export default function AdminScreen() {
         userName={user?.name || user?.email || undefined}
       />
 
-      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+      {!canAccessAdmin && (
+        <View style={styles.accessDeniedContainer}>
+          <StateView
+            state="error"
+            message="Acesso restrito. Somente admin ou gerente pode acessar o painel administrativo."
+          />
+        </View>
+      )}
+
+      {canAccessAdmin && (
+        <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
         <TrialBanner />
 
-        <AdminStatsCards
-          loadingStats={loadingStats}
-          stats={stats}
-          onRefreshStats={carregarEstatisticas}
-          loadingVendas={loadingVendas}
-          vendasStats={vendasStats}
-          periodoSelecionado={periodoSelecionado}
-          onSelectPeriodo={setPeriodoSelecionado}
-          onRefreshVendas={carregarEstatisticasVendas}
-          formatarMoeda={formatarMoeda}
-        />
+          <StateView
+            state={(loadingStats || loadingVendas) ? 'loading' : (adminError ? 'error' : 'ready')}
+            message={adminError || undefined}
+            onRetry={() => {
+              carregarEstatisticas();
+              carregarEstatisticasVendas();
+            }}
+          >
+            <AdminStatsCards
+              loadingStats={loadingStats}
+              stats={stats}
+              onRefreshStats={carregarEstatisticas}
+              loadingVendas={loadingVendas}
+              vendasStats={vendasStats}
+              periodoSelecionado={periodoSelecionado}
+              onSelectPeriodo={setPeriodoSelecionado}
+              onRefreshVendas={carregarEstatisticasVendas}
+              formatarMoeda={formatarMoeda}
+            />
+          </StateView>
 
-        <AdminSection title="FINANCEIRO">
-          {renderReportList(financialReports, { keyPrefix: 'fin' })}
-        </AdminSection>
+          <AdminSection title="FINANCEIRO">
+            {renderReportList(financialReports, { keyPrefix: 'fin' })}
+          </AdminSection>
 
-        <AdminSection title="SISTEMA">
-          {renderReportList(reports, { keyPrefix: 'sys' })}
-        </AdminSection>
-      </ScrollView>
+          <AdminSection title="SISTEMA">
+            {renderReportList(reports, { keyPrefix: 'sys' })}
+          </AdminSection>
+        </ScrollView>
+      )}
 
       {/* Modal de Funcionários */}
       <AdminSlideModal visible={showFuncionarios} onClose={() => setShowFuncionarios(false)}>
@@ -675,6 +727,10 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  accessDeniedContainer: {
+    paddingHorizontal: spacing.s16,
+    paddingTop: spacing.s16,
   },
   contentContainer: {
     width: '100%',

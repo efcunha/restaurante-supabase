@@ -7,7 +7,7 @@ import React, { memo, useCallback, useState, useMemo, useEffect, useRef } from '
 import { useNovoPedido, type SubmitOrderResult } from '../hooks/useNovoPedido';
 import { usePerformanceMonitor } from '../hooks/usePerformanceMonitor';
 import { useResponsive } from '../hooks/useResponsive';
-import { Button, Navbar } from '../ui';
+import { Button, Navbar, StateView } from '../ui';
 import { isFeatureEnabled } from '../config/featureFlags';
 import { useFocusEffect } from '@react-navigation/native';
 // @ts-ignore
@@ -32,10 +32,16 @@ if (Platform.OS === 'android') {
 interface QuantityButtonProps {
   onPress: () => void;
   text: string;
+  accessibilityLabel?: string;
 }
 
-const QuantityButton = memo(({ onPress, text }: QuantityButtonProps) => (
-  <TouchableOpacity style={styles.quantityBtn} onPress={onPress}>
+const QuantityButton = memo(({ onPress, text, accessibilityLabel }: QuantityButtonProps) => (
+  <TouchableOpacity
+    style={styles.quantityBtn}
+    onPress={onPress}
+    accessibilityRole="button"
+    accessibilityLabel={accessibilityLabel}
+  >
     <Text style={styles.quantityBtnText}>{text}</Text>
   </TouchableOpacity>
 ));
@@ -255,11 +261,21 @@ const StandardRow = memo(({ item, produtos, onIncrement, onDecrement, type, temp
         <Text style={styles.verticalPrice}>R$ {item.price?.toFixed(2)}</Text>
 
         <View style={styles.quantityControl}>
-          <TouchableOpacity style={[styles.roundBtn, { backgroundColor: colors.danger }]} onPress={handleDec}>
+          <TouchableOpacity
+            style={[styles.roundBtn, { backgroundColor: colors.danger }]}
+            onPress={handleDec}
+            accessibilityRole="button"
+            accessibilityLabel={`Remover unidade de ${item.name}`}
+          >
             <Text style={styles.roundBtnText}>−</Text>
           </TouchableOpacity>
           <Text style={styles.qtyText}>{qty}</Text>
-          <TouchableOpacity style={[styles.roundBtn, { backgroundColor: colors.success }]} onPress={handleInc}>
+          <TouchableOpacity
+            style={[styles.roundBtn, { backgroundColor: colors.success }]}
+            onPress={handleInc}
+            accessibilityRole="button"
+            accessibilityLabel={`Adicionar unidade de ${item.name}`}
+          >
             <Text style={styles.roundBtnText}>+</Text>
           </TouchableOpacity>
         </View>
@@ -395,11 +411,21 @@ const StackedVariationRow = memo(({ name, price, qty, color, onInc, onDec, itemK
 
       {/* Right Side: Controls (Outside) */}
       <View style={styles.variationControlsOutside}>
-        <TouchableOpacity style={[styles.roundBtn, { backgroundColor: colors.danger }]} onPress={handleDec}>
+        <TouchableOpacity
+          style={[styles.roundBtn, { backgroundColor: colors.danger }]}
+          onPress={handleDec}
+          accessibilityRole="button"
+          accessibilityLabel={`Remover ${name}`}
+        >
           <Text style={styles.roundBtnText}>−</Text>
         </TouchableOpacity>
         <Text style={styles.qtyText}>{qty}</Text>
-        <TouchableOpacity style={[styles.roundBtn, { backgroundColor: colors.success }]} onPress={handleInc}>
+        <TouchableOpacity
+          style={[styles.roundBtn, { backgroundColor: colors.success }]}
+          onPress={handleInc}
+          accessibilityRole="button"
+          accessibilityLabel={`Adicionar ${name}`}
+        >
           <Text style={styles.roundBtnText}>+</Text>
         </TouchableOpacity>
       </View>
@@ -425,7 +451,12 @@ const VariationRow = memo(({ label, qty, color, onInc, onDec, itemKey, last, for
 
   return (
     <View style={[styles.variationRow, last && { marginBottom: 12 }]}>
-      <TouchableOpacity style={[styles.variationLabelBtn, { backgroundColor: colors.surfaceMuted, borderLeftWidth: 4, borderLeftColor: color }]} onPress={handleInc}>
+      <TouchableOpacity
+        style={[styles.variationLabelBtn, { backgroundColor: colors.surfaceMuted, borderLeftWidth: 4, borderLeftColor: color }]}
+        onPress={handleInc}
+        accessibilityRole="button"
+        accessibilityLabel={`Adicionar ${label}`}
+      >
         <Text
           style={styles.variationLabelText}
           numberOfLines={forceOneLine ? 1 : undefined}
@@ -436,11 +467,21 @@ const VariationRow = memo(({ label, qty, color, onInc, onDec, itemKey, last, for
         </Text>
       </TouchableOpacity>
       <View style={styles.variationControls}>
-        <TouchableOpacity style={[styles.roundBtn, { backgroundColor: colors.danger }]} onPress={handleDec}>
+        <TouchableOpacity
+          style={[styles.roundBtn, { backgroundColor: colors.danger }]}
+          onPress={handleDec}
+          accessibilityRole="button"
+          accessibilityLabel={`Remover ${label}`}
+        >
           <Text style={styles.roundBtnText}>−</Text>
         </TouchableOpacity>
         <Text style={styles.qtyText}>{qty}</Text>
-        <TouchableOpacity style={[styles.roundBtn, { backgroundColor: colors.success }]} onPress={handleInc}>
+        <TouchableOpacity
+          style={[styles.roundBtn, { backgroundColor: colors.success }]}
+          onPress={handleInc}
+          accessibilityRole="button"
+          accessibilityLabel={`Adicionar ${label}`}
+        >
           <Text style={styles.roundBtnText}>+</Text>
         </TouchableOpacity>
       </View>
@@ -548,7 +589,7 @@ export default function NovoPedidoScreen({ route, navigation }: any) {
         return;
       }
 
-      console.log('🔄 NovoPedidoScreen focused, refreshing menu...');
+      logger.debug('[NovoPedidoScreen] focus refresh cardapio');
       carregarCardapio();
     }, [carregarCardapio])
   );
@@ -578,7 +619,7 @@ export default function NovoPedidoScreen({ route, navigation }: any) {
         }
         setAdicionaisMap(map);
       })
-      .catch(err => console.warn('[NovoPedidoScreen] Failed to load adicionais:', err));
+        .catch(() => logger.warn('[NovoPedidoScreen] Failed to load adicionais'));
   }, [cardapio.porcoes, user?.companyId]);
 
   const handleHeaderRefresh = useCallback(async () => {
@@ -1057,10 +1098,8 @@ export default function NovoPedidoScreen({ route, navigation }: any) {
   if (loadingCardapio) {
     return (
       <View style={styles.container}>
-  
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Carregando cardápio...</Text>
+          <StateView state="loading" message="Carregando cardapio..." skeletonRows={6} />
         </View>
       </View>
     );
@@ -1190,6 +1229,12 @@ export default function NovoPedidoScreen({ route, navigation }: any) {
         scrollEventThrottle={16}
         disableScrollViewPanResponder={false}
         decelerationRate="normal"
+        ListEmptyComponent={
+          <StateView
+            state="empty"
+            message={searchQuery.trim() ? 'Nenhum item encontrado para a busca atual.' : 'Nenhum item disponivel no cardapio.'}
+          />
+        }
       />
 
       <NewOrderCartFooter

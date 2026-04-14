@@ -84,6 +84,8 @@ export default function CaixaAberturaScreen({ onSuccess }: Props) {
             style={[styles.btn, loading && styles.btnDisabled]}
             onPress={abrirCaixa}
             disabled={loading}
+            accessibilityRole="button"
+            accessibilityLabel="Abrir caixa com valor inicial informado"
           >
             <Text style={styles.btnText}>
               {loading ? 'ABRINDO...' : 'ABRIR CAIXA'}

@@ -1,11 +1,11 @@
 ﻿import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, SectionList, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, LayoutAnimation, Platform, UIManager, SectionListRenderItem, Alert } from 'react-native';
+import { StyleSheet, Text, View, SectionList, ScrollView, TouchableOpacity, TextInput, LayoutAnimation, Platform, UIManager, SectionListRenderItem, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import React, { memo, useCallback, useState, useMemo, useRef } from 'react';
 
 import { useNovoPedido } from '../hooks/useNovoPedido';
 import { usePerformanceMonitor } from '../hooks/usePerformanceMonitor';
-import { Button } from '../ui';
+import { StateView } from '../ui';
 import { useFocusEffect } from '@react-navigation/native';
 import PizzaBuilderModal from '../components/PizzaBuilderModal';
 import AdicionaisPickerModal from '../components/AdicionaisPickerModal';
@@ -21,6 +21,7 @@ import { NewOrderListFooter, PizzaProductCard } from '../features/new-order';
 import { DeliveryOrderForm, DeliverySubmitFooter } from '../features/delivery';
 import { isFeatureEnabled } from '../config/featureFlags';
 import { colors } from '../theme/colors';
+import logger from '../utils/logger';
 if (Platform.OS === 'android') {
   if (UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -222,9 +223,24 @@ const StackedVariationRow = memo(({ name, price, qty, color, onInc, onDec, itemK
         <Text style={styles.stackedPriceText}>R$ {price.toFixed(2)}</Text>
       </TouchableOpacity>
       <View style={styles.variationControlsOutside}>
-        <TouchableOpacity style={[styles.roundBtn, { backgroundColor: colors.danger }]} onPress={handleDec}><Text style={styles.roundBtnText}>−</Text></TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.roundBtn, { backgroundColor: colors.danger }]}
+          onPress={handleDec}
+          accessibilityRole="button"
+          accessibilityLabel={`Remover uma unidade de ${name}`}
+        >
+          <Text style={styles.roundBtnText}>−</Text>
+        </TouchableOpacity>
         <Text style={styles.qtyText}>{qty}</Text>
-        <TouchableOpacity testID={`delivery-inc-${toTestId(itemKey)}`} style={[styles.roundBtn, { backgroundColor: colors.success }]} onPress={handleInc}><Text style={styles.roundBtnText}>+</Text></TouchableOpacity>
+        <TouchableOpacity
+          testID={`delivery-inc-${toTestId(itemKey)}`}
+          style={[styles.roundBtn, { backgroundColor: colors.success }]}
+          onPress={handleInc}
+          accessibilityRole="button"
+          accessibilityLabel={`Adicionar uma unidade de ${name}`}
+        >
+          <Text style={styles.roundBtnText}>+</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -240,9 +256,24 @@ const VariationRow = memo(({ label, qty, color, onInc, onDec, itemKey, last, for
         <Text style={styles.variationLabelText} numberOfLines={forceOneLine ? 1 : undefined} adjustsFontSizeToFit={forceOneLine} minimumFontScale={0.6}>{label}</Text>
       </TouchableOpacity>
       <View style={styles.variationControls}>
-        <TouchableOpacity style={[styles.roundBtn, { backgroundColor: colors.danger }]} onPress={handleDec}><Text style={styles.roundBtnText}>−</Text></TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.roundBtn, { backgroundColor: colors.danger }]}
+          onPress={handleDec}
+          accessibilityRole="button"
+          accessibilityLabel={`Remover uma unidade de ${label}`}
+        >
+          <Text style={styles.roundBtnText}>−</Text>
+        </TouchableOpacity>
         <Text style={styles.qtyText}>{qty}</Text>
-        <TouchableOpacity testID={`delivery-inc-${toTestId(itemKey)}`} style={[styles.roundBtn, { backgroundColor: colors.success }]} onPress={handleInc}><Text style={styles.roundBtnText}>+</Text></TouchableOpacity>
+        <TouchableOpacity
+          testID={`delivery-inc-${toTestId(itemKey)}`}
+          style={[styles.roundBtn, { backgroundColor: colors.success }]}
+          onPress={handleInc}
+          accessibilityRole="button"
+          accessibilityLabel={`Adicionar uma unidade de ${label}`}
+        >
+          <Text style={styles.roundBtnText}>+</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -266,6 +297,7 @@ export default function DeliveryScreen() {
   const [changeFor, setChangeFor] = useState('');
   const [isSearchingCep, setIsSearchingCep] = useState(false);
   const [isSubmittingDelivery, setIsSubmittingDelivery] = useState(false);
+  const [adicionaisLoadError, setAdicionaisLoadError] = useState<string | null>(null);
 
   const { startMonitoring, stopMonitoring, logMetrics, isMonitoring } = usePerformanceMonitor();
   const {
@@ -298,7 +330,7 @@ export default function DeliveryScreen() {
           setDeliveryAddress(`${data.logradouro}, Número, ${data.bairro}, ${data.localidade} - ${data.uf}`);
         }
       } catch (err) {
-        console.error('Erro ao buscar CEP:', err);
+        logger.error('[DeliveryScreen] failed to fetch CEP', err);
       } finally {
         setIsSearchingCep(false);
       }
@@ -323,7 +355,7 @@ export default function DeliveryScreen() {
           if (data.cep && !deliveryCep) setDeliveryCep(data.cep);
         }
       } catch (err) {
-        console.log('Cliente não encontrado ou erro na busca:', err);
+        logger.warn('[DeliveryScreen] customer lookup failed or not found');
       }
     }
   };
@@ -432,7 +464,7 @@ export default function DeliveryScreen() {
       setPaymentMethod('dinheiro');
       setChangeFor('');
     } catch (err) {
-      console.error('Erro ao lançar delivery:', err);
+      logger.error('[DeliveryScreen] failed to submit delivery order', err);
       Alert.alert('Erro', 'Não foi possível lançar o pedido.');
     } finally {
       setIsSubmittingDelivery(false);
@@ -534,6 +566,7 @@ export default function DeliveryScreen() {
   React.useEffect(() => {
     if (!user?.companyId) {
       setAdicionaisMap({});
+      setAdicionaisLoadError(null);
       return;
     }
     if (!cardapio.porcoes || cardapio.porcoes.length === 0) return;
@@ -546,8 +579,12 @@ export default function DeliveryScreen() {
           if (list.length > 0) map[id] = list;
         }
         setAdicionaisMap(map);
+        setAdicionaisLoadError(null);
       })
-      .catch((err: any) => console.warn('[DeliveryScreen] Failed to load adicionais:', err));
+      .catch((err: any) => {
+        logger.warn('[DeliveryScreen] failed to load adicionais for porcoes');
+        setAdicionaisLoadError(err?.message || 'Falha ao carregar adicionais.');
+      });
   }, [cardapio.porcoes, user?.companyId]);
 
   const handlePorcaoIncrement = useCallback((product: Product & { price: number }) => {
@@ -580,8 +617,7 @@ export default function DeliveryScreen() {
     return (
       <View style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Carregando cardápio Delivery...</Text>
+          <StateView state="loading" message="Carregando cardapio Delivery..." skeletonRows={4} />
         </View>
       </View>
     );
@@ -629,6 +665,11 @@ export default function DeliveryScreen() {
           </ScrollView>
 
           <View style={styles.rightPanel}>
+            {!!adicionaisLoadError && (
+              <Text style={styles.remoteWarningText} accessibilityRole="alert">
+                {adicionaisLoadError}
+              </Text>
+            )}
             <View style={styles.searchContainer}>
               <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.searchIcon} />
               <TextInput
@@ -641,7 +682,12 @@ export default function DeliveryScreen() {
                 autoCorrect={false}
               />
               {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.searchClearBtn}>
+                <TouchableOpacity
+                  onPress={() => setSearchQuery('')}
+                  style={styles.searchClearBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel="Limpar busca do cardapio"
+                >
                   <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
                 </TouchableOpacity>
               )}
@@ -725,7 +771,13 @@ const styles = StyleSheet.create({
   produtoPrice: { fontSize: 17, fontWeight: '700', color: colors.primary, textAlign: 'left', marginTop: 4 },
   quantityControl: { flexDirection: 'row', alignItems: 'center' },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loadingText: { marginTop: 12, fontSize: 16, color: colors.primary },
+  remoteWarningText: {
+    color: colors.warning,
+    fontSize: 13,
+    fontWeight: '600',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
   searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, paddingHorizontal: 15, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border },
   searchIcon: { marginRight: 8 },
   searchInput: { flex: 1, fontSize: 16, color: colors.text, paddingVertical: 8, outlineStyle: 'none' as any },

@@ -10,6 +10,8 @@ import { formatCurrency } from '../utils/formatCurrency';
 import { Caixa } from '../types';
 import { ScreenScaffold } from '../layouts/ScreenScaffold';
 import { colors } from '../theme/colors';
+import { StateView } from '../ui';
+import logger from '../utils/logger';
 interface CaixaHistoricoScreenProps {
   onClose: () => void;
 }
@@ -18,16 +20,31 @@ export default function CaixaHistoricoScreen({ onClose }: CaixaHistoricoScreenPr
   const { user } = useAuth();
   const [registros, setRegistros] = useState<Caixa[]>([]);
   const [selectedCaixa, setSelectedCaixa] = useState<Caixa | null>(null);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+
+  const fetchHistory = async () => {
+    if (!user?.companyId) {
+      setRegistros([]);
+      return;
+    }
+    setIsLoadingHistory(true);
+    setHistoryError(null);
+    try {
+      const data = await CaixaService.historico(user.companyId);
+      setRegistros(data || []);
+    } catch (error: any) {
+      logger.error('[CaixaHistoricoScreen] failed to fetch history', error);
+      setHistoryError(error?.message || 'Falha ao carregar historico de caixas.');
+      setRegistros([]);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchHistory = async () => {
-      if (user?.companyId) {
-        const data = await CaixaService.historico(user.companyId);
-        setRegistros(data);
-      }
-    };
     fetchHistory();
-  }, [user]);
+  }, [user?.companyId]);
 
   const formatDate = (dateStr?: string): string => {
     if (!dateStr) return '';
@@ -49,10 +66,24 @@ export default function CaixaHistoricoScreen({ onClose }: CaixaHistoricoScreenPr
       leftAction={{ label: 'Voltar', onPress: onClose }}
     >
       <ScrollView contentContainerStyle={{ padding: 15 }}>
-        <Text style={styles.hintText}>Toque em um cartão para ver o extrato completo</Text>
+        {isLoadingHistory ? (
+          <StateView state="loading" message="Carregando historico de caixas..." skeletonRows={5} />
+        ) : historyError ? (
+          <StateView state="error" message={historyError} onRetry={fetchHistory} />
+        ) : registros.length === 0 ? (
+          <StateView state="empty" message="Nenhum historico de caixa encontrado." onRetry={fetchHistory} />
+        ) : (
+          <>
+            <Text style={styles.hintText}>Toque em um cartao para ver o extrato completo</Text>
 
-        {registros.map((c) => (
-          <TouchableOpacity key={c.id} style={styles.card} onPress={() => setSelectedCaixa(c)}>
+            {registros.map((c) => (
+          <TouchableOpacity
+            key={c.id}
+            style={styles.card}
+            onPress={() => setSelectedCaixa(c)}
+            accessibilityRole="button"
+            accessibilityLabel={`Abrir extrato do caixa de ${formatDate(c.data)}`}
+          >
             {/* Header do Card */}
             <View style={styles.cardHeader}>
               <View style={styles.dateContainer}>
@@ -118,9 +149,16 @@ export default function CaixaHistoricoScreen({ onClose }: CaixaHistoricoScreenPr
             </View>
           </TouchableOpacity>
         ))}
+          </>
+        )}
       </ScrollView>
 
-      <Modal visible={!!selectedCaixa} animationType="slide" onRequestClose={() => setSelectedCaixa(null)}>
+      <Modal
+        visible={!!selectedCaixa}
+        animationType="slide"
+        onRequestClose={() => setSelectedCaixa(null)}
+        accessibilityViewIsModal
+      >
         <CashFlowScreen caixa={selectedCaixa} onClose={() => setSelectedCaixa(null)} />
       </Modal>
 

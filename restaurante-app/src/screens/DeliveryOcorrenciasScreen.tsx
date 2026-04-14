@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,6 +7,8 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../config/SupabaseConfig';
 import { getBusinessDateKey } from '../services/BusinessDateService';
 import { colors } from '../theme/colors';
+import { StateView } from '../ui';
+import logger from '../utils/logger';
 
 type DeliveryFailureStatus = 'failed_delivery' | 'returned' | 'refused';
 
@@ -85,9 +87,11 @@ export default function DeliveryOcorrenciasScreen({ onClose }: DeliveryOcorrenci
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<string>('');
   const [operatorFilter, setOperatorFilter] = useState('');
   const [occurrences, setOccurrences] = useState<DeliveryOccurrence[]>([]);
+  const realtimeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -144,13 +148,25 @@ export default function DeliveryOcorrenciasScreen({ onClose }: DeliveryOcorrenci
       });
 
       setOccurrences(mapped);
+      setFetchError(null);
     } catch (err) {
-      console.error('[DeliveryOcorrencias] erro ao buscar ocorrencias:', err);
+      logger.error('[DeliveryOcorrenciasScreen] failed to fetch delivery occurrences', err);
+      setFetchError('Falha ao carregar ocorrencias. Tente novamente.');
       setOccurrences([]);
     } finally {
       setLoading(false);
     }
   }, [selectedDay, user]);
+
+  const scheduleRealtimeRefresh = useCallback(() => {
+    if (realtimeDebounceRef.current) {
+      clearTimeout(realtimeDebounceRef.current);
+    }
+
+    realtimeDebounceRef.current = setTimeout(() => {
+      fetchOccurrences();
+    }, 300);
+  }, [fetchOccurrences]);
 
   useEffect(() => {
     fetchOccurrences();
@@ -176,16 +192,19 @@ export default function DeliveryOcorrenciasScreen({ onClose }: DeliveryOcorrenci
             ['failed_delivery', 'returned', 'refused'].includes(oldStatus);
 
           if (isFailureStatus) {
-            fetchOccurrences();
+            scheduleRealtimeRefresh();
           }
         }
       )
       .subscribe();
 
     return () => {
+      if (realtimeDebounceRef.current) {
+        clearTimeout(realtimeDebounceRef.current);
+      }
       channel.unsubscribe();
     };
-  }, [fetchOccurrences, user]);
+  }, [fetchOccurrences, scheduleRealtimeRefresh, user?.companyId]);
 
   const dayOptions = useMemo(() => {
     const uniqueDays = Array.from(new Set(occurrences.map(item => item.dateKey))).sort((a, b) => b.localeCompare(a));

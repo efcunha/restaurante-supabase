@@ -12,6 +12,9 @@ import { getUserFriendlyMessage } from '../utils/errors';
 import { validateEmail } from '../utils/validation';
 import MFAVerificationModal from '../components/MFAVerificationModal';
 import { colors } from '../theme/colors';
+import { colorSystem } from '../design-system';
+import { FieldRow, FormSection, ScreenHeader } from '../ui';
+import logger from '../utils/logger';
 
 interface Props {
   navigation: NativeStackNavigationProp<any>;
@@ -32,18 +35,27 @@ export default function LoginScreen({ navigation }: Props) {
   const [senha, setSenha] = useState('');
   const [loading, setLoading] = useState(false);
   const [mostrarSenha, setMostrarSenha] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const handleLogin = async () => {
+    setSubmitError(null);
     if (!email.trim() || !senha.trim()) {
+      logger.warn('[LoginScreen] login attempt with missing credentials');
       showToast('Preencha email e senha', 'warning');
       return;
     }
 
     setLoading(true);
+    const emailTrimmed = email.toLowerCase().trim();
     try {
-      await login(email.toLowerCase().trim(), senha);
-    } catch (error) {
-      Alert.alert('Erro no Login', getUserFriendlyMessage(error));
+      logger.info('[LoginScreen] login attempt initiated', { email: emailTrimmed });
+      await login(emailTrimmed, senha);
+      logger.info('[LoginScreen] login successful', { email: emailTrimmed });
+    } catch (error: any) {
+      logger.error('[LoginScreen] login failed', error, { email: emailTrimmed });
+      const userMessage = getUserFriendlyMessage(error);
+      setSubmitError(userMessage);
+      Alert.alert('Erro no Login', userMessage);
     } finally {
       setLoading(false);
     }
@@ -99,42 +111,52 @@ export default function LoginScreen({ navigation }: Props) {
               />
             )}
             <View style={[styles.formCard, isShortScreen && styles.formCardShort]}>
-              <Text style={styles.formEyebrow}>Acesso restrito</Text>
-              <Text style={[styles.formTitle, isShortScreen && styles.formTitleShort]}>Entrar na plataforma</Text>
-              <Text style={[styles.formSubtitle, isShortScreen && styles.formSubtitleShort]}>
-                Use o usuario e a senha fornecidos pelo administrador para acessar o ambiente do restaurante.
-              </Text>
+              <ScreenHeader
+                title="Entrar na plataforma"
+                subtitle="Use o usuario e a senha fornecidos pelo administrador para acessar o ambiente do restaurante."
+              />
 
-              <View style={[styles.fieldGroup, isShortScreen && styles.fieldGroupShort]}>
-                <Text style={styles.label}>Email</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="seu@email.com"
-                  placeholderTextColor="#7A8B97"
-                  value={email}
-                  onChangeText={setEmail}
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                />
-              </View>
-
-              <View style={[styles.fieldGroup, isShortScreen && styles.fieldGroupShort]}>
-                <Text style={styles.label}>Senha</Text>
-                <View style={styles.passwordContainer}>
+              <FormSection title="Acesso restrito">
+                <FieldRow label="Email" required>
                   <TextInput
-                    style={styles.passwordInput}
-                    placeholder="••••••••"
-                    placeholderTextColor="#7A8B97"
-                    value={senha}
-                    onChangeText={setSenha}
-                    secureTextEntry={!mostrarSenha}
+                    style={styles.input}
+                    placeholder="seu@email.com"
+                    placeholderTextColor={colorSystem.textMuted}
+                    value={email}
+                    onChangeText={setEmail}
                     autoCapitalize="none"
+                    keyboardType="email-address"
                   />
-                  <TouchableOpacity style={styles.eyeButton} onPress={() => setMostrarSenha(!mostrarSenha)}>
-                    <Ionicons name={mostrarSenha ? 'eye-off' : 'eye'} size={22} color="#0B667F" />
-                  </TouchableOpacity>
-                </View>
-              </View>
+                </FieldRow>
+
+                <FieldRow label="Senha" required>
+                  <View style={styles.passwordContainer}>
+                    <TextInput
+                      style={styles.passwordInput}
+                      placeholder="••••••••"
+                      placeholderTextColor={colorSystem.textMuted}
+                      value={senha}
+                      onChangeText={setSenha}
+                      secureTextEntry={!mostrarSenha}
+                      autoCapitalize="none"
+                    />
+                    <TouchableOpacity
+                      style={styles.eyeButton}
+                      onPress={() => setMostrarSenha(!mostrarSenha)}
+                      accessibilityRole="button"
+                      accessibilityLabel={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
+                    >
+                      <Ionicons name={mostrarSenha ? 'eye-off' : 'eye'} size={22} color={colorSystem.primary} />
+                    </TouchableOpacity>
+                  </View>
+                </FieldRow>
+              </FormSection>
+
+              {!!submitError && (
+                <Text accessibilityRole="alert" style={styles.submitErrorText}>
+                  {submitError}
+                </Text>
+              )}
 
               <TouchableOpacity style={[styles.loginBtn, loading && styles.loginBtnDisabled]} onPress={handleLogin} disabled={loading}>
                 <Text style={styles.loginBtnText}>{loading ? 'ENTRANDO...' : 'ENTRAR'}</Text>
@@ -144,9 +166,13 @@ export default function LoginScreen({ navigation }: Props) {
                 <TouchableOpacity
                   style={styles.biometricBtn}
                   onPress={async () => {
+                    logger.info('[LoginScreen] biometric login attempt initiated', { biometricType });
                     const result = await loginWithBiometric();
                     if (!result.success && result.error) {
+                      logger.error('[LoginScreen] biometric login failed', result.error);
                       Alert.alert('Biometria', result.error);
+                    } else if (result.success) {
+                      logger.info('[LoginScreen] biometric login successful');
                     }
                   }}
                   disabled={loading}
@@ -165,12 +191,14 @@ export default function LoginScreen({ navigation }: Props) {
                 style={styles.forgotPasswordBtn}
                 onPress={async () => {
                   if (!email.trim()) {
+                    logger.warn('[LoginScreen] password reset requested without email');
                     Alert.alert('Esqueci minha senha', 'Por favor, digite seu email no campo acima primeiro.');
                     return;
                   }
 
                   const validation = validateEmail(email.trim());
                   if (!validation.isValid) {
+                    logger.warn('[LoginScreen] password reset requested with invalid email', { email: email.trim() });
                     Alert.alert('Email Inválido', validation.error || 'Por favor, digite um email valido.');
                     return;
                   }
@@ -184,12 +212,15 @@ export default function LoginScreen({ navigation }: Props) {
                         text: 'Enviar Email',
                         onPress: async () => {
                           try {
+                            logger.info('[LoginScreen] password reset email requested', { email: email.trim() });
                             const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
                               redirectTo: getPasswordResetRedirectUrl(),
                             });
                             if (error) throw error;
+                            logger.info('[LoginScreen] password reset email sent successfully', { email: email.trim() });
                             Alert.alert('Sucesso', 'Email enviado. Verifique sua caixa de entrada e spam para redefinir a senha.');
                           } catch (resetError: any) {
+                            logger.error('[LoginScreen] password reset email failed', resetError, { email: email.trim() });
                             Alert.alert('Erro', 'Nao foi possivel enviar: ' + resetError.message);
                           }
                         },
@@ -726,6 +757,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 18,
     paddingHorizontal: 12,
+  },
+  submitErrorText: {
+    marginTop: 12,
+    color: colorSystem.error,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '700',
   },
   footerText: {
     color: 'rgba(230,247,251,0.72)',
