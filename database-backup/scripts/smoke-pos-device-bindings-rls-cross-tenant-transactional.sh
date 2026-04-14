@@ -1,23 +1,23 @@
 #!/bin/bash
 
-# Smoke fallback de RLS para ambiente com apenas uma company.
+# Smoke test RLS cross-tenant transacional para public.pos_device_bindings.
+# Nao requer segunda company preexistente e nao persiste dados (ROLLBACK).
 # Uso:
 #   cd database-backup
 #   export RLS_SMOKE_ADMIN_USER_ID="<uuid_profile_admin_company>"   # opcional (auto-select se ausente)
 #   export RLS_SMOKE_TERMINAL_ID="caixa_01"                          # opcional
-#   bash scripts/smoke-pos-device-bindings-rls-single-tenant.sh
+#   bash scripts/smoke-pos-device-bindings-rls-cross-tenant-transactional.sh
 
 set -euo pipefail
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-SQL_FILE="$SCRIPT_DIR/smoke_pos_device_bindings_rls_single_tenant_fallback.sql"
+SQL_FILE="$SCRIPT_DIR/smoke_pos_device_bindings_rls_cross_tenant_transactional.sql"
 
 if [ ! -f "$ROOT_DIR/.env.local" ]; then
   echo -e "${RED}✗ database-backup/.env.local não encontrado${NC}"
@@ -51,29 +51,20 @@ if [[ -z "$RLS_SMOKE_ADMIN_USER_ID" ]]; then
 fi
 
 if [[ -z "$RLS_SMOKE_ADMIN_USER_ID" ]]; then
-  echo -e "${RED}✗ Não foi possível encontrar profile admin/gerente para smoke fallback.${NC}"
+  echo -e "${RED}✗ Não foi possível encontrar profile admin/gerente para smoke cross-tenant transacional.${NC}"
   unset PGPASSWORD
   exit 1
 fi
 
-RLS_SMOKE_ADMIN_COMPANY_ID="$($PSQL_BIN -h "$SOURCE_DB_HOST" -p "${SOURCE_DB_PORT:-5432}" -U "$SOURCE_DB_USER" -d "$SOURCE_DB_NAME" -At -c "SELECT company_id::text FROM public.profiles WHERE id = '$RLS_SMOKE_ADMIN_USER_ID'::uuid LIMIT 1;")"
+RLS_SMOKE_TERMINAL_ID="${RLS_SMOKE_TERMINAL_ID:-caixa_smoke_rls_cross_tx}"
 
-if [[ -z "$RLS_SMOKE_ADMIN_COMPANY_ID" ]]; then
-  echo -e "${RED}✗ Não foi possível resolver company_id para admin_user_id=$RLS_SMOKE_ADMIN_USER_ID.${NC}"
-  unset PGPASSWORD
-  exit 1
-fi
-
-RLS_SMOKE_TERMINAL_ID="${RLS_SMOKE_TERMINAL_ID:-caixa_smoke_single_tenant}"
-
-echo -e "${BLUE}===========================================================${NC}"
-echo -e "${BLUE}  Smoke fallback RLS pos_device_bindings (single-tenant)  ${NC}"
-echo -e "${BLUE}===========================================================${NC}"
+echo -e "${BLUE}===============================================================${NC}"
+echo -e "${BLUE}  Smoke RLS pos_device_bindings (cross-tenant transacional)   ${NC}"
+echo -e "${BLUE}===============================================================${NC}"
 echo "Host: $SOURCE_DB_HOST"
 echo "Database: $SOURCE_DB_NAME"
 echo "User: $SOURCE_DB_USER"
 echo "Admin user: $RLS_SMOKE_ADMIN_USER_ID"
-echo "Admin company: $RLS_SMOKE_ADMIN_COMPANY_ID"
 echo "Terminal id: $RLS_SMOKE_TERMINAL_ID"
 echo ""
 
@@ -84,11 +75,10 @@ echo ""
   -d "$SOURCE_DB_NAME" \
   -v ON_ERROR_STOP=1 \
   -v admin_user_id="$RLS_SMOKE_ADMIN_USER_ID" \
-  -v admin_company_id="$RLS_SMOKE_ADMIN_COMPANY_ID" \
   -v terminal_id="$RLS_SMOKE_TERMINAL_ID" \
   -f "$SQL_FILE"
 
 unset PGPASSWORD
 
 echo ""
-echo -e "${GREEN}✓ Smoke fallback single-tenant concluído com sucesso.${NC}"
+echo -e "${GREEN}✓ Smoke cross-tenant transacional concluído com sucesso.${NC}"

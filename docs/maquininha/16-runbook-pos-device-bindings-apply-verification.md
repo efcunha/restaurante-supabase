@@ -1,6 +1,6 @@
 # 16 - Runbook: apply e verificacao da migration pos_device_bindings
 
-Ultima atualizacao: **2026-04-13**
+Ultima atualizacao: **2026-04-14**
 
 ## 1. Objetivo
 
@@ -19,7 +19,7 @@ com checagem de:
 ## 2. Pre-requisitos
 
 1. Arquivo `database-backup/.env.local` configurado com `SOURCE_DB_*`.
-2. `psql` disponivel no ambiente.
+2. `psql` disponivel no ambiente (em Windows/Git Bash, os scripts priorizam `psql.exe` para evitar erro de TTY em execucao nao interativa).
 3. Credencial com permissao para DDL no banco alvo.
 
 ## 3. Apply da migration (manual/CLI)
@@ -75,11 +75,36 @@ Esse script executa:
 3. `database-backup/scripts/verify-pos-device-bindings.sh`
 4. `database-backup/scripts/smoke_pos_device_bindings_rls.sql`
 5. `database-backup/scripts/smoke-pos-device-bindings-rls.sh`
-6. `docs/maquininha/15-blueprint-tef-local-usb-device-binding.md`
+6. `database-backup/scripts/smoke_pos_device_bindings_rls_cross_tenant_transactional.sql`
+7. `database-backup/scripts/smoke-pos-device-bindings-rls-cross-tenant-transactional.sh`
+8. `docs/maquininha/15-blueprint-tef-local-usb-device-binding.md`
 
 ## 8. Smoke test RLS (validacao pratica)
 
-Depois do apply e da verificacao estrutural, execute smoke test de RLS:
+Depois do apply e da verificacao estrutural, execute smoke test de RLS.
+
+### Modo recomendado (padrao): cross-tenant transacional
+
+Nao depende de segunda company preexistente e nao persiste dados (usa `ROLLBACK` no final):
+
+```bash
+cd d:/restaurante-supabase/database-backup
+
+export RLS_SMOKE_ADMIN_USER_ID="<uuid_profile_admin_company_A>"  # opcional (auto-select se ausente)
+export RLS_SMOKE_TERMINAL_ID="caixa_01"
+
+bash scripts/smoke-pos-device-bindings-rls-cross-tenant-transactional.sh
+```
+
+Resultado esperado:
+
+1. Admin/gerente da company real insere e enxerga registro de teste.
+2. Usuario temporario de outra company nao enxerga o registro.
+3. Registro de teste e removido e transacao e revertida (`ROLLBACK`).
+
+### Modo alternativo: cross-tenant com usuarios reais de companies diferentes
+
+Use quando houver duas companies reais para validacao manual dirigida:
 
 ```bash
 cd d:/restaurante-supabase/database-backup
@@ -104,25 +129,16 @@ cd d:/restaurante-supabase/database-backup
 bash scripts/select-rls-smoke-candidates.sh
 ```
 
-Quando existir mais de uma company em `public.profiles`, o script imprime os `export` prontos para rodar o smoke.
+Quando existir mais de uma company em `public.profiles`, o script imprime os `export` prontos para rodar o smoke com usuarios reais.
 
-### Fallback para ambiente single-tenant
+### Legado: fallback single-tenant
 
-Quando houver apenas 1 company no banco, rode o smoke fallback:
+O script abaixo permanece para diagnostico rapido local, mas nao e mais o caminho principal de evidenciacao:
 
 ```bash
 cd d:/restaurante-supabase/database-backup
 bash scripts/smoke-pos-device-bindings-rls-single-tenant.sh
 ```
-
-Esse fallback valida:
-
-1. usuário admin/gerente enxerga o próprio registro;
-2. usuário inexistente (JWT sub aleatório) não enxerga o registro.
-
-Observação:
-
-- não substitui o smoke cross-tenant real, mas adiciona evidência prática de bloqueio RLS em ambiente de tenant único.
 
 ## 9. Captura consolidada de evidência (recomendado)
 
@@ -131,8 +147,8 @@ Para gerar logs + resumo markdown em uma execução:
 ```bash
 cd d:/restaurante-supabase/database-backup
 
-export RLS_SMOKE_ADMIN_USER_ID="<uuid_profile_admin_company_A>"
-export RLS_SMOKE_OTHER_COMPANY_USER_ID="<uuid_profile_company_B>"
+export RLS_SMOKE_ADMIN_USER_ID="<uuid_profile_admin_company_A>"  # opcional (auto-select se ausente)
+# export RLS_SMOKE_OTHER_COMPANY_USER_ID="<uuid_profile_company_B>"  # opcional: se ausente, usa modo cross-tenant-transacional
 export RLS_SMOKE_TERMINAL_ID="caixa_01"
 
 bash scripts/capture-pos-device-bindings-validation-evidence.sh
@@ -155,3 +171,8 @@ Artefatos gerados em:
    - `pos-device-bindings-verify-*.log`
    - `pos-device-bindings-smoke-*.log`
    - `pos-device-bindings-validation-summary-*.md`
+
+Interpretacao de `smoke_mode` no summary:
+
+1. `cross-tenant`: executou com usuarios reais de companies diferentes.
+2. `cross-tenant-transactional`: executou com tenant/usuario temporarios em transacao (sem persistencia).
