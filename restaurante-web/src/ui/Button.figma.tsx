@@ -12,7 +12,7 @@
  * CLI: npx figma connect publish --token $FIGMA_TOKEN
  */
 import figma from '@figma/code-connect';
-import { Button } from './index';
+import { Button } from '../components/ui-next/Button';
 
 figma.connect('https://figma.com/design/xpfdEjj5NJ7bQ7zDuCBbqw/RestaurantOS-Design-System?node-id=3:12', {
   example: () => (

@@ -6,7 +6,7 @@
  * CLI: npx figma connect publish --token $FIGMA_TOKEN
  */
 import figma from '@figma/code-connect';
-import { ProductCard } from './index';
+import { ProductCard } from '../components/ui-next/ProductCard';
 
 figma.connect('https://figma.com/design/xpfdEjj5NJ7bQ7zDuCBbqw/RestaurantOS-Design-System?node-id=3:51', {
   example: () => (
