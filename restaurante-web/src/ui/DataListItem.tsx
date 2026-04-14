@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { borderRadius, borderWidth, designColors, fontSizes, fontWeights, spacing } from '../design-system';
+import { borderRadius, borderWidth, fontSizes, fontWeights, spacing } from '../design-system';
+import { colors } from '../theme/colors';
 
 type DataListItemStatus = 'default' | 'success' | 'warning' | 'error';
 
@@ -14,10 +15,10 @@ type DataListItemProps = {
 };
 
 const STATUS_COLOR: Record<DataListItemStatus, string> = {
-  default: designColors.border.default,
-  success: designColors.semantic.success.default,
-  warning: designColors.semantic.warning.default,
-  error: designColors.semantic.error.default,
+  default: colors.border,
+  success: colors.success,
+  warning: colors.warning,
+  error: colors.danger,
 };
 
 export function DataListItem({
@@ -53,10 +54,10 @@ export function DataListItem({
 const styles = StyleSheet.create({
   item: {
     borderWidth: borderWidth.default,
-    borderColor: designColors.border.subtle,
+    borderColor: colors.border,
     borderLeftWidth: 4,
     borderRadius: borderRadius.lg,
-    backgroundColor: designColors.surface.card,
+    backgroundColor: colors.white,
     paddingVertical: spacing[3],
     paddingHorizontal: spacing[3],
     gap: spacing[1],
@@ -65,17 +66,17 @@ const styles = StyleSheet.create({
     gap: spacing[1],
   },
   title: {
-    color: designColors.text.primary,
+    color: colors.text,
     fontSize: fontSizes.base,
     fontWeight: fontWeights.semibold,
   },
   subtitle: {
-    color: designColors.text.secondary,
+    color: colors.textSecondary,
     fontSize: fontSizes.sm,
     fontWeight: fontWeights.regular,
   },
   meta: {
-    color: designColors.text.tertiary,
+    color: colors.textSecondary,
     fontSize: fontSizes.xs,
     fontWeight: fontWeights.medium,
   },
