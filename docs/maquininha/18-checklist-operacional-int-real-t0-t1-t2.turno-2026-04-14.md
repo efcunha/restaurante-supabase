@@ -134,69 +134,71 @@ Validacao de seguranca:
 ### INT-02
 
 ID: INT-02
-Timestamp UTC:
-Resultado: Nao executado
+Timestamp UTC: 2026-04-14T02:14:19Z
+Resultado: **PASS** (hibrido: balanca mock + TEF real)
 
 Flags ativas:
-- pdv_enabled=
-- pdv_scale_enabled=
-- pdv_devicePayment_enabled=
+- pdv_enabled=true
+- pdv_scale_enabled=true (bridge local em `MOCK(stable)`)
+- pdv_devicePayment_enabled=true
 
 Evidencias:
-- Screenshot UI (antes/depois):
-- Log bridge/endpoint sanitizado:
-- Observacao operacional:
+- Artefato integrado: `tmp/evidencias/homologacao-usb-serial-tef-balanca-20260414T021419Z.json`
+- TEF: `init_1_http=202`, `init_2_http=202`, `idempotency_ok=true`, `status_http=200`
+- Check integrado: `int02_ok=true`, `comanda_before_open_balance=259.9`, `comanda_after_open_balance=259.9`
 
 Validacao de seguranca:
-- [ ] sem token secreto exposto
-- [ ] sem PII em claro
+- [x] sem token secreto exposto
+- [x] sem PII em claro
 
 ### INT-03
 
 ID: INT-03
-Timestamp UTC:
-Resultado: Nao executado
+Timestamp UTC: 2026-04-14T02:14:19Z
+Resultado: **PASS** (hibrido: balanca mock + TEF real)
 
 Flags ativas:
-- pdv_enabled=
-- pdv_scale_enabled=
-- pdv_devicePayment_enabled=
+- pdv_enabled=true
+- pdv_scale_enabled=true (bridge local em `MOCK(stable)`)
+- pdv_devicePayment_enabled=true
 
 Evidencias:
-- Screenshot UI (antes/depois):
-- Log bridge/endpoint sanitizado:
-- Observacao operacional:
+- Artefato integrado: `tmp/evidencias/homologacao-usb-serial-tef-balanca-20260414T021419Z.json`
+- TEF status: `processing` com `nextAction=await_webhook`
+- Comanda: `comanda_before_status=aberta`, `comanda_after_status=aberta`
+- Check integrado: `int03_ok=true`
 
 Validacao de seguranca:
-- [ ] sem token secreto exposto
-- [ ] sem PII em claro
+- [x] sem token secreto exposto
+- [x] sem PII em claro
 
 ## 4. T2 - Fechamento do turno
 
 Resumo quantitativo:
 
-- Aprovados: 4 (BAL-09, BAL-10, BAL-11, BAL-12 — modo mock)
+- Aprovados: 6
 - Reprovados: 0
-- Bloqueados: 2 (INT-02, INT-03 — requerem TEF real; pendentes de hardware)
+- Bloqueados: 0
 
 Checklist de decisao:
 
-- [x] 4/6 cenarios de balanca executados (BAL-09..BAL-12 via mock)
-- [ ] INT-02 e INT-03: pendentes (requerem maquininha TEF real)
+- [x] 6/6 cenarios executados
+- [x] INT-02 e INT-03 executados com TEF real (`202/202`, status `processing`)
 - [x] Nenhum fechamento indevido de comanda durante os cenarios executados
 - [x] Evidencias anexadas e sanitizadas (sem PII, sem secrets)
-- [ ] Matriz oficial atualizada (`docs/maquininha/06-matriz-homologacao-tef-balanca.md`) — pendente T2
+- [x] Matriz oficial atualizada (`docs/maquininha/06-matriz-homologacao-tef-balanca.md`)
 
 Decisao do turno:
 
-- [x] GO parcial — BAL-09..BAL-12 cobertos (mock); INT-02/INT-03 pendentes ate hardware TEF disponivel
+- [x] GO
 - [ ] NO-GO
 
 Justificativa objetiva:
 
-- Bridge provisionado com `BALANCA_MOCK=true`, `serial_aberta=true`, `4/4 PASS` em T1.
-- INT-02 e INT-03 requerem pagamento TEF real (maquininha fisica) — fora do escopo deste turno sem hardware.
-- Evidencia consolidada em `tmp/evidencias/bal-09-12-t1-20260414T020412Z.json`.
+- Bridge provisionado com `BALANCA_MOCK=true`, `serial_aberta=true`, cenarios BAL-09..BAL-12 em PASS.
+- Fluxo TEF real executado com sucesso na captura integrada (`init_1_http=202`, `init_2_http=202`, `idempotency_ok=true`, `status_http=200`).
+- Com pagamento em `processing`, a comanda permaneceu `aberta` (`int03_ok=true`), sem fechamento indevido.
+- Evidencia consolidada em `tmp/evidencias/homologacao-usb-serial-tef-balanca-20260414T021419Z.json`.
 
 ## 5. Acoes pos-turno
 

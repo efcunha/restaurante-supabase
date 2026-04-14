@@ -15,12 +15,157 @@ ENVIRONMENT="${ENVIRONMENT:-production}"
 SCALE_URL="${SCALE_URL:-http://localhost:3031}"
 API_KEY="${API_KEY:-}"
 
-OPS_URL="${OPS_URL:-}"
+OPS_URL="${OPS_URL:-https://ops.restaurante-web.app.br}"
 AUTH_TOKEN="${AUTH_TOKEN:-}"
 COMPANY_ID="${COMPANY_ID:-}"
-COMANDA_NUMBER="${COMANDA_NUMBER:-10}"
+COMANDA_NUMBER="${COMANDA_NUMBER:-}"
 AMOUNT_CENTS="${AMOUNT_CENTS:-1000}"
 PAYMENT_METHOD="${PAYMENT_METHOD:-cartao_credito}"
+
+resolve_auth_context_if_missing() {
+  if [[ -n "$AUTH_TOKEN" && -n "$COMPANY_ID" ]]; then
+    return 0
+  fi
+
+  local web_env="$ROOT_DIR/restaurante-web/.env"
+  local web_env_local="$ROOT_DIR/restaurante-web/.env.local"
+  local ops_env="$ROOT_DIR/restaurante-ops/.env"
+  local ops_env_local="$ROOT_DIR/restaurante-ops/.env.local"
+
+  if [[ ! -f "$web_env" || ! -f "$ops_env" ]]; then
+    return 0
+  fi
+
+  set +H
+  set -a
+  # shellcheck disable=SC1090
+  source "$web_env"
+  [[ -f "$web_env_local" ]] && source "$web_env_local"
+  # shellcheck disable=SC1090
+  source "$ops_env"
+  [[ -f "$ops_env_local" ]] && source "$ops_env_local"
+  set +a
+
+  local required=(
+    EXPO_PUBLIC_SUPABASE_URL
+    EXPO_PUBLIC_SUPABASE_ANON_KEY
+    PLAYWRIGHT_TEST_EMAIL_ADMIN
+    PLAYWRIGHT_TEST_PASSWORD_ADMIN
+    SUPABASE_URL
+    SUPABASE_SERVICE_ROLE_KEY
+  )
+
+  local miss=0
+  for name in "${required[@]}"; do
+    if [[ -z "${!name:-}" ]]; then
+      miss=1
+      break
+    fi
+  done
+
+  if [[ "$miss" -eq 1 ]]; then
+    return 0
+  fi
+
+  local auto_json="$OUT_DIR/tef-auto-context-$STAMP_FILE.json"
+  if ! command -v node >/dev/null 2>&1; then
+    return 0
+  fi
+
+  AMOUNT_CENTS="$AMOUNT_CENTS" COMANDA_NUMBER="$COMANDA_NUMBER" node <<'NODE' > "$auto_json"
+(async () => {
+  const authRes = await fetch(`${process.env.EXPO_PUBLIC_SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+    method: 'POST',
+    headers: {
+      apikey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      email: process.env.PLAYWRIGHT_TEST_EMAIL_ADMIN,
+      password: process.env.PLAYWRIGHT_TEST_PASSWORD_ADMIN,
+    }),
+  });
+
+  if (!authRes.ok) {
+    const txt = await authRes.text();
+    throw new Error(`Falha ao gerar token: ${authRes.status} ${txt.slice(0, 200)}`);
+  }
+
+  const auth = await authRes.json();
+  const token = String(auth.access_token || '');
+  if (!token) {
+    throw new Error('Access token ausente na resposta do Supabase Auth.');
+  }
+
+  const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8'));
+  const userId = String(payload.sub || '');
+  if (!userId) {
+    throw new Error('Sub ausente no JWT.');
+  }
+
+  const profileUrl = new URL(`${process.env.SUPABASE_URL}/rest/v1/profiles`);
+  profileUrl.searchParams.set('select', 'company_id');
+  profileUrl.searchParams.set('id', `eq.${userId}`);
+
+  const profileRes = await fetch(profileUrl, {
+    headers: {
+      apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+    },
+  });
+
+  if (!profileRes.ok) {
+    const txt = await profileRes.text();
+    throw new Error(`Falha ao buscar company_id: ${profileRes.status} ${txt.slice(0, 200)}`);
+  }
+
+  const profiles = await profileRes.json();
+  const companyId = String(profiles?.[0]?.company_id || '');
+  if (!companyId) {
+    throw new Error('company_id nao encontrado para o usuario autenticado.');
+  }
+
+  let comandaNumber = String(process.env.COMANDA_NUMBER || '');
+  if (!comandaNumber) {
+    const minBalance = Math.max(1, Number(process.env.AMOUNT_CENTS || '1000') / 100);
+    const comandaUrl = new URL(`${process.env.SUPABASE_URL}/rest/v1/comandas`);
+    comandaUrl.searchParams.set('select', 'comanda_number,open_balance');
+    comandaUrl.searchParams.set('company_id', `eq.${companyId}`);
+    comandaUrl.searchParams.set('status', 'eq.aberta');
+    comandaUrl.searchParams.set('open_balance', `gte.${minBalance}`);
+    comandaUrl.searchParams.set('order', 'open_balance.desc,created_at.desc');
+    comandaUrl.searchParams.set('limit', '1');
+
+    const comandaRes = await fetch(comandaUrl, {
+      headers: {
+        apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+      },
+    });
+
+    if (comandaRes.ok) {
+      const comandas = await comandaRes.json();
+      const selected = comandas?.[0]?.comanda_number;
+      if (selected !== undefined && selected !== null) {
+        comandaNumber = String(selected);
+      }
+    }
+  }
+
+  process.stdout.write(JSON.stringify({ token, companyId, comandaNumber }));
+})().catch((err) => {
+  console.error(err instanceof Error ? err.message : String(err));
+  process.exit(1);
+});
+NODE
+
+  if [[ -f "$auto_json" ]]; then
+    AUTH_TOKEN="${AUTH_TOKEN:-$(node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync(process.argv[1],'utf8'));process.stdout.write(String(p.token||''));" "$auto_json")}" || true
+    COMPANY_ID="${COMPANY_ID:-$(node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync(process.argv[1],'utf8'));process.stdout.write(String(p.companyId||''));" "$auto_json")}" || true
+    COMANDA_NUMBER="${COMANDA_NUMBER:-$(node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync(process.argv[1],'utf8'));process.stdout.write(String(p.comandaNumber||''));" "$auto_json")}" || true
+    rm -f "$auto_json"
+  fi
+}
 
 STATUS_JSON="$OUT_DIR/bridge-status-$STAMP_FILE.json"
 PESO_JSON="$OUT_DIR/bridge-peso-$STAMP_FILE.json"
@@ -32,6 +177,8 @@ SUMMARY_JSON="$OUT_DIR/homologacao-usb-serial-tef-balanca-$STAMP_FILE.json"
 TEF_INIT_1_JSON="$OUT_DIR/tef-init-1-$STAMP_FILE.json"
 TEF_INIT_2_JSON="$OUT_DIR/tef-init-2-$STAMP_FILE.json"
 TEF_STATUS_JSON="$OUT_DIR/tef-status-$STAMP_FILE.json"
+COMANDA_BEFORE_JSON="$OUT_DIR/comanda-before-$STAMP_FILE.json"
+COMANDA_AFTER_JSON="$OUT_DIR/comanda-after-$STAMP_FILE.json"
 
 API_HEADERS=()
 if [[ -n "$API_KEY" ]]; then
@@ -51,6 +198,21 @@ curl_http_json() {
   fi
 }
 
+fetch_comanda_snapshot() {
+  local output_file="$1"
+  if [[ -z "${SUPABASE_URL:-}" || -z "${SUPABASE_SERVICE_ROLE_KEY:-}" || -z "$COMPANY_ID" || -z "$COMANDA_NUMBER" ]]; then
+    return 0
+  fi
+
+  local comanda_url
+  comanda_url="$SUPABASE_URL/rest/v1/comandas?select=id,comanda_number,status,open_balance,updated_at&company_id=eq.$COMPANY_ID&comanda_number=eq.$COMANDA_NUMBER&order=updated_at.desc&limit=1"
+
+  curl -sS -o "$output_file" -w "%{http_code}" \
+    -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+    -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+    "$comanda_url"
+}
+
 echo "[1/4] Coletando bridge status..."
 STATUS_HTTP="$(curl_http_json "GET" "$SCALE_URL/status" "$STATUS_JSON")"
 
@@ -62,6 +224,14 @@ PESO_ESTAVEL_HTTP="$(curl_http_json "GET" "$SCALE_URL/peso/estavel" "$PESO_ESTAV
 
 echo "[4/4] Enviando tara no bridge..."
 TARA_HTTP="$(curl_http_json "POST" "$SCALE_URL/tara" "$TARA_JSON")"
+
+resolve_auth_context_if_missing
+
+COMANDA_BEFORE_HTTP=""
+COMANDA_AFTER_HTTP=""
+if [[ -n "$COMPANY_ID" && -n "$COMANDA_NUMBER" && -n "${SUPABASE_URL:-}" && -n "${SUPABASE_SERVICE_ROLE_KEY:-}" ]]; then
+  COMANDA_BEFORE_HTTP="$(fetch_comanda_snapshot "$COMANDA_BEFORE_JSON")"
+fi
 
 TEF_ENABLED="false"
 TEF_INIT_1_HTTP=""
@@ -98,6 +268,10 @@ if [[ -n "$OPS_URL" && -n "$AUTH_TOKEN" && -n "$COMPANY_ID" ]]; then
   if [[ -n "$TEF_TRANSACTION_ID" ]]; then
     echo "[TEF] Consultando status da transacao..."
     TEF_STATUS_HTTP="$(curl -sS -o "$TEF_STATUS_JSON" -w "%{http_code}" -X GET "$OPS_URL/payments/$TEF_TRANSACTION_ID/status" -H "Authorization: Bearer $AUTH_TOKEN" -H "Content-Type: application/json")"
+  fi
+
+  if [[ -n "$COMPANY_ID" && -n "$COMANDA_NUMBER" && -n "${SUPABASE_URL:-}" && -n "${SUPABASE_SERVICE_ROLE_KEY:-}" ]]; then
+    COMANDA_AFTER_HTTP="$(fetch_comanda_snapshot "$COMANDA_AFTER_JSON")"
   fi
 else
   echo "[TEF] Variaveis OPS_URL/AUTH_TOKEN/COMPANY_ID ausentes. Coleta TEF sera ignorada."
@@ -151,6 +325,49 @@ const payload={
 };
 fs.writeFileSync(out, JSON.stringify(payload, null, 2));" \
   "$SUMMARY_JSON" "$STAMP_UTC" "$SCALE_URL" "$STATUS_HTTP" "$PESO_HTTP" "$PESO_ESTAVEL_HTTP" "$TARA_HTTP" "$SERIAL_ABERTA" "$BAUD_VALUE" "$PROTOCOLO_VALUE" "$STATUS_JSON" "$PESO_JSON" "$PESO_ESTAVEL_JSON" "$TARA_JSON" "$TEF_ENABLED" "$OPS_URL" "$TEF_INIT_1_HTTP" "$TEF_INIT_2_HTTP" "$TEF_IDEMPOTENCY_OK" "$TEF_TRANSACTION_ID" "$TEF_STATUS_HTTP" "$TEF_INIT_1_JSON" "$TEF_INIT_2_JSON" "$TEF_STATUS_JSON" "$ENVIRONMENT" "$COMPANY_ID"
+
+  node -e "const fs=require('fs');
+const summaryPath=process.argv[1];
+const beforePath=process.argv[2];
+const afterPath=process.argv[3];
+const beforeHttp=process.argv[4] || null;
+const afterHttp=process.argv[5] || null;
+const comandaNumber=process.argv[6] || null;
+
+const readJson=(p)=>{try{return JSON.parse(fs.readFileSync(p,'utf8'));}catch{return null;}};
+const firstRow=(obj)=>Array.isArray(obj)&&obj.length>0?obj[0]:null;
+
+const summary=readJson(summaryPath) || {};
+const beforeRaw=readJson(beforePath);
+const afterRaw=readJson(afterPath);
+const before=firstRow(beforeRaw);
+const after=firstRow(afterRaw);
+const tefStatus=readJson(summary?.tef?.artifacts?.status || '');
+
+const beforeStatus=before?.status || null;
+const afterStatus=after?.status || null;
+const beforeBalance=before?.open_balance ?? null;
+const afterBalance=after?.open_balance ?? null;
+const tefProcessing=String(tefStatus?.status || '').toLowerCase() === 'processing';
+
+const int02Ok = String(summary?.tef?.init_1_http || '') === '202' && String(summary?.tef?.init_2_http || '') === '202' && summary?.tef?.idempotency_ok === true;
+const int03Ok = tefProcessing && beforeStatus === 'aberta' && afterStatus === 'aberta';
+
+summary.integrated_checks = {
+  comanda_number: comandaNumber,
+  comanda_before_http: beforeHttp,
+  comanda_after_http: afterHttp,
+  comanda_before_status: beforeStatus,
+  comanda_after_status: afterStatus,
+  comanda_before_open_balance: beforeBalance,
+  comanda_after_open_balance: afterBalance,
+  tef_status: tefStatus?.status || null,
+  int02_ok: int02Ok,
+  int03_ok: int03Ok,
+};
+
+fs.writeFileSync(summaryPath, JSON.stringify(summary, null, 2));" \
+  "$SUMMARY_JSON" "$COMANDA_BEFORE_JSON" "$COMANDA_AFTER_JSON" "$COMANDA_BEFORE_HTTP" "$COMANDA_AFTER_HTTP" "$COMANDA_NUMBER"
 fi
 
 cat > "$SUMMARY_MD" <<EOF

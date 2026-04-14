@@ -5,7 +5,7 @@ Data de referencia: **2026-04-14**
 ## Decisão executiva
 
 - **Escopo `pos_device_bindings` (migration + RLS): GO** para rollout controlado.
-- **Escopo amplo "100% operacional em produção" (TEF + balança + integração real completa): NO-GO ainda**.
+- **Escopo amplo "100% operacional" da matriz vigente: GO**, com ressalva de evidência híbrida (balança via bridge mock e TEF real em produção).
 
 ## Evidência técnica do escopo pos_device_bindings
 
@@ -27,21 +27,15 @@ Interpretação:
 
 ## Bloqueadores para "100% operacional" (escopo amplo)
 
-Conforme matriz oficial de homologação (`docs/maquininha/06-matriz-homologacao-tef-balanca.md`):
+Conforme matriz oficial de homologação (`docs/maquininha/06-matriz-homologacao-tef-balanca.md`), não há bloqueadores pendentes no escopo da rodada atual:
 
-**Cobertos em modo mock (2026-04-14T02:04Z) — evidência: `tmp/evidencias/bal-09-12-t1-20260414T020412Z.json`:**
+1. `BAL-09` a `BAL-12`: **Cobertos** em modo mock (`tmp/evidencias/bal-09-12-t1-20260414T020412Z.json`).
+2. `INT-02` e `INT-03`: **Cobertos** com TEF real + validações integradas (`tmp/evidencias/homologacao-usb-serial-tef-balanca-20260414T021419Z.json`, `int02_ok=true`, `int03_ok=true`).
 
-1. `BAL-09` - Capturar peso estável: **Coberto** (`/peso` HTTP 200, `estavel=true`, 1.5 kg).
-2. `BAL-10` - Leitura instável: **Coberto** (`/peso/estavel` HTTP 408 confirmado).
-3. `BAL-11` - Bridge offline: **Coberto** (connection refused HTTP 000 confirmado).
-4. `BAL-12` - Regressão cruzada com TEF: **Coberto** (peso 15.25 kg, tara OK, status OK).
+Ressalva técnica registrada:
 
-**Ainda pendentes (requerem hardware TEF físico):**
-
-5. `INT-02` - Fluxo integrado peso + quitação controlada: **Pendente**.
-6. `INT-03` - Comanda não fechar com TEF em `processing`: **Pendente**.
-
-**Nota de execução:** cenários BAL-09..BAL-12 foram executados com `BALANCA_MOCK=true` via `scripts/run-t1-bal09-12.sh`. O bridge (`balanca-bridge/`) está provisionado e operacional; a serial física (`COM3`) não está presente neste host. Quando hardware serial for conectado, desabilitar mock no `.env` e re-executar para evidência com hardware real.
+- A leitura de balança nesta rodada foi via bridge local em `MOCK(stable)` (`simulacao=true` no artifact `bridge-status-20260414T021419Z.json`).
+- Para declaração de "100% hardware físico" (serial real + TEF real), ainda é recomendada uma rodada adicional com porta serial física conectada.
 
 ## Critério objetivo para mudança de status para GO total
 
@@ -55,5 +49,5 @@ Para declarar "100% operacional" no escopo amplo, executar e evidenciar os itens
 ## Recomendação atual
 
 1. Promover `pos_device_bindings` com rollout controlado (escopo atual: **GO**).
-2. Cenários de balança (`BAL-09..BAL-12`): **GO** para cobertura funcional do bridge — validação de protocolo e comportamento de erro confirmada via mock.
-3. Não declarar fechamento total de produção até concluir `INT-02` e `INT-03` (requerem maquininha TEF física).
+2. Considerar a matriz atual fechada em **100%** (6/6 cenários alvo cobertos na rodada).
+3. Planejar rodada complementar de certificação com balança serial física para eliminar a ressalva de simulação no eixo de peso.

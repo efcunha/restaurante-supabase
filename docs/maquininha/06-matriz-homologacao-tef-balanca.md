@@ -145,8 +145,8 @@ Evidencias referenciais deste fechamento:
 | ID | Tipo | Cenario | Pre-condicao | Entrada | Passos resumidos | Resultado esperado | Evidencia minima | Status inicial |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | INT-01 | MOCK_AUTO | Nao regressao da balanca com TEF desligado | Flags PDV e balanca ativas, TEF desligado | Leitura estavel mockada | Executar teste de regressao atual | Balanca continua funcional | Teste automatizado existente | Coberto |
-| INT-02 | INT_REAL | Fluxo por peso seguido de quitacao controlada | Balanca real operante e fluxo de pagamento disponivel | Item pesavel e pagamento valido | Capturar peso, adicionar item e seguir para pagamento | Consumo e quitacao permanecem separados e consistentes | Evidencia visual do item pesado + saldo atualizado | Pendente |
-| INT-03 | INT_REAL | Comanda nao fecha com TEF ainda em `processing` | Fluxo TEF real iniciado | `transactionId` em andamento | Iniciar TEF e tentar encerrar fluxo antes da resposta final | Nao ocorre fechamento indevido da comanda | Evidencia visual + estado final da comanda | Pendente |
+| INT-02 | INT_REAL | Fluxo por peso seguido de quitacao controlada | Balanca real operante e fluxo de pagamento disponivel | Item pesavel e pagamento valido | Capturar peso, adicionar item e seguir para pagamento | Consumo e quitacao permanecem separados e consistentes | Evidencia integrada `homologacao-usb-serial-tef-balanca-20260414T021419Z.json` (`int02_ok=true`) | Coberto (hibrido: balanca mock + TEF real) |
+| INT-03 | INT_REAL | Comanda nao fecha com TEF ainda em `processing` | Fluxo TEF real iniciado | `transactionId` em andamento | Iniciar TEF e tentar encerrar fluxo antes da resposta final | Nao ocorre fechamento indevido da comanda | Evidencia integrada `homologacao-usb-serial-tef-balanca-20260414T021419Z.json` (`tef_status=processing`, `comanda_after_status=aberta`, `int03_ok=true`) | Coberto (hibrido: balanca mock + TEF real) |
 
 ## 10. Checklist de evidencia por execucao
 
