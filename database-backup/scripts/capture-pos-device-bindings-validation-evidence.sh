@@ -43,10 +43,10 @@ fi
 
 SMOKE_SKIPPED="false"
 if [[ -z "${RLS_SMOKE_OTHER_COMPANY_USER_ID:-}" ]]; then
-  SMOKE_MODE="single-tenant-fallback"
-  echo "[2/2] Executando smoke RLS fallback (single-tenant)..."
+  SMOKE_MODE="cross-tenant-transactional"
+  echo "[2/2] Executando smoke RLS cross-tenant transacional..."
   set +e
-  bash "$SCRIPT_DIR/smoke-pos-device-bindings-rls-single-tenant.sh" >"$SMOKE_LOG" 2>&1
+  bash "$SCRIPT_DIR/smoke-pos-device-bindings-rls-cross-tenant-transactional.sh" >"$SMOKE_LOG" 2>&1
   SMOKE_EXIT=$?
   set -e
 
@@ -66,8 +66,8 @@ else
 fi
 
 SMOKE_INTERPRETATION="smoke_exit_code=0: isolamento entre tenants confirmado na prática."
-if [[ "$SMOKE_MODE" == "single-tenant-fallback" ]]; then
-  SMOKE_INTERPRETATION="smoke_mode=single-tenant-fallback: validou RLS no tenant ativo (admin consegue inserir/listar; usuário sem profile não lê)."
+if [[ "$SMOKE_MODE" == "cross-tenant-transactional" ]]; then
+  SMOKE_INTERPRETATION="smoke_mode=cross-tenant-transactional: isolamento cross-tenant validado com tenant temporário em transação (sem persistência)."
 fi
 
 cat > "$SUMMARY_MD" <<EOF

@@ -19,6 +19,8 @@ Este diretório centraliza a documentação transversal do monorepo.
 2. `docs/maquininha/04-plano-execucao-testes-rollout.md`
 3. `docs/maquininha/06-matriz-homologacao-tef-balanca.md`
 4. `docs/maquininha/README.md`
+5. `docs/repository/HANDOFF_D1_POS_DEVICE_BINDINGS_2026-04-14.md`
+6. `docs/repository/PR_DESCRIPTION_POS_DEVICE_BINDINGS_2026-04-14.md`
 
 ## Estrutura
 

@@ -30,10 +30,10 @@ set -a
 source "$ROOT_DIR/.env.local"
 set +a
 
-if command -v psql >/dev/null 2>&1; then
-  PSQL_BIN="$(command -v psql)"
-elif [ -x "$HOME/scoop/apps/postgresql/current/bin/psql.exe" ]; then
+if [ -x "$HOME/scoop/apps/postgresql/current/bin/psql.exe" ]; then
   PSQL_BIN="$HOME/scoop/apps/postgresql/current/bin/psql.exe"
+elif command -v psql >/dev/null 2>&1; then
+  PSQL_BIN="$(command -v psql)"
 else
   echo -e "${RED}✗ psql não encontrado no PATH${NC}"
   exit 1

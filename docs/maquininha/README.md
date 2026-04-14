@@ -70,4 +70,5 @@ Consolidar a especificacao tecnica de desenvolvimento da integracao de pagamento
 - Deploy do `restaurante-web` em producao concluido.
 - Build Android `preview` do `restaurante-app` concluido para validacao funcional.
 - Matriz inicial de homologacao TEF + balanca documentada com separacao entre simulador local, mock automatizado e integracao real controlada.
+- Validacao de `pos_device_bindings` com evidencias automatizadas (`verify + smoke`) e suporte a `smoke_mode=cross-tenant-transactional` para ambientes single-tenant.
 - Para progresso detalhado por fase, consultar `04-plano-execucao-testes-rollout.md`.

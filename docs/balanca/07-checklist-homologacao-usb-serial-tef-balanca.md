@@ -1,6 +1,6 @@
 # 07 - Checklist de homologacao USB/Serial (TEF + balanca)
 
-Ultima atualizacao: **2026-04-13**
+Ultima atualizacao: **2026-04-14**
 
 ## 1. Objetivo
 
@@ -13,6 +13,22 @@ Este documento e uma execucao pratica e complementar a:
 
 - `docs/balanca/03-contratos-api-bridge.md`
 - `docs/maquininha/06-matriz-homologacao-tef-balanca.md`
+- `docs/maquininha/16-runbook-pos-device-bindings-apply-verification.md`
+
+## 1.1 Alinhamento operacional com pos_device_bindings (RLS)
+
+Para validacao de isolamento multi-tenant da tabela `pos_device_bindings`, usar como padrao o smoke transacional:
+
+```bash
+cd d:/restaurante-supabase/database-backup
+bash scripts/smoke-pos-device-bindings-rls-cross-tenant-transactional.sh
+```
+
+Notas:
+
+1. O modo transacional valida cross-tenant sem depender de segunda empresa preexistente.
+2. Nao persiste dados (finaliza com `ROLLBACK`).
+3. Em Windows/Git Bash, os scripts priorizam `psql.exe` para evitar erro de TTY em execucao nao interativa.
 
 ## 2. Escopo e limites
 
