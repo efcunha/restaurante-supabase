@@ -4,7 +4,31 @@ import http from 'node:http';
 import { createStorybookMcpHandler } from '@storybook/mcp';
 
 const port = Number.parseInt(process.env.PORT || '13316', 10);
-const storybookBaseUrl = (process.env.STORYBOOK_PUBLIC_BASE_URL || 'https://restaurante-web-storybook-production.up.railway.app').replace(/\/$/, '');
+const defaultStorybookBaseUrl = 'https://restaurante-web-storybook-production.up.railway.app';
+
+function resolveStorybookBaseUrl() {
+  const raw = (process.env.STORYBOOK_PUBLIC_BASE_URL || '').trim();
+  const candidate = (raw || defaultStorybookBaseUrl).replace(/\/$/, '');
+
+  try {
+    const parsed = new URL(candidate);
+    const hasValidProtocol = parsed.protocol === 'https:' || parsed.protocol === 'http:';
+    const hasHostSeparator = parsed.hostname.includes('.');
+
+    if (hasValidProtocol && hasHostSeparator) {
+      return candidate;
+    }
+  } catch {
+    // Fall back to default below.
+  }
+
+  console.warn(
+    `[storybook-mcp] invalid STORYBOOK_PUBLIC_BASE_URL (value=${raw || '(empty)'}), falling back to ${defaultStorybookBaseUrl}`
+  );
+  return defaultStorybookBaseUrl;
+}
+
+const storybookBaseUrl = resolveStorybookBaseUrl();
 const mcpFormat = process.env.STORYBOOK_MCP_FORMAT || 'markdown';
 const mcpAuthToken = (process.env.STORYBOOK_MCP_AUTH_TOKEN || '').trim();
 const allowedOrigins = new Set(
