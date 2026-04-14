@@ -12,8 +12,8 @@ Pendencias alvo:
 2. `BAL-10` — **Coberto** (mock, 2026-04-14)
 3. `BAL-11` — **Coberto** (mock, 2026-04-14)
 4. `BAL-12` — **Coberto** (mock, 2026-04-14)
-5. `INT-02` — **Pendente** (requer TEF hardware)
-6. `INT-03` — **Pendente** (requer TEF hardware)
+5. `INT-02` — **Coberto** (hibrido: balanca mock + TEF real, 2026-04-14)
+6. `INT-03` — **Coberto** (hibrido: balanca mock + TEF real, 2026-04-14)
 
 Referencia principal: `docs/maquininha/06-matriz-homologacao-tef-balanca.md`
 
