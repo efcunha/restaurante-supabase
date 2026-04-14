@@ -173,11 +173,19 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
     }
 
     const emailSanitized = email.toLowerCase().trim();
+    const maskEmail = (value: string): string => {
+      const normalized = String(value || '').trim().toLowerCase();
+      const [local, domain] = normalized.split('@');
+      if (!local || !domain) return 'invalid-email';
+      if (local.length <= 2) return `${local[0] || '*'}***@${domain}`;
+      return `${local.slice(0, 2)}***@${domain}`;
+    };
+    const emailMasked = maskEmail(emailSanitized);
     const passwordSanitized = password.trim();
 
     try {
       setLoading(true);
-      logger.info('[RegisterCompanyScreen] registration attempt initiated', { email: emailSanitized });
+      logger.info('[RegisterCompanyScreen] registration attempt initiated', { emailMasked });
 
       // 1. Sign Up User
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -280,7 +288,7 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
       );
 
     } catch (error: any) {
-      logger.error('[RegisterCompanyScreen] registration failed', error, { email: emailSanitized });
+      logger.error('[RegisterCompanyScreen] registration failed', error, { emailMasked });
       let msg = error.message || 'Erro ao criar conta';
       if (msg.includes('already registered')) msg = 'Este email já está em uso.';
       Alert.alert('Erro', msg);
