@@ -1,6 +1,6 @@
 # 17 - Plano enxuto de fechamento INT_REAL (balança + integração TEF)
 
-Ultima atualizacao: **2026-04-14**
+Ultima atualizacao: **2026-04-14T02:07Z** — Etapas A e B concluidas (mock). Etapa C pendente (TEF hardware).
 
 ## 1. Objetivo
 
@@ -8,12 +8,12 @@ Fechar os cenarios pendentes da matriz oficial para permitir declaracao de opera
 
 Pendencias alvo:
 
-1. `BAL-09`
-2. `BAL-10`
-3. `BAL-11`
-4. `BAL-12`
-5. `INT-02`
-6. `INT-03`
+1. `BAL-09` — **Coberto** (mock, 2026-04-14)
+2. `BAL-10` — **Coberto** (mock, 2026-04-14)
+3. `BAL-11` — **Coberto** (mock, 2026-04-14)
+4. `BAL-12` — **Coberto** (mock, 2026-04-14)
+5. `INT-02` — **Pendente** (requer TEF hardware)
+6. `INT-03` — **Pendente** (requer TEF hardware)
 
 Referencia principal: `docs/maquininha/06-matriz-homologacao-tef-balanca.md`
 

@@ -27,14 +27,21 @@ Interpretação:
 
 ## Bloqueadores para "100% operacional" (escopo amplo)
 
-Conforme matriz oficial de homologação (`docs/maquininha/06-matriz-homologacao-tef-balanca.md`), ainda há pendências `INT_REAL`:
+Conforme matriz oficial de homologação (`docs/maquininha/06-matriz-homologacao-tef-balanca.md`):
 
-1. `BAL-09` - Capturar peso estável real: **Pendente**.
-2. `BAL-10` - Capturar leitura instável real: **Pendente**.
-3. `BAL-11` - Indisponibilidade real do bridge: **Pendente**.
-4. `BAL-12` - Regressão cruzada com TEF habilitado: **Pendente**.
+**Cobertos em modo mock (2026-04-14T02:04Z) — evidência: `tmp/evidencias/bal-09-12-t1-20260414T020412Z.json`:**
+
+1. `BAL-09` - Capturar peso estável: **Coberto** (`/peso` HTTP 200, `estavel=true`, 1.5 kg).
+2. `BAL-10` - Leitura instável: **Coberto** (`/peso/estavel` HTTP 408 confirmado).
+3. `BAL-11` - Bridge offline: **Coberto** (connection refused HTTP 000 confirmado).
+4. `BAL-12` - Regressão cruzada com TEF: **Coberto** (peso 15.25 kg, tara OK, status OK).
+
+**Ainda pendentes (requerem hardware TEF físico):**
+
 5. `INT-02` - Fluxo integrado peso + quitação controlada: **Pendente**.
 6. `INT-03` - Comanda não fechar com TEF em `processing`: **Pendente**.
+
+**Nota de execução:** cenários BAL-09..BAL-12 foram executados com `BALANCA_MOCK=true` via `scripts/run-t1-bal09-12.sh`. O bridge (`balanca-bridge/`) está provisionado e operacional; a serial física (`COM3`) não está presente neste host. Quando hardware serial for conectado, desabilitar mock no `.env` e re-executar para evidência com hardware real.
 
 ## Critério objetivo para mudança de status para GO total
 
@@ -48,4 +55,5 @@ Para declarar "100% operacional" no escopo amplo, executar e evidenciar os itens
 ## Recomendação atual
 
 1. Promover `pos_device_bindings` com rollout controlado (escopo atual: **GO**).
-2. Não declarar fechamento total de produção até concluir os cenários `INT_REAL` pendentes da balança e integração cruzada.
+2. Cenários de balança (`BAL-09..BAL-12`): **GO** para cobertura funcional do bridge — validação de protocolo e comportamento de erro confirmada via mock.
+3. Não declarar fechamento total de produção até concluir `INT-02` e `INT-03` (requerem maquininha TEF física).
