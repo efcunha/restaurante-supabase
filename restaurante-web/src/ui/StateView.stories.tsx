@@ -1,5 +1,5 @@
 import { Text, View } from 'react-native';
-import { StateView } from './index';
+import { StateView } from './StateView';
 
 const meta = {
   title: 'UI/StateView',

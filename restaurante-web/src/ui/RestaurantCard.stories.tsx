@@ -1,4 +1,4 @@
-import { RestaurantCard } from './index';
+import { RestaurantCard } from '../components/ui-next/RestaurantCard';
 
 const meta = {
   title: 'UI/RestaurantCard',

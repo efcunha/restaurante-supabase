@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Button, ConfirmActionDialog } from './index';
+import { Button } from '../components/ui-next/Button';
+import { ConfirmActionDialog } from './ConfirmActionDialog';
 
 const Demo = ({ danger = false }: { danger?: boolean }) => {
   const [visible, setVisible] = useState(true);

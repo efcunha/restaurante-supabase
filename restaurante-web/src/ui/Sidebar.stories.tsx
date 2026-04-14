@@ -1,4 +1,4 @@
-import { Sidebar } from './index';
+import { Sidebar } from '../components/ui-next/Sidebar';
 
 const meta = {
   title: 'UI/Sidebar',

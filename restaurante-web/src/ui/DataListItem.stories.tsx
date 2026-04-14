@@ -1,4 +1,5 @@
-import { DataListItem, ListContainer } from './index';
+import { DataListItem } from './DataListItem';
+import { ListContainer } from './ListContainer';
 
 const meta = {
   title: 'UI/DataListItem',
