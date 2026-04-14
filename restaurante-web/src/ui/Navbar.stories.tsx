@@ -1,4 +1,5 @@
-import { Button, Navbar } from './index';
+import { Button } from '../components/ui-next/Button';
+import { Navbar } from '../components/ui-next/Navbar';
 
 const meta = {
   title: 'UI/Navbar',

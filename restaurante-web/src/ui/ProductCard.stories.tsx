@@ -1,4 +1,4 @@
-import { ProductCard } from './index';
+import { ProductCard } from '../components/ui-next/ProductCard';
 
 const meta = {
   title: 'UI/ProductCard',

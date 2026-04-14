@@ -1,4 +1,4 @@
-import { ScreenHeader } from './index';
+import { ScreenHeader } from './ScreenHeader';
 
 const meta = {
   title: 'UI/ScreenHeader',

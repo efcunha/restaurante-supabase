@@ -1,4 +1,5 @@
-import { Button, SectionHeader } from './index';
+import { Button } from '../components/ui-next/Button';
+import { SectionHeader } from './SectionHeader';
 
 const meta = {
   title: 'UI/SectionHeader',
