@@ -1,7 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, TouchableOpacity, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 // @ts-ignore
 
@@ -11,6 +11,8 @@ import { getBusinessDateKey } from '../services/BusinessDateService';
 import OrderService from '../services/OrderService';
 import OptimizedFlatList from '../components/OptimizedFlatList';
 import { colors } from '../theme/colors';
+import { StateView } from '../ui';
+import logger from '../utils/logger';
 
 const formatClockLabel = (value?: string | null) => {
   if (!value) return '--:--';
@@ -40,7 +42,10 @@ export default function PedidosProntosScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [processingItems, setProcessingItems] = useState(new Set()); // Loading state
   const [allOrders, setAllOrders] = useState<any[]>([]);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
+  const [ordersError, setOrdersError] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const realtimeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -50,13 +55,19 @@ export default function PedidosProntosScreen() {
     return () => clearInterval(timer);
   }, []);
 
-  // ✅ TEMPO REAL: Listener para multi-usuários
-  useEffect(() => {
-    // @ts-ignore
-    if (!user?.companyId) return;
+  const fetchOrders = useCallback(async (silent = false) => {
+    if (!user?.companyId) {
+      setAllOrders([]);
+      setOrdersError(null);
+      return;
+    }
 
-    // Initial fetch
-    const fetchOrders = async () => {
+    if (!silent) {
+      setIsLoadingOrders(true);
+    }
+    setOrdersError(null);
+
+    try {
       const today = await getBusinessDateKey(user.companyId);
       const { data, error } = await supabase
         .from('orders')
@@ -71,51 +82,74 @@ export default function PedidosProntosScreen() {
         .in('status', ['preparing', 'ready'])
         .neq('order_type', 'delivery');
 
-      if (!error && data) {
-        const comandaNumbers = Array.from(new Set(
-          data
-            .map(order => Number(order.comanda_number))
-            .filter(value => Number.isFinite(value) && value > 0)
-        ));
-
-        const comandaCreatorsMap = new Map<string, string>();
-        if (comandaNumbers.length > 0) {
-          const { data: comandasData, error: comandasError } = await supabase
-            .from('comandas')
-            .select('date_key, comanda_number, opened_by_name')
-            .eq('company_id', user.companyId)
-            .eq('date_key', today)
-            .in('comanda_number', comandaNumbers);
-
-          if (!comandasError && comandasData) {
-            comandasData.forEach(comanda => {
-              comandaCreatorsMap.set(`${comanda.date_key}:${comanda.comanda_number}`, comanda.opened_by_name || '');
-            });
-          }
-        }
-
-        // Map snake_case to camelCase
-        const mappedOrders = data.map(order => ({
-          ...order,
-          itemsWithStatus: order.items_with_status || [],
-          comandaNumber: order.comanda_number,
-          mesa: order.table_number?.toString() || '',
-          comandaStatus: order.comanda_status,
-          client: order.client_name || order.client || 'Cliente',
-          createdAt: order.created_at,
-          timestamp: order.created_at,
-          timeInProntos: order.time_in_prontos || null,
-          timeInMontagem: order.time_in_montagem || null,
-          createdByName: order.profiles?.full_name || comandaCreatorsMap.get(`${order.date_key || today}:${order.comanda_number}`) || '',
-          criadoPorNome: order.profiles?.full_name || comandaCreatorsMap.get(`${order.date_key || today}:${order.comanda_number}`) || ''
-        }));
-        setAllOrders(mappedOrders);
+      if (error) {
+        throw error;
       }
-    };
+
+      const comandaNumbers = Array.from(new Set(
+        (data || [])
+          .map(order => Number(order.comanda_number))
+          .filter(value => Number.isFinite(value) && value > 0)
+      ));
+
+      const comandaCreatorsMap = new Map<string, string>();
+      if (comandaNumbers.length > 0) {
+        const { data: comandasData, error: comandasError } = await supabase
+          .from('comandas')
+          .select('date_key, comanda_number, opened_by_name')
+          .eq('company_id', user.companyId)
+          .eq('date_key', today)
+          .in('comanda_number', comandaNumbers);
+
+        if (!comandasError && comandasData) {
+          comandasData.forEach(comanda => {
+            comandaCreatorsMap.set(`${comanda.date_key}:${comanda.comanda_number}`, comanda.opened_by_name || '');
+          });
+        }
+      }
+
+      const mappedOrders = (data || []).map(order => ({
+        ...order,
+        itemsWithStatus: order.items_with_status || [],
+        comandaNumber: order.comanda_number,
+        mesa: order.table_number?.toString() || '',
+        comandaStatus: order.comanda_status,
+        client: order.client_name || order.client || 'Cliente',
+        createdAt: order.created_at,
+        timestamp: order.created_at,
+        timeInProntos: order.time_in_prontos || null,
+        timeInMontagem: order.time_in_montagem || null,
+        createdByName: order.profiles?.full_name || comandaCreatorsMap.get(`${order.date_key || today}:${order.comanda_number}`) || '',
+        criadoPorNome: order.profiles?.full_name || comandaCreatorsMap.get(`${order.date_key || today}:${order.comanda_number}`) || ''
+      }));
+
+      setAllOrders(mappedOrders);
+    } catch (error: any) {
+      logger.error('[PedidosProntosScreen] failed to load ready orders');
+      setOrdersError(error?.message || 'Falha ao carregar pedidos prontos.');
+      setAllOrders([]);
+    } finally {
+      if (!silent) {
+        setIsLoadingOrders(false);
+      }
+    }
+  }, [user?.companyId]);
+
+  const scheduleRealtimeRefresh = useCallback(() => {
+    if (realtimeDebounceRef.current) {
+      clearTimeout(realtimeDebounceRef.current);
+    }
+
+    realtimeDebounceRef.current = setTimeout(() => {
+      fetchOrders(true);
+    }, 300);
+  }, [fetchOrders]);
+
+  useEffect(() => {
+    if (!user?.companyId) return;
 
     fetchOrders();
 
-    // Subscribe to real-time changes
     const channel = supabase
       .channel(`orders-prontos-${user.companyId}`)
       .on(
@@ -127,15 +161,18 @@ export default function PedidosProntosScreen() {
           filter: `company_id=eq.${user.companyId}`
         },
         () => {
-          fetchOrders();
+          scheduleRealtimeRefresh();
         }
       )
       .subscribe();
 
     return () => {
+      if (realtimeDebounceRef.current) {
+        clearTimeout(realtimeDebounceRef.current);
+      }
       channel.unsubscribe();
     };
-  }, [user]);
+  }, [user?.companyId, fetchOrders, scheduleRealtimeRefresh]);
 
   // Buscar pedidos com status preparing ou ready
   const churrasqueiraOrders = allOrders.filter(o => {
@@ -198,7 +235,6 @@ export default function PedidosProntosScreen() {
   });
 
   const handleDeliver = useCallback(async (orderId: string, itemId: string) => {
-    console.log('[Prontos] Delivering item:', orderId, itemId);
     let previousOrder: any = null;
 
     // Validar se caixa está aberto
@@ -213,7 +249,7 @@ export default function PedidosProntosScreen() {
         return;
       }
     } catch (e) {
-      console.error('[Prontos] Erro ao verificar caixa:', e);
+      logger.error('[PedidosProntosScreen] failed to verify caixa before delivery');
     }
 
     try {
@@ -262,8 +298,6 @@ export default function PedidosProntosScreen() {
         };
       }));
 
-      // @ts-ignore
-      console.log('[Prontos] Updating doc:', user.companyId, orderId);
       // Atualizar no Supabase
       const { error: updateError } = await supabase
         .from('orders')
@@ -272,7 +306,6 @@ export default function PedidosProntosScreen() {
         .eq('id', orderId);
 
       if (updateError) throw updateError;
-      console.log('[Prontos] Update success!');
 
       setProcessingItems(prev => {
         // @ts-ignore
@@ -282,7 +315,7 @@ export default function PedidosProntosScreen() {
       });
 
     } catch (error: any) {
-      console.error('❌ Erro ao entregar item:', error);
+      logger.error('[PedidosProntosScreen] failed to mark item as delivered');
       if (Platform.OS === 'web') window.alert('Erro: ' + error.message);
       else Alert.alert('Erro', 'Não foi possível marcar como entregue: ' + error.message);
 
@@ -346,6 +379,8 @@ export default function PedidosProntosScreen() {
         <TouchableOpacity
           style={styles.deliverBtn}
           onPress={() => handleDeliver(item.orderId, item.id)}
+          accessibilityRole="button"
+          accessibilityLabel={`Marcar item ${mainName} como entregue`}
         >
           <Text style={styles.deliverBtnText}>
             {
@@ -361,12 +396,13 @@ export default function PedidosProntosScreen() {
   const keyExtractor = useCallback((item: any) => `${item.orderId}-${item.id}`, []);
 
   const ListEmptyComponent = useCallback(() => (
-    <View style={styles.emptyState}>
-      <Text style={styles.emptyIcon}>🛎️</Text>
-      <Text style={styles.emptyText}>Nenhum item pronto</Text>
-      <Text style={styles.emptySubtext}>Marque itens na montagem e eles aparecerão aqui</Text>
-    </View>
-  ), []);
+    <StateView
+      state="empty"
+      message="Nenhum item pronto"
+      details="Marque itens na montagem e eles aparecerão aqui"
+      onRetry={() => fetchOrders()}
+    />
+  ), [fetchOrders]);
 
   const handleCloseModal = () => {
     setModalVisible(false);
@@ -390,17 +426,38 @@ export default function PedidosProntosScreen() {
         <View style={styles.logoutBtn} />
       </View>
 
-      <OptimizedFlatList
-        data={readyItems}
-        renderItem={renderItem}
-        keyExtractor={keyExtractor}
-        ListEmptyComponent={ListEmptyComponent}
-        contentContainerStyle={styles.content}
-        itemHeight={180}
-        initialNumToRender={10}
-        maxToRenderPerBatch={10}
-        windowSize={5}
-      />
+      <View
+        {...(Platform.OS === 'web' ? ({ 'aria-live': 'polite' } as any) : {})}
+        style={styles.liveRegionContainer}
+      >
+        <Text style={styles.liveRegionText}>
+          {readyItems.length > 0
+            ? `${readyItems.length} itens prontos para entrega atualizados em tempo real.`
+            : 'Nenhum item pronto para entrega no momento.'}
+        </Text>
+      </View>
+
+      {isLoadingOrders ? (
+        <View style={styles.stateContainer}>
+          <StateView state="loading" message="Carregando itens prontos..." skeletonRows={4} />
+        </View>
+      ) : ordersError ? (
+        <View style={styles.stateContainer}>
+          <StateView state="error" message={ordersError} onRetry={() => fetchOrders()} />
+        </View>
+      ) : (
+        <OptimizedFlatList
+          data={readyItems}
+          renderItem={renderItem}
+          keyExtractor={keyExtractor}
+          ListEmptyComponent={ListEmptyComponent}
+          contentContainerStyle={styles.content}
+          itemHeight={180}
+          initialNumToRender={10}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+        />
+      )}
 
       {selectedOrderId && (
         <PedidoDetalhesModal
@@ -474,6 +531,19 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
     paddingBottom: 100,
+  },
+  stateContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  liveRegionContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 10,
+  },
+  liveRegionText: {
+    color: colors.textSecondary,
+    fontSize: 12,
   },
   orderCard: {
     backgroundColor: colors.white,

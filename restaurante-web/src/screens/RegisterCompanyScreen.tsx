@@ -19,6 +19,9 @@ import { validateCPF, validateCNPJ } from '../utils/validation';
 // @ts-ignore
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
+import { colorSystem } from '../design-system';
+import { FieldRow, FormSection, ScreenHeader } from '../ui';
+import logger from '../utils/logger';
 
 interface Props {
   navigation: NativeStackNavigationProp<any>;
@@ -134,11 +137,8 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
       setCity(data.localidade || '');
       setState(data.uf || '');
       
-      if (Platform.OS === 'web') {
-        console.log('✅ Endereço encontrado:', data);
-      }
     } catch (error) {
-      console.error('Erro ao buscar CEP:', error);
+      logger.error('[RegisterCompanyScreen] Failed to fetch CEP address', error);
       Alert.alert('Erro', 'Não foi possível buscar o endereço. Verifique sua conexão.');
     }
   };
@@ -177,6 +177,7 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
 
     try {
       setLoading(true);
+      logger.info('[RegisterCompanyScreen] registration attempt initiated', { email: emailSanitized });
 
       // 1. Sign Up User
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -249,7 +250,7 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
               .eq('id', userId);
               
            if (updateError) {
-               console.error('Profile update failed', updateError);
+               logger.error('[RegisterCompanyScreen] Profile update failed', updateError);
                throw profileError; // Throw original error
            }
       }
@@ -269,7 +270,7 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
           });
 
       if (subError) {
-          console.warn('[RegisterCompany] Subscription row creation failed:', subError.message);
+          logger.warn('[RegisterCompanyScreen] Subscription row creation failed', { message: subError.message });
       }
 
       Alert.alert(
@@ -279,7 +280,7 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
       );
 
     } catch (error: any) {
-      console.error('Registration Error:', error);
+      logger.error('[RegisterCompanyScreen] registration failed', error, { email: emailSanitized });
       let msg = error.message || 'Erro ao criar conta';
       if (msg.includes('already registered')) msg = 'Este email já está em uso.';
       Alert.alert('Erro', msg);
@@ -330,9 +331,10 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
 
           <View style={[styles.formColumn, isTablet && styles.formColumnTablet, isDesktop && styles.formColumnDesktop]}>
             <View style={styles.form}>
-              <Text style={styles.formEyebrow}>Novo restaurante</Text>
-              <Text style={styles.formTitle}>Cadastro inicial</Text>
-              <Text style={styles.formSubtitle}>Preencha os dados essenciais para criar a conta administrativa e iniciar a configuracao do restaurante.</Text>
+              <ScreenHeader
+                title="Cadastro inicial"
+                subtitle="Preencha os dados essenciais para criar a conta administrativa e iniciar a configuracao do restaurante."
+              />
 
               <Text style={styles.sectionTitle}>Identificacao</Text>
 
@@ -402,7 +404,12 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
                   onChangeText={handleZipCodeChange}
                   keyboardType="numeric"
                 />
-                <TouchableOpacity style={styles.searchButton} onPress={() => searchAddressByCEP(zipCode)}>
+                <TouchableOpacity
+                  style={styles.searchButton}
+                  onPress={() => searchAddressByCEP(zipCode)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Buscar endereco pelo CEP"
+                >
                   <Ionicons name="search" size={20} color={colors.white} />
                 </TouchableOpacity>
               </View>
@@ -441,48 +448,61 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
                 </View>
               </View>
 
-              <Text style={styles.sectionTitle}>Acesso</Text>
+              <FormSection title="Acesso">
+                <FieldRow label="Email" required>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="seu@email.com"
+                    placeholderTextColor={colorSystem.textMuted}
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+                </FieldRow>
 
-              <Text style={styles.label}>Email</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="seu@email.com"
-                placeholderTextColor="#7A8B97"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
+                <FieldRow label="Senha" required>
+                  <View style={styles.passwordContainer}>
+                    <TextInput
+                      style={styles.inputPassword}
+                      placeholder="Minimo 6 caracteres"
+                      placeholderTextColor={colorSystem.textMuted}
+                      value={password}
+                      onChangeText={setPassword}
+                      secureTextEntry={!showPassword}
+                    />
+                    <TouchableOpacity
+                      onPress={() => setShowPassword(!showPassword)}
+                      style={styles.eyeIcon}
+                      accessibilityRole="button"
+                      accessibilityLabel={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                    >
+                      <Ionicons name={showPassword ? 'eye' : 'eye-off'} size={22} color={colorSystem.primary} />
+                    </TouchableOpacity>
+                  </View>
+                </FieldRow>
 
-              <Text style={styles.label}>Senha</Text>
-              <View style={styles.passwordContainer}>
-                <TextInput
-                  style={styles.inputPassword}
-                  placeholder="Minimo 6 caracteres"
-                  placeholderTextColor="#7A8B97"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                />
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
-                  <Ionicons name={showPassword ? 'eye' : 'eye-off'} size={22} color="#0B6780" />
-                </TouchableOpacity>
-              </View>
-
-              <Text style={styles.label}>Confirmar Senha</Text>
-              <View style={styles.passwordContainer}>
-                <TextInput
-                  style={styles.inputPassword}
-                  placeholder="Repita a senha"
-                  placeholderTextColor="#7A8B97"
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  secureTextEntry={!showConfirmPassword}
-                />
-                <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={styles.eyeIcon}>
-                  <Ionicons name={showConfirmPassword ? 'eye' : 'eye-off'} size={22} color="#0B6780" />
-                </TouchableOpacity>
-              </View>
+                <FieldRow label="Confirmar senha" required>
+                  <View style={styles.passwordContainer}>
+                    <TextInput
+                      style={styles.inputPassword}
+                      placeholder="Repita a senha"
+                      placeholderTextColor={colorSystem.textMuted}
+                      value={confirmPassword}
+                      onChangeText={setConfirmPassword}
+                      secureTextEntry={!showConfirmPassword}
+                    />
+                    <TouchableOpacity
+                      onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                      style={styles.eyeIcon}
+                      accessibilityRole="button"
+                      accessibilityLabel={showConfirmPassword ? 'Ocultar confirmacao de senha' : 'Mostrar confirmacao de senha'}
+                    >
+                      <Ionicons name={showConfirmPassword ? 'eye' : 'eye-off'} size={22} color={colorSystem.primary} />
+                    </TouchableOpacity>
+                  </View>
+                </FieldRow>
+              </FormSection>
 
               <TouchableOpacity style={[styles.btn, loading && styles.btnDisabled]} onPress={handleRegister} disabled={loading}>
                 {loading ? <ActivityIndicator color={colors.white} /> : <Text style={styles.btnText}>CRIAR CONTA GRATIS</Text>}

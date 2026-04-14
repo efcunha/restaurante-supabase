@@ -2,7 +2,7 @@ import { StatusBar } from 'expo-status-bar';
 import LicenseGate from '../components/LicenseGate';
 import { StyleSheet, Text, View, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 // @ts-ignore
 
@@ -13,6 +13,8 @@ import { supabase } from '../config/SupabaseConfig';
 import { getBusinessDateKey } from '../services/BusinessDateService';
 import OptimizedFlatList from '../components/OptimizedFlatList';
 import { colors } from '../theme/colors';
+import { StateView } from '../ui';
+import logger from '../utils/logger';
 
 const isItemActiveInKitchen = (item: any) => {
   const status = String(item?.status || '').trim().toLowerCase();
@@ -24,13 +26,23 @@ const isItemActiveInKitchen = (item: any) => {
 export default function CozinhaScreen() {
   const { user } = useAuth();
   const [allOrders, setAllOrders] = useState<any[]>([]);
+  const [isLoadingOrders, setIsLoadingOrders] = useState<boolean>(false);
+  const [ordersError, setOrdersError] = useState<string | null>(null);
+  const realtimeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    // @ts-ignore
-    if (!user?.companyId) return;
+  const fetchOrders = useCallback(async (silent = false) => {
+    if (!user?.companyId) {
+      setAllOrders([]);
+      setOrdersError(null);
+      return;
+    }
 
-    // Initial fetch
-    const fetchOrders = async () => {
+    if (!silent) {
+      setIsLoadingOrders(true);
+    }
+    setOrdersError(null);
+
+    try {
       const today = await getBusinessDateKey(user.companyId);
       const { data, error } = await supabase
         .from('orders')
@@ -38,22 +50,44 @@ export default function CozinhaScreen() {
         .eq('company_id', user.companyId)
         .eq('date_key', today);
 
-      if (!error && data) {
-        // Map snake_case to camelCase
-        const mappedOrders = data.map(order => ({
-          ...order,
-          itemsWithStatus: order.items_with_status || [],
-          comandaNumber: order.comanda_number,
-          mesa: (order.table_number && order.table_number !== 0) ? order.table_number.toString() : '',
-          comandaStatus: order.comanda_status // ✅ Mapear comanda_status
-        }));
-        setAllOrders(mappedOrders);
+      if (error) {
+        throw error;
       }
-    };
 
+      const mappedOrders = (data || []).map(order => ({
+        ...order,
+        itemsWithStatus: order.items_with_status || [],
+        comandaNumber: order.comanda_number,
+        mesa: (order.table_number && order.table_number !== 0) ? order.table_number.toString() : '',
+        comandaStatus: order.comanda_status
+      }));
+
+      setAllOrders(mappedOrders);
+    } catch (error: any) {
+      logger.error('[CozinhaScreen] failed to load orders for kitchen');
+      setOrdersError(error?.message || 'Falha ao carregar pedidos da cozinha.');
+      setAllOrders([]);
+    } finally {
+      if (!silent) {
+        setIsLoadingOrders(false);
+      }
+    }
+  }, [user?.companyId]);
+
+  const scheduleRealtimeRefresh = useCallback(() => {
+    if (realtimeDebounceRef.current) {
+      clearTimeout(realtimeDebounceRef.current);
+    }
+
+    realtimeDebounceRef.current = setTimeout(() => {
+      fetchOrders(true);
+    }, 300);
+  }, [fetchOrders]);
+
+  useEffect(() => {
+    if (!user?.companyId) return;
     fetchOrders();
 
-    // Subscribe to real-time changes
     const channel = supabase
       .channel(`orders-cozinha-${user.companyId}`)
       .on(
@@ -64,17 +98,19 @@ export default function CozinhaScreen() {
           table: 'orders',
           filter: `company_id=eq.${user.companyId}`
         },
-        (payload) => {
-          console.log('[Cozinha] 🔄 Recebeu atualização:', payload);
-          fetchOrders();
+        () => {
+          scheduleRealtimeRefresh();
         }
       )
       .subscribe();
 
     return () => {
+      if (realtimeDebounceRef.current) {
+        clearTimeout(realtimeDebounceRef.current);
+      }
       channel.unsubscribe();
     };
-  }, [user]);
+  }, [user?.companyId, fetchOrders, scheduleRealtimeRefresh]);
 
   const ordersRaw = useMemo(() => allOrders.filter(order => {
     // Filtrar apenas pedidos em preparing
@@ -86,28 +122,11 @@ export default function CozinhaScreen() {
 
     // ✅ PROTEÇÃO: Se o pedido tem comandaStatus='cancelada', não mostrar
     if (order.comandaStatus === 'cancelada') {
-      console.log('[Cozinha] 🚫 Pedido filtrado (comanda cancelada):', order.id);
       return false;
     }
 
     return true;
   }), [allOrders]);
-
-  // DEBUG: Verificar nomes chegando na cozinha
-  useEffect(() => {
-    if (ordersRaw.length > 0) {
-       // Log sampling to avoid spam
-       const sample = ordersRaw.slice(0, 3);
-       console.log(`[Cozinha] 🔍 Visualizando ${ordersRaw.length} pedidos. Amostra de itens:`);
-       sample.forEach(o => {
-          o.itemsWithStatus?.forEach((i: any) => {
-             if (i.name.includes('+')) {
-                 console.log(`  🍕 ITEM COM EXTRA: "${i.name}"`);
-             }
-          });
-       });
-    }
-  }, [ordersRaw]);
 
   const extrairQuantidade = (itemText: string) => {
     const match = itemText.match(/^(\d+)\s*x?\s*/);
@@ -274,12 +293,13 @@ export default function CozinhaScreen() {
   const keyExtractor = useCallback((item: any, index: number) => `${item.nome}-${index}`, []);
 
   const ListEmptyComponent = useCallback(() => (
-    <View style={styles.emptyState}>
-      <Text style={styles.emptyIcon}>🍲</Text>
-      <Text style={styles.emptyText}>Nenhum pedido na cozinha</Text>
-      <Text style={styles.emptySubtext}>Os pedidos aparecerão aqui automaticamente</Text>
-    </View>
-  ), []);
+    <StateView
+      state="empty"
+      message="Nenhum pedido na cozinha"
+      details="Os pedidos aparecerão aqui automaticamente"
+      onRetry={() => fetchOrders()}
+    />
+  ), [fetchOrders]);
 
   const ListHeaderComponent = useCallback(() => (
     grupos.length > 0 ? <Text style={styles.resumoTitle}>📋 Resumo de Pedidos</Text> : <View />
@@ -302,18 +322,39 @@ export default function CozinhaScreen() {
         <View style={styles.logoutBtn} />
       </View>
 
-      <OptimizedFlatList
-        data={grupos}
-        renderItem={renderGrupoItem}
-        keyExtractor={keyExtractor}
-        ListEmptyComponent={ListEmptyComponent}
-        ListHeaderComponent={ListHeaderComponent}
-        contentContainerStyle={styles.listContainer}
-        itemHeight={120}
-        initialNumToRender={10}
-        maxToRenderPerBatch={10}
-        windowSize={5}
-      />
+      <View
+        {...(Platform.OS === 'web' ? ({ 'aria-live': 'polite' } as any) : {})}
+        style={styles.liveRegionContainer}
+      >
+        <Text style={styles.liveRegionText}>
+          {grupos.length > 0
+            ? `${grupos.length} grupos de pedidos em preparo atualizados em tempo real.`
+            : 'Nenhum pedido em preparo no momento.'}
+        </Text>
+      </View>
+
+      {isLoadingOrders ? (
+        <View style={styles.stateContainer}>
+          <StateView state="loading" message="Carregando pedidos da cozinha..." skeletonRows={4} />
+        </View>
+      ) : ordersError ? (
+        <View style={styles.stateContainer}>
+          <StateView state="error" message={ordersError} onRetry={() => fetchOrders()} />
+        </View>
+      ) : (
+        <OptimizedFlatList
+          data={grupos}
+          renderItem={renderGrupoItem}
+          keyExtractor={keyExtractor}
+          ListEmptyComponent={ListEmptyComponent}
+          ListHeaderComponent={ListHeaderComponent}
+          contentContainerStyle={styles.listContainer}
+          itemHeight={120}
+          initialNumToRender={10}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+        />
+      )}
 
       <StatusBar style="dark" />
     </View>
@@ -379,6 +420,19 @@ const styles = StyleSheet.create({
   listContainer: {
     padding: 20,
     paddingBottom: 20,
+  },
+  stateContainer: {
+    flex: 1,
+    paddingHorizontal: 20,
+    justifyContent: 'center',
+  },
+  liveRegionContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 10,
+  },
+  liveRegionText: {
+    color: colors.textSecondary,
+    fontSize: 12,
   },
   emptyState: {
     alignItems: 'center',

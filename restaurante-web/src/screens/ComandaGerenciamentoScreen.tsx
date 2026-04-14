@@ -1,5 +1,7 @@
 
-import { StatusBar } from 'expo-status-bar';import LicenseGate from '../components/LicenseGate';import { StyleSheet, Text, View, TouchableOpacity, Alert } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import LicenseGate from '../components/LicenseGate';
+import { StyleSheet, Text, View, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
@@ -25,10 +27,12 @@ import { supabase } from '../config/SupabaseConfig';
 
 import { LayoutAnimation, Platform, UIManager } from 'react-native';
 import PDFService from '../services/PDFService';
-import { Button } from '../ui';
+import { Button, StateView } from '../ui';
 import { isFeatureEnabled } from '../config/featureFlags';
 import { colors } from '../theme/colors';
 import { auditService } from '../services/AuditService';
+import logger from '../utils/logger';
+import { ScreenScaffold } from '../layouts/ScreenScaffold';
 
 const DELIVERED_ORDER_STATUSES = new Set(['delivered', 'entregue']);
 
@@ -313,11 +317,7 @@ export default function ComandaGerenciamentoScreen(props: any) {
         return;
       }
 
-      console.log('[ComandaGerenciamento] 🚫 Cancelando comanda:', {
-        docId: `comanda-${businessDateKey}-${comanda.comandaNumber}`,
-        comandaNumber: comanda.comandaNumber,
-        reason
-      });
+      logger.info('[ComandaGerenciamento] cancel request started');
 
       const { error: updateError } = await supabase
         .from('comandas')
@@ -393,7 +393,7 @@ export default function ComandaGerenciamentoScreen(props: any) {
       setShowCancelModal(false);
       carregarComandas(true);
     } catch (e: any) {
-      console.error('[ComandaGerenciamento] ❌ Erro ao cancelar:', e);
+      logger.error('[ComandaGerenciamento] cancel request failed', e);
       const normalizedErrorMessage = String(e?.message || '').toLowerCase();
       if (normalizedErrorMessage.includes('entreg') || normalizedErrorMessage.includes('delivered')) {
         showDeliveredCancelBlockMessage();
@@ -462,7 +462,7 @@ export default function ComandaGerenciamentoScreen(props: any) {
       }
 
     } catch (e: any) {
-      console.error('Erro ao cancelar item:', e);
+          logger.error('[ComandaGerenciamento] error cancelling item', e);
       showToast(e.message, 'error');
     }
   };
@@ -631,20 +631,16 @@ export default function ComandaGerenciamentoScreen(props: any) {
     );
   }
 
-  return (    <LicenseGate>    <View style={styles.container}>
+  const currentComandas =
+    activeTab === 'abertas' ? comandasAbertas :
+      activeTab === 'pagas' ? comandasPagas : comandasCanceladas;
 
-
-      <View style={styles.header}>
-        <View style={styles.headerLeft} />
-        <View style={styles.headerCenter}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Ionicons name="clipboard-outline" size={24} color={colors.white} style={{ marginRight: 8 }} />
-            <Text style={styles.headerTitle}>Gerenciamento</Text>
-          </View>
-          {!!user && <Text style={styles.userInfo}>Operador: {user.nome || user.email}</Text>}
-        </View>
-        <View style={styles.logoutBtn} />
-      </View>
+  return (
+    <LicenseGate>
+      <ScreenScaffold
+        title="Gerenciamento"
+        titleIcon={<Ionicons name="clipboard-outline" size={24} color={colors.white} />}
+      >
 
       <View style={styles.tabs}>
         <TouchableOpacity
@@ -653,6 +649,8 @@ export default function ComandaGerenciamentoScreen(props: any) {
             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
             setActiveTab('abertas');
           }}
+          accessibilityRole="button"
+          accessibilityLabel={`Mostrar comandas abertas (${comandasAbertas.length})`}
         >
           <Text style={[styles.tabText, activeTab === 'abertas' && styles.activeTabText]}>
             Abertas ({comandasAbertas.length})
@@ -664,6 +662,8 @@ export default function ComandaGerenciamentoScreen(props: any) {
             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
             setActiveTab('pagas');
           }}
+          accessibilityRole="button"
+          accessibilityLabel="Mostrar comandas pagas"
         >
           <Text style={[styles.tabText, activeTab === 'pagas' && styles.activeTabText]}>
             Pagas
@@ -675,6 +675,8 @@ export default function ComandaGerenciamentoScreen(props: any) {
             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
             setActiveTab('canceladas');
           }}
+          accessibilityRole="button"
+          accessibilityLabel="Mostrar comandas canceladas"
         >
           <Text style={[styles.tabText, activeTab === 'canceladas' && styles.activeTabText]}>
             Canceladas
@@ -682,17 +684,29 @@ export default function ComandaGerenciamentoScreen(props: any) {
         </TouchableOpacity>
       </View>
 
-      <ComandaList
-        comandas={
-          activeTab === 'abertas' ? comandasAbertas :
-            activeTab === 'pagas' ? comandasPagas : comandasCanceladas
-        }
-        onSelectComanda={setSelectedComanda}
-        refreshing={isRefreshing}
-        onRefresh={() => carregarComandas(true)}
-        onLoadMore={onLoadMore}
-        loadingMore={isLoadingMore}
-      />
+      {currentComandas.length === 0 && !isRefreshing ? (
+        <View style={styles.emptyStateContainer}>
+          <StateView
+            state="empty"
+            message={
+              activeTab === 'abertas'
+                ? 'Nenhuma comanda aberta no momento.'
+                : activeTab === 'pagas'
+                  ? 'Nenhuma comanda paga encontrada.'
+                  : 'Nenhuma comanda cancelada encontrada.'
+            }
+          />
+        </View>
+      ) : (
+        <ComandaList
+          comandas={currentComandas}
+          onSelectComanda={setSelectedComanda}
+          refreshing={isRefreshing}
+          onRefresh={() => carregarComandas(true)}
+          onLoadMore={onLoadMore}
+          loadingMore={isLoadingMore}
+        />
+      )}
 
       <StatusBar style="dark" />
 
@@ -701,7 +715,7 @@ export default function ComandaGerenciamentoScreen(props: any) {
         onClose={() => setShowCancelModal(false)}
         onConfirm={confirmCancel}
       />
-    </View>
+      </ScreenScaffold>
     </LicenseGate>
   );
 }

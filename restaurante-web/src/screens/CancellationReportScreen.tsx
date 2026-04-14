@@ -6,6 +6,8 @@ import { getDateKeyRange, Period } from '../utils/dateUtils';
 import { colors } from '../theme/colors';
 import { auditService } from '../services/AuditService';
 import { ScreenScaffold } from '../layouts/ScreenScaffold';
+import { StateView, DataListItem } from '../ui';
+import LoggerService from '../services/LoggerService';
 
 type OperatorSummary = {
   operatorName: string;
@@ -199,6 +201,15 @@ export default function CancellationReportScreen({ onClose }: Props) {
       setComandas((comandasResult.data || []) as CancelledComandaRow[]);
       setItemLogs(normalizedItemLogs);
 
+      // Security & Audit logging: report generation accessed
+      LoggerService.logInfo('Relatório de cancelamentos visualizado', 'CancellationReportScreen#loadReport', {
+        period: periodo,
+        cancelledComandasCount: (comandasResult.data || []).length,
+        cancelledItemsCount: normalizedItemLogs.length,
+        totalValueCancelled: (comandasResult.data || []).reduce((sum: number, c) => sum + Number(c.total_consumed || 0), 0) + 
+                            normalizedItemLogs.reduce((sum: number, l) => sum + Number(l.metadata?.estimatedValue || 0), 0),
+      });
+
       // Telemetria não bloqueante: apenas rastreabilidade de consulta do relatório.
       auditService.log({
         eventType: 'report.cancellation_generated',
@@ -214,7 +225,12 @@ export default function CancellationReportScreen({ onClose }: Props) {
         },
       }).catch(() => undefined);
     } catch (e: any) {
-      setError(e?.message || 'Erro ao carregar relatório de cancelamentos.');
+      const error = e as Error;
+      LoggerService.logError(error, 'CancellationReportScreen#loadReport', {
+        period: periodo,
+        action: 'load_report',
+      });
+      setError(error?.message || 'Erro ao carregar relatório de cancelamentos.');
     } finally {
       setLoading(false);
     }
@@ -230,12 +246,14 @@ export default function CancellationReportScreen({ onClose }: Props) {
       leftAction={{ label: 'Voltar', onPress: onClose }}
     >
       <View style={styles.container}>
+        {/* Period Filter */}
         <View style={styles.periodRow}>
           {PERIOD_OPTIONS.map((option) => (
             <TouchableOpacity
               key={option.key}
               style={[styles.periodButton, periodo === option.key && styles.periodButtonActive]}
               onPress={() => setPeriodo(option.key)}
+              accessibilityLabel={`Período: ${option.label}`}
             >
               <Text style={[styles.periodButtonText, periodo === option.key && styles.periodButtonTextActive]}>
                 {option.label}
@@ -244,78 +262,71 @@ export default function CancellationReportScreen({ onClose }: Props) {
           ))}
         </View>
 
-        <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
-          {loading && (
-            <View style={styles.centeredState}>
-              <ActivityIndicator color={colors.primary} size="large" />
-              <Text style={styles.centeredText}>Carregando relatório...</Text>
+        {/* State Management with StateView */}
+        <StateView
+          state={loading ? 'loading' : error ? 'error' : (totalComandasCanceladas === 0 && totalItensCancelados === 0) ? 'empty' : 'success'}
+          onRetry={loadReport}
+          errorMessage={error}
+          loadingComponent={<ActivityIndicator color={colors.primary} size="large" />}
+        >
+          <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+            {/* KPI Grid */}
+            <View style={styles.kpiGrid}>
+              <View style={styles.kpiCard}>
+                <Text style={styles.kpiLabel}>Comandas canceladas</Text>
+                <Text style={styles.kpiValue}>{totalComandasCanceladas}</Text>
+              </View>
+              <View style={styles.kpiCard}>
+                <Text style={styles.kpiLabel}>Valor em comandas</Text>
+                <Text style={styles.kpiValue}>{formatCurrency(totalValorComandas)}</Text>
+              </View>
+              <View style={styles.kpiCard}>
+                <Text style={styles.kpiLabel}>Itens cancelados</Text>
+                <Text style={styles.kpiValue}>{totalItensCancelados}</Text>
+              </View>
+              <View style={styles.kpiCard}>
+                <Text style={styles.kpiLabel}>Valor em itens</Text>
+                <Text style={styles.kpiValue}>{formatCurrency(totalValorItensCancelados)}</Text>
+              </View>
             </View>
-          )}
 
-          {!loading && error && (
-            <View style={styles.centeredState}>
-              <Text style={styles.errorText}>{error}</Text>
+            {/* By Operator Section */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Por operador</Text>
+              {byOperator.length === 0 ? (
+                <Text style={styles.emptyText}>Sem cancelamentos no período.</Text>
+              ) : (
+                byOperator.map((op) => (
+                  <DataListItem
+                    key={op.operatorName}
+                    title={op.operatorName}
+                    subtitle={`Comandas: ${op.comandasCanceladas} | Itens: ${op.itensCancelados}`}
+                    meta={formatCurrency(op.valorComandasCanceladas + op.valorItensCancelados)}
+                    status={op.valorComandasCanceladas + op.valorItensCancelados > 500 ? 'warning' : 'default'}
+                  />
+                ))
+              )}
             </View>
-          )}
 
-          {!loading && !error && (
-            <>
-              <View style={styles.kpiGrid}>
-                <View style={styles.kpiCard}>
-                  <Text style={styles.kpiLabel}>Comandas canceladas</Text>
-                  <Text style={styles.kpiValue}>{totalComandasCanceladas}</Text>
-                </View>
-                <View style={styles.kpiCard}>
-                  <Text style={styles.kpiLabel}>Valor em comandas</Text>
-                  <Text style={styles.kpiValue}>{formatCurrency(totalValorComandas)}</Text>
-                </View>
-                <View style={styles.kpiCard}>
-                  <Text style={styles.kpiLabel}>Itens cancelados</Text>
-                  <Text style={styles.kpiValue}>{totalItensCancelados}</Text>
-                </View>
-                <View style={styles.kpiCard}>
-                  <Text style={styles.kpiLabel}>Valor em itens</Text>
-                  <Text style={styles.kpiValue}>{formatCurrency(totalValorItensCancelados)}</Text>
-                </View>
-              </View>
-
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Por operador</Text>
-                {byOperator.length === 0 && <Text style={styles.emptyText}>Sem cancelamentos no período.</Text>}
-                {byOperator.map((op) => (
-                  <View key={op.operatorName} style={styles.operatorRow}>
-                    <View style={styles.operatorHeader}>
-                      <Text style={styles.operatorName}>{op.operatorName}</Text>
-                      <Text style={styles.operatorTotal}>
-                        {formatCurrency(op.valorComandasCanceladas + op.valorItensCancelados)}
-                      </Text>
-                    </View>
-                    <Text style={styles.operatorDetail}>
-                      Comandas: {op.comandasCanceladas} ({formatCurrency(op.valorComandasCanceladas)})
-                    </Text>
-                    <Text style={styles.operatorDetail}>
-                      Itens: {op.itensCancelados} ({formatCurrency(op.valorItensCancelados)})
-                    </Text>
-                  </View>
-                ))}
-              </View>
-
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Últimas comandas canceladas</Text>
-                {comandas.slice(0, 20).map((row, idx) => (
-                  <View key={`${row.comanda_number}-${idx}`} style={styles.listRow}>
-                    <Text style={styles.listTitle}>Comanda #{row.comanda_number}</Text>
-                    <Text style={styles.listMeta}>
-                      {row.canceled_by_name || 'Não identificado'} • {row.canceled_at ? new Date(row.canceled_at).toLocaleString('pt-BR') : 'Sem data'}
-                    </Text>
-                    <Text style={styles.listValue}>{formatCurrency(Number(row.total_consumed || 0))}</Text>
-                  </View>
-                ))}
-                {comandas.length === 0 && <Text style={styles.emptyText}>Nenhuma comanda cancelada no período.</Text>}
-              </View>
-            </>
-          )}
-        </ScrollView>
+            {/* Recent Cancelled Orders */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Últimas comandas canceladas</Text>
+              {comandas.length === 0 ? (
+                <Text style={styles.emptyText}>Nenhuma comanda cancelada no período.</Text>
+              ) : (
+                comandas.slice(0, 20).map((row, idx) => (
+                  <DataListItem
+                    key={`${row.comanda_number}-${idx}`}
+                    title={`Comanda #${row.comanda_number}`}
+                    subtitle={row.canceled_by_name || 'Não identificado'}
+                    meta={`${row.canceled_at ? new Date(row.canceled_at).toLocaleDateString('pt-BR') : 'Sem data'} • ${formatCurrency(Number(row.total_consumed || 0))}`}
+                    status="error"
+                  />
+                ))
+              )}
+            </View>
+          </ScrollView>
+        </StateView>
       </View>
     </ScreenScaffold>
   );
@@ -358,19 +369,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 24,
   },
-  centeredState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 30,
-  },
-  centeredText: {
-    marginTop: 8,
-    color: colors.textSecondary,
-  },
-  errorText: {
-    color: colors.danger,
-    fontWeight: '600',
-  },
   kpiGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -402,6 +400,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 12,
     marginBottom: 12,
+    gap: 8,
   },
   sectionTitle: {
     fontSize: 16,
@@ -412,49 +411,7 @@ const styles = StyleSheet.create({
   emptyText: {
     color: colors.textSecondary,
     fontStyle: 'italic',
-  },
-  operatorRow: {
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    paddingBottom: 10,
-    marginBottom: 10,
-  },
-  operatorHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  operatorName: {
-    color: colors.text,
-    fontWeight: '700',
-  },
-  operatorTotal: {
-    color: colors.primary,
-    fontWeight: '700',
-  },
-  operatorDetail: {
-    color: colors.textSecondary,
-    fontSize: 13,
-  },
-  listRow: {
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    paddingBottom: 8,
-    marginBottom: 8,
-  },
-  listTitle: {
-    color: colors.text,
-    fontWeight: '700',
-  },
-  listMeta: {
-    color: colors.textSecondary,
-    fontSize: 12,
-    marginTop: 2,
-  },
-  listValue: {
-    color: colors.warning,
-    fontWeight: '700',
-    marginTop: 4,
+    textAlign: 'center',
+    paddingVertical: 16,
   },
 });

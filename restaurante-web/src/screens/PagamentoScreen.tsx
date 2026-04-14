@@ -17,6 +17,9 @@ import { isFeatureEnabled } from '../config/featureFlags';
 import { auditService } from '../services/AuditService';
 import { useDevicePayment } from '../features/pdv';
 import PrinterService from '../services/PrinterService';
+import logger from '../utils/logger';
+import { StateView } from '../ui';
+import { colors } from '../theme/colors';
 
 // Usar função centralizada para consistência de data local
 const todayKey = getTodayKey;
@@ -45,6 +48,8 @@ export default function PagamentoScreen({ route, navigation }: any) {
   const [forma, setForma] = useState('dinheiro');
   const [valor, setValor] = useState('');
   const [saldo, setSaldo] = useState<any>(null);
+  const [isLoadingComanda, setIsLoadingComanda] = useState(false);
+  const [comandaLoadError, setComandaLoadError] = useState<string | null>(null);
 
   const [isSplitModalVisible, setIsSplitModalVisible] = useState(false);
   const [orders, setOrders] = useState<any[]>([]);
@@ -201,14 +206,24 @@ export default function PagamentoScreen({ route, navigation }: any) {
         setValor(displayOpen.toFixed(2));
       }
     } catch (e: any) { 
-        console.error('Erro ao carregar saldo:', e);
-        Alert.alert('Erro', e.message); 
+        logger.error('[PagamentoScreen] erro ao carregar saldo', e);
+        throw e;
     }
   };
 
   const carregarDadosComanda = async () => {
     if (!user?.companyId || !comanda) return;
-    await Promise.all([carregarSaldo(), carregarPedidos()]);
+    setIsLoadingComanda(true);
+    setComandaLoadError(null);
+    try {
+      await Promise.all([carregarSaldo(), carregarPedidos()]);
+    } catch (e: any) {
+      const message = e?.message || 'Falha ao carregar dados da comanda.';
+      setComandaLoadError(message);
+      Alert.alert('Erro', message);
+    } finally {
+      setIsLoadingComanda(false);
+    }
   };
   const carregarPedidos = async () => {
     try {
@@ -232,8 +247,9 @@ export default function PagamentoScreen({ route, navigation }: any) {
          }));
          setOrders(mappedOrders);
       }
-    } catch (e) {
-      console.log('Erro ao carregar pedidos:', e);
+    } catch (e: any) {
+      logger.error('[PagamentoScreen] erro ao carregar pedidos', e);
+      throw e;
     }
   };
 
@@ -579,11 +595,21 @@ export default function PagamentoScreen({ route, navigation }: any) {
           useUiNext={useUiNextPagamento}
         />
 
+        {isLoadingComanda && (
+          <StateView state="loading" message="Carregando dados da comanda..." skeletonRows={4} />
+        )}
+
+        {!isLoadingComanda && comandaLoadError && (
+          <StateView state="error" message={comandaLoadError} onRetry={carregarDadosComanda} />
+        )}
+
         {/* 1. RESUMO DO PEDIDO */}
-        <PaymentOrderSummary orders={orders} formatCurrency={formatarMoeda} />
+        {!isLoadingComanda && !comandaLoadError && (
+          <PaymentOrderSummary orders={orders} formatCurrency={formatarMoeda} />
+        )}
 
         {/* 2. PAGAMENTO RÁPIDO */}
-        {saldo && saldo.aberto > 0 && (
+        {!isLoadingComanda && !comandaLoadError && saldo && saldo.aberto > 0 && (
           <PaymentActionPanel
             valor={valor}
             onChangeValor={setValor}
@@ -602,7 +628,7 @@ export default function PagamentoScreen({ route, navigation }: any) {
           />
         )}
 
-        {saldo && saldo.aberto <= 0 && (pdvDevicePaymentEnabled || pdvExternalPosEnabled) && (
+        {!isLoadingComanda && !comandaLoadError && saldo && saldo.aberto <= 0 && (pdvDevicePaymentEnabled || pdvExternalPosEnabled) && (
           <View style={styles.infoBox}>
             <Text style={styles.infoText}>
               O PDV fica visivel apenas quando a comanda tem saldo em aberto. Esta comanda ja esta quitada.
@@ -633,10 +659,10 @@ const styles = StyleSheet.create({
     marginTop: 12,
     padding: 12,
     borderRadius: 8,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: colors.primaryTint,
   },
   infoText: {
-    color: '#1D4ED8',
+    color: colors.primary,
     fontSize: 14,
     lineHeight: 20,
   },

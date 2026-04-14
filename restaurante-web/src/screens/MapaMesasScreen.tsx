@@ -6,7 +6,6 @@ import {
     TouchableOpacity,
     ScrollView,
     Dimensions,
-    ActivityIndicator,
     Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,12 +20,15 @@ import PedidoDetalhesModal from './PedidoDetalhesModal';
 import { getBusinessDateKey } from '../services/BusinessDateService';
 import { ScreenScaffold } from '../layouts/ScreenScaffold';
 import { colors } from '../theme/colors';
+import { StateView } from '../ui';
+import logger from '../utils/logger';
 const { width } = Dimensions.get('window');
 
 export default function MapaMesasScreen({ navigation, route }: any) {
     const { user } = useAuth();
 
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
     const [environments, setEnvironments] = useState<any[]>([]);
     const [selectedEnvId, setSelectedEnvId] = useState<string | null>(null);
     const [tables, setTables] = useState<Table[]>([]);
@@ -83,6 +85,8 @@ export default function MapaMesasScreen({ navigation, route }: any) {
     // Load Environments and Tables
     const loadStructure = async () => {
         if (!user?.companyId) return;
+        setLoading(true);
+        setLoadError(null);
         try {
             const envs = await TableService.getEnvironments(user.companyId);
             setEnvironments(envs);
@@ -97,8 +101,11 @@ export default function MapaMesasScreen({ navigation, route }: any) {
             const allTables = await TableService.getTables(user.companyId);
             setTables(allTables);
         } catch (error) {
-            console.error('Error loading structure:', error);
+            logger.error('[MapaMesasScreen] Error loading structure', error);
+            setLoadError('Falha ao carregar estrutura de mesas.');
             Alert.alert('Erro', 'Falha ao carregar estrutura de mesas.');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -121,7 +128,6 @@ export default function MapaMesasScreen({ navigation, route }: any) {
     // Load once on mount or when companyId changes
     useEffect(() => {
         loadStructure();
-        setLoading(false);
     }, [user?.companyId]);
 
     // Reload structure when screen gains focus (e.g., returning from config screen)
@@ -278,6 +284,8 @@ export default function MapaMesasScreen({ navigation, route }: any) {
                         key={env.id}
                         style={[styles.tab, selectedEnvId === env.id && styles.tabActive]}
                         onPress={() => setSelectedEnvId(env.id)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Selecionar ambiente ${env.name}`}
                     >
                         <Text style={[styles.tabText, selectedEnvId === env.id && styles.tabTextActive]}>
                             {env.name}
@@ -306,6 +314,8 @@ export default function MapaMesasScreen({ navigation, route }: any) {
                             selectedFilters.includes(status) && { ...styles.filterChipActive, borderColor: color, backgroundColor: color + '15' }
                         ]}
                         onPress={() => toggleFilter(status)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${selectedFilters.includes(status) ? 'Remover' : 'Aplicar'} filtro ${status}`}
                     >
                         <Ionicons
                             name={icon as any}
@@ -332,7 +342,11 @@ export default function MapaMesasScreen({ navigation, route }: any) {
 
             {loading ? (
                 <View style={styles.center}>
-                    <ActivityIndicator size="large" color={colors.primary} />
+                    <StateView state="loading" message="Carregando mapa de mesas..." skeletonRows={5} />
+                </View>
+            ) : loadError ? (
+                <View style={styles.center}>
+                    <StateView state="error" message={loadError} onRetry={loadStructure} />
                 </View>
             ) : (
                 <>
@@ -364,6 +378,8 @@ export default function MapaMesasScreen({ navigation, route }: any) {
                                                     flexDirection: 'column-reverse' // Info tag above table
                                                 }}
                                                 onPress={() => handleTablePress(table)}
+                                                accessibilityRole="button"
+                                                accessibilityLabel={`Mesa ${table.number}, status ${table.status}`}
                                             >
                                                 <TableGraphic
                                                     shape={table.shape as any}
@@ -393,6 +409,8 @@ export default function MapaMesasScreen({ navigation, route }: any) {
                                                 key={table.id}
                                                 style={styles.tableWrapper}
                                                 onPress={() => handleTablePress(table)}
+                                                accessibilityRole="button"
+                                                accessibilityLabel={`Mesa ${table.number}, status ${table.status}`}
                                             >
                                                 <TableGraphic
                                                     shape={table.shape as any}
@@ -419,7 +437,7 @@ export default function MapaMesasScreen({ navigation, route }: any) {
                             </View>
                         ) : (
                             <View style={styles.emptyState}>
-                                <Text style={styles.emptyText}>Selecione um ambiente</Text>
+                                <StateView state="empty" message="Selecione um ambiente" />
                             </View>
                         )}
                     </ScrollView>
@@ -435,6 +453,8 @@ export default function MapaMesasScreen({ navigation, route }: any) {
                         openConfigMesas: true
                     });
                 }}
+                accessibilityRole="button"
+                accessibilityLabel="Abrir configuracao de mesas"
             >
                 <Ionicons name="settings-outline" size={24} color={colors.white} />
             </TouchableOpacity>

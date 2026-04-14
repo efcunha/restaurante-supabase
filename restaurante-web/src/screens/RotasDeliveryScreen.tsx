@@ -2,7 +2,7 @@ import { StatusBar } from 'expo-status-bar';
 import LicenseGate from '../components/LicenseGate';
 import { StyleSheet, Text, View, TouchableOpacity, Alert, Platform, Linking, ActivityIndicator, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../config/SupabaseConfig';
 import { getBusinessDateKey } from '../services/BusinessDateService';
@@ -13,6 +13,8 @@ import { colors } from '../theme/colors';
 import PagamentosService from '../services/PagamentosService';
 import { auditService } from '../services/AuditService';
 import { isFeatureEnabled } from '../config/featureFlags';
+import { StateView } from '../ui';
+import logger from '../utils/logger';
 
 type DeliveryStatus = 'dispatched' | 'delivered' | 'failed_delivery' | 'returned' | 'refused';
 
@@ -24,8 +26,10 @@ export default function RotasDeliveryScreen() {
   const externalPosEnabled = isFeatureEnabled('pdv_enabled') && isFeatureEnabled('pdv_externalPos_enabled');
   
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [deliveryOrders, setDeliveryOrders] = useState<any[]>([]);
   const [processingItems, setProcessingItems] = useState(new Set());
+  const realtimeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [confirmDelivery, setConfirmDelivery] = useState<{ orderId: string; label: string; order: any } | null>(null);
   const [paymentMethodDialog, setPaymentMethodDialog] = useState<{
     order: any;
@@ -55,14 +59,19 @@ export default function RotasDeliveryScreen() {
       );
       return true;
     } catch (error) {
-      console.warn('[RotasDelivery] Falha ao verificar conexão WhatsApp:', error);
+      logger.warn('[RotasDeliveryScreen] failed to verify WhatsApp connection');
       return true;
     }
   }, [user?.companyId]);
 
-  const fetchDeliveryOrders = useCallback(async () => {
+  const fetchDeliveryOrders = useCallback(async (silent = false) => {
     try {
       if (!user?.companyId) return;
+      if (!silent) {
+        setLoading(true);
+      }
+      setFetchError(null);
+
       const today = await getBusinessDateKey(user.companyId);
 
       // Busca pedidos do tipo Delivery que ainda não foram marcados como entregues e não estão cancelados.
@@ -102,11 +111,25 @@ export default function RotasDeliveryScreen() {
         setDeliveryOrders(mappedOrders);
       }
     } catch (e: any) {
-      console.error('[RotasDelivery] Error fetching orders:', e);
+      logger.error('[RotasDeliveryScreen] error fetching delivery orders', e);
+      setFetchError(e?.message || 'Falha ao buscar entregas.');
+      setDeliveryOrders([]);
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
-  }, [user]);
+  }, [user?.companyId]);
+
+  const scheduleRealtimeRefresh = useCallback(() => {
+    if (realtimeDebounceRef.current) {
+      clearTimeout(realtimeDebounceRef.current);
+    }
+
+    realtimeDebounceRef.current = setTimeout(() => {
+      fetchDeliveryOrders(true);
+    }, 300);
+  }, [fetchDeliveryOrders]);
 
   useEffect(() => {
     fetchDeliveryOrders();
@@ -132,16 +155,19 @@ export default function RotasDeliveryScreen() {
              (payload.new && (payload.new as any).order_type === 'delivery') ||
              (payload.old && (payload.old as any).order_type === 'delivery');
            if (isDelivery || !payload.old) {
-              fetchDeliveryOrders();
+              scheduleRealtimeRefresh();
            }
         }
       )
       .subscribe();
 
     return () => {
+      if (realtimeDebounceRef.current) {
+        clearTimeout(realtimeDebounceRef.current);
+      }
       channel.unsubscribe();
     };
-  }, [fetchDeliveryOrders, user]);
+  }, [fetchDeliveryOrders, scheduleRealtimeRefresh, user?.companyId]);
 
   const openWhatsApp = (phone: string, customerName: string) => {
     if (!phone) {
@@ -223,7 +249,7 @@ export default function RotasDeliveryScreen() {
         .eq('comanda_number', comandaNumber)
         .neq('status', 'cancelada');
     } catch (error) {
-      console.error('[RotasDelivery] Falha ao fechar comanda de delivery:', error);
+      logger.error('[RotasDeliveryScreen] failed to close delivery comanda', error);
     }
   };
 
@@ -422,9 +448,9 @@ export default function RotasDeliveryScreen() {
             const message = `Olá ${customerName}! O motoboy saiu com sua entrega da comanda ${comandaNumber}. Acompanhe o status em tempo real!`;
             
             await EvolutionApiService.sendTextMessage(user.companyId, order.customer_phone, message);
-            console.log('[RotasDelivery] WhatsApp enviado com sucesso para status dispatched');
+            logger.info('[RotasDeliveryScreen] WhatsApp notification sent for dispatched order');
           } catch (notificationError) {
-            console.warn('[RotasDelivery] Erro ao enviar WhatsApp para status dispatched:', notificationError);
+            logger.warn('[RotasDeliveryScreen] failed to send WhatsApp notification for dispatched order');
             // Não quebra o fluxo se o envio de WhatsApp falhar
           }
         }
@@ -433,7 +459,7 @@ export default function RotasDeliveryScreen() {
            fetchDeliveryOrders();
 
       } catch (e: any) {
-        console.error('❌ Erro atualizar entrega:', e);
+        logger.error('[RotasDeliveryScreen] failed to update delivery status', e);
         Alert.alert('Erro', 'Falha ao atualizar status: ' + e.message);
       } finally {
         setProcessingItems(prev => {
@@ -540,7 +566,11 @@ export default function RotasDeliveryScreen() {
             </View>
             
             {!!item.deliveryAddress && (
-                <TouchableOpacity onPress={() => openAddressInMaps(item.deliveryAddress)}>
+                <TouchableOpacity
+                  onPress={() => openAddressInMaps(item.deliveryAddress)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Abrir rota no GPS para pedido ${item.comandaNumber || '?'}`}
+                >
                    <Text style={styles.actionLinkText}>📍 Abrir no GPS</Text>
                 </TouchableOpacity>
             )}
@@ -555,7 +585,12 @@ export default function RotasDeliveryScreen() {
             </View>
             
             {!!item.customerPhone && (
-                <TouchableOpacity style={styles.whatsappButtonSmall} onPress={() => openWhatsApp(item.customerPhone, item.customerName)}>
+                <TouchableOpacity
+                  style={styles.whatsappButtonSmall}
+                  onPress={() => openWhatsApp(item.customerPhone, item.customerName)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Enviar mensagem no WhatsApp para ${item.customerName || 'cliente'}`}
+                >
                    <Ionicons name="logo-whatsapp" size={16} color={colors.white} />
                    <Text style={styles.whatsappTextSmall}>Message</Text>
                 </TouchableOpacity>
@@ -580,6 +615,8 @@ export default function RotasDeliveryScreen() {
           onPress={() => handleAction(item)}
           // @ts-ignore
           disabled={processingItems.has(item.id)}
+          accessibilityRole="button"
+          accessibilityLabel={isDispatched ? 'Confirmar entrega com sucesso' : 'Marcar pedido como saiu para entrega'}
         >
           {/* @ts-ignore */}
           {processingItems.has(item.id) ? (
@@ -597,6 +634,8 @@ export default function RotasDeliveryScreen() {
             onPress={() => handleUndeliveredAction(item)}
             // @ts-ignore
             disabled={processingItems.has(item.id)}
+            accessibilityRole="button"
+            accessibilityLabel="Registrar que a entrega nao foi concluida"
           >
             <Text style={styles.secondaryActionBtnText}>NAO FOI POSSIVEL ENTREGAR</Text>
           </TouchableOpacity>
@@ -608,12 +647,13 @@ export default function RotasDeliveryScreen() {
   const keyExtractor = useCallback((item: any) => item.id.toString(), []);
 
   const ListEmptyComponent = useCallback(() => (
-    <View style={styles.emptyState}>
-      <Text style={styles.emptyIcon}>🛵</Text>
-      <Text style={styles.emptyText}>Zero rotas pendentes no momento!</Text>
-      <Text style={styles.emptySubtext}>Aguarde a cozinha/montagem finalizar pedidos de Delivery.</Text>
-    </View>
-  ), []);
+    <StateView
+      state="empty"
+      message="Zero rotas pendentes no momento!"
+      details="Aguarde a cozinha/montagem finalizar pedidos de Delivery."
+      onRetry={() => fetchDeliveryOrders()}
+    />
+  ), [fetchDeliveryOrders]);
 
   return (
     <LicenseGate>
@@ -631,10 +671,24 @@ export default function RotasDeliveryScreen() {
         <View style={styles.headerLeft} />
       </View>
 
+      <View
+        {...(Platform.OS === 'web' ? ({ 'aria-live': 'polite' } as any) : {})}
+        style={styles.liveRegionContainer}
+      >
+        <Text style={styles.liveRegionText}>
+          {deliveryOrders.length > 0
+            ? `${deliveryOrders.length} rotas de delivery atualizadas em tempo real.`
+            : 'Nenhuma rota de delivery pendente no momento.'}
+        </Text>
+      </View>
+
       {loading ? (
           <View style={[styles.emptyState, { flex: 1 }]}>
-             <ActivityIndicator size="large" color={colors.primary} />
-             <Text style={styles.emptyText}>Buscando entregas...</Text>
+             <StateView state="loading" message="Buscando entregas..." skeletonRows={4} />
+          </View>
+      ) : fetchError ? (
+          <View style={[styles.emptyState, { flex: 1 }]}>
+            <StateView state="error" message={fetchError} onRetry={() => fetchDeliveryOrders()} />
           </View>
       ) : (
         <OptimizedFlatList
@@ -953,9 +1007,17 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
   },
+  liveRegionContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
+  liveRegionText: {
+    color: colors.textSecondary,
+    fontSize: 12,
+  },
   confirmOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: colors.overlay,
     alignItems: 'center',
     justifyContent: 'center',
   },
