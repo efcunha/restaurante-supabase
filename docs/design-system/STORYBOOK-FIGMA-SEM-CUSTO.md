@@ -64,8 +64,12 @@ Fluxo recomendado para abrir um formulario:
 ## Estrutura de Documentacao (dentro de docs)
 - docs/design-system/STORYBOOK-FIGMA-SEM-CUSTO.md
 - docs/design-system/PROMPT-INICIO-STORYBOOK-FIGMA.md
+- docs/design-system/FIGMA_1TO1_ROUNDTRIP.md
 - docs/design-system/figma-node-map.generated.json
 - docs/design-system/figma-node-map.example.json
+
+Observacao operacional:
+- Para telas 1:1 de formularios sem API do Figma, usar exportacao manual de PNG no Figma + import local no projeto conforme o runbook acima.
 
 ## Contrato de Mapeamento
 Cada entrada deve conter:
