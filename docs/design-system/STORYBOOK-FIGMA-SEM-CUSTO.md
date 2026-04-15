@@ -3,6 +3,39 @@
 ## Objetivo
 Estabelecer um fluxo pratico de design-to-code sem dependencia de Code Connect publish, mantendo rastreabilidade entre componentes no Figma e implementacoes no repositorio.
 
+## Politica de Preview de Formularios (2026-04-15)
+- Fonte visual real para revisao UX/UI de formularios: Storybook com stories de composicao real no projeto web.
+- Referencia inicial de previews reais prioritarios: `restaurante-web/src/screens/storybook/FormRealPreviews.stories.tsx`.
+- Figma atual permanece como apoio tecnico para estrutura, mapeamento e redesign incremental.
+- Figma atual nao e considerado preview visual fiel das telas de formulario.
+
+## Como visualizar os formularios no Figma
+
+Estado atual do fluxo:
+- Os formularios completos do `restaurante-web` devem ser visualizados no Storybook.
+- No Figma, o que existe hoje como referencia confiavel e o arquivo de design system com os blocos reutilizados na montagem desses formularios.
+- Ou seja: para revisar o layout final da tela, abra a story real; para revisar a estrutura visual dos blocos, abra os nodes do Figma abaixo.
+
+Arquivo principal do design system:
+- https://figma.com/design/xpfdEjj5NJ7bQ7zDuCBbqw/RestaurantOS-Design-System
+
+Nodes principais usados nos previews reais:
+- Navbar: https://figma.com/design/xpfdEjj5NJ7bQ7zDuCBbqw/RestaurantOS-Design-System?node-id=7:1
+- Card: https://figma.com/design/xpfdEjj5NJ7bQ7zDuCBbqw/RestaurantOS-Design-System?node-id=3:21
+- Button: https://figma.com/design/xpfdEjj5NJ7bQ7zDuCBbqw/RestaurantOS-Design-System?node-id=3:12
+- Input: https://figma.com/design/xpfdEjj5NJ7bQ7zDuCBbqw/RestaurantOS-Design-System?node-id=65:74
+- Select: https://figma.com/design/xpfdEjj5NJ7bQ7zDuCBbqw/RestaurantOS-Design-System?node-id=8:9
+- FieldRow: https://figma.com/design/xpfdEjj5NJ7bQ7zDuCBbqw/RestaurantOS-Design-System?node-id=65:67
+- FormSection: https://figma.com/design/xpfdEjj5NJ7bQ7zDuCBbqw/RestaurantOS-Design-System?node-id=65:66
+- ScreenHeader: https://figma.com/design/xpfdEjj5NJ7bQ7zDuCBbqw/RestaurantOS-Design-System?node-id=65:63
+- AdminActionCard: https://figma.com/design/xpfdEjj5NJ7bQ7zDuCBbqw/RestaurantOS-Design-System?node-id=9:1
+
+Fluxo recomendado para abrir um formulario:
+1. Abra a matriz em `docs/design-system/FORM_PREVIEW_MATRIX_RESTAURANTE_WEB.md` e pegue o `story id` da tela.
+2. Visualize a composicao real no Storybook.
+3. Se precisar validar os blocos visuais no Figma, abra os nodes do design system acima.
+4. Se a necessidade for revisar uma tela inteira no Figma com fidelidade 1:1, essa tela ainda precisa ser desenhada manualmente no arquivo de produto; isso nao e gerado automaticamente pelo fluxo atual.
+
 ## Escopo
 - Monorepo: restaurante-app, restaurante-web, restaurante-site
 - Fonte de verdade de UI: codigo versionado + Storybook
