@@ -1,0 +1,686 @@
+{
+  "generatedAt": "2026-04-15T13:51:08.505Z",
+  "source": "docs/design-system/figma-node-map.generated.json",
+  "entries": [
+    {
+      "nodeId": "1:1",
+      "component": "Button",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-button--docs",
+      "codePath": "restaurante-web/src/ui/Button.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "2:1",
+      "component": "Card",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-card--docs",
+      "codePath": "restaurante-web/src/ui/Card.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "3:1",
+      "component": "Badge",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-badge--docs",
+      "codePath": "restaurante-web/src/ui/Badge.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "4:1",
+      "component": "FormInput",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-form-input--docs",
+      "codePath": "restaurante-web/src/ui/FormInput.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "5:1",
+      "component": "ProductCard",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-product-card--docs",
+      "codePath": "restaurante-web/src/ui/ProductCard.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "7:1",
+      "component": "Navbar",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-navbar--docs",
+      "codePath": "restaurante-web/src/ui/Navbar.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "7:2",
+      "component": "RestaurantCard",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-restaurant-card--docs",
+      "codePath": "restaurante-web/src/ui/RestaurantCard.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "7:3",
+      "component": "Sidebar",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-sidebar--docs",
+      "codePath": "restaurante-web/src/ui/Sidebar.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "7:4",
+      "component": "Table",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-table--docs",
+      "codePath": "restaurante-web/src/ui/Table.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "6:1",
+      "component": "StateView",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-state-view--docs",
+      "codePath": "restaurante-web/src/ui/StateView.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "6:2",
+      "component": "ScreenHeader",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-screen-header--docs",
+      "codePath": "restaurante-web/src/ui/ScreenHeader.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "6:3",
+      "component": "SectionHeader",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-section-header--docs",
+      "codePath": "restaurante-web/src/ui/SectionHeader.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "6:4",
+      "component": "ConfirmActionDialog",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-confirm-action-dialog--docs",
+      "codePath": "restaurante-web/src/ui/ConfirmActionDialog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "6:5",
+      "component": "FormSection",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-form-section--docs",
+      "codePath": "restaurante-web/src/ui/FormSection.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "6:6",
+      "component": "FieldRow",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-field-row--docs",
+      "codePath": "restaurante-web/src/ui/FieldRow.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "6:7",
+      "component": "DataListItem",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-data-list-item--docs",
+      "codePath": "restaurante-web/src/ui/DataListItem.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "6:8",
+      "component": "ListContainer",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-list-container--docs",
+      "codePath": "restaurante-web/src/ui/ListContainer.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "8:1",
+      "component": "Avatar",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-avatar--docs",
+      "codePath": "restaurante-web/src/ui/Avatar.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "8:2",
+      "component": "BottomSheet",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-bottom-sheet--docs",
+      "codePath": "restaurante-web/src/ui/BottomSheet.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "8:3",
+      "component": "Checkbox",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-checkbox--docs",
+      "codePath": "restaurante-web/src/ui/Checkbox.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "8:4",
+      "component": "Drawer",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-drawer--docs",
+      "codePath": "restaurante-web/src/ui/Drawer.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "8:5",
+      "component": "Input",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-input--docs",
+      "codePath": "restaurante-web/src/ui/Input.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "8:6",
+      "component": "ListItem",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-list-item--docs",
+      "codePath": "restaurante-web/src/ui/ListItem.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "8:7",
+      "component": "Modal",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-modal--docs",
+      "codePath": "restaurante-web/src/ui/Modal.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "8:8",
+      "component": "Pagination",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-pagination--docs",
+      "codePath": "restaurante-web/src/ui/Pagination.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "8:9",
+      "component": "Select",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-select--docs",
+      "codePath": "restaurante-web/src/ui/Select.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "8:10",
+      "component": "Tabs",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-tabs--docs",
+      "codePath": "restaurante-web/src/ui/Tabs.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "8:11",
+      "component": "Tag",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-tag--docs",
+      "codePath": "restaurante-web/src/ui/Tag.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "8:12",
+      "component": "Toast",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-toast--docs",
+      "codePath": "restaurante-web/src/ui/Toast.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "9:1",
+      "component": "AdminActionCard",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/features-admin-adminactioncard--default",
+      "codePath": "restaurante-web/src/features/admin/components/AdminActionCard.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "9:2",
+      "component": "AdminSection",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/features-admin-adminsection--financial-grid",
+      "codePath": "restaurante-web/src/features/admin/components/AdminSection.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "9:3",
+      "component": "AdminStateViewMatrix",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/features-admin-adminstateviewmatrix--matrix",
+      "codePath": "restaurante-web/src/features/admin/components/AdminStateViewMatrix.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "9:4",
+      "component": "AdminMenuSubscreens",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-admin-menusubscreens--product-list-ready",
+      "codePath": "restaurante-web/src/screens/admin/menu/AdminMenuSubscreens.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "9:5",
+      "component": "PublicMenuScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-publicmenuscreen--empty-slug",
+      "codePath": "restaurante-web/src/screens/PublicMenuScreen.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "9:30",
+      "component": "FormsCatalog",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/forms-restaurante-web-catalog--docs",
+      "codePath": "restaurante-web/src/ui/FormsCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "99:1",
+      "component": "Screen:AboutScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--about-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "65:28",
+      "component": "Screen:AdicionaisConfigModal",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--adicionais-config-modal",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "65:29",
+      "component": "Screen:MenuSettings",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--menu-settings",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "65:30",
+      "component": "Screen:ProductForm",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--product-form",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "99:5",
+      "component": "Screen:ProductList",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--product-list",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "65:31",
+      "component": "Screen:StockManager",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--stock-manager",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "65:32",
+      "component": "Screen:VariationManager",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--variation-manager",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "99:8",
+      "component": "Screen:AdminScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--admin-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "65:8",
+      "component": "Screen:BillingScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--billing-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "65:14",
+      "component": "Screen:CadastroProdutoScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--cadastro-produto-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "65:15",
+      "component": "Screen:CaixaAberturaScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--caixa-abertura-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "65:16",
+      "component": "Screen:CaixaFechamentoScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--caixa-fechamento-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "99:13",
+      "component": "Screen:CaixaHistoricoScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--caixa-historico-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "65:17",
+      "component": "Screen:CaixaOperacoesScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--caixa-operacoes-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "99:15",
+      "component": "Screen:CancellationReportScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--cancellation-report-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "99:16",
+      "component": "Screen:CashFlowScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--cash-flow-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "99:17",
+      "component": "Screen:ComandaAbertaScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--comanda-aberta-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "99:18",
+      "component": "Screen:ComandaGerenciamentoScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--comanda-gerenciamento-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "99:19",
+      "component": "Screen:ComandaVisualizacaoAdminScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--comanda-visualizacao-admin-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "65:12",
+      "component": "Screen:ConfiguracaoEstoqueScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--configuracao-estoque-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "65:13",
+      "component": "Screen:ConfiguracaoMesasScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--configuracao-mesas-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "65:7",
+      "component": "Screen:ConfiguracoesScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--configuracoes-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "99:23",
+      "component": "Screen:ConfiguracoesWhatsApp",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--configuracoes-whats-app",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "99:24",
+      "component": "Screen:CozinhaScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--cozinha-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "65:27",
+      "component": "Screen:DeliveryOcorrenciasScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--delivery-ocorrencias-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "65:26",
+      "component": "Screen:DeliveryScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--delivery-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "65:9",
+      "component": "Screen:EditarEmpresaScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--editar-empresa-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "65:18",
+      "component": "Screen:EstoqueScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--estoque-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "65:19",
+      "component": "Screen:ExtrasConfigScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--extras-config-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "99:30",
+      "component": "Screen:FinancialConfigScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--financial-config-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "99:31",
+      "component": "Screen:FinancialDashboardScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--financial-dashboard-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "65:10",
+      "component": "Screen:FuncionariosScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--funcionarios-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "65:20",
+      "component": "Screen:GerenciarCardapioScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--gerenciar-cardapio-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "65:21",
+      "component": "Screen:GerenciarFornecedoresScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--gerenciar-fornecedores-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "65:4",
+      "component": "Screen:LoginScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--login-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "99:36",
+      "component": "Screen:MapaMesasScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--mapa-mesas-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "99:37",
+      "component": "Screen:MontagemScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--montagem-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "65:23",
+      "component": "Screen:NovoPedidoScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--novo-pedido-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "65:11",
+      "component": "Screen:OperationalSettingsScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--operational-settings-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "99:40",
+      "component": "Screen:PagamentoScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--pagamento-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "65:22",
+      "component": "Screen:PedidoDetalhesModal",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--pedido-detalhes-modal",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "99:42",
+      "component": "Screen:PedidosProntosScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--pedidos-prontos-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "99:43",
+      "component": "Screen:PerformanceDashboardScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--performance-dashboard-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "99:44",
+      "component": "Screen:PrinterConfigScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--printer-config-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "65:24",
+      "component": "Screen:PublicMenuScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--public-menu-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "65:5",
+      "component": "Screen:RegisterCompanyScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--register-company-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "65:25",
+      "component": "Screen:ReservasScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--reservas-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "65:6",
+      "component": "Screen:ResetPasswordScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--reset-password-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "99:49",
+      "component": "Screen:RotasDeliveryScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--rotas-delivery-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    },
+    {
+      "nodeId": "99:50",
+      "component": "Screen:UpdateCardapioScreen",
+      "project": "restaurante-web",
+      "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--update-cardapio-screen",
+      "codePath": "restaurante-web/src/screens/storybook/ScreensCatalog.figma.tsx",
+      "status": "active"
+    }
+  ]
+}

@@ -46,12 +46,13 @@ Este diretório centraliza a documentação transversal do monorepo.
 
 1. `docs/design-system/STORYBOOK-FIGMA-SEM-CUSTO.md` para estratégia sem custo de integração Storybook + Figma
 2. `docs/design-system/PROMPT-INICIO-STORYBOOK-FIGMA.md` para iniciar sessões de implementação com escopo e critérios de aceite
-3. `docs/security/README.md` para temas de segurança e compliance
-4. `docs/LGPD/README.md` para temas de privacidade e LGPD
-5. `docs/observability/OBSERVABILITY-IMPLEMENTATION-GUIDE.md` para arquitetura e runbooks de observabilidade
-6. `docs/repository/DOMAINS.md` para mapa de domínios do monorepo
-7. `docs/maquininha/README.md` para especificação técnica consolidada da integração de maquininha
-8. `docs/maquininha/06-matriz-homologacao-tef-balanca.md` para execução de homologação TEF + balança com separação entre simulador, mocks e integração real
-9. `docs/balanca/README.md` para especificação técnica consolidada da integração de balança
-10. `docs/ifood/README.md` para estudo técnico consolidado da integração iFood
-11. `docs/ifood/CADASTRO-E-CREDENCIAIS-API.md` para processo de cadastro, habilitação e obtenção de credenciais API no iFood
+3. `docs/design-system/STORYBOOK_OPERATIONS_GUIDE.md` para operação, deploy, smoke e troubleshooting do Storybook público
+4. `docs/security/README.md` para temas de segurança e compliance
+5. `docs/LGPD/README.md` para temas de privacidade e LGPD
+6. `docs/observability/OBSERVABILITY-IMPLEMENTATION-GUIDE.md` para arquitetura e runbooks de observabilidade
+7. `docs/repository/DOMAINS.md` para mapa de domínios do monorepo
+8. `docs/maquininha/README.md` para especificação técnica consolidada da integração de maquininha
+9. `docs/maquininha/06-matriz-homologacao-tef-balanca.md` para execução de homologação TEF + balança com separação entre simulador, mocks e integração real
+10. `docs/balanca/README.md` para especificação técnica consolidada da integração de balança
+11. `docs/ifood/README.md` para estudo técnico consolidado da integração iFood
+12. `docs/ifood/CADASTRO-E-CREDENCIAIS-API.md` para processo de cadastro, habilitação e obtenção de credenciais API no iFood

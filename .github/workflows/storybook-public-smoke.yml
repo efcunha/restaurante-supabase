@@ -7,6 +7,11 @@ on:
         description: "URL publica do Storybook para smoke. Ex: https://restaurante-web-storybook-production.up.railway.app"
         required: false
         type: string
+      strict_auth:
+        description: "Falhar se a URL retornar 401 sem credenciais Basic Auth"
+        required: false
+        default: false
+        type: boolean
   schedule:
     - cron: "0 */6 * * *"
 
@@ -32,4 +37,25 @@ jobs:
       - name: Smoke public Storybook URL + node map consistency
         env:
           STORYBOOK_PUBLIC_BASE_URL: ${{ inputs.storybook_public_base_url != '' && inputs.storybook_public_base_url || 'https://restaurante-web-storybook-production.up.railway.app' }}
+          STORYBOOK_PUBLIC_SMOKE_STRICT_AUTH: ${{ inputs.strict_auth && 'true' || 'false' }}
         run: node docs/design-system/smoke-storybook-public.mjs
+
+      - name: Append operation summary
+        if: always()
+        run: |
+          {
+            echo "## Storybook Public Smoke"
+            echo ""
+            echo "- Base URL: ${{ inputs.storybook_public_base_url != '' && inputs.storybook_public_base_url || 'https://restaurante-web-storybook-production.up.railway.app' }}"
+            echo "- Strict Auth: ${{ inputs.strict_auth && 'true' || 'false' }}"
+            echo "- Smoke script: docs/design-system/smoke-storybook-public.mjs"
+            echo "- Runbook: docs/design-system/STORYBOOK_OPERATIONS_GUIDE.md"
+            echo "- Node map validator: docs/design-system/validate-figma-node-map.mjs"
+            echo ""
+            echo "### Quick Incident Checklist"
+            echo "- 1) Executar smoke local: node docs/design-system/smoke-storybook-public.mjs"
+            echo "- 2) Validar node map: node docs/design-system/validate-figma-node-map.mjs"
+            echo "- 3) Ver logs Railway: railway logs --service restaurante-web-storybook -n 50"
+            echo "- 4) Re-deploy controlado: restaurante-web/scripts/deploy-storybook-railway.sh"
+            echo "- 5) Consultar runbook para troubleshooting detalhado"
+          } >> "$GITHUB_STEP_SUMMARY"

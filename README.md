@@ -29,6 +29,7 @@ Referencias de continuidade:
 ## Entradas recomendadas
 
 - `docs/README.md`: índice geral de documentação
+- `docs/design-system/STORYBOOK_OPERATIONS_GUIDE.md`: runbook operacional do Storybook público (deploy, auth, smoke e troubleshooting)
 - `docs/repository/DOMAINS.md`: mapa conceitual dos domínios do repositório
 - `docs/repository/SCRIPTS_INVENTORY.md`: inventário de scripts e inconsistências conhecidas
 - `docs/security/README.md`: pacote de auditoria, remediação e compliance

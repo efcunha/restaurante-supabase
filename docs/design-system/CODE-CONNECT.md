@@ -8,6 +8,73 @@
 - Publish Code Connect write: opcional e fora de escopo por decisao de custo.
 - Parse local: permitido para checagem estrutural de arquivos .figma.ts.
 
+## Alternativa Sem Code Connect Publish (Dev Mode Resources)
+
+Se voce quer usar Dev Mode sem publicar snippets via Code Connect, use links de Dev Resource por node.
+
+### O que aparece no Figma
+
+- Links de desenvolvimento no Dev Mode (ex.: Storybook Docs, Code Path)
+- Nao aparece snippet nativo de codigo do Code Connect
+
+### Componentes da solucao no repositorio
+
+- Plugin Figma local: `scripts/figma-dev-resources-plugin/`
+    - `manifest.json`
+    - `code.js`
+    - `ui.html`
+- Exportador de payload: `scripts/export-figma-dev-resources-payload.mjs`
+- Payload gerado: `docs/design-system/figma-dev-resources.payload.json`
+
+### Passo a passo rapido
+
+1. Gerar payload do projeto web:
+
+```bash
+cd restaurante-web
+npm run figma:dev-resources:payload
+```
+
+Opcional (recomendado): rodar preflight completo antes do plugin.
+
+```bash
+cd restaurante-web
+npm run figma:dev-resources:preflight
+```
+
+2. No Figma Desktop: `Plugins -> Development -> Import plugin from manifest...`
+
+3. Selecione o arquivo:
+
+```text
+scripts/figma-dev-resources-plugin/manifest.json
+```
+
+4. Abra o plugin e cole o conteudo de:
+
+```text
+docs/design-system/figma-dev-resources.payload.json
+```
+
+5. Rode primeiro em `Dry run`, depois desmarque e execute em modo escrita.
+
+6. Abra um node mapeado em Dev Mode e confirme os links adicionados.
+
+### Flags uteis do exportador
+
+```bash
+# apenas simulacao
+node scripts/export-figma-dev-resources-payload.mjs --project restaurante-web --dry-run
+
+# incluir entradas inativas
+node scripts/export-figma-dev-resources-payload.mjs --project restaurante-web --include-inactive
+```
+
+### Observacao sobre permissao de API/MCP
+
+- Validar node por API (MCP Figma) pode falhar com `403` se o token nao tiver acesso ao arquivo Figma.
+- Isso nao impede o uso do plugin local no Figma Desktop, desde que sua conta tenha acesso normal ao arquivo aberto.
+
 ## Status Atual
 
 | Projeto | figma.config.json | .figma.ts files | Scripts npm | .env.local |
