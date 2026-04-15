@@ -68,6 +68,61 @@ var FORM_SCREEN_NAMES = [
   'VariationManager',
 ];
 
+var SCREEN_PAGE_NAME = '🧩 Screens restaurante-web';
+var SCREEN_BOARD_NAME = 'RestaurantOS Screens Board';
+var SCREEN_NODE_NAMES = [
+  'AboutScreen',
+  'AdicionaisConfigModal',
+  'MenuSettings',
+  'ProductForm',
+  'ProductList',
+  'StockManager',
+  'VariationManager',
+  'AdminScreen',
+  'BillingScreen',
+  'CadastroProdutoScreen',
+  'CaixaAberturaScreen',
+  'CaixaFechamentoScreen',
+  'CaixaHistoricoScreen',
+  'CaixaOperacoesScreen',
+  'CancellationReportScreen',
+  'CashFlowScreen',
+  'ComandaAbertaScreen',
+  'ComandaGerenciamentoScreen',
+  'ComandaVisualizacaoAdminScreen',
+  'ConfiguracaoEstoqueScreen',
+  'ConfiguracaoMesasScreen',
+  'ConfiguracoesScreen',
+  'ConfiguracoesWhatsApp',
+  'CozinhaScreen',
+  'DeliveryOcorrenciasScreen',
+  'DeliveryScreen',
+  'EditarEmpresaScreen',
+  'EstoqueScreen',
+  'ExtrasConfigScreen',
+  'FinancialConfigScreen',
+  'FinancialDashboardScreen',
+  'FuncionariosScreen',
+  'GerenciarCardapioScreen',
+  'GerenciarFornecedoresScreen',
+  'LoginScreen',
+  'MapaMesasScreen',
+  'MontagemScreen',
+  'NovoPedidoScreen',
+  'OperationalSettingsScreen',
+  'PagamentoScreen',
+  'PedidoDetalhesModal',
+  'PedidosProntosScreen',
+  'PerformanceDashboardScreen',
+  'PrinterConfigScreen',
+  'PublicMenuScreen',
+  'RegisterCompanyScreen',
+  'ReservasScreen',
+  'ResetPasswordScreen',
+  'RotasDeliveryScreen',
+  'UpdateCardapioScreen',
+];
+
 function findPageByName(name) {
   var pages = figma.root.children;
   for (var i = 0; i < pages.length; i++) {
@@ -169,10 +224,94 @@ async function seedFormsBoard(options) {
   }
 
   return {
+    seedType: 'forms',
     dryRun: dryRun,
     counters: counters,
     pageName: FORM_PAGE_NAME,
     boardName: FORM_BOARD_NAME,
+  };
+}
+
+async function seedScreensBoard(options) {
+  var dryRun = Boolean(options && options.dryRun);
+  var counters = {
+    screensTotal: SCREEN_NODE_NAMES.length,
+    createdPage: 0,
+    createdBoard: 0,
+    createdFrames: 0,
+    existingFrames: 0,
+  };
+
+  var globalNameMap = await buildNameMap();
+
+  var page = findPageByName(SCREEN_PAGE_NAME);
+  if (!page) {
+    if (!dryRun) {
+      page = figma.createPage();
+      page.name = SCREEN_PAGE_NAME;
+    }
+    counters.createdPage = 1;
+  }
+
+  var board = page ? findChildByName(page, SCREEN_BOARD_NAME) : null;
+  if (!board) {
+    if (!dryRun && page) {
+      board = figma.createFrame();
+      board.name = SCREEN_BOARD_NAME;
+      board.resizeWithoutConstraints(2880, 2200);
+      board.x = 120;
+      board.y = 120;
+      page.appendChild(board);
+    }
+    counters.createdBoard = 1;
+  }
+
+  var columns = 5;
+  var frameWidth = 420;
+  var frameHeight = 280;
+  var gapX = 32;
+  var gapY = 24;
+  var startX = 40;
+  var startY = 40;
+
+  for (var i = 0; i < SCREEN_NODE_NAMES.length; i++) {
+    var screenName = SCREEN_NODE_NAMES[i];
+    var key = normalizeName(screenName);
+
+    if (globalNameMap[key]) {
+      counters.existingFrames += 1;
+      continue;
+    }
+
+    counters.createdFrames += 1;
+
+    if (!dryRun && board) {
+      var frame = figma.createFrame();
+      frame.name = screenName;
+      frame.resizeWithoutConstraints(frameWidth, frameHeight);
+      frame.fills = [];
+      frame.layoutMode = 'VERTICAL';
+      frame.paddingLeft = 16;
+      frame.paddingRight = 16;
+      frame.paddingTop = 16;
+      frame.paddingBottom = 16;
+      frame.itemSpacing = 8;
+
+      var col = i % columns;
+      var row = Math.floor(i / columns);
+      frame.x = startX + col * (frameWidth + gapX);
+      frame.y = startY + row * (frameHeight + gapY);
+
+      board.appendChild(frame);
+    }
+  }
+
+  return {
+    seedType: 'screens',
+    dryRun: dryRun,
+    counters: counters,
+    pageName: SCREEN_PAGE_NAME,
+    boardName: SCREEN_BOARD_NAME,
   };
 }
 
@@ -417,6 +556,16 @@ figma.ui.onmessage = async (msg) => {
     try {
       var seedReport = await seedFormsBoard({ dryRun: Boolean(msg.dryRun) });
       figma.ui.postMessage({ type: 'seed-report', report: seedReport });
+    } catch (err) {
+      figma.ui.postMessage({ type: 'fatal', message: String(err) });
+    }
+    return;
+  }
+
+  if (msg.type === 'seed-screens') {
+    try {
+      var seedScreensReport = await seedScreensBoard({ dryRun: Boolean(msg.dryRun) });
+      figma.ui.postMessage({ type: 'seed-report', report: seedScreensReport });
     } catch (err) {
       figma.ui.postMessage({ type: 'fatal', message: String(err) });
     }
