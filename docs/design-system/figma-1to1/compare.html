@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Comparacao 1:1 - Formularios restaurante-web</title>
+  <style>
+    :root {
+      --bg: #f3f1ea;
+      --paper: #fffdf7;
+      --ink: #23201a;
+      --muted: #72695b;
+      --accent: #146356;
+      --line: #d8d2c6;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: radial-gradient(circle at 20% 0%, #fff9ef 0%, var(--bg) 55%);
+      color: var(--ink);
+    }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(255, 253, 247, 0.94);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--line);
+      padding: 16px 24px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 22px;
+      letter-spacing: 0.2px;
+    }
+    .meta {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    main {
+      padding: 20px 24px 32px;
+      display: grid;
+      gap: 14px;
+    }
+    .row {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      overflow: hidden;
+      background: var(--paper);
+    }
+    .row-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      background: #fffaf0;
+    }
+    .name {
+      font-weight: 700;
+      font-size: 15px;
+    }
+    .badge {
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid transparent;
+    }
+    .ok {
+      background: #e8f6f2;
+      color: #0f4a3f;
+      border-color: #b8e2d7;
+    }
+    .miss {
+      background: #fdf0ea;
+      color: #7a341b;
+      border-color: #f7cfbf;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      padding: 10px;
+    }
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: white;
+      overflow: hidden;
+      min-height: 180px;
+    }
+    .panel h2 {
+      margin: 0;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--muted);
+      border-bottom: 1px solid var(--line);
+      padding: 8px 10px;
+      background: #fffcf5;
+    }
+    .canvas {
+      padding: 8px;
+      min-height: 150px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      background: #fbfaf7;
+    }
+    .canvas img {
+      width: 100%;
+      height: auto;
+      border-radius: 6px;
+      border: 1px solid #ece6d8;
+      background: #fff;
+    }
+    .empty {
+      font-size: 13px;
+      color: var(--muted);
+      text-align: center;
+      padding: 20px 12px;
+    }
+    .links {
+      padding: 10px;
+      border-top: 1px solid var(--line);
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .links a {
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .links a:hover { text-decoration: underline; }
+    @media (max-width: 980px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Comparacao 1:1 de Formularios</h1>
+    <div class="meta">Esquerda: export Storybook | Direita: import Figma local</div>
+  </header>
+
+  <main id="app"></main>
+
+  <script>
+    const forms = [
+      "LoginScreen","RegisterCompanyScreen","ResetPasswordScreen","ConfiguracoesScreen","BillingScreen","EditarEmpresaScreen","FuncionariosScreen","OperationalSettingsScreen","ConfiguracaoEstoqueScreen","ConfiguracaoMesasScreen","CadastroProdutoScreen","CaixaAberturaScreen","CaixaFechamentoScreen","CaixaOperacoesScreen","EstoqueScreen","ExtrasConfigScreen","GerenciarCardapioScreen","GerenciarFornecedoresScreen","PedidoDetalhesModal","NovoPedidoScreen","PublicMenuScreen","ReservasScreen","DeliveryScreen","DeliveryOcorrenciasScreen","AdicionaisConfigModal","MenuSettings","ProductForm","StockManager","VariationManager"
+    ];
+
+    const app = document.getElementById('app');
+
+    function makePanel(title, imagePath, exists) {
+      const panel = document.createElement('section');
+      panel.className = 'panel';
+
+      const h = document.createElement('h2');
+      h.textContent = title;
+      panel.appendChild(h);
+
+      const canvas = document.createElement('div');
+      canvas.className = 'canvas';
+
+      if (exists) {
+        const img = document.createElement('img');
+        img.loading = 'lazy';
+        img.src = imagePath;
+        img.alt = title;
+        canvas.appendChild(img);
+      } else {
+        const empty = document.createElement('div');
+        empty.className = 'empty';
+        empty.textContent = 'Sem imagem importada do Figma para este formulario.';
+        canvas.appendChild(empty);
+      }
+
+      panel.appendChild(canvas);
+      return panel;
+    }
+
+    function addRow(name) {
+      const row = document.createElement('article');
+      row.className = 'row';
+
+      const storybookPath = `storybook/${name}.png`;
+      const figmaPath = `figma/${name}.png`;
+
+      const img = new Image();
+      img.src = figmaPath;
+      img.onload = () => render(true);
+      img.onerror = () => render(false);
+
+      function render(figmaExists) {
+        if (row.childElementCount > 0) return;
+
+        const head = document.createElement('div');
+        head.className = 'row-head';
+
+        const n = document.createElement('div');
+        n.className = 'name';
+        n.textContent = name;
+
+        const badge = document.createElement('span');
+        badge.className = `badge ${figmaExists ? 'ok' : 'miss'}`;
+        badge.textContent = figmaExists ? 'Figma OK' : 'Figma faltando';
+
+        head.appendChild(n);
+        head.appendChild(badge);
+
+        const grid = document.createElement('div');
+        grid.className = 'grid';
+        grid.appendChild(makePanel('Storybook export', storybookPath, true));
+        grid.appendChild(makePanel('Figma import local', figmaPath, figmaExists));
+
+        const links = document.createElement('div');
+        links.className = 'links';
+        links.innerHTML = `<a href="${storybookPath}" target="_blank" rel="noreferrer">Abrir Storybook PNG</a><a href="${figmaPath}" target="_blank" rel="noreferrer">Abrir Figma PNG</a>`;
+
+        row.appendChild(head);
+        row.appendChild(grid);
+        row.appendChild(links);
+        app.appendChild(row);
+      }
+    }
+
+    forms.forEach(addRow);
+  </script>
+</body>
+</html>

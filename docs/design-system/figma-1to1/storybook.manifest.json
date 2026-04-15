@@ -1,0 +1,186 @@
+{
+  "generatedAt": "2026-04-15T21:56:09.304Z",
+  "source": "storybook",
+  "baseUrl": "https://restaurante-web-storybook-production.up.railway.app",
+  "viewport": {
+    "width": 1440,
+    "height": 2200
+  },
+  "total": 29,
+  "files": [
+    {
+      "name": "LoginScreen",
+      "storyId": "forms-restauranteweb-realpreviews--login-screen",
+      "url": "https://restaurante-web-storybook-production.up.railway.app/iframe.html?id=forms-restauranteweb-realpreviews--login-screen&viewMode=story",
+      "output": "docs/design-system/figma-1to1/storybook/LoginScreen.png"
+    },
+    {
+      "name": "RegisterCompanyScreen",
+      "storyId": "forms-restauranteweb-realpreviews--register-company-screen",
+      "url": "https://restaurante-web-storybook-production.up.railway.app/iframe.html?id=forms-restauranteweb-realpreviews--register-company-screen&viewMode=story",
+      "output": "docs/design-system/figma-1to1/storybook/RegisterCompanyScreen.png"
+    },
+    {
+      "name": "ResetPasswordScreen",
+      "storyId": "forms-restauranteweb-realpreviews--reset-password-screen",
+      "url": "https://restaurante-web-storybook-production.up.railway.app/iframe.html?id=forms-restauranteweb-realpreviews--reset-password-screen&viewMode=story",
+      "output": "docs/design-system/figma-1to1/storybook/ResetPasswordScreen.png"
+    },
+    {
+      "name": "ConfiguracoesScreen",
+      "storyId": "forms-restauranteweb-realpreviews--configuracoes-screen",
+      "url": "https://restaurante-web-storybook-production.up.railway.app/iframe.html?id=forms-restauranteweb-realpreviews--configuracoes-screen&viewMode=story",
+      "output": "docs/design-system/figma-1to1/storybook/ConfiguracoesScreen.png"
+    },
+    {
+      "name": "BillingScreen",
+      "storyId": "forms-restauranteweb-realpreviews--billing-screen",
+      "url": "https://restaurante-web-storybook-production.up.railway.app/iframe.html?id=forms-restauranteweb-realpreviews--billing-screen&viewMode=story",
+      "output": "docs/design-system/figma-1to1/storybook/BillingScreen.png"
+    },
+    {
+      "name": "EditarEmpresaScreen",
+      "storyId": "forms-restauranteweb-realpreviews--editar-empresa-screen",
+      "url": "https://restaurante-web-storybook-production.up.railway.app/iframe.html?id=forms-restauranteweb-realpreviews--editar-empresa-screen&viewMode=story",
+      "output": "docs/design-system/figma-1to1/storybook/EditarEmpresaScreen.png"
+    },
+    {
+      "name": "FuncionariosScreen",
+      "storyId": "forms-restauranteweb-realpreviews--funcionarios-screen",
+      "url": "https://restaurante-web-storybook-production.up.railway.app/iframe.html?id=forms-restauranteweb-realpreviews--funcionarios-screen&viewMode=story",
+      "output": "docs/design-system/figma-1to1/storybook/FuncionariosScreen.png"
+    },
+    {
+      "name": "OperationalSettingsScreen",
+      "storyId": "forms-restauranteweb-realpreviews--operational-settings-screen",
+      "url": "https://restaurante-web-storybook-production.up.railway.app/iframe.html?id=forms-restauranteweb-realpreviews--operational-settings-screen&viewMode=story",
+      "output": "docs/design-system/figma-1to1/storybook/OperationalSettingsScreen.png"
+    },
+    {
+      "name": "ConfiguracaoEstoqueScreen",
+      "storyId": "forms-restauranteweb-realpreviews--configuracao-estoque-screen",
+      "url": "https://restaurante-web-storybook-production.up.railway.app/iframe.html?id=forms-restauranteweb-realpreviews--configuracao-estoque-screen&viewMode=story",
+      "output": "docs/design-system/figma-1to1/storybook/ConfiguracaoEstoqueScreen.png"
+    },
+    {
+      "name": "ConfiguracaoMesasScreen",
+      "storyId": "forms-restauranteweb-realpreviews--configuracao-mesas-screen",
+      "url": "https://restaurante-web-storybook-production.up.railway.app/iframe.html?id=forms-restauranteweb-realpreviews--configuracao-mesas-screen&viewMode=story",
+      "output": "docs/design-system/figma-1to1/storybook/ConfiguracaoMesasScreen.png"
+    },
+    {
+      "name": "CadastroProdutoScreen",
+      "storyId": "forms-restauranteweb-realpreviews--cadastro-produto-screen",
+      "url": "https://restaurante-web-storybook-production.up.railway.app/iframe.html?id=forms-restauranteweb-realpreviews--cadastro-produto-screen&viewMode=story",
+      "output": "docs/design-system/figma-1to1/storybook/CadastroProdutoScreen.png"
+    },
+    {
+      "name": "CaixaAberturaScreen",
+      "storyId": "forms-restauranteweb-realpreviews--caixa-abertura-screen",
+      "url": "https://restaurante-web-storybook-production.up.railway.app/iframe.html?id=forms-restauranteweb-realpreviews--caixa-abertura-screen&viewMode=story",
+      "output": "docs/design-system/figma-1to1/storybook/CaixaAberturaScreen.png"
+    },
+    {
+      "name": "CaixaFechamentoScreen",
+      "storyId": "forms-restauranteweb-realpreviews--caixa-fechamento-screen",
+      "url": "https://restaurante-web-storybook-production.up.railway.app/iframe.html?id=forms-restauranteweb-realpreviews--caixa-fechamento-screen&viewMode=story",
+      "output": "docs/design-system/figma-1to1/storybook/CaixaFechamentoScreen.png"
+    },
+    {
+      "name": "CaixaOperacoesScreen",
+      "storyId": "forms-restauranteweb-realpreviews--caixa-operacoes-screen",
+      "url": "https://restaurante-web-storybook-production.up.railway.app/iframe.html?id=forms-restauranteweb-realpreviews--caixa-operacoes-screen&viewMode=story",
+      "output": "docs/design-system/figma-1to1/storybook/CaixaOperacoesScreen.png"
+    },
+    {
+      "name": "EstoqueScreen",
+      "storyId": "forms-restauranteweb-realpreviews--estoque-screen",
+      "url": "https://restaurante-web-storybook-production.up.railway.app/iframe.html?id=forms-restauranteweb-realpreviews--estoque-screen&viewMode=story",
+      "output": "docs/design-system/figma-1to1/storybook/EstoqueScreen.png"
+    },
+    {
+      "name": "ExtrasConfigScreen",
+      "storyId": "forms-restauranteweb-realpreviews--extras-config-screen",
+      "url": "https://restaurante-web-storybook-production.up.railway.app/iframe.html?id=forms-restauranteweb-realpreviews--extras-config-screen&viewMode=story",
+      "output": "docs/design-system/figma-1to1/storybook/ExtrasConfigScreen.png"
+    },
+    {
+      "name": "GerenciarCardapioScreen",
+      "storyId": "forms-restauranteweb-realpreviews--gerenciar-cardapio-screen",
+      "url": "https://restaurante-web-storybook-production.up.railway.app/iframe.html?id=forms-restauranteweb-realpreviews--gerenciar-cardapio-screen&viewMode=story",
+      "output": "docs/design-system/figma-1to1/storybook/GerenciarCardapioScreen.png"
+    },
+    {
+      "name": "GerenciarFornecedoresScreen",
+      "storyId": "forms-restauranteweb-realpreviews--gerenciar-fornecedores-screen",
+      "url": "https://restaurante-web-storybook-production.up.railway.app/iframe.html?id=forms-restauranteweb-realpreviews--gerenciar-fornecedores-screen&viewMode=story",
+      "output": "docs/design-system/figma-1to1/storybook/GerenciarFornecedoresScreen.png"
+    },
+    {
+      "name": "PedidoDetalhesModal",
+      "storyId": "forms-restauranteweb-realpreviews--pedido-detalhes-modal",
+      "url": "https://restaurante-web-storybook-production.up.railway.app/iframe.html?id=forms-restauranteweb-realpreviews--pedido-detalhes-modal&viewMode=story",
+      "output": "docs/design-system/figma-1to1/storybook/PedidoDetalhesModal.png"
+    },
+    {
+      "name": "NovoPedidoScreen",
+      "storyId": "forms-restauranteweb-realpreviews--novo-pedido-screen",
+      "url": "https://restaurante-web-storybook-production.up.railway.app/iframe.html?id=forms-restauranteweb-realpreviews--novo-pedido-screen&viewMode=story",
+      "output": "docs/design-system/figma-1to1/storybook/NovoPedidoScreen.png"
+    },
+    {
+      "name": "PublicMenuScreen",
+      "storyId": "forms-restauranteweb-realpreviews--public-menu-screen",
+      "url": "https://restaurante-web-storybook-production.up.railway.app/iframe.html?id=forms-restauranteweb-realpreviews--public-menu-screen&viewMode=story",
+      "output": "docs/design-system/figma-1to1/storybook/PublicMenuScreen.png"
+    },
+    {
+      "name": "ReservasScreen",
+      "storyId": "forms-restauranteweb-realpreviews--reservas-screen",
+      "url": "https://restaurante-web-storybook-production.up.railway.app/iframe.html?id=forms-restauranteweb-realpreviews--reservas-screen&viewMode=story",
+      "output": "docs/design-system/figma-1to1/storybook/ReservasScreen.png"
+    },
+    {
+      "name": "DeliveryScreen",
+      "storyId": "forms-restauranteweb-realpreviews--delivery-screen",
+      "url": "https://restaurante-web-storybook-production.up.railway.app/iframe.html?id=forms-restauranteweb-realpreviews--delivery-screen&viewMode=story",
+      "output": "docs/design-system/figma-1to1/storybook/DeliveryScreen.png"
+    },
+    {
+      "name": "DeliveryOcorrenciasScreen",
+      "storyId": "forms-restauranteweb-realpreviews--delivery-ocorrencias-screen",
+      "url": "https://restaurante-web-storybook-production.up.railway.app/iframe.html?id=forms-restauranteweb-realpreviews--delivery-ocorrencias-screen&viewMode=story",
+      "output": "docs/design-system/figma-1to1/storybook/DeliveryOcorrenciasScreen.png"
+    },
+    {
+      "name": "AdicionaisConfigModal",
+      "storyId": "forms-restauranteweb-realpreviews--adicionais-config-modal",
+      "url": "https://restaurante-web-storybook-production.up.railway.app/iframe.html?id=forms-restauranteweb-realpreviews--adicionais-config-modal&viewMode=story",
+      "output": "docs/design-system/figma-1to1/storybook/AdicionaisConfigModal.png"
+    },
+    {
+      "name": "MenuSettings",
+      "storyId": "forms-restauranteweb-realpreviews--menu-settings",
+      "url": "https://restaurante-web-storybook-production.up.railway.app/iframe.html?id=forms-restauranteweb-realpreviews--menu-settings&viewMode=story",
+      "output": "docs/design-system/figma-1to1/storybook/MenuSettings.png"
+    },
+    {
+      "name": "ProductForm",
+      "storyId": "forms-restauranteweb-realpreviews--product-form",
+      "url": "https://restaurante-web-storybook-production.up.railway.app/iframe.html?id=forms-restauranteweb-realpreviews--product-form&viewMode=story",
+      "output": "docs/design-system/figma-1to1/storybook/ProductForm.png"
+    },
+    {
+      "name": "StockManager",
+      "storyId": "forms-restauranteweb-realpreviews--stock-manager",
+      "url": "https://restaurante-web-storybook-production.up.railway.app/iframe.html?id=forms-restauranteweb-realpreviews--stock-manager&viewMode=story",
+      "output": "docs/design-system/figma-1to1/storybook/StockManager.png"
+    },
+    {
+      "name": "VariationManager",
+      "storyId": "forms-restauranteweb-realpreviews--variation-manager",
+      "url": "https://restaurante-web-storybook-production.up.railway.app/iframe.html?id=forms-restauranteweb-realpreviews--variation-manager&viewMode=story",
+      "output": "docs/design-system/figma-1to1/storybook/VariationManager.png"
+    }
+  ]
+}
