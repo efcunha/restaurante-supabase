@@ -50,6 +50,10 @@ jobs:
         working-directory: restaurante-web
         run: npm ci
 
+      - name: Check screens sync (Storybook + Figma)
+        working-directory: restaurante-web
+        run: npm run screens:sync:check
+
       - name: Validate figma node map
         run: node docs/design-system/validate-figma-node-map.mjs
 

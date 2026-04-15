@@ -45,6 +45,12 @@
 - `cd restaurante-web && npm run storybook:build`
 - `node docs/design-system/validate-figma-node-map.mjs`
 - `node docs/design-system/set-storybook-base-url.mjs https://seu-host-storybook`
+- `node docs/design-system/smoke-storybook-public.mjs`
+
+Variaveis opcionais do smoke publico:
+- `STORYBOOK_PUBLIC_BASE_URL`: base publica esperada para validar URL e `docsUrl`.
+- `STORYBOOK_PUBLIC_BASIC_AUTH_USER` e `STORYBOOK_PUBLIC_BASIC_AUTH_PASS`: envia header Basic Auth quando configuradas.
+- `STORYBOOK_PUBLIC_SMOKE_STRICT_AUTH=true`: reprova quando a URL responder `401` sem credenciais (modo estrito).
 
 ## Storybook MCP (configurado)
 - Addon configurado no formato oficial com `toolsets` (`dev` e `docs`) e `experimentalFormat: markdown`.
