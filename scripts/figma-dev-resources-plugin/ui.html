@@ -146,6 +146,7 @@
     <div class="actions">
       <button class="primary" id="applyBtn">Run Sync</button>
       <button class="secondary" id="seedBtn">Seed Forms Page</button>
+      <button class="secondary" id="seedScreensBtn">Seed Screens Page</button>
       <button class="secondary" id="scanBtn">Scan Document</button>
       <button class="secondary" id="cancelBtn">Close</button>
     </div>
@@ -162,6 +163,7 @@
       const outputEl = document.getElementById('output');
       const applyBtn = document.getElementById('applyBtn');
       const seedBtn = document.getElementById('seedBtn');
+      const seedScreensBtn = document.getElementById('seedScreensBtn');
       const scanBtn = document.getElementById('scanBtn');
       const cancelBtn = document.getElementById('cancelBtn');
 
@@ -212,6 +214,19 @@
         );
       };
 
+      seedScreensBtn.onclick = () => {
+        setOutput('Seeding screens page...');
+        parent.postMessage(
+          {
+            pluginMessage: {
+              type: 'seed-screens',
+              dryRun: dryRunEl.checked,
+            },
+          },
+          '*'
+        );
+      };
+
       cancelBtn.onclick = () => {
         parent.postMessage(
           {
@@ -250,10 +265,12 @@
           const r = msg.report || {};
           const c = r.counters || {};
           const lines = [];
+          const label = r.seedType === 'screens' ? 'screens' : 'forms';
           lines.push('Seed mode: ' + (r.dryRun ? 'DRY RUN' : 'WRITE'));
           lines.push('Page: ' + (r.pageName || '-'));
           lines.push('Board: ' + (r.boardName || '-'));
-          lines.push('Total forms: ' + (c.formsTotal || 0));
+          lines.push('Seed target: ' + label);
+          lines.push('Total items: ' + (c.formsTotal || c.screensTotal || 0));
           lines.push('Created page: ' + (c.createdPage || 0));
           lines.push('Created board: ' + (c.createdBoard || 0));
           lines.push('Created frames: ' + (c.createdFrames || 0));
