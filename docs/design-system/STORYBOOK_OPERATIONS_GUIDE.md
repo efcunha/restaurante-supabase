@@ -14,6 +14,25 @@ This guide documents the operational setup for:
 - **Figma integration** (node map & docs URL consistency)
 - **Basic Auth protection** (secure access to public UI documentation)
 
+### Form Preview Policy (2026-04-15)
+
+- Storybook is the real visual source for restaurant-web form layout reviews.
+- Figma remains a technical support artifact (node map, references, redesign input), not a faithful form preview source.
+- Real-form previews are published via composition stories in `restaurante-web/src/screens/storybook/FormRealPreviews.stories.tsx`.
+- Current coverage is **29/29** forms from `restaurante-web/src/ui/formsCatalogData.ts` in the group `Forms/RestauranteWeb/RealPreviews`.
+
+Coverage verification (local):
+
+```bash
+cd restaurante-web
+npm run storybook:build -- --disable-telemetry
+
+node -e "const fs=require('fs'); const idx=JSON.parse(fs.readFileSync('storybook-static/index.json','utf8')); const entries=Object.values(idx.entries||{}); const real=entries.filter(e=>e.title==='Forms/RestauranteWeb/RealPreviews'&&e.type==='story'); console.log('real previews:', real.length);"
+```
+
+Rastreabilidade formulario -> story id:
+- `docs/design-system/FORM_PREVIEW_MATRIX_RESTAURANTE_WEB.md`
+
 ---
 
 ## 🏗️ Architecture
