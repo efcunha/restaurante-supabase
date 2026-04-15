@@ -32,6 +32,8 @@ Referencias de continuidade:
 - `docs/design-system/STORYBOOK_OPERATIONS_GUIDE.md`: runbook operacional do Storybook público (deploy, auth, smoke e troubleshooting)
 - `docs/repository/DOMAINS.md`: mapa conceitual dos domínios do repositório
 - `docs/repository/SCRIPTS_INVENTORY.md`: inventário de scripts e inconsistências conhecidas
+- `docs/forms/README.md`: índice de automação semi-automática segura de formulários
+- `docs/repository/FORM_AUTOMATION_SEMI_AUTO_RUNBOOK.md`: runbook da automação semi-automática segura de formulários
 - `docs/security/README.md`: pacote de auditoria, remediação e compliance
 - `docs/saas-billing/README.md`: visão de domínio de billing
 - `docs/saas-billing/operations/README.md`: runbooks e checklists operacionais

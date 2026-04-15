@@ -1,0 +1,13 @@
+{
+  "approver": "security.reviewer@restaurante-web.app.br",
+  "approvedAt": "2026-04-15T17:00:00.000Z",
+  "approvedCritical": [
+    "NovoPedidoScreen"
+  ],
+  "approvedPii": [
+    "RegisterCompanyScreen"
+  ],
+  "approvedSensitive": [
+    "RegisterCompanyScreen"
+  ]
+}

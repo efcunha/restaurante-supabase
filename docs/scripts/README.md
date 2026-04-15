@@ -22,6 +22,11 @@ Este diretório concentra scripts utilitários de nível monorepo que não perte
 - `publish-eas-builds-to-restaurante-site.sh`
 	- Publica os artifacts mais recentes de `docs/builds/` em `restaurante-site/public/downloads/`.
 	- Copia `latest-builds.json` para consumo público no site.
+- `form-automation/semi-auto-form-flow.mjs`
+	- Executa fluxo semi-automatico seguro para evolucao de formularios (deteccao, checklist, diffs propostos, gates sensiveis e rascunho de PR).
+	- Nunca aplica alteracoes em formularios criticos sem aprovacao explicita e bloqueia aplicacao automatica em areas sensiveis (auth/billing/RLS/CORS/rate limiting).
+	- Suporta preflight estrito (`--strict-targets`) e trilha auditavel (`--approval-file`).
+	- Referencia operacional: `docs/repository/FORM_AUTOMATION_SEMI_AUTO_RUNBOOK.md`.
 
 ### `scripts/security/`
 

@@ -9,6 +9,7 @@
     "deploy:railway": "bash scripts/deploy-railway.sh",
     "storybook:mcp": "node scripts/storybook-mcp-server.mjs",
     "storybook:mcp:smoke": "node scripts/smoke-storybook-mcp.mjs",
+    "storybook:verify:prod": "bash scripts/verify-storybook-production.sh",
     "screens:sync": "node scripts/sync-web-screens-storybook-figma.mjs",
     "screens:sync:check": "node scripts/sync-web-screens-storybook-figma.mjs --check",
     "figma:help": "npx figma connect --help",
