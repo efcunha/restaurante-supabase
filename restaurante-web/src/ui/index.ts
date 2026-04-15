@@ -27,3 +27,4 @@ export { FormSection } from './FormSection';
 export { FieldRow } from './FieldRow';
 export { DataListItem } from './DataListItem';
 export { ListContainer } from './ListContainer';
+export { FormsCatalog } from './FormsCatalog';

@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Dev Resources Sync</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 16px;
+        font-family: Arial, sans-serif;
+        background: #f6f8fc;
+        color: #1f2937;
+      }
+
+      h1 {
+        font-size: 16px;
+        margin: 0 0 8px;
+      }
+
+      p {
+        font-size: 12px;
+        margin: 0 0 12px;
+      }
+
+      .group {
+        margin-bottom: 12px;
+      }
+
+      label {
+        display: block;
+        font-size: 12px;
+        margin-bottom: 6px;
+        font-weight: 700;
+      }
+
+      textarea,
+      input[type='text'] {
+        width: 100%;
+        box-sizing: border-box;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        padding: 10px;
+        font-size: 12px;
+        font-family: Consolas, monospace;
+      }
+
+      textarea {
+        min-height: 300px;
+        resize: vertical;
+      }
+
+      .row {
+        display: flex;
+        gap: 12px;
+        margin: 8px 0;
+      }
+
+      .checkbox {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+      }
+
+      .checkbox label {
+        margin: 0;
+        font-weight: 400;
+      }
+
+      .actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      button {
+        border: 0;
+        border-radius: 8px;
+        padding: 10px 12px;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      button.primary {
+        background: #2563eb;
+        color: #fff;
+      }
+
+      button.secondary {
+        background: #e2e8f0;
+        color: #0f172a;
+      }
+
+      pre {
+        margin-top: 12px;
+        background: #0f172a;
+        color: #e2e8f0;
+        border-radius: 8px;
+        padding: 10px;
+        font-size: 11px;
+        white-space: pre-wrap;
+        max-height: 210px;
+        overflow: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Sync Node Map -> Dev Resources</h1>
+    <p>Paste payload JSON generated from figma-node-map and apply links on existing nodes.</p>
+
+    <div class="group">
+      <label for="payload">Payload JSON</label>
+      <textarea id="payload" placeholder='{"entries":[{"nodeId":"9:1","component":"Button","docsUrl":"https://...","codePath":"restaurante-web/src/ui/Button.figma.tsx"}]}'></textarea>
+    </div>
+
+    <div class="group">
+      <label for="repoBaseUrl">Repository base URL (optional, for code links)</label>
+      <input id="repoBaseUrl" type="text" value="https://github.com/ecunha-dev/restaurante-supabase/blob/main" />
+    </div>
+
+    <div class="row">
+      <div class="checkbox">
+        <input id="dryRun" type="checkbox" checked />
+        <label for="dryRun">Dry run (no write)</label>
+      </div>
+
+      <div class="checkbox">
+        <input id="replaceByName" type="checkbox" checked />
+        <label for="replaceByName">Replace by same resource name</label>
+      </div>
+
+      <div class="checkbox">
+        <input id="includeCodePathLink" type="checkbox" checked />
+        <label for="includeCodePathLink">Include Code Path links</label>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="checkbox">
+        <input id="matchByName" type="checkbox" checked />
+        <label for="matchByName">Match by name (fallback when ID not found)</label>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="primary" id="applyBtn">Run Sync</button>
+      <button class="secondary" id="seedBtn">Seed Forms Page</button>
+      <button class="secondary" id="scanBtn">Scan Document</button>
+      <button class="secondary" id="cancelBtn">Close</button>
+    </div>
+
+    <pre id="output">Ready.</pre>
+
+    <script>
+      const payloadEl = document.getElementById('payload');
+      const repoBaseUrlEl = document.getElementById('repoBaseUrl');
+      const dryRunEl = document.getElementById('dryRun');
+      const replaceByNameEl = document.getElementById('replaceByName');
+      const includeCodePathLinkEl = document.getElementById('includeCodePathLink');
+      const matchByNameEl = document.getElementById('matchByName');
+      const outputEl = document.getElementById('output');
+      const applyBtn = document.getElementById('applyBtn');
+      const seedBtn = document.getElementById('seedBtn');
+      const scanBtn = document.getElementById('scanBtn');
+      const cancelBtn = document.getElementById('cancelBtn');
+
+      function setOutput(text) {
+        outputEl.textContent = text;
+      }
+
+      applyBtn.onclick = () => {
+        const payloadText = payloadEl.value.trim();
+        if (!payloadText) {
+          setOutput('Paste payload JSON before running sync.');
+          return;
+        }
+
+        setOutput('Running sync...');
+
+        parent.postMessage(
+          {
+            pluginMessage: {
+              type: 'apply',
+              payloadText,
+              repoBaseUrl: repoBaseUrlEl.value.trim(),
+              dryRun: dryRunEl.checked,
+              replaceByName: replaceByNameEl.checked,
+              includeCodePathLink: includeCodePathLinkEl.checked,
+              matchByName: matchByNameEl.checked,
+            },
+          },
+          '*'
+        );
+      };
+
+      scanBtn.onclick = () => {
+        setOutput('Scanning document...');
+        parent.postMessage({ pluginMessage: { type: 'scan' } }, '*');
+      };
+
+      seedBtn.onclick = () => {
+        setOutput('Seeding forms page...');
+        parent.postMessage(
+          {
+            pluginMessage: {
+              type: 'seed-forms',
+              dryRun: dryRunEl.checked,
+            },
+          },
+          '*'
+        );
+      };
+
+      cancelBtn.onclick = () => {
+        parent.postMessage(
+          {
+            pluginMessage: {
+              type: 'cancel',
+            },
+          },
+          '*'
+        );
+      };
+
+      window.onmessage = (event) => {
+        const msg = event.data.pluginMessage;
+        if (!msg) {
+          return;
+        }
+
+        if (msg.type === 'fatal') {
+          setOutput('Fatal error: ' + msg.message);
+          return;
+        }
+
+        if (msg.type === 'scan-result') {
+          const nodes = msg.nodes || [];
+          const lines = ['Scan result: ' + nodes.length + ' top-level nodes\n'];
+          for (var i = 0; i < nodes.length; i++) {
+            var n = nodes[i];
+            var indent = n.depth === 2 ? '  ' : '';
+            lines.push(indent + '[' + n.page + '] ' + n.nodeId + '  ' + n.type + '  ' + n.name);
+          }
+          setOutput(lines.join('\n'));
+          return;
+        }
+
+        if (msg.type === 'seed-report') {
+          const r = msg.report || {};
+          const c = r.counters || {};
+          const lines = [];
+          lines.push('Seed mode: ' + (r.dryRun ? 'DRY RUN' : 'WRITE'));
+          lines.push('Page: ' + (r.pageName || '-'));
+          lines.push('Board: ' + (r.boardName || '-'));
+          lines.push('Total forms: ' + (c.formsTotal || 0));
+          lines.push('Created page: ' + (c.createdPage || 0));
+          lines.push('Created board: ' + (c.createdBoard || 0));
+          lines.push('Created frames: ' + (c.createdFrames || 0));
+          lines.push('Existing frames: ' + (c.existingFrames || 0));
+          setOutput(lines.join('\n'));
+          return;
+        }
+
+        if (msg.type !== 'report') {
+          return;
+        }
+
+        const c = msg.counters || {};
+        const lines = [];
+        lines.push('Mode: ' + (msg.dryRun ? 'DRY RUN' : 'WRITE'));
+        lines.push('Total payload entries: ' + (c.total || 0));
+        lines.push('Found by ID: ' + (c.foundById || 0));
+        lines.push('Found by name: ' + (c.foundByName || 0));
+        lines.push('Processed nodes: ' + (c.processedNodes || 0));
+        lines.push('Skipped invalid entry: ' + (c.skippedInvalidEntry || 0));
+        lines.push('Skipped node not found: ' + (c.skippedNodeNotFound || 0));
+        lines.push('Resources added: ' + (c.added || 0));
+        lines.push('Resources replaced: ' + (c.replaced || 0));
+        lines.push('Resources renamed: ' + (c.renamed || 0));
+        lines.push('Resources kept: ' + (c.kept || 0));
+        lines.push('Errors: ' + (c.errors || 0));
+
+        if (Array.isArray(msg.errors) && msg.errors.length > 0) {
+          lines.push('');
+          lines.push('Details:');
+          for (const item of msg.errors.slice(0, 40)) {
+            lines.push(`- ${item}`);
+          }
+          if (msg.errors.length > 40) {
+            lines.push(`... and ${msg.errors.length - 40} more`);
+          }
+        }
+
+        setOutput(lines.join('\n'));
+      };
+    </script>
+  </body>
+</html>
