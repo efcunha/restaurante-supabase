@@ -42,6 +42,10 @@ cd restaurante-web
 npm run figma:dev-resources:preflight
 ```
 
+Observacao: quando dois componentes apontam intencionalmente para o mesmo frame/node Figma,
+registre a excecao em `docs/design-system/figma-dev-resources.shared-node-allowlist.json`.
+O preflight falha se houver node compartilhado sem allowlist, mismatch da allowlist ou allowlist orfa.
+
 2. No Figma Desktop: `Plugins -> Development -> Import plugin from manifest...`
 
 3. Selecione o arquivo:

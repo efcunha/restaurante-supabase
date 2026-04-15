@@ -8,6 +8,10 @@ const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, '..');
 
 const payloadPathDefault = path.resolve(repoRoot, 'docs/design-system/figma-dev-resources.payload.json');
+const sharedNodeAllowlistPathDefault = path.resolve(
+  repoRoot,
+  'docs/design-system/figma-dev-resources.shared-node-allowlist.json',
+);
 
 const args = process.argv.slice(2);
 
@@ -42,8 +46,45 @@ function pushIssue(collection, kind, index, message) {
   collection.push({ kind, index, message });
 }
 
+function readSharedNodeAllowlist(filePath) {
+  if (!fs.existsSync(filePath)) {
+    return [];
+  }
+
+  const raw = fs.readFileSync(filePath, 'utf8');
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    console.error(`[figma-dev-resources:validate] allowlist JSON inválido: ${String(error)}`);
+    process.exit(1);
+  }
+
+  const entries = Array.isArray(parsed?.entries) ? parsed.entries : [];
+  return entries
+    .map((entry) => {
+      const nodeId = typeof entry?.nodeId === 'string' ? entry.nodeId.trim() : '';
+      const components = Array.isArray(entry?.components)
+        ? entry.components
+            .filter((value) => typeof value === 'string')
+            .map((value) => value.trim())
+            .filter(Boolean)
+        : [];
+
+      return {
+        nodeId,
+        components: [...new Set(components)].sort(),
+      };
+    })
+    .filter((entry) => isValidNodeId(entry.nodeId) && entry.components.length >= 2);
+}
+
 function main() {
   const payloadPath = path.resolve(repoRoot, readArg('--file', payloadPathDefault));
+  const allowlistPath = path.resolve(
+    repoRoot,
+    readArg('--shared-node-allowlist', sharedNodeAllowlistPathDefault),
+  );
 
   if (!fs.existsSync(payloadPath)) {
     console.error(`[figma-dev-resources:validate] payload not found: ${payloadPath}`);
@@ -68,6 +109,7 @@ function main() {
   const issues = [];
   const nodeDocsPairs = new Set();
   const resourceNameByNode = new Map();
+  const componentsByNode = new Map();
 
   entries.forEach((entry, index) => {
     const nodeId = entry?.nodeId;
@@ -107,12 +149,74 @@ function main() {
       }
       byNode.add(resourceName);
       resourceNameByNode.set(nodeId, byNode);
+
+      const componentName = String(component || '').trim();
+      if (componentName) {
+        const componentSet = componentsByNode.get(nodeId) || new Set();
+        componentSet.add(componentName);
+        componentsByNode.set(nodeId, componentSet);
+      }
+    }
+  });
+
+  const sharedNodeAllowlist = readSharedNodeAllowlist(allowlistPath);
+  const allowlistByNode = new Map(
+    sharedNodeAllowlist.map((entry) => [entry.nodeId, new Set(entry.components)]),
+  );
+
+  componentsByNode.forEach((componentSet, nodeId) => {
+    if (componentSet.size <= 1) {
+      return;
+    }
+
+    const actualComponents = [...componentSet].sort();
+    const allowedComponents = allowlistByNode.get(nodeId);
+    if (!allowedComponents) {
+      pushIssue(
+        issues,
+        'duplicate-node-id-unexpected',
+        -1,
+        `nodeId compartilhado sem allowlist: ${nodeId} => ${actualComponents.join(' | ')}`,
+      );
+    }
+  });
+
+  allowlistByNode.forEach((allowedComponents, nodeId) => {
+    const actualComponentsSet = componentsByNode.get(nodeId);
+    if (!actualComponentsSet || actualComponentsSet.size <= 1) {
+      pushIssue(
+        issues,
+        'duplicate-node-id-allowlist-orphan',
+        -1,
+        `allowlist órfã para nodeId ${nodeId}: nenhum compartilhamento ativo encontrado no payload`,
+      );
+      return;
+    }
+
+    const actualComponents = [...actualComponentsSet].sort();
+    const isCovered =
+      actualComponents.length === allowedComponents.size &&
+      actualComponents.every((component) => allowedComponents.has(component));
+
+    if (!isCovered) {
+      pushIssue(
+        issues,
+        'duplicate-node-id-allowlist-mismatch',
+        -1,
+        `allowlist ${nodeId} difere do payload. atual=[${actualComponents.join(' | ')}] allowlist=[${[
+          ...allowedComponents,
+        ]
+          .sort()
+          .join(' | ')}]`,
+      );
     }
   });
 
   const summary = {
     file: path.relative(repoRoot, payloadPath).replace(/\\/g, '/'),
     totalEntries: entries.length,
+    sharedNodeIds: [...componentsByNode.values()].filter((componentSet) => componentSet.size > 1).length,
+    sharedNodeAllowlistEntries: sharedNodeAllowlist.length,
     issues: issues.length,
   };
 
