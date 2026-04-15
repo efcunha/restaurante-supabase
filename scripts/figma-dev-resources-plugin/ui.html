@@ -143,10 +143,18 @@
       </div>
     </div>
 
+    <div class="row">
+      <div class="checkbox">
+        <input id="seedIncludeScreens" type="checkbox" />
+        <label for="seedIncludeScreens">Payload seed: include screens too</label>
+      </div>
+    </div>
+
     <div class="actions">
       <button class="primary" id="applyBtn">Run Sync</button>
       <button class="secondary" id="seedBtn">Seed Forms Page</button>
       <button class="secondary" id="seedScreensBtn">Seed Screens Page</button>
+      <button class="secondary" id="seedPayloadBtn">Seed Missing from Payload</button>
       <button class="secondary" id="scanBtn">Scan Document</button>
       <button class="secondary" id="cancelBtn">Close</button>
     </div>
@@ -160,10 +168,12 @@
       const replaceByNameEl = document.getElementById('replaceByName');
       const includeCodePathLinkEl = document.getElementById('includeCodePathLink');
       const matchByNameEl = document.getElementById('matchByName');
+      const seedIncludeScreensEl = document.getElementById('seedIncludeScreens');
       const outputEl = document.getElementById('output');
       const applyBtn = document.getElementById('applyBtn');
       const seedBtn = document.getElementById('seedBtn');
       const seedScreensBtn = document.getElementById('seedScreensBtn');
+      const seedPayloadBtn = document.getElementById('seedPayloadBtn');
       const scanBtn = document.getElementById('scanBtn');
       const cancelBtn = document.getElementById('cancelBtn');
 
@@ -227,6 +237,26 @@
         );
       };
 
+      seedPayloadBtn.onclick = () => {
+        const payloadText = payloadEl.value.trim();
+        if (!payloadText) {
+          setOutput('Paste payload JSON before running payload seed.');
+          return;
+        }
+        setOutput('Seeding missing entries from payload...');
+        parent.postMessage(
+          {
+            pluginMessage: {
+              type: 'seed-payload',
+              payloadText,
+              dryRun: dryRunEl.checked,
+              includeScreens: seedIncludeScreensEl.checked,
+            },
+          },
+          '*'
+        );
+      };
+
       cancelBtn.onclick = () => {
         parent.postMessage(
           {
@@ -265,12 +295,18 @@
           const r = msg.report || {};
           const c = r.counters || {};
           const lines = [];
-          const label = r.seedType === 'screens' ? 'screens' : 'forms';
+          let label = 'forms';
+          if (r.seedType === 'screens') label = 'screens';
+          if (r.seedType === 'payload-non-screen') label = 'payload-non-screen';
+          if (r.seedType === 'payload-all') label = 'payload-all';
           lines.push('Seed mode: ' + (r.dryRun ? 'DRY RUN' : 'WRITE'));
           lines.push('Page: ' + (r.pageName || '-'));
           lines.push('Board: ' + (r.boardName || '-'));
           lines.push('Seed target: ' + label);
           lines.push('Total items: ' + (c.formsTotal || c.screensTotal || 0));
+          if (typeof c.payloadTotal === 'number') {
+            lines.push('Payload entries: ' + c.payloadTotal);
+          }
           lines.push('Created page: ' + (c.createdPage || 0));
           lines.push('Created board: ' + (c.createdBoard || 0));
           lines.push('Created frames: ' + (c.createdFrames || 0));
@@ -297,6 +333,17 @@
         lines.push('Resources renamed: ' + (c.renamed || 0));
         lines.push('Resources kept: ' + (c.kept || 0));
         lines.push('Errors: ' + (c.errors || 0));
+
+        if (Array.isArray(msg.idSuggestions) && msg.idSuggestions.length > 0) {
+          lines.push('');
+          lines.push('Suggested ID updates: ' + msg.idSuggestions.length);
+          for (const item of msg.idSuggestions.slice(0, 120)) {
+            lines.push(`- ${item.component}: ${item.oldNodeId || '-'} -> ${item.resolvedNodeId}`);
+          }
+          if (msg.idSuggestions.length > 120) {
+            lines.push(`... and ${msg.idSuggestions.length - 120} more`);
+          }
+        }
 
         if (Array.isArray(msg.errors) && msg.errors.length > 0) {
           lines.push('');

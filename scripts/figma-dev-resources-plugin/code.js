@@ -123,6 +123,9 @@ var SCREEN_NODE_NAMES = [
   'UpdateCardapioScreen',
 ];
 
+var PAYLOAD_PAGE_NAME = '🧩 Payload restaurante-web';
+var PAYLOAD_BOARD_NAME = 'RestaurantOS Payload Board';
+
 function findPageByName(name) {
   var pages = figma.root.children;
   for (var i = 0; i < pages.length; i++) {
@@ -315,6 +318,118 @@ async function seedScreensBoard(options) {
   };
 }
 
+async function seedMissingFromPayload(payload, options) {
+  var dryRun = Boolean(options && options.dryRun);
+  var includeScreens = Boolean(options && options.includeScreens);
+
+  var entries = Array.isArray(payload && payload.entries) ? payload.entries : [];
+  var uniqueNamesByKey = {};
+  var targetNames = [];
+
+  for (var i = 0; i < entries.length; i++) {
+    var entry = entries[i];
+    var component = entry && typeof entry.component === 'string' ? entry.component.trim() : '';
+    if (!component) {
+      continue;
+    }
+    var isScreen = /^Screen:/i.test(component);
+    if (isScreen && !includeScreens) {
+      continue;
+    }
+    var frameName = component.replace(/^Screen:/i, '').trim();
+    if (!frameName) {
+      continue;
+    }
+    var key = normalizeName(frameName);
+    if (uniqueNamesByKey[key]) {
+      continue;
+    }
+    uniqueNamesByKey[key] = frameName;
+    targetNames.push(frameName);
+  }
+
+  var counters = {
+    payloadTotal: entries.length,
+    formsTotal: targetNames.length,
+    createdPage: 0,
+    createdBoard: 0,
+    createdFrames: 0,
+    existingFrames: 0,
+  };
+
+  var globalNameMap = await buildNameMap();
+
+  var page = findPageByName(PAYLOAD_PAGE_NAME);
+  if (!page) {
+    if (!dryRun) {
+      page = figma.createPage();
+      page.name = PAYLOAD_PAGE_NAME;
+    }
+    counters.createdPage = 1;
+  }
+
+  var board = page ? findChildByName(page, PAYLOAD_BOARD_NAME) : null;
+  if (!board) {
+    if (!dryRun && page) {
+      board = figma.createFrame();
+      board.name = PAYLOAD_BOARD_NAME;
+      board.resizeWithoutConstraints(3200, 2600);
+      board.x = 120;
+      board.y = 120;
+      page.appendChild(board);
+    }
+    counters.createdBoard = 1;
+  }
+
+  var columns = 6;
+  var frameWidth = 420;
+  var frameHeight = 280;
+  var gapX = 32;
+  var gapY = 24;
+  var startX = 40;
+  var startY = 40;
+
+  for (var j = 0; j < targetNames.length; j++) {
+    var name = targetNames[j];
+    var key = normalizeName(name);
+
+    if (globalNameMap[key]) {
+      counters.existingFrames += 1;
+      continue;
+    }
+
+    counters.createdFrames += 1;
+
+    if (!dryRun && board) {
+      var frame = figma.createFrame();
+      frame.name = name;
+      frame.resizeWithoutConstraints(frameWidth, frameHeight);
+      frame.fills = [];
+      frame.layoutMode = 'VERTICAL';
+      frame.paddingLeft = 16;
+      frame.paddingRight = 16;
+      frame.paddingTop = 16;
+      frame.paddingBottom = 16;
+      frame.itemSpacing = 8;
+
+      var col = j % columns;
+      var row = Math.floor(j / columns);
+      frame.x = startX + col * (frameWidth + gapX);
+      frame.y = startY + row * (frameHeight + gapY);
+
+      board.appendChild(frame);
+    }
+  }
+
+  return {
+    seedType: includeScreens ? 'payload-all' : 'payload-non-screen',
+    dryRun: dryRun,
+    counters: counters,
+    pageName: PAYLOAD_PAGE_NAME,
+    boardName: PAYLOAD_BOARD_NAME,
+  };
+}
+
 async function buildNameMap() {
   var map = {};
   var pages = figma.root.children;
@@ -447,6 +562,7 @@ async function applyEntries(payload, runtimeOptions) {
   };
 
   var errors = [];
+  var idSuggestions = [];
 
   for (var e = 0; e < entries.length; e++) {
     var entry = entries[e];
@@ -483,6 +599,14 @@ async function applyEntries(payload, runtimeOptions) {
       node = nameMap[lookupKey] || null;
       if (node) {
         counters.foundByName += 1;
+        var resolvedId = String(node.id || '').trim();
+        if (resolvedId && nodeId !== resolvedId) {
+          idSuggestions.push({
+            component: component,
+            oldNodeId: nodeId || null,
+            resolvedNodeId: resolvedId,
+          });
+        }
       }
     }
 
@@ -529,7 +653,7 @@ async function applyEntries(payload, runtimeOptions) {
     }
   }
 
-  return { counters: counters, errors: errors };
+  return { counters: counters, errors: errors, idSuggestions: idSuggestions };
 }
 
 figma.ui.onmessage = async (msg) => {
@@ -572,6 +696,20 @@ figma.ui.onmessage = async (msg) => {
     return;
   }
 
+  if (msg.type === 'seed-payload') {
+    try {
+      var payload = JSON.parse(msg.payloadText || '{}');
+      var seedPayloadReport = await seedMissingFromPayload(payload, {
+        dryRun: Boolean(msg.dryRun),
+        includeScreens: Boolean(msg.includeScreens),
+      });
+      figma.ui.postMessage({ type: 'seed-report', report: seedPayloadReport });
+    } catch (err) {
+      figma.ui.postMessage({ type: 'fatal', message: String(err) });
+    }
+    return;
+  }
+
   if (msg.type !== 'apply') {
     return;
   }
@@ -597,6 +735,7 @@ figma.ui.onmessage = async (msg) => {
       dryRun: dryRun,
       counters: report.counters,
       errors: report.errors,
+      idSuggestions: report.idSuggestions,
     });
   } catch (err) {
     figma.ui.postMessage({ type: 'fatal', message: String(err) });

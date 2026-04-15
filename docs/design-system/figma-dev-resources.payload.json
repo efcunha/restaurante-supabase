@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-04-15T13:51:08.505Z",
+  "generatedAt": "2026-04-15T14:53:34.898Z",
   "source": "docs/design-system/figma-node-map.generated.json",
   "entries": [
     {
-      "nodeId": "1:1",
+      "nodeId": "3:12",
       "component": "Button",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-button--docs",
@@ -11,7 +11,7 @@
       "status": "active"
     },
     {
-      "nodeId": "2:1",
+      "nodeId": "3:21",
       "component": "Card",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-card--docs",
@@ -19,7 +19,7 @@
       "status": "active"
     },
     {
-      "nodeId": "3:1",
+      "nodeId": "3:32",
       "component": "Badge",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-badge--docs",
@@ -27,7 +27,7 @@
       "status": "active"
     },
     {
-      "nodeId": "4:1",
+      "nodeId": "3:41",
       "component": "FormInput",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-form-input--docs",
@@ -35,7 +35,7 @@
       "status": "active"
     },
     {
-      "nodeId": "5:1",
+      "nodeId": "3:51",
       "component": "ProductCard",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-product-card--docs",
@@ -43,7 +43,7 @@
       "status": "active"
     },
     {
-      "nodeId": "7:1",
+      "nodeId": "65:58",
       "component": "Navbar",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-navbar--docs",
@@ -51,7 +51,7 @@
       "status": "active"
     },
     {
-      "nodeId": "7:2",
+      "nodeId": "65:59",
       "component": "RestaurantCard",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-restaurant-card--docs",
@@ -59,7 +59,7 @@
       "status": "active"
     },
     {
-      "nodeId": "7:3",
+      "nodeId": "65:60",
       "component": "Sidebar",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-sidebar--docs",
@@ -67,7 +67,7 @@
       "status": "active"
     },
     {
-      "nodeId": "7:4",
+      "nodeId": "65:61",
       "component": "Table",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-table--docs",
@@ -75,7 +75,7 @@
       "status": "active"
     },
     {
-      "nodeId": "6:1",
+      "nodeId": "65:62",
       "component": "StateView",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-state-view--docs",
@@ -83,7 +83,7 @@
       "status": "active"
     },
     {
-      "nodeId": "6:2",
+      "nodeId": "65:63",
       "component": "ScreenHeader",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-screen-header--docs",
@@ -91,7 +91,7 @@
       "status": "active"
     },
     {
-      "nodeId": "6:3",
+      "nodeId": "65:64",
       "component": "SectionHeader",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-section-header--docs",
@@ -99,7 +99,7 @@
       "status": "active"
     },
     {
-      "nodeId": "6:4",
+      "nodeId": "65:65",
       "component": "ConfirmActionDialog",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-confirm-action-dialog--docs",
@@ -107,7 +107,7 @@
       "status": "active"
     },
     {
-      "nodeId": "6:5",
+      "nodeId": "65:66",
       "component": "FormSection",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-form-section--docs",
@@ -115,7 +115,7 @@
       "status": "active"
     },
     {
-      "nodeId": "6:6",
+      "nodeId": "65:67",
       "component": "FieldRow",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-field-row--docs",
@@ -123,7 +123,7 @@
       "status": "active"
     },
     {
-      "nodeId": "6:7",
+      "nodeId": "65:68",
       "component": "DataListItem",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-data-list-item--docs",
@@ -131,7 +131,7 @@
       "status": "active"
     },
     {
-      "nodeId": "6:8",
+      "nodeId": "65:69",
       "component": "ListContainer",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-list-container--docs",
@@ -139,7 +139,7 @@
       "status": "active"
     },
     {
-      "nodeId": "8:1",
+      "nodeId": "65:70",
       "component": "Avatar",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-avatar--docs",
@@ -147,7 +147,7 @@
       "status": "active"
     },
     {
-      "nodeId": "8:2",
+      "nodeId": "65:71",
       "component": "BottomSheet",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-bottom-sheet--docs",
@@ -155,7 +155,7 @@
       "status": "active"
     },
     {
-      "nodeId": "8:3",
+      "nodeId": "65:72",
       "component": "Checkbox",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-checkbox--docs",
@@ -163,7 +163,7 @@
       "status": "active"
     },
     {
-      "nodeId": "8:4",
+      "nodeId": "65:73",
       "component": "Drawer",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-drawer--docs",
@@ -171,7 +171,7 @@
       "status": "active"
     },
     {
-      "nodeId": "8:5",
+      "nodeId": "65:74",
       "component": "Input",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-input--docs",
@@ -179,7 +179,7 @@
       "status": "active"
     },
     {
-      "nodeId": "8:6",
+      "nodeId": "65:75",
       "component": "ListItem",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-list-item--docs",
@@ -187,7 +187,7 @@
       "status": "active"
     },
     {
-      "nodeId": "8:7",
+      "nodeId": "65:76",
       "component": "Modal",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-modal--docs",
@@ -195,7 +195,7 @@
       "status": "active"
     },
     {
-      "nodeId": "8:8",
+      "nodeId": "65:77",
       "component": "Pagination",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-pagination--docs",
@@ -203,7 +203,7 @@
       "status": "active"
     },
     {
-      "nodeId": "8:9",
+      "nodeId": "65:78",
       "component": "Select",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-select--docs",
@@ -211,7 +211,7 @@
       "status": "active"
     },
     {
-      "nodeId": "8:10",
+      "nodeId": "65:79",
       "component": "Tabs",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-tabs--docs",
@@ -219,7 +219,7 @@
       "status": "active"
     },
     {
-      "nodeId": "8:11",
+      "nodeId": "65:80",
       "component": "Tag",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-tag--docs",
@@ -227,7 +227,7 @@
       "status": "active"
     },
     {
-      "nodeId": "8:12",
+      "nodeId": "65:81",
       "component": "Toast",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/ui-toast--docs",
@@ -235,7 +235,7 @@
       "status": "active"
     },
     {
-      "nodeId": "9:1",
+      "nodeId": "65:82",
       "component": "AdminActionCard",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/features-admin-adminactioncard--default",
@@ -243,7 +243,7 @@
       "status": "active"
     },
     {
-      "nodeId": "9:2",
+      "nodeId": "65:83",
       "component": "AdminSection",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/features-admin-adminsection--financial-grid",
@@ -251,7 +251,7 @@
       "status": "active"
     },
     {
-      "nodeId": "9:3",
+      "nodeId": "65:84",
       "component": "AdminStateViewMatrix",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/features-admin-adminstateviewmatrix--matrix",
@@ -259,7 +259,7 @@
       "status": "active"
     },
     {
-      "nodeId": "9:4",
+      "nodeId": "65:85",
       "component": "AdminMenuSubscreens",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-admin-menusubscreens--product-list-ready",
@@ -267,7 +267,7 @@
       "status": "active"
     },
     {
-      "nodeId": "9:5",
+      "nodeId": "65:24",
       "component": "PublicMenuScreen",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-publicmenuscreen--empty-slug",
@@ -275,7 +275,7 @@
       "status": "active"
     },
     {
-      "nodeId": "9:30",
+      "nodeId": "65:86",
       "component": "FormsCatalog",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/docs/forms-restaurante-web-catalog--docs",
@@ -283,7 +283,7 @@
       "status": "active"
     },
     {
-      "nodeId": "99:1",
+      "nodeId": "65:35",
       "component": "Screen:AboutScreen",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--about-screen",
@@ -315,7 +315,7 @@
       "status": "active"
     },
     {
-      "nodeId": "99:5",
+      "nodeId": "65:36",
       "component": "Screen:ProductList",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--product-list",
@@ -339,7 +339,7 @@
       "status": "active"
     },
     {
-      "nodeId": "99:8",
+      "nodeId": "65:37",
       "component": "Screen:AdminScreen",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--admin-screen",
@@ -379,7 +379,7 @@
       "status": "active"
     },
     {
-      "nodeId": "99:13",
+      "nodeId": "65:38",
       "component": "Screen:CaixaHistoricoScreen",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--caixa-historico-screen",
@@ -395,7 +395,7 @@
       "status": "active"
     },
     {
-      "nodeId": "99:15",
+      "nodeId": "65:39",
       "component": "Screen:CancellationReportScreen",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--cancellation-report-screen",
@@ -403,7 +403,7 @@
       "status": "active"
     },
     {
-      "nodeId": "99:16",
+      "nodeId": "65:40",
       "component": "Screen:CashFlowScreen",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--cash-flow-screen",
@@ -411,7 +411,7 @@
       "status": "active"
     },
     {
-      "nodeId": "99:17",
+      "nodeId": "65:41",
       "component": "Screen:ComandaAbertaScreen",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--comanda-aberta-screen",
@@ -419,7 +419,7 @@
       "status": "active"
     },
     {
-      "nodeId": "99:18",
+      "nodeId": "65:42",
       "component": "Screen:ComandaGerenciamentoScreen",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--comanda-gerenciamento-screen",
@@ -427,7 +427,7 @@
       "status": "active"
     },
     {
-      "nodeId": "99:19",
+      "nodeId": "65:43",
       "component": "Screen:ComandaVisualizacaoAdminScreen",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--comanda-visualizacao-admin-screen",
@@ -459,7 +459,7 @@
       "status": "active"
     },
     {
-      "nodeId": "99:23",
+      "nodeId": "65:44",
       "component": "Screen:ConfiguracoesWhatsApp",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--configuracoes-whats-app",
@@ -467,7 +467,7 @@
       "status": "active"
     },
     {
-      "nodeId": "99:24",
+      "nodeId": "65:45",
       "component": "Screen:CozinhaScreen",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--cozinha-screen",
@@ -515,7 +515,7 @@
       "status": "active"
     },
     {
-      "nodeId": "99:30",
+      "nodeId": "65:46",
       "component": "Screen:FinancialConfigScreen",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--financial-config-screen",
@@ -523,7 +523,7 @@
       "status": "active"
     },
     {
-      "nodeId": "99:31",
+      "nodeId": "65:47",
       "component": "Screen:FinancialDashboardScreen",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--financial-dashboard-screen",
@@ -563,7 +563,7 @@
       "status": "active"
     },
     {
-      "nodeId": "99:36",
+      "nodeId": "65:48",
       "component": "Screen:MapaMesasScreen",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--mapa-mesas-screen",
@@ -571,7 +571,7 @@
       "status": "active"
     },
     {
-      "nodeId": "99:37",
+      "nodeId": "65:49",
       "component": "Screen:MontagemScreen",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--montagem-screen",
@@ -595,7 +595,7 @@
       "status": "active"
     },
     {
-      "nodeId": "99:40",
+      "nodeId": "65:50",
       "component": "Screen:PagamentoScreen",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--pagamento-screen",
@@ -611,7 +611,7 @@
       "status": "active"
     },
     {
-      "nodeId": "99:42",
+      "nodeId": "65:51",
       "component": "Screen:PedidosProntosScreen",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--pedidos-prontos-screen",
@@ -619,7 +619,7 @@
       "status": "active"
     },
     {
-      "nodeId": "99:43",
+      "nodeId": "65:52",
       "component": "Screen:PerformanceDashboardScreen",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--performance-dashboard-screen",
@@ -627,7 +627,7 @@
       "status": "active"
     },
     {
-      "nodeId": "99:44",
+      "nodeId": "65:53",
       "component": "Screen:PrinterConfigScreen",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--printer-config-screen",
@@ -667,7 +667,7 @@
       "status": "active"
     },
     {
-      "nodeId": "99:49",
+      "nodeId": "65:54",
       "component": "Screen:RotasDeliveryScreen",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--rotas-delivery-screen",
@@ -675,7 +675,7 @@
       "status": "active"
     },
     {
-      "nodeId": "99:50",
+      "nodeId": "65:55",
       "component": "Screen:UpdateCardapioScreen",
       "project": "restaurante-web",
       "docsUrl": "https://restaurante-web-storybook-production.up.railway.app/?path=/story/screens-restaurante-web-by-screen--update-cardapio-screen",
