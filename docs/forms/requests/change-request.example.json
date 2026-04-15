@@ -1,0 +1,69 @@
+{
+  "title": "Exemplo: ajuste de formulario de cadastro de empresa",
+  "author": "copilot",
+  "designRef": "https://figma.com/file/EXEMPLO",
+  "forms": [
+    {
+      "name": "RegisterCompanyScreen",
+      "critical": false,
+      "uxAccessibilityImpact": "Adicionar descricao do campo de telefone e mensagem de erro mais clara.",
+      "fields": {
+        "add": [
+          {
+            "name": "whatsapp",
+            "type": "string",
+            "required": false,
+            "pii": true
+          }
+        ],
+        "remove": [
+          "legacyDocument"
+        ],
+        "rename": [
+          {
+            "from": "documentValue",
+            "to": "companyDocument"
+          }
+        ],
+        "validation": [
+          {
+            "field": "whatsapp",
+            "rule": "phoneBR",
+            "messageKey": "validation.phone"
+          }
+        ]
+      },
+      "patches": [
+        {
+          "file": "restaurante-web/src/screens/RegisterCompanyScreen.tsx",
+          "description": "Exemplo simples de patch orientado por search/replace",
+          "search": "const [telefone, setTelefone] = useState('');",
+          "replace": "const [telefone, setTelefone] = useState('');\n  const [whatsapp, setWhatsapp] = useState('');"
+        }
+      ]
+    },
+    {
+      "name": "NovoPedidoScreen",
+      "critical": true,
+      "uxAccessibilityImpact": "Campo opcional de observacao adicional.",
+      "fields": {
+        "add": [
+          {
+            "name": "internalObservation",
+            "type": "string",
+            "required": false,
+            "pii": false
+          }
+        ],
+        "remove": [],
+        "rename": [],
+        "validation": []
+      },
+      "patches": []
+    }
+  ],
+  "validationCommands": [
+    "cd restaurante-web && npm run type-check",
+    "cd restaurante-app && npm run type-check"
+  ]
+}

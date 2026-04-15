@@ -107,11 +107,28 @@ After deploy completes, run smoke test:
 node docs/design-system/smoke-storybook-public.mjs
 ```
 
+Ou, para um probe rapido de producao (root + health):
+
+```bash
+cd restaurante-web
+npm run storybook:verify:prod
+```
+
 **Expected output:**
 ```
-[storybook-smoke] URL publica OK: https://restaurante-web-storybook-production.up.railway.app (200)
+[storybook-smoke] URL publica protegida por Basic Auth (401) sem credenciais configuradas; endpoint acessivel e protegido.
 [storybook-smoke] node map OK: 116 entradas usando https://...
 [storybook-smoke] smoke concluido com sucesso.
+```
+
+**Quick production probes (manual):**
+
+```bash
+# Root should return 401 when Basic Auth is enabled
+curl -I https://restaurante-web-storybook-production.up.railway.app/
+
+# Health endpoint must always return 200 (auth bypass)
+curl -i https://restaurante-web-storybook-production.up.railway.app/healthz-internal
 ```
 
 ---

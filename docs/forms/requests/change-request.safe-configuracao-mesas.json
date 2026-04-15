@@ -1,0 +1,35 @@
+{
+  "title": "Safe no-impact assisted evolution for ConfiguracaoMesasScreen",
+  "author": "copilot",
+  "designRef": "local-safe-run-config-mesas",
+  "forms": [
+    {
+      "name": "ConfiguracaoMesasScreen",
+      "critical": false,
+      "uxAccessibilityImpact": "Ajuste de preferencia visual de exibicao da lista de mesas sem alterar regras operacionais.",
+      "fields": {
+        "add": [
+          {
+            "name": "tableListDensity",
+            "type": "enum",
+            "required": false,
+            "pii": false
+          }
+        ],
+        "remove": [],
+        "rename": [],
+        "validation": [
+          {
+            "field": "tableListDensity",
+            "rule": "oneOf:compact|comfortable",
+            "messageKey": "validation.tableListDensity"
+          }
+        ]
+      },
+      "patches": []
+    }
+  ],
+  "validationCommands": [
+    "cd restaurante-web && npm run type-check"
+  ]
+}
