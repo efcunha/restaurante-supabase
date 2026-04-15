@@ -18,3 +18,8 @@
 
 - `database-backup` -> migrations, backup e restauracao
 - `design-system` -> referencias de UI/UX
+
+## Automacao de engenharia
+
+- `scripts/form-automation` -> orquestracao segura da evolucao de formularios
+- `docs/repository/FORM_AUTOMATION_SEMI_AUTO_RUNBOOK.md` -> diretrizes operacionais, gates e evidencias

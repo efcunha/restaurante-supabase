@@ -36,7 +36,8 @@ Este diretório centraliza a documentação transversal do monorepo.
 - `observability/`: guias, prompt, runbook e SQL de referência da observabilidade centralizada
 - `security/`: auditoria, remediação e documentação de segurança
 - `LGPD/`: documentação consolidada de privacidade e compliance LGPD
-- `repository/`: documentação estrutural do monorepo e mapas de domínio
+- `repository/`: documentação estrutural do monorepo, mapas de domínio e runbook de automação de formulários
+- `forms/`: arquivos de request, aprovação e guias para automação semi-automática segura de formulários
 - `maquininha/`: arquitetura, fluxos técnicos, contratos, segurança e rollout da integração de pagamento presencial
 - `balanca/`: arquitetura, fluxos, contratos, dados, segurança, testes e prompt de inicialização da integração de balança
 - `ifood/`: estudo técnico da integração iFood (arquitetura, contratos, dados, segurança, rollout e backlog)
@@ -51,8 +52,10 @@ Este diretório centraliza a documentação transversal do monorepo.
 5. `docs/LGPD/README.md` para temas de privacidade e LGPD
 6. `docs/observability/OBSERVABILITY-IMPLEMENTATION-GUIDE.md` para arquitetura e runbooks de observabilidade
 7. `docs/repository/DOMAINS.md` para mapa de domínios do monorepo
-8. `docs/maquininha/README.md` para especificação técnica consolidada da integração de maquininha
-9. `docs/maquininha/06-matriz-homologacao-tef-balanca.md` para execução de homologação TEF + balança com separação entre simulador, mocks e integração real
-10. `docs/balanca/README.md` para especificação técnica consolidada da integração de balança
-11. `docs/ifood/README.md` para estudo técnico consolidado da integração iFood
-12. `docs/ifood/CADASTRO-E-CREDENCIAIS-API.md` para processo de cadastro, habilitação e obtenção de credenciais API no iFood
+8. `docs/forms/README.md` para índice de automação semi-automática segura de formulários (arquivos de request, casos de uso, workflow)
+9. `docs/repository/FORM_AUTOMATION_SEMI_AUTO_RUNBOOK.md` para execução segura da automação assistida de formulários
+10. `docs/maquininha/README.md` para especificação técnica consolidada da integração de maquininha
+11. `docs/maquininha/06-matriz-homologacao-tef-balanca.md` para execução de homologação TEF + balança com separação entre simulador, mocks e integração real
+12. `docs/balanca/README.md` para especificação técnica consolidada da integração de balança
+13. `docs/ifood/README.md` para estudo técnico consolidado da integração iFood
+14. `docs/ifood/CADASTRO-E-CREDENCIAIS-API.md` para processo de cadastro, habilitação e obtenção de credenciais API no iFood

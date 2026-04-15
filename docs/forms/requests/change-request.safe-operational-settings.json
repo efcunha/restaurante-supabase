@@ -1,0 +1,35 @@
+{
+  "title": "Safe no-impact assisted evolution for OperationalSettingsScreen",
+  "author": "copilot",
+  "designRef": "local-safe-run-no-impact",
+  "forms": [
+    {
+      "name": "OperationalSettingsScreen",
+      "critical": false,
+      "uxAccessibilityImpact": "Melhoria visual de densidade de exibicao para configuracoes operacionais, sem alteracao de fluxo de negocio.",
+      "fields": {
+        "add": [
+          {
+            "name": "displayDensity",
+            "type": "enum",
+            "required": false,
+            "pii": false
+          }
+        ],
+        "remove": [],
+        "rename": [],
+        "validation": [
+          {
+            "field": "displayDensity",
+            "rule": "oneOf:compact|comfortable",
+            "messageKey": "validation.displayDensity"
+          }
+        ]
+      },
+      "patches": []
+    }
+  ],
+  "validationCommands": [
+    "cd restaurante-web && npm run type-check"
+  ]
+}
