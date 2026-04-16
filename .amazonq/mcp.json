@@ -55,12 +55,6 @@
 			"password": true
 		},
 		{
-			"id": "STORYBOOK_MCP_AUTH_TOKEN",
-			"type": "promptString",
-			"description": "Bearer token for restaurante-web-storybook-mcp",
-			"password": true
-		},
-		{
 			"id": "CONTEXT7_API_KEY",
 			"type": "promptString",
 			"description": "Context7 API key (optional; increases rate limits)",
@@ -149,13 +143,6 @@
 				"--stdio"
 			],
 			"type": "stdio"
-		},
-		"storybookMcp": {
-			"type": "http",
-			"url": "https://restaurante-web-storybook-mcp-production.up.railway.app/mcp",
-			"headers": {
-				"Authorization": "Bearer ${input:STORYBOOK_MCP_AUTH_TOKEN}"
-			}
 		},
 		"sentry": {
 			"command": "npx",

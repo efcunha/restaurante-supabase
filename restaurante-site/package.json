@@ -9,9 +9,6 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "figma:help": "npx figma connect --help",
-    "figma:parse": "npx figma connect parse --dry-run -c figma.config.json",
-    "figma:publish:dry": "npx figma connect publish --dry-run -c figma.config.json",
     "lint": "eslint .",
     "preview": "npx serve out -s",
     "sync:android-local": "bash scripts/sync-local-android-build.sh"
@@ -26,8 +23,6 @@
     "serve": "^14.2.0"
   },
   "devDependencies": {
-    "@figma/code-connect": "^1.3.5",
-    "@storybook/addon-mcp": "^0.5.0",
     "@types/node": "^20.11.0",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",

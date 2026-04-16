@@ -30,10 +30,9 @@ End-to-end restaurant operations platform: from order taking (balcão, mesa, del
 | Subproject | Purpose |
 |---|---|
 | `restaurante-app` | Mobile app (React Native + Expo) for Android/iOS |
-| `restaurante-web` | Web POS app (Expo Web) + E2E tests + Storybook |
+| `restaurante-web` | Web POS app (Expo Web) + E2E tests |
 | `restaurante-ops` | Backoffice SaaS server (Node.js/TypeScript on Railway) |
 | `restaurante-site` | Marketing/landing site (Next.js + Tailwind) |
 | `database-backup` | Supabase migrations, Edge Functions, backup/restore scripts |
 | `balanca-bridge` | USB serial bridge for weighing scales |
-| `restaurante-web-storybook-mcp` | Storybook MCP server for design system governance |
 | `docs` | Cross-cutting documentation (security, design system, billing, observability) |

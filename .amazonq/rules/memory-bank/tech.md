@@ -48,21 +48,11 @@
 | restaurante-site | `next build` | Railway |
 | database-backup | Supabase CLI | `supabase db push` |
 
-## Design System & Storybook
-- Storybook 9 (web — source of truth for component catalog)
-- Figma Code Connect (`@figma/code-connect`) — `.figma.tsx` files
-- `figma.config.json` in app, web, site
-- Validation: `validate-figma-node-map.mjs`, `smoke-storybook-public.mjs`
-- CI: `storybook-figma-guardrails.yml`
-
 ## Development Commands
 ### restaurante-web
 - `npm start` — Expo Web dev server (port 8081)
 - `npm run build` — production export
 - `npm run test:e2e` — Playwright E2E tests
-- `npm run type-check` — TypeScript validation
-- `npm run lint` / `npm run lint:fix` — ESLint
-- `npm run storybook` — Storybook dev (port 6006)
 
 ### restaurante-app
 - `npm start` — Expo dev server
@@ -87,4 +77,3 @@
 - patch-package for dependency patches
 - Dependabot (`.github/dependabot.yml`)
 - Metro bundler (app + web)
-- Webpack 5 (Storybook)

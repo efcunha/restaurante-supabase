@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunkrestaurante_web=self.webpackChunkrestaurante_web||[]).push([[2229],{"./src/features/admin/types.ts"(__unused_webpack_module,__webpack_exports__,__webpack_require__){__webpack_require__.r(__webpack_exports__)}}]);

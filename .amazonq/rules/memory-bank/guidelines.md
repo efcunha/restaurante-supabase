@@ -104,18 +104,11 @@ Import from `src/ui` (not `src/components/ui-next`):
 - Security validation: `0 high Snyk issues` required on modified files
 - Anti-loop rule: if a validation fails 2 times on the same check, stop and report cause
 
-## Storybook & Design System
-- Web Storybook is source of truth for component catalog
-- Every UI component needs: `.tsx` (component) + `.stories.tsx` (story) + `.figma.tsx` (Figma Code Connect)
-- Validate with: `validate-figma-node-map.mjs` and `smoke-storybook-public.mjs`
-- CI guardrail: `storybook-figma-guardrails.yml`
-- App mirrors stories for internal governance but web is canonical
-
 ## Build & Babel
 - Babel: `babel-preset-expo` + `react-native-reanimated/plugin` (reanimated plugin must be last)
 - `api.cache(true)` for build performance
 - `patch-package` runs on `postinstall` for dependency patches
-- Metro bundler for app/web, Webpack 5 for Storybook
+- Metro bundler for app/web
 
 ## Web-Specific Rules
 - Breakpoints: sm=640, md=768, lg=1024, xl=1280 (design tokens)
