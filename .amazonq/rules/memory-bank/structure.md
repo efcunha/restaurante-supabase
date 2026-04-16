@@ -4,12 +4,11 @@
 ```
 restaurante-supabase/
 ├── restaurante-app/       # Mobile app (React Native + Expo 54)
-├── restaurante-web/       # Web POS (Expo Web 54) + E2E + Storybook 9
+├── restaurante-web/       # Web POS (Expo Web 54) + E2E
 ├── restaurante-ops/       # Backoffice SaaS server (Node.js)
 ├── restaurante-site/      # Marketing site (Next.js 16)
 ├── database-backup/       # Supabase migrations, Edge Functions, backup
 ├── balanca-bridge/        # USB serial bridge for scales
-├── restaurante-web-storybook-mcp/  # Storybook MCP server
 ├── docs/                  # Cross-cutting documentation
 ├── scripts/               # Monorepo-level utility scripts
 └── .github/               # CI workflows, Dependabot, Copilot instructions
@@ -46,7 +45,7 @@ src/
 │   └── supabase/      # Supabase-specific service implementations
 ├── theme/             # colors.ts (with designColors migration guidance)
 ├── types/             # TypeScript type definitions (order, models, performance)
-├── ui/                # Foundational UI components + Storybook stories + Figma code connect
+├── ui/                # Foundational UI components
 └── utils/             # Utility functions (logger, currency, date, validation, errors)
 ```
 

@@ -6,9 +6,6 @@
   "scripts": {
     "start": "expo start",
     "start:web": "expo start --web",
-    "figma:help": "npx figma connect --help",
-    "figma:parse": "npx figma connect parse --dry-run -c figma.config.json",
-    "figma:publish:dry": "npx figma connect publish --dry-run -c figma.config.json",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
@@ -111,11 +108,9 @@
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "@eslint/mcp": "^0.2.0",
-    "@figma/code-connect": "^1.4.3",
     "@playwright/test": "^1.58.2",
     "@react-native-community/cli": "^20.1.2",
     "@react-native/metro-config": "latest",
-    "@storybook/addon-mcp": "^0.5.0",
     "@supabase/mcp-server-supabase": "^0.6.3",
     "@testing-library/jest-native": "^5.4.3",
     "@testing-library/react-native": "^13.3.3",

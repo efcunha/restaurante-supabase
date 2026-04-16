@@ -104,16 +104,12 @@ Este complemento cobre especificidades de restaurante-web e o estado real apos a
 - App agora expoe breakpoints (paridade com web): sm/md/lg/xl
 - colors.ts em app/web com guidance de migracao para designColors
 
-4. Storybook e Figma:
+4. Storybook e design system:
 - Web recebeu stories faltantes: Navbar, RestaurantCard, Sidebar, Table
 - Web recebeu stories dos novos componentes fundacionais
 - App recebeu stories espelhadas dos componentes base exportados
-- .figma.tsx adicionado para componentes sem cobertura
-- docs/design-system/figma-node-map.example.json atualizado
-- docs/design-system/figma-node-map.generated.json criado e validado
 
 5. Validacoes executadas:
-- node docs/design-system/validate-figma-node-map.mjs => OK
 - Snyk code scan em src/ui (app e web) => 0 issues
 
 ---
@@ -124,8 +120,8 @@ Este complemento cobre especificidades de restaurante-web e o estado real apos a
 - Agora existem stories no app (espelhadas para governanca interna)
 - Fonte de verdade para catalogo continua sendo restaurante-web Storybook
 
-2. smoke-storybook-public.mjs pode falhar com 401 quando o host exigir auth:
-- Se ocorrer 401, registrar evidencia e usar fallback autenticado antes de marcar como regressao
+2. Validacoes de ambiente autenticado:
+- Se ocorrer erro de autenticacao em host protegido, registrar evidencia antes de marcar regressao
 - Nao ficar em loop de retries
 
 3. "implementar web primeiro" continua valido:
@@ -163,13 +159,11 @@ Sub-telas admin/menu exclusivas web:
 
 2. Ao criar/atualizar componente:
 - Atualizar story no web
-- Atualizar .figma.tsx (quando aplicavel)
-- Atualizar node map (example e generated se necessario)
 
 3. Validacoes:
-- node docs/design-system/validate-figma-node-map.mjs
-- node docs/design-system/smoke-storybook-public.mjs
-- CI: storybook-figma-guardrails.yml
+- type-check
+- lint
+- testes do modulo
 
 Regra anti-loop:
 - Falhou 2 vezes na mesma validacao -> parar e reportar causa + proximo passo
