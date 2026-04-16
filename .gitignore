@@ -116,10 +116,6 @@ snyk-mcp.log
 # Debug scripts generated locally
 scripts/debug/
 
-# Figma generated artifacts
-docs/design-system/figma-node-map.generated.json
-docs/design-system/figma-publish-status.json
-
 # Database backups (NEVER commit these)
 database-backup/backups/
 database-backup/logs/

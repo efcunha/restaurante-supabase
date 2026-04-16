@@ -1,8 +1,0 @@
-{
-  "name": "RestaurantOS Dev Resources Sync",
-  "id": "restaurante-supabase-dev-resources-sync",
-  "api": "1.0.0",
-  "main": "code.js",
-  "ui": "ui.html",
-  "editorType": ["figma", "dev"]
-}
