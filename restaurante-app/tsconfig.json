@@ -1,4 +1,5 @@
 {
+  "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
     "noImplicitAny": true,
@@ -7,7 +8,15 @@
     "strictBindCallApply": true,
     "strictPropertyInitialization": true,
     "noImplicitThis": true,
-    "alwaysStrict": true
-  },
-  "extends": "expo/tsconfig.base"
+    "alwaysStrict": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@restaurante/ui": ["../packages/ui/src"],
+      "@restaurante/ui/*": ["../packages/ui/src/*"],
+      "@restaurante/tokens": ["../packages/tokens/src"],
+      "@restaurante/schemas": ["../packages/schemas/src"],
+      "@restaurante/config": ["../packages/config/src"]
+    }
+  }
 }

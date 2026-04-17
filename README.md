@@ -2,7 +2,46 @@
 
 Monorepo do ecossistema `restaurante-supabase`, com app POS, web POS, backoffice SaaS, billing, migrations e documentação operacional.
 
-## Status Atual (2026-04-08)
+## Status Atual (2026-04-16)
+
+### Monorepo Modernization ✅ Production Ready
+
+**2026-04-16:** Modernização completa do monorepo com infraestrutura profissional:
+
+- ✅ **pnpm 10.33 + Turborepo 2.9.6** para workspace orchestration
+- ✅ **4 shared packages** (`@restaurante/ui`, `@restaurante/tokens`, `@restaurante/schemas`, `@restaurante/config`)
+- ✅ **React Hook Form 7.x + Zod 4.x** para formulários type-safe
+- ✅ **NativeWind 4.2.1** para Tailwind em React Native/Expo
+- ✅ **Storybook 8.6.18** no root com Vite builder
+- ✅ **Husky + lint-staged + commitlint** git hooks
+- ✅ **TypeScript strict mode** com aliases calibrados
+- ✅ **Zero breaking changes** — existindo flows continuam funcionando
+- ✅ **Non-destructive** — fácil migração incremental
+
+**Documentação da modernização:**
+
+- **[GETTING_STARTED.md](./GETTING_STARTED.md)** — Guia rápido para desenvolvedores
+- **[MONOREPO_MODERNIZATION.md](./MONOREPO_MODERNIZATION.md)** — Documentação técnica completa
+- **[MODERNIZATION_COMPLETE.md](./MODERNIZATION_COMPLETE.md)** — Checklist de conclusão
+- **[MODERNIZATION_INVENTORY.md](./MODERNIZATION_INVENTORY.md)** — Inventário de mudanças
+
+**Verificação de mudanças:**
+
+```bash
+# Instalar e rodar localmente
+pnpm install
+pnpm dev              # Todos os apps em paralelo (Turbo)
+pnpm storybook:web    # Storybook no localhost:6006
+
+# Type-check global
+pnpm typecheck
+
+# Lint + format
+pnpm lint
+pnpm format
+```
+
+### Status PDV & Billing (2026-04-08)
 
 - Integracao PDV (maquininha) com simplificacao de UX concluida em app e web.
 - `restaurante-web` publicado em producao no Railway com healthcheck OK.
@@ -11,7 +50,7 @@ Monorepo do ecossistema `restaurante-supabase`, com app POS, web POS, backoffice
 - Snyk Code Scan executado nos arquivos alterados sem novos issues.
 - Smoke E2E web de fluxos criticos (`balcao`, `mesa`, `pizza`, `delivery`, `mesa-consolidacao`) executado com sucesso.
 
-Referencias de continuidade:
+**Referencias de continuidade:**
 
 - `docs/PROMPT_CONTINUACAO_DIA_SEGUINTE.md`
 - `docs/maquininha/04-plano-execucao-testes-rollout.md`
