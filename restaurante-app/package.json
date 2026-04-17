@@ -39,7 +39,8 @@
     "generate-icons": "node scripts/generate-android-icons.js",
     "update-splash": "node scripts/update-splash-screen.js",
     "update-icon": "npm run fix-icon-padding && npm run generate-icons",
-    "update-all-icons": "npm run fix-icon-padding && npm run generate-icons && npm run update-splash"
+    "update-all-icons": "npm run fix-icon-padding && npm run generate-icons && npm run update-splash",
+    "storybook:web": "pnpm -w storybook:web"
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",
@@ -90,7 +91,11 @@
     "react-native-web": "^0.21.0",
     "react-native-worklets": "^0.8.0",
     "typescript": "~5.9.2",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "@hookform/resolvers": "^5.2.2",
+    "react-hook-form": "^7.65.0",
+    "zod": "^4.1.12",
+    "nativewind": "^4.2.1"
   },
   "keywords": [],
   "react-native": {
@@ -129,7 +134,9 @@
     "react-test-renderer": "19.2.3",
     "sharp": "^0.34.5",
     "ts-jest": "^29.4.6",
-    "typescript-eslint": "^8.54.0"
+    "typescript-eslint": "^8.54.0",
+    "tailwindcss": "^3.4.17",
+    "babel-plugin-module-resolver": "^5.0.2"
   },
   "overrides": {
     "qs": "^6.15.0",
