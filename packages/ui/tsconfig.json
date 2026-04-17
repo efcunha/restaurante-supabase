@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "jsx": "react-native",
+    "baseUrl": ".",
+    "paths": {
+      "@restaurante/tokens": ["../tokens/src"],
+      "@restaurante/tokens/*": ["../tokens/src/*"],
+      "@restaurante/schemas": ["../schemas/src"],
+      "@restaurante/schemas/*": ["../schemas/src/*"]
+    }
+  },
+  "include": ["src", "../tokens/src", "../schemas/src"],
+  "exclude": ["node_modules"]
+}

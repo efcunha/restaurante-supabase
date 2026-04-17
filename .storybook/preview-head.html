@@ -1,0 +1,95 @@
+<!-- Storybook custom head injection -->
+<!-- This runs BEFORE any Storybook JS -->
+<script type="module">
+  // Inline polyfill injection - runs at parsing time
+  class EventEmitter {
+    constructor() {
+      this._events = {};
+    }
+
+    on(event, listener) {
+      if (!this._events[event]) {
+        this._events[event] = [];
+      }
+      this._events[event].push(listener);
+      return this;
+    }
+
+    off(event, listener) {
+      if (!this._events[event]) return this;
+      this._events[event] = this._events[event].filter((l) => l !== listener);
+      return this;
+    }
+
+    emit(event, ...args) {
+      if (!this._events[event]) return false;
+      this._events[event].forEach((listener) => {
+        try {
+          listener(...args);
+        } catch (err) {
+          // Silent catch
+        }
+      });
+      return true;
+    }
+
+    once(event, listener) {
+      const wrapper = (...args) => {
+        listener(...args);
+        this.off(event, wrapper);
+      };
+      return this.on(event, wrapper);
+    }
+
+    removeAllListeners(event) {
+      if (event) {
+        delete this._events[event];
+      } else {
+        this._events = {};
+      }
+      return this;
+    }
+
+    listeners(event) {
+      return this._events[event] || [];
+    }
+
+    listenerCount(event) {
+      return (this._events[event] || []).length;
+    }
+  }
+
+  // Global injection
+  globalThis.EventEmitter = EventEmitter;
+  window.EventEmitter = EventEmitter;
+
+  // Expo runtime compatibility expected by expo-modules-core chunks.
+  if (!globalThis.expo) {
+    globalThis.expo = {};
+  }
+  if (!globalThis.expo.EventEmitter) {
+    globalThis.expo.EventEmitter = EventEmitter;
+  }
+  if (!globalThis.expo.NativeModule) {
+    globalThis.expo.NativeModule = class NativeModule {};
+  }
+  if (!globalThis.expo.SharedObject) {
+    globalThis.expo.SharedObject = class SharedObject {};
+  }
+  if (!globalThis.expo.SharedRef) {
+    globalThis.expo.SharedRef = class SharedRef {};
+  }
+  if (!globalThis.expo.modules) {
+    globalThis.expo.modules = {};
+  }
+
+  // Override require/import if possible
+  if (typeof require !== 'undefined') {
+    require.cache = require.cache || {};
+    require.cache['events'] = {
+      exports: EventEmitter,
+    };
+  }
+
+  console.log('[Storybook] EventEmitter polyfill injected');
+</script>

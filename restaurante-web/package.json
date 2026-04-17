@@ -37,7 +37,6 @@
     "test:e2e:ui": "playwright test --ui",
     "type-check": "tsc --noEmit",
     "type-check:watch": "tsc --noEmit --watch",
-    "postinstall": "patch-package",
     "phase12:profile": "node scripts/phase12-profile.js",
     "phase12:legacy": "node scripts/phase12-profile.js --profile legacy-safe",
     "phase12:auth": "node scripts/phase12-profile.js --profile canary-auth",
@@ -45,7 +44,8 @@
     "phase12:settlement": "node scripts/phase12-profile.js --profile canary-settlement",
     "phase12:full": "node scripts/phase12-profile.js --profile full-phase12",
     "update-icon": "echo 'Icon update scripts are only supported in restaurante-app'",
-    "update-all-icons": "echo 'Icon and splash update scripts are only supported in restaurante-app'"
+    "update-all-icons": "echo 'Icon and splash update scripts are only supported in restaurante-app'",
+    "storybook:web": "pnpm -w storybook:web"
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",
@@ -96,7 +96,11 @@
     "react-native-worklets": "^0.7.1",
     "serve": "^14.2.6",
     "typescript": "~5.9.2",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "@hookform/resolvers": "^5.2.2",
+    "react-hook-form": "^7.65.0",
+    "zod": "^4.1.12",
+    "nativewind": "^4.2.1"
   },
   "keywords": [],
   "author": "",
@@ -105,11 +109,9 @@
   "devDependencies": {
     "@babel/core": "^7.28.0",
     "@eslint/js": "^9.39.2",
-    "@eslint/mcp": "^0.2.0",
     "@playwright/test": "^1.58.2",
     "@react-native-community/cli": "^11.4.1",
     "@react-native/metro-config": "^0.84.0",
-
     "@supabase/mcp-server-supabase": "^0.6.3",
     "@types/uuid": "^10.0.0",
     "babel-loader": "^9.2.1",
@@ -120,10 +122,10 @@
     "fast-check": "^4.6.0",
     "globals": "^17.0.0",
     "lz-string": "^1.5.0",
-    "patch-package": "^8.0.1",
     "sharp": "^0.34.5",
     "typescript-eslint": "^8.57.0",
-    "webpack": "^5.102.1"
+    "webpack": "^5.102.1",
+    "tailwindcss": "^3.4.17"
   },
   "overrides": {
     "qs": "^6.15.0",
@@ -137,6 +139,6 @@
     "fast-xml-parser": "^5.5.7"
   },
   "engines": {
-    "node": ">= 18"
+    "node": ">=18"
   }
 }
