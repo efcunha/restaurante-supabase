@@ -90,11 +90,47 @@ cleanup_tmp_dir() {
     fi
 }
 
+retry_command() {
+    local attempts="$1"
+    shift
+    local delay_seconds="$1"
+    shift
+    local attempt=1
+
+    while true; do
+        if "$@"; then
+            return 0
+        fi
+
+        if [ "$attempt" -ge "$attempts" ]; then
+            return 1
+        fi
+
+        echo "⚠ Tentativa $attempt falhou. Repetindo em ${delay_seconds}s..."
+        sleep "$delay_seconds"
+        attempt=$((attempt + 1))
+    done
+}
+
+ensure_railway_auth() {
+    echo ""
+    echo "🔐 Validando autenticação da Railway CLI..."
+
+    if railway whoami >/dev/null 2>&1; then
+        echo "✅ Sessão Railway válida."
+        return 0
+    fi
+
+    echo "❌ Falha na autenticação da Railway CLI."
+    echo "Dica: execute 'unset RAILWAY_TOKEN RAILWAY_API_TOKEN' e depois 'railway login'."
+    exit 1
+}
+
 apply_web_feature_flags() {
     echo ""
     echo "⚙ Aplicando feature flags de producao para restaurante-web..."
 
-    railway variables --service "$RAILWAY_SERVICE_WEB" \
+    if ! retry_command 3 5 railway variables --service "$RAILWAY_SERVICE_WEB" \
         --set "EXPO_PUBLIC_FEATURE_LOGIN_UI_NEXT=true" \
         --set "EXPO_PUBLIC_FEATURE_REGISTER_COMPANY_UI_NEXT=true" \
         --set "EXPO_PUBLIC_FEATURE_NOVO_PEDIDO_UI_NEXT=true" \
@@ -108,7 +144,11 @@ apply_web_feature_flags() {
         --set "EXPO_PUBLIC_FEATURE_BILLING=true" \
         --set "EXPO_PUBLIC_FEATURE_BILLING_LICENSE_GATE=true" \
         --set "EXPO_PUBLIC_FEATURE_BILLING_SCREEN=true" \
-        --set "EXPO_PUBLIC_FEATURE_BILLING_FORCE_BLOCK=false"
+        --set "EXPO_PUBLIC_FEATURE_BILLING_FORCE_BLOCK=false"; then
+        echo "❌ Falha ao aplicar feature flags no Railway após múltiplas tentativas."
+        echo "Dica: valide 'railway whoami' e a conectividade com https://backboard.railway.com antes de tentar novamente."
+        exit 1
+    fi
 
     echo "✅ Feature flags de producao aplicadas no servico $RAILWAY_SERVICE_WEB."
 }
@@ -313,8 +353,11 @@ fi
 
 # Prevenção: Limpa a variável RAILWAY_TOKEN caso exista na sessão
 # (pois ela tem precedência e pode causar erros de proxy/unauthorized se estiver inválida).
-# O CLI usará a RAILWAY_API_TOKEN ou o cache de login nativo (railway login).
+# O script também limpa RAILWAY_API_TOKEN para forçar o uso da sessão autenticada no CLI.
 unset RAILWAY_TOKEN
+unset RAILWAY_API_TOKEN
+
+ensure_railway_auth
 
 # Vincula o diretório ao projeto do Railway caso não esteja vinculado.
 echo ""
