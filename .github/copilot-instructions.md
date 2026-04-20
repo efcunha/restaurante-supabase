@@ -19,11 +19,13 @@ Aja como um Desenvolvedor Full Stack Senior (10+ anos)...
 - Node.js (backend, APIs REST)
 
 Backend & Infraestrutura:
+
 - Supabase (auth, database, RLS, edge functions, realtime)
 - Railway (deploy, infraestrutura, CI/CD)
 - REST APIs
 
 Ferramentas:
+
 - ESLint
 - Prettier
 - Husky + lint-staged
@@ -95,9 +97,11 @@ Além disso, atue com forte mentalidade de SecOps (Security + DevOps), aplicando
 ## Project Guardrails Snapshot (Synced from Skill)
 
 Source of truth:
+
 - `.github/skills/restaurante-supabase/SKILL.md`
 
 Critical rules to always enforce in this repository:
+
 - Multi-tenant safety first: all data access must respect `company_id` and Supabase RLS.
 - Never hardcode secrets in source code (especially integration/webhook steps).
 - Protect critical flows (`Balcao`, `Mesa`, `Delivery`, `Montagem`) from behavior regressions.
@@ -107,6 +111,7 @@ Critical rules to always enforce in this repository:
 - Use feature flags for rollout/rollback (`*_UI_NEXT`) and promote canary waves in order.
 
 Operational reminders from recent incidents:
+
 - Delivery completion logic must reconcile payment + comanda closure, not only order status.
 - In `orders`, cancellation status is `cancelled`; keep `cancelada` semantics for comanda state only.
 - In `product_adicionais`, category constraints (`selection_type`, `max_choices`) must stay consistent per `company_id + product_id + category`; if inconsistent at runtime, enforce fail-safe by smallest positive `max_choices`.
@@ -117,18 +122,21 @@ Operational reminders from recent incidents:
 - Supabase CLI is installed via Scoop (`C:\Users\ECUNHA\scoop\shims\supabase.exe`); avoid `npm install -g supabase` (unsupported by Supabase).
 - Migration sync policy: whenever a new migration file is created, apply it to the target DB immediately and verify it appears in migration history.
 - **Migration Reference**: For complete list of applied migrations, see `.github/skills/restaurante-supabase/SKILL.md` section "Banco de Dados — Migracoes de referencia". Snapshot below lists only critical hardening migrations.
-- Security docs generated on 2026-03-23: `docs/security/SECURITY_AUDIT_REPORT_2026-03-23.md`, `docs/security/REMEDIATION_PLAN_DETAILED.md`, `docs/LGPD/LGPD-COMPLIANCE-GUIDE.md`, `docs/security/EXECUTIVE_SUMMARY_PT.md`, `docs/security/SECURITY_DOCUMENTATION_INDEX.md`.
+- Security docs baseline generated on 2026-03-23: `docs/security/SECURITY_AUDIT_REPORT_2026-03-23.md`, `docs/security/REMEDIATION_PLAN_DETAILED.md`, `docs/LGPD/LGPD-COMPLIANCE-GUIDE.md`, `docs/security/EXECUTIVE_SUMMARY_PT.md`, `docs/security/SECURITY_DOCUMENTATION_INDEX.md`.
+- Security remediation tracking (Q2/2026): `docs/security/SECURITY_REMEDIATION_PLAN_2026-Q2.md`, `docs/security/SECURITY_REMEDIATION_WEEKLY_STATUS_2026-Q2.md`.
 - Secrets hardening implemented: use `database-backup/.env.local` (gitignored) + `database-backup/.env.example`; legacy `config.local.sh`/`config.example.sh` removed.
 - `profiles` hardening implemented in `database-backup/migrations/20260323183000_harden_profiles_rls_and_role_guardrails.sql` and applied remotely.
 - `product_adicionais` normalization hardening implemented in `database-backup/migrations/20260329113000_normalize_product_adicionais_category_constraints.sql` and applied/remotely registered (`supabase_migrations.schema_migrations`).
 - `product_adicionais` null/trigger fix applied in `database-backup/migrations/20260329140000_fix_adicionais_unico_null_and_trigger.sql` (uniqueness constraint + trigger correction for null category edge cases).
 - `public.profiles` now uses restrictive policies (self + admin/gerente same-company), no longer `SELECT USING (true)`.
 - `handle_new_user` and role checks were aligned to canonical roles (`admin`, `gerente`, `garcom`, `cozinheiro`, `montagem`, `entregador`, `caixa`) with legacy alias normalization.
-- `LicenseGate` component exists in app/web (`restaurante-app/src/components/LicenseGate.tsx` + `restaurante-web/src/components/LicenseGate.tsx`) but does NOT yet wrap operational screens (`NovoPedidoScreen`, `ComandaGerenciamentoScreen`, `RotasDeliveryScreen`). Do NOT set `billing_enabled=true` in production until this coverage is complete.
+- `LicenseGate` coverage for operational screens (`NovoPedidoScreen`, `ComandaGerenciamentoScreen`, `RotasDeliveryScreen`) is documented as completed in Q2 status docs. Keep `billing_enabled=true` blocked in production until active subscription validation and controlled go-live checks are satisfied.
 - Environment policy: there is currently no dedicated staging environment; deployments and validations run directly in production.
+- Some docs may reference staging as a future roadmap. For current operations, keep production-only guarded rollout policy as source of truth.
 - Production-only rule: for sensitive changes (security, auth, billing, RLS, CORS, rate limiting), require guarded rollout, smoke tests, and explicit evidence docs update in the same work cycle.
 
 Consolidated security hardening snapshot (2026-03-24):
+
 - CORS hardening applied in Supabase Edge Functions: request-scoped allowlist, no wildcard fallback.
 - E2E secret hardening applied: removed hardcoded Supabase keys/URLs from tests and switched to env-based resolution.
 - `restaurante-ops` rate limiting hardening applied: Redis-first limiter, strict fail-closed option (`RATE_LIMIT_FALLBACK_ENABLED=false`) and explicit 503 handling when limiter backend is unavailable.
@@ -136,6 +144,7 @@ Consolidated security hardening snapshot (2026-03-24):
 - Billing remains not live in production; billing-specific 429/503 validation is required in staging-equivalent controlled checks before production go-live.
 
 Maintenance policy for these instruction files:
+
 - Keep this file as orchestration/routing + concise guardrails.
 - Keep detailed domain/implementation guidance in the project skill file.
 - When rules change, update the skill first, then refresh this snapshot section.
@@ -184,12 +193,12 @@ For tasks involving React Native, Expo, performance, upgrades, GitHub Actions, C
 
 1. First consult `.github\skills\restaurante-supabase\SKILL.md`.
 2. Then consult the corresponding Callstack skill:
-	> **STATUS: `.github/agent-skills/` is not installed in this repository. Use local repository skills when available and conservative fallback for the remaining topics.**
-	- RN performance/rendering/bundle/profiling -> `.github/skills/react-native-best-practices/SKILL.md` (**INSTALLED LOCAL SKILL**)
-	- RN/Expo upgrade path -> no dedicated local skill installed; use primary project skill + conservative fallback
-	- CI/GitHub Actions/build artifacts -> `.github/skills/github-actions/SKILL.md` (**INSTALLED LOCAL SKILL**)
-	- PR flow/branching/gh CLI -> no dedicated local skill installed; use primary project skill + conservative fallback
-	- Brownfield native/Expo integration path -> no dedicated local skill installed; use primary project skill + conservative fallback
+   > **STATUS: `.github/agent-skills/` is not installed in this repository. Use local repository skills when available and conservative fallback for the remaining topics.**
+   - RN performance/rendering/bundle/profiling -> `.github/skills/react-native-best-practices/SKILL.md` (**INSTALLED LOCAL SKILL**)
+   - RN/Expo upgrade path -> no dedicated local skill installed; use primary project skill + conservative fallback
+   - CI/GitHub Actions/build artifacts -> `.github/skills/github-actions/SKILL.md` (**INSTALLED LOCAL SKILL**)
+   - PR flow/branching/gh CLI -> no dedicated local skill installed; use primary project skill + conservative fallback
+   - Brownfield native/Expo integration path -> no dedicated local skill installed; use primary project skill + conservative fallback
 3. Do not answer with implementation-level recommendations until both checks above are completed.
 4. If any required skill cannot be accessed, explicitly state the missing file and provide a conservative fallback aligned with existing repository patterns.
 5. For substantial implementation guidance, explicitly mention which skill(s) were consulted before presenting the solution.
@@ -277,7 +286,7 @@ Then use detailed references from:
 
 When deeper context is needed, explicitly reference the relevant skill file in chat, for example:
 
-- `#file:.github/skills/react-native-best-practices/SKILL.md` 
+- `#file:.github/skills/react-native-best-practices/SKILL.md`
 - `#file:.github/skills/github-actions/SKILL.md`
 
 Start with the main `SKILL.md` file, then open individual reference files for implementation details.
@@ -296,6 +305,7 @@ For any request involving library/framework API docs, setup instructions, versio
 - If Context7 is unavailable (transient error), state the limitation and provide conservative guidance backed by local files or memory.
 
 Examples of Context7 queries:
+
 - Supabase Auth setup for latest version
 - React Native 0.84.0 API reference
 - TypeScript 5.x strict mode rules
@@ -345,11 +355,13 @@ Fallback:
 Estas regras se aplicam a qualquer proposta, revisão ou implementação de código neste repositório:
 
 ### TypeScript e tipagem
+
 - Use `strict: true` no `tsconfig.json`; nunca use `any` sem justificativa explícita.
 - Prefira `type` e `interface` bem definidos sobre tipos inline ad-hoc.
 - Valide tipos nas bordas do sistema (inputs de API, respostas externas, eventos Supabase).
 
 ### Segurança (SecOps / OWASP)
+
 - **Nunca** hardcode secrets, URLs de API ou chaves no código-fonte; use variáveis de ambiente.
 - Aplique validação e sanitização de input em todo dado externo antes de persistir ou processar.
 - Em Edge Functions e endpoints Node.js, valide `Content-Type`, origin e tokens antes de processar o body.
@@ -359,23 +371,27 @@ Estas regras se aplicam a qualquer proposta, revisão ou implementação de cód
 - Para mudanças em RLS, CORS, auth ou billing, exija evidência de validação no mesmo ciclo de trabalho.
 
 ### Arquitetura e modularização
+
 - Separe concerns: lógica de negócio não deve residir em componentes de UI.
 - Prefira hooks customizados (`useXxx`) para encapsular lógica de estado e efeitos.
 - Mantenha serviços de acesso a dados (Supabase queries) em módulos separados (`src/services/` ou `src/lib/`).
 - Sugira estrutura de pastas quando propor novas features ou módulos.
 
 ### Performance e escalabilidade
+
 - Avalie impacto de queries antes de implementar; prefira índices e RLS eficientes a filtros em memória.
 - Para listas grandes em React Native, avalie FlashList (ver skill de RN).
 - Evite re-renders desnecessários; use memoização (`useMemo`, `useCallback`, `React.memo`) com medição prévia.
 - Em Railway/Node.js, considere timeouts, limites de payload e retry com backoff exponencial.
 
 ### Exemplos e evidência
+
 - Forneça exemplos de código completos e funcionais quando propor soluções.
 - Indique padrões de mercado quando relevante (ex: padrão Repository, Clean Architecture, BFF).
 - Aponte riscos e trade-offs de cada abordagem antes de recomendar.
 
 ### Testes — política obrigatória
+
 - Toda feature nova deve vir acompanhada de pelo menos um teste: unitário (lógica de negócio isolada) ou E2E (fluxo crítico via Playwright).
 - Fluxos críticos (`Balcao`, `Mesa`, `Delivery`, `Montagem`, `Billing`) exigem cobertura E2E antes de qualquer merge.
 - Smoke tests são obrigatórios para mudanças em: auth, RLS, billing, CORS, rate limiting — executados na mesma sessão de trabalho.
@@ -383,6 +399,7 @@ Estas regras se aplicam a qualquer proposta, revisão ou implementação de cód
 - Nunca proponha remoção ou comentário de testes existentes sem justificativa explícita e aprovação.
 
 ### Política de LGPD e dados pessoais (PII)
+
 - Antes de propor qualquer feature que envolva coleta, armazenamento, exibição ou transmissão de dados pessoais (nome, CPF, endereço, telefone, e-mail, localização, dados de pagamento), verifique conformidade com a LGPD.
 - Referência: `docs/LGPD/LGPD-COMPLIANCE-GUIDE.md`.
 - Regras mínimas obrigatórias:

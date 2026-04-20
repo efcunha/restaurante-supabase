@@ -75,7 +75,7 @@ git commit -m "feat(ui): add new component variant"
 
 ### Phase 1: Validação (Semana 1)
 
-- [ ] Confirmar deploy em staging
+- [ ] Confirmar validacao controlada em producao
 - [ ] Rodar E2E tests (Playwright)
 - [ ] Medir bundle size (esperado: sem delta)
 - [ ] Validar performance (dev startup, build time)
@@ -107,13 +107,13 @@ git commit -m "feat(ui): add new component variant"
 
 ### Checkpoints
 
-| Checkpoint                | Go/No-Go | Owner     |
-| ------------------------- | -------- | --------- |
-| Staging smoke tests pass  | ✅       | DevOps    |
-| Bundle size no regression | ✅       | Tech Lead |
-| E2E tests 100% pass       | ✅       | QA        |
-| Team productivity +20%    | TBD      | PM        |
-| Security audit clear      | TBD      | Security  |
+| Checkpoint                       | Go/No-Go | Owner     |
+| -------------------------------- | -------- | --------- |
+| Controlled prod smoke tests pass | ✅       | DevOps    |
+| Bundle size no regression        | ✅       | Tech Lead |
+| E2E tests 100% pass              | ✅       | QA        |
+| Team productivity +20%           | TBD      | PM        |
+| Security audit clear             | TBD      | Security  |
 
 ---
 
@@ -243,7 +243,7 @@ git revert <commit-hash>  # Revert packages
 ### Q2 2026 (Current)
 
 - ✅ Monorepo infrastructure
-- ⏳ Phase 1: Staging validation
+- ⏳ Phase 1: Controlled production validation
 - 🔄 Phase 2: Component migration
 
 ### Q3 2026
@@ -292,7 +292,7 @@ git revert <commit-hash>  # Revert packages
 **Modernization Date:** 2026-04-16  
 **Status:** ✅ Production Ready  
 **Risk Level:** 🟢 Low (Non-destructive)  
-**Recommendation:** Deploy to staging for team validation, then production
+**Recommendation:** Use guarded production validation for team checks, then gradual rollout
 
 **Next Action:** Read [GETTING_STARTED.md](./GETTING_STARTED.md) and run `pnpm dev`
 

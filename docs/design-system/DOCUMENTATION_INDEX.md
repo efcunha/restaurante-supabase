@@ -50,7 +50,7 @@ What you'll learn:
 - Risk assessment for each decision
 
 **Time to read:** 30-45 minutes combined  
-**What's next:** Phase 1: Staging validation
+**What's next:** Phase 1: Controlled production validation
 
 ---
 
@@ -79,7 +79,7 @@ What you'll learn:
 - Critical files reference
 
 **Time to read:** 15-20 minutes combined  
-**What's next:** Deploy to staging
+**What's next:** Run guarded production deployment
 
 ---
 
@@ -107,7 +107,7 @@ What you'll learn:
 - Storybook validation
 
 **Time to read:** 10-15 minutes combined  
-**What's next:** Run E2E tests in staging
+**What's next:** Run E2E tests in controlled production checks
 
 ---
 
@@ -217,11 +217,11 @@ Check [ARCHITECTURE_DECISIONS.md](./ARCHITECTURE_DECISIONS.md) for 11 ADRs expla
 - [ ] Share GETTING_STARTED.md with team
 - [ ] Team runs `pnpm dev` locally
 - [ ] First components migrated to @restaurante/ui
-- [ ] E2E tests validated in staging
+- [ ] E2E tests validated in controlled production checks
 
-### Phase 3: Staging Deploy (Week 3-4) 🔄
+### Phase 3: Guarded Production Validation (Week 3-4) 🔄
 
-- [ ] Deploy to staging environment
+- [ ] Deploy to production with guarded rollout
 - [ ] Smoke tests pass
 - [ ] Performance metrics validated
 - [ ] Team feedback collected
