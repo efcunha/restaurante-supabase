@@ -7,6 +7,7 @@
 ## Inventario de artefatos PR3 (atualizado em 2026-04-13)
 
 ### Codigo (app/web)
+
 - `restaurante-web/src/hooks/useNovoPedido.ts`
 - `restaurante-app/src/hooks/useNovoPedido.ts`
 - `restaurante-web/src/screens/NovoPedidoScreen.tsx`
@@ -23,15 +24,18 @@
 - `restaurante-app/src/types.ts`
 
 ### Feature flags
+
 - `restaurante-web/src/config/featureFlags.ts`
 - `restaurante-app/src/config/featureFlags.ts`
 - `restaurante-web/.env.example` (`EXPO_PUBLIC_FEATURE_PDV_SELF_SERVICE_SCALE`)
 - `restaurante-app/.env.example` (`EXPO_PUBLIC_FEATURE_PDV_SELF_SERVICE_SCALE`)
 
 ### Banco / schema
+
 - `database-backup/migrations/20260413194500_add_self_service_scale_flow_columns.sql`
 
 ### Testes automatizados
+
 - `restaurante-web/e2e/pdv-scale-self-service.spec.ts`
 - `restaurante-web/e2e/pdv-scale-novo-pedido-simulator.spec.ts`
 - `restaurante-web/e2e/pdv-scale-regression.spec.ts`
@@ -44,6 +48,7 @@
 - `restaurante-web/e2e/delivery.spec.ts`
 
 ### Documentacao relacionada
+
 - `docs/TEF-Balança/SELF_SERVICE_SCALE_FLOW_BLUEPRINT_2026-04-13.md`
 - `docs/TEF-Balança/SELF_SERVICE_SCALE_PR1_VALIDATION_2026-04-13.md`
 - `docs/TEF-Balança/SELF_SERVICE_SCALE_SAFE_ROLLOUT_3PRS_2026-04-13.md`
@@ -61,6 +66,7 @@
 ## 1. Validação Completada
 
 ### ✅ Infraestrutura de Testes (E2E)
+
 - Flag system E2E validado: `window.__E2E_FEATURE_FLAGS__` funcional
 - Teste SS-00 **passou**: confirmou registro e habilitação de `pdv_selfServiceScale_enabled`
 - Arquivo criado: `restaurante-web/e2e/pdv-scale-self-service.spec.ts`
@@ -68,6 +74,7 @@
 - Status de produção: ainda sem evidência suficiente para considerar o fluxo self-service homologado em ambiente real.
 
 ### ✅ Código Implementado (PR3)
+
 - [x] `restaurante-web/src/hooks/useNovoPedido.ts`: Retorna `SubmitOrderResult` estruturado
 - [x] `restaurante-app/src/hooks/useNovoPedido.ts`: Idêntico ao web
 - [x] `restaurante-web/src/screens/NovoPedidoScreen.tsx`: Modal de modo operacional + callbacks
@@ -77,6 +84,7 @@
 - [x] Filtro operacional de exclusão em cozinha/montagem/prontos
 
 ### ✅ Type Safety
+
 - TypeScript: 0 erros em hooks + screens + testes
 - Jest (app): 4/4 tests passed em `useNovoPedido.test.ts`
 - Sem breaking changes na API de OrderService/OrderContext
@@ -85,18 +93,19 @@
 
 ## 2. Testes Automatizados - Status
 
-| Teste | Status | Descrição |
-|-------|--------|-----------|
-| **SS-00** | ✅ PASSOU | Flag system registrado e funcional |
-| **SS-01** | ⏳ Skipped | Pré-condição: precisa company com produtos por peso |
-| **SS-02** | ⏳ Skipped | Pré-condição: testing immediate payment routing |
-| **SS-03** | ⏳ Skipped | Pré-condição: testing deferred comanda printing |
-| **SS-04** | ⏳ Skipped | Flag regression: valida UI ocultada quando disabled |
-| **Gate B local** | ✅ PASSOU | `pdv-scale-regression`, `pdv-scale-novo-pedido-simulator` e `pdv-scale-self-service` somaram 8 passed / 4 skipped |
-| **Gate C local** | ✅ Parcial | 1 passed / 3 skipped em maquininha, sem regressao nova atribuivel ao self-service |
-| **Gate A local** | ✅ PASSOU | `balcao.spec.ts`, `delivery.spec.ts`, `mesa.spec.ts` e `mesa-consolidacao.spec.ts` passaram (pool liberado via SQL cleanup 2026-04-13) |
+| Teste            | Status     | Descrição                                                                                                                              |
+| ---------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| **SS-00**        | ✅ PASSOU  | Flag system registrado e funcional                                                                                                     |
+| **SS-01**        | ⏳ Skipped | Pré-condição: precisa company com produtos por peso                                                                                    |
+| **SS-02**        | ⏳ Skipped | Pré-condição: testing immediate payment routing                                                                                        |
+| **SS-03**        | ⏳ Skipped | Pré-condição: testing deferred comanda printing                                                                                        |
+| **SS-04**        | ⏳ Skipped | Flag regression: valida UI ocultada quando disabled                                                                                    |
+| **Gate B local** | ✅ PASSOU  | `pdv-scale-regression`, `pdv-scale-novo-pedido-simulator` e `pdv-scale-self-service` somaram 8 passed / 4 skipped                      |
+| **Gate C local** | ✅ Parcial | 1 passed / 3 skipped em maquininha, sem regressao nova atribuivel ao self-service                                                      |
+| **Gate A local** | ✅ PASSOU  | `balcao.spec.ts`, `delivery.spec.ts`, `mesa.spec.ts` e `mesa-consolidacao.spec.ts` passaram (pool liberado via SQL cleanup 2026-04-13) |
 
 Leitura operacional do status:
+
 - `SS-00` e o Gate B local reduzem risco do rollout por confirmar a base de feature flags e o fluxo de balanca/self-service apos o filtro operacional.
 - `SS-01..SS-04` ainda nao contam como validacao de producao, pois faltam dados/tenant apropriados e execucao em ambiente controlado.
 - Gate A 100% verde (2026-04-13): pool de mesas 1-5 foi limpo via SQL (comandas fechadas, pedidos cancelados do dia anterior) antes da bateria final. Todos os 4 specs passaram sem regressao.
@@ -129,7 +138,8 @@ npx playwright test e2e/pdv-scale-self-service.spec.ts --workers=1
 ## 4. Smoke Testing Manual - Canário (PRÓXIMA FASE)
 
 ### Precondições Canário
-- [ ] Ambiente: staging ou canário real com restaurante piloto
+
+- [ ] Ambiente: canário real com restaurante piloto (sem staging dedicado)
 - [ ] Flags habilitadas:
   - `pdv_enabled=true`
   - `pdv_scale_enabled=true`
@@ -140,9 +150,11 @@ npx playwright test e2e/pdv-scale-self-service.spec.ts --workers=1
 - [ ] Dados: Produtos com `vendido_por_peso=true` no catálogo
 
 ### Fluxo 1: Pagamento Imediato (Immediate)
-**Objetivo**: Validar navegação para PagamentoScreen após ordem self-service  
+
+**Objetivo**: Validar navegação para PagamentoScreen após ordem self-service
 
 **Passos**:
+
 1. Abrir NovoPedidoScreen
 2. Clicar no botão de balança (+ pesagem)
 3. Modal de pesagem abre, confirma peso (simulado ou real)
@@ -156,29 +168,35 @@ npx playwright test e2e/pdv-scale-self-service.spec.ts --workers=1
 9. **Validar**: Ordem criada com `order_origin='self_service_scale'` e `operational_route='bypass_production'`
 
 **Evidência esperada**:
+
 - Screenshot da PagamentoScreen sendo acionada
 - Query do DB mostrando ordem com campos corretos
 
 ### Fluxo 2: Comanda Pendente (Deferred)
+
 **Objetivo**: Validar impressão de comanda após ordem self-service
 
 **Passos**:
+
 1. Repetir passos 1-4 do Fluxo 1
 2. Seleciona: **Self-service** + **Comanda pendente** (deferred)
 3. Clica "Criar Pedido"
-4. **Validar**: 
+4. **Validar**:
    - Comanda é impressa em printer (app) ou via browser print (web)
    - Não navega para PagamentoScreen
 5. **Validar**: Ordem criada com `order_origin='self_service_scale'` e `operational_route='bypass_production'`
 
 **Evidência esperada**:
+
 - Screenshot da comanda impressa
 - Query do DB mostrando ordem com campos corretos
 
 ### Fluxo 3: Regressão - Pedido Padrão
+
 **Objetivo**: Validar que pedidos normais (não-self-service) não são afetados
 
 **Passos**:
+
 1. Abrir NovoPedidoScreen
 2. Adicionar produtos normais (não por peso)
 3. Criar pedido **sem** usar balança
@@ -187,13 +205,16 @@ npx playwright test e2e/pdv-scale-self-service.spec.ts --workers=1
 6. **Validar**: Ordem criada com `order_origin=NULL` e `operational_route=NULL` (ou padrões antigos)
 
 **Evidência esperada**:
+
 - Screenshot confirmando ausência de modal de modo
 - Query do DB mostrando ordem sem self-service metadata
 
 ### Fluxo 4: Regressão - Desabilitar Flag
+
 **Objetivo**: Validar que feature é completamente ocultada quando flag desabilitada
 
 **Passos**:
+
 1. `pdv_selfServiceScale_enabled=false`
 2. Reload app
 3. Abrir NovoPedidoScreen + balança
@@ -202,6 +223,7 @@ npx playwright test e2e/pdv-scale-self-service.spec.ts --workers=1
 6. **Validar**: Fluxo idêntico ao Fluxo 3
 
 **Evidência esperada**:
+
 - Screenshot sem seletor de modo visível
 
 ---
@@ -213,7 +235,7 @@ Para cada fluxo canário, documentar:
 ```
 FLUXO: [nome]
 DATA: [data/hora]
-AMBIENTE: [staging/canário]
+AMBIENTE: [canário em produção controlada]
 FLAGS: pdv_enabled=true, pdv_selfServiceScale_enabled=true, etc.
 
 PRECONDIÇÕES:
@@ -263,11 +285,11 @@ Data: [quando approuvado]
    - [x] SS-00 passa
    - [x] Flag system funciona
 
-2. 🔄 **Executar Gate A + B em staging** (quando ready for canário)
+2. 🔄 **Executar Gate A + B em ambiente canário controlado** (quando ready)
    - [ ] balcao.spec.ts (legacy)
-   - [ ] mesa*.spec.ts (legacy)
+   - [ ] mesa\*.spec.ts (legacy)
    - [ ] delivery.spec.ts (legacy)
-   - [ ] pdv-scale-*.spec.ts (scale + self-service)
+   - [ ] pdv-scale-\*.spec.ts (scale + self-service)
 
 3. 📋 **Smoke manual em canário** (quando ready)
    - [ ] Fluxo 1: Pagamento imediato
@@ -287,13 +309,14 @@ Data: [quando approuvado]
 ## 8. Dependências Externas
 
 - ✅ Database migration (PR1): Already applied
-- ✅ Type system (PR2): Completed  
+- ✅ Type system (PR2): Completed
 - ✅ UI + routing (PR3): Completed
 - ⏳ E2E environment setup: Needs company with weighted products (for full SS-01..SS-04)
 - ✅ Kitchen filtering concluido em app/web para excluir self-service de cozinha, montagem e prontos
 - ✅ Templates `.env.example` de app/web atualizados com `EXPO_PUBLIC_FEATURE_PDV_SELF_SERVICE_SCALE`
 
 Leitura de producao:
+
 - As dependencias tecnicas de PR1, PR2 e PR3 estao prontas para rollout controlado.
 - O go-live amplo ainda esta bloqueado por validacao operacional em ambiente real e pelo fechamento do Gate A legado.
 
@@ -305,20 +328,20 @@ Na produção após go-live:
 
 ```sql
 -- Verify self-service orders are being created correctly
-SELECT 
-  id, 
-  order_origin, 
-  operational_route, 
-  items, 
-  client_name, 
-  created_at 
-FROM orders 
-WHERE order_origin = 'self_service_scale' 
+SELECT
+  id,
+  order_origin,
+  operational_route,
+  items,
+  client_name,
+  created_at
+FROM orders
+WHERE order_origin = 'self_service_scale'
   AND created_at > now() - interval '1 hour'
 ORDER BY created_at DESC;
 
 -- Verify no regressions in standard orders
-SELECT 
+SELECT
   COUNT(*) as total_standard_orders,
   COUNT(CASE WHEN operational_route IS NULL THEN 1 END) as expected_null_route
 FROM orders
@@ -327,6 +350,7 @@ WHERE created_at > now() - interval '1 hour'
 ```
 
 Monitor in Sentry:
+
 - Any new errors in `NovoPedidoScreen`, `useNovoPedido`, payment routing
 - Device payment service reliability (if immediate payment used)
 - Printer service reliability (if deferred comanda used)

@@ -58,15 +58,15 @@ pnpm test:e2e
 # ✅ delivery.spec.ts    (Fluxo de delivery)
 # ✅ pizza.spec.ts       (Fluxo de pizza)
 
-# 3. Deploy em staging
+# 3. Validacao controlada em producao (sem staging dedicado)
 railway up --service restaurante-web --path-as-root ./restaurante-web
 
 # 4. Validar health check
-curl https://staging.restaurante-web.app.br/healthz
+curl https://restaurante-web.app.br/healthz || curl https://restaurante-web.app.br/
 # Esperado: HTTP 200 OK
 
 # 5. Validar Storybook disponível
-# Acessar: https://staging.restaurante-web.app.br/storybook
+# Acessar: endpoint de Storybook do ambiente de producao (quando publicado)
 ```
 
 ### Step 3️⃣: Validar restaurante-app (Mobile)
@@ -141,7 +141,7 @@ pnpm run build:analyze
 - [ ] `pnpm build` bem-sucedido
 - [ ] `pnpm lint` e `pnpm typecheck` passando
 - [ ] E2E tests (restaurante-web) passando em 100%
-- [ ] restaurante-web deploy em staging OK
+- [ ] restaurante-web deploy em producao com rollout guardado OK
 - [ ] restaurante-web health check respondendo
 - [ ] restaurante-app build (local ou EAS) OK
 - [ ] restaurante-app sem erros de import em @restaurante/\*
@@ -292,7 +292,7 @@ Após Phase 1 passar:
 
 🟢 **Phase 1 Passed** quando:
 
-- ✅ Web app roda sem erros em Railway staging
+- ✅ Web app roda sem erros em Railway (producao com rollout guardado)
 - ✅ Mobile app compila sem erros (local ou EAS)
 - ✅ Todos E2E tests passam
 - ✅ Bundle size mantém-se estável

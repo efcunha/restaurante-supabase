@@ -4,7 +4,7 @@
 **Effective Date**: 2026-03-23  
 **Last Updated**: 2026-04-01  
 **Next Review**: 2026-07-01  
-**Owner**: Security + Legal + Engineering  
+**Owner**: Security + Legal + Engineering
 
 ## Overview
 
@@ -16,12 +16,12 @@ Playbook for responding to security incidents, data breaches, and LGPD violation
 
 ### Severity Levels
 
-| Level | Description | Response Time | Escalation |
-|-------|-------------|----------------|-----------|
-| **CRITICAL** | Confirmed data breach, active compromise, customer PII exposed | <1 hour | CEO, Legal, ANPD |
-| **HIGH** | Security vulnerability in production, unauthorized access attempt | <4 hours | CTO, Security, Legal |
-| **MEDIUM** | Suspicious activity, failed attack, policy violation | <24 hours | Engineering Lead, Security |
-| **LOW** | Minor security issue, improvement opportunity | <7 days | Team Lead |
+| Level        | Description                                                       | Response Time | Escalation                 |
+| ------------ | ----------------------------------------------------------------- | ------------- | -------------------------- |
+| **CRITICAL** | Confirmed data breach, active compromise, customer PII exposed    | <1 hour       | CEO, Legal, ANPD           |
+| **HIGH**     | Security vulnerability in production, unauthorized access attempt | <4 hours      | CTO, Security, Legal       |
+| **MEDIUM**   | Suspicious activity, failed attack, policy violation              | <24 hours     | Engineering Lead, Security |
+| **LOW**      | Minor security issue, improvement opportunity                     | <7 days       | Team Lead                  |
 
 ---
 
@@ -86,7 +86,7 @@ Playbook for responding to security incidents, data breaches, and LGPD violation
 
 ```sql
 -- Find suspicious login activity
-SELECT user_id, ip_address, signup_date, last_login, 
+SELECT user_id, ip_address, signup_date, last_login,
   EXTRACT(DAY FROM NOW() - created_at) AS age_days
 FROM public.users
 WHERE created_at > NOW() - INTERVAL '7 days'
@@ -96,13 +96,13 @@ ORDER BY last_login DESC;
 -- Detect unusual payment activity
 SELECT id, company_id, customer_id, amount, status, created_at
 FROM public.pagamentos
-WHERE status = 'pending' 
+WHERE status = 'pending'
   AND created_at > NOW() - INTERVAL '1 hour'
   AND amount > 10000; -- flag large unusual transactions
 
 -- Find API key leaks (grep event logs)
 SELECT * FROM public.audit_logs
-WHERE event = 'api_key_created' 
+WHERE event = 'api_key_created'
   OR event = 'api_key_used_failed'
 ORDER BY created_at DESC LIMIT 50;
 ```
@@ -117,7 +117,7 @@ ORDER BY created_at DESC LIMIT 50;
   ✓ Apply security patch (if software vulnerability):
     - Build & deploy fixed version
     - Update all affected services
-    - Verify in staging first, then production
+    - Verify in controlled production checks (no dedicated staging), then proceed with guarded rollout
   ✓ If account compromise: Reset password, enable MFA, review activity
   ✓ If database breach: Rotate database credentials, audit schema permissions
   ✓ If malware: Run antivirus scan, review running processes, update EDR
@@ -151,20 +151,20 @@ ORDER BY created_at DESC LIMIT 50;
   - How long was system compromised? (from [date] to [date])
   - What data was exposed? (customer names, emails, payment IDs)
   - Why wasn't this detected sooner? (missing monitoring, slow alerting)
-  
-  Template: "On [date], we discovered [attacker] accessed [system] via [method]. 
+
+  Template: "On [date], we discovered [attacker] accessed [system] via [method].
   The breach exposed [data] for [duration]. We immediately [action]."
 
 ☐ CUSTOMER NOTIFICATION (LGPD Art. 27):
   If personal data exposed → notify affected customers within 15 days
-  
+
   Content:
   - What happened (brief, clear language)
   - What data exposed (categories, not individual records)
   - Our response (what we did to fix it)
   - Their action (password reset, monitor account, credit check)
   - Support contact (phone, email, hours)
-  
+
   Channels:
   - Email (primary) + SMS backup
   - In-app notification + email confirmation
@@ -172,7 +172,7 @@ ORDER BY created_at DESC LIMIT 50;
 
 ☐ REGULATORY NOTIFICATION (LGPD):
   If HIGH risk to individuals → notify ANPD within reasonable time
-  
+
   Form: ANPD Incidente de Segurança (https://www.gov.br/cidadania/pt-br/acesso-a-informacao/lgpd)
   Content:
   - Date & time of incident
@@ -180,13 +180,13 @@ ORDER BY created_at DESC LIMIT 50;
   - Description of affected data
   - Probable consequences
   - Measures taken to mitigate damage
-  
+
   If PAYMENT DATA exposed → Notify Mercado Pago + credit card networks (PCI-DSS)
 
 ☐ CREATE INCIDENT RECORD:
   INSERT INTO public.security_incident_log (
-    incident_id, detect_date, severity, affected_systems, 
-    data_categories, customer_impact, notification_sent, 
+    incident_id, detect_date, severity, affected_systems,
+    data_categories, customer_impact, notification_sent,
     rgpd_reported, root_cause, remediation_date
   ) VALUES (...);
 
@@ -203,7 +203,7 @@ Dear [Customer Name],
 We're writing to inform you of a security incident that may have affected your account.
 
 WHAT HAPPENED:
-On [date], we discovered unauthorized access to our payment processing system. 
+On [date], we discovered unauthorized access to our payment processing system.
 We immediately took action to secure affected accounts.
 
 WHAT DATA WAS AFFECTED:
@@ -259,7 +259,7 @@ Incident Reference: INC-2026-03-00001
   - "Add SIEM alerts for suspicious IP activity" → HIGH
   - "Automate security patch deployment" → MEDIUM
   - "Improve incident response documentation" → LOW
-  
+
   Track in GitHub Issues, assign owners, set SLAs
 
 ☐ PROCESS IMPROVEMENTS:
@@ -272,7 +272,7 @@ Incident Reference: INC-2026-03-00001
 ☐ INCIDENT REVIEW SIGN-OFF:
   Final approval: CISO / Legal / CTO
   Store in incident archive: /secure/incident/INC-YYYY-MM-XXXXX/
-  
+
   Include:
   - Incident summary (1 page)
   - Timeline (detailed)
@@ -288,13 +288,13 @@ Incident Reference: INC-2026-03-00001
 
 ## Escalation Matrix
 
-| Issue Type | On-Call | Incident Commander | CTO | CEO | Legal | ANPD |
-|-----------|---------|-------------------|-----|-----|-------|------|
-| Unconfirmed suspicious activity | ✓ | - | - | - | - | - |
-| Confirmed unauthorized access | ✓ | ✓ | ✓ | - | - | - |
-| Customer data exposed | ✓ | ✓ | ✓ | ✓ | ✓ | - |
-| Payment data breach | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Regulatory investigation | - | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Issue Type                      | On-Call | Incident Commander | CTO | CEO | Legal | ANPD |
+| ------------------------------- | ------- | ------------------ | --- | --- | ----- | ---- |
+| Unconfirmed suspicious activity | ✓       | -                  | -   | -   | -     | -    |
+| Confirmed unauthorized access   | ✓       | ✓                  | ✓   | -   | -     | -    |
+| Customer data exposed           | ✓       | ✓                  | ✓   | ✓   | ✓     | -    |
+| Payment data breach             | ✓       | ✓                  | ✓   | ✓   | ✓     | ✓    |
+| Regulatory investigation        | -       | ✓                  | ✓   | ✓   | ✓     | ✓    |
 
 ---
 
@@ -316,30 +316,30 @@ Incident Reference: INC-2026-03-00001
 
 ```yaml
 alerts:
-  - name: "Brute Force Login Attempt"
-    condition: "failed_logins > 5 in 60s"
+  - name: 'Brute Force Login Attempt'
+    condition: 'failed_logins > 5 in 60s'
     severity: HIGH
     action:
-      - "Block IP for 15 minutes"
-      - "Notify on-call engineer"
-      - "Create incident"
-  
-  - name: "Unauthorized Database Access"
+      - 'Block IP for 15 minutes'
+      - 'Notify on-call engineer'
+      - 'Create incident'
+
+  - name: 'Unauthorized Database Access'
     condition: "queries like 'DROP TABLE%' or 'DELETE FROM%' without LIMIT"
     severity: CRITICAL
     action:
-      - "Kill database connection"
-      - "Page on-call DBA"
-      - "Snapshot database"
-      - "Create incident"
-  
-  - name: "Unusual Payment Activity"
-    condition: "payment_amount > $10,000 or failed_authorizations > 10% daily"
+      - 'Kill database connection'
+      - 'Page on-call DBA'
+      - 'Snapshot database'
+      - 'Create incident'
+
+  - name: 'Unusual Payment Activity'
+    condition: 'payment_amount > $10,000 or failed_authorizations > 10% daily'
     severity: MEDIUM
     action:
-      - "Notify finance team"
-      - "Create incident"
-      - "Flag for review"
+      - 'Notify finance team'
+      - 'Create incident'
+      - 'Flag for review'
 ```
 
 ---
