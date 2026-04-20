@@ -1,3 +1,5 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+
 const noop = () => undefined;
 
 function createNoopProxy() {
@@ -25,6 +27,19 @@ class CodedError extends Error {
   }
 }
 
+export const PermissionStatus = {
+  GRANTED: 'granted',
+  UNDETERMINED: 'undetermined',
+  DENIED: 'denied',
+};
+
+const defaultPermissionResponse = {
+  status: PermissionStatus.UNDETERMINED,
+  expires: 'never',
+  granted: false,
+  canAskAgain: true,
+};
+
 const ExpoFontLoader = {
   async loadAsync() {
     return;
@@ -43,10 +58,21 @@ const ExpoFontLoader = {
   },
 };
 
+export function uuid() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return '00000000-0000-4000-8000-000000000000';
+}
+
 export function requireNativeModule(moduleName) {
   if (moduleName === 'ExpoFontLoader') {
     return ExpoFontLoader;
   }
+  return createNoopProxy();
+}
+
+export function requireNativeViewManager() {
   return createNoopProxy();
 }
 
@@ -55,6 +81,14 @@ export function requireOptionalNativeModule(moduleName) {
     return ExpoFontLoader;
   }
   return null;
+}
+
+export function registerWebModule(moduleImplementation) {
+  return moduleImplementation;
+}
+
+export async function reload() {
+  return;
 }
 
 export const NativeModulesProxy = createNoopProxy();
@@ -83,16 +117,81 @@ export class EventEmitter {
   }
 }
 
+export class LegacyEventEmitter extends EventEmitter {}
+
+export function createPermissionHook(methods) {
+  return function usePermission(options) {
+    const isMounted = useRef(true);
+    const [status, setStatus] = useState(null);
+    const { get = true, request = false, ...permissionOptions } = options ?? {};
+
+    const callWithOptions = useCallback(
+      async (method) => {
+        if (typeof method !== 'function') {
+          return defaultPermissionResponse;
+        }
+
+        const hasOptions = Object.keys(permissionOptions).length > 0;
+        const response = hasOptions ? await method(permissionOptions) : await method();
+        return response ?? defaultPermissionResponse;
+      },
+      [permissionOptions],
+    );
+
+    const getPermission = useCallback(async () => {
+      const response = await callWithOptions(methods?.getMethod);
+      if (isMounted.current) {
+        setStatus(response);
+      }
+      return response;
+    }, [callWithOptions, methods]);
+
+    const requestPermission = useCallback(async () => {
+      const response = await callWithOptions(methods?.requestMethod);
+      if (isMounted.current) {
+        setStatus(response);
+      }
+      return response;
+    }, [callWithOptions, methods]);
+
+    useEffect(() => {
+      isMounted.current = true;
+      return () => {
+        isMounted.current = false;
+      };
+    }, []);
+
+    useEffect(() => {
+      if (request) {
+        void requestPermission();
+        return;
+      }
+      if (get) {
+        void getPermission();
+      }
+    }, [get, getPermission, request, requestPermission]);
+
+    return [status, requestPermission, getPermission];
+  };
+}
+
 export default {
   requireNativeModule,
+  requireNativeViewManager,
   requireOptionalNativeModule,
+  registerWebModule,
+  reload,
+  uuid,
   NativeModulesProxy,
   Platform,
   EventEmitter,
+  LegacyEventEmitter,
   NativeModule,
   SharedObject,
   SharedRef,
   CodedError,
+  PermissionStatus,
+  createPermissionHook,
   UnavailabilityError,
 };
 
