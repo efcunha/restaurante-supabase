@@ -12,59 +12,120 @@ const config: StorybookConfig = {
   async viteFinal(baseConfig) {
     return mergeConfig(baseConfig, {
       resolve: {
-        alias: {
-          ...(baseConfig.resolve?.alias ?? {}),
-          events: path.resolve(__dirname, './shims/eventsNodeShim.js'),
-          'node:events': path.resolve(__dirname, './shims/eventsNodeShim.js'),
-          util: path.resolve(__dirname, './shims/utilShim.js'),
-          'node:util': path.resolve(__dirname, './shims/utilShim.js'),
-          stream: path.resolve(__dirname, './shims/streamShim.js'),
-          'node:stream': path.resolve(__dirname, './shims/streamShim.js'),
-          'react-native/Libraries/Utilities/codegenNativeComponent': path.resolve(
-            __dirname,
-            './shims/codegenNativeComponent.js',
-          ),
-          'expo-modules-core/src/requireNativeModule': path.resolve(
-            __dirname,
-            './shims/requireNativeModule.js',
-          ),
-          'expo-modules-core/src/requireNativeModule.ts': path.resolve(
-            __dirname,
-            './shims/requireNativeModule.js',
-          ),
-          '../context/AuthContext': path.resolve(__dirname, './shims/authContextApp.js'),
-          '../../../context/AuthContext': path.resolve(__dirname, './shims/authContextApp.js'),
-          '../context/ToastContext': path.resolve(__dirname, './shims/toastContextApp.js'),
-          '../config/SupabaseConfig': path.resolve(__dirname, './shims/supabaseConfigStorybook.js'),
-          '../services/CaixaService': path.resolve(__dirname, './shims/caixaServiceStorybook.js'),
-          '../services/CompanySettingsService': path.resolve(
-            __dirname,
-            './shims/companySettingsServiceStorybook.js',
-          ),
-          '../services/ProductService': path.resolve(
-            __dirname,
-            './shims/productServiceStorybook.js',
-          ),
-          '../components/KeyboardWrapper': path.resolve(
-            __dirname,
-            './shims/keyboardWrapperStorybook.js',
-          ),
-          'react-native-safe-area-context': path.resolve(__dirname, './shims/safeAreaContext.js'),
-          'react-native': path.resolve(__dirname, './shims/reactNativeWebCompat.js'),
-          'react-native-esc-pos-printer': path.resolve(
-            __dirname,
-            './shims/reactNativeEscPosPrinter.js',
-          ),
-          'expo-font': path.resolve(__dirname, './shims/expoFont.js'),
-          'expo-font/build/Font': path.resolve(__dirname, './shims/expoFont.js'),
-          'expo-font/build/index': path.resolve(__dirname, './shims/expoFont.js'),
-          'expo-modules-core': path.resolve(__dirname, './shims/expoModulesCore.js'),
-          'expo-modules-core/build/index': path.resolve(__dirname, './shims/expoModulesCore.js'),
-          '@': path.resolve(__dirname, '../restaurante-site/src'),
-          '@restaurante/ui': path.resolve(__dirname, '../packages/ui/src'),
-          '@restaurante/schemas': path.resolve(__dirname, '../packages/schemas/src'),
-          '@restaurante/tokens': path.resolve(__dirname, '../packages/tokens/src'),
-        },
+        alias: [
+          { find: 'events', replacement: path.resolve(__dirname, './shims/eventsNodeShim.js') },
+          {
+            find: 'node:events',
+            replacement: path.resolve(__dirname, './shims/eventsNodeShim.js'),
+          },
+          { find: 'util', replacement: path.resolve(__dirname, './shims/utilShim.js') },
+          { find: 'node:util', replacement: path.resolve(__dirname, './shims/utilShim.js') },
+          { find: 'stream', replacement: path.resolve(__dirname, './shims/streamShim.js') },
+          { find: 'node:stream', replacement: path.resolve(__dirname, './shims/streamShim.js') },
+          {
+            find: 'react-native/Libraries/Utilities/codegenNativeComponent',
+            replacement: path.resolve(__dirname, './shims/codegenNativeComponent.js'),
+          },
+          {
+            find: 'react-native/Libraries/Image/resolveAssetSource',
+            replacement: path.resolve(__dirname, './shims/resolveAssetSource.js'),
+          },
+          {
+            find: 'expo-modules-core/src/requireNativeModule',
+            replacement: path.resolve(__dirname, './shims/requireNativeModule.js'),
+          },
+          {
+            find: 'expo-modules-core/src/requireNativeModule.ts',
+            replacement: path.resolve(__dirname, './shims/requireNativeModule.js'),
+          },
+          {
+            find: '../context/AuthContext',
+            replacement: path.resolve(__dirname, './shims/authContextApp.js'),
+          },
+          {
+            find: '../../../context/AuthContext',
+            replacement: path.resolve(__dirname, './shims/authContextApp.js'),
+          },
+          {
+            find: '../context/ToastContext',
+            replacement: path.resolve(__dirname, './shims/toastContextApp.js'),
+          },
+          {
+            find: '../config/SupabaseConfig',
+            replacement: path.resolve(__dirname, './shims/supabaseConfigStorybook.js'),
+          },
+          {
+            find: '../services/CaixaService',
+            replacement: path.resolve(__dirname, './shims/caixaServiceStorybook.js'),
+          },
+          {
+            find: '../services/CompanySettingsService',
+            replacement: path.resolve(__dirname, './shims/companySettingsServiceStorybook.js'),
+          },
+          {
+            find: '../services/ProductService',
+            replacement: path.resolve(__dirname, './shims/productServiceStorybook.js'),
+          },
+          {
+            find: '../components/KeyboardWrapper',
+            replacement: path.resolve(__dirname, './shims/keyboardWrapperStorybook.js'),
+          },
+          {
+            find: 'react-native-safe-area-context',
+            replacement: path.resolve(__dirname, './shims/safeAreaContext.js'),
+          },
+          {
+            find: /^react-native$/,
+            replacement: path.resolve(__dirname, './shims/reactNativeWebCompat.js'),
+          },
+          {
+            find: 'react-native-esc-pos-printer',
+            replacement: path.resolve(__dirname, './shims/reactNativeEscPosPrinter.js'),
+          },
+          {
+            find: '@react-native-community/netinfo',
+            replacement: path.resolve(__dirname, './shims/reactNativeNetInfo.js'),
+          },
+          {
+            find: '@react-native-community/netinfo/lib/module/index.js',
+            replacement: path.resolve(__dirname, './shims/reactNativeNetInfo.js'),
+          },
+          {
+            find: '@react-native-community/netinfo/lib/commonjs/index.js',
+            replacement: path.resolve(__dirname, './shims/reactNativeNetInfo.js'),
+          },
+          {
+            find: '@react-native-community/netinfo/src/index.ts',
+            replacement: path.resolve(__dirname, './shims/reactNativeNetInfo.js'),
+          },
+          { find: 'expo-font', replacement: path.resolve(__dirname, './shims/expoFont.js') },
+          {
+            find: 'expo-font/build/Font',
+            replacement: path.resolve(__dirname, './shims/expoFont.js'),
+          },
+          {
+            find: 'expo-font/build/index',
+            replacement: path.resolve(__dirname, './shims/expoFont.js'),
+          },
+          {
+            find: 'expo-modules-core',
+            replacement: path.resolve(__dirname, './shims/expoModulesCore.js'),
+          },
+          {
+            find: 'expo-modules-core/build/index',
+            replacement: path.resolve(__dirname, './shims/expoModulesCore.js'),
+          },
+          { find: '@', replacement: path.resolve(__dirname, '../restaurante-site/src') },
+          { find: '@restaurante/ui', replacement: path.resolve(__dirname, '../packages/ui/src') },
+          {
+            find: '@restaurante/schemas',
+            replacement: path.resolve(__dirname, '../packages/schemas/src'),
+          },
+          {
+            find: '@restaurante/tokens',
+            replacement: path.resolve(__dirname, '../packages/tokens/src'),
+          },
+        ],
       },
       define: {
         __DEV__: true,
@@ -81,7 +142,13 @@ const config: StorybookConfig = {
           },
         },
         include: ['events', 'util', 'stream'],
-        exclude: ['react-native-esc-pos-printer', 'p-queue', 'expo-font', 'expo-modules-core'],
+        exclude: [
+          'react-native-esc-pos-printer',
+          'p-queue',
+          'expo-font',
+          'expo-modules-core',
+          '@react-native-community/netinfo',
+        ],
       },
       plugins: [
         {
@@ -98,6 +165,15 @@ const config: StorybookConfig = {
             }
             if (id === 'react-native-esc-pos-printer') {
               return path.resolve(__dirname, './shims/reactNativeEscPosPrinter.js');
+            }
+            if (id === 'react-native/Libraries/Image/resolveAssetSource') {
+              return path.resolve(__dirname, './shims/resolveAssetSource.js');
+            }
+            if (
+              id === '@react-native-community/netinfo' ||
+              id.startsWith('@react-native-community/netinfo/')
+            ) {
+              return path.resolve(__dirname, './shims/reactNativeNetInfo.js');
             }
             if (
               id === 'expo-font' ||
