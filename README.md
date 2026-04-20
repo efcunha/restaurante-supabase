@@ -70,6 +70,8 @@ pnpm format
 - `docs/README.md`: índice geral de documentação
 - `docs/repository/DOMAINS.md`: mapa conceitual dos domínios do repositório
 - `docs/repository/SCRIPTS_INVENTORY.md`: inventário de scripts e inconsistências conhecidas
+- `docs/repository/AWESOME_COPILOT_INTEGRATION_2026-04-20.md`: status de instalação e política de precedência do Awesome Copilot
+- `docs/repository/AWESOME_COPILOT_SQUAD_MATRIX_2026-04-20.md`: matriz de uso por squad (app, web, ops, platform/ci)
 - `docs/forms/README.md`: índice de automação semi-automática segura de formulários
 - `docs/repository/FORM_AUTOMATION_SEMI_AUTO_RUNBOOK.md`: runbook da automação semi-automática segura de formulários
 - `docs/security/README.md`: pacote de auditoria, remediação e compliance
@@ -80,6 +82,19 @@ pnpm format
 - `restaurante-web/scripts/README.md`: scripts do web
 - `restaurante-ops/scripts/README.md`: scripts do ops
 - `database-backup/supabase/functions/scripts/README.md`: scripts operacionais das Edge Functions de billing
+
+## Awesome Copilot no dia a dia
+
+Resumo operacional para o time:
+
+- A skill primária do projeto continua sendo `.github/skills/restaurante-supabase/SKILL.md`.
+- As skills locais especializadas (`react-native-best-practices`, `github-actions`, `ui-ux-pro-max`) mantêm prioridade para implementação.
+- Plugins do Awesome Copilot entram como apoio para planejamento, testes e revisão de prompts.
+
+Leitura recomendada antes de usar em tarefas reais:
+
+- `docs/repository/AWESOME_COPILOT_INTEGRATION_2026-04-20.md`
+- `docs/repository/AWESOME_COPILOT_SQUAD_MATRIX_2026-04-20.md`
 
 ## Convenção prática
 
