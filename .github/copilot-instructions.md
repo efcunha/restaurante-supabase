@@ -320,6 +320,36 @@ Task: <what you need>
 Version (optional): <x.y.z>
 ```
 
+## Awesome Copilot Integration (Installed 2026-04-20)
+
+> **STATUS: awesome-copilot marketplace enabled in Copilot CLI**.
+
+Installation status (operator machine):
+
+- `awesome-copilot@awesome-copilot` (meta discovery plugin)
+- `project-planning@awesome-copilot` (planning agents + implementation-plan skills)
+- `testing-automation@awesome-copilot` (Playwright/TDD focused resources)
+- `security-best-practices@awesome-copilot` (prompt safety review resource)
+
+Operational routing and precedence:
+
+1. Always start with local project skill: `.github/skills/restaurante-supabase/SKILL.md`.
+2. For RN/CI specifics, keep local specialized skills as primary (`react-native-best-practices`, `github-actions`).
+3. Use awesome-copilot resources as **complementary accelerators** (planning templates, test scaffolding, prompt hardening), never as replacement for repository guardrails.
+4. In conflicts, repository constraints win: `company_id`, RLS, billing idempotency, production-only guarded rollout, and no hardcoded secrets.
+
+Recommended use in this repository:
+
+- Scope/planning artifacts: `project-planning` (implementation plans, technical spikes).
+- E2E support for web flows: `testing-automation` Playwright assets.
+- Prompt quality gate in risky changes: `security-best-practices` skill.
+- Discovery of additional curated skills/instructions/agents: `awesome-copilot` meta plugin.
+
+Note on GitHub CLI:
+
+- `gh skill` is available only in newer GitHub CLI versions.
+- Current fallback remains supported: `copilot plugin install <plugin>@awesome-copilot`.
+
 ## Mandatory Response Format (RN/CI)
 
 For RN/CI-related implementation guidance, start the response with a short checklist block before any recommendation:
