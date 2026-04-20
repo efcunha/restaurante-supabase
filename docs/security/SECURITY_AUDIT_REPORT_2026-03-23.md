@@ -1,4 +1,5 @@
 # 🔐 AUDITORIA DE SEGURANÇA, DEVOPS E LGPD
+
 ## Projeto: restaurante-supabase (POS/PDV Full-Stack)
 
 **Data:** 23 de março de 2026  
@@ -11,6 +12,7 @@
 > Este documento registra os achados da auditoria original de 23/03. Parte dos itens críticos já foi mitigada no código e nas migrations desde então.
 >
 > Estado consolidado para billing / Mercado Pago em 25/03:
+>
 > - Segredos operacionais de backup/restore: mitigados com `database-backup/.env.local` gitignored e templates seguros.
 > - `public.profiles` RLS: corrigido por migration de hardening com políticas restritivas para self + admin/gerente da mesma empresa.
 > - CORS das Edge Functions: corrigido com allowlist por origem, sem fallback wildcard.
@@ -18,31 +20,37 @@
 > - Billing Mercado Pago: sem bloqueador estrutural aberto de segurança/compliance; decisão de produção depende da execução e aprovação do smoke funcional S1-S5.
 >
 > ---
+>
 > ### ⚠️ NOVOS ACHADOS CRÍTICOS — Cardápio Digital (2026-03-25)
 >
 > A criação das rotas públicas do cardápio QR expôs superfície de ataque nova. Quatro vulnerabilidades críticas identificadas e migration de correção criada:
 >
 > **🔴 CRÍTICO-C1 — execute_sql callable por `anon` (RCE/SQLi)**
+>
 > - `public.execute_sql(query text, params jsonb)` é `SECURITY DEFINER` (roda como postgres) e estava concedida ao role `anon`.
 > - Via `/rest/v1/rpc/execute_sql`, qualquer visitante do cardápio público podia executar SQL arbitrário com privilégios de superusuário, bypassando todo RLS.
 > - **Correção**: `REVOKE ALL ON FUNCTION execute_sql FROM anon, authenticated` em `20260325180000_harden_anon_function_grants_cardapio.sql`.
 >
 > **🔴 CRÍTICO-C2 — Funções financeiras/operacionais callable por `anon`**
+>
 > - `registrar_pagamento_comanda`, `close_cash_register`, `close_comanda`, `adicionar_consumo_atomico` estavam concedidas a `anon` (todas SECURITY DEFINER).
 > - Um visitante do cardápio podia registrar pagamentos falsos, fechar comandas e caixas de qualquer empresa.
 > - **Correção**: `REVOKE ALL ON FUNCTION ... FROM anon` para cada função na mesma migration.
 >
 > **🔴 CRÍTICO-C3 — DEFAULT PRIVILEGES concedem ALL ON FUNCTIONS a `anon`**
+>
 > - `ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON FUNCTIONS TO anon` estava ativo no schema dump.
 > - Toda nova função criada herdava automaticamente acesso anon, incluindo futuras funções do cardápio (upload, checkout, etc).
 > - **Correção**: `ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE ALL ON FUNCTIONS FROM anon` + `REVOKE ALL ON TABLES FROM anon`.
 >
 > **🟠 ALTO-C4 — public_menu_company_read expõe colunas sensíveis (LGPD)**
+>
 > - A RLS policy `public_menu_company_read` permitia `SELECT *` em `companies` para empresas publicadas.
 > - Colunas expostas indevidamente: `cnpj`, `document`, `plan`, `settings` (jsonb interno), `contact_name`.
 > - **Correção**: Policy removida; criada VIEW `public_menu_companies` com apenas os 9 campos públicos necessários; `GRANT SELECT ON VIEW TO anon`.
 >
 > **🟠 ALTO-C5 — get_company_by_menu_slug SECURITY DEFINER sem SET search_path**
+>
 > - Função SECURITY DEFINER sem `SET search_path` é vulnerável a search path injection.
 > - **Correção**: Função recriada com `SET search_path = public` na mesma migration.
 >
@@ -59,6 +67,7 @@
 **Quick Wins:** 4
 
 ### Riscos Imediatos
+
 1. ✅ **MITIGADO**: Segredos operacionais movidos para fluxo seguro fora de versionamento
 2. ✅ **MITIGADO EM E2E**: Chaves Supabase deixaram de ficar hardcoded nos specs; uso padronizado por variáveis de ambiente
 3. ✅ **MITIGADO**: CORS sem wildcard fallback (`*`), agora com allowlist explícita
@@ -71,6 +80,7 @@
 ## 1️⃣ MAPEAMENTO INICIAL
 
 ### 1.1 Tipo de Aplicação
+
 - **Frontend:** React Native (Expo) + React Web (Expo Web)
 - **Backend:** Node.js (TypeScript) + Supabase (PostgreSQL + Edge Functions)
 - **Mobile:** iOS/Android via Expo
@@ -78,6 +88,7 @@
 - **Arquitetura:** Multi-tenant, monorepo, serverless (Supabase), Railway deployment
 
 ### 1.2 Stack Tecnológico
+
 ```
 Frontend:
   - React 19.1.0
@@ -104,20 +115,23 @@ DevOps:
 ```
 
 ### 1.3 Fluxo de Autenticação
+
 ```
-Mobile/Web → Supabase Auth (OAuth/Email) 
+Mobile/Web → Supabase Auth (OAuth/Email)
             → JWT token (session storage)
             → SecureStore (mobile) / AsyncStorage (web)
             → RLS policies validam company_id
 ```
 
 ### 1.4 Fluxos de Dados Sensíveis
+
 1. **Pedidos:** Cliente → App/Web → Supabase RLS → Comanda → Cozinha → Pagamento → Delivery
 2. **Pagamentos:** Checkout → Mercado Pago → Edge Function → Supabase (invoice, subscription)
 3. **Billing:** Invoice → Payment Method → Subscription → Audit Log
 4. **LGPD:** DSAR Request → Anonymization → Audit Trail (imutável 3 anos)
 
 ### 1.5 Pontos de Entrada
+
 - Mobile: Expo Dev Client + Production
 - Web: restaurante-web (Expo Web)
 - API: Supabase Auth, PostgreSQL RLS, Edge Functions (billing, webhooks)
@@ -131,7 +145,9 @@ Mobile/Web → Supabase Auth (OAuth/Email)
 ### A01 - Broken Access Control
 
 #### ❌ CRÍTICO (histórico, mitigado em 2026-03-23/24): RLS Permissiva em `profiles` confirmada no banco remoto
+
 **Localização:** Banco remoto (`pg_policies`) e `database-backup/migrations/20260311161100_schema_dump.sql:2602-2609`
+
 ```sql
 CREATE POLICY "authenticated_pull_profiles" ON "public"."profiles"
 FOR SELECT TO "authenticated" USING (true);  -- ← QUALQUER usuário autenticado lê TODOS
@@ -143,6 +159,7 @@ FOR SELECT TO "authenticated" USING (true);  -- ← QUALQUER usuário autenticad
 
 **Severidade:** CRÍTICO  
 **Correção:**
+
 ```sql
 -- ✅ CORRETO: Apenas seu próprio perfil
 CREATE POLICY "authenticated_pull_own_profile" ON "public"."profiles"
@@ -152,6 +169,7 @@ FOR SELECT TO "authenticated" USING (auth.uid() = id);
 **Atualização 25/03/2026:** item mitigado. A migration `20260323183000_harden_profiles_rls_and_role_guardrails.sql` substituiu a policy permissiva por políticas restritivas para leitura própria e administração da mesma empresa.
 
 #### ⚠️ ALTA: Falta de Validação de company_id em Algumas Operações
+
 **Localização:** `restaurante-app/scripts/fix-permissions.sql` (grant all to service_role)
 
 **Impacto:** Se alguém conseguir injetar um `company_id` diferente, acessa dados de outra empresa
@@ -160,7 +178,9 @@ FOR SELECT TO "authenticated" USING (auth.uid() = id);
 **Correção:** OBRIGATÓRIO usar `validateCompanyContext()` do `auth-secure.ts` em TODA função crítica
 
 #### ✅ BOM: restaurante-ops implementa validação rigorosa
+
 **Localização:** `restaurante-ops/src/auth/supabase.ts:53-73`
+
 ```typescript
 if (profile.company_id !== OPS_ALLOWED_COMPANY_ID) {
   throw new Error('Acesso negado');
@@ -175,16 +195,19 @@ if (profile.company_id !== OPS_ALLOWED_COMPANY_ID) {
 #### ❌ CRÍTICO (histórico, mitigado): Senhas de Banco de Dados Hardcodeadas
 
 **Localização 1:** `database-backup/backup.bat:32`
+
 ```batch
 set SOURCE_DB_PASSWORD=REDACTED_DB_PASSWORD
 ```
 
 **Localização 2:** `database-backup/restore.bat:18`
+
 ```batch
 set TARGET_DB_PASSWORD=REDACTED_DB_PASSWORD
 ```
 
 **Localização 3:** `database-backup/.env.local`
+
 ```bash
 SOURCE_DB_PASSWORD=REDACTED_DB_PASSWORD
 ```
@@ -195,6 +218,7 @@ SOURCE_DB_PASSWORD=REDACTED_DB_PASSWORD
 
 **Severidade:** CRÍTICO  
 **Correção:**
+
 ```bash
 # ✅ CORRETO: Usar variáveis de ambiente bem protegidas
 export SOURCE_DB_PASSWORD="${DB_BACKUP_PASSWORD}"
@@ -209,6 +233,7 @@ database-backup/.env.local
 #### ⚠️ ALTA: Chaves de API Supabase Hardcodeadas em E2E Tests
 
 **Localização 1-4:**
+
 - `restaurante-web/e2e/mesa.spec.ts:9`
 - `restaurante-web/e2e/mesa-consolidacao.spec.ts:7`
 - `restaurante-web/e2e/race-condition-cross-marking.spec.ts:16`
@@ -222,19 +247,20 @@ const SUPABASE_ANON_KEY = 'sb_publishable_sUAhOXyPkUhEb4tpbVU8wQ_71qyFI3x';
 
 **Severidade:** ALTA  
 **Correção:**
+
 ```typescript
 // ✅ CORRETO: Usar variáveis de ambiente
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
 // ou para Playwright:
 test.beforeAll(() => {
-  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY = 
-    process.env.E2E_SUPABASE_ANON_KEY || '';
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY = process.env.E2E_SUPABASE_ANON_KEY || '';
 });
 ```
 
 #### ⚠️ ALTA: Firebase API Key Hardcodeada
 
 **Localização:** `restaurante-web/.env.example:12`
+
 ```
 EXPO_PUBLIC_FIREBASE_API_KEY=AIzaSyAKbTm0iFFNwAcSmTtLrlyIHKc1ds1LrDE
 ```
@@ -243,6 +269,7 @@ EXPO_PUBLIC_FIREBASE_API_KEY=AIzaSyAKbTm0iFFNwAcSmTtLrlyIHKc1ds1LrDE
 
 **Severidade:** ALTA  
 **Correção:**
+
 ```
 # ✅ CORRETO
 EXPO_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key_here
@@ -250,18 +277,21 @@ EXPO_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key_here
 ```
 
 #### ✅ BOM: Tokens armazenados com segurança no mobile
+
 **Localização:** `restaurante-app/src/utils/SecureStorageAdapter.ts`
+
 ```typescript
 // ✅ Usa Expo SecureStore (iOS Keychain, Android Keystore)
 // ✅ Fallback para AsyncStorage no web
 ```
 
 #### ✅ BOM: HTTPS/TLS obrigatório
+
 **Localização:** `restaurante-ops/src/index.ts:103`
+
 ```typescript
 // Supabase + Railway ambos com HTTPS/TLS 1.2+
-res.setHeader('Strict-Transport-Security', 
-  'max-age=31536000; includeSubDomains');
+res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
 ```
 
 ---
@@ -269,35 +299,43 @@ res.setHeader('Strict-Transport-Security',
 ### A03 - Injection
 
 #### ✅ BOM: Sanitização de inputs centralizada
+
 **Localização:** `restaurante-web/src/utils/validation.ts:50-75`
+
 ```typescript
 export const sanitizeString = (text: string): string => {
   return text
-    .replace(/<[^>]*>/g, '')  // Remove HTML tags
-    .replace(/[\x00-\x1F\x7F]/g, '')  // Remove control chars
-    .replace(/[&<>"']/g, /* escape */);  // Escape special chars
+    .replace(/<[^>]*>/g, '') // Remove HTML tags
+    .replace(/[\x00-\x1F\x7F]/g, '') // Remove control chars
+    .replace(/[&<>"']/g /* escape */); // Escape special chars
 };
 ```
 
 **Validações:** Cliente name, email, observações, preço → todas com sanitização + regex
 
 #### ✅ BOM: Supabase SDK previne SQL injection
+
 - `.eq()`, `.select()`, `.insert()` usam prepared statements
 - **Nunca** concatenação de strings em queries
 
 #### ⚠️ MÉDIA: Falta de proteção em JSONB parsing
+
 **Localização:** `database-backup/supabase/functions/billing-webhook/index.ts:140`
+
 ```typescript
-payload = JSON.parse(rawBody);  // Se rawBody for inválido, pode gerar erro
+payload = JSON.parse(rawBody); // Se rawBody for inválido, pode gerar erro
 // Falta validação de schema da payload
 ```
 
 **Correção:**
+
 ```typescript
 try {
   const schema = z.object({
     action: z.enum(['payment.created', 'payment.updated']),
-    data: z.object({ /* ... */ })
+    data: z.object({
+      /* ... */
+    }),
   });
   payload = schema.parse(JSON.parse(rawBody));
 } catch (error) {
@@ -310,17 +348,20 @@ try {
 ### A04 - Insecure Design
 
 #### ⚠️ ALTA (histórico, mitigado em restaurante-ops): Falta de Rate Limiting em Operações Críticas
+
 **Localização:** `restaurante-web/src/services/RateLimiterService.ts` (implementado, mas...)
 
 **Problema:** Rate limiter está em memória no cliente JavaScript
 
 **Severidade:** ALTA  
 **Correção:** Rate limiting **deve** estar no servidor/edge function
+
 ```typescript
 // Edge Function billing-create-checkout deve implementar:
 const rateLimitKey = `${userId}:checkout`;
 const count = await redis.incr(rateLimitKey);
-if (count > 5) {  // Max 5 checkouts/minuto/usuário
+if (count > 5) {
+  // Max 5 checkouts/minuto/usuário
   throw new HttpError(429, 'Too many requests');
 }
 await redis.expire(rateLimitKey, 60);
@@ -329,10 +370,12 @@ await redis.expire(rateLimitKey, 60);
 **Atualização 25/03/2026:** `restaurante-ops` já aplica rate limiting em login e em rotas críticas de billing, com suporte a modo estrito fail-closed quando Redis/limiter estiver indisponível.
 
 #### ⚠️ ALTA (histórico, mitigado): CORS Configuration com Wildcard Fallback
+
 **Localização:** `database-backup/supabase/functions/_shared/cors.ts:9-22`
+
 ```typescript
 export const corsHeaders = {
-  'Access-Control-Allow-Origin': resolveAllowOrigin(),  // Pode ser '*'
+  'Access-Control-Allow-Origin': resolveAllowOrigin(), // Pode ser '*'
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
@@ -346,6 +389,7 @@ function resolveAllowOrigin(): string {
 **Impacto:** CSRF por wildcard Accept-Origin
 
 **Correção:**
+
 ```typescript
 // ✅ CORRETO: Nunca permitir wildcard para credenciais
 if (origins.length === 0) {
@@ -366,7 +410,9 @@ if (!allowedOrigins.includes(origin)) {
 ### A05 - Security Misconfiguration
 
 #### ✅ BOM: Headers de Segurança Implementados
+
 **Localização:** `restaurante-ops/src/index.ts:95-110`
+
 ```typescript
 res.setHeader('X-Content-Type-Options', 'nosniff');
 res.setHeader('X-Frame-Options', 'DENY');
@@ -376,19 +422,23 @@ res.setHeader('Strict-Transport-Security', 'max-age=31536000');
 ```
 
 #### ⚠️ MÉDIA: Falta de CSP (Content-Security-Policy)
+
 **Localização:** Não encontrada
 
 **Severidade:** MÉDIA  
 **Correção:** Adicionar em Edge Functions + Web app
+
 ```typescript
-res.setHeader('Content-Security-Policy', 
+res.setHeader(
+  'Content-Security-Policy',
   "default-src 'self'; script-src 'self' 'unsafe-inline'; " +
-  "style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; " +
-  "connect-src 'self' https://api.supabase.co; frame-ancestors 'none';"
+    "style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; " +
+    "connect-src 'self' https://api.supabase.co; frame-ancestors 'none';",
 );
 ```
 
 #### ✅ BOM: Railway + Supabase em produção
+
 - HTTPS obrigatório
 - Variáveis de ambiente via Railway secrets (não em `.env` commitado)
 
@@ -397,7 +447,9 @@ res.setHeader('Content-Security-Policy',
 ### A06 - Vulnerable and Outdated Components
 
 #### ✅ BOM: CI/CD com Gitleaks + Snyk + Trivy
+
 **Localização:** `.github/workflows/security.yml`
+
 ```yaml
 - name: Run Gitleaks
   uses: gitleaks/gitleaks-action@v2
@@ -408,7 +460,9 @@ res.setHeader('Content-Security-Policy',
 ```
 
 #### ⚠️ ALTA: Dependências Desatualizadas Detectadas
+
 **Análise de versões:**
+
 ```
 ✅ React 19.1.0 (latest)
 ✅ React Native 0.81-0.84 (recent)
@@ -423,6 +477,7 @@ Dependências Outdated:
 
 **Severidade:** ALTA  
 **Correção:**
+
 ```bash
 npm outdated  # Listar desatualizadas
 npm update    # Atualizar (com cuidado)
@@ -430,11 +485,13 @@ npm audit fix # Fixar vulnerabilidades reportadas
 ```
 
 #### ⚠️ MÉDIA: Firebase SDK Desatualizado
+
 ```
 firebase: ^12.10.0 (verificar se há ^13.x)
 ```
 
 **Correção:**
+
 ```bash
 npm update firebase@latest
 ```
@@ -444,11 +501,13 @@ npm update firebase@latest
 ### A07 - Identification and Authentication Failures
 
 #### ✅ BOM: JWT via Supabase Auth
+
 - Expiração automática (default 3600s)
 - Refresh token armazenado em SecureStore
 - Auto-refresh habilitado
 
 **Localização:** `restaurante-app/src/config/SupabaseConfig.ts:19`
+
 ```typescript
 auth: {
   storage: SecureStorageAdapter,
@@ -458,24 +517,27 @@ auth: {
 ```
 
 #### ⚠️ ALTA: Falta de MFA (Multi-Factor Authentication)
+
 **Localização:** Não implementado
 
 **Severidade:** ALTA (especialmente para admin)  
 **Correção:**
+
 ```typescript
 // Habilitar Supabase Auth MFA
 const { data, error } = await supabase.auth.mfa.enroll({
   issuer: 'restaurante-supabase',
-  totp: { name: 'Restaurante App' }
+  totp: { name: 'Restaurante App' },
 });
 
 // Exigir MFA para admins
-if (profile.role === 'admin' && !user.factors.some(f => f.status === 'verified')) {
+if (profile.role === 'admin' && !user.factors.some((f) => f.status === 'verified')) {
   throw new Error('MFA obrigatório para admins');
 }
 ```
 
 #### ✅ BOM: Session Validation
+
 - RLS policies validam `auth.uid()`
 - `company_id` verificado em operações críticas
 
@@ -484,7 +546,9 @@ if (profile.role === 'admin' && !user.factors.some(f => f.status === 'verified')
 ### A08 - Software and Data Integrity Failures
 
 #### ✅ BOM: Webhook Signature Verification (HMAC-SHA256)
+
 **Localização:** `database-backup/supabase/functions/billing-webhook/index.ts:120-140`
+
 ```typescript
 function verifySignature(signature: string, rawBody: string, secret: string): void {
   const computedHmac = /* HMAC-SHA256 */;
@@ -494,7 +558,9 @@ function verifySignature(signature: string, rawBody: string, secret: string): vo
 ```
 
 #### ✅ BOM: CI/CD Security Gate
+
 **Localização:** `.github/workflows/security.yml:12-30`
+
 ```yaml
 jobs:
   security:
@@ -506,7 +572,7 @@ jobs:
       - Trivy Scan
       - npm audit
   deploy:
-    needs: security  # ← Bloqueia deploy se security falhar
+    needs: security # ← Bloqueia deploy se security falhar
     if: success()
 ```
 
@@ -515,12 +581,14 @@ jobs:
 ### A09 - Logging and Monitoring Failures
 
 #### ⚠️ MÉDIA: Logging Incompleto de Operações Críticas
+
 **Problema:** Nem toda operação de billing ou acesso sensível é auditada
 
 **Severidade:** MÉDIA  
 **Localização:** `restaurante-ops/src/lib/logger.ts` + `billing_audit_log`
 
 **Correção:**
+
 ```typescript
 // OBRIGATÓRIO em TODA operação sensível:
 await auditBillingEvent('billing.checkout.requested', {
@@ -534,7 +602,9 @@ await auditBillingEvent('billing.checkout.requested', {
 ```
 
 #### ✅ BOM: Audit Trail Imutável para LGPD
+
 **Localização:** `database-backup/migrations/20260323170000_create_lgpd_dsar_infrastructure.sql`
+
 ```sql
 CREATE TABLE billing_audit_log (
   id BIGSERIAL PRIMARY KEY,
@@ -548,13 +618,15 @@ CREATE TABLE billing_audit_log (
 ```
 
 #### ✅ BOM: Error Handling Seguro
+
 **Localização:** `database-backup/supabase/functions/_shared/auth-secure.ts:30-50`
+
 ```typescript
 export class HttpError extends Error {
-  internalMessage?: string;  // Nunca exposto ao cliente
+  internalMessage?: string; // Nunca exposto ao cliente
   constructor(status, clientMessage, internalMessage?) {
-    super(clientMessage);  // ← Cliente recebe genérico
-    this.internalMessage = internalMessage;  // ← Server logs detalhado
+    super(clientMessage); // ← Cliente recebe genérico
+    this.internalMessage = internalMessage; // ← Server logs detalhado
   }
 }
 
@@ -567,20 +639,26 @@ export class HttpError extends Error {
 ### A10 - Server-Side Request Forgery (SSRF)
 
 #### ✅ BOM: Webhook endpoint com validação de source
+
 **Localização:** `database-backup/supabase/functions/billing-webhook/index.ts`
+
 ```typescript
 // Verifica HMAC signature de Mercado Pago antes de processar
 // Previne SSRF/webhook injection
 ```
 
 #### ⚠️ MÉDIA: API requests sem timeout
+
 **Severidade:** MÉDIA  
 **Correção:**
+
 ```typescript
 // Edge Functions: Sempre usar timeout
 const response = await fetch(url, {
-  signal: AbortSignal.timeout(5000),  // 5s timeout
-  headers: { /* ... */ }
+  signal: AbortSignal.timeout(5000), // 5s timeout
+  headers: {
+    /* ... */
+  },
 });
 ```
 
@@ -590,14 +668,14 @@ const response = await fetch(url, {
 
 ### 3.1 JWT
 
-| Aspecto | Status | Detalhes |
-|--------|--------|----------|
-| **Issuador** | ✅ | Supabase Auth (OIDC compliant) |
-| **Assinatura** | ✅ | RS256 (asymmetric) |
-| **Expiração** | ✅ | 3600s (1h), refresh automático |
-| **Refresh Token** | ✅ | SecureStore (mobile), AsyncStorage (web) |
-| **Revogação** | ⚠️ | Logout apaga session, mas JWT ainda válido até expirar |
-| **Validação** | ✅ | RLS policies validam em cada query |
+| Aspecto           | Status | Detalhes                                               |
+| ----------------- | ------ | ------------------------------------------------------ |
+| **Issuador**      | ✅     | Supabase Auth (OIDC compliant)                         |
+| **Assinatura**    | ✅     | RS256 (asymmetric)                                     |
+| **Expiração**     | ✅     | 3600s (1h), refresh automático                         |
+| **Refresh Token** | ✅     | SecureStore (mobile), AsyncStorage (web)               |
+| **Revogação**     | ⚠️     | Logout apaga session, mas JWT ainda válido até expirar |
+| **Validação**     | ✅     | RLS policies validam em cada query                     |
 
 ### 3.2 RBAC (Role-Based Access Control)
 
@@ -624,16 +702,16 @@ Roles Implementados:
 
 **RLS Policies por Role:**
 
-| Tabela | SELECT | INSERT | UPDATE | DELETE | Condition |
-|--------|--------|--------|--------|--------|-----------|
-| profiles | auth.uid() = id | ❌ | Self only | ❌ | ✅ |
-| clientes | ✅ | Company | Company | Company | company_id match |
-| comandas | ✅ | Company | - | - | company_id match |
-| orders | ✅ | Company | Company | Company | company_id match |
-| cash_movements | ✅ | Admin | Admin | **Admin** | ✅ |
-| invoices | Company admin | ❌ | service_role | ❌ | ✅ |
-| payment_methods | Admin only | service_role | service_role | service_role | ✅ |
-| webhook_events | ❌ | service_role | service_role | service_role | ❌ client access |
+| Tabela          | SELECT          | INSERT       | UPDATE       | DELETE       | Condition        |
+| --------------- | --------------- | ------------ | ------------ | ------------ | ---------------- |
+| profiles        | auth.uid() = id | ❌           | Self only    | ❌           | ✅               |
+| clientes        | ✅              | Company      | Company      | Company      | company_id match |
+| comandas        | ✅              | Company      | -            | -            | company_id match |
+| orders          | ✅              | Company      | Company      | Company      | company_id match |
+| cash_movements  | ✅              | Admin        | Admin        | **Admin**    | ✅               |
+| invoices        | Company admin   | ❌           | service_role | ❌           | ✅               |
+| payment_methods | Admin only      | service_role | service_role | service_role | ✅               |
+| webhook_events  | ❌              | service_role | service_role | service_role | ❌ client access |
 
 ### 3.3 Multi-Tenancy (company_id Isolation)
 
@@ -642,7 +720,7 @@ Roles Implementados:
 ```
 Profile Query:
   company_id ← De auth.uid() via profiles table
-  
+
 Operação de Pedido:
   1. Usuario solicita acesso a pedido X
   2. RLS verifica: company_id IN (SELECT company_id FROM profiles WHERE id = auth.uid())
@@ -658,14 +736,14 @@ Operação de Pedido:
 
 ### 4.1 Sanitização
 
-| Input | Validação | Sanitização | Status |
-|-------|-----------|-------------|--------|
-| Nome Cliente | Regex + length | `sanitizeString()` | ✅ |
-| Email | Regex | `sanitizeString()` | ✅ |
-| Observações | Max 500 chars | `sanitizeString()` | ✅ |
-| Preço | Number type | Number coercion | ✅ |
-| UUID (company_id) | Regex UUID | Format check | ✅ |
-| JSON (webhook) | JSON parse | ❌ Schema validation falta | ⚠️ |
+| Input             | Validação      | Sanitização                | Status |
+| ----------------- | -------------- | -------------------------- | ------ |
+| Nome Cliente      | Regex + length | `sanitizeString()`         | ✅     |
+| Email             | Regex          | `sanitizeString()`         | ✅     |
+| Observações       | Max 500 chars  | `sanitizeString()`         | ✅     |
+| Preço             | Number type    | Number coercion            | ✅     |
+| UUID (company_id) | Regex UUID     | Format check               | ✅     |
+| JSON (webhook)    | JSON parse     | ❌ Schema validation falta | ⚠️     |
 
 ### 4.2 Validação Server-Side
 
@@ -689,35 +767,36 @@ export const validateClientName = (name): ValidationResult => {
 
 ### 5.1 Criptografia em Repouso
 
-| Componente | Criptografia | Detalhe |
-|-----------|-------------|--------|
-| Database (PostgreSQL) | ✅ Supabase | Disk encryption at rest (AWS) |
-| Tokens (Mobile) | ✅ Expo SecureStore | iOS Keychain, Android Keystore |
-| Tokens (Web) | ⚠️ AsyncStorage | Browser storage (vulnerable a XSS) |
-| Backups | ❌ Não verificado | Scripts não mencionam encryption |
-| Edge Functions Secrets | ✅ Supabase Vault | Deno env.get() encriptado |
+| Componente             | Criptografia        | Detalhe                            |
+| ---------------------- | ------------------- | ---------------------------------- |
+| Database (PostgreSQL)  | ✅ Supabase         | Disk encryption at rest (AWS)      |
+| Tokens (Mobile)        | ✅ Expo SecureStore | iOS Keychain, Android Keystore     |
+| Tokens (Web)           | ⚠️ AsyncStorage     | Browser storage (vulnerable a XSS) |
+| Backups                | ❌ Não verificado   | Scripts não mencionam encryption   |
+| Edge Functions Secrets | ✅ Supabase Vault   | Deno env.get() encriptado          |
 
 ### 5.2 Criptografia em Trânsito
 
-| Canal | Protocol | Status |
-|-------|----------|--------|
-| App → Supabase | HTTPS/TLS 1.2+ | ✅ |
-| Web → Supabase | HTTPS/TLS 1.2+ | ✅ |
-| Edge Function → Supabase | HTTPS | ✅ |
-| Webhook (MP → EF) | HMAC-SHA256 | ✅ |
+| Canal                    | Protocol       | Status |
+| ------------------------ | -------------- | ------ |
+| App → Supabase           | HTTPS/TLS 1.2+ | ✅     |
+| Web → Supabase           | HTTPS/TLS 1.2+ | ✅     |
+| Edge Function → Supabase | HTTPS          | ✅     |
+| Webhook (MP → EF)        | HMAC-SHA256    | ✅     |
 
 ### 5.3 Exposição em Logs
 
 **❌ CRÍTICO:** Senhas de BD estão commitadas em `backup.bat`, `restore.bat`
 
 **⚠️ MÉDIA:** Logs de erro podem expor PII
+
 ```typescript
 // ❌ RUIM (localizado em alguns pontos)
 console.error(`User ${userId} not found in company ${companyId}`);
 
 // ✅ CORRETO
-console.error('[DB] Profile not found');  // Genérico
-console.warn('[DEBUG]', userId, companyId);  // Detalhes internamente
+console.error('[DB] Profile not found'); // Genérico
+console.warn('[DEBUG]', userId, companyId); // Detalhes internamente
 ```
 
 ---
@@ -728,23 +807,23 @@ console.warn('[DEBUG]', userId, companyId);  // Detalhes internamente
 
 **Base Legal Identificada:**
 
-| Dados | Propósito | Base Legal | Retenção |
-|-------|-----------|-----------|----------|
-| Nome, Email | Conta de usuário | Contrato (Art. 7.I) | Até fim da relação |
-| CPF/CNPJ | Pagamentos, faturamento | Obrigação legal (Art. 7.II) | Conforme lei fiscal (5 anos) |
-| Telefone | Entrega, contato | Consentimento (Art. 7.VIII) | Até fim da relação |
-| Endereço | Entrega | Consentimento | Até fim da relação + DSAR |
-| Comportamento de Pedidos | Melhorias, analytics | Interesse legítimo (Art. 7.IX) | Agregado, anonimizado |
+| Dados                    | Propósito               | Base Legal                     | Retenção                     |
+| ------------------------ | ----------------------- | ------------------------------ | ---------------------------- |
+| Nome, Email              | Conta de usuário        | Contrato (Art. 7.I)            | Até fim da relação           |
+| CPF/CNPJ                 | Pagamentos, faturamento | Obrigação legal (Art. 7.II)    | Conforme lei fiscal (5 anos) |
+| Telefone                 | Entrega, contato        | Consentimento (Art. 7.VIII)    | Até fim da relação           |
+| Endereço                 | Entrega                 | Consentimento                  | Até fim da relação + DSAR    |
+| Comportamento de Pedidos | Melhorias, analytics    | Interesse legítimo (Art. 7.IX) | Agregado, anonimizado        |
 
 ### 6.2 Direitos do Titular (Art. 18-20)
 
-| Direito | Implementação | Status |
-|--------|--------------|--------|
-| Acesso (Art. 18.I) | DSAR request → CSV export | ✅ Implementado |
-| Correção (Art. 18.II) | API de update perfil | ✅ |
-| Eliminação (Art. 18.III) | `anonymize_customer_by_phone()` SQL function | ✅ |
-| Portabilidade (Art. 18.IV) | CSV download (estrutura standardizada?) | ⚠️ Verificar formato |
-| Não Decisão Automatizada (Art. 20) | N/A (sem ML) | ✅ |
+| Direito                            | Implementação                                | Status               |
+| ---------------------------------- | -------------------------------------------- | -------------------- |
+| Acesso (Art. 18.I)                 | DSAR request → CSV export                    | ✅ Implementado      |
+| Correção (Art. 18.II)              | API de update perfil                         | ✅                   |
+| Eliminação (Art. 18.III)           | `anonymize_customer_by_phone()` SQL function | ✅                   |
+| Portabilidade (Art. 18.IV)         | CSV download (estrutura standardizada?)      | ⚠️ Verificar formato |
+| Não Decisão Automatizada (Art. 20) | N/A (sem ML)                                 | ✅                   |
 
 ### 6.3 Retenção e Descarte
 
@@ -781,12 +860,14 @@ Backups:
 - Audit log imutável para compliance
 
 **Problemas:**
+
 - ❌ Backup strategy não menciona encryption ou secure disposal
 - ❌ Falta de Data Protection Impact Assessment (DPIA)
 
 ### 6.5 Consentimento
 
 **Implementação:**
+
 - Privacy notice in-app: ✅ Existe (docs/LGPD/LGPD-PRIVACY-NOTICE.md)
 - Consentimento explícito: ⚠️ Usar em checkout para email marketing
 - Revogação: ✅ "Parar emails" funcionalidade
@@ -797,12 +878,12 @@ Backups:
 
 ### 7.1 Armazenamento Local
 
-| Item | Mobile | Web | Status |
-|------|--------|-----|--------|
-| JWT Token | Expo SecureStore | AsyncStorage | ⚠️ Web vulnerable a XSS |
-| Refresh Token | Expo SecureStore | AsyncStorage | ⚠️ Web vulnerable a XSS |
-| Session Data | SecureStore | localStorage | ✅ |
-| Sensitive PII | ❌ Não armazenar | ❌ Não armazenar | ✅ |
+| Item          | Mobile           | Web              | Status                  |
+| ------------- | ---------------- | ---------------- | ----------------------- |
+| JWT Token     | Expo SecureStore | AsyncStorage     | ⚠️ Web vulnerable a XSS |
+| Refresh Token | Expo SecureStore | AsyncStorage     | ⚠️ Web vulnerable a XSS |
+| Session Data  | SecureStore      | localStorage     | ✅                      |
+| Sensitive PII | ❌ Não armazenar | ❌ Não armazenar | ✅                      |
 
 ### 7.2 Token Management
 
@@ -810,33 +891,34 @@ Backups:
 // ✅ BOM
 const supabase = createClient(url, key, {
   auth: {
-    storage: SecureStorageAdapter,  // Moblie = SecureStore, Web = AsyncStorage
+    storage: SecureStorageAdapter, // Moblie = SecureStore, Web = AsyncStorage
     autoRefreshToken: true,
-    persistSession: true
-  }
+    persistSession: true,
+  },
 });
 
 // Logout limpa storage
-await supabase.auth.signOut();  // Remove tokens
+await supabase.auth.signOut(); // Remove tokens
 ```
 
 ### 7.3 HTTPS / Certificate Pinning
 
-| Aspecto | Status | Detalhes |
-|---------|--------|----------|
-| HTTPS | ✅ | Supabase + Railway (HTTP redirect) |
-| Certificate Pinning | ❌ | Não implementado |
-| Public Key Pinning | ❌ | Não implementado |
+| Aspecto             | Status | Detalhes                           |
+| ------------------- | ------ | ---------------------------------- |
+| HTTPS               | ✅     | Supabase + Railway (HTTP redirect) |
+| Certificate Pinning | ❌     | Não implementado                   |
+| Public Key Pinning  | ❌     | Não implementado                   |
 
 **Severidade:** ⚠️ MÉDIA - Mobile sem pinning é vulnerável a MITM em WiFi público
 
 **Correção:**
+
 ```typescript
 // Use: axios-https-proxy-agent + certificate pinning library
 // ou configure em EAS build (native plugins)
 import { SecurityClient } from 'react-native-https-proxy-agent';
 const client = new SecurityClient({
-  certificatePath: require('./certs/supabase.pem')
+  certificatePath: require('./certs/supabase.pem'),
 });
 ```
 
@@ -852,34 +934,34 @@ const client = new SecurityClient({
 
 ### 8.1 Validação de Requests
 
-| Aspecto | Status | Detalhes |
-|---------|--------|----------|
-| Method validation | ✅ | Edge functions checam (GET, POST, OPTIONS) |
-| Content-Type validation | ✅ | Checa `application/json` |
-| Body schema validation | ⚠️ | Falta Zod/joi em alguns endpoints |
-| Query params | ✅ | Sanitizados via RLS |
-| Headers | ✅ | JWT validation obrigatório |
+| Aspecto                 | Status | Detalhes                                   |
+| ----------------------- | ------ | ------------------------------------------ |
+| Method validation       | ✅     | Edge functions checam (GET, POST, OPTIONS) |
+| Content-Type validation | ✅     | Checa `application/json`                   |
+| Body schema validation  | ⚠️     | Falta Zod/joi em alguns endpoints          |
+| Query params            | ✅     | Sanitizados via RLS                        |
+| Headers                 | ✅     | JWT validation obrigatório                 |
 
 ### 8.2 Rate Limiting
 
-| Tipo | Implementação | Status |
-|------|---------------|--------|
-| Client-side | RateLimiterService (memória) | ❌ Apenas cosmético |
-| Server-side | Não detectado | ❌ CRÍTICO |
-| Edge Function | Não implementado | ❌ CRÍTICO |
+| Tipo          | Implementação                | Status              |
+| ------------- | ---------------------------- | ------------------- |
+| Client-side   | RateLimiterService (memória) | ❌ Apenas cosmético |
+| Server-side   | Não detectado                | ❌ CRÍTICO          |
+| Edge Function | Não implementado             | ❌ CRÍTICO          |
 
 **Severidade:** ⚠️ ALTA - Sem rate limiting no servidor, vulnerável a DoS
 
 ### 8.3 Security Headers
 
-| Header | Value | Status |
-|--------|-------|--------|
-| X-Content-Type-Options | nosniff | ✅ |
-| X-Frame-Options | DENY | ✅ |
-| Strict-Transport-Security | max-age=31536000 | ✅ |
-| Referrer-Policy | same-origin | ✅ |
-| Permissions-Policy | camera(), microphone() | ✅ |
-| Content-Security-Policy | ❌ Não encontrado | ⚠️ |
+| Header                    | Value                  | Status |
+| ------------------------- | ---------------------- | ------ |
+| X-Content-Type-Options    | nosniff                | ✅     |
+| X-Frame-Options           | DENY                   | ✅     |
+| Strict-Transport-Security | max-age=31536000       | ✅     |
+| Referrer-Policy           | same-origin            | ✅     |
+| Permissions-Policy        | camera(), microphone() | ✅     |
+| Content-Security-Policy   | ❌ Não encontrado      | ⚠️     |
 
 ---
 
@@ -890,6 +972,7 @@ const client = new SecurityClient({
 **Status:** ❌ Não encontrado Docker configs específicos
 
 **Recomendação:** Se usar Railway com Nixpacks, adicionar `Dockerfile` com:
+
 - Non-root user
 - Multi-stage build
 - Scan de vulnerabilidades (Trivy)
@@ -906,6 +989,7 @@ const client = new SecurityClient({
 ```
 
 **Gaps:**
+
 - ❌ Falta SAST (code static analysis) tipo SonarQube
 - ❌ Falta DAST (dynamic testing)
 - ❌ Falta container image scanning pré-deploy
@@ -926,6 +1010,7 @@ GitHub Secrets:
 ```
 
 **Correção:**
+
 ```bash
 # 1. Remover senhas de backup.bat / restore.bat
 # 2. Usar Railway env vars ou .env.local (gitignored)
@@ -943,17 +1028,18 @@ gh secret set DB_BACKUP_PASSWORD
 
 **Status:** ⚠️ CRÍTICA
 
-| Aspecto | Status | Detalhes |
-|---------|--------|----------|
-| Backup Frequency | ✅ | Scripts `backup.sh`, `backup.bat` existem |
-| Backup Encryption | ❌ | Dumps não encriptados |
-| Backup Storage | ❌ | Local (`backups/`), não offsite |
-| Backup Verification | ❌ | Sem testes de restore |
-| Disaster Recovery Plan | ❌ | Não documentado |
+| Aspecto                | Status | Detalhes                                  |
+| ---------------------- | ------ | ----------------------------------------- |
+| Backup Frequency       | ✅     | Scripts `backup.sh`, `backup.bat` existem |
+| Backup Encryption      | ❌     | Dumps não encriptados                     |
+| Backup Storage         | ❌     | Local (`backups/`), não offsite           |
+| Backup Verification    | ❌     | Sem testes de restore                     |
+| Disaster Recovery Plan | ❌     | Não documentado                           |
 
 **Severidade:** 🔴 CRÍTICA
 
 **Correção:**
+
 ```bash
 #!/bin/bash
 # database-backup/backup-encrypted.sh
@@ -986,14 +1072,15 @@ npm audit | grep -E "CRITICAL|HIGH"
 
 ### 10.2 Supply Chain Security
 
-| Item | Status | Detalhes |
-|-----|--------|----------|
-| npm lockfile | ✅ | package-lock.json (verificar commits) |
-| Dependências pinned | ⚠️ | Caret ranges (`^`) podem mover patch/minor |
-| Transitive deps | ⚠️ | Auditadas apenas com `npm audit` |
-| Private registry | ❌ | Sem npm private packages |
+| Item                | Status | Detalhes                                   |
+| ------------------- | ------ | ------------------------------------------ |
+| npm lockfile        | ✅     | package-lock.json (verificar commits)      |
+| Dependências pinned | ⚠️     | Caret ranges (`^`) podem mover patch/minor |
+| Transitive deps     | ⚠️     | Auditadas apenas com `npm audit`           |
+| Private registry    | ❌     | Sem npm private packages                   |
 
 **Recomendação:**
+
 ```json
 {
   "dependencyUpdates": "auto",
@@ -1010,6 +1097,7 @@ npm audit | grep -E "CRITICAL|HIGH"
 ### 11.1 Análise de Commits
 
 **❌ Senhas de BD Expostas:**
+
 ```
 database-backup/backup.bat:32 → REDACTED_DB_PASSWORD
 database-backup/restore.bat:18 → REDACTED_DB_PASSWORD
@@ -1017,6 +1105,7 @@ database-backup/.env.local → REDACTED_DB_PASSWORD
 ```
 
 **❌ Chaves de API Hardcodeadas:**
+
 ```
 restaurante-web/e2e/*.spec.ts → sb_publishable_sUAhOXyPkUhEb4tpbVU8wQ_71qyFI3x
 restaurante-web/.env.example:12 → AIzaSyAKbTm0iFFNwAcSmTtLrlyIHKc1ds1LrDE
@@ -1027,11 +1116,13 @@ restaurante-web/.env.example:12 → AIzaSyAKbTm0iFFNwAcSmTtLrlyIHKc1ds1LrDE
 **Arquivo:** `.gitignore` (padrão Expo)
 
 **O que está protegido:**
+
 - `node_modules/`
 - `.env.local` (se existe)
 - `dist/` build outputs
 
 **O que ESTÁ FALTANDO:**
+
 ```
 # ❌ ADICIONAR:
 database-backup/.env.local
@@ -1049,7 +1140,7 @@ database-backup/.env.local
 
 ```
 ✅ Gitleaks está configurado em CI
-❌ Precisa rodar localmente: 
+❌ Precisa rodar localmente:
    gitleaks detect --source . --verbose
 ```
 
@@ -1058,6 +1149,7 @@ database-backup/.env.local
 ## 📊 SCORES DE SEGURANÇA
 
 ### Segurança Overall
+
 ```
 ┌─────────────────────────────────┐
 │ SCORE: 58/100 (CRÍTICO)         │
@@ -1075,6 +1167,7 @@ Components:
 ```
 
 ### DevSecOps Score
+
 ```
 ┌─────────────────────────────────┐
 │ SCORE: 72/100 (SATISFATÓRIO)    │
@@ -1089,6 +1182,7 @@ Components:
 ```
 
 ### LGPD Compliance Score
+
 ```
 ┌─────────────────────────────────┐
 │ SCORE: 65/100 (ACEITÁVEL)       │
@@ -1109,6 +1203,7 @@ Components:
 ## 🎯 TOP RISCOS CRÍTICOS
 
 ### 1️⃣ 🔴 Segredos operacionais em scripts e backups
+
 - **Severidade:** CRÍTICA
 - **Impacto:** RCE + data breach total
 - **Localizações:** backup.bat, restore.bat, .env.local (se versionado)
@@ -1116,6 +1211,7 @@ Components:
 - **Tempo Estimado:** 2 horas
 
 ### 2️⃣ 🔴 RLS permissiva em `profiles`
+
 - **Severidade:** CRÍTICA
 - **Impacto:** User enumeration + profile disclosure
 - **Localização:** Banco remoto e 20260311161100_schema_dump.sql
@@ -1123,6 +1219,7 @@ Components:
 - **Tempo Estimado:** 30 minutos + migration + test
 
 ### 3️⃣ 🔴 Rate limiting em operações críticas de billing
+
 - **Severidade:** ALTA
 - **Impacto:** DoS/spam attacks
 - **Localização:** Edge Functions (billing, webhooks)
@@ -1130,6 +1227,7 @@ Components:
 - **Tempo Estimado:** 4-6 horas
 
 ### 4️⃣ 🟠 CORS com Wildcard Fallback
+
 - **Severidade:** ALTA
 - **Impacto:** CSRF + cross-origin attacks
 - **Localização:** cors.ts
@@ -1137,6 +1235,7 @@ Components:
 - **Tempo Estimado:** 2 horas
 
 ### 5️⃣ 🟠 Gate restante para billing Mercado Pago
+
 - **Severidade:** ALTA OPERACIONAL
 - **Impacto:** promoção sem evidência funcional end-to-end
 - **Localização:** fluxo S1-S5 em `docs/saas-billing/operations/SMOKE-TEST-26MAR-EXECUTION-PLAN.md`
@@ -1144,6 +1243,7 @@ Components:
 - **Tempo Estimado:** 2-3 horas
 
 ### 6️⃣ 🟠 Falta de MFA para Admins
+
 - **Severidade:** ALTA
 - **Impacto:** Account takeover
 - **Solução:** Supabase Auth MFA + enforcement policy
@@ -1154,6 +1254,7 @@ Components:
 ## ✅ QUICK WINS (Fáceis & Alto Impacto)
 
 ### 1. Remover Senhas de Backup Scripts
+
 **Tempo:** 30 min  
 **Impacto:** CRÍTICA
 
@@ -1168,29 +1269,33 @@ set SOURCE_DB_PASSWORD=%DB_BACKUP_PASSWORD%
 ```
 
 ### 2. Fixar RLS Policy de Profiles
+
 **Tempo:** 1 hora  
 **Impacto:** CRÍTICA
 
 ```sql
 -- New migration: 20260323_fix_profiles_rls.sql
 DROP POLICY authenticated_pull_profiles ON profiles;
-CREATE POLICY "users_read_own_profile" ON profiles 
-  FOR SELECT TO authenticated 
+CREATE POLICY "users_read_own_profile" ON profiles
+  FOR SELECT TO authenticated
   USING (auth.uid() = id);
 ```
 
 ### 3. Adicionar CSP Header
+
 **Tempo:** 30 min  
 **Impacto:** ALTA
 
 ```typescript
 // restaurante-ops/src/index.ts
-res.setHeader('Content-Security-Policy', 
-  "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'"
+res.setHeader(
+  'Content-Security-Policy',
+  "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'",
 );
 ```
 
 ### 4. Habilitar MFA em Supabase
+
 **Tempo:** 1 hora  
 **Impacto:** ALTA
 
@@ -1198,13 +1303,14 @@ res.setHeader('Content-Security-Policy',
 // Require MFA for admin signup
 if (role === 'admin') {
   const { data } = await supabase.auth.mfa.enroll({
-    issuer: 'restaurante-supabase'
+    issuer: 'restaurante-supabase',
   });
   // Return QR code para app de autenticação
 }
 ```
 
 ### 5. Atualizar .gitignore
+
 **Tempo:** 15 min  
 **Impacto:** ALTA
 
@@ -1220,36 +1326,36 @@ git rm --cached database-backup/.env.local  # Remove from history
 
 ### Semana 1: Hotfixes (Críticos)
 
-| Dia | Task | Responsável | Tempo |
-|-----|------|-------------|-------|
-| 1-2 | Remover senhas BD + rotate credenciais | DevSecOps | 2h |
-| 2 | Corrigir RLS de profiles | DB Admin | 1h |
-| 3 | Rate limiting em Edge Functions | Backend | 6h |
-| 3 | CORS whitelist + origin validation | Backend | 2h |
-| 4-5 | Testar todas as mudanças + deploy | QA | 4h |
+| Dia | Task                                   | Responsável | Tempo |
+| --- | -------------------------------------- | ----------- | ----- |
+| 1-2 | Remover senhas BD + rotate credenciais | DevSecOps   | 2h    |
+| 2   | Corrigir RLS de profiles               | DB Admin    | 1h    |
+| 3   | Rate limiting em Edge Functions        | Backend     | 6h    |
+| 3   | CORS whitelist + origin validation     | Backend     | 2h    |
+| 4-5 | Testar todas as mudanças + deploy      | QA          | 4h    |
 
 **Deliverable:** Security hotfix PR + deployed to production
 
 ### Semana 2-3: Medium Priority
 
-| Task | Tempo | Status |
-|------|-------|--------|
-| Implementar MFA para admins | 4h | Design + code |
-| Adicionar CSP headers | 2h | Config + test |
-| Certificate pinning (mobile) | 4h | React Native config |
-| SAST setup (SonarQube / Semgrep) | 3h | CI config |
-| DPIA (Data Protection Impact Assessment) | 8h | Legal review |
-| Backup encryption strategy | 6h | Database + OPS |
+| Task                                     | Tempo | Status              |
+| ---------------------------------------- | ----- | ------------------- |
+| Implementar MFA para admins              | 4h    | Design + code       |
+| Adicionar CSP headers                    | 2h    | Config + test       |
+| Certificate pinning (mobile)             | 4h    | React Native config |
+| SAST setup (SonarQube / Semgrep)         | 3h    | CI config           |
+| DPIA (Data Protection Impact Assessment) | 8h    | Legal review        |
+| Backup encryption strategy               | 6h    | Database + OPS      |
 
 ### Semana 4: Compliance & Governance
 
-| Task | Tempo | Status |
-|------|-------|--------|
-| DPO assignment | 2h | HR |
-| Privacy policy update | 4h | Legal |
-| Data retention automation | 8h | Database + cron |
-| Vendor security assessment (Supabase, Railway, MP) | 6h | Procurement |
-| Security training team | 4h | All hands |
+| Task                                               | Tempo | Status          |
+| -------------------------------------------------- | ----- | --------------- |
+| DPO assignment                                     | 2h    | HR              |
+| Privacy policy update                              | 4h    | Legal           |
+| Data retention automation                          | 8h    | Database + cron |
+| Vendor security assessment (Supabase, Railway, MP) | 6h    | Procurement     |
+| Security training team                             | 4h    | All hands       |
 
 ---
 
@@ -1271,7 +1377,7 @@ git rm --cached database-backup/.env.local  # Remove from history
 [ ] Error messages sanitizadas (sem PII)
 [ ] E2E tests passando (Playwright)
 [ ] Code review + security approval
-[ ] Deploy → staging → prod
+[ ] Deploy com validacao controlada em producao (sem staging dedicado) e rollout guardado
 ```
 
 ---
@@ -1279,19 +1385,23 @@ git rm --cached database-backup/.env.local  # Remove from history
 ## 🔗 REFERÊNCIAS
 
 ### OWASP
+
 - [OWASP Top 10 2021](https://owasp.org/Top10/)
 - [OWASP ASVS 4.0](https://github.com/OWASP/ASVS)
 
 ### LGPD
+
 - [Lei nº 13.709/2018](http://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm)
 - [ANPD Guia de Implementação](https://anpd.gov.br/)
 
 ### Standards
+
 - [NIST Cybersecurity Framework](https://www.nist.gov/cyberframework)
 - [ISO 27001:2022](https://www.iso.org/standard/27001)
 - [PCI DSS 4.0](https://www.pcisecuritystandards.org/)
 
 ### Ferramentas
+
 - [Gitleaks](https://github.com/gitleaks/gitleaks)
 - [Snyk](https://snyk.io/)
 - [Trivy](https://trivy.dev/)

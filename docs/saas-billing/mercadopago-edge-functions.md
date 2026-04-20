@@ -26,7 +26,7 @@ supabase secrets set MERCADOPAGO_PUBLIC_KEY=... MERCADOPAGO_ACCESS_TOKEN=... MER
 ```
 
 4. Validate readiness by invoking `billing-provider-status` from app/web BillingScreen.
-5. Keep production and test credentials in separate environments (never shared across staging/prod).
+5. Keep production and test credentials in separate environments (never shared across test/prod; if staging exists in the future, keep it isolated as well).
 
 ### Secret Rotation Runbook
 
@@ -225,10 +225,12 @@ Purpose:
 Purpose (two-mode endpoint):
 
 **Mode A** — no `cardToken` in body:
+
 - validate the authenticated admin
 - return `MERCADOPAGO_PUBLIC_KEY` for client-side card tokenization via Mercado Pago.js SDK
 
 **Mode B** — `cardToken` in body:
+
 - validate the admin and multi-tenant context
 - upsert Mercado Pago Customer (creates if missing, reuses `subscriptions.mp_customer_id`)
 - store the card in MP Vault via `POST /v1/customers/{id}/cards`

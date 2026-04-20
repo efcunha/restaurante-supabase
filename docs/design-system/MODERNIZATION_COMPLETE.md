@@ -186,7 +186,7 @@
 - [ ] Migrate 2-3 existing UI components to `@restaurante/ui`
 - [ ] Run E2E tests (Playwright) to confirm alias resolution in flows
 - [ ] Measure bundle size impact
-- [ ] Deploy to staging for team feedback
+- [ ] Execute controlled production validation for team feedback
 
 ### Medium-term (2-4 weeks)
 
@@ -274,7 +274,7 @@
 
 ### For Team Lead
 
-1. Deploy to staging for smoke testing
+1. Execute controlled production smoke testing
 2. Confirm E2E tests pass
 3. Monitor performance metrics
 4. Plan gradual migration of existing components
