@@ -39,8 +39,7 @@
     "generate-icons": "node scripts/generate-android-icons.js",
     "update-splash": "node scripts/update-splash-screen.js",
     "update-icon": "npm run fix-icon-padding && npm run generate-icons",
-    "update-all-icons": "npm run fix-icon-padding && npm run generate-icons && npm run update-splash",
-    "storybook:web": "pnpm -w storybook:web"
+    "update-all-icons": "npm run fix-icon-padding && npm run generate-icons && npm run update-splash"
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",

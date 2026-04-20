@@ -1,2 +1,11 @@
 #!/usr/bin/env sh
-pnpm commitlint --edit "$1"
+set -e
+
+if command -v pnpm >/dev/null 2>&1; then
+	pnpm commitlint --edit "$1"
+elif command -v corepack >/dev/null 2>&1; then
+	corepack pnpm commitlint --edit "$1"
+else
+	echo "Erro: pnpm/corepack nao encontrado no PATH para executar commitlint." >&2
+	exit 1
+fi
