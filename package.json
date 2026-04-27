@@ -10,7 +10,8 @@
     "typecheck": "turbo run type-check",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "prepare": "husky"
+    "prepare": "husky",
+    "security:cloudflare:check": "node scripts/security/cloudflare-integrity-check.mjs"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.1.0",
