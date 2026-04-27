@@ -166,6 +166,7 @@ Then route to Callstack skills for specialized guidance (performance, upgrades, 
 For UI/UX design direction, visual exploration, design system generation, or interface quality reviews:
 
 - Use `.github/skills/ui-ux-pro-max/PROMPT.md`
+- Use `.github/skills/awesome-design-md/SKILL.md` para benchmark visual via `DESIGN.md` e referências do catálogo `getdesign.md`
 - Invoke it in GitHub Copilot with `/ui-ux-pro-max <pedido>`
 - Team shortcut guide: `.github/skills/ui-ux-pro-max/ATALHO-USO-INTERNO.md`
 - Team execution pack: `.github/skills/ui-ux-pro-max/PACK-EXECUCAO-UIUX.md`
@@ -174,8 +175,9 @@ For UI/UX design direction, visual exploration, design system generation, or int
 Usage rules:
 
 - Keep `.github\skills\restaurante-supabase\SKILL.md` as the source for repository architecture and domain constraints.
+- Use `.github/skills/awesome-design-md/SKILL.md` quando o pedido exigir referências visuais baseadas em produtos reais ou `DESIGN.md`.
 - Use the UI/UX Pro Max prompt to generate design-system recommendations and UI/UX guardrails for app or web surfaces.
-- If both apply, combine them: repository skill first for constraints, then `/ui-ux-pro-max` for visual/design workflow.
+- If both apply, combine them: repository skill first for constraints, then `awesome-design-md` para benchmark visual, then `/ui-ux-pro-max` for visual/design workflow.
 
 #### Mandatory enforcement
 
