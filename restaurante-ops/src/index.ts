@@ -3342,6 +3342,62 @@ function startServer() {
         return;
       }
 
+      // ---- Integridade Cloudflare (chamado pelo Activepieces scheduler) ----
+      if (req.method === 'GET' && path === '/api/security/cloudflare-check') {
+        const inboundApiKeyRaw = req.headers['x-log-api-key'];
+        const inboundApiKey = Array.isArray(inboundApiKeyRaw)
+          ? inboundApiKeyRaw[0]
+          : inboundApiKeyRaw;
+        const expectedApiKey = env.OPS_LOG_API_KEY;
+
+        if (!expectedApiKey) {
+          respondJson(res, 503, { error: 'Endpoint nao configurado.' });
+          return;
+        }
+
+        if (typeof inboundApiKey !== 'string' || inboundApiKey.trim() !== expectedApiKey) {
+          logWarn('security.cloudflare_check_unauthorized', {
+            request_id: requestId,
+            statusCode: 401,
+          });
+          respondJson(res, 401, { error: 'Nao autorizado.' });
+          return;
+        }
+
+        const cfCfg = buildCloudflareIntegrityCfg({
+          CLOUDFLARE_API_TOKEN: env.CLOUDFLARE_API_TOKEN,
+          CLOUDFLARE_ACCOUNT_ID: env.CLOUDFLARE_ACCOUNT_ID,
+          CLOUDFLARE_ZONE_NAME: env.CLOUDFLARE_ZONE_NAME,
+          CLOUDFLARE_AUDIT_LOOKBACK_HOURS: env.CLOUDFLARE_AUDIT_LOOKBACK_HOURS,
+          CLOUDFLARE_ALLOWED_CNAMES: env.CLOUDFLARE_ALLOWED_CNAMES,
+          CLOUDFLARE_ALLOWED_WORKER_ROUTES: env.CLOUDFLARE_ALLOWED_WORKER_ROUTES,
+          CLOUDFLARE_ALLOWED_WORKER_SCRIPTS: env.CLOUDFLARE_ALLOWED_WORKER_SCRIPTS,
+        });
+
+        if (!cfCfg) {
+          logWarn('security.cloudflare_check_not_configured', { request_id: requestId });
+          respondJson(res, 503, { error: 'Credenciais Cloudflare nao configuradas.' });
+          return;
+        }
+
+        try {
+          const result = await runCloudflareIntegrityCheck(cfCfg);
+          logInfo('security.cloudflare_check_completed', {
+            request_id: requestId,
+            ok: result.ok,
+            alert_count: result.alerts.length,
+          });
+          respondJson(res, result.ok ? 200 : 409, result);
+        } catch (err) {
+          logError('security.cloudflare_check_failed', {
+            request_id: requestId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+          respondJson(res, 500, { error: 'Falha ao executar verificacao Cloudflare.' });
+        }
+        return;
+      }
+
       // ---- Webhooks de integracao (Activepieces + Evolution) ----
       if (req.method === 'POST' && path === '/webhooks/activepieces') {
         await handleActivepiecesWebhook(req, res, requestId);
