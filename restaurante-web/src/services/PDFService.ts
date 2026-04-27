@@ -1,91 +1,113 @@
-import * as Print from 'expo-print';
-import * as Sharing from 'expo-sharing';
-import { Alert, Platform } from 'react-native';
+import * as Print from 'expo-print'
+import * as Sharing from 'expo-sharing'
+import { Alert, Platform } from 'react-native'
+
+const escapeHtml = (value: string): string =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
 
 interface ComandaData {
-  comandaNumber: string | number;
-  cliente?: string;
-  dataEmissao?: string;
-  totalConsumido?: number;
-  totalPago?: number;
-  saldoAberto?: number;
+  comandaNumber: string | number
+  cliente?: string
+  dataEmissao?: string
+  totalConsumido?: number
+  totalPago?: number
+  saldoAberto?: number
   itens?: {
-    quantidade: number;
-    nome: string;
-    observacao?: string;
-    valor?: number;
-  }[];
-  pagamentosResumo?: Record<string, number>;
+    quantidade: number
+    nome: string
+    observacao?: string
+    valor?: number
+  }[]
+  pagamentosResumo?: Record<string, number>
 }
 
 interface CompanyData {
-  name?: string;
-  document?: string;
-  documentType?: 'cpf' | 'cnpj';
+  name?: string
+  document?: string
+  documentType?: 'cpf' | 'cnpj'
 }
 
 class PDFService {
-
   async generateAndShareComanda(comandaData: ComandaData, companyData: CompanyData) {
     if (Platform.OS === 'web') {
-      Alert.alert('Aviso', 'No modo Web, utilize a impressão do navegador (CTRL+P).');
-      return;
+      Alert.alert('Aviso', 'No modo Web, utilize a impressão do navegador (CTRL+P).')
+      return
     }
 
     try {
-      const html = this.buildHtml(comandaData, companyData);
-      const { uri } = await Print.printToFileAsync({ html });
+      const html = this.buildHtml(comandaData, companyData)
+      const { uri } = await Print.printToFileAsync({ html })
 
       // Compartilhar arquivo
       await Sharing.shareAsync(uri, {
         UTI: '.pdf',
         mimeType: 'application/pdf',
-        dialogTitle: 'Compartilhar Comprovante'
-      });
-
+        dialogTitle: 'Compartilhar Comprovante',
+      })
     } catch (error) {
-      console.error('Erro ao gerar PDF:', error);
-      Alert.alert('Erro', 'Não foi possível gerar/compartilhar o PDF.');
+      console.error('Erro ao gerar PDF:', error)
+      Alert.alert('Erro', 'Não foi possível gerar/compartilhar o PDF.')
     }
   }
 
   printOnWeb(comandaData: ComandaData, companyData: CompanyData) {
-    const html = this.buildHtml(comandaData, companyData);
-    const printWindow = window.open('', '_blank');
+    const html = this.buildHtml(comandaData, companyData)
+    const printWindow = window.open('', '_blank')
     if (!printWindow) {
-      Alert.alert('Pop-up bloqueado', 'Permita pop-ups para este site e tente novamente, ou use CTRL+P para imprimir.');
-      return;
+      Alert.alert(
+        'Pop-up bloqueado',
+        'Permita pop-ups para este site e tente novamente, ou use CTRL+P para imprimir.',
+      )
+      return
     }
-    printWindow.document.open();
-    printWindow.document.write(html);
-    printWindow.document.close();
+    printWindow.document.open()
+    printWindow.document.write(html)
+    printWindow.document.close()
     printWindow.addEventListener('load', () => {
-      printWindow.print();
-      printWindow.close();
-    });
+      printWindow.print()
+      printWindow.close()
+    })
   }
 
   buildHtml(comanda: ComandaData, companyData: CompanyData) {
-    const itensHtml = (comanda.itens || []).map(item => `
+    const itensHtml = (comanda.itens || [])
+      .map(
+        (item) => `
       <tr>
         <td style="padding: 5px 0;">
-            ${item.quantidade}x ${item.nome}
-            ${item.observacao ? `<br/><small style="color:#666">${item.observacao}</small>` : ''}
+            ${Number(item.quantidade || 0)}x ${escapeHtml(String(item.nome || ''))}
+            ${item.observacao ? `<br/><small style="color:#666">${escapeHtml(String(item.observacao))}</small>` : ''}
         </td>
         <td style="text-align: right; vertical-align: top; white-space: nowrap; padding-left: 10px;">
-            R$ ${item.valor ? item.valor.toFixed(2) : '0.00'}
+            R$ ${Number(item.valor || 0).toFixed(2)}
         </td>
       </tr>
-    `).join('');
+    `,
+      )
+      .join('')
 
-    const companyName = companyData?.name || 'Recibo de Vendas';
-    const companyDoc = companyData?.document ? (companyData.documentType === 'cpf' ? 'CPF' : 'CNPJ') + ': ' + companyData.document : '';
+    const companyName = escapeHtml(companyData?.name || 'Recibo de Vendas')
+    const companyDoc = companyData?.document
+      ? escapeHtml(
+          `${companyData.documentType === 'cpf' ? 'CPF' : 'CNPJ'}: ${companyData.document}`,
+        )
+      : ''
+    const comandaNumber = escapeHtml(String(comanda.comandaNumber ?? ''))
+    const cliente = escapeHtml(String(comanda.cliente || 'Consumidor Final'))
+    const dataEmissao = escapeHtml(String(comanda.dataEmissao || new Date().toLocaleString()))
 
     return `
       <!DOCTYPE html>
       <html>
       <head>
+        <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
+        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'none'; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'" />
         <style>
           body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 20px; color: #333; }
           .container { max-width: 500px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 10px; }
@@ -111,9 +133,9 @@ class PDFService {
           </div>
 
           <div class="info">
-            <strong>Comanda:</strong> ${comanda.comandaNumber}<br/>
-            <strong>Cliente:</strong> ${comanda.cliente || 'Consumidor Final'}<br/>
-            <strong>Data:</strong> ${comanda.dataEmissao || new Date().toLocaleString()}<br/>
+            <strong>Comanda:</strong> ${comandaNumber}<br/>
+            <strong>Cliente:</strong> ${cliente}<br/>
+            <strong>Data:</strong> ${dataEmissao}<br/>
           </div>
 
           <table class="table">
@@ -150,8 +172,8 @@ class PDFService {
         </div>
       </body>
       </html>
-    `;
+    `
   }
 }
 
-export default new PDFService();
+export default new PDFService()

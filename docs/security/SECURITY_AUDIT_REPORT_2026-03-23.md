@@ -240,7 +240,7 @@ database-backup/.env.local
 - `restaurante-web/e2e/race-condition-comanda-grouping.spec.ts:9`
 
 ```typescript
-const SUPABASE_ANON_KEY = 'sb_publishable_sUAhOXyPkUhEb4tpbVU8wQ_71qyFI3x';
+const SUPABASE_ANON_KEY = '[REDACTED_SUPABASE_ANON_KEY]';
 ```
 
 **Impacto:** MÉDIO - Chaves publicáveis (anon_key) têm escopo limitado por RLS, mas exposição é anti-padrão
@@ -262,7 +262,7 @@ test.beforeAll(() => {
 **Localização:** `restaurante-web/.env.example:12`
 
 ```
-EXPO_PUBLIC_FIREBASE_API_KEY=AIzaSyAKbTm0iFFNwAcSmTtLrlyIHKc1ds1LrDE
+EXPO_PUBLIC_FIREBASE_API_KEY=[REDACTED_FIREBASE_API_KEY]
 ```
 
 **Impacto:** MÉDIO - Chave pública (anon), mas deve estar em .env.example VAZIO
@@ -1107,8 +1107,8 @@ database-backup/.env.local → REDACTED_DB_PASSWORD
 **❌ Chaves de API Hardcodeadas:**
 
 ```
-restaurante-web/e2e/*.spec.ts → sb_publishable_sUAhOXyPkUhEb4tpbVU8wQ_71qyFI3x
-restaurante-web/.env.example:12 → AIzaSyAKbTm0iFFNwAcSmTtLrlyIHKc1ds1LrDE
+restaurante-web/e2e/*.spec.ts → [REDACTED_SUPABASE_ANON_KEY]
+restaurante-web/.env.example:12 → [REDACTED_FIREBASE_API_KEY]
 ```
 
 ### 11.2 .gitignore Status

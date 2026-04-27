@@ -37,10 +37,7 @@
         "dataType": "string",
         "value1": "={{ $json.body.status_novo }}",
         "rules": {
-          "rules": [
-            { "value2": "preparing" },
-            { "value2": "delivered" }
-          ]
+          "rules": [{ "value2": "preparing" }, { "value2": "delivered" }]
         }
       },
       "id": "093d2b62-7459-4586-b136-c4c1415d441e",
@@ -58,7 +55,7 @@
           "parameters": [
             {
               "name": "apikey",
-              "value": "Lueed28@13546289b@P@ssw0rd"
+              "value": "[REDACTED_SECRET]"
             }
           ]
         },
@@ -82,7 +79,7 @@
           "parameters": [
             {
               "name": "apikey",
-              "value": "Lueed28@13546289b@P@ssw0rd"
+              "value": "[REDACTED_SECRET]"
             }
           ]
         },
@@ -102,10 +99,7 @@
         "dataType": "string",
         "value1": "={{ $json.body.status_novo }}",
         "rules": {
-          "rules": [
-            { "value2": "dispatched" },
-            { "value2": "delivered" }
-          ]
+          "rules": [{ "value2": "dispatched" }, { "value2": "delivered" }]
         }
       },
       "id": "37d852db-28cc-4d56-bd81-dbece36c43e7",
@@ -123,7 +117,7 @@
           "parameters": [
             {
               "name": "apikey",
-              "value": "Lueed28@13546289b@P@ssw0rd"
+              "value": "[REDACTED_SECRET]"
             }
           ]
         },
@@ -183,11 +177,7 @@
         "dataType": "string",
         "value1": "={{ $json.body.record.status }}",
         "rules": {
-          "rules": [
-            { "value2": "pendente" },
-            { "value2": "confirmada" },
-            { "value2": "cancelada" }
-          ]
+          "rules": [{ "value2": "pendente" }, { "value2": "confirmada" }, { "value2": "cancelada" }]
         }
       },
       "id": "42c0c8ca-8a47-423a-8797-d8cc7b8729b1",
@@ -205,7 +195,7 @@
           "parameters": [
             {
               "name": "apikey",
-              "value": "Lueed28@13546289b@P@ssw0rd"
+              "value": "[REDACTED_SECRET]"
             }
           ]
         },
@@ -229,7 +219,7 @@
           "parameters": [
             {
               "name": "apikey",
-              "value": "Lueed28@13546289b@P@ssw0rd"
+              "value": "[REDACTED_SECRET]"
             }
           ]
         },
@@ -253,7 +243,7 @@
           "parameters": [
             {
               "name": "apikey",
-              "value": "Lueed28@13546289b@P@ssw0rd"
+              "value": "[REDACTED_SECRET]"
             }
           ]
         },
@@ -271,67 +261,37 @@
   ],
   "connections": {
     "Webhook Entregas": {
-      "main": [
-        [
-          { "node": "É Pedido do Salão/Mesa?", "type": "main", "index": 0 }
-        ]
-      ]
+      "main": [[{ "node": "É Pedido do Salão/Mesa?", "type": "main", "index": 0 }]]
     },
     "É Pedido do Salão/Mesa?": {
       "main": [
-        [
-          { "node": "Status do Pedido Local", "type": "main", "index": 0 }
-        ],
-        [
-          { "node": "Status do Pedido Delivery", "type": "main", "index": 0 }
-        ]
+        [{ "node": "Status do Pedido Local", "type": "main", "index": 0 }],
+        [{ "node": "Status do Pedido Delivery", "type": "main", "index": 0 }]
       ]
     },
     "Status do Pedido Local": {
       "main": [
-        [
-          { "node": "WhatsApp Preparando (Local)", "type": "main", "index": 0 }
-        ],
-        [
-          { "node": "WhatsApp Entregue (Local)", "type": "main", "index": 0 }
-        ]
+        [{ "node": "WhatsApp Preparando (Local)", "type": "main", "index": 0 }],
+        [{ "node": "WhatsApp Entregue (Local)", "type": "main", "index": 0 }]
       ]
     },
     "Status do Pedido Delivery": {
       "main": [
-        [
-          { "node": "WhatsApp Dispatched (Delivery)", "type": "main", "index": 0 }
-        ],
-        [
-          { "node": "Supabase - Inserir Pagamento Automático", "type": "main", "index": 0 }
-        ]
+        [{ "node": "WhatsApp Dispatched (Delivery)", "type": "main", "index": 0 }],
+        [{ "node": "Supabase - Inserir Pagamento Automático", "type": "main", "index": 0 }]
       ]
     },
     "Webhook Supabase (Reservas)": {
-      "main": [
-        [
-          { "node": "Tem Telefone na Reserva?", "type": "main", "index": 0 }
-        ]
-      ]
+      "main": [[{ "node": "Tem Telefone na Reserva?", "type": "main", "index": 0 }]]
     },
     "Tem Telefone na Reserva?": {
-      "main": [
-        [
-          { "node": "Status da Reserva", "type": "main", "index": 0 }
-        ]
-      ]
+      "main": [[{ "node": "Status da Reserva", "type": "main", "index": 0 }]]
     },
     "Status da Reserva": {
       "main": [
-        [
-          { "node": "WhatsApp Reserva (Nova)", "type": "main", "index": 0 }
-        ],
-        [
-          { "node": "WhatsApp Reserva (Confirmada)", "type": "main", "index": 0 }
-        ],
-        [
-          { "node": "WhatsApp Reserva (Cancelada)", "type": "main", "index": 0 }
-        ]
+        [{ "node": "WhatsApp Reserva (Nova)", "type": "main", "index": 0 }],
+        [{ "node": "WhatsApp Reserva (Confirmada)", "type": "main", "index": 0 }],
+        [{ "node": "WhatsApp Reserva (Cancelada)", "type": "main", "index": 0 }]
       ]
     }
   }
