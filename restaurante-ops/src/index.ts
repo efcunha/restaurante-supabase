@@ -49,6 +49,10 @@ import {
   type ActivatePlanConfigInput,
 } from './modules/billing-plan-config-operations.js';
 import {
+  buildCloudflareIntegrityCfg,
+  runCloudflareIntegrityCheck,
+} from './modules/cloudflare-integrity.js';
+import {
   brl,
   fetchBillingOpsMetrics,
   fetchInvoiceStats,
