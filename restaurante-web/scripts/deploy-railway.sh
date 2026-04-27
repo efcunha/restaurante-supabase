@@ -12,6 +12,9 @@ DB_BACKUP_DIR="$ROOT_DIR/database-backup"
 MIGRATIONS_DIR="$DB_BACKUP_DIR/migrations"
 CHECK_SYNC_SCRIPT="$DB_BACKUP_DIR/check-migration-sync.sh"
 RAILWAY_SERVICE_WEB="${RAILWAY_SERVICE_WEB:-restaurante-web}"
+RAILWAY_WORKSPACE="${RAILWAY_WORKSPACE:-Machado & Cunha Soft House}"
+RAILWAY_PROJECT="${RAILWAY_PROJECT:-restaurante}"
+RAILWAY_ENVIRONMENT="${RAILWAY_ENVIRONMENT:-production}"
 
 echo "======================================"
 echo "🚀 Iniciando Deploy para o Railway..."
@@ -130,7 +133,7 @@ apply_web_feature_flags() {
     echo ""
     echo "⚙ Aplicando feature flags de producao para restaurante-web..."
 
-    if ! retry_command 3 5 railway variables --service "$RAILWAY_SERVICE_WEB" \
+    if ! retry_command 3 5 railway variables --skip-deploys --environment "$RAILWAY_ENVIRONMENT" --service "$RAILWAY_SERVICE_WEB" \
         --set "EXPO_PUBLIC_FEATURE_LOGIN_UI_NEXT=true" \
         --set "EXPO_PUBLIC_FEATURE_REGISTER_COMPANY_UI_NEXT=true" \
         --set "EXPO_PUBLIC_FEATURE_NOVO_PEDIDO_UI_NEXT=true" \
@@ -359,20 +362,68 @@ unset RAILWAY_API_TOKEN
 
 ensure_railway_auth
 
+is_expected_railway_link() {
+    local status_json
+
+    if ! status_json="$(railway status --json 2>/dev/null)"; then
+        return 1
+    fi
+
+    if [[ "$status_json" != *"\"name\": \"$RAILWAY_PROJECT\""* ]]; then
+        return 1
+    fi
+
+    if [[ "$status_json" != *"\"workspace\": {"*"\"name\": \"$RAILWAY_WORKSPACE\""* ]]; then
+        return 1
+    fi
+
+    if [[ "$status_json" != *"\"name\": \"$RAILWAY_ENVIRONMENT\""* ]]; then
+        return 1
+    fi
+
+    if [[ "$status_json" != *"\"serviceName\": \"$RAILWAY_SERVICE_WEB\""* ]]; then
+        return 1
+    fi
+
+    return 0
+}
+
+ensure_railway_link() {
+    echo ""
+    echo "Verificando vínculo com o projeto Railway..."
+    echo "Workspace: $RAILWAY_WORKSPACE"
+    echo "Projeto: $RAILWAY_PROJECT"
+    echo "Ambiente: $RAILWAY_ENVIRONMENT"
+    echo "Serviço: $RAILWAY_SERVICE_WEB"
+
+    if is_expected_railway_link; then
+        echo "✅ Vínculo Railway já está correto."
+        return 0
+    fi
+
+    if ! retry_command 3 5 railway link \
+        --workspace "$RAILWAY_WORKSPACE" \
+        --project "$RAILWAY_PROJECT" \
+        --environment "$RAILWAY_ENVIRONMENT" \
+        --service "$RAILWAY_SERVICE_WEB"; then
+        echo "❌ Falha ao vincular projeto Railway de forma não interativa."
+        echo "Dica: ajuste RAILWAY_WORKSPACE/RAILWAY_PROJECT/RAILWAY_ENVIRONMENT/RAILWAY_SERVICE_WEB se os nomes mudaram."
+        exit 1
+    fi
+}
+
 # Vincula o diretório ao projeto do Railway caso não esteja vinculado.
-echo ""
-echo "Verificando vínculo com o projeto Railway..."
 cd "$ROOT_DIR/restaurante-web"
-railway link
+ensure_railway_link
 
 apply_web_feature_flags
 
 # Executa o deploy para a nuvem
 echo "Enviando projeto para produção no Railway..."
-if railway up; then
+if retry_command 3 8 railway up; then
     echo "✅ Deploy iniciado/concluído com sucesso no Railway!"
 else
     echo "❌ Ocorreu um erro durante o deploy."
-    echo "Dica: Verifique se você está autenticado usando 'railway login' e vinculado ao projeto usando 'railway link'."
+    echo "Dica: Verifique autenticação, vínculo de projeto e conectividade com https://backboard.railway.com."
     exit 1
 fi

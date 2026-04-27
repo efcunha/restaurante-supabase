@@ -1,11 +1,80 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Socket } from 'node:net';
-import { buildEnv } from './config/env.js';
-import { signInWithPassword } from './auth/supabase.js';
-import { setSessionCookie, clearSessionCookie } from './auth/session.js';
 import { requireAuth } from './auth/middleware.js';
-import { renderDashboardHtml } from './views/dashboard.js';
+import { clearSessionCookie, setSessionCookie } from './auth/session.js';
 import type { OpsUser } from './auth/supabase.js';
+import { signInWithPassword } from './auth/supabase.js';
+import { buildEnv } from './config/env.js';
+import { handleActivepiecesWebhook } from './lib/activepieces-logger.js';
+import { startAlertScheduler } from './lib/alert-scheduler.js';
+import { handleEvolutionWebhook } from './lib/evolution-logger.js';
+import { createOpsHttpServer } from './lib/httpServer.js';
+import {
+  createAlert,
+  deleteAlert,
+  enqueueLog,
+  getMetrics as getLogMetrics,
+  getMetricsTimeline as getLogMetricsTimeline,
+  listAlerts,
+  listKnownServices as listKnownLogServices,
+  queryLogs,
+  traceOrder,
+  traceRequest,
+  updateAlert,
+  type AlertCondition,
+  type LogEntry,
+} from './lib/log-storage.js';
+import { logError, logInfo, logWarn } from './lib/logger.js';
+import { checkRateLimit, resetRateLimit } from './lib/rate-limiter.js';
+import { checkRedisHealth, initRedis } from './lib/redis.js';
+import { attachRequestTracking } from './lib/request-tracker.js';
+import { runRetentionCleanupCycle, startRetentionScheduler } from './lib/retention-scheduler.js';
+import {
+  BillingOperationError,
+  checkInvoiceAmountDivergence,
+  fetchBillingAudit,
+  fetchBillingSnapshot,
+  reconcileBillingEvent,
+  regularizeByCard,
+  regularizeByPix,
+  type ReconcileInput,
+} from './modules/billing-operations.js';
+import {
+  PlanConfigOperationError,
+  activatePlanConfig,
+  fetchActivePlanConfig,
+  fetchPlanConfigAudit,
+  fetchPlanConfigHistory,
+  validateActivatePlanConfigInput,
+  type ActivatePlanConfigInput,
+} from './modules/billing-plan-config-operations.js';
+import {
+  brl,
+  fetchBillingOpsMetrics,
+  fetchInvoiceStats,
+  fetchKpiCounts,
+  fetchRecentCompanies,
+  fetchRecentInvoices,
+  fetchRevenueSeries,
+  fetchSaasMetrics,
+  fetchSubscriptionBreakdown,
+  type BillingOpsMetrics,
+  type CompanyRow,
+  type InvoiceRow,
+  type InvoiceStats,
+  type KpiCounts,
+  type RevenuePoint,
+  type SaasMetrics,
+  type SubscriptionBreakdown,
+} from './modules/data.js';
+import {
+  parseMetricsQueryParams,
+  parseServicesQueryParams,
+} from './modules/observability-query.js';
+import {
+  getOpsObservabilitySettings,
+  updateOpsObservabilitySettings,
+} from './modules/ops-observability-settings.js';
 import {
   getOpsSecuritySettings,
   listOpsMfaUsers,
@@ -14,95 +83,23 @@ import {
   userHasVerifiedMfa,
 } from './modules/ops-security.js';
 import {
-  getOpsObservabilitySettings,
-  updateOpsObservabilitySettings,
-} from './modules/ops-observability-settings.js';
-import {
-  parseMetricsQueryParams,
-  parseServicesQueryParams,
-} from './modules/observability-query.js';
-import {
-  fetchRecentCompanies,
-  fetchInvoiceStats,
-  fetchRecentInvoices,
-  fetchBillingOpsMetrics,
-  fetchSaasMetrics,
-  fetchRevenueSeries,
-  fetchSubscriptionBreakdown,
-  fetchKpiCounts,
-  brl,
-  type CompanyRow,
-  type InvoiceRow,
-  type InvoiceStats,
-  type BillingOpsMetrics,
-  type SaasMetrics,
-  type RevenuePoint,
-  type SubscriptionBreakdown,
-  type KpiCounts,
-} from './modules/data.js';
-import {
-  checkAllServices,
-  listMonitoredServicesConfig,
-  updateMonitoredServiceConfig,
-  getApiStatus,
-  type ServiceStatus,
-} from './modules/service-status.js';
-import { getSupabaseMetrics, type SupabaseMetrics } from './modules/supabase-metrics.js';
-import { logError, logInfo, logWarn } from './lib/logger.js';
-import { initRedis, checkRedisHealth } from './lib/redis.js';
-import { checkRateLimit, resetRateLimit } from './lib/rate-limiter.js';
-import {
-  BillingOperationError,
-  fetchBillingAudit,
-  fetchBillingSnapshot,
-  reconcileBillingEvent,
-  regularizeByCard,
-  regularizeByPix,
-  checkInvoiceAmountDivergence,
-  type ReconcileInput,
-} from './modules/billing-operations.js';
-import {
-  PlanConfigOperationError,
-  fetchActivePlanConfig,
-  fetchPlanConfigHistory,
-  fetchPlanConfigAudit,
-  activatePlanConfig,
-  validateActivatePlanConfigInput,
-  type ActivatePlanConfigInput,
-} from './modules/billing-plan-config-operations.js';
-import {
   authenticatePaymentOperator,
   getPaymentStatus,
-  initiatePayment,
   processHyperswitchWebhook,
   respondPaymentGatewayError,
-  validateInitiatePaymentInput,
   verifyHyperswitchSignature,
   type InitiatePaymentInput,
 } from './modules/payment-gateway.js';
 import { handleInitiatePaymentEndpoint } from './modules/payment-initiate-endpoint.js';
-import { createOpsHttpServer } from './lib/httpServer.js';
 import {
-  enqueueLog,
-  getMetrics as getLogMetrics,
-  getMetricsTimeline as getLogMetricsTimeline,
-  listKnownServices as listKnownLogServices,
-  listAlerts,
-  createAlert,
-  updateAlert,
-  deleteAlert,
-  queryLogs,
-  traceOrder,
-  traceRequest,
-  type LogEntry,
-  type AlertCondition,
-} from './lib/log-storage.js';
-import { startAlertScheduler } from './lib/alert-scheduler.js';
-import { runRetentionCleanupCycle, startRetentionScheduler } from './lib/retention-scheduler.js';
-import { handleActivepiecesWebhook } from './lib/activepieces-logger.js';
-import { handleEvolutionWebhook } from './lib/evolution-logger.js';
+  getApiStatus,
+  listMonitoredServicesConfig,
+  updateMonitoredServiceConfig,
+  type ServiceStatus,
+} from './modules/service-status.js';
+import { getSupabaseMetrics } from './modules/supabase-metrics.js';
+import { renderDashboardHtml } from './views/dashboard.js';
 import { renderObservabilityHtml } from './views/observability.js';
-import { attachRequestTracking } from './lib/request-tracker.js';
 
 const env = buildEnv();
 const opsCompanyId = env.OPS_ALLOWED_COMPANY_ID || 'f85bfdc2-982a-4cf7-b176-bce68426f861';
@@ -176,9 +173,9 @@ function sanitizeJsonValue(value: unknown): JsonSafeValue {
     const record = value as Record<string, unknown>;
     const nameValue = typeof record.name === 'string' ? record.name.toLowerCase() : '';
     const hasErrorShape =
-      Object.prototype.hasOwnProperty.call(record, 'stack')
-      || Object.prototype.hasOwnProperty.call(record, 'stackTrace')
-      || (nameValue.includes('error') && Object.prototype.hasOwnProperty.call(record, 'message'));
+      Object.prototype.hasOwnProperty.call(record, 'stack') ||
+      Object.prototype.hasOwnProperty.call(record, 'stackTrace') ||
+      (nameValue.includes('error') && Object.prototype.hasOwnProperty.call(record, 'message'));
 
     if (hasErrorShape) {
       return {
@@ -188,9 +185,9 @@ function sanitizeJsonValue(value: unknown): JsonSafeValue {
     }
 
     const entries = Object.entries(value as Record<string, unknown>);
-    return Object.fromEntries(
-      entries.map(([key, entry]) => [key, sanitizeJsonValue(entry)]),
-    ) as { [key: string]: JsonSafeValue };
+    return Object.fromEntries(entries.map(([key, entry]) => [key, sanitizeJsonValue(entry)])) as {
+      [key: string]: JsonSafeValue;
+    };
   }
 
   return null;
@@ -205,9 +202,7 @@ function respondJson(
     'content-type': 'application/json; charset=utf-8',
     'x-content-type-options': 'nosniff',
   });
-  const effectivePayload = statusCode >= 500
-    ? { error: 'Internal Server Error' }
-    : payload;
+  const effectivePayload = statusCode >= 500 ? { error: 'Internal Server Error' } : payload;
   const safePayload = sanitizeJsonValue(effectivePayload);
   const responseBody = JSON.stringify(safePayload)
     .replace(/</g, '\\u003c')
@@ -228,7 +223,12 @@ function respondHtml(
   res.writeHead(statusCode, {
     'content-type': 'text/html; charset=utf-8',
     'x-content-type-options': 'nosniff',
-    'content-security-policy': "default-src 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:;",
+    'x-frame-options': 'DENY',
+    'referrer-policy': 'strict-origin-when-cross-origin',
+    'permissions-policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=()',
+    'cross-origin-opener-policy': 'same-origin',
+    'content-security-policy':
+      "default-src 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data: https:; connect-src 'self' https:;",
   });
   const htmlBuffer = Buffer.from(html, 'utf-8');
   res.end(htmlBuffer);
@@ -240,11 +240,11 @@ function sanitizeRequestTarget(value: string | undefined): string {
 
   const lowered = raw.toLowerCase();
   if (
-    lowered.includes('%3c')
-    || lowered.includes('%3e')
-    || lowered.includes('%22')
-    || lowered.includes('%27')
-    || lowered.includes('%60')
+    lowered.includes('%3c') ||
+    lowered.includes('%3e') ||
+    lowered.includes('%22') ||
+    lowered.includes('%27') ||
+    lowered.includes('%60')
   ) {
     return '/';
   }
@@ -282,12 +282,14 @@ function sanitizeServiceStatusForHtml(service: ServiceStatus): ServiceStatus {
     key: service.key ? sanitizePlainText(service.key).slice(0, 64) : undefined,
     name: sanitizePlainText(service.name).slice(0, 80) || 'servico',
     status: service.status,
-    responseTime: typeof service.responseTime === 'number' && Number.isFinite(service.responseTime)
-      ? service.responseTime
-      : undefined,
-    statusCode: typeof service.statusCode === 'number' && Number.isFinite(service.statusCode)
-      ? service.statusCode
-      : undefined,
+    responseTime:
+      typeof service.responseTime === 'number' && Number.isFinite(service.responseTime)
+        ? service.responseTime
+        : undefined,
+    statusCode:
+      typeof service.statusCode === 'number' && Number.isFinite(service.statusCode)
+        ? service.statusCode
+        : undefined,
     url: safeUrl || undefined,
     detail: service.detail ? sanitizePlainText(service.detail).slice(0, 180) : undefined,
   };
@@ -309,9 +311,7 @@ function isSecureTransport(req: IncomingMessage): boolean {
   }
 
   const forwardedProto = req.headers['x-forwarded-proto'];
-  const firstProto = Array.isArray(forwardedProto)
-    ? forwardedProto[0]
-    : forwardedProto;
+  const firstProto = Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto;
 
   if (typeof firstProto === 'string' && firstProto.length > 0) {
     return sanitizePlainText(firstProto.split(',')[0]).toLowerCase() === 'https';
@@ -385,7 +385,9 @@ function enforceCanonicalHost(
   }
 
   const hostHeader = req.headers.host;
-  const requestHost = (Array.isArray(hostHeader) ? hostHeader[0] : hostHeader ?? '').trim().toLowerCase();
+  const requestHost = (Array.isArray(hostHeader) ? hostHeader[0] : (hostHeader ?? ''))
+    .trim()
+    .toLowerCase();
   const canonicalHost = canonicalUrl.host.trim().toLowerCase();
 
   if (!requestHost || requestHost === canonicalHost) {
@@ -408,8 +410,12 @@ function enforceCanonicalHost(
 function applySecurityHeaders(res: import('node:http').ServerResponse): void {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('Referrer-Policy', 'same-origin');
-  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader(
+    'Permissions-Policy',
+    'camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=()',
+  );
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
 
   if (env.OPS_ENV === 'production') {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
@@ -441,13 +447,18 @@ function getAllowedCorsOrigins(): string[] {
 
 function applyPaymentCors(req: IncomingMessage, res: import('node:http').ServerResponse): boolean {
   const allowedOrigins = getAllowedCorsOrigins();
-  const requestOrigin = sanitizePlainText(Array.isArray(req.headers.origin) ? req.headers.origin[0] : req.headers.origin || '');
+  const requestOrigin = sanitizePlainText(
+    Array.isArray(req.headers.origin) ? req.headers.origin[0] : req.headers.origin || '',
+  );
 
   if (requestOrigin && allowedOrigins.includes(requestOrigin)) {
     res.setHeader('Access-Control-Allow-Origin', requestOrigin);
     res.setHeader('Vary', 'Origin');
     res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Authorization,Content-Type,X-Hyperswitch-Signature');
+    res.setHeader(
+      'Access-Control-Allow-Headers',
+      'Authorization,Content-Type,X-Hyperswitch-Signature',
+    );
     res.setHeader('Access-Control-Max-Age', '600');
   }
 
@@ -469,8 +480,6 @@ function escapeHtml(value: string | null | undefined): string {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#x27;');
 }
-
-
 
 function renderBaseLayout(title: string, body: string): string {
   return `<!doctype html>
@@ -858,15 +867,25 @@ function buildDashboardRedirect(notice?: string, error?: string): string {
 function mapOpsLoginErrorMessage(message: string, requireMfa: boolean): string {
   const normalized = String(message || '').toLowerCase();
 
-  if (normalized.includes('invalid login credentials') || normalized.includes('invalid_credentials')) {
+  if (
+    normalized.includes('invalid login credentials') ||
+    normalized.includes('invalid_credentials')
+  ) {
     return 'Email ou senha incorretos.';
   }
 
-  if (normalized.includes('perfil do usuario nao encontrado') || normalized.includes('usuario sem permissao') || normalized.includes('empresa autorizada')) {
+  if (
+    normalized.includes('perfil do usuario nao encontrado') ||
+    normalized.includes('usuario sem permissao') ||
+    normalized.includes('empresa autorizada')
+  ) {
     return 'Seu usuario nao tem permissao para acessar o painel ops.';
   }
 
-  if (normalized.includes('configure o autenticador') || normalized.includes('mfa obrigatorio no ops')) {
+  if (
+    normalized.includes('configure o autenticador') ||
+    normalized.includes('mfa obrigatorio no ops')
+  ) {
     return 'Este usuario ainda nao cadastrou um autenticador. Cadastre o MFA no app ou web antes de entrar no ops.';
   }
 
@@ -874,7 +893,11 @@ function mapOpsLoginErrorMessage(message: string, requireMfa: boolean): string {
     return 'Informe o codigo do Google Authenticator ou Microsoft Authenticator para entrar.';
   }
 
-  if (normalized.includes('codigo mfa invalido') || normalized.includes('mfa invalido') || normalized.includes('expirado')) {
+  if (
+    normalized.includes('codigo mfa invalido') ||
+    normalized.includes('mfa invalido') ||
+    normalized.includes('expirado')
+  ) {
     return 'Codigo do autenticador invalido ou expirado. Gere um novo codigo e tente novamente.';
   }
 
@@ -1027,11 +1050,7 @@ function renderHomeHtml(): string {
   return renderBaseLayout('restaurante-ops', body);
 }
 
-function renderQuickActionPanel(
-  title: string,
-  subtitle: string,
-  body: string,
-): string {
+function renderQuickActionPanel(title: string, subtitle: string, body: string): string {
   const initials = 'OP';
   const operatorLabel = 'Operador autenticado';
 
@@ -1288,23 +1307,29 @@ function statusPill(status: string | null): string {
 
 function fmtDate(iso: string | null): string {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return new Date(iso).toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
 }
 
-function renderCustomersPanel(
-  kpis: KpiCounts,
-  companies: CompanyRow[],
-): string {
-  const rows = companies.length === 0
-    ? '<tr><td colspan="5" style="text-align:center;color:#516675;">Nenhuma empresa encontrada.</td></tr>'
-    : companies.map((c) => `
+function renderCustomersPanel(kpis: KpiCounts, companies: CompanyRow[]): string {
+  const rows =
+    companies.length === 0
+      ? '<tr><td colspan="5" style="text-align:center;color:#516675;">Nenhuma empresa encontrada.</td></tr>'
+      : companies
+          .map(
+            (c) => `
         <tr>
           <td>${escapeHtml(c.name)}</td>
           <td>${escapeHtml(c.plan ?? '—')}</td>
           <td>${statusPill(c.subscription_status)}</td>
           <td>${fmtDate(c.trial_ends_at)}</td>
           <td>${fmtDate(c.created_at)}</td>
-        </tr>`).join('');
+        </tr>`,
+          )
+          .join('');
 
   return renderQuickActionPanel(
     'Gerenciar clientes',
@@ -1348,20 +1373,30 @@ function renderBillingPanel(
   invoices: InvoiceRow[],
 ): string {
   const invPill = (s: string) => {
-    const map: Record<string, string> = { paid: 'ok', pending: 'info', failed: 'warn', cancelled: 'warn' };
+    const map: Record<string, string> = {
+      paid: 'ok',
+      pending: 'info',
+      failed: 'warn',
+      cancelled: 'warn',
+    };
     return `<span class="pill ${map[s] ?? 'info'}">${escapeHtml(s)}</span>`;
   };
 
-  const rows = invoices.length === 0
-    ? '<tr><td colspan="5" style="text-align:center;color:#516675;">Nenhuma invoice encontrada.</td></tr>'
-    : invoices.map((inv) => `
+  const rows =
+    invoices.length === 0
+      ? '<tr><td colspan="5" style="text-align:center;color:#516675;">Nenhuma invoice encontrada.</td></tr>'
+      : invoices
+          .map(
+            (inv) => `
         <tr>
           <td>${escapeHtml(inv.company_name)}</td>
           <td>${brl(inv.amount)}</td>
           <td>${invPill(inv.status)}</td>
           <td>${fmtDate(inv.due_date)}</td>
           <td>${inv.paid_at ? fmtDate(inv.paid_at) : '—'}</td>
-        </tr>`).join('');
+        </tr>`,
+          )
+          .join('');
 
   return renderQuickActionPanel(
     'Faturamento e invoices',
@@ -1439,30 +1474,43 @@ function renderPlanConfigPanel(
   const isAdmin = canManagePlanConfig;
 
   const activeBrl = active
-    ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(active.amount_cents / 100)
+    ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+        active.amount_cents / 100,
+      )
     : '—';
 
-  const histRows = history.length === 0
-    ? '<tr><td colspan="4" style="text-align:center;color:#516675;">Sem histórico disponível.</td></tr>'
-    : history.map((row) => `
+  const histRows =
+    history.length === 0
+      ? '<tr><td colspan="4" style="text-align:center;color:#516675;">Sem histórico disponível.</td></tr>'
+      : history
+          .map(
+            (row) => `
         <tr>
           <td>${brl(row.amount_cents)}</td>
           <td>${escapeHtml(row.currency)}</td>
           <td>${row.trial_days} dias</td>
           <td>${fmtDate(row.effective_from)}</td>
-        </tr>`).join('');
+        </tr>`,
+          )
+          .join('');
 
-  const auditRows = audit.length === 0
-    ? '<tr><td colspan="4" style="text-align:center;color:#516675;">Sem eventos de auditoria.</td></tr>'
-    : audit.map((a) => `
+  const auditRows =
+    audit.length === 0
+      ? '<tr><td colspan="4" style="text-align:center;color:#516675;">Sem eventos de auditoria.</td></tr>'
+      : audit
+          .map(
+            (a) => `
         <tr>
           <td>${escapeHtml(a.action)}</td>
           <td>${brl((a.after_snapshot as any)?.amount_cents ?? 0)}</td>
           <td>${escapeHtml(a.changed_by)}</td>
           <td>${fmtDate(a.created_at)}</td>
-        </tr>`).join('');
+        </tr>`,
+          )
+          .join('');
 
-  const formHtml = isAdmin ? `
+  const formHtml = isAdmin
+    ? `
     <section class="panel">
       <h2>Alterar preço do plano</h2>
       <p style="margin-bottom:14px;color:#516675;font-size:14px;">
@@ -1571,7 +1619,8 @@ function renderPlanConfigPanel(
           }
         })();
       </script>
-    </section>` : `
+    </section>`
+    : `
     <section class="panel">
       <p style="color:#516675;font-size:14px;">
         <strong>Somente administradores</strong> podem alterar o preço do plano. Entre em contato com um admin para solicitar alterações.
@@ -1631,12 +1680,17 @@ function renderMetricsPanel(
   breakdown: SubscriptionBreakdown,
   revenueSeries: RevenuePoint[],
 ): string {
-  const mrrFmt = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(metrics.mrr);
-  const revenueRows = revenueSeries.length === 0
-    ? '<tr><td colspan="2" style="text-align:center;color:#516675;">Sem dados de receita no periodo.</td></tr>'
-    : revenueSeries
-      .map((point) => `<tr><td>${escapeHtml(point.label)}</td><td>${brl(point.amount)}</td></tr>`)
-      .join('');
+  const mrrFmt = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+    metrics.mrr,
+  );
+  const revenueRows =
+    revenueSeries.length === 0
+      ? '<tr><td colspan="2" style="text-align:center;color:#516675;">Sem dados de receita no periodo.</td></tr>'
+      : revenueSeries
+          .map(
+            (point) => `<tr><td>${escapeHtml(point.label)}</td><td>${brl(point.amount)}</td></tr>`,
+          )
+          .join('');
 
   return renderQuickActionPanel(
     'Metricas SaaS',
@@ -1755,14 +1809,26 @@ function isUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
-function parseIntegerQuery(value: string | null, fallback: number, min: number, max: number): number {
+function parseIntegerQuery(
+  value: string | null,
+  fallback: number,
+  min: number,
+  max: number,
+): number {
   if (!value) return fallback;
   const parsed = Number.parseInt(value, 10);
   if (Number.isNaN(parsed)) return fallback;
   return Math.min(max, Math.max(min, parsed));
 }
 
-const EXTERNAL_LOG_SERVICES = new Set(['ops', 'web', 'app', 'supabase', 'activepieces', 'evolution']);
+const EXTERNAL_LOG_SERVICES = new Set([
+  'ops',
+  'web',
+  'app',
+  'supabase',
+  'activepieces',
+  'evolution',
+]);
 const EXTERNAL_LOG_LEVELS = new Set(['info', 'warn', 'error']);
 const EXTERNAL_LOG_MAX_BATCH_SIZE = 500;
 const EXTERNAL_LOG_SENSITIVE_KEY_FRAGMENTS = [
@@ -1857,7 +1923,9 @@ function normalizeIncomingLog(entry: unknown, fallbackRequestId: string): LogEnt
         ? raw.durationMs
         : undefined;
   const duration_ms =
-    typeof durationCandidate === 'number' && Number.isFinite(durationCandidate) && durationCandidate >= 0
+    typeof durationCandidate === 'number' &&
+    Number.isFinite(durationCandidate) &&
+    durationCandidate >= 0
       ? Math.floor(durationCandidate)
       : undefined;
 
@@ -1883,7 +1951,11 @@ function extractExternalLogsPayload(payload: unknown): unknown[] {
     return payload;
   }
 
-  if (payload && typeof payload === 'object' && Array.isArray((payload as { logs?: unknown[] }).logs)) {
+  if (
+    payload &&
+    typeof payload === 'object' &&
+    Array.isArray((payload as { logs?: unknown[] }).logs)
+  ) {
     return (payload as { logs: unknown[] }).logs;
   }
 
@@ -1894,13 +1966,25 @@ function extractExternalLogsPayload(payload: unknown): unknown[] {
   return [];
 }
 
-const BILLING_COMPANY_PATH_FRAGMENT = '([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})';
-const PAYMENT_TRANSACTION_ID_PATH_FRAGMENT = '([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})';
-const BILLING_AUDIT_PATH_RE = new RegExp(`^/ops/billing/company/${BILLING_COMPANY_PATH_FRAGMENT}/audit$`);
-const BILLING_SNAPSHOT_PATH_RE = new RegExp(`^/ops/billing/company/${BILLING_COMPANY_PATH_FRAGMENT}$`);
-const BILLING_CARD_PATH_RE = new RegExp(`^/ops/billing/company/${BILLING_COMPANY_PATH_FRAGMENT}/regularize/card$`);
-const BILLING_PIX_PATH_RE = new RegExp(`^/ops/billing/company/${BILLING_COMPANY_PATH_FRAGMENT}/regularize/pix$`);
-const PAYMENT_TRANSACTION_STATUS_PATH_RE = new RegExp(`^/payments/${PAYMENT_TRANSACTION_ID_PATH_FRAGMENT}/status$`);
+const BILLING_COMPANY_PATH_FRAGMENT =
+  '([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})';
+const PAYMENT_TRANSACTION_ID_PATH_FRAGMENT =
+  '([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})';
+const BILLING_AUDIT_PATH_RE = new RegExp(
+  `^/ops/billing/company/${BILLING_COMPANY_PATH_FRAGMENT}/audit$`,
+);
+const BILLING_SNAPSHOT_PATH_RE = new RegExp(
+  `^/ops/billing/company/${BILLING_COMPANY_PATH_FRAGMENT}$`,
+);
+const BILLING_CARD_PATH_RE = new RegExp(
+  `^/ops/billing/company/${BILLING_COMPANY_PATH_FRAGMENT}/regularize/card$`,
+);
+const BILLING_PIX_PATH_RE = new RegExp(
+  `^/ops/billing/company/${BILLING_COMPANY_PATH_FRAGMENT}/regularize/pix$`,
+);
+const PAYMENT_TRANSACTION_STATUS_PATH_RE = new RegExp(
+  `^/payments/${PAYMENT_TRANSACTION_ID_PATH_FRAGMENT}/status$`,
+);
 
 function validateReconcileInput(input: Partial<ReconcileInput>): string | null {
   if (!input.companyId || !input.idempotencyKey || !input.eventType || !input.paymentStatus) {
@@ -1919,7 +2003,11 @@ function validateReconcileInput(input: Partial<ReconcileInput>): string | null {
     return 'paymentStatus deve ser "paid" ou "failed".';
   }
 
-  if (input.paymentMethodType && input.paymentMethodType !== 'card' && input.paymentMethodType !== 'pix') {
+  if (
+    input.paymentMethodType &&
+    input.paymentMethodType !== 'card' &&
+    input.paymentMethodType !== 'pix'
+  ) {
     return 'paymentMethodType deve ser "card" ou "pix".';
   }
 
@@ -2051,16 +2139,23 @@ function respondInternalError(
     return;
   }
 
-  const accept = sanitizePlainText(Array.isArray(req.headers.accept) ? req.headers.accept[0] : req.headers.accept ?? '');
+  const accept = sanitizePlainText(
+    Array.isArray(req.headers.accept) ? req.headers.accept[0] : (req.headers.accept ?? ''),
+  );
   if (accept.includes('text/html')) {
     res.writeHead(500, { 'content-type': 'text/html; charset=utf-8' });
-    res.end(renderBaseLayout('Erro interno', `
+    res.end(
+      renderBaseLayout(
+        'Erro interno',
+        `
       <section class="form-card" style="max-width:720px;margin:0 auto;">
         <p class="form-eyebrow">restaurante-ops</p>
         <h1 class="form-title">Erro interno</h1>
         <p class="form-subtitle">Nao foi possivel concluir a solicitacao. Revise os logs do servidor para diagnostico.</p>
       </section>
-    `));
+    `,
+      ),
+    );
     return;
   }
 
@@ -2121,7 +2216,9 @@ function startServer() {
 
       if (req.method === 'POST' && path === '/api/logs') {
         const inboundApiKeyRaw = req.headers['x-log-api-key'];
-        const inboundApiKey = Array.isArray(inboundApiKeyRaw) ? inboundApiKeyRaw[0] : inboundApiKeyRaw;
+        const inboundApiKey = Array.isArray(inboundApiKeyRaw)
+          ? inboundApiKeyRaw[0]
+          : inboundApiKeyRaw;
         const expectedApiKey = env.OPS_LOG_API_KEY;
 
         if (!expectedApiKey) {
@@ -2162,7 +2259,10 @@ function startServer() {
         }
 
         if (!rateLimitResult.allowed) {
-          const retryAfter = Math.max(1, Math.floor(Number(rateLimitResult.retryAfterSeconds) || 1));
+          const retryAfter = Math.max(
+            1,
+            Math.floor(Number(rateLimitResult.retryAfterSeconds) || 1),
+          );
           res.setHeader('Retry-After', String(retryAfter));
           res.setHeader('X-RateLimit-Remaining', String(rateLimitResult.remaining));
           res.setHeader('X-RateLimit-Reset', rateLimitResult.resetAt.toISOString());
@@ -2181,7 +2281,10 @@ function startServer() {
         try {
           const rawBody = await readBody(req);
           const parsedBody = parseJsonBody<unknown>(rawBody);
-          const incoming = extractExternalLogsPayload(parsedBody).slice(0, EXTERNAL_LOG_MAX_BATCH_SIZE);
+          const incoming = extractExternalLogsPayload(parsedBody).slice(
+            0,
+            EXTERNAL_LOG_MAX_BATCH_SIZE,
+          );
 
           for (const entry of incoming) {
             const normalized = normalizeIncomingLog(entry, requestId);
@@ -2310,7 +2413,9 @@ function startServer() {
             return;
           }
 
-          if (!verifyHyperswitchSignature(rawBody, signatureHeader, env.HYPERSWITCH_WEBHOOK_SECRET)) {
+          if (
+            !verifyHyperswitchSignature(rawBody, signatureHeader, env.HYPERSWITCH_WEBHOOK_SECRET)
+          ) {
             respondJson(res, 401, {
               code: 'unauthorized',
               message: 'Assinatura de webhook invalida.',
@@ -2341,7 +2446,9 @@ function startServer() {
       // ---- Telas publicas de auth ----
       if (req.method === 'GET' && path === '/login') {
         // EMERGENCY: Always false on fetch failure to prevent lockout
-        const securitySettings = await getOpsSecuritySettings(opsCompanyId).catch(() => ({ requireMfa: false }));
+        const securitySettings = await getOpsSecuritySettings(opsCompanyId).catch(() => ({
+          requireMfa: false,
+        }));
         res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
         res.end(renderLoginHtml(securitySettings.requireMfa));
         return;
@@ -2363,12 +2470,16 @@ function startServer() {
       if (req.method === 'POST' && path === '/auth/login') {
         let rateKey = '';
         try {
-          const securitySettings = await getOpsSecuritySettings(opsCompanyId).catch(() => ({ requireMfa: false }));
+          const securitySettings = await getOpsSecuritySettings(opsCompanyId).catch(() => ({
+            requireMfa: false,
+          }));
           const requireMfa = securitySettings.requireMfa;
           const raw = await readBody(req);
           const body = parseFormBody(raw);
           const { email, password, mfa_code } = body;
-          const normalizedEmail = String(email || '').toLowerCase().trim();
+          const normalizedEmail = String(email || '')
+            .toLowerCase()
+            .trim();
           const normalizedMfaCode = String(mfa_code || '').trim();
           const clientIp = getRequestIp(req);
           rateKey = `login:${clientIp}:${normalizedEmail}`;
@@ -2390,12 +2501,20 @@ function startServer() {
               request_id: requestId,
             });
             res.writeHead(503, { 'content-type': 'text/html; charset=utf-8' });
-            res.end(renderLoginHtml(requireMfa, 'Servico temporariamente indisponivel. Tente novamente em instantes.'));
+            res.end(
+              renderLoginHtml(
+                requireMfa,
+                'Servico temporariamente indisponivel. Tente novamente em instantes.',
+              ),
+            );
             return;
           }
 
           if (!rateLimitResult.allowed) {
-            const retryAfter = Math.max(1, Math.floor(Number(rateLimitResult.retryAfterSeconds) || 1));
+            const retryAfter = Math.max(
+              1,
+              Math.floor(Number(rateLimitResult.retryAfterSeconds) || 1),
+            );
             logWarn('auth.login_rate_limited', {
               method: req.method,
               path,
@@ -2407,16 +2526,25 @@ function startServer() {
             res.setHeader('X-RateLimit-Remaining', String(rateLimitResult.remaining));
             res.setHeader('X-RateLimit-Reset', rateLimitResult.resetAt.toISOString());
             res.writeHead(429, { 'content-type': 'text/html; charset=utf-8' });
-            res.end(renderLoginHtml(requireMfa, 'Muitas tentativas de login. Aguarde alguns minutos e tente novamente.'));
+            res.end(
+              renderLoginHtml(
+                requireMfa,
+                'Muitas tentativas de login. Aguarde alguns minutos e tente novamente.',
+              ),
+            );
             return;
           }
 
           if (!email || !password || (requireMfa && !normalizedMfaCode)) {
             res.writeHead(400, { 'content-type': 'text/html; charset=utf-8' });
-            res.end(renderLoginHtml(requireMfa,
-              requireMfa
-              ? 'Email, senha e codigo MFA sao obrigatorios.'
-              : 'Email e senha sao obrigatorios.'));
+            res.end(
+              renderLoginHtml(
+                requireMfa,
+                requireMfa
+                  ? 'Email, senha e codigo MFA sao obrigatorios.'
+                  : 'Email e senha sao obrigatorios.',
+              ),
+            );
             return;
           }
 
@@ -2443,7 +2571,9 @@ function startServer() {
           res.end();
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : 'Erro ao fazer login';
-          const securitySettings = await getOpsSecuritySettings(opsCompanyId).catch(() => ({ requireMfa: false }));
+          const securitySettings = await getOpsSecuritySettings(opsCompanyId).catch(() => ({
+            requireMfa: false,
+          }));
           const safeLoginMessage = mapOpsLoginErrorMessage(msg, securitySettings.requireMfa);
           logWarn('auth.login_failed', {
             method: req.method,
@@ -2500,26 +2630,29 @@ function startServer() {
         const user = await requireAuth(req, res);
         if (!user) return;
         const safeUser = sanitizeOpsUserForHtml(user);
-        const [kpis, companies, securitySettings, mfaUsers, currentUserMfaVerified] = await Promise.all([
-          fetchKpiCounts(),
-          fetchRecentCompanies(8),
-          getOpsSecuritySettings(opsCompanyId).catch(() => ({ requireMfa: false })),
-          listOpsMfaUsers(opsCompanyId).catch(() => []),
-          userHasVerifiedMfa(user.id).catch(() => false),
-        ]);
+        const [kpis, companies, securitySettings, mfaUsers, currentUserMfaVerified] =
+          await Promise.all([
+            fetchKpiCounts(),
+            fetchRecentCompanies(8),
+            getOpsSecuritySettings(opsCompanyId).catch(() => ({ requireMfa: false })),
+            listOpsMfaUsers(opsCompanyId).catch(() => []),
+            userHasVerifiedMfa(user.id).catch(() => false),
+          ]);
         const notice = sanitizeQueryMessage(url.searchParams.get('notice'));
         const error = sanitizeQueryMessage(url.searchParams.get('error'));
         res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-        res.end(renderDashboardHtml(safeUser, {
-          kpis,
-          companies,
-          opsRequireMfa: securitySettings.requireMfa,
-          mfaUsers,
-          currentUserMfaVerified,
-          securityNotice: notice,
-          securityError: error,
-          canManageSecurity: safeUser.role === 'admin',
-        }));
+        res.end(
+          renderDashboardHtml(safeUser, {
+            kpis,
+            companies,
+            opsRequireMfa: securitySettings.requireMfa,
+            mfaUsers,
+            currentUserMfaVerified,
+            securityNotice: notice,
+            securityError: error,
+            canManageSecurity: safeUser.role === 'admin',
+          }),
+        );
         return;
       }
 
@@ -2527,7 +2660,12 @@ function startServer() {
         const user = await requireAuth(req, res);
         if (!user) return;
         if (user.role !== 'admin') {
-          res.writeHead(302, { Location: buildDashboardRedirect(undefined, 'Somente administradores podem alterar a exigencia de MFA do painel ops.') });
+          res.writeHead(302, {
+            Location: buildDashboardRedirect(
+              undefined,
+              'Somente administradores podem alterar a exigencia de MFA do painel ops.',
+            ),
+          });
           res.end();
           return;
         }
@@ -2537,10 +2675,21 @@ function startServer() {
           const body = parseFormBody(raw);
           const requireMfa = String(body.require_mfa || 'false') === 'true';
           await updateOpsRequireMfa(opsCompanyId, requireMfa);
-          res.writeHead(302, { Location: buildDashboardRedirect(requireMfa ? 'Exigencia de MFA habilitada com sucesso no painel ops.' : 'Exigencia de MFA desabilitada com sucesso no painel ops.') });
+          res.writeHead(302, {
+            Location: buildDashboardRedirect(
+              requireMfa
+                ? 'Exigencia de MFA habilitada com sucesso no painel ops.'
+                : 'Exigencia de MFA desabilitada com sucesso no painel ops.',
+            ),
+          });
           res.end();
         } catch (error) {
-          res.writeHead(302, { Location: buildDashboardRedirect(undefined, 'Nao foi possivel atualizar a configuracao de MFA do painel ops.') });
+          res.writeHead(302, {
+            Location: buildDashboardRedirect(
+              undefined,
+              'Nao foi possivel atualizar a configuracao de MFA do painel ops.',
+            ),
+          });
           res.end();
         }
         return;
@@ -2550,7 +2699,12 @@ function startServer() {
         const user = await requireAuth(req, res);
         if (!user) return;
         if (user.role !== 'admin') {
-          res.writeHead(302, { Location: buildDashboardRedirect(undefined, 'Somente administradores podem remover autenticadores MFA de usuarios.') });
+          res.writeHead(302, {
+            Location: buildDashboardRedirect(
+              undefined,
+              'Somente administradores podem remover autenticadores MFA de usuarios.',
+            ),
+          });
           res.end();
           return;
         }
@@ -2560,19 +2714,30 @@ function startServer() {
           const body = parseFormBody(raw);
           const targetUserId = String(body.target_user_id || '').trim();
           if (!targetUserId) {
-            res.writeHead(302, { Location: buildDashboardRedirect(undefined, 'Selecione um usuario valido para remover os autenticadores MFA.') });
+            res.writeHead(302, {
+              Location: buildDashboardRedirect(
+                undefined,
+                'Selecione um usuario valido para remover os autenticadores MFA.',
+              ),
+            });
             res.end();
             return;
           }
 
           const removedCount = await resetUserMfaFactors(opsCompanyId, targetUserId);
-          const notice = removedCount > 0
-            ? `Autenticadores MFA removidos com sucesso (${removedCount} item(ns) removido(s)).`
-            : 'O usuario selecionado nao possui autenticadores MFA cadastrados.';
+          const notice =
+            removedCount > 0
+              ? `Autenticadores MFA removidos com sucesso (${removedCount} item(ns) removido(s)).`
+              : 'O usuario selecionado nao possui autenticadores MFA cadastrados.';
           res.writeHead(302, { Location: buildDashboardRedirect(notice) });
           res.end();
         } catch (error) {
-          res.writeHead(302, { Location: buildDashboardRedirect(undefined, 'Nao foi possivel remover os autenticadores MFA do usuario.') });
+          res.writeHead(302, {
+            Location: buildDashboardRedirect(
+              undefined,
+              'Nao foi possivel remover os autenticadores MFA do usuario.',
+            ),
+          });
           res.end();
         }
         return;
@@ -2735,7 +2900,11 @@ function startServer() {
           const limit = parseIntegerQuery(url.searchParams.get('limit'), 50, 1, 200);
           const offset = parseIntegerQuery(url.searchParams.get('offset'), 0, 0, 100000);
           const service = sanitizePlainText(url.searchParams.get('service') || '');
-          const level = sanitizePlainText(url.searchParams.get('level') || '') as 'info' | 'warn' | 'error' | '';
+          const level = sanitizePlainText(url.searchParams.get('level') || '') as
+            | 'info'
+            | 'warn'
+            | 'error'
+            | '';
           const event = sanitizePlainText(url.searchParams.get('event') || '');
           const from = sanitizePlainText(url.searchParams.get('from') || '');
           const to = sanitizePlainText(url.searchParams.get('to') || '');
@@ -2886,7 +3055,9 @@ function startServer() {
 
         try {
           const enabled = url.searchParams.get('enabled');
-          const alerts = await listAlerts(enabled === 'true' ? true : enabled === 'false' ? false : undefined);
+          const alerts = await listAlerts(
+            enabled === 'true' ? true : enabled === 'false' ? false : undefined,
+          );
           respondJson(res, 200, { ok: true, alerts });
         } catch (err) {
           logError('observability.alerts_list_failed', {
@@ -2926,9 +3097,12 @@ function startServer() {
 
           const alert = await createAlert({
             name,
-            description: body?.description != null ? sanitizePlainText(String(body.description)) : undefined,
+            description:
+              body?.description != null ? sanitizePlainText(String(body.description)) : undefined,
             enabled: body?.enabled !== false,
-            channel: (body?.channel === 'webhook' || body?.channel === 'slack' ? body.channel : 'internal') as 'webhook' | 'slack' | 'internal',
+            channel: (body?.channel === 'webhook' || body?.channel === 'slack'
+              ? body.channel
+              : 'internal') as 'webhook' | 'slack' | 'internal',
             channel_config: body?.channel_config as Record<string, string> | undefined,
             condition: body?.condition as AlertCondition,
           });
@@ -2966,7 +3140,8 @@ function startServer() {
 
           const updates: Record<string, unknown> = {};
           if (body?.name != null) updates.name = sanitizePlainText(String(body.name));
-          if (body?.description != null) updates.description = sanitizePlainText(String(body.description));
+          if (body?.description != null)
+            updates.description = sanitizePlainText(String(body.description));
           if (typeof body?.enabled === 'boolean') updates.enabled = body.enabled;
           if (body?.channel != null) updates.channel = body.channel;
           if (body?.channel_config != null) updates.channel_config = body.channel_config;
@@ -3020,11 +3195,15 @@ function startServer() {
         if (!user) return;
 
         if (user.role !== 'admin') {
-          respondJson(res, 403, { error: 'Acesso negado. Somente admin pode editar endpoints monitorados.' });
+          respondJson(res, 403, {
+            error: 'Acesso negado. Somente admin pode editar endpoints monitorados.',
+          });
           return;
         }
 
-        const serviceKey = sanitizePlainText(path.replace('/api/observability/monitored-services/', ''));
+        const serviceKey = sanitizePlainText(
+          path.replace('/api/observability/monitored-services/', ''),
+        );
         if (!serviceKey) {
           respondJson(res, 400, { error: 'service_key obrigatorio.' });
           return;
@@ -3105,7 +3284,9 @@ function startServer() {
         if (!user) return;
 
         if (user.role !== 'admin') {
-          respondJson(res, 403, { error: 'Acesso negado. Somente admin pode editar as configuracoes de observabilidade.' });
+          respondJson(res, 403, {
+            error: 'Acesso negado. Somente admin pode editar as configuracoes de observabilidade.',
+          });
           return;
         }
 
@@ -3124,7 +3305,11 @@ function startServer() {
             logRetentionDays: Number.isNaN(retentionDays) ? undefined : retentionDays,
             staleMinutes: Number.isNaN(staleMinutes) ? undefined : staleMinutes,
           });
-          let cleanup: { deletedCount: number; retentionDays: number; source: 'panel' | 'env' } | null = null;
+          let cleanup: {
+            deletedCount: number;
+            retentionDays: number;
+            source: 'panel' | 'env';
+          } | null = null;
 
           try {
             cleanup = await runRetentionCleanupCycle(opsCompanyId);
@@ -3174,11 +3359,29 @@ function startServer() {
         if (!user) return;
 
         const rawTab = sanitizeQueryToken(url.searchParams.get('tab') || 'overview', 32);
-        const tab = ['overview', 'logs', 'metrics', 'trace', 'alerts', 'service-status', 'api-status'].includes(rawTab)
+        const tab = [
+          'overview',
+          'logs',
+          'metrics',
+          'trace',
+          'alerts',
+          'service-status',
+          'api-status',
+        ].includes(rawTab)
           ? rawTab
           : 'overview';
         const filters: Record<string, string> = {};
-        for (const key of ['service', 'level', 'event', 'request_id', 'order_id', 'from', 'to', 'limit', 'offset']) {
+        for (const key of [
+          'service',
+          'level',
+          'event',
+          'request_id',
+          'order_id',
+          'from',
+          'to',
+          'limit',
+          'offset',
+        ]) {
           const v = sanitizeQueryToken(url.searchParams.get(key) || '', 180);
           if (v) filters[key] = v;
         }
@@ -3191,10 +3394,23 @@ function startServer() {
 
           if (tab === 'overview') {
             const hours = parseIntegerQuery(url.searchParams.get('hours'), 24, 1, 168);
-            const overviewServiceRaw = sanitizeQueryToken(url.searchParams.get('service') || '', 64);
-            const overviewService = /^[A-Za-z0-9._:-]{1,64}$/.test(overviewServiceRaw) ? overviewServiceRaw : '';
+            const overviewServiceRaw = sanitizeQueryToken(
+              url.searchParams.get('service') || '',
+              64,
+            );
+            const overviewService = /^[A-Za-z0-9._:-]{1,64}$/.test(overviewServiceRaw)
+              ? overviewServiceRaw
+              : '';
 
-            const [logMetrics, logTimeline, knownLogServices, observabilitySettings, saasMetrics, billingOpsMetrics, alerts] = await Promise.all([
+            const [
+              logMetrics,
+              logTimeline,
+              knownLogServices,
+              observabilitySettings,
+              saasMetrics,
+              billingOpsMetrics,
+              alerts,
+            ] = await Promise.all([
               getLogMetrics(hours, overviewService || undefined),
               getLogMetricsTimeline(hours, overviewService || undefined),
               listKnownLogServices(Math.max(hours, 168)),
@@ -3249,9 +3465,8 @@ function startServer() {
             opts.traceId = traceId;
             opts.traceType = traceType;
             if (traceId) {
-              opts.timeline = traceType === 'order'
-                ? await traceOrder(traceId)
-                : await traceRequest(traceId);
+              opts.timeline =
+                traceType === 'order' ? await traceOrder(traceId) : await traceRequest(traceId);
             } else {
               opts.timeline = [];
             }
@@ -3295,18 +3510,17 @@ function startServer() {
         const user = await requireAuth(req, res);
         if (!user) return;
 
-        const [kpis, companies] = await Promise.all([
-          fetchKpiCounts(),
-          fetchRecentCompanies(50),
-        ]);
+        const [kpis, companies] = await Promise.all([fetchKpiCounts(), fetchRecentCompanies(50)]);
 
         res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify({
-          ok: true,
-          generatedAt: new Date().toISOString(),
-          kpis,
-          companies,
-        }));
+        res.end(
+          JSON.stringify({
+            ok: true,
+            generatedAt: new Date().toISOString(),
+            kpis,
+            companies,
+          }),
+        );
         return;
       }
 
@@ -3385,7 +3599,10 @@ function startServer() {
         }
 
         if (!billingRateLimit.allowed) {
-          const retryAfter = Math.max(1, Math.floor(Number(billingRateLimit.retryAfterSeconds) || 1));
+          const retryAfter = Math.max(
+            1,
+            Math.floor(Number(billingRateLimit.retryAfterSeconds) || 1),
+          );
           logWarn('billing.operation_rate_limited', {
             method: req.method,
             path,
@@ -3484,7 +3701,10 @@ function startServer() {
         }
 
         if (!billingRateLimit.allowed) {
-          const retryAfter = Math.max(1, Math.floor(Number(billingRateLimit.retryAfterSeconds) || 1));
+          const retryAfter = Math.max(
+            1,
+            Math.floor(Number(billingRateLimit.retryAfterSeconds) || 1),
+          );
           logWarn('billing.operation_rate_limited', {
             method: req.method,
             path,
@@ -3555,7 +3775,11 @@ function startServer() {
         }
 
         try {
-          const result = await checkInvoiceAmountDivergence(body.companyId, body.invoiceId, user.id);
+          const result = await checkInvoiceAmountDivergence(
+            body.companyId,
+            body.invoiceId,
+            user.id,
+          );
           res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
           res.end(JSON.stringify({ ok: true, ...result }));
         } catch (err) {
@@ -3577,13 +3801,15 @@ function startServer() {
           ]);
 
           res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
-          res.end(JSON.stringify({
-            ok: true,
-            generatedAt: new Date().toISOString(),
-            active,
-            history,
-            audit,
-          }));
+          res.end(
+            JSON.stringify({
+              ok: true,
+              generatedAt: new Date().toISOString(),
+              active,
+              history,
+              audit,
+            }),
+          );
         } catch (err) {
           if (err instanceof PlanConfigOperationError) {
             logWarn('billing.plan_config_activate_error', { message: err.message, code: err.code });
@@ -3610,10 +3836,12 @@ function startServer() {
             path,
           });
           res.writeHead(403, { 'content-type': 'application/json; charset=utf-8' });
-          res.end(JSON.stringify({
-            error: 'Acesso negado. Alteracao de preco exige perfil admin.',
-            code: 'PLAN_CONFIG_FORBIDDEN',
-          }));
+          res.end(
+            JSON.stringify({
+              error: 'Acesso negado. Alteracao de preco exige perfil admin.',
+              code: 'PLAN_CONFIG_FORBIDDEN',
+            }),
+          );
           return;
         }
 
@@ -3636,7 +3864,9 @@ function startServer() {
           const retryAfter = Math.max(1, Math.floor(Number(rl.retryAfterSeconds) || 1));
           res.setHeader('Retry-After', String(retryAfter));
           res.writeHead(429, { 'content-type': 'application/json; charset=utf-8' });
-          res.end(JSON.stringify({ error: 'Muitas tentativas. Aguarde e tente novamente.', retryAfter }));
+          res.end(
+            JSON.stringify({ error: 'Muitas tentativas. Aguarde e tente novamente.', retryAfter }),
+          );
           return;
         }
 
@@ -3679,12 +3909,18 @@ function startServer() {
           respondJson(res, 200, {
             ok: true,
             new_config_id: result.new_config_id,
-            message: 'Nova configuração de plano ativada com sucesso. Efeito imediato nas proximas cobranças.',
+            message:
+              'Nova configuração de plano ativada com sucesso. Efeito imediato nas proximas cobranças.',
           });
         } catch (err) {
           if (err instanceof PlanConfigOperationError) {
-            logWarn('billing.plan_config_operation_error', { message: err.message, code: err.code });
-            respondJson(res, err.statusCode, { code: safeBillingCode(err.code, 'PLAN_CONFIG_ERROR') });
+            logWarn('billing.plan_config_operation_error', {
+              message: err.message,
+              code: err.code,
+            });
+            respondJson(res, err.statusCode, {
+              code: safeBillingCode(err.code, 'PLAN_CONFIG_ERROR'),
+            });
           } else {
             logError('billing.plan_config.activate_error', {
               actor_id: user.id,
@@ -3740,10 +3976,7 @@ function startServer() {
       if (path === '/customers') {
         const user = await requireAuth(req, res);
         if (!user) return;
-        const [kpis, companies] = await Promise.all([
-          fetchKpiCounts(),
-          fetchRecentCompanies(20),
-        ]);
+        const [kpis, companies] = await Promise.all([fetchKpiCounts(), fetchRecentCompanies(20)]);
         respondHtml(res, 200, renderCustomersPanel(kpis, companies));
         return;
       }
@@ -3788,8 +4021,6 @@ function startServer() {
         respondHtml(res, 200, renderMetricsPanel(metrics, breakdown, revenueSeries));
         return;
       }
-
-
 
       // ---- Modo legacy: homepage publica ----
       if (path === '/home') {
