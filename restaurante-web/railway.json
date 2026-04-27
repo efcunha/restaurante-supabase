@@ -4,7 +4,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "npx serve dist -s",
+    "startCommand": "node scripts/start-static-server.mjs",
     "healthcheckPath": "/"
   }
 }

@@ -8,117 +8,132 @@
  * 4. Baixar/compartilhar o QR code
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Ionicons } from '@expo/vector-icons'
+import * as Clipboard from 'expo-clipboard'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  View,
-  Text,
-  StyleSheet,
-  Modal,
-  TouchableOpacity,
-  TextInput,
-  ScrollView,
   ActivityIndicator,
   Alert,
-  Switch,
+  Modal,
   Platform,
+  ScrollView,
   Share,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import QRCode from 'react-native-qrcode-svg';
-import { ScreenScaffold } from '../layouts/ScreenScaffold';
-import * as Clipboard from 'expo-clipboard';
-import { supabase } from '../config/SupabaseConfig';
-import { colors } from '../theme/colors';
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native'
+import QRCode from 'react-native-qrcode-svg'
+import { supabase } from '../config/SupabaseConfig'
+import { ScreenScaffold } from '../layouts/ScreenScaffold'
+import { colors } from '../theme/colors'
 
 const WEB_BASE_URL =
   process.env.EXPO_PUBLIC_WEB_BASE_URL ||
   (process.env.NODE_ENV === 'production'
     ? 'https://restaurante-web.app.br'
-    : 'http://localhost:8081');
+    : 'http://localhost:8081')
 
-const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+
+const escapeHtml = (value: string): string =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+
+const safeDataImageUrl = (value: string): string => {
+  const trimmed = value.trim()
+  const dataImagePattern = /^data:image\/(png|svg\+xml);base64,[A-Za-z0-9+/=]+$/
+  if (!dataImagePattern.test(trimmed)) {
+    throw new Error('QR image source inválida para impressão.')
+  }
+  return trimmed
+}
 
 interface Props {
-  visible: boolean;
-  onClose: () => void;
-  companyId?: string;
+  visible: boolean
+  onClose: () => void
+  companyId?: string
 }
 
 interface CompanyMenuData {
-  id: string;
-  name: string;
-  public_slug: string | null;
-  menu_published: boolean;
+  id: string
+  name: string
+  public_slug: string | null
+  menu_published: boolean
 }
 
-type SaveState = 'idle' | 'saving' | 'saved' | 'error';
+type SaveState = 'idle' | 'saving' | 'saved' | 'error'
 
 export default function QRCardapioModal({ visible, onClose, companyId }: Props) {
-  const [loading, setLoading] = useState(true);
-  const [company, setCompany] = useState<CompanyMenuData | null>(null);
-  const [slugInput, setSlugInput] = useState('');
-  const [published, setPublished] = useState(false);
-  const [saveState, setSaveState] = useState<SaveState>('idle');
-  const [slugError, setSlugError] = useState('');
-  const [copied, setCopied] = useState(false);
-  const qrRef = useRef<any>(null);
+  const [loading, setLoading] = useState(true)
+  const [company, setCompany] = useState<CompanyMenuData | null>(null)
+  const [slugInput, setSlugInput] = useState('')
+  const [published, setPublished] = useState(false)
+  const [saveState, setSaveState] = useState<SaveState>('idle')
+  const [slugError, setSlugError] = useState('')
+  const [copied, setCopied] = useState(false)
+  const qrRef = useRef<any>(null)
 
-  const menuUrl = company?.public_slug
-    ? `${WEB_BASE_URL}/menu/${company.public_slug}`
-    : null;
+  const menuUrl = company?.public_slug ? `${WEB_BASE_URL}/menu/${company.public_slug}` : null
 
   const loadCompany = useCallback(async () => {
     if (!companyId) {
-      setLoading(false);
-      Alert.alert('Erro', 'ID da empresa não encontrado. Tente relogar.');
-      return;
+      setLoading(false)
+      Alert.alert('Erro', 'ID da empresa não encontrado. Tente relogar.')
+      return
     }
-    setLoading(true);
+    setLoading(true)
     try {
       const { data, error } = await supabase
         .from('companies')
         .select('id, name, public_slug, menu_published')
         .eq('id', companyId)
-        .single();
+        .single()
 
-      if (error) throw error;
-      setCompany(data);
-      setSlugInput(data.public_slug || '');
-      setPublished(data.menu_published || false);
+      if (error) throw error
+      setCompany(data)
+      setSlugInput(data.public_slug || '')
+      setPublished(data.menu_published || false)
     } catch (err: any) {
-      Alert.alert('Erro', 'Não foi possível carregar os dados do cardápio.');
+      Alert.alert('Erro', 'Não foi possível carregar os dados do cardápio.')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }, [companyId]);
+  }, [companyId])
 
   useEffect(() => {
     if (visible && companyId) {
-      loadCompany();
-      setSaveState('idle');
-      setSlugError('');
-      setCopied(false);
+      loadCompany()
+      setSaveState('idle')
+      setSlugError('')
+      setCopied(false)
     } else if (visible && !companyId) {
-      loadCompany(); // will set loading=false and show alert
+      loadCompany() // will set loading=false and show alert
     }
-  }, [visible, companyId, loadCompany]);
+  }, [visible, companyId, loadCompany])
 
   const validateSlug = (value: string): string => {
-    const trimmed = value.trim();
-    if (!trimmed) return 'O slug não pode ser vazio.';
-    if (trimmed.length < 3) return 'Mínimo de 3 caracteres.';
-    if (trimmed.length > 60) return 'Máximo de 60 caracteres.';
+    const trimmed = value.trim()
+    if (!trimmed) return 'O slug não pode ser vazio.'
+    if (trimmed.length < 3) return 'Mínimo de 3 caracteres.'
+    if (trimmed.length > 60) return 'Máximo de 60 caracteres.'
     if (!SLUG_REGEX.test(trimmed))
-      return 'Use apenas letras minúsculas, números e hífens (sem espaços ou caracteres especiais).';
-    return '';
-  };
+      return 'Use apenas letras minúsculas, números e hífens (sem espaços ou caracteres especiais).'
+    return ''
+  }
 
   const handleSlugChange = (value: string) => {
-    const sanitized = value.toLowerCase().replace(/[^a-z0-9-]/g, '');
-    setSlugInput(sanitized);
-    if (saveState === 'error') setSaveState('idle');
-    setSlugError('');
-  };
+    const sanitized = value.toLowerCase().replace(/[^a-z0-9-]/g, '')
+    setSlugInput(sanitized)
+    if (saveState === 'error') setSaveState('idle')
+    setSlugError('')
+  }
 
   const checkSlugUnique = async (slug: string): Promise<boolean> => {
     const { data } = await supabase
@@ -126,26 +141,26 @@ export default function QRCardapioModal({ visible, onClose, companyId }: Props) 
       .select('id')
       .eq('public_slug', slug)
       .neq('id', companyId || '')
-      .maybeSingle();
-    return data === null;
-  };
+      .maybeSingle()
+    return data === null
+  }
 
   const handleSave = async () => {
-    const error = validateSlug(slugInput);
+    const error = validateSlug(slugInput)
     if (error) {
-      setSlugError(error);
-      return;
+      setSlugError(error)
+      return
     }
 
-    setSaveState('saving');
-    setSlugError('');
+    setSaveState('saving')
+    setSlugError('')
 
     try {
-      const isUnique = await checkSlugUnique(slugInput.trim());
+      const isUnique = await checkSlugUnique(slugInput.trim())
       if (!isUnique) {
-        setSlugError('Este slug já está sendo usado por outra empresa. Escolha outro.');
-        setSaveState('error');
-        return;
+        setSlugError('Este slug já está sendo usado por outra empresa. Escolha outro.')
+        setSaveState('error')
+        return
       }
 
       const { error: updateError } = await supabase
@@ -154,60 +169,58 @@ export default function QRCardapioModal({ visible, onClose, companyId }: Props) 
           public_slug: slugInput.trim(),
           menu_published: published,
         })
-        .eq('id', companyId || '');
+        .eq('id', companyId || '')
 
-      if (updateError) throw updateError;
+      if (updateError) throw updateError
 
       setCompany((prev) =>
-        prev
-          ? { ...prev, public_slug: slugInput.trim(), menu_published: published }
-          : prev,
-      );
-      setSaveState('saved');
-      setTimeout(() => setSaveState('idle'), 2500);
+        prev ? { ...prev, public_slug: slugInput.trim(), menu_published: published } : prev,
+      )
+      setSaveState('saved')
+      setTimeout(() => setSaveState('idle'), 2500)
     } catch (err: any) {
-      setSaveState('error');
-      Alert.alert('Erro', err.message || 'Falha ao salvar configurações.');
+      setSaveState('error')
+      Alert.alert('Erro', err.message || 'Falha ao salvar configurações.')
     }
-  };
+  }
 
   const handleTogglePublished = async (value: boolean) => {
-    setPublished(value);
-    if (!company?.public_slug) return; // Não salva automaticamente sem slug
+    setPublished(value)
+    if (!company?.public_slug) return // Não salva automaticamente sem slug
 
     try {
       await supabase
         .from('companies')
         .update({ menu_published: value })
-        .eq('id', companyId || '');
-      setCompany((prev) => (prev ? { ...prev, menu_published: value } : prev));
+        .eq('id', companyId || '')
+      setCompany((prev) => (prev ? { ...prev, menu_published: value } : prev))
     } catch {
-      setPublished(!value); // Reverte em caso de erro
-      Alert.alert('Erro', 'Não foi possível alterar o status de publicação.');
+      setPublished(!value) // Reverte em caso de erro
+      Alert.alert('Erro', 'Não foi possível alterar o status de publicação.')
     }
-  };
+  }
 
   const handleCopyLink = async () => {
-    if (!menuUrl) return;
-    await Clipboard.setStringAsync(menuUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+    if (!menuUrl) return
+    await Clipboard.setStringAsync(menuUrl)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   const handleShare = async () => {
-    if (!menuUrl) return;
+    if (!menuUrl) return
     try {
       await Share.share({
         message: `Confira o cardápio de ${company?.name}: ${menuUrl}`,
         url: menuUrl,
-      });
+      })
     } catch {
       // Usuário cancelou ou plataforma não suporta
     }
-  };
+  }
 
   const generateSuggestedSlug = () => {
-    if (!company?.name) return;
+    if (!company?.name) return
     const suggested = company.name
       .toLowerCase()
       .normalize('NFD')
@@ -215,30 +228,42 @@ export default function QRCardapioModal({ visible, onClose, companyId }: Props) 
       .replace(/[^a-z0-9\s-]/g, '')
       .trim()
       .replace(/\s+/g, '-')
-      .substring(0, 50);
-    setSlugInput(suggested);
-    setSlugError('');
-  };
+      .substring(0, 50)
+    setSlugInput(suggested)
+    setSlugError('')
+  }
 
   const handlePrint = useCallback(() => {
-    if (!menuUrl || Platform.OS !== 'web') return;
+    if (!menuUrl || Platform.OS !== 'web') return
 
-    const restaurantName = company?.name || '';
+    const restaurantName = company?.name || ''
+    const safeRestaurantName = escapeHtml(restaurantName)
 
     const openPrintWindow = (qrImageSrc: string) => {
-      const win = (window as any).open('', '_blank', 'width=800,height=600');
+      const win = (window as any).open('', '_blank', 'width=800,height=600')
       if (!win) {
-        Alert.alert('Pop-up bloqueado', 'Permita pop-ups neste site para imprimir os QR codes.');
-        return;
+        Alert.alert('Pop-up bloqueado', 'Permita pop-ups neste site para imprimir os QR codes.')
+        return
       }
+
+      let safeQrImageSrc = ''
+      try {
+        safeQrImageSrc = safeDataImageUrl(qrImageSrc)
+      } catch {
+        Alert.alert('Erro', 'Não foi possível gerar uma imagem de QR segura para impressão.')
+        win.close()
+        return
+      }
+
       const cell = `<div class="qr-cell">
-        <img src="${qrImageSrc}" alt="QR Code" />
-        <p class="name">${restaurantName}</p>
+        <img src="${safeQrImageSrc}" alt="QR Code" />
+        <p class="name">${safeRestaurantName}</p>
         <p class="sub">Escaneie para ver o card&#225;pio</p>
-      </div>`;
+      </div>`
       win.document.write(`<!DOCTYPE html><html lang="pt-BR"><head>
         <meta charset="utf-8"/>
-        <title>QR Card&#225;pio &#8211; ${restaurantName}</title>
+        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'none'; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"/>
+        <title>QR Card&#225;pio &#8211; ${safeRestaurantName}</title>
         <style>
           @page { size: A4 portrait; margin: 15mm; }
           * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -255,78 +280,84 @@ export default function QRCardapioModal({ visible, onClose, companyId }: Props) 
         </style>
       </head><body>
         <div class="grid">${Array(9).fill(cell).join('')}</div>
-        <script>
-          (function() {
-            const qrImages = Array.from(document.querySelectorAll('.qr-cell img'));
-            if (!qrImages.length) {
-              setTimeout(function(){ window.print(); }, 400);
-              return;
-            }
+      </body></html>`)
+      win.document.close()
 
-            let pending = qrImages.length;
-            const tryPrint = function() {
-              pending -= 1;
-              if (pending <= 0) {
-                setTimeout(function(){ window.print(); }, 250);
-              }
-            };
+      const qrImages = Array.from(
+        win.document.querySelectorAll('.qr-cell img'),
+      ) as HTMLImageElement[]
+      let pending = qrImages.length
+      let hasPrinted = false
 
-            qrImages.forEach(function(img) {
-              if (img.complete) {
-                tryPrint();
-                return;
-              }
-              img.addEventListener('load', tryPrint, { once: true });
-              img.addEventListener('error', tryPrint, { once: true });
-            });
+      const printOnce = () => {
+        if (hasPrinted) return
+        hasPrinted = true
+        win.focus()
+        win.print()
+      }
 
-            setTimeout(function(){
-              if (pending > 0) {
-                window.print();
-              }
-            }, 1500);
-          })();
-        </script>
-      </body></html>`);
-      win.document.close();
-    };
+      if (!qrImages.length) {
+        setTimeout(printOnce, 400)
+        return
+      }
+
+      const onImageDone = () => {
+        pending -= 1
+        if (pending <= 0) {
+          setTimeout(printOnce, 250)
+        }
+      }
+
+      qrImages.forEach((img) => {
+        if (img.complete) {
+          onImageDone()
+          return
+        }
+        img.addEventListener('load', onImageDone, { once: true })
+        img.addEventListener('error', onImageDone, { once: true })
+      })
+
+      setTimeout(() => {
+        if (!hasPrinted) {
+          printOnce()
+        }
+      }, 1500)
+    }
 
     // Tenta toDataURL (API do react-native-qrcode-svg)
     if (qrRef.current && typeof (qrRef.current as any).toDataURL === 'function') {
-      (qrRef.current as any).toDataURL((rawBase64: string) => {
+      ;(qrRef.current as any).toDataURL((rawBase64: string) => {
         if (!rawBase64) {
-          Alert.alert('Erro', 'Não foi possível gerar a imagem do QR para impressão.');
-          return;
+          Alert.alert('Erro', 'Não foi possível gerar a imagem do QR para impressão.')
+          return
         }
-        openPrintWindow(`data:image/png;base64,${rawBase64}`);
-      });
-      return;
+        openPrintWindow(`data:image/png;base64,${rawBase64}`)
+      })
+      return
     }
 
     // Fallback: serializa o elemento SVG do DOM (web)
     try {
-      const svgEl = qrRef.current as unknown as SVGSVGElement | null;
+      const svgEl = qrRef.current as unknown as SVGSVGElement | null
       if (svgEl && svgEl.tagName?.toLowerCase() === 'svg') {
-        const serializer = new XMLSerializer();
-        const svgStr = serializer.serializeToString(svgEl);
-        const encoded = btoa(unescape(encodeURIComponent(svgStr)));
-        openPrintWindow(`data:image/svg+xml;base64,${encoded}`);
-        return;
+        const serializer = new XMLSerializer()
+        const svgStr = serializer.serializeToString(svgEl)
+        const encoded = btoa(unescape(encodeURIComponent(svgStr)))
+        openPrintWindow(`data:image/svg+xml;base64,${encoded}`)
+        return
       }
     } catch {
       // ignore
     }
 
-    Alert.alert('Erro', 'N\u00e3o foi poss\u00edvel gerar o QR para impress\u00e3o. Tente salvar primeiro.');
-  }, [menuUrl, company?.name]);
+    Alert.alert(
+      'Erro',
+      'N\u00e3o foi poss\u00edvel gerar o QR para impress\u00e3o. Tente salvar primeiro.',
+    )
+  }, [menuUrl, company?.name])
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      onRequestClose={onClose}
-      statusBarTranslucent
-    >
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose} statusBarTranslucent>
       <ScreenScaffold
         title="Cardápio Digital (QR)"
         leftAction={{ label: 'Voltar', onPress: onClose }}
@@ -346,25 +377,19 @@ export default function QRCardapioModal({ visible, onClose, companyId }: Props) 
             <View
               style={[
                 styles.statusBadge,
-                published && company?.public_slug
-                  ? styles.statusBadgeOn
-                  : styles.statusBadgeOff,
+                published && company?.public_slug ? styles.statusBadgeOn : styles.statusBadgeOff,
               ]}
             >
               <View
                 style={[
                   styles.statusDot,
-                  published && company?.public_slug
-                    ? styles.statusDotOn
-                    : styles.statusDotOff,
+                  published && company?.public_slug ? styles.statusDotOn : styles.statusDotOff,
                 ]}
               />
               <Text
                 style={[
                   styles.statusText,
-                  published && company?.public_slug
-                    ? styles.statusTextOn
-                    : styles.statusTextOff,
+                  published && company?.public_slug ? styles.statusTextOn : styles.statusTextOff,
                 ]}
               >
                 {published && company?.public_slug
@@ -429,7 +454,8 @@ export default function QRCardapioModal({ visible, onClose, companyId }: Props) 
               </View>
               {!company?.public_slug && (
                 <Text style={styles.hintText}>
-                  <Ionicons name="information-circle-outline" size={13} /> Salve um slug antes de publicar.
+                  <Ionicons name="information-circle-outline" size={13} /> Salve um slug antes de
+                  publicar.
                 </Text>
               )}
             </View>
@@ -471,7 +497,9 @@ export default function QRCardapioModal({ visible, onClose, companyId }: Props) 
                       size={200}
                       color="#1a1a1a"
                       backgroundColor="#ffffff"
-                      getRef={(ref) => { qrRef.current = ref; }}
+                      getRef={(ref) => {
+                        qrRef.current = ref
+                      }}
                       enableLinearGradient={false}
                     />
                   </View>
@@ -497,9 +525,7 @@ export default function QRCardapioModal({ visible, onClose, companyId }: Props) 
                       size={18}
                       color={copied ? colors.success : colors.primary}
                     />
-                    <Text
-                      style={[styles.actionBtnText, copied && styles.actionBtnTextCopied]}
-                    >
+                    <Text style={[styles.actionBtnText, copied && styles.actionBtnTextCopied]}>
                       {copied ? 'Copiado!' : 'Copiar link'}
                     </Text>
                   </TouchableOpacity>
@@ -522,9 +548,7 @@ export default function QRCardapioModal({ visible, onClose, companyId }: Props) 
             ) : (
               <View style={styles.qrPlaceholder}>
                 <Ionicons name="qr-code-outline" size={64} color={colors.border} />
-                <Text style={styles.qrPlaceholderText}>
-                  Salve um slug para gerar o QR code.
-                </Text>
+                <Text style={styles.qrPlaceholderText}>Salve um slug para gerar o QR code.</Text>
               </View>
             )}
 
@@ -533,14 +557,13 @@ export default function QRCardapioModal({ visible, onClose, companyId }: Props) 
               <View style={styles.previewSection}>
                 <Text style={styles.sectionTitle}>Testar Cardápio</Text>
                 <Text style={styles.sectionDesc}>
-                  Escaneie o QR code ou acesse o link no navegador para ver como o cardápio
-                  aparece para os clientes.
+                  Escaneie o QR code ou acesse o link no navegador para ver como o cardápio aparece
+                  para os clientes.
                 </Text>
                 <View style={styles.previewNote}>
                   <Ionicons name="information-circle-outline" size={16} color={colors.warning} />
                   <Text style={styles.previewNoteText}>
-                    O cardápio só fica visível ao público quando "Publicar Cardápio" está
-                    ativado.
+                    O cardápio só fica visível ao público quando "Publicar Cardápio" está ativado.
                   </Text>
                 </View>
               </View>
@@ -549,7 +572,7 @@ export default function QRCardapioModal({ visible, onClose, companyId }: Props) 
         )}
       </ScreenScaffold>
     </Modal>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -822,4 +845,4 @@ const styles = StyleSheet.create({
     color: '#92400E',
     lineHeight: 17,
   },
-});
+})

@@ -1,10 +1,24 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Linking, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View, ScrollView } from 'react-native';
-import * as Clipboard from 'expo-clipboard';
-import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuth } from '../context/AuthContext';
-import { useBilling } from '../context/BillingContext';
+import { Ionicons } from '@expo/vector-icons'
+import * as Clipboard from 'expo-clipboard'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Linking,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useAuth } from '../context/AuthContext'
+import { useBilling } from '../context/BillingContext'
 import {
   BillingInvoice,
   BillingPaymentMethod,
@@ -19,11 +33,11 @@ import {
   setDefaultPaymentMethod,
   startBillingCheckout,
   tokenizeCardWithMp,
-} from '../services/BillingService';
-import { colors } from '../theme/colors';
+} from '../services/BillingService'
+import { colors } from '../theme/colors'
 
 interface BillingScreenProps {
-  onClose?: () => void;
+  onClose?: () => void
 }
 
 const statusLabels: Record<string, string> = {
@@ -34,28 +48,40 @@ const statusLabels: Record<string, string> = {
   suspended: 'Conta suspensa',
   reactivated: 'Conta reativada',
   cancelled: 'Assinatura cancelada',
-};
+}
 
 const heroMessages: Record<string, string> = {
-  trialing: 'O cadastro da empresa continua com trial de 30 dias. A regularização do método de pagamento precisa ser concluída antes do vencimento para evitar bloqueio operacional.',
-  active: 'Assinatura regularizada e ativa. Obrigado! O próximo ciclo de cobrança será processado automaticamente.',
-  reactivated: 'Conta reativada com sucesso. A cobrança voltará ao ciclo normal no próximo vencimento.',
-  past_due: 'Há uma cobrança pendente. Regularize o pagamento para evitar suspensão do acesso operacional.',
-  grace_period: 'A assinatura está em período de tolerância. Realize o pagamento o quanto antes para manter o acesso.',
+  trialing:
+    'O cadastro da empresa continua com trial de 30 dias. A regularização do método de pagamento precisa ser concluída antes do vencimento para evitar bloqueio operacional.',
+  active:
+    'Assinatura regularizada e ativa. Obrigado! O próximo ciclo de cobrança será processado automaticamente.',
+  reactivated:
+    'Conta reativada com sucesso. A cobrança voltará ao ciclo normal no próximo vencimento.',
+  past_due:
+    'Há uma cobrança pendente. Regularize o pagamento para evitar suspensão do acesso operacional.',
+  grace_period:
+    'A assinatura está em período de tolerância. Realize o pagamento o quanto antes para manter o acesso.',
   suspended: 'Conta suspensa por falta de pagamento. Regularize para restaurar o acesso.',
   cancelled: 'Assinatura cancelada. Entre em contato para reativar o plano.',
-};
+}
+
+const BILLING_CHECKOUT_ALLOWED_HOST_SUFFIXES = [
+  'mercadopago.com',
+  'mercadopago.com.br',
+  'restaurante-web.app.br',
+  'ops.restaurante-web.app.br',
+]
 
 function formatCurrency(cents: number) {
   return (cents / 100).toLocaleString('pt-BR', {
     style: 'currency',
     currency: 'BRL',
-  });
+  })
 }
 
 function formatDate(date?: string | Date | null) {
   if (!date) {
-    return '-';
+    return '-'
   }
 
   return new Date(date).toLocaleDateString('pt-BR', {
@@ -63,12 +89,12 @@ function formatDate(date?: string | Date | null) {
     month: '2-digit',
     year: 'numeric',
     timeZone: 'America/Sao_Paulo',
-  });
+  })
 }
 
 function formatDateTime(date?: string | Date | null) {
   if (!date) {
-    return '-';
+    return '-'
   }
 
   return new Date(date).toLocaleString('pt-BR', {
@@ -78,293 +104,359 @@ function formatDateTime(date?: string | Date | null) {
     hour: '2-digit',
     minute: '2-digit',
     timeZone: 'America/Sao_Paulo',
-  });
+  })
 }
 
 function getMethodLabel(method: BillingPaymentMethod) {
   if (method.type === 'pix') {
-    return 'Pix';
+    return 'Pix'
   }
 
-  const brand = method.brand ? method.brand.toUpperCase() : 'Cartão';
-  const lastFour = method.last_four ? ` •••• ${method.last_four}` : '';
-  return `${brand}${lastFour}`;
+  const brand = method.brand ? method.brand.toUpperCase() : 'Cartão'
+  const lastFour = method.last_four ? ` •••• ${method.last_four}` : ''
+  return `${brand}${lastFour}`
 }
 
 function getInvoiceStatusLabel(status: BillingInvoice['status']) {
   switch (status) {
     case 'paid':
-      return 'Pago';
+      return 'Pago'
     case 'failed':
-      return 'Falhou';
+      return 'Falhou'
     case 'cancelled':
-      return 'Cancelado';
+      return 'Cancelado'
     default:
-      return 'Pendente';
+      return 'Pendente'
   }
 }
 
 function getActivePixInvoice(invoices: BillingInvoice[]) {
-  const now = Date.now();
+  const now = Date.now()
 
-  return invoices.find((invoice) => {
-    if (invoice.status !== 'pending' || invoice.payment_method_type !== 'pix' || !invoice.pix_qr_code_text) {
-      return false;
+  return (
+    invoices.find((invoice) => {
+      if (
+        invoice.status !== 'pending' ||
+        invoice.payment_method_type !== 'pix' ||
+        !invoice.pix_qr_code_text
+      ) {
+        return false
+      }
+
+      if (!invoice.pix_expires_at) {
+        return true
+      }
+
+      const expiresAt = new Date(invoice.pix_expires_at).getTime()
+      return Number.isNaN(expiresAt) || expiresAt > now
+    }) || null
+  )
+}
+
+function isAllowedBillingCheckoutUrl(value: string) {
+  try {
+    const parsed = new URL(value)
+    if (parsed.protocol !== 'https:') {
+      return false
     }
 
-    if (!invoice.pix_expires_at) {
-      return true;
-    }
-
-    const expiresAt = new Date(invoice.pix_expires_at).getTime();
-    return Number.isNaN(expiresAt) || expiresAt > now;
-  }) || null;
+    const hostname = parsed.hostname.toLowerCase()
+    return BILLING_CHECKOUT_ALLOWED_HOST_SUFFIXES.some(
+      (suffix) => hostname === suffix || hostname.endsWith(`.${suffix}`),
+    )
+  } catch {
+    return false
+  }
 }
 
 export default function BillingScreen({ onClose }: BillingScreenProps) {
-  const insets = useSafeAreaInsets();
-  const { user } = useAuth();
-  const { subscription, loadingBilling, reloadSubscription } = useBilling();
-  const [paymentMethods, setPaymentMethods] = useState<BillingPaymentMethod[]>([]);
-  const [invoices, setInvoices] = useState<BillingInvoice[]>([]);
-  const [providerStatus, setProviderStatus] = useState<BillingProviderStatus | null>(null);
-  const [loadingData, setLoadingData] = useState(true);
-  const [actionLoading, setActionLoading] = useState<'checkout' | 'pix' | null>(null);
-  const [deletingCardId, setDeletingCardId] = useState<string | null>(null);
-  const [settingDefaultId, setSettingDefaultId] = useState<string | null>(null);
+  const insets = useSafeAreaInsets()
+  const { user } = useAuth()
+  const { subscription, loadingBilling, reloadSubscription } = useBilling()
+  const [paymentMethods, setPaymentMethods] = useState<BillingPaymentMethod[]>([])
+  const [invoices, setInvoices] = useState<BillingInvoice[]>([])
+  const [providerStatus, setProviderStatus] = useState<BillingProviderStatus | null>(null)
+  const [loadingData, setLoadingData] = useState(true)
+  const [actionLoading, setActionLoading] = useState<'checkout' | 'pix' | null>(null)
+  const [deletingCardId, setDeletingCardId] = useState<string | null>(null)
+  const [settingDefaultId, setSettingDefaultId] = useState<string | null>(null)
 
   // Card form modal
-  const [showCardModal, setShowCardModal] = useState(false);
-  const [pendingPublicKey, setPendingPublicKey] = useState<string | null>(null);
+  const [showCardModal, setShowCardModal] = useState(false)
+  const [pendingPublicKey, setPendingPublicKey] = useState<string | null>(null)
   const [cardForm, setCardForm] = useState<CardInput>({
     cardNumber: '',
     expiryMonth: '',
     expiryYear: '',
     cvv: '',
     cardholderName: '',
-  });
+  })
 
-  const companyId = user?.companyId;
-  const hasPaymentMethod = paymentMethods.length > 0;
-  const cardMethods = useMemo(() => paymentMethods.filter((m) => m.type === 'card'), [paymentMethods]);
-  const hasCards = cardMethods.length > 0;
-  const activePixInvoice = useMemo(() => getActivePixInvoice(invoices), [invoices]);
+  const companyId = user?.companyId
+  const hasPaymentMethod = paymentMethods.length > 0
+  const cardMethods = useMemo(
+    () => paymentMethods.filter((m) => m.type === 'card'),
+    [paymentMethods],
+  )
+  const hasCards = cardMethods.length > 0
+  const activePixInvoice = useMemo(() => getActivePixInvoice(invoices), [invoices])
 
   const daysLeft = useMemo(() => {
     if (!subscription.trialEndsAt) {
-      return null;
+      return null
     }
 
-    const delta = subscription.trialEndsAt.getTime() - Date.now();
-    return Math.max(0, Math.ceil(delta / (1000 * 60 * 60 * 24)));
-  }, [subscription.trialEndsAt]);
+    const delta = subscription.trialEndsAt.getTime() - Date.now()
+    return Math.max(0, Math.ceil(delta / (1000 * 60 * 60 * 24)))
+  }, [subscription.trialEndsAt])
 
   const loadData = useCallback(async () => {
     if (!companyId) {
-      setPaymentMethods([]);
-      setInvoices([]);
-      setProviderStatus(null);
-      setLoadingData(false);
-      return;
+      setPaymentMethods([])
+      setInvoices([])
+      setProviderStatus(null)
+      setLoadingData(false)
+      return
     }
 
-    setLoadingData(true);
+    setLoadingData(true)
 
     try {
       const [methodsData, invoicesData, providerData] = await Promise.all([
         listBillingPaymentMethods(companyId),
         listBillingInvoices(companyId),
         getBillingProviderStatus(companyId),
-      ]);
+      ])
 
-      setPaymentMethods(methodsData);
-      setInvoices(invoicesData);
-      setProviderStatus(providerData);
+      setPaymentMethods(methodsData)
+      setInvoices(invoicesData)
+      setProviderStatus(providerData)
     } catch (error) {
-      Alert.alert('Cobrança', error instanceof Error ? error.message : 'Falha ao carregar dados de cobrança.');
+      Alert.alert(
+        'Cobrança',
+        error instanceof Error ? error.message : 'Falha ao carregar dados de cobrança.',
+      )
     } finally {
-      setLoadingData(false);
+      setLoadingData(false)
     }
-  }, [companyId]);
+  }, [companyId])
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    loadData()
+  }, [loadData])
 
   const handleRefresh = useCallback(async () => {
-    await reloadSubscription();
-    await loadData();
-  }, [loadData, reloadSubscription]);
+    await reloadSubscription()
+    await loadData()
+  }, [loadData, reloadSubscription])
 
   const handleStartCheckout = useCallback(async () => {
     if (!companyId) {
-      return;
+      return
     }
 
-    setActionLoading('checkout');
+    setActionLoading('checkout')
     try {
-      const result = await startBillingCheckout(companyId);
+      const result = await startBillingCheckout(companyId)
 
       if (result.status === 'ready_for_tokenization' && result.publicKey) {
         // Store public key and show card form — next step is client-side tokenization
-        setPendingPublicKey(result.publicKey);
-        setCardForm({ cardNumber: '', expiryMonth: '', expiryYear: '', cvv: '', cardholderName: '' });
-        setShowCardModal(true);
-        return;
+        setPendingPublicKey(result.publicKey)
+        setCardForm({
+          cardNumber: '',
+          expiryMonth: '',
+          expiryYear: '',
+          cvv: '',
+          cardholderName: '',
+        })
+        setShowCardModal(true)
+        return
       }
 
       if (result.checkoutUrl) {
-        await Linking.openURL(result.checkoutUrl);
+        if (!isAllowedBillingCheckoutUrl(result.checkoutUrl)) {
+          Alert.alert(
+            'Cobrança',
+            'URL de checkout inválida ou não autorizada. Entre em contato com o suporte.',
+          )
+          return
+        }
+
+        await Linking.openURL(result.checkoutUrl)
       }
 
-      Alert.alert('Cobrança', result.message);
-      await handleRefresh();
+      Alert.alert('Cobrança', result.message)
+      await handleRefresh()
     } catch (error) {
-      Alert.alert('Cobrança', error instanceof Error ? error.message : 'Falha ao iniciar o cadastro do método de pagamento.');
+      Alert.alert(
+        'Cobrança',
+        error instanceof Error
+          ? error.message
+          : 'Falha ao iniciar o cadastro do método de pagamento.',
+      )
     } finally {
-      setActionLoading(null);
+      setActionLoading(null)
     }
-  }, [companyId, handleRefresh]);
+  }, [companyId, handleRefresh])
 
   const handleSaveCard = useCallback(async () => {
     if (!companyId || !pendingPublicKey) {
-      return;
+      return
     }
 
-    const { cardNumber, expiryMonth, expiryYear, cvv, cardholderName } = cardForm;
-    const digits = cardNumber.replace(/\s/g, '');
+    const { cardNumber, expiryMonth, expiryYear, cvv, cardholderName } = cardForm
+    const digits = cardNumber.replace(/\s/g, '')
 
     if (digits.length < 13 || digits.length > 19) {
-      Alert.alert('Cartão', 'Número do cartão inválido.');
-      return;
+      Alert.alert('Cartão', 'Número do cartão inválido.')
+      return
     }
 
-    const month = parseInt(expiryMonth, 10);
+    const month = parseInt(expiryMonth, 10)
     if (!month || month < 1 || month > 12) {
-      Alert.alert('Cartão', 'Mês de validade inválido (01-12).');
-      return;
+      Alert.alert('Cartão', 'Mês de validade inválido (01-12).')
+      return
     }
 
     if (!expiryYear || expiryYear.length < 2) {
-      Alert.alert('Cartão', 'Ano de validade inválido.');
-      return;
+      Alert.alert('Cartão', 'Ano de validade inválido.')
+      return
     }
 
     if (cvv.length < 3) {
-      Alert.alert('Cartão', 'CVV inválido.');
-      return;
+      Alert.alert('Cartão', 'CVV inválido.')
+      return
     }
 
     if (!cardholderName.trim()) {
-      Alert.alert('Cartão', 'Informe o nome impresso no cartão.');
-      return;
+      Alert.alert('Cartão', 'Informe o nome impresso no cartão.')
+      return
     }
 
-    setActionLoading('checkout');
+    setActionLoading('checkout')
     try {
       // Tokenize directly with MP — CVV never touches our servers
-      const token = await tokenizeCardWithMp(pendingPublicKey, cardForm);
+      const token = await tokenizeCardWithMp(pendingPublicKey, cardForm)
 
       // Persist only the opaque token to the backend
-      const result = await saveCardToken(companyId, token);
+      const result = await saveCardToken(companyId, token)
 
-      setShowCardModal(false);
-      setPendingPublicKey(null);
+      setShowCardModal(false)
+      setPendingPublicKey(null)
 
-      Alert.alert('Cartão salvo', result.message || 'Cartão cadastrado com sucesso.');
-      await handleRefresh();
+      Alert.alert('Cartão salvo', result.message || 'Cartão cadastrado com sucesso.')
+      await handleRefresh()
     } catch (error) {
-      Alert.alert('Erro no cartão', error instanceof Error ? error.message : 'Falha ao salvar o cartão.');
+      Alert.alert(
+        'Erro no cartão',
+        error instanceof Error ? error.message : 'Falha ao salvar o cartão.',
+      )
     } finally {
-      setActionLoading(null);
+      setActionLoading(null)
     }
-  }, [companyId, pendingPublicKey, cardForm, handleRefresh]);
+  }, [companyId, pendingPublicKey, cardForm, handleRefresh])
 
   const handlePixFallback = useCallback(async () => {
     if (!companyId) {
-      return;
+      return
     }
 
-    setActionLoading('pix');
+    setActionLoading('pix')
     try {
-      const result = await requestBillingPixFallback(companyId);
+      const result = await requestBillingPixFallback(companyId)
       const pixSummary = result.pixQrCodeText
         ? `\n\nPix disponível até ${formatDateTime(result.pixExpiresAt)}.`
-        : '';
-      Alert.alert('Regularização via Pix', result.message + pixSummary + (result.nextStep ? `\n\nPróximo passo: ${result.nextStep}` : ''));
-      await handleRefresh();
+        : ''
+      Alert.alert(
+        'Regularização via Pix',
+        result.message +
+          pixSummary +
+          (result.nextStep ? `\n\nPróximo passo: ${result.nextStep}` : ''),
+      )
+      await handleRefresh()
     } catch (error) {
-      Alert.alert('Cobrança', error instanceof Error ? error.message : 'Falha ao iniciar a regularização via Pix.');
+      Alert.alert(
+        'Cobrança',
+        error instanceof Error ? error.message : 'Falha ao iniciar a regularização via Pix.',
+      )
     } finally {
-      setActionLoading(null);
+      setActionLoading(null)
     }
-  }, [companyId, handleRefresh]);
+  }, [companyId, handleRefresh])
 
   const handleCopyPixCode = useCallback(async () => {
     if (!activePixInvoice?.pix_qr_code_text) {
-      return;
+      return
     }
 
     try {
-      await Clipboard.setStringAsync(activePixInvoice.pix_qr_code_text);
-      Alert.alert('Pix copiado', 'O código copia e cola foi enviado para a área de transferência.');
+      await Clipboard.setStringAsync(activePixInvoice.pix_qr_code_text)
+      Alert.alert('Pix copiado', 'O código copia e cola foi enviado para a área de transferência.')
     } catch (error) {
-      Alert.alert('Pix', error instanceof Error ? error.message : 'Falha ao copiar o código Pix.');
+      Alert.alert('Pix', error instanceof Error ? error.message : 'Falha ao copiar o código Pix.')
     }
-  }, [activePixInvoice]);
+  }, [activePixInvoice])
 
-  const handleSetDefaultCard = useCallback(async (methodId: string) => {
-    if (!companyId) {
-      return;
-    }
+  const handleSetDefaultCard = useCallback(
+    async (methodId: string) => {
+      if (!companyId) {
+        return
+      }
 
-    setSettingDefaultId(methodId);
-    try {
-      await setDefaultPaymentMethod(companyId, methodId);
-      await loadData();
-    } catch (error) {
-      Alert.alert('Cartão', error instanceof Error ? error.message : 'Falha ao definir cartão padrão.');
-    } finally {
-      setSettingDefaultId(null);
-    }
-  }, [companyId, loadData]);
+      setSettingDefaultId(methodId)
+      try {
+        await setDefaultPaymentMethod(companyId, methodId)
+        await loadData()
+      } catch (error) {
+        Alert.alert(
+          'Cartão',
+          error instanceof Error ? error.message : 'Falha ao definir cartão padrão.',
+        )
+      } finally {
+        setSettingDefaultId(null)
+      }
+    },
+    [companyId, loadData],
+  )
 
-  const handleDeleteCard = useCallback((method: BillingPaymentMethod) => {
-    if (!companyId) {
-      return;
-    }
+  const handleDeleteCard = useCallback(
+    (method: BillingPaymentMethod) => {
+      if (!companyId) {
+        return
+      }
 
-    const label = getMethodLabel(method);
-    const isLast = cardMethods.length === 1;
-    const warningMsg = isLast
-      ? '\n\nAtenção: este é o último cartão. Após excluir, pagamento ficará disponível somente via Pix.'
-      : '';
+      const label = getMethodLabel(method)
+      const isLast = cardMethods.length === 1
+      const warningMsg = isLast
+        ? '\n\nAtenção: este é o último cartão. Após excluir, pagamento ficará disponível somente via Pix.'
+        : ''
 
-    Alert.alert(
-      'Excluir cartão',
-      `Deseja excluir o cartão ${label}?${warningMsg}`,
-      [
+      Alert.alert('Excluir cartão', `Deseja excluir o cartão ${label}?${warningMsg}`, [
         { text: 'Cancelar', style: 'cancel' },
         {
           text: 'Excluir',
           style: 'destructive',
           onPress: async () => {
-            setDeletingCardId(method.id);
+            setDeletingCardId(method.id)
             try {
-              await deletePaymentMethod(companyId, method.id);
-              await loadData();
+              await deletePaymentMethod(companyId, method.id)
+              await loadData()
             } catch (err) {
-              Alert.alert('Cartão', err instanceof Error ? err.message : 'Falha ao excluir o cartão.');
+              Alert.alert(
+                'Cartão',
+                err instanceof Error ? err.message : 'Falha ao excluir o cartão.',
+              )
             } finally {
-              setDeletingCardId(null);
+              setDeletingCardId(null)
             }
           },
         },
-      ]
-    );
-  }, [companyId, cardMethods.length, loadData]);
+      ])
+    },
+    [companyId, cardMethods.length, loadData],
+  )
 
-  const statusLabel = statusLabels[subscription.status || 'trialing'] || 'Assinatura';
+  const statusLabel = statusLabels[subscription.status || 'trialing'] || 'Assinatura'
 
   return (
     <View style={styles.container}>
@@ -372,7 +464,12 @@ export default function BillingScreen({ onClose }: BillingScreenProps) {
         <View style={styles.headerLeft} />
         <View style={styles.headerCenter}>
           <View style={styles.headerTitleRow}>
-            <Ionicons name="card-outline" size={24} color={colors.white} style={styles.headerIcon} />
+            <Ionicons
+              name="card-outline"
+              size={24}
+              color={colors.white}
+              style={styles.headerIcon}
+            />
             <Text style={styles.headerTitle}>Assinatura SaaS</Text>
           </View>
         </View>
@@ -386,306 +483,354 @@ export default function BillingScreen({ onClose }: BillingScreenProps) {
       </View>
 
       <ScrollView contentContainerStyle={styles.contentContainer}>
-      {/* Card tokenization modal */}
-      <Modal
-        visible={showCardModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => { setShowCardModal(false); setPendingPublicKey(null); }}
-      >
-        <KeyboardAvoidingView
-          style={styles.modalContainer}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        {/* Card tokenization modal */}
+        <Modal
+          visible={showCardModal}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => {
+            setShowCardModal(false)
+            setPendingPublicKey(null)
+          }}
         >
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Cadastrar cartão</Text>
-            <TouchableOpacity onPress={() => { setShowCardModal(false); setPendingPublicKey(null); }}>
-              <Ionicons name="close" size={24} color={colors.text} />
+          <KeyboardAvoidingView
+            style={styles.modalContainer}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          >
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Cadastrar cartão</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowCardModal(false)
+                  setPendingPublicKey(null)
+                }}
+              >
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalSubtitle}>
+              Os dados do cartão são enviados diretamente ao Mercado Pago — nunca armazenamos número
+              completo nem CVV.
+            </Text>
+
+            <View style={styles.formField}>
+              <Text style={styles.fieldLabel}>Número do cartão</Text>
+              <TextInput
+                style={styles.fieldInput}
+                placeholder="0000 0000 0000 0000"
+                keyboardType="number-pad"
+                maxLength={19}
+                value={cardForm.cardNumber}
+                onChangeText={(v) => {
+                  const digits = v.replace(/\D/g, '').slice(0, 16)
+                  const formatted = digits.replace(/(\d{4})(?=\d)/g, '$1 ').trim()
+                  setCardForm((prev) => ({ ...prev, cardNumber: formatted }))
+                }}
+              />
+            </View>
+
+            <View style={styles.formRow}>
+              <View style={[styles.formField, { flex: 1 }]}>
+                <Text style={styles.fieldLabel}>Mês</Text>
+                <TextInput
+                  style={styles.fieldInput}
+                  placeholder="MM"
+                  keyboardType="number-pad"
+                  maxLength={2}
+                  value={cardForm.expiryMonth}
+                  onChangeText={(v) =>
+                    setCardForm((prev) => ({ ...prev, expiryMonth: v.replace(/\D/g, '') }))
+                  }
+                />
+              </View>
+              <View style={[styles.formField, { flex: 1 }]}>
+                <Text style={styles.fieldLabel}>Ano</Text>
+                <TextInput
+                  style={styles.fieldInput}
+                  placeholder="AA"
+                  keyboardType="number-pad"
+                  maxLength={4}
+                  value={cardForm.expiryYear}
+                  onChangeText={(v) =>
+                    setCardForm((prev) => ({ ...prev, expiryYear: v.replace(/\D/g, '') }))
+                  }
+                />
+              </View>
+              <View style={[styles.formField, { flex: 1 }]}>
+                <Text style={styles.fieldLabel}>CVV</Text>
+                <TextInput
+                  style={styles.fieldInput}
+                  placeholder="000"
+                  keyboardType="number-pad"
+                  maxLength={4}
+                  secureTextEntry
+                  value={cardForm.cvv}
+                  onChangeText={(v) =>
+                    setCardForm((prev) => ({ ...prev, cvv: v.replace(/\D/g, '') }))
+                  }
+                />
+              </View>
+            </View>
+
+            <View style={styles.formField}>
+              <Text style={styles.fieldLabel}>Nome no cartão</Text>
+              <TextInput
+                style={styles.fieldInput}
+                placeholder="NOME SOBRENOME"
+                autoCapitalize="characters"
+                value={cardForm.cardholderName}
+                onChangeText={(v) => setCardForm((prev) => ({ ...prev, cardholderName: v }))}
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[styles.primaryButton, actionLoading === 'checkout' && styles.buttonDisabled]}
+              onPress={handleSaveCard}
+              disabled={actionLoading !== null}
+            >
+              {actionLoading === 'checkout' ? (
+                <ActivityIndicator color={colors.white} size="small" />
+              ) : (
+                <>
+                  <Ionicons name="checkmark-circle-outline" size={18} color={colors.white} />
+                  <Text style={styles.primaryButtonText}>Confirmar e salvar cartão</Text>
+                </>
+              )}
             </TouchableOpacity>
+          </KeyboardAvoidingView>
+        </Modal>
+        <View style={styles.heroCard}>
+          <View style={styles.heroHeader}>
+            <View>
+              <Text style={styles.eyebrow}>Plano atual</Text>
+              <Text style={styles.heroTitle}>{statusLabel}</Text>
+            </View>
+            <View style={styles.statusPill}>
+              <Text style={styles.statusPillText}>{formatCurrency(subscription.planAmount)}</Text>
+            </View>
           </View>
 
-          <Text style={styles.modalSubtitle}>
-            Os dados do cartão são enviados diretamente ao Mercado Pago — nunca armazenamos número completo nem CVV.
+          <Text style={styles.heroMessage}>
+            {heroMessages[subscription.status || 'trialing'] ?? heroMessages.trialing}
           </Text>
 
-          <View style={styles.formField}>
-            <Text style={styles.fieldLabel}>Número do cartão</Text>
-            <TextInput
-              style={styles.fieldInput}
-              placeholder="0000 0000 0000 0000"
-              keyboardType="number-pad"
-              maxLength={19}
-              value={cardForm.cardNumber}
-              onChangeText={(v) => {
-                const digits = v.replace(/\D/g, '').slice(0, 16);
-                const formatted = digits.replace(/(\d{4})(?=\d)/g, '$1 ').trim();
-                setCardForm((prev) => ({ ...prev, cardNumber: formatted }));
-              }}
-            />
-          </View>
-
-          <View style={styles.formRow}>
-            <View style={[styles.formField, { flex: 1 }]}>
-              <Text style={styles.fieldLabel}>Mês</Text>
-              <TextInput
-                style={styles.fieldInput}
-                placeholder="MM"
-                keyboardType="number-pad"
-                maxLength={2}
-                value={cardForm.expiryMonth}
-                onChangeText={(v) => setCardForm((prev) => ({ ...prev, expiryMonth: v.replace(/\D/g, '') }))}
-              />
+          <View style={styles.heroMetaRow}>
+            <View style={styles.heroMetric}>
+              <Text style={styles.metricLabel}>Trial até</Text>
+              <Text style={styles.metricValue}>{formatDate(subscription.trialEndsAt)}</Text>
             </View>
-            <View style={[styles.formField, { flex: 1 }]}>
-              <Text style={styles.fieldLabel}>Ano</Text>
-              <TextInput
-                style={styles.fieldInput}
-                placeholder="AA"
-                keyboardType="number-pad"
-                maxLength={4}
-                value={cardForm.expiryYear}
-                onChangeText={(v) => setCardForm((prev) => ({ ...prev, expiryYear: v.replace(/\D/g, '') }))}
-              />
+            <View style={styles.heroMetric}>
+              <Text style={styles.metricLabel}>Período atual</Text>
+              <Text style={styles.metricValue}>{formatDate(subscription.currentPeriodEnd)}</Text>
             </View>
-            <View style={[styles.formField, { flex: 1 }]}>
-              <Text style={styles.fieldLabel}>CVV</Text>
-              <TextInput
-                style={styles.fieldInput}
-                placeholder="000"
-                keyboardType="number-pad"
-                maxLength={4}
-                secureTextEntry
-                value={cardForm.cvv}
-                onChangeText={(v) => setCardForm((prev) => ({ ...prev, cvv: v.replace(/\D/g, '') }))}
-              />
+            <View style={styles.heroMetric}>
+              <Text style={styles.metricLabel}>Dias restantes</Text>
+              <Text style={styles.metricValue}>{daysLeft === null ? '-' : String(daysLeft)}</Text>
             </View>
           </View>
+        </View>
 
-          <View style={styles.formField}>
-            <Text style={styles.fieldLabel}>Nome no cartão</Text>
-            <TextInput
-              style={styles.fieldInput}
-              placeholder="NOME SOBRENOME"
-              autoCapitalize="characters"
-              value={cardForm.cardholderName}
-              onChangeText={(v) => setCardForm((prev) => ({ ...prev, cardholderName: v }))}
-            />
+        {!hasCards && !loadingData && (
+          <View style={styles.warningCard}>
+            <Ionicons name="alert-circle-outline" size={18} color={colors.warning} />
+            <Text style={styles.warningText}>
+              {hasPaymentMethod
+                ? 'Nenhum cartão cadastrado. Pagamento disponível somente via Pix.'
+                : 'Nenhum método de pagamento salvo. Cadastre um cartão ou solicite Pix antes do fim do trial.'}
+            </Text>
           </View>
+        )}
 
+        <View style={styles.actionRow}>
           <TouchableOpacity
             style={[styles.primaryButton, actionLoading === 'checkout' && styles.buttonDisabled]}
-            onPress={handleSaveCard}
-            disabled={actionLoading !== null}
+            onPress={handleStartCheckout}
+            disabled={actionLoading !== null || loadingBilling}
           >
             {actionLoading === 'checkout' ? (
               <ActivityIndicator color={colors.white} size="small" />
             ) : (
               <>
-                <Ionicons name="checkmark-circle-outline" size={18} color={colors.white} />
-                <Text style={styles.primaryButtonText}>Confirmar e salvar cartão</Text>
+                <Ionicons name="card-outline" size={18} color={colors.white} />
+                <Text style={styles.primaryButtonText}>Cadastrar cartão</Text>
               </>
             )}
           </TouchableOpacity>
-        </KeyboardAvoidingView>
-      </Modal>
-      <View style={styles.heroCard}>
-        <View style={styles.heroHeader}>
-          <View>
-            <Text style={styles.eyebrow}>Plano atual</Text>
-            <Text style={styles.heroTitle}>{statusLabel}</Text>
-          </View>
-          <View style={styles.statusPill}>
-            <Text style={styles.statusPillText}>{formatCurrency(subscription.planAmount)}</Text>
-          </View>
-        </View>
 
-        <Text style={styles.heroMessage}>
-          {heroMessages[subscription.status || 'trialing'] ?? heroMessages.trialing}
-        </Text>
-
-        <View style={styles.heroMetaRow}>
-          <View style={styles.heroMetric}>
-            <Text style={styles.metricLabel}>Trial até</Text>
-            <Text style={styles.metricValue}>{formatDate(subscription.trialEndsAt)}</Text>
-          </View>
-          <View style={styles.heroMetric}>
-            <Text style={styles.metricLabel}>Período atual</Text>
-            <Text style={styles.metricValue}>{formatDate(subscription.currentPeriodEnd)}</Text>
-          </View>
-          <View style={styles.heroMetric}>
-            <Text style={styles.metricLabel}>Dias restantes</Text>
-            <Text style={styles.metricValue}>{daysLeft === null ? '-' : String(daysLeft)}</Text>
-          </View>
-        </View>
-      </View>
-
-      {!hasCards && !loadingData && (
-        <View style={styles.warningCard}>
-          <Ionicons name="alert-circle-outline" size={18} color={colors.warning} />
-          <Text style={styles.warningText}>
-            {hasPaymentMethod
-              ? 'Nenhum cartão cadastrado. Pagamento disponível somente via Pix.'
-              : 'Nenhum método de pagamento salvo. Cadastre um cartão ou solicite Pix antes do fim do trial.'}
-          </Text>
-        </View>
-      )}
-
-      <View style={styles.actionRow}>
-        <TouchableOpacity
-          style={[styles.primaryButton, actionLoading === 'checkout' && styles.buttonDisabled]}
-          onPress={handleStartCheckout}
-          disabled={actionLoading !== null || loadingBilling}
-        >
-          {actionLoading === 'checkout' ? (
-            <ActivityIndicator color={colors.white} size="small" />
-          ) : (
-            <>
-              <Ionicons name="card-outline" size={18} color={colors.white} />
-              <Text style={styles.primaryButtonText}>Cadastrar cartão</Text>
-            </>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.secondaryButton, actionLoading === 'pix' && styles.buttonDisabled]}
-          onPress={handlePixFallback}
-          disabled={actionLoading !== null || loadingBilling}
-        >
-          {actionLoading === 'pix' ? (
-            <ActivityIndicator color={colors.primary} size="small" />
-          ) : (
-            <>
-              <Ionicons name="qr-code-outline" size={18} color={colors.primary} />
-              <Text style={styles.secondaryButtonText}>Solicitar Pix</Text>
-            </>
-          )}
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Provider Mercado Pago</Text>
-        {loadingData && !providerStatus ? (
-          <ActivityIndicator color={colors.primary} />
-        ) : (
-          <>
-            <Text style={styles.providerMessage}>{providerStatus?.message || 'Status indisponível.'}</Text>
-            <View style={styles.providerGrid}>
-              <View style={styles.providerBadge}><Text style={styles.providerBadgeLabel}>Public key</Text><Text style={styles.providerBadgeValue}>{providerStatus?.publicKeyConfigured ? 'OK' : 'Pendente'}</Text></View>
-              <View style={styles.providerBadge}><Text style={styles.providerBadgeLabel}>Access token</Text><Text style={styles.providerBadgeValue}>{providerStatus?.accessTokenConfigured ? 'OK' : 'Pendente'}</Text></View>
-              <View style={styles.providerBadge}><Text style={styles.providerBadgeLabel}>Webhook</Text><Text style={styles.providerBadgeValue}>{providerStatus?.webhookSecretConfigured ? 'OK' : 'Pendente'}</Text></View>
-              <View style={styles.providerBadge}><Text style={styles.providerBadgeLabel}>Método salvo</Text><Text style={styles.providerBadgeValue}>{providerStatus?.hasPaymentMethod ? 'Sim' : 'Não'}</Text></View>
-            </View>
-          </>
-        )}
-      </View>
-
-      {activePixInvoice && (
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Pix em aberto</Text>
-          <Text style={styles.providerMessage}>
-            Use este QR code para regularizar a assinatura. O código expira em {formatDateTime(activePixInvoice.pix_expires_at)}.
-          </Text>
-          {activePixInvoice.pix_qr_code ? (
-            <View style={styles.pixQrWrapper}>
-              <Image
-                source={{ uri: `data:image/png;base64,${activePixInvoice.pix_qr_code}` }}
-                style={styles.pixQrImage}
-                resizeMode="contain"
-              />
-            </View>
-          ) : null}
-          <Text style={styles.pixLabel}>Copia e cola</Text>
-          <Text style={styles.pixCode}>{activePixInvoice.pix_qr_code_text}</Text>
-          <TouchableOpacity style={styles.pixCopyButton} onPress={handleCopyPixCode}>
-            <Ionicons name="copy-outline" size={16} color={colors.primary} />
-            <Text style={styles.pixCopyButtonText}>Copiar código Pix</Text>
+          <TouchableOpacity
+            style={[styles.secondaryButton, actionLoading === 'pix' && styles.buttonDisabled]}
+            onPress={handlePixFallback}
+            disabled={actionLoading !== null || loadingBilling}
+          >
+            {actionLoading === 'pix' ? (
+              <ActivityIndicator color={colors.primary} size="small" />
+            ) : (
+              <>
+                <Ionicons name="qr-code-outline" size={18} color={colors.primary} />
+                <Text style={styles.secondaryButtonText}>Solicitar Pix</Text>
+              </>
+            )}
           </TouchableOpacity>
         </View>
-      )}
 
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Métodos cadastrados</Text>
-        {loadingData ? (
-          <ActivityIndicator color={colors.primary} />
-        ) : paymentMethods.length === 0 ? (
-          <Text style={styles.emptyState}>Nenhum método cadastrado ainda.</Text>
-        ) : (
-          paymentMethods.map((method) => (
-            <View key={method.id} style={styles.listRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.listTitle}>{getMethodLabel(method)}</Text>
-                <Text style={styles.listSubtitle}>
-                  {method.type === 'card'
-                    ? `Validade ${String(method.expiry_month || '').padStart(2, '0')}/${method.expiry_year || '--'}`
-                    : 'Regularização por Pix'}
-                </Text>
-                {method.type === 'card' && (
-                  <View style={styles.cardActionsRow}>
-                    {cardMethods.length > 1 && !method.is_default && (
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Provider Mercado Pago</Text>
+          {loadingData && !providerStatus ? (
+            <ActivityIndicator color={colors.primary} />
+          ) : (
+            <>
+              <Text style={styles.providerMessage}>
+                {providerStatus?.message || 'Status indisponível.'}
+              </Text>
+              <View style={styles.providerGrid}>
+                <View style={styles.providerBadge}>
+                  <Text style={styles.providerBadgeLabel}>Public key</Text>
+                  <Text style={styles.providerBadgeValue}>
+                    {providerStatus?.publicKeyConfigured ? 'OK' : 'Pendente'}
+                  </Text>
+                </View>
+                <View style={styles.providerBadge}>
+                  <Text style={styles.providerBadgeLabel}>Access token</Text>
+                  <Text style={styles.providerBadgeValue}>
+                    {providerStatus?.accessTokenConfigured ? 'OK' : 'Pendente'}
+                  </Text>
+                </View>
+                <View style={styles.providerBadge}>
+                  <Text style={styles.providerBadgeLabel}>Webhook</Text>
+                  <Text style={styles.providerBadgeValue}>
+                    {providerStatus?.webhookSecretConfigured ? 'OK' : 'Pendente'}
+                  </Text>
+                </View>
+                <View style={styles.providerBadge}>
+                  <Text style={styles.providerBadgeLabel}>Método salvo</Text>
+                  <Text style={styles.providerBadgeValue}>
+                    {providerStatus?.hasPaymentMethod ? 'Sim' : 'Não'}
+                  </Text>
+                </View>
+              </View>
+            </>
+          )}
+        </View>
+
+        {activePixInvoice && (
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Pix em aberto</Text>
+            <Text style={styles.providerMessage}>
+              Use este QR code para regularizar a assinatura. O código expira em{' '}
+              {formatDateTime(activePixInvoice.pix_expires_at)}.
+            </Text>
+            {activePixInvoice.pix_qr_code ? (
+              <View style={styles.pixQrWrapper}>
+                <Image
+                  source={{ uri: `data:image/png;base64,${activePixInvoice.pix_qr_code}` }}
+                  style={styles.pixQrImage}
+                  resizeMode="contain"
+                />
+              </View>
+            ) : null}
+            <Text style={styles.pixLabel}>Copia e cola</Text>
+            <Text style={styles.pixCode}>{activePixInvoice.pix_qr_code_text}</Text>
+            <TouchableOpacity style={styles.pixCopyButton} onPress={handleCopyPixCode}>
+              <Ionicons name="copy-outline" size={16} color={colors.primary} />
+              <Text style={styles.pixCopyButtonText}>Copiar código Pix</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Métodos cadastrados</Text>
+          {loadingData ? (
+            <ActivityIndicator color={colors.primary} />
+          ) : paymentMethods.length === 0 ? (
+            <Text style={styles.emptyState}>Nenhum método cadastrado ainda.</Text>
+          ) : (
+            paymentMethods.map((method) => (
+              <View key={method.id} style={styles.listRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.listTitle}>{getMethodLabel(method)}</Text>
+                  <Text style={styles.listSubtitle}>
+                    {method.type === 'card'
+                      ? `Validade ${String(method.expiry_month || '').padStart(2, '0')}/${
+                          method.expiry_year || '--'
+                        }`
+                      : 'Regularização por Pix'}
+                  </Text>
+                  {method.type === 'card' && (
+                    <View style={styles.cardActionsRow}>
+                      {cardMethods.length > 1 && !method.is_default && (
+                        <TouchableOpacity
+                          style={styles.cardActionBtnOutline}
+                          onPress={() => handleSetDefaultCard(method.id)}
+                          disabled={settingDefaultId !== null || deletingCardId !== null}
+                        >
+                          {settingDefaultId === method.id ? (
+                            <ActivityIndicator size="small" color={colors.primary} />
+                          ) : (
+                            <Text style={styles.cardActionBtnOutlineText}>Usar este</Text>
+                          )}
+                        </TouchableOpacity>
+                      )}
                       <TouchableOpacity
-                        style={styles.cardActionBtnOutline}
-                        onPress={() => handleSetDefaultCard(method.id)}
-                        disabled={settingDefaultId !== null || deletingCardId !== null}
+                        style={styles.cardActionBtnDanger}
+                        onPress={() => handleDeleteCard(method)}
+                        disabled={deletingCardId !== null || settingDefaultId !== null}
                       >
-                        {settingDefaultId === method.id ? (
-                          <ActivityIndicator size="small" color={colors.primary} />
+                        {deletingCardId === method.id ? (
+                          <ActivityIndicator size="small" color={colors.danger} />
                         ) : (
-                          <Text style={styles.cardActionBtnOutlineText}>Usar este</Text>
+                          <Text style={styles.cardActionBtnDangerText}>Excluir</Text>
                         )}
                       </TouchableOpacity>
-                    )}
-                    <TouchableOpacity
-                      style={styles.cardActionBtnDanger}
-                      onPress={() => handleDeleteCard(method)}
-                      disabled={deletingCardId !== null || settingDefaultId !== null}
-                    >
-                      {deletingCardId === method.id ? (
-                        <ActivityIndicator size="small" color={colors.danger} />
-                      ) : (
-                        <Text style={styles.cardActionBtnDangerText}>Excluir</Text>
-                      )}
-                    </TouchableOpacity>
-                  </View>
-                )}
+                    </View>
+                  )}
+                </View>
+                {method.is_default && <Text style={styles.defaultBadge}>Padrão</Text>}
               </View>
-              {method.is_default && <Text style={styles.defaultBadge}>Padrão</Text>}
-            </View>
-          ))
-        )}
-      </View>
+            ))
+          )}
+        </View>
 
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Últimas cobranças</Text>
-        {loadingData ? (
-          <ActivityIndicator color={colors.primary} />
-        ) : invoices.length === 0 ? (
-          <Text style={styles.emptyState}>Nenhuma cobrança registrada ainda.</Text>
-        ) : (
-          invoices.map((invoice) => (
-            <View key={invoice.id} style={styles.invoiceRow}>
-              <View style={styles.invoiceMain}>
-                <Text style={styles.listTitle}>{formatCurrency(invoice.amount)}</Text>
-                <Text style={styles.listSubtitle}>Vencimento {formatDate(invoice.due_date)}</Text>
-                {invoice.payment_method_type === 'pix' && invoice.pix_expires_at ? (
-                  <Text style={styles.invoiceDetail}>Expira em {formatDateTime(invoice.pix_expires_at)}</Text>
-                ) : null}
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Últimas cobranças</Text>
+          {loadingData ? (
+            <ActivityIndicator color={colors.primary} />
+          ) : invoices.length === 0 ? (
+            <Text style={styles.emptyState}>Nenhuma cobrança registrada ainda.</Text>
+          ) : (
+            invoices.map((invoice) => (
+              <View key={invoice.id} style={styles.invoiceRow}>
+                <View style={styles.invoiceMain}>
+                  <Text style={styles.listTitle}>{formatCurrency(invoice.amount)}</Text>
+                  <Text style={styles.listSubtitle}>Vencimento {formatDate(invoice.due_date)}</Text>
+                  {invoice.payment_method_type === 'pix' && invoice.pix_expires_at ? (
+                    <Text style={styles.invoiceDetail}>
+                      Expira em {formatDateTime(invoice.pix_expires_at)}
+                    </Text>
+                  ) : null}
+                </View>
+                <View style={styles.invoiceMeta}>
+                  <Text style={styles.invoiceStatus}>{getInvoiceStatusLabel(invoice.status)}</Text>
+                  <Text style={styles.invoiceMethod}>
+                    {invoice.payment_method_type === 'pix'
+                      ? 'Pix'
+                      : invoice.payment_method_type === 'card'
+                        ? 'Cartão'
+                        : 'A definir'}
+                  </Text>
+                </View>
               </View>
-              <View style={styles.invoiceMeta}>
-                <Text style={styles.invoiceStatus}>{getInvoiceStatusLabel(invoice.status)}</Text>
-                <Text style={styles.invoiceMethod}>{invoice.payment_method_type === 'pix' ? 'Pix' : invoice.payment_method_type === 'card' ? 'Cartão' : 'A definir'}</Text>
-              </View>
-            </View>
-          ))
-        )}
-      </View>
+            ))
+          )}
+        </View>
 
-      <TouchableOpacity style={styles.refreshLink} onPress={handleRefresh}>
-        <Ionicons name="refresh-outline" size={16} color={colors.primary} />
-        <Text style={styles.refreshLinkText}>Atualizar dados de assinatura</Text>
-      </TouchableOpacity>
+        <TouchableOpacity style={styles.refreshLink} onPress={handleRefresh}>
+          <Ionicons name="refresh-outline" size={16} color={colors.primary} />
+          <Text style={styles.refreshLinkText}>Atualizar dados de assinatura</Text>
+        </TouchableOpacity>
       </ScrollView>
     </View>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -1090,4 +1235,4 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
-});
+})

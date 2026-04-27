@@ -10,12 +10,12 @@
 
 ## 📊 VISÃO GERAL DO PLANO
 
-| Fase | Período | Foco | Entregáveis |
-|------|---------|------|-------------|
-| **Semana 1** | 01-07 Abr 2026 | CRÍTICOS e ALTOS | Secrets rotacionados, Android hardening, Logging seguro, `OPS-2` e `OPS-5` priorizados |
-| **Semana 2** | 08-14 Abr 2026 | Pinning e Rate Limit | SSL pinning avaliado no app, `OPS-3` validado |
-| **Semana 3** | 15-21 Abr 2026 | MFA & Autenticação | MFA TOTP para admins, Session hardening, `OPS-1` executado |
-| **Semana 4** | 22-30 Abr 2026 | Validação & Testes | Pentest, E2E security tests, `OPS-4` smoke controlado, documentação |
+| Fase         | Período        | Foco                 | Entregáveis                                                                            |
+| ------------ | -------------- | -------------------- | -------------------------------------------------------------------------------------- |
+| **Semana 1** | 01-07 Abr 2026 | CRÍTICOS e ALTOS     | Secrets rotacionados, Android hardening, Logging seguro, `OPS-2` e `OPS-5` priorizados |
+| **Semana 2** | 08-14 Abr 2026 | Pinning e Rate Limit | SSL pinning avaliado no app, `OPS-3` validado                                          |
+| **Semana 3** | 15-21 Abr 2026 | MFA & Autenticação   | MFA TOTP para admins, Session hardening, `OPS-1` executado                             |
+| **Semana 4** | 22-30 Abr 2026 | Validação & Testes   | Pentest, E2E security tests, `OPS-4` smoke controlado, documentação                    |
 
 ---
 
@@ -72,16 +72,16 @@ Use esta secao como checklist curto de acompanhamento. O detalhamento tecnico co
 
 ## 🗂️ MATRIZ DE APLICABILIDADE POR PROJETO
 
-| Item | restaurante-app | restaurante-web | restaurante-ops | Observacao |
-|------|-----------------|-----------------|-----------------|------------|
-| `SEC-W1-001` Firebase API Key | ✅ Sim | ✅ Sim | ❌ Nao | Cliente Expo/Firebase apenas |
-| `SEC-W1-002` Cursor secret hardcoded | ✅ Sim | ✅ Sim | ❌ Nao | Implementacao espelhada nos dois clientes |
-| `SEC-W1-003` Biometric credentials hardening | ✅ Sim | ❌ Nao | ❌ Nao | Risco exclusivo do app |
-| `SEC-W1-004` Android Auto Backup hardening | ✅ Sim | ❌ Nao | ❌ Nao | Item Android nativo |
-| `SEC-W1-005` Logging seguro | ✅ Sim | ✅ Sim | ✅ Sim | Cada projeto deve respeitar seu logger atual |
-| `SEC-W2-001` Certificate pinning | ✅ Sim | ❌ Nao | ❌ Nao | Implementado em 04/04/2026 via ATS/NSPinnedDomains (iOS) e network-security-config (Android); validacao final concluida em 05/04 com EAS build + smoke MITM controlado documentado |
-| `SEC-W3-001` MFA TOTP para admins | ✅ Sim | ✅ Sim | ⚠️ Parcial | `ops` exige trilha propria se MFA for obrigatorio no backoffice |
-| `SEC-W3-002` Session fixation prevention | ✅ Sim | ✅ Sim | ❌ Nao | Trata login dos clientes; `ops` usa sessao/cookie separado |
+| Item                                         | restaurante-app | restaurante-web | restaurante-ops | Observacao                                                                                                                                                                         |
+| -------------------------------------------- | --------------- | --------------- | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SEC-W1-001` Firebase API Key                | ✅ Sim          | ✅ Sim          | ❌ Nao          | Cliente Expo/Firebase apenas                                                                                                                                                       |
+| `SEC-W1-002` Cursor secret hardcoded         | ✅ Sim          | ✅ Sim          | ❌ Nao          | Implementacao espelhada nos dois clientes                                                                                                                                          |
+| `SEC-W1-003` Biometric credentials hardening | ✅ Sim          | ❌ Nao          | ❌ Nao          | Risco exclusivo do app                                                                                                                                                             |
+| `SEC-W1-004` Android Auto Backup hardening   | ✅ Sim          | ❌ Nao          | ❌ Nao          | Item Android nativo                                                                                                                                                                |
+| `SEC-W1-005` Logging seguro                  | ✅ Sim          | ✅ Sim          | ✅ Sim          | Cada projeto deve respeitar seu logger atual                                                                                                                                       |
+| `SEC-W2-001` Certificate pinning             | ✅ Sim          | ❌ Nao          | ❌ Nao          | Implementado em 04/04/2026 via ATS/NSPinnedDomains (iOS) e network-security-config (Android); validacao final concluida em 05/04 com EAS build + smoke MITM controlado documentado |
+| `SEC-W3-001` MFA TOTP para admins            | ✅ Sim          | ✅ Sim          | ⚠️ Parcial      | `ops` exige trilha propria se MFA for obrigatorio no backoffice                                                                                                                    |
+| `SEC-W3-002` Session fixation prevention     | ✅ Sim          | ✅ Sim          | ❌ Nao          | Trata login dos clientes; `ops` usa sessao/cookie separado                                                                                                                         |
 
 Legenda:
 
@@ -234,13 +234,15 @@ Critério pratico para `ops`:
 **Aplica-se diretamente a:** `restaurante-app`, `restaurante-web`
 
 > Status real em 01/04/2026:
+>
 > - O tema faz sentido.
 > - Nao ha staging dedicado no monorepo.
 > - `restaurante-web/.env.example` ja usa placeholder, mas `restaurante-app/.env.example` ainda precisa ser saneado.
 
 #### Tarefas
 
-- [X] **1.1** Gerar nova Firebase API Key no Firebase Console
+- [x] **1.1** Gerar nova Firebase API Key no Firebase Console
+
   ```bash
   # Acessar: https://console.firebase.google.com/project/restaurante-6f221/settings/general
   # Gerar nova API Key
@@ -248,18 +250,20 @@ Critério pratico para `ops`:
   ```
 
 - [ ] **1.2** Atualizar variáveis de ambiente nos ambientes realmente existentes
+
   ```bash
   # .env (local development)
   EXPO_PUBLIC_FIREBASE_API_KEY=nova_chave_gerada
-  
+
   # Railway (produção)
   railway variables set EXPO_PUBLIC_FIREBASE_API_KEY=nova_chave_gerada
-  
+
   # Validacao controlada antes de promover em producao
   # Nao assumir ambiente staging dedicado enquanto ele nao existir formalmente
   ```
 
 - [ ] **1.3** Atualizar `.env.example` com placeholder em app e web
+
   ```bash
   # .env.example
   EXPO_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key_here
@@ -267,10 +271,11 @@ Critério pratico para `ops`:
   # ... manter demais configs
   ```
 
-- [X] **1.4** Revogar chave antiga no Firebase Console
+- [x] **1.4** Revogar chave antiga no Firebase Console
+
   ```bash
   # Firebase Console > Project Settings > Service Accounts
-  # Revogar chave antiga: AIzaSyAKbTm0iFFNwAcSmTtLrlyIHKc1ds1LrDE
+  # Revogar chave antiga: [REDACTED_FIREBASE_API_KEY]
   # Aguardar 24h para propagação
   ```
 
@@ -283,13 +288,14 @@ Critério pratico para `ops`:
 #### Critérios de Aceite
 
 - [ ] Nova chave funcionando no ambiente validado
-- [X] Chave antiga revogada
+- [x] Chave antiga revogada
 - [ ] `.env.example` atualizado sem secrets reais em app e web
-- [X] Testes E2E passando
+- [x] Testes E2E passando
 
 #### Rollback
 
 Se houver falha:
+
 ```bash
 # Reverter para chave antiga (se ainda não revogada)
 railway variables set EXPO_PUBLIC_FIREBASE_API_KEY=chave_antiga
@@ -309,6 +315,7 @@ railway up
 **Aplica-se diretamente a:** `restaurante-app`, `restaurante-web`
 
 > Status real em 01/04/2026:
+>
 > - O risco existe nos dois clientes.
 > - O plano precisa ser executado de forma espelhada em `app` e `web`.
 > - Ainda ha fallback inseguro para `default-cursor-secret` e `cursor-secret-key`.
@@ -316,6 +323,7 @@ railway up
 #### Tarefas
 
 - [ ] **2.1** Gerar secret aleatório para produção
+
   ```bash
   # Gerar secret criptograficamente seguro
   openssl rand -hex 32
@@ -323,12 +331,14 @@ railway up
   ```
 
 - [ ] **2.2** Adicionar ao `.env.example`
+
   ```bash
   # .env.example
   CURSOR_SECRET=generate_with_openssl_rand_hex_32
   ```
 
 - [ ] **2.3** Atualizar os dois pontos de uso em app e web
+
   ```text
   Arquivos-alvo:
   - restaurante-app/src/utils/cursorValidation.ts
@@ -343,6 +353,7 @@ railway up
   ```
 
 - [ ] **2.4** Configurar `CURSOR_SECRET` no ambiente usado pelos clientes
+
   ```bash
   railway variables set CURSOR_SECRET=$(openssl rand -hex 32)
   ```
@@ -371,12 +382,14 @@ railway up
 **Aplica-se diretamente a:** `restaurante-app`
 
 > Status real em 01/04/2026:
+>
 > - O risco e real no app porque ainda ha armazenamento local de credenciais para replay biometrico.
 > - Nao se aplica a `restaurante-web` nem a `restaurante-ops`.
 
 #### Tarefas
 
 - [ ] **3.1** Criar `BiometricTokenService.ts` no app
+
   ```text
   Objetivo:
   - gerar token aleatorio por usuario/dispositivo
@@ -385,6 +398,7 @@ railway up
   ```
 
 - [ ] **3.2** Atualizar `BiometricAuthService.ts`
+
   ```text
   Ajustes esperados em `restaurante-app/src/services/BiometricAuthService.ts`:
   - remover `storeCredentials` e `getCredentials` baseados em email/senha
@@ -393,6 +407,7 @@ railway up
   ```
 
 - [ ] **3.3** Atualizar login biométrico em `AuthContext.tsx`
+
   ```text
   Ajustes esperados em `restaurante-app/src/context/AuthContext.tsx`:
   - tentar `supabase.auth.refreshSession()` apos autenticacao biometrica local
@@ -425,12 +440,14 @@ railway up
 **Aplica-se diretamente a:** `restaurante-app`
 
 > Status real em 01/04/2026:
+>
 > - O item faz sentido e o manifest Android ainda esta com `allowBackup="true"`.
 > - Nao se aplica a `restaurante-web` nem a `restaurante-ops`.
 
 #### Tarefas
 
 - [ ] **4.1** Criar `backup_rules.xml` e `data_extraction_rules.xml`
+
   ```text
   Arquivos-alvo:
   - restaurante-app/android/app/src/main/res/xml/backup_rules.xml
@@ -443,12 +460,14 @@ railway up
   ```
 
 - [ ] **4.2** Atualizar `AndroidManifest.xml`
+
   ```text
   Ajustar `restaurante-app/android/app/src/main/AndroidManifest.xml` para referenciar
   `fullBackupContent` e `dataExtractionRules`, mantendo a estrategia escolhida para `allowBackup`.
   ```
 
 - [ ] **4.4** Testar backup e restore
+
   ```bash
   # Testar que dados sensíveis não são incluídos
   adb backup -f backup_test.abk com.comandapraia.donacida
@@ -457,14 +476,16 @@ railway up
   ```
 
 - [ ] **4.5** Documentar no README
+
   ```markdown
   ## Segurança Android
-  
+
   O app usa regras de backup restritivas que excluem:
+
   - Tokens de autenticação (SecureStore)
   - Dados biométricos
   - Estado de sessão
-  
+
   Para testar: `adb backup -f test.abk com.comandapraia.donacida`
   ```
 
@@ -487,6 +508,7 @@ railway up
 **Aplica-se diretamente a:** `restaurante-app`, `restaurante-web`, `restaurante-ops`
 
 > Status real em 01/04/2026:
+>
 > - O problema existe, mas a implementacao deve respeitar a arquitetura atual.
 > - `app` e `web` ja possuem `LoggerService`; `ops` ja possui logger estruturado proprio.
 > - Evitar criar uma solucao paralela que duplique os loggers existentes sem necessidade.
@@ -494,6 +516,7 @@ railway up
 #### Tarefas
 
 - [ ] **5.1** Endurecer os loggers existentes em vez de criar um logger paralelo
+
   ```text
   - `restaurante-app/src/services/LoggerService.ts`
   - `restaurante-web/src/services/LoggerService.ts`
@@ -501,74 +524,74 @@ railway up
   ```
 
 - [ ] **5.2** Substituir `console.log` em arquivos críticos
+
   ```typescript
   // restaurante-app/src/context/AuthContext.tsx
   // restaurante-web/src/context/AuthContext.tsx
-  
+
   import LoggerService from '../services/LoggerService';
-  
+
   // ❌ REMOVER: console.log(`[SupabaseAuth] Auth event: ${event}`, session?.user?.id);
   // ✅ SUBSTITUIR: LoggerService.info('auth_event', { event, userId: session?.user?.id });
-  
+
   // ❌ REMOVER: console.log('[AuthContext] Setting user:', { uid: appUser.uid, funcao: appUser.funcao });
   // ✅ SUBSTITUIR: LoggerService.debug('user_loaded', { uid: appUser.uid, role: appUser.funcao });
   ```
 
 - [ ] **5.3** Reforcar sanitizacao nos loggers do repositório
+
   ```text
   - Em `app` e `web`, ampliar `LoggerService.scrubData()` para cobrir PII e tokens adicionais.
   - Em `ops`, sanitizar o payload antes de chamar `logInfo`, `logWarn` e `logError`.
   ```
 
 - [ ] **5.4** Configurar Sentry com data scrubbing
+
   ```typescript
   // src/config/sentryConfig.js
-  
+
   import * as Sentry from '@sentry/react-native';
-  
+
   export const initSentry = () => {
     Sentry.init({
       dsn: 'https://eb58edf9733b7a7665c969d5680dd482@o4510816056049664.ingest.us.sentry.io/4510816058015744',
       debug: __DEV__,
       enabled: true,
       tracesSampleRate: 1.0,
-      
+
       // ✅ CORREÇÃO: Data scrubbing configurado
       beforeSend(event, hint) {
         // Remover dados sensíveis antes de enviar ao Sentry
         if (event.extra) {
           const sensitiveKeys = ['password', 'token', 'secret', 'apiKey', 'email'];
           for (const key of Object.keys(event.extra)) {
-            if (sensitiveKeys.some(sk => key.toLowerCase().includes(sk))) {
+            if (sensitiveKeys.some((sk) => key.toLowerCase().includes(sk))) {
               event.extra[key] = '[REDACTED]';
             }
           }
         }
-        
+
         // Remover PII de user context
         if (event.user) {
           const { email, ...safeUser } = event.user;
           event.user = safeUser;
         }
-        
+
         return event;
       },
-      
+
       // Configurar allowlist de domínios
-      allowUrls: [
-        /com\.comandapraia\.donacida/,
-        /exp\+restaurante-app/,
-        /restaurante-app/
-      ]
+      allowUrls: [/com\.comandapraia\.donacida/, /exp\+restaurante-app/, /restaurante-app/],
     });
   };
   ```
 
 - [ ] **5.5** Scan por console.log restantes
+
   ```bash
   # Buscar console.log em código de produção
   rg "console\\.log" restaurante-app/src restaurante-web/src restaurante-ops/src
-  
+
   # Substituir manualmente ou com codemod
   ```
 
@@ -594,22 +617,26 @@ railway up
 **Aplica-se diretamente a:** `restaurante-app`
 
 > Status real em 01/04/2026:
+>
 > - Item nativo, fora de escopo de `restaurante-web` e `restaurante-ops`.
 > - Tratar como trilha opcional e de maior custo operacional, nao como requisito transversal do monorepo.
 
 > Decisao de gate em 02/04/2026:
+>
 > - **CONDITIONAL (NO-GO neste ciclo)**.
 > - Justificativa objetiva: ausencia de staging dedicado, ausencia de suite automatizada de MITM regression e risco de lockout operacional em rotacao de certificado.
 > - Mitigacao alternativa ativa: TLS padrao + HSTS no `ops` + hardening de sessao + MFA para roles privilegiadas.
 > - Proximo gatilho para reavaliacao: staging ativo + runbook de rotacao de certificado + teste MITM automatizado no CI/mobile.
 
 > Atualizacao de execucao em 04/04/2026:
+>
 > - Pinning aplicado no `restaurante-app` para `supabase.co` (subdominios) e `api.mercadopago.com` com pin leaf + backup CA.
 > - Evidencia tecnica registrada em `docs/security/PINNING_CERT_EVIDENCE_2026-04-04.md`.
 > - Build Android preview iniciado com sucesso em EAS (`build id 47c4f6fe-4360-4942-8070-5a30fa6fe410`).
 > - Build iOS simulador tambem iniciado com sucesso em EAS (`build id 523cc6b1-a4d5-4573-8d74-6c7cd199eb6d`) via `ios.simulator=true` no perfil `preview`.
 >
 > Atualizacao de fechamento em 05/04/2026 (16:40 UTC):
+>
 > - Hashes leaf SPKI revalidados com OpenSSL e aderentes aos pins documentados.
 > - Smoke MITM controlado executado com `curl --pinnedpubkey`:
 >   - pin correto: handshake TLS aceito (`http=404`, `exit=0`);
@@ -619,22 +646,25 @@ railway up
 #### Tarefas
 
 - [ ] **6.1** Instalar dependências
+
   ```bash
   npm install react-native-ssl-pinning
   npx expo prebuild # Requer build nativo
   ```
 
 - [ ] **6.2** Exportar certificados das APIs
+
   ```bash
   # Capturar a cadeia TLS dos hosts HTTPS realmente usados pelo app
   # Ex.: host derivado de EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_EVO_API_URL
-  
+
   # Copiar certificados para assets
   cp supabase_cert.pem assets/certs/
   cp evolution_cert.pem assets/certs/
   ```
 
 - [ ] **6.3** Criar `SecureFetch.ts` apenas se a decisao for implementar pinning
+
   ```text
   Ajustes esperados:
   - encapsular `react-native-ssl-pinning`
@@ -643,32 +673,36 @@ railway up
   ```
 
 - [ ] **6.4** Integrar com `SupabaseConfig.ts`
+
   ```text
   Se aprovado, ajustar `restaurante-app/src/config/SupabaseConfig.ts` para usar
   o fetch com pinning apenas em producao nativa.
   ```
 
 - [ ] **6.5** Aplicar ajustes nativos minimos em Android/iOS
+
   ```text
   Rever apenas os pontos nativos realmente necessarios apos a prova de conceito.
   Evitar detalhar `OkHttp`/`Info.plist` no plano antes de validar viabilidade tecnica.
   ```
 
 - [ ] **6.7** Testar pinning
+
   ```bash
   # Testar que requests falham sem certificado correto
   # Usar proxy (Charles/Mitmproxy) para verificar que pinning bloqueia MITM
-  
+
   # Em desenvolvimento, testar com disablePinning=true
   secureFetch('https://api.supabase.co', { disablePinning: true })
   ```
 
 - [ ] **6.8** Build e deploy
+
   ```bash
   # Build com EAS
   eas build --platform android --profile production
   eas build --platform ios --profile production
-  
+
   # Testar em smoke controlado antes de production
   eas submit --platform android --path ./app-release.aab
   ```
@@ -683,16 +717,17 @@ railway up
 #### Rollback
 
 Se pinning causar issues em produção:
+
 ```typescript
 // Fallback emergencial
 export async function secureFetch(url: string, options: SecureFetchOptions = {}) {
   // Forçar disablePinning via remote config
   const forceDisablePinning = await checkRemoteConfig('disable_ssl_pinning');
-  
+
   if (forceDisablePinning) {
     return fetch(url, options);
   }
-  
+
   // ... existing code
 }
 ```
@@ -711,11 +746,13 @@ export async function secureFetch(url: string, options: SecureFetchOptions = {})
 **Aplica-se diretamente a:** `restaurante-app`, `restaurante-web`
 
 > Status real em 01/04/2026:
+>
 > - O tema faz sentido para app e web.
 > - O servico `MFAService` atual ainda esta desabilitado por ser legado da migracao Firebase -> Supabase.
 > - `restaurante-ops` exigiria trilha propria se houver requisito de MFA para backoffice.
 
 > Atualizacao de execucao em 02/04/2026:
+>
 > - `MFAService.ts` reimplementado em app/web com Supabase `auth.mfa` (enroll, challenge, verify, listFactors, unenroll).
 > - `MFAVerificationModal` migrado para resolver Supabase em app/web.
 > - `AuthContext` em app/web atualizado para enforcement por role privilegiada quando `EXPO_PUBLIC_FEATURE_REQUIRE_MFA=true`.
@@ -724,6 +761,7 @@ export async function secureFetch(url: string, options: SecureFetchOptions = {})
 #### Tarefas
 
 - [ ] **7.1** Reimplementar `MFAService.ts` em app e web com Supabase Auth
+
   ```text
   Requisitos minimos:
   - enrolar fator TOTP
@@ -733,6 +771,7 @@ export async function secureFetch(url: string, options: SecureFetchOptions = {})
   ```
 
 - [ ] **7.2** Atualizar `AuthContext.tsx` em app e web
+
   ```text
   Ajustes esperados:
   - expor `isMFAEnabled`, `setupMFA` e `verifyMFA`
@@ -741,6 +780,7 @@ export async function secureFetch(url: string, options: SecureFetchOptions = {})
   ```
 
 - [ ] **7.3** Criar tela de setup de MFA
+
   ```text
   Requisitos minimos:
   - exibir QR code/URI TOTP
@@ -749,6 +789,7 @@ export async function secureFetch(url: string, options: SecureFetchOptions = {})
   ```
 
 - [ ] **7.4** Forçar MFA para admins
+
   ```text
   Aplicar redirecionamento/guarda apenas para roles privilegiadas
   apos a verificacao do estado de MFA no carregamento do perfil.
@@ -780,10 +821,12 @@ export async function secureFetch(url: string, options: SecureFetchOptions = {})
 **Aplica-se diretamente a:** `restaurante-app`, `restaurante-web`
 
 > Status real em 01/04/2026:
+>
 > - Mitigacao parcial ja existe com rotacao de `sessionKey` apos reload de sessao.
 > - O backlog remanescente e o `signOut()` preventivo antes de novo `signInWithPassword()` e a eliminacao do replay biometrico por senha no app.
 
 > Atualizacao de execucao em 02/04/2026:
+>
 > - `AuthContext` em app/web com `signOut()` preventivo antes do login por credenciais.
 > - Cancelamento de desafio MFA no login agora executa `signOut()` para evitar sessao parcial pendente.
 > - Pendente: validacao runtime controlada em ambiente com MFA TOTP habilitado.
@@ -791,6 +834,7 @@ export async function secureFetch(url: string, options: SecureFetchOptions = {})
 #### Tarefas
 
 - [ ] **8.1** Atualizar `login()` no `AuthContext.tsx`
+
   ```text
   Ajustes minimos:
   - executar `signOut()` preventivo antes de novo `signInWithPassword()`
@@ -799,21 +843,19 @@ export async function secureFetch(url: string, options: SecureFetchOptions = {})
   ```
 
 - [ ] **8.2** Adicionar rotação de session key
+
   ```typescript
   // src/context/AuthContext.tsx
-  
-  const reloadUserData = async (
-    sbUser: User,
-    options?: { rotateSessionKey?: boolean }
-  ) => {
+
+  const reloadUserData = async (sbUser: User, options?: { rotateSessionKey?: boolean }) => {
     const rotateSessionKey = options?.rotateSessionKey ?? true;
-    
+
     // ... existing code ...
-    
+
     if (rotateSessionKey) {
       setSessionKey(Date.now()); // ✅ Nova sessão = nova key
     }
-    
+
     // ... existing code ...
   };
   ```
@@ -829,6 +871,7 @@ export async function secureFetch(url: string, options: SecureFetchOptions = {})
 ## ✅ CHECKLIST DE CONCLUSÃO
 
 ### Semana 1
+
 - [ ] `SEC-W1-001`: Firebase API Key rotacionada e placeholders saneados em app e web (pronto_para_deploy: secret gerado, falta testar)
 - [x] `SEC-W1-002`: Cursor secrets removidos de app e web (pronto_para_deploy: secret gerado, falta config Railway)
 - [x] `SEC-W1-003`: Biometric credentials hardening implementado no app (concluido: BiometricTokenService + storeCredentials removido)
@@ -838,6 +881,7 @@ export async function secureFetch(url: string, options: SecureFetchOptions = {})
 - [x] `OPS-5`: Segredos server-only e headers revisados
 
 ### Semana 2
+
 - [x] `SEC-W2-001`: Certificate pinning implementado no app
 - [x] Evidencia de pins (leaf + backup) registrada por OpenSSL
 - [x] Build nativo gerado com sucesso (EAS Android/iOS)
@@ -845,12 +889,14 @@ export async function secureFetch(url: string, options: SecureFetchOptions = {})
 - [x] `OPS-3`: Rate limiting estrito validado com `429` e `503`
 
 ### Semana 3
+
 - [ ] `SEC-W3-001`: MFA TOTP iniciado para admins em app e web (codigo implementado; aguardando toggle runtime no Supabase)
 - [ ] `SEC-W3-002`: Session fixation hardening iniciado e aplicado em login app/web (aguarda validacao runtime final)
 - [ ] Feature flag `REQUIRE_MFA` habilitada apos validacao controlada
 - [x] `OPS-1`: Sessao e cookies do backoffice endurecidos
 
 ### Semana 4
+
 - [ ] `OPS-4`: Billing e reconcile validados com smoke controlado de sucesso idempotente
 - [x] Evidências operacionais anexadas para guardrails, limites e bloqueio atual (sem invoice elegivel em 05/04)
 
@@ -858,16 +904,16 @@ export async function secureFetch(url: string, options: SecureFetchOptions = {})
 
 ## 📊 MÉTRICAS DE SUCESSO
 
-| Métrica | Baseline | Target | Como Medir |
-|---------|----------|--------|------------|
-| Secrets hardcoded | A medir por projeto | 0 | `rg "secret|token|api[_-]?key|service_role" restaurante-app restaurante-web restaurante-ops` + revisao manual |
-| console.log em produção | A medir por projeto | Reducao objetiva nos pontos criticos | varredura focada em arquivos de producao |
-| Android allowBackup | true no app | false ou regras explicitas de exclusao | Inspecionar manifest/APK |
-| Certificate pinning | Implementado e validado (05/04) | Manter monitoramento de expiracao/rotacao de pin-set | Revalidacao periodica por OpenSSL/curl pinnedpubkey |
-| MFA para admins | Desabilitado na migracao atual | 100% em app/web para roles privilegiadas | validacao via Supabase Auth |
-| Session fixation | Parcialmente mitigado | Protegido | revisar login flow e teste de penetracao |
-| Logs sensiveis no `ops` | A medir | 0 ocorrencias intencionais de segredos/PII criticos | revisao manual de amostra + varredura de campos logados |
-| Rate limit fail-closed no `ops` | Parcialmente implementado | 100% validado nos endpoints sensiveis | smoke controlado com Redis indisponivel |
+| Métrica                         | Baseline                        | Target                                               | Como Medir                                              |
+| ------------------------------- | ------------------------------- | ---------------------------------------------------- | ------------------------------------------------------- | ----- | ----------- | ------------------------------------------------------------------------------- |
+| Secrets hardcoded               | A medir por projeto             | 0                                                    | `rg "secret                                             | token | api[_-]?key | service_role" restaurante-app restaurante-web restaurante-ops` + revisao manual |
+| console.log em produção         | A medir por projeto             | Reducao objetiva nos pontos criticos                 | varredura focada em arquivos de producao                |
+| Android allowBackup             | true no app                     | false ou regras explicitas de exclusao               | Inspecionar manifest/APK                                |
+| Certificate pinning             | Implementado e validado (05/04) | Manter monitoramento de expiracao/rotacao de pin-set | Revalidacao periodica por OpenSSL/curl pinnedpubkey     |
+| MFA para admins                 | Desabilitado na migracao atual  | 100% em app/web para roles privilegiadas             | validacao via Supabase Auth                             |
+| Session fixation                | Parcialmente mitigado           | Protegido                                            | revisar login flow e teste de penetracao                |
+| Logs sensiveis no `ops`         | A medir                         | 0 ocorrencias intencionais de segredos/PII criticos  | revisao manual de amostra + varredura de campos logados |
+| Rate limit fail-closed no `ops` | Parcialmente implementado       | 100% validado nos endpoints sensiveis                | smoke controlado com Redis indisponivel                 |
 
 ---
 

@@ -46,6 +46,32 @@ get_latest_deployment_status() {
         | awk -F'|' '/\|/ { gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2; exit }'
 }
 
+is_expected_railway_link() {
+    local status_json
+
+    if ! status_json="$(railway status --json 2>/dev/null)"; then
+        return 1
+    fi
+
+    if [[ "$status_json" != *"\"name\": \"$RAILWAY_PROJECT\""* ]]; then
+        return 1
+    fi
+
+    if [[ "$status_json" != *"\"workspace\": {"*"\"name\": \"$RAILWAY_WORKSPACE\""* ]]; then
+        return 1
+    fi
+
+    if [[ "$status_json" != *"\"name\": \"$RAILWAY_ENVIRONMENT\""* ]]; then
+        return 1
+    fi
+
+    if [[ "$status_json" != *"\"serviceName\": \"$RAILWAY_SERVICE\""* ]]; then
+        return 1
+    fi
+
+    return 0
+}
+
 is_deployment_state_acceptable() {
     local status="$1"
     case "$status" in
@@ -110,12 +136,22 @@ if [[ "$SKIP_BUILD" == "true" ]]; then
     echo "[Android] APK encontrado ($(du -sh "$APK_OUTPUT" | cut -f1)). Usando existente."
 else
     echo "[Android] Gerando e publicando APK local..."
-    bash "${SITE_DIR}/scripts/sync-local-android-build.sh"
-    if [[ ! -f "$APK_OUTPUT" ]]; then
-        echo "Erro: sync-local-android-build.sh concluiu sem gerar ${APK_OUTPUT}."
-        exit 1
+    if bash "${SITE_DIR}/scripts/sync-local-android-build.sh"; then
+        if [[ ! -f "$APK_OUTPUT" ]]; then
+            echo "Erro: sync-local-android-build.sh concluiu sem gerar ${APK_OUTPUT}."
+            exit 1
+        fi
+        echo "[Android] APK pronto ($(du -sh "$APK_OUTPUT" | cut -f1))."
+    else
+        if [[ -f "$APK_OUTPUT" ]]; then
+            echo "[Android] Falha no build local, mas APK existente será reutilizado ($(du -sh "$APK_OUTPUT" | cut -f1))."
+            echo "[Android] Prosseguindo deploy do site com fallback seguro."
+        else
+            echo "Erro: build Android falhou e nao existe APK fallback em ${APK_OUTPUT}."
+            echo "Dica: corrija o build local ou execute sync manual antes do deploy."
+            exit 1
+        fi
     fi
-    echo "[Android] APK pronto ($(du -sh "$APK_OUTPUT" | cut -f1))."
 fi
 
 # -------------------------------------------------------
@@ -132,11 +168,15 @@ unset RAILWAY_TOKEN
 cd "$ROOT_DIR"
 
 echo "Vinculando ao projeto Railway..."
-railway link \
-    --workspace "$RAILWAY_WORKSPACE" \
-    --project "$RAILWAY_PROJECT" \
-    --environment "$RAILWAY_ENVIRONMENT" \
-    --service "$RAILWAY_SERVICE"
+if is_expected_railway_link; then
+    echo "[Railway] Vínculo já está correto."
+else
+    railway link \
+        --workspace "$RAILWAY_WORKSPACE" \
+        --project "$RAILWAY_PROJECT" \
+        --environment "$RAILWAY_ENVIRONMENT" \
+        --service "$RAILWAY_SERVICE"
+fi
 
 echo "Enviando restaurante-site para producao no Railway..."
 if retry_railway_up; then
