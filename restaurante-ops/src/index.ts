@@ -607,17 +607,20 @@ function renderBaseLayout(title: string, body: string): string {
       }
 
       .hero-brand {
-        margin: 0 0 16px;
+        margin: 0 0 32px;
+        display: flex;
+        justify-content: flex-start;
+        align-items: flex-start;
       }
 
       .hero-brand img {
-        width: 84px;
-        height: 84px;
+        width: 160px;
+        height: 160px;
         object-fit: cover;
-        border-radius: 18px;
-        border: 1px solid rgba(255, 255, 255, 0.22);
-        box-shadow: 0 10px 24px rgba(7, 36, 46, 0.25);
-        background: rgba(255, 255, 255, 0.08);
+        border-radius: 24px;
+        border: 2px solid rgba(255, 255, 255, 0.28);
+        box-shadow: 0 20px 48px rgba(7, 36, 46, 0.35), 0 4px 12px rgba(0, 0, 0, 0.15);
+        background: rgba(255, 255, 255, 0.12);
       }
 
       .hero-subtitle {
