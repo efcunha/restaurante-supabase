@@ -1,5 +1,8 @@
+import { existsSync, readFileSync } from 'node:fs';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Socket } from 'node:net';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { requireAuth } from './auth/middleware.js';
 import { clearSessionCookie, setSessionCookie } from './auth/session.js';
 import type { OpsUser } from './auth/supabase.js';
@@ -107,6 +110,14 @@ import { renderObservabilityHtml } from './views/observability.js';
 
 const env = buildEnv();
 const opsCompanyId = env.OPS_ALLOWED_COMPANY_ID || 'f85bfdc2-982a-4cf7-b176-bce68426f861';
+const moduleDir = dirname(fileURLToPath(import.meta.url));
+const brandImageCandidates = [
+  join(moduleDir, '..', 'imagen', 'restaurante-ops.png'),
+  join(process.cwd(), 'imagen', 'restaurante-ops.png'),
+  join(process.cwd(), 'restaurante-ops', 'imagen', 'restaurante-ops.png'),
+];
+const brandImagePath = brandImageCandidates.find((candidate) => existsSync(candidate)) ?? null;
+const brandImageBuffer = brandImagePath ? readFileSync(brandImagePath) : null;
 
 function getRequestIp(req: IncomingMessage): string {
   if (!env.OPS_TRUST_PROXY_HEADERS) {
@@ -491,6 +502,8 @@ function renderBaseLayout(title: string, body: string): string {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/restaurante-ops.png" />
+    <link rel="apple-touch-icon" href="/assets/restaurante-ops.png" />
     <title>${escapeHtml(title)}</title>
     <style>
       :root {
@@ -591,6 +604,20 @@ function renderBaseLayout(title: string, body: string): string {
         margin: 0 0 10px;
         font-size: 34px;
         line-height: 1.15;
+      }
+
+      .hero-brand {
+        margin: 0 0 16px;
+      }
+
+      .hero-brand img {
+        width: 84px;
+        height: 84px;
+        object-fit: cover;
+        border-radius: 18px;
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        box-shadow: 0 10px 24px rgba(7, 36, 46, 0.25);
+        background: rgba(255, 255, 255, 0.08);
       }
 
       .hero-subtitle {
@@ -812,6 +839,9 @@ function renderLoginHtml(requireMfa: boolean, errorMsg?: string): string {
   const body = `<section class="shell">
   <aside class="hero-panel">
     <span class="hero-badge">Acesso do ecossistema</span>
+    <figure class="hero-brand">
+      <img src="/assets/restaurante-ops.png" alt="Logo restaurante-ops" loading="lazy" decoding="async" />
+    </figure>
     <h1 class="hero-title">Entrar no restaurante-ops</h1>
     <p class="hero-subtitle">Interface web de operacao SaaS para clientes, contratos e metricas de uso.</p>
 
@@ -2448,6 +2478,26 @@ function startServer() {
       }
 
       // ---- Telas publicas de auth ----
+      if (
+        req.method === 'GET' &&
+        (path === '/assets/restaurante-ops.png' ||
+          path === '/restaurante-ops.png' ||
+          path === '/favicon.ico')
+      ) {
+        if (!brandImageBuffer) {
+          res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
+          res.end('Imagem nao encontrada.');
+          return;
+        }
+
+        res.writeHead(200, {
+          'content-type': 'image/png',
+          'cache-control': 'public, max-age=86400',
+        });
+        res.end(brandImageBuffer);
+        return;
+      }
+
       if (req.method === 'GET' && path === '/login') {
         // EMERGENCY: Always false on fetch failure to prevent lockout
         const securitySettings = await getOpsSecuritySettings(opsCompanyId).catch(() => ({
