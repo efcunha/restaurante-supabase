@@ -9,10 +9,12 @@ POS monorepo for restaurants with mobile app, web app, operations service, and d
 Teste a versao web em producao:
 
 - [https://restaurante-web.app.br/login](https://restaurante-web.app.br/login)
+- [https://ops.restaurante-web.app.br/login](https://ops.restaurante-web.app.br/login)
 
 Try the production web version:
 
 - [https://restaurante-web.app.br/login](https://restaurante-web.app.br/login)
+- [https://ops.restaurante-web.app.br/login](https://ops.restaurante-web.app.br/login)
 
 ## Open Source Security First / Seguranca Open Source Primeiro
 
