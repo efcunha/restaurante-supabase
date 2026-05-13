@@ -1,104 +1,210 @@
 # restaurante-supabase
 
-Monorepo do ecossistema `restaurante-supabase`, com app POS, web POS, backoffice SaaS, billing, migrations e documentação operacional.
+Monorepo POS/PDV para restaurantes com app mobile, web, servico operacional e infraestrutura de banco.
 
-## Status Atual (2026-04-16)
+## Open Source Security First
 
-### Monorepo Modernization ✅ Production Ready
+Este repositorio foi preparado para uso open source sem publicar credenciais de producao.
 
-**2026-04-16:** Modernização completa do monorepo com infraestrutura profissional:
+Regras obrigatorias:
 
-- ✅ **pnpm 10.33 + Turborepo 2.9.6** para workspace orchestration
-- ✅ **4 shared packages** (`@restaurante/ui`, `@restaurante/tokens`, `@restaurante/schemas`, `@restaurante/config`)
-- ✅ **React Hook Form 7.x + Zod 4.x** para formulários type-safe
-- ✅ **NativeWind 4.2.1** para Tailwind em React Native/Expo
-- ✅ **Storybook 8.6.18** no root com Vite builder
-- ✅ **Husky + lint-staged + commitlint** git hooks
-- ✅ **TypeScript strict mode** com aliases calibrados
-- ✅ **Zero breaking changes** — existindo flows continuam funcionando
-- ✅ **Non-destructive** — fácil migração incremental
+- Nunca commitar arquivos `.env.local`, `.env`, tokens, senhas ou chaves privadas.
+- Somente arquivos `.env.example` e `.env.*.example` devem ficar versionados.
+- Cada pessoa deve criar e usar as proprias credenciais no seu ambiente.
+- Deploy so pode ser executado com variaveis explicitas de ambiente.
 
-**Documentação da modernização:**
+## Estrutura do Monorepo
 
-- **[GETTING_STARTED.md](./GETTING_STARTED.md)** — Guia rápido para desenvolvedores
-- **[MONOREPO_MODERNIZATION.md](./MONOREPO_MODERNIZATION.md)** — Documentação técnica completa
-- **[MODERNIZATION_COMPLETE.md](./MODERNIZATION_COMPLETE.md)** — Checklist de conclusão
-- **[MODERNIZATION_INVENTORY.md](./MODERNIZATION_INVENTORY.md)** — Inventário de mudanças
+- `restaurante-app/`: app mobile React Native + Expo.
+- `restaurante-web/`: app web (Expo Web) + E2E.
+- `restaurante-ops/`: backend operacional (auth, metricas, billing/reconcile).
+- `restaurante-site/`: site institucional.
+- `database-backup/`: migrations, backup e restore.
+- `scripts/`: scripts de uso transversal do monorepo.
+- `docs/`: documentacao tecnica, seguranca, LGPD e operacao.
 
-**Verificação de mudanças:**
+## Pre-requisitos
+
+- Node.js 20+
+- pnpm 10.33+
+- Git
+- Railway CLI (deploy Railway)
+- Supabase CLI + PostgreSQL client tools (quando houver migrations/backup)
+- EAS CLI (build mobile via Expo)
+
+## Quick Start Seguro
+
+1. Clone e instale dependencias:
 
 ```bash
-# Instalar e rodar localmente
+git clone <repo-url>
+cd restaurante-supabase
 pnpm install
-pnpm dev              # Todos os apps em paralelo (Turbo)
-pnpm storybook:web    # Storybook no localhost:6006
-
-# Type-check global
-pnpm typecheck
-
-# Lint + format
-pnpm lint
-pnpm format
 ```
 
-### Status PDV & Billing (2026-04-08)
+2. Gere arquivos locais de ambiente (sem credenciais reais):
 
-- Integracao PDV (maquininha) com simplificacao de UX concluida em app e web.
-- `restaurante-web` publicado em producao no Railway com healthcheck OK.
-- Build Android `preview` concluido no EAS para `restaurante-app`.
-- Gate de TypeScript do `restaurante-app` reabilitado (`npm run type-check` sem erros).
-- Snyk Code Scan executado nos arquivos alterados sem novos issues.
-- Smoke E2E web de fluxos criticos (`balcao`, `mesa`, `pizza`, `delivery`, `mesa-consolidacao`) executado com sucesso.
+```bash
+bash scripts/open-source/setup-env.sh
+```
 
-**Referencias de continuidade:**
+No Windows PowerShell:
 
-- `docs/PROMPT_CONTINUACAO_DIA_SEGUINTE.md`
-- `docs/maquininha/04-plano-execucao-testes-rollout.md`
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/open-source/setup-env.ps1
+```
 
-## Estrutura principal
+3. Preencha manualmente os arquivos `.env.local` gerados com suas proprias credenciais.
 
-- `restaurante-app/`: app mobile React Native + Expo
-- `restaurante-web/`: app web / Expo Web + E2E
-- `restaurante-ops/`: backoffice SaaS / auth / metrics / billing operations
-- `database-backup/`: migrations, backup, restore e Edge Functions
-- `docs/saas-billing/`: documentação de domínio e arquitetura de billing
-- `docs/`: documentação transversal do monorepo (inclui `design-system/`, `saas-billing/` e `scripts/`)
-- `docs/scripts/`: scripts utilitários de nível monorepo
+4. Rode validacoes locais:
 
-## Entradas recomendadas
+```bash
+pnpm lint
+pnpm typecheck
+pnpm build
+```
 
-- `docs/README.md`: índice geral de documentação
-- `docs/repository/DOMAINS.md`: mapa conceitual dos domínios do repositório
-- `docs/repository/SCRIPTS_INVENTORY.md`: inventário de scripts e inconsistências conhecidas
-- `docs/repository/AWESOME_COPILOT_INTEGRATION_2026-04-20.md`: status de instalação e política de precedência do Awesome Copilot
-- `docs/repository/AWESOME_COPILOT_SQUAD_MATRIX_2026-04-20.md`: matriz de uso por squad (app, web, ops, platform/ci)
-- `docs/forms/README.md`: índice de automação semi-automática segura de formulários
-- `docs/repository/FORM_AUTOMATION_SEMI_AUTO_RUNBOOK.md`: runbook da automação semi-automática segura de formulários
-- `docs/security/README.md`: pacote de auditoria, remediação e compliance
-- `docs/saas-billing/README.md`: visão de domínio de billing
-- `docs/saas-billing/operations/README.md`: runbooks e checklists operacionais
-- `docs/scripts/README.md`: convenção de scripts do monorepo
-- `restaurante-app/scripts/README.md`: scripts do app mobile
-- `restaurante-web/scripts/README.md`: scripts do web
-- `restaurante-ops/scripts/README.md`: scripts do ops
-- `database-backup/supabase/functions/scripts/README.md`: scripts operacionais das Edge Functions de billing
+## Matriz de Variaveis de Ambiente
 
-## Awesome Copilot no dia a dia
+### restaurante-app
 
-Resumo operacional para o time:
+Arquivo local: `restaurante-app/.env.local`
 
-- A skill primária do projeto continua sendo `.github/skills/restaurante-supabase/SKILL.md`.
-- As skills locais especializadas (`react-native-best-practices`, `github-actions`, `ui-ux-pro-max`) mantêm prioridade para implementação.
-- Plugins do Awesome Copilot entram como apoio para planejamento, testes e revisão de prompts.
+Minimo esperado:
 
-Leitura recomendada antes de usar em tarefas reais:
+- `EXPO_PUBLIC_SUPABASE_URL`
+- `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+- `EXPO_PUBLIC_SENTRY_DSN` (opcional)
+- `EXPO_PUBLIC_FIREBASE_*` (se usar Firebase)
 
-- `docs/repository/AWESOME_COPILOT_INTEGRATION_2026-04-20.md`
-- `docs/repository/AWESOME_COPILOT_SQUAD_MATRIX_2026-04-20.md`
+### restaurante-web
 
-## Convenção prática
+Arquivo local: `restaurante-web/.env.local`
 
-- documentação durável e transversal deve ir para `docs/`
-- runbooks e documentos temporais de billing devem ir para `docs/saas-billing/operations/`
-- scripts globais do monorepo devem ir para `docs/scripts/<dominio>/`
-- scripts específicos devem permanecer no `scripts/` do respectivo subprojeto
+Minimo esperado:
+
+- `EXPO_PUBLIC_SUPABASE_URL`
+- `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+- `PLAYWRIGHT_TEST_EMAIL` e `PLAYWRIGHT_TEST_PASSWORD` para E2E
+
+### restaurante-ops
+
+Arquivo local: `restaurante-ops/.env.local`
+
+Minimo esperado:
+
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY` (somente backend)
+- `PORT`
+- `OPS_ENV`
+
+### restaurante-site
+
+Arquivo local: `restaurante-site/.env.local`
+
+Minimo esperado:
+
+- Variaveis descritas em `restaurante-site/.env.example`
+
+### database-backup
+
+Arquivo local: `database-backup/.env.local`
+
+Minimo esperado:
+
+- `SOURCE_DB_HOST`, `SOURCE_DB_USER`, `SOURCE_DB_PASSWORD`, `SOURCE_DB_NAME`
+- `TARGET_DB_HOST`, `TARGET_DB_USER`, `TARGET_DB_PASSWORD`, `TARGET_DB_NAME`
+
+## Implantacao Segura (Railway)
+
+Os scripts de deploy nao usam credenciais hardcoded.
+
+Variaveis obrigatorias para deploy:
+
+- `RAILWAY_WORKSPACE`
+- `RAILWAY_PROJECT`
+- `RAILWAY_ENVIRONMENT`
+
+### Deploy por servico
+
+```bash
+# Ops
+cd restaurante-ops
+bash scripts/deploy-railway.sh
+
+# Web
+cd ../restaurante-web
+bash scripts/deploy-railway.sh
+
+# Site
+cd ../restaurante-site
+bash scripts/deploy-railway.sh
+```
+
+### Deploy orquestrado (novo)
+
+```bash
+bash scripts/open-source/deploy-railway-all.sh
+```
+
+No Windows PowerShell:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/open-source/deploy-railway-all.ps1
+```
+
+Documentacao dos novos scripts:
+
+- `scripts/open-source/README.md`
+
+## Mobile Build (EAS)
+
+No app mobile:
+
+```bash
+cd restaurante-app
+bash scripts/deploy-eas.sh
+```
+
+Observacoes:
+
+- `eas login` deve ser feito com a conta do mantenedor do fork/projeto.
+- Keystore e credenciais de build devem ser configurados no ambiente do usuario.
+
+## Politica de Segredos
+
+- Nunca usar `SUPABASE_SERVICE_ROLE_KEY` no cliente.
+- Nunca publicar tokens de pagamento, webhook ou admin em codigo e docs.
+- Nunca manter credenciais em scripts versionados.
+- Use gerenciador de segredos da plataforma de deploy.
+
+Checklist rapido antes de abrir PR:
+
+- [ ] Nenhum arquivo `.env` real foi versionado
+- [ ] Nenhum token/senha/chave foi adicionado em codigo ou docs
+- [ ] `.env.example` atualizado quando variavel nova foi criada
+- [ ] README e docs atualizados para novo fluxo tecnico
+
+## Fluxo Recomendado Para Open Source
+
+1. Rodar setup local por templates.
+2. Configurar credenciais proprias.
+3. Validar build/lint/typecheck.
+4. Fazer deploy apenas com variaveis explicitas de ambiente.
+5. Executar smoke tests dos fluxos criticos apos deploy.
+
+## Referencias de Documentacao
+
+- `docs/README.md`
+- `docs/security/README.md`
+- `docs/LGPD/README.md`
+- `docs/saas-billing/README.md`
+- `docs/repository/DOMAINS.md`
+
+## Observacao Importante Sobre Historico Git
+
+Se este repositorio for publicado publicamente, recomenda-se limpar historico para remover artefatos antigos que possam ter referencias sensiveis e, em seguida, rotacionar credenciais de producao.
+
+## Licenca
+
+Defina a licenca open source do projeto antes da publicacao (ex.: MIT, Apache-2.0 ou GPL-3.0) e inclua arquivo `LICENSE` na raiz.

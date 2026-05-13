@@ -7,9 +7,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
-RAILWAY_WORKSPACE="${RAILWAY_WORKSPACE:-Machado & Cunha Soft House}"
-RAILWAY_PROJECT="${RAILWAY_PROJECT:-restaurante}"
-RAILWAY_ENVIRONMENT="${RAILWAY_ENVIRONMENT:-production}"
+RAILWAY_WORKSPACE="${RAILWAY_WORKSPACE:-}"
+RAILWAY_PROJECT="${RAILWAY_PROJECT:-}"
+RAILWAY_ENVIRONMENT="${RAILWAY_ENVIRONMENT:-}"
 RAILWAY_SERVICE="${RAILWAY_SERVICE:-restaurante-site}"
 
 SITE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -92,13 +92,26 @@ Opcoes:
     -h, --help            Exibe esta ajuda.
     --skip-android-build  Pula o build/sync local do APK Android (usa o existente).
 
-Variaveis de ambiente opcionais:
+Variaveis de ambiente obrigatorias:
     RAILWAY_WORKSPACE
     RAILWAY_PROJECT
     RAILWAY_ENVIRONMENT
+
+Variaveis de ambiente opcionais:
     RAILWAY_SERVICE
     SKIP_ANDROID_BUILD=true   Equivalente a --skip-android-build
 EOF
+}
+
+require_env_var() {
+    local var_name="$1"
+    local var_value="${!var_name:-}"
+
+    if [ -z "$var_value" ]; then
+        echo "Variavel obrigatoria ausente: $var_name"
+        echo "Configure em seu ambiente local (ex.: .env.local) com seus valores proprios antes do deploy."
+        exit 1
+    fi
 }
 
 while [ "$#" -gt 0 ]; do
@@ -118,6 +131,10 @@ while [ "$#" -gt 0 ]; do
     esac
     shift
 done
+
+require_env_var "RAILWAY_WORKSPACE"
+require_env_var "RAILWAY_PROJECT"
+require_env_var "RAILWAY_ENVIRONMENT"
 
 echo "======================================"
 echo "Iniciando deploy do Restaurante Site"

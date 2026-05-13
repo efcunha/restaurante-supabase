@@ -11,9 +11,9 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 DB_BACKUP_DIR="$ROOT_DIR/database-backup"
 MIGRATIONS_DIR="$DB_BACKUP_DIR/migrations"
 CHECK_SYNC_SCRIPT="$DB_BACKUP_DIR/check-migration-sync.sh"
-RAILWAY_WORKSPACE="${RAILWAY_WORKSPACE:-Machado & Cunha Soft House}"
-RAILWAY_PROJECT="${RAILWAY_PROJECT:-restaurante}"
-RAILWAY_ENVIRONMENT="${RAILWAY_ENVIRONMENT:-production}"
+RAILWAY_WORKSPACE="${RAILWAY_WORKSPACE:-}"
+RAILWAY_PROJECT="${RAILWAY_PROJECT:-}"
+RAILWAY_ENVIRONMENT="${RAILWAY_ENVIRONMENT:-}"
 RAILWAY_SERVICE="${RAILWAY_SERVICE:-restaurante-ops}"
 FEATURE_CARD_MACHINE="${FEATURE_CARD_MACHINE:-true}"
 
@@ -37,7 +37,27 @@ Comportamento padrao (sem flags):
     1) Checa sync
     2) Tenta sync incremental quando possivel
     3) Executa deploy no Railway
+
+Variaveis obrigatorias:
+    RAILWAY_WORKSPACE
+    RAILWAY_PROJECT
+    RAILWAY_ENVIRONMENT
+
+Variaveis opcionais:
+    RAILWAY_SERVICE (padrao: restaurante-ops)
+    FEATURE_CARD_MACHINE (padrao: true)
 EOF
+}
+
+require_env_var() {
+    local var_name="$1"
+    local var_value="${!var_name:-}"
+
+    if [ -z "$var_value" ]; then
+        echo "Variavel obrigatoria ausente: $var_name"
+        echo "Configure em seu ambiente local (ex.: .env.local) com seus valores proprios antes do deploy."
+        exit 1
+    fi
 }
 
 while [ "$#" -gt 0 ]; do
@@ -65,6 +85,10 @@ if [ "$CHECK_ONLY" = "true" ] && [ "$SKIP_SYNC" = "true" ]; then
     echo "As opcoes --check-only e --skip-sync nao podem ser usadas juntas."
     exit 1
 fi
+
+require_env_var "RAILWAY_WORKSPACE"
+require_env_var "RAILWAY_PROJECT"
+require_env_var "RAILWAY_ENVIRONMENT"
 
 resolve_psql_bin() {
     if command -v psql >/dev/null 2>&1; then
