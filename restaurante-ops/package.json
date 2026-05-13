@@ -2,6 +2,7 @@
   "name": "restaurante-ops",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "description": "Backoffice SaaS para clientes, metricas e billing do restaurante-supabase",
   "type": "module",
   "scripts": {
@@ -17,8 +18,8 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.56.0",
-    "cookie": "^1.1.1"
-    ,"redis": "^4.7.0"
+    "cookie": "^1.1.1",
+    "redis": "^4.7.0"
   },
   "devDependencies": {
     "@types/cookie": "^0.6.0",
