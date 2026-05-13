@@ -85,6 +85,10 @@ dataconnect/
 kotlin*
 mcp-server-ts/*
 
+# Site build artifacts
+restaurante-site/public/downloads/*.apk
+restaurante-site/public/downloads/*.tar.gz
+
 # Playwright / test artifacts
 test-results*
 restaurante-web/playwright-report/
