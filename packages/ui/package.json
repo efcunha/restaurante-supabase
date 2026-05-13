@@ -12,7 +12,7 @@
     "@hookform/resolvers": "^5.2.2",
     "@restaurante/schemas": "workspace:*",
     "@restaurante/tokens": "workspace:*",
-    "react-hook-form": "^7.65.0"
+    "react-hook-form": "^7.75.0"
   },
   "devDependencies": {
     "@types/react": "^19.1.0"

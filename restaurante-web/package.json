@@ -96,7 +96,7 @@
     "typescript": "~5.9.2",
     "uuid": "^13.0.0",
     "@hookform/resolvers": "^5.2.2",
-    "react-hook-form": "^7.65.0",
+    "react-hook-form": "^7.75.0",
     "zod": "^4.1.12",
     "nativewind": "^4.2.1"
   },
