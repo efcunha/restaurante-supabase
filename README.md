@@ -45,18 +45,34 @@ pnpm install
 2. Gere arquivos locais de ambiente (sem credenciais reais):
 
 ```bash
+bash scripts/open-source/setup-preflight-check.sh
 bash scripts/open-source/setup-env.sh
 ```
 
 No Windows PowerShell:
 
 ```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/open-source/setup-preflight-check.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/open-source/setup-env.ps1
 ```
 
-3. Preencha manualmente os arquivos `.env.local` gerados com suas proprias credenciais.
+3. Configure Supabase e Railway com seus proprios dados:
 
-4. Rode validacoes locais:
+```bash
+bash scripts/open-source/setup-supabase-project.sh --project-ref <seu-project-ref>
+bash scripts/open-source/setup-railway-project.sh --workspace "<seu-workspace>" --project "<seu-project>" --environment "production"
+```
+
+No Windows PowerShell:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/open-source/setup-supabase-project.ps1 -ProjectRef <seu-project-ref>
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/open-source/setup-railway-project.ps1 -Workspace "<seu-workspace>" -Project "<seu-project>" -Environment "production"
+```
+
+4. Preencha manualmente os arquivos `.env.local` gerados com suas proprias credenciais.
+
+5. Rode validacoes locais:
 
 ```bash
 pnpm lint
@@ -156,6 +172,15 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/open-source/deploy-r
 Documentacao dos novos scripts:
 
 - `scripts/open-source/README.md`
+
+Scripts de provisionamento clean:
+
+- `scripts/open-source/setup-preflight-check.sh`
+- `scripts/open-source/setup-preflight-check.ps1`
+- `scripts/open-source/setup-railway-project.sh`
+- `scripts/open-source/setup-railway-project.ps1`
+- `scripts/open-source/setup-supabase-project.sh`
+- `scripts/open-source/setup-supabase-project.ps1`
 
 ## Mobile Build (EAS)
 
