@@ -22,6 +22,26 @@ Este repositorio foi preparado para uso open source sem publicar credenciais de 
 
 This repository is prepared for open source usage without exposing production credentials.
 
+## Creditos Obrigatorios / Mandatory Credits
+
+Este projeto e open source, mas e obrigatorio manter a referencia ao projeto inicial.
+
+This project is open source, but it is mandatory to keep the reference to the original project.
+
+Regras obrigatorias (PT):
+
+- Autor original: [REDACTED-PII].
+- Link original do projeto: https://github.com/efcunha/restaurante-supabase
+- Manter a atribuição em atualizacoes, forks e redistribuicoes.
+- Ao executar melhorias, priorizar a devolucao das alteracoes ao projeto original quando aplicavel.
+
+Mandatory rules (EN):
+
+- Original author: [REDACTED-PII].
+- Original project link: https://github.com/efcunha/restaurante-supabase
+- Keep attribution in updates, forks, and redistributions.
+- When improvements are made, prefer contributing them back to the original project when applicable.
+
 Regras obrigatorias (PT):
 
 - Nunca commitar arquivos `.env.local`, `.env`, tokens, senhas ou chaves privadas.
