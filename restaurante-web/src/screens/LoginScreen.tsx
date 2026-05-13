@@ -1,74 +1,96 @@
-import { StatusBar } from 'expo-status-bar';
-import { Alert, Dimensions, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { useState } from 'react';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons'
+import { StatusBar } from 'expo-status-bar'
+import { useState } from 'react'
+import {
+  Alert,
+  Dimensions,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native'
 // @ts-ignore
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useAuth } from '../context/AuthContext';
-import { useToast } from '../context/ToastContext';
-import { supabase } from '../config/SupabaseConfig';
-import { getPasswordResetRedirectUrl } from '../utils/authRedirect';
-import { getUserFriendlyMessage } from '../utils/errors';
-import { validateEmail } from '../utils/validation';
-import MFAVerificationModal from '../components/MFAVerificationModal';
-import { colors } from '../theme/colors';
-import { colorSystem } from '../design-system';
-import { FieldRow, FormSection, ScreenHeader } from '../ui';
-import logger from '../utils/logger';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack'
+import MFAVerificationModal from '../components/MFAVerificationModal'
+import { supabase } from '../config/SupabaseConfig'
+import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
+import { colorSystem } from '../design-system'
+import { colors } from '../theme/colors'
+import { FieldRow, FormSection, ScreenHeader } from '../ui'
+import { getPasswordResetRedirectUrl } from '../utils/authRedirect'
+import { getUserFriendlyMessage } from '../utils/errors'
+import logger from '../utils/logger'
+import { validateEmail } from '../utils/validation'
 
 interface Props {
-  navigation: NativeStackNavigationProp<any>;
+  navigation: NativeStackNavigationProp<any>
 }
 
 export default function LoginScreen({ navigation }: Props) {
-  const { login, loginWithBiometric, biometricAvailable, biometricType, mfaResolver, setMfaResolver } = useAuth();
-  const { showToast } = useToast();
+  const {
+    login,
+    loginWithBiometric,
+    biometricAvailable,
+    biometricType,
+    mfaResolver,
+    setMfaResolver,
+  } = useAuth()
+  const { showToast } = useToast()
 
   const maskEmail = (value: string): string => {
-    const normalized = String(value || '').trim().toLowerCase();
-    const [local, domain] = normalized.split('@');
-    if (!local || !domain) return 'invalid-email';
-    if (local.length <= 2) return `${local[0] || '*'}***@${domain}`;
-    return `${local.slice(0, 2)}***@${domain}`;
-  };
-  const windowWidth = Dimensions.get('window').width;
-  const windowHeight = Dimensions.get('window').height;
-  const isDesktop = windowWidth >= 1080;
-  const isTablet = windowWidth >= 760;
-  const isShortScreen = windowHeight < 800;
-  let logoSize = 170;
-  if (isDesktop) { logoSize = isShortScreen ? 180 : 290; }
-  else if (isTablet) { logoSize = 220; }
-  const [email, setEmail] = useState('');
-  const [senha, setSenha] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [mostrarSenha, setMostrarSenha] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
+    const normalized = String(value || '')
+      .trim()
+      .toLowerCase()
+    const [local, domain] = normalized.split('@')
+    if (!local || !domain) return 'invalid-email'
+    if (local.length <= 2) return `${local[0] || '*'}***@${domain}`
+    return `${local.slice(0, 2)}***@${domain}`
+  }
+  const windowWidth = Dimensions.get('window').width
+  const windowHeight = Dimensions.get('window').height
+  const isDesktop = windowWidth >= 1080
+  const isTablet = windowWidth >= 760
+  const isShortScreen = windowHeight < 800
+  let logoSize = 170
+  if (isDesktop) {
+    logoSize = isShortScreen ? 180 : 290
+  } else if (isTablet) {
+    logoSize = 220
+  }
+  const [email, setEmail] = useState('')
+  const [senha, setSenha] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [mostrarSenha, setMostrarSenha] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const handleLogin = async () => {
-    setSubmitError(null);
+    setSubmitError(null)
     if (!email.trim() || !senha.trim()) {
-      logger.warn('[LoginScreen] login attempt with missing credentials');
-      showToast('Preencha email e senha', 'warning');
-      return;
+      logger.warn('[LoginScreen] login attempt with missing credentials')
+      showToast('Preencha email e senha', 'warning')
+      return
     }
 
-    setLoading(true);
-    const emailTrimmed = email.toLowerCase().trim();
-    const emailMasked = maskEmail(emailTrimmed);
+    setLoading(true)
+    const emailTrimmed = email.toLowerCase().trim()
+    const emailMasked = maskEmail(emailTrimmed)
     try {
-      logger.info('[LoginScreen] login attempt initiated', { emailMasked });
-      await login(emailTrimmed, senha);
-      logger.info('[LoginScreen] login successful', { emailMasked });
+      logger.info('[LoginScreen] login attempt initiated', { emailMasked })
+      await login(emailTrimmed, senha)
+      logger.info('[LoginScreen] login successful', { emailMasked })
     } catch (error: any) {
-      logger.error('[LoginScreen] login failed', error, { emailMasked });
-      const userMessage = getUserFriendlyMessage(error);
-      setSubmitError(userMessage);
-      Alert.alert('Erro no Login', userMessage);
+      logger.error('[LoginScreen] login failed', error, { emailMasked })
+      const userMessage = getUserFriendlyMessage(error)
+      setSubmitError(userMessage)
+      Alert.alert('Erro no Login', userMessage)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   return (
     <View style={styles.container}>
@@ -77,41 +99,54 @@ export default function LoginScreen({ navigation }: Props) {
       <View style={styles.overlayVeil} />
 
       <ScrollView
-        contentContainerStyle={[styles.scrollContent, isDesktop && styles.scrollContentDesktop, isShortScreen && styles.scrollContentShort]}
+        contentContainerStyle={[
+          styles.scrollContent,
+          isDesktop && styles.scrollContentDesktop,
+          isShortScreen && styles.scrollContentShort,
+        ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
         <View style={[styles.shell, isDesktop && styles.shellDesktop]}>
           {isTablet && (
-          <View style={[styles.heroPanel, isDesktop && styles.heroPanelDesktop]}>
-            <Image
-              source={require('../../imagem/icone.png')}
-              style={[styles.logo, { width: logoSize, height: logoSize }]}
-              resizeMode="contain"
-            />
+            <View style={[styles.heroPanel, isDesktop && styles.heroPanelDesktop]}>
+              <Image
+                source={require('../../imagem/icone.png')}
+                style={[styles.logo, { width: logoSize, height: logoSize }]}
+                resizeMode="contain"
+              />
 
-            <Text style={[styles.productName, isDesktop && styles.productNameDesktop]}>
-              Restaurante Web
-            </Text>
+              <Text style={[styles.productName, isDesktop && styles.productNameDesktop]}>
+                Restaurante Web
+              </Text>
 
-            <Text style={[styles.productTagline, isDesktop && styles.productTaglineDesktop]}>
-              Sistema de gestao para restaurantes
-            </Text>
+              <Text style={[styles.productTagline, isDesktop && styles.productTaglineDesktop]}>
+                Sistema de gestao para restaurantes
+              </Text>
 
-            <View style={styles.heroDivider} />
+              <View style={styles.heroDivider} />
 
-            <Text style={[styles.companyCredit, isDesktop && styles.companyCreditDesktop]}>
-              © Machado & Cunha Soft House
-            </Text>
+              <Text style={[styles.companyCredit, isDesktop && styles.companyCreditDesktop]}>
+                © Machado & Cunha Soft House
+              </Text>
 
-            <TouchableOpacity style={[styles.aboutCta, isDesktop && styles.aboutCtaDesktop]} onPress={() => navigation.navigate('About')}>
-              <Text style={styles.aboutCtaText}>Conhecer a plataforma</Text>
-              <Ionicons name="arrow-forward" size={18} color="#1D2A35" />
-            </TouchableOpacity>
-          </View>
+              <TouchableOpacity
+                style={[styles.aboutCta, isDesktop && styles.aboutCtaDesktop]}
+                onPress={() => navigation.navigate('About')}
+              >
+                <Text style={styles.aboutCtaText}>Conhecer a plataforma</Text>
+                <Ionicons name="arrow-forward" size={18} color="#1D2A35" />
+              </TouchableOpacity>
+            </View>
           )}
 
-          <View style={[styles.authColumn, isDesktop && styles.authColumnDesktop, isShortScreen && styles.authColumnShort]}>
+          <View
+            style={[
+              styles.authColumn,
+              isDesktop && styles.authColumnDesktop,
+              isShortScreen && styles.authColumnShort,
+            ]}
+          >
             {!isTablet && (
               <Image
                 source={require('../../imagem/icone.png')}
@@ -155,7 +190,11 @@ export default function LoginScreen({ navigation }: Props) {
                       accessibilityRole="button"
                       accessibilityLabel={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
                     >
-                      <Ionicons name={mostrarSenha ? 'eye-off' : 'eye'} size={22} color={colorSystem.primary} />
+                      <Ionicons
+                        name={mostrarSenha ? 'eye-off' : 'eye'}
+                        size={22}
+                        color={colorSystem.primary}
+                      />
                     </TouchableOpacity>
                   </View>
                 </FieldRow>
@@ -168,7 +207,11 @@ export default function LoginScreen({ navigation }: Props) {
                 </View>
               )}
 
-              <TouchableOpacity style={[styles.loginBtn, loading && styles.loginBtnDisabled]} onPress={handleLogin} disabled={loading}>
+              <TouchableOpacity
+                style={[styles.loginBtn, loading && styles.loginBtnDisabled]}
+                onPress={handleLogin}
+                disabled={loading}
+              >
                 <Text style={styles.loginBtnText}>{loading ? 'ENTRANDO...' : 'ENTRAR'}</Text>
               </TouchableOpacity>
 
@@ -176,19 +219,25 @@ export default function LoginScreen({ navigation }: Props) {
                 <TouchableOpacity
                   style={styles.biometricBtn}
                   onPress={async () => {
-                    logger.info('[LoginScreen] biometric login attempt initiated', { biometricType });
-                    const result = await loginWithBiometric();
+                    logger.info('[LoginScreen] biometric login attempt initiated', {
+                      biometricType,
+                    })
+                    const result = await loginWithBiometric()
                     if (!result.success && result.error) {
-                      logger.error('[LoginScreen] biometric login failed', result.error);
-                      Alert.alert('Biometria', result.error);
+                      logger.error('[LoginScreen] biometric login failed', result.error)
+                      Alert.alert('Biometria', result.error)
                     } else if (result.success) {
-                      logger.info('[LoginScreen] biometric login successful');
+                      logger.info('[LoginScreen] biometric login successful')
                     }
                   }}
                   disabled={loading}
                 >
                   <Ionicons
-                    name={biometricType === 'Reconhecimento Facial' ? 'scan-outline' : 'finger-print-outline'}
+                    name={
+                      biometricType === 'Reconhecimento Facial'
+                        ? 'scan-outline'
+                        : 'finger-print-outline'
+                    }
                     size={20}
                     color="#0A5063"
                     style={styles.biometricIcon}
@@ -201,16 +250,24 @@ export default function LoginScreen({ navigation }: Props) {
                 style={styles.forgotPasswordBtn}
                 onPress={async () => {
                   if (!email.trim()) {
-                    logger.warn('[LoginScreen] password reset requested without email');
-                    Alert.alert('Esqueci minha senha', 'Por favor, digite seu email no campo acima primeiro.');
-                    return;
+                    logger.warn('[LoginScreen] password reset requested without email')
+                    Alert.alert(
+                      'Esqueci minha senha',
+                      'Por favor, digite seu email no campo acima primeiro.',
+                    )
+                    return
                   }
 
-                  const validation = validateEmail(email.trim());
+                  const validation = validateEmail(email.trim())
                   if (!validation.isValid) {
-                    logger.warn('[LoginScreen] password reset requested with invalid email', { emailMasked: maskEmail(email.trim()) });
-                    Alert.alert('Email Inválido', validation.error || 'Por favor, digite um email valido.');
-                    return;
+                    logger.warn('[LoginScreen] password reset requested with invalid email', {
+                      emailMasked: maskEmail(email.trim()),
+                    })
+                    Alert.alert(
+                      'Email Inválido',
+                      validation.error || 'Por favor, digite um email valido.',
+                    )
+                    return
                   }
 
                   Alert.alert(
@@ -222,38 +279,48 @@ export default function LoginScreen({ navigation }: Props) {
                         text: 'Enviar Email',
                         onPress: async () => {
                           try {
-                            logger.info('[LoginScreen] password reset email requested', { emailMasked: maskEmail(email.trim()) });
-                            const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-                              redirectTo: getPasswordResetRedirectUrl(),
-                            });
-                            if (error) throw error;
-                            logger.info('[LoginScreen] password reset email sent successfully', { emailMasked: maskEmail(email.trim()) });
-                            Alert.alert('Sucesso', 'Email enviado. Verifique sua caixa de entrada e spam para redefinir a senha.');
+                            logger.info('[LoginScreen] password reset email requested', {
+                              emailMasked: maskEmail(email.trim()),
+                            })
+                            const { error } = await supabase.auth.resetPasswordForEmail(
+                              email.trim(),
+                              {
+                                redirectTo: getPasswordResetRedirectUrl(),
+                              },
+                            )
+                            if (error) throw error
+                            logger.info('[LoginScreen] password reset email sent successfully', {
+                              emailMasked: maskEmail(email.trim()),
+                            })
+                            Alert.alert(
+                              'Sucesso',
+                              'Email enviado. Verifique sua caixa de entrada e spam para redefinir a senha.',
+                            )
                           } catch (resetError: any) {
-                            logger.error('[LoginScreen] password reset email failed', resetError, { emailMasked: maskEmail(email.trim()) });
-                            Alert.alert('Erro', 'Nao foi possivel enviar: ' + resetError.message);
+                            logger.error('[LoginScreen] password reset email failed', resetError, {
+                              emailMasked: maskEmail(email.trim()),
+                            })
+                            Alert.alert('Erro', 'Nao foi possivel enviar: ' + resetError.message)
                           }
                         },
                       },
-                    ]
-                  );
+                    ],
+                  )
                 }}
               >
                 <Text style={styles.forgotPasswordText}>Esqueci minha senha</Text>
               </TouchableOpacity>
 
               <View style={styles.registerPanel}>
-                <Text style={styles.registerPanelPrompt}>Precisa cadastrar um novo restaurante?</Text>
-                <TouchableOpacity style={styles.registerPanelLink} onPress={() => navigation.navigate('Register')}>
+                <Text style={styles.registerPanelPrompt}>
+                  Precisa cadastrar um novo restaurante?
+                </Text>
+                <TouchableOpacity
+                  style={styles.registerPanelLink}
+                  onPress={() => navigation.navigate('Register')}
+                >
                   <Text style={styles.registerPanelLinkText}>Cadastre seu restaurante</Text>
                 </TouchableOpacity>
-
-                <View style={styles.billingNoteCard}>
-                  <Ionicons name="card-outline" size={18} color="#0B6780" />
-                  <Text style={styles.billingNoteText}>
-                    O onboarding já cria um trial de 30 dias. A cobrança fica disponível no Admin e deve ser configurada antes do vencimento para evitar bloqueio operacional.
-                  </Text>
-                </View>
               </View>
             </View>
 
@@ -270,15 +337,15 @@ export default function LoginScreen({ navigation }: Props) {
         visible={!!mfaResolver}
         resolver={mfaResolver}
         onSuccess={() => {
-          setMfaResolver(null);
+          setMfaResolver(null)
         }}
         onCancel={async () => {
-          await supabase.auth.signOut();
-          setMfaResolver(null);
+          await supabase.auth.signOut()
+          setMfaResolver(null)
         }}
       />
     </View>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -743,26 +810,6 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
     textAlign: 'center',
   },
-  billingNoteCard: {
-    marginTop: 12,
-    borderRadius: 12,
-    backgroundColor: '#E7F5F8',
-    borderWidth: 1,
-    borderColor: '#C9E3EA',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-  },
-  billingNoteText: {
-    flex: 1,
-    color: '#12303D',
-    fontSize: 13,
-    lineHeight: 19,
-    textAlign: 'left',
-    fontWeight: '700',
-  },
   loginFooterArea: {
     alignItems: 'center',
     marginTop: 18,
@@ -794,4 +841,4 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
   },
-});
+})

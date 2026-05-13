@@ -1029,7 +1029,7 @@ function renderRegisterHtml(): string {
 
       <button class="btn-secondary" type="button" onclick="window.location.href='/login'">Voltar para login</button>
       <p class="helper">Esta tela segue o padrao visual do restaurante-web e pode ser conectada ao Supabase Auth.</p>
-      <div class="billing-note">Trial de 30 dias, com regularizacao obrigatoria antes do vencimento para evitar bloqueio de operacao.</div>
+      <div class="billing-note">A assinatura fica disponivel no Admin para configuracao e acompanhamento operacional.</div>
     </div>
     <div class="footer-note">Machado & Cunha Soft House</div>
   </section>
@@ -1382,7 +1382,7 @@ function renderCustomersPanel(kpis: KpiCounts, companies: CompanyRow[]): string 
         <article class="metric">
           <div class="metric-label">Em trial</div>
           <div class="metric-value">${kpis.trialing}</div>
-          <div class="metric-hint">Trial de 30 dias</div>
+          <div class="metric-hint">Fase inicial da assinatura</div>
         </article>
         <article class="metric">
           <div class="metric-label">Em atraso / suspensos</div>

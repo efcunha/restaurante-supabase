@@ -1,301 +1,304 @@
-import React, { useState } from 'react';
+import { Ionicons } from '@expo/vector-icons'
+import React, { useState } from 'react'
 import {
-  StyleSheet,
-  Text,
-  View,
-  TextInput,
-  TouchableOpacity,
-  Alert,
   ActivityIndicator,
-  ScrollView,
+  Alert,
+  Dimensions,
   KeyboardAvoidingView,
   Platform,
-  Dimensions,
-} from 'react-native';
-import { supabase } from '../config/SupabaseConfig';
-import { Ionicons } from '@expo/vector-icons';
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native'
+import { supabase } from '../config/SupabaseConfig'
 // @ts-ignore
-import { validateCPF, validateCNPJ } from '../utils/validation';
+import { validateCNPJ, validateCPF } from '../utils/validation'
 // @ts-ignore
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { colors } from '../theme/colors';
-import { colorSystem } from '../design-system';
-import { FieldRow, FormSection, ScreenHeader } from '../ui';
-import logger from '../utils/logger';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack'
+import { colorSystem } from '../design-system'
+import { colors } from '../theme/colors'
+import { FieldRow, FormSection, ScreenHeader } from '../ui'
+import logger from '../utils/logger'
 
 interface Props {
-  navigation: NativeStackNavigationProp<any>;
+  navigation: NativeStackNavigationProp<any>
 }
 
 const onboardingHighlights = [
   {
     title: 'Cadastro orientado',
-    description: 'Formulario organizado por etapas para facilitar o preenchimento e evitar duvidas.',
+    description:
+      'Formulario organizado por etapas para facilitar o preenchimento e evitar duvidas.',
   },
   {
     title: 'Base pronta para operar',
-    description: 'A conta ja nasce preparada para iniciar administracao, atendimento e fluxo operacional.',
+    description:
+      'A conta ja nasce preparada para iniciar administracao, atendimento e fluxo operacional.',
   },
   {
     title: 'Billing desde o onboarding',
-    description: 'A assinatura fica disponivel logo apos a criacao da empresa, com trial de 30 dias e regularizacao obrigatoria antes do vencimento.',
+    description:
+      'A assinatura fica disponivel no Admin para configuracao e acompanhamento operacional.',
   },
-];
+]
 
 export default function RegisterCompanyScreen({ navigation }: Props) {
-  const windowWidth = Dimensions.get('window').width;
-  const isDesktop = windowWidth >= 1120;
-  const isTablet = windowWidth >= 760;
+  const windowWidth = Dimensions.get('window').width
+  const isDesktop = windowWidth >= 1120
+  const isTablet = windowWidth >= 760
 
-  const [restaurantName, setRestaurantName] = useState('');
-  const [adminName, setAdminName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [documentType, setDocumentType] = useState<'cpf' | 'cnpj'>('cpf');
-  const [documentValue, setDocumentValue] = useState('');
-  const [contactPhone, setContactPhone] = useState('');
-  const [zipCode, setZipCode] = useState('');
-  const [address, setAddress] = useState('');
-  const [city, setCity] = useState('');
-  const [state, setState] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [restaurantName, setRestaurantName] = useState('')
+  const [adminName, setAdminName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [documentType, setDocumentType] = useState<'cpf' | 'cnpj'>('cpf')
+  const [documentValue, setDocumentValue] = useState('')
+  const [contactPhone, setContactPhone] = useState('')
+  const [zipCode, setZipCode] = useState('')
+  const [address, setAddress] = useState('')
+  const [city, setCity] = useState('')
+  const [state, setState] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   // Formatter for display
   const formatDocument = (text: string, type: 'cpf' | 'cnpj') => {
-    const numbers = text.replace(/\D/g, '');
+    const numbers = text.replace(/\D/g, '')
     if (type === 'cpf') {
       return numbers
         .replace(/(\d{3})(\d)/, '$1.$2')
         .replace(/(\d{3})(\d)/, '$1.$2')
         .replace(/(\d{3})(\d{1,2})/, '$1-$2')
-        .replace(/(-\d{2})\d+?$/, '$1');
+        .replace(/(-\d{2})\d+?$/, '$1')
     } else {
       return numbers
         .replace(/^(\d{2})(\d)/, '$1.$2')
         .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
         .replace(/\.(\d{3})(\d)/, '.$1/$2')
         .replace(/(\d{4})(\d)/, '$1-$2')
-        .replace(/(-\d{2})\d+?$/, '$1');
+        .replace(/(-\d{2})\d+?$/, '$1')
     }
-  };
+  }
 
   const handleDocumentChange = (text: string) => {
-    setDocumentValue(formatDocument(text, documentType));
-  };
+    setDocumentValue(formatDocument(text, documentType))
+  }
 
   const formatPhone = (text: string) => {
-    const numbers = text.replace(/\D/g, '');
+    const numbers = text.replace(/\D/g, '')
     if (numbers.length <= 10) {
-        // Formato: (83) 9917-2452
-        return numbers
-            .replace(/^(\d{2})(\d)/, '($1) $2')
-            .replace(/(\d{4})(\d)/, '$1-$2')
-            .replace(/(-\d{4})\d+?$/, '$1');
+      // Formato: (83) 9917-2452
+      return numbers
+        .replace(/^(\d{2})(\d)/, '($1) $2')
+        .replace(/(\d{4})(\d)/, '$1-$2')
+        .replace(/(-\d{4})\d+?$/, '$1')
     } else {
-        // Formato: (00) 00000-0000
-        return numbers
-            .replace(/^(\d{2})(\d)/, '($1) $2')
-            .replace(/(\d{5})(\d)/, '$1-$2')
-            .replace(/(-\d{4})\d+?$/, '$1');
+      // Formato: (00) 00000-0000
+      return numbers
+        .replace(/^(\d{2})(\d)/, '($1) $2')
+        .replace(/(\d{5})(\d)/, '$1-$2')
+        .replace(/(-\d{4})\d+?$/, '$1')
     }
-  };
+  }
 
   const handlePhoneChange = (text: string) => {
-    setContactPhone(formatPhone(text));
-  };
+    setContactPhone(formatPhone(text))
+  }
 
   const formatZipCode = (text: string) => {
-    const numbers = text.replace(/\D/g, '');
+    const numbers = text.replace(/\D/g, '')
     return numbers
-        .replace(/^(\d{5})(\d)/, '$1-$2')
-        .replace(/(-\d{3})\d+?$/, '$1')
-        .substring(0, 9);
-  };
+      .replace(/^(\d{5})(\d)/, '$1-$2')
+      .replace(/(-\d{3})\d+?$/, '$1')
+      .substring(0, 9)
+  }
 
   const handleZipCodeChange = (text: string) => {
-    setZipCode(formatZipCode(text));
-  };
+    setZipCode(formatZipCode(text))
+  }
 
   const searchAddressByCEP = async (cep: string) => {
-    const cleanCEP = cep.replace(/\D/g, '');
-    
-    if (cleanCEP.length !== 8) return;
+    const cleanCEP = cep.replace(/\D/g, '')
+
+    if (cleanCEP.length !== 8) return
 
     try {
-      const response = await fetch(`https://viacep.com.br/ws/${cleanCEP}/json/`);
-      const data = await response.json();
+      const response = await fetch(`https://viacep.com.br/ws/${cleanCEP}/json/`)
+      const data = await response.json()
 
       if (data.erro) {
-        Alert.alert('Aviso', 'CEP não encontrado');
-        return;
+        Alert.alert('Aviso', 'CEP não encontrado')
+        return
       }
 
-      setAddress(data.logradouro || '');
-      setCity(data.localidade || '');
-      setState(data.uf || '');
-      
+      setAddress(data.logradouro || '')
+      setCity(data.localidade || '')
+      setState(data.uf || '')
     } catch (error) {
-      logger.error('[RegisterCompanyScreen] Failed to fetch CEP address', error);
-      Alert.alert('Erro', 'Não foi possível buscar o endereço. Verifique sua conexão.');
+      logger.error('[RegisterCompanyScreen] Failed to fetch CEP address', error)
+      Alert.alert('Erro', 'Não foi possível buscar o endereço. Verifique sua conexão.')
     }
-  };
+  }
 
   const handleRegister = async () => {
     if (!restaurantName || !adminName || !email || !password || !documentValue) {
-      Alert.alert('Erro', 'Preencha todos os campos obrigatórios');
-      return;
+      Alert.alert('Erro', 'Preencha todos os campos obrigatórios')
+      return
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Erro', 'As senhas não conferem');
-      return;
+      Alert.alert('Erro', 'As senhas não conferem')
+      return
     }
 
     if (password.length < 6) {
-      Alert.alert('Erro', 'A senha deve ter pelo menos 6 caracteres');
-      return;
+      Alert.alert('Erro', 'A senha deve ter pelo menos 6 caracteres')
+      return
     }
 
     // Validation
-    let docValidation;
+    let docValidation
     if (documentType === 'cpf') {
-      docValidation = validateCPF(documentValue);
+      docValidation = validateCPF(documentValue)
     } else {
-      docValidation = validateCNPJ(documentValue);
+      docValidation = validateCNPJ(documentValue)
     }
 
     if (!docValidation.isValid) {
-      Alert.alert('Erro', docValidation.error);
-      return;
+      Alert.alert('Erro', docValidation.error)
+      return
     }
 
-    const emailSanitized = email.toLowerCase().trim();
+    const emailSanitized = email.toLowerCase().trim()
     const maskEmail = (value: string): string => {
-      const normalized = String(value || '').trim().toLowerCase();
-      const [local, domain] = normalized.split('@');
-      if (!local || !domain) return 'invalid-email';
-      if (local.length <= 2) return `${local[0] || '*'}***@${domain}`;
-      return `${local.slice(0, 2)}***@${domain}`;
-    };
-    const emailMasked = maskEmail(emailSanitized);
-    const passwordSanitized = password.trim();
+      const normalized = String(value || '')
+        .trim()
+        .toLowerCase()
+      const [local, domain] = normalized.split('@')
+      if (!local || !domain) return 'invalid-email'
+      if (local.length <= 2) return `${local[0] || '*'}***@${domain}`
+      return `${local.slice(0, 2)}***@${domain}`
+    }
+    const emailMasked = maskEmail(emailSanitized)
+    const passwordSanitized = password.trim()
 
     try {
-      setLoading(true);
-      logger.info('[RegisterCompanyScreen] registration attempt initiated', { emailMasked });
+      setLoading(true)
+      logger.info('[RegisterCompanyScreen] registration attempt initiated', { emailMasked })
 
       // 1. Sign Up User
       const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: emailSanitized,
-          password: passwordSanitized,
-          options: {
-              data: {
-                  full_name: adminName // Store in metadata initially
-              }
-          }
-      });
+        email: emailSanitized,
+        password: passwordSanitized,
+        options: {
+          data: {
+            full_name: adminName, // Store in metadata initially
+          },
+        },
+      })
 
-      if (authError) throw authError;
-      if (!authData.user) throw new Error('Falha ao criar usuário (sem dados retornados)');
-      
-      const userId = authData.user.id;
+      if (authError) throw authError
+      if (!authData.user) throw new Error('Falha ao criar usuário (sem dados retornados)')
+
+      const userId = authData.user.id
 
       // 2. Create Company
       const { data: companyData, error: companyError } = await supabase
-          .from('companies')
-          .insert({
-              name: restaurantName,
-              plan: 'trialing',
-              active: true,
-              document_type: documentType,
-              document: docValidation.value,
-              contact_name: adminName,
-              contact_phone: contactPhone.replace(/\D/g, '') || null,
-              address: address.trim() || null,
-              city: city.trim() || null,
-              state: state.trim() || null,
-              zip_code: zipCode.replace(/\D/g, '') || null
-          })
-          .select()
-          .single();
+        .from('companies')
+        .insert({
+          name: restaurantName,
+          plan: 'trialing',
+          active: true,
+          document_type: documentType,
+          document: docValidation.value,
+          contact_name: adminName,
+          contact_phone: contactPhone.replace(/\D/g, '') || null,
+          address: address.trim() || null,
+          city: city.trim() || null,
+          state: state.trim() || null,
+          zip_code: zipCode.replace(/\D/g, '') || null,
+        })
+        .select()
+        .single()
 
-      if (companyError) throw companyError;
-      
-      const companyId = companyData.id;
+      if (companyError) throw companyError
+
+      const companyId = companyData.id
 
       // 3. Create User Profile
-      // Note: profiles table is often created via Trigger on auth.users. 
+      // Note: profiles table is often created via Trigger on auth.users.
       // If so, we should UPDATE it. If not, INSERT it.
       // Assuming manual management for migration:
-      
+
       const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-              id: userId,
-              company_id: companyId,
-              email: emailSanitized,
-              full_name: adminName,
-              role: 'admin'
-          })
-          // If trigger exists and created row, access conflict might occur?
-          // Use upsert to be safe
-          .select()
-          .single();
-          
+        .from('profiles')
+        .insert({
+          id: userId,
+          company_id: companyId,
+          email: emailSanitized,
+          full_name: adminName,
+          role: 'admin',
+        })
+        // If trigger exists and created row, access conflict might occur?
+        // Use upsert to be safe
+        .select()
+        .single()
+
       // If profile insert fails (e.g. key violation due to trigger), try update
       if (profileError) {
-          // Fallback update
-           const { error: updateError } = await supabase
-              .from('profiles')
-              .update({
-                  company_id: companyId,
-                  full_name: adminName,
-                  role: 'admin'
-              })
-              .eq('id', userId);
-              
-           if (updateError) {
-               logger.error('[RegisterCompanyScreen] Profile update failed', updateError);
-               throw profileError; // Throw original error
-           }
+        // Fallback update
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({
+            company_id: companyId,
+            full_name: adminName,
+            role: 'admin',
+          })
+          .eq('id', userId)
+
+        if (updateError) {
+          logger.error('[RegisterCompanyScreen] Profile update failed', updateError)
+          throw profileError // Throw original error
+        }
       }
 
       // 4. Create trial subscription row (30-day trial, no charge until D31)
-      const trialStartsAt = new Date();
-      const trialEndsAt = new Date(trialStartsAt);
-      trialEndsAt.setDate(trialEndsAt.getDate() + 30);
+      const trialStartsAt = new Date()
+      const trialEndsAt = new Date(trialStartsAt)
+      trialEndsAt.setDate(trialEndsAt.getDate() + 30)
 
-      const { error: subError } = await supabase
-          .from('subscriptions')
-          .insert({
-              company_id: companyId,
-              status: 'trialing',
-              trial_starts_at: trialStartsAt.toISOString(),
-              trial_ends_at: trialEndsAt.toISOString(),
-          });
+      const { error: subError } = await supabase.from('subscriptions').insert({
+        company_id: companyId,
+        status: 'trialing',
+        trial_starts_at: trialStartsAt.toISOString(),
+        trial_ends_at: trialEndsAt.toISOString(),
+      })
 
       if (subError) {
-          logger.warn('[RegisterCompanyScreen] Subscription row creation failed', { message: subError.message });
+        logger.warn('[RegisterCompanyScreen] Subscription row creation failed', {
+          message: subError.message,
+        })
       }
 
       Alert.alert(
         'Sucesso',
         'Conta criada com sucesso! Você tem 30 dias de acesso gratuito. Faça login para começar.',
-        [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
-      );
-
+        [{ text: 'OK', onPress: () => navigation.navigate('Login') }],
+      )
     } catch (error: any) {
-      logger.error('[RegisterCompanyScreen] registration failed', error, { emailMasked });
-      let msg = error.message || 'Erro ao criar conta';
-      if (msg.includes('already registered')) msg = 'Este email já está em uso.';
-      Alert.alert('Erro', msg);
+      logger.error('[RegisterCompanyScreen] registration failed', error, { emailMasked })
+      let msg = error.message || 'Erro ao criar conta'
+      if (msg.includes('already registered')) msg = 'Este email já está em uso.'
+      Alert.alert('Erro', msg)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   return (
     <KeyboardAvoidingView
@@ -318,12 +321,26 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
               <Text style={styles.heroBadgeText}>Cadastro da plataforma</Text>
             </View>
 
-            <Text style={[styles.title, isDesktop && styles.titleDesktop]}>Crie a conta do seu restaurante com um fluxo mais claro e profissional.</Text>
-            <Text style={[styles.subtitle, isDesktop && styles.subtitleDesktop]}>Organize os dados da empresa, do administrador e do acesso inicial em uma experiencia de cadastro mais elegante e facil de preencher.</Text>
+            <Text style={[styles.title, isDesktop && styles.titleDesktop]}>
+              Crie a conta do seu restaurante com um fluxo mais claro e profissional.
+            </Text>
+            <Text style={[styles.subtitle, isDesktop && styles.subtitleDesktop]}>
+              Organize os dados da empresa, do administrador e do acesso inicial em uma experiencia
+              de cadastro mais elegante e facil de preencher.
+            </Text>
 
             <View style={[styles.highlightRow, isDesktop && styles.highlightRowDesktop]}>
               {onboardingHighlights.map((item, index) => (
-                <View key={item.title} style={[styles.highlightCard, isDesktop && styles.highlightCardDesktop, isDesktop && index === onboardingHighlights.length - 1 && styles.highlightCardDesktopLast]}>
+                <View
+                  key={item.title}
+                  style={[
+                    styles.highlightCard,
+                    isDesktop && styles.highlightCardDesktop,
+                    isDesktop &&
+                      index === onboardingHighlights.length - 1 &&
+                      styles.highlightCardDesktopLast,
+                  ]}
+                >
                   <Text style={styles.highlightTitle}>{item.title}</Text>
                   <Text style={styles.highlightDescription}>{item.description}</Text>
                 </View>
@@ -337,7 +354,13 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
             </View>
           </View>
 
-          <View style={[styles.formColumn, isTablet && styles.formColumnTablet, isDesktop && styles.formColumnDesktop]}>
+          <View
+            style={[
+              styles.formColumn,
+              isTablet && styles.formColumnTablet,
+              isDesktop && styles.formColumnDesktop,
+            ]}
+          >
             <View style={styles.form}>
               <ScreenHeader
                 title="Cadastro inicial"
@@ -352,13 +375,24 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
                   style={[styles.docTypeBtn, documentType === 'cpf' && styles.docTypeBtnActive]}
                   onPress={() => setDocumentType('cpf')}
                 >
-                  <Text style={[styles.docTypeText, documentType === 'cpf' && styles.docTypeTextActive]}>CPF</Text>
+                  <Text
+                    style={[styles.docTypeText, documentType === 'cpf' && styles.docTypeTextActive]}
+                  >
+                    CPF
+                  </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.docTypeBtn, documentType === 'cnpj' && styles.docTypeBtnActive]}
                   onPress={() => setDocumentType('cnpj')}
                 >
-                  <Text style={[styles.docTypeText, documentType === 'cnpj' && styles.docTypeTextActive]}>CNPJ</Text>
+                  <Text
+                    style={[
+                      styles.docTypeText,
+                      documentType === 'cnpj' && styles.docTypeTextActive,
+                    ]}
+                  >
+                    CNPJ
+                  </Text>
                 </TouchableOpacity>
               </View>
 
@@ -485,7 +519,11 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
                       accessibilityRole="button"
                       accessibilityLabel={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
                     >
-                      <Ionicons name={showPassword ? 'eye' : 'eye-off'} size={22} color={colorSystem.primary} />
+                      <Ionicons
+                        name={showPassword ? 'eye' : 'eye-off'}
+                        size={22}
+                        color={colorSystem.primary}
+                      />
                     </TouchableOpacity>
                   </View>
                 </FieldRow>
@@ -504,21 +542,40 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
                       onPress={() => setShowConfirmPassword(!showConfirmPassword)}
                       style={styles.eyeIcon}
                       accessibilityRole="button"
-                      accessibilityLabel={showConfirmPassword ? 'Ocultar confirmacao de senha' : 'Mostrar confirmacao de senha'}
+                      accessibilityLabel={
+                        showConfirmPassword
+                          ? 'Ocultar confirmacao de senha'
+                          : 'Mostrar confirmacao de senha'
+                      }
                     >
-                      <Ionicons name={showConfirmPassword ? 'eye' : 'eye-off'} size={22} color={colorSystem.primary} />
+                      <Ionicons
+                        name={showConfirmPassword ? 'eye' : 'eye-off'}
+                        size={22}
+                        color={colorSystem.primary}
+                      />
                     </TouchableOpacity>
                   </View>
                 </FieldRow>
               </FormSection>
 
-              <TouchableOpacity style={[styles.btn, loading && styles.btnDisabled]} onPress={handleRegister} disabled={loading}>
-                {loading ? <ActivityIndicator color={colors.white} /> : <Text style={styles.btnText}>CRIAR CONTA GRATIS</Text>}
+              <TouchableOpacity
+                style={[styles.btn, loading && styles.btnDisabled]}
+                onPress={handleRegister}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color={colors.white} />
+                ) : (
+                  <Text style={styles.btnText}>CRIAR CONTA GRATIS</Text>
+                )}
               </TouchableOpacity>
 
               <View style={styles.helperCard}>
                 <Ionicons name="sparkles" size={18} color="#0A5B6F" style={styles.helperIcon} />
-                <Text style={styles.helperText}>Depois do cadastro, voce podera entrar com a conta administrativa e iniciar a configuracao completa do restaurante.</Text>
+                <Text style={styles.helperText}>
+                  Depois do cadastro, voce podera entrar com a conta administrativa e iniciar a
+                  configuracao completa do restaurante.
+                </Text>
               </View>
             </View>
 
@@ -532,7 +589,7 @@ export default function RegisterCompanyScreen({ navigation }: Props) {
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -930,4 +987,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 6,
   },
-});
+})

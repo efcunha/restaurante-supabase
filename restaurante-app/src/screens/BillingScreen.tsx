@@ -52,7 +52,7 @@ const statusLabels: Record<string, string> = {
 
 const heroMessages: Record<string, string> = {
   trialing:
-    'O cadastro da empresa continua com trial de 30 dias. A regularização do método de pagamento precisa ser concluída antes do vencimento para evitar bloqueio operacional.',
+    'A assinatura está em fase inicial. Configure e acompanhe a cobrança no Admin para manter a operação regular.',
   active:
     'Assinatura regularizada e ativa. Obrigado! O próximo ciclo de cobrança será processado automaticamente.',
   reactivated:
