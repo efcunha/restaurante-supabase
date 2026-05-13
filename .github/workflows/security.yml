@@ -1,0 +1,124 @@
+name: Security Audit Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+
+jobs:
+  security:
+    name: Security Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Setup Java (Gradle scans)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # 🔍 Detectar secrets (senhas, tokens, etc.)
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+
+      # 🔍 Scan geral (Docker, libs, etc.)
+      - name: Run Trivy
+        uses: aquasecurity/trivy-action@v0.35.0
+        with:
+          scan-type: fs
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+
+      # 🔍 Lint + segurança básica
+      - name: Install deps
+        run: npm install
+
+      - name: Run audit
+        run: npm audit --audit-level=high
+
+  snyk-gradle:
+    name: Snyk Gradle (${{ matrix.projectName }})
+    runs-on: ubuntu-latest
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      NPM_CONFIG_LEGACY_PEER_DEPS: "true"
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - gradleFile: build.gradle
+            projectName: restaurante-app-android-root-gradle
+          - gradleFile: app/build.gradle
+            projectName: restaurante-app-android-app-gradle
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Setup Java (Gradle scans)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Snyk CLI
+        run: npm install -g snyk@latest
+
+      - name: Install app dependencies (required by Gradle settings)
+        working-directory: restaurante-app
+        run: npm install --legacy-peer-deps --force
+
+      - name: Validate SNYK_TOKEN
+        run: |
+          if [ -z "$SNYK_TOKEN" ]; then
+            echo "SNYK_TOKEN is not configured. Add this repository secret to run Snyk scans." >&2
+            exit 1
+          fi
+
+      - name: Ensure Gradle wrapper is executable
+        run: chmod +x restaurante-app/android/gradlew
+
+      - name: Snyk Gradle Scan
+        run: |
+          mkdir -p reports
+          snyk auth "$SNYK_TOKEN"
+          snyk test \
+            --severity-threshold=high \
+            --package-manager=gradle \
+            --file=${{ matrix.gradleFile }} \
+            --project-name=${{ matrix.projectName }} \
+            --json-file-output=reports/${{ matrix.projectName }}.json \
+            restaurante-app/android
+
+      - name: Upload Snyk Gradle report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snyk-gradle-${{ matrix.projectName }}
+          path: reports/${{ matrix.projectName }}.json
+          retention-days: 14
+
+  deploy:
+    name: Deploy to Railway
+    needs:
+      - security
+      - snyk-gradle
+    runs-on: ubuntu-latest
+    if: success()
+
+    steps:
+      - name: Deploy
+        run: echo "Deploy liberado 🚀"

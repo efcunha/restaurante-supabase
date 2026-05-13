@@ -1,0 +1,76 @@
+# Subflow: add_itens_padrao.yaml
+# Adiciona via busca: Chopp x3, Risoto x1, Caldo x3, Espetinho Simples x1,
+# Espetinho Especial x1, Porção x1
+# Requer: estar na tela Novo Pedido com o campo de busca visível
+#
+# Nota: o botão "+" usa <Text>+</Text> (roundBtnText em NovoPedidoScreen).
+# Se houver múltiplos resultados na busca, index: 0 seleciona o primeiro.
+# Para determinismo máximo, adicione testID nos botões de incremento da tela.
+appId: com.comandapraia.donacida
+---
+# ── Chopp x3 ────────────────────────────────────────────────────────────────
+- repeat:
+    times: 3
+    commands:
+      - tapOn: "Buscar item do cardápio..."
+      - eraseText: 50
+      - inputText: "chopp"
+      - waitForAnimationToEnd
+      - tapOn: "Novo Pedido"
+      - tapOn:
+          text: "+"
+          index: 0
+
+# ── Espetinho Simples x1 (Frango Simples) ───────────────────────────────────
+- tapOn: "Buscar item do cardápio..."
+- eraseText: 50
+- inputText: "frango"
+- waitForAnimationToEnd
+- tapOn: "Novo Pedido"
+- tapOn: "Simples"
+
+# ── Espetinho Especial x1 (Cupim Simples) ───────────────────────────────────
+- tapOn: "Buscar item do cardápio..."
+- eraseText: 50
+- inputText: "cupim"
+- waitForAnimationToEnd
+- tapOn: "Novo Pedido"
+- tapOn: "Simples"
+
+# ── Porção x1 (Batata Frita) ────────────────────────────────────────────────
+- tapOn: "Buscar item do cardápio..."
+- eraseText: 50
+- inputText: "batata frita"
+- waitForAnimationToEnd
+- tapOn: "Novo Pedido"
+- tapOn:
+    text: "+"
+    index: 0
+
+# ── Risoto x1 ────────────────────────────────────────────────────────────────
+- tapOn: "Buscar item do cardápio..."
+- eraseText: 50
+- inputText: "risoto"
+- waitForAnimationToEnd
+- tapOn: "Novo Pedido"
+- tapOn:
+    text: "+"
+    index: 0
+
+# ── Caldo x3 ────────────────────────────────────────────────────────────────
+- repeat:
+    times: 3
+    commands:
+      - tapOn: "Buscar item do cardápio..."
+      - eraseText: 50
+      - inputText: "caldo"
+      - waitForAnimationToEnd
+      - tapOn: "Novo Pedido"
+      - tapOn:
+          text: "+"
+          index: 0
+
+# ── Limpa busca e fecha teclado ─────────────────────────────────────────────
+- tapOn: "Buscar item do cardápio..."
+- eraseText: 50
+- tapOn: "Novo Pedido"

@@ -1,0 +1,43 @@
+import React from 'react';
+import { Platform, View, StyleSheet, SafeAreaView } from 'react-native';
+import { colors } from '../theme/colors';
+// PhonePreview: On web, constrains the app to a typical phone width and centers it.
+// On native, renders children unchanged.
+export default function PhonePreview({ children }) {
+  if (Platform.OS !== 'web') {
+    return <>{children}</>;
+  }
+
+  return (
+    <View style={styles.page}>
+      <View style={styles.frame}>
+        <SafeAreaView style={styles.content}>{children}</SafeAreaView>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  page: {
+    minHeight: '100vh',
+    backgroundColor: colors.text,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    paddingVertical: 16,
+  },
+  frame: {
+    width: 390, // iPhone 14 width ~390px
+    minHeight: 'calc(100vh - 32px)',
+    backgroundColor: colors.background,
+    borderRadius: 28,
+    overflow: 'hidden',
+    // Web shadows via RN-web shadow props
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.25,
+    shadowRadius: 24,
+  },
+  content: {
+    flex: 1,
+  },
+});

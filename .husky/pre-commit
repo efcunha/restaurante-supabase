@@ -1,0 +1,11 @@
+#!/usr/bin/env sh
+set -e
+
+if command -v pnpm >/dev/null 2>&1; then
+	pnpm lint-staged
+elif command -v corepack >/dev/null 2>&1; then
+	corepack pnpm lint-staged
+else
+	echo "Erro: pnpm/corepack nao encontrado no PATH para executar lint-staged." >&2
+	exit 1
+fi

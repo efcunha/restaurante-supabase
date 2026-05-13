@@ -1,0 +1,133 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+
+buildscript {
+  repositories {
+    google()
+    mavenCentral()
+  }
+  dependencies {
+    classpath('com.android.tools.build:gradle')
+    classpath('com.facebook.react:react-native-gradle-plugin')
+    classpath('org.jetbrains.kotlin:kotlin-gradle-plugin')
+    // classpath('com.google.gms:google-services:4.4.4')
+
+    constraints {
+      classpath('io.netty:netty-codec-http:4.1.132.Final') {
+        because 'Security hardening for Snyk-reported CVEs in Gradle classpath'
+      }
+      classpath('io.netty:netty-codec-http2:4.1.132.Final') {
+        because 'Security hardening for Snyk-reported CVEs in Gradle classpath'
+      }
+      classpath('io.netty:netty-common:4.1.132.Final') {
+        because 'Security hardening for Snyk-reported CVEs in Gradle classpath'
+      }
+      classpath('io.netty:netty-handler:4.1.132.Final') {
+        because 'Security hardening for Snyk-reported CVEs in Gradle classpath'
+      }
+      classpath('com.google.protobuf:protobuf-java:3.25.5') {
+        because 'Security hardening for CVE-2024-7254 in Gradle classpath'
+      }
+    }
+  }
+
+  configurations.classpath {
+    resolutionStrategy.eachDependency { details ->
+      if (details.requested.group == 'io.netty') {
+        details.useVersion '4.1.132.Final'
+        details.because 'Fix CVEs reported by Snyk in Gradle classpath transitive dependencies'
+      }
+
+      if (details.requested.group == 'com.google.protobuf' && details.requested.name == 'protobuf-java') {
+        details.useVersion '3.25.5'
+        details.because 'Fix CVE-2024-7254 reported by Snyk in Gradle classpath'
+      }
+    }
+  }
+}
+
+// Force specific SDK versions to avoid issues with missing/unstable platforms
+ext {
+    buildToolsVersion = "35.0.0"
+    minSdkVersion = 24
+    compileSdkVersion = 36
+    targetSdkVersion = 36
+    ndkVersion = "27.1.12297006" 
+}
+
+allprojects {
+  repositories {
+    google()
+    mavenCentral()
+    maven { url 'https://www.jitpack.io' }
+  }
+
+    // Force safe versions of transitive dependencies for all module configurations.
+    // Fixes Snyk-reported CVEs that cannot be addressed via npm/yarn overrides
+    // because they are declared inside React Native / Expo Android modules.
+    configurations.all {
+      resolutionStrategy.eachDependency { details ->
+        // CVE-2021-29425 / CVE-2024-47554 — commons-io Directory Traversal + Resource Exhaustion
+        if (details.requested.group == 'commons-io' && details.requested.name == 'commons-io') {
+          details.useVersion '2.14.0'
+          details.because 'Fix CVE-2021-29425 and CVE-2024-47554 reported by Snyk (fixedIn >= 2.7 / 2.14.0)'
+        }
+        // CVE-2022-25647 — Gson Deserialization of Untrusted Data
+        if (details.requested.group == 'com.google.code.gson' && details.requested.name == 'gson') {
+          details.useVersion '2.11.0'
+          details.because 'Fix CVE-2022-25647 reported by Snyk (fixedIn >= 2.8.9)'
+        }
+        // Netty CVEs — also force in implementation scope (build-time test infra)
+        if (details.requested.group == 'io.netty') {
+          details.useVersion '4.1.132.Final'
+          details.because 'Fix Snyk netty CVEs in module build dependencies'
+        }
+        // CVE-2024-7254 — protobuf also force in implementation scope
+        if (details.requested.group == 'com.google.protobuf' && details.requested.name == 'protobuf-java') {
+          details.useVersion '3.25.5'
+          details.because 'Fix CVE-2024-7254 reported by Snyk in module build dependencies'
+        }
+          // CVE-2021-0341 — okhttp3 Improper Certificate Validation
+          if (details.requested.group == 'com.squareup.okhttp3' && details.requested.name == 'okhttp') {
+            details.useVersion '4.12.0'
+            details.because 'Fix CVE-2021-0341 reported by Snyk (fixedIn >= 4.9.2)'
+          }
+            // CVE-2023-3782 — okhttp-brotli Denial of Service
+            if (details.requested.group == 'com.squareup.okhttp3' && details.requested.name == 'okhttp-brotli') {
+              details.useVersion '4.12.0'
+              details.because 'Fix CVE-2023-3782 reported by Snyk'
+            }
+          // CVE-2023-5072 — org.json Resource Exhaustion
+          if (details.requested.group == 'org.json' && details.requested.name == 'json') {
+            details.useVersion '20240303'
+            details.because 'Fix CVE-2023-5072 reported by Snyk (fixedIn >= 20231013)'
+          }
+          // CVE-2024-30172 — bcprov-jdk18on Infinite Loop
+          if (details.requested.group == 'org.bouncycastle') {
+             details.useVersion '1.79'
+             details.because 'Fix CVE-2024-30172 and CVE-2025-8916 reported by Snyk (fixedIn >= 1.78 / 1.79)'
+          }
+            // CVE-2023-2976 — Guava temp file insecure permissions
+            if (details.requested.group == 'com.google.guava' && details.requested.name == 'guava') {
+              if (details.requested.version?.endsWith('-android')) {
+                details.useVersion '32.1.3-android'
+              } else {
+                details.useVersion '32.1.3-jre'
+              }
+              details.because 'Fix CVE-2023-2976 reported by Snyk (fixedIn >= 32.0.0)'
+            }
+            // commons-codec Information Exposure (CWE-200)
+            if (details.requested.group == 'commons-codec' && details.requested.name == 'commons-codec') {
+              details.useVersion '1.17.1'
+              details.because 'Fix commons-codec Information Exposure — upgrade to 1.14+ recommended by Snyk'
+            }
+              // CVE-2020-15250 — JUnit 4 Information Exposure (test-time only)
+              if (details.requested.group == 'junit' && details.requested.name == 'junit') {
+                details.useVersion '4.13.2'
+                details.because 'Fix CVE-2020-15250 reported by Snyk (fixedIn >= 4.13.1)'
+              }
+      }
+    }
+}
+
+apply plugin: "expo-root-project"
+apply plugin: "com.facebook.react.rootproject"

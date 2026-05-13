@@ -1,0 +1,20 @@
+# Versoes registradas no banco remoto que nao possuem arquivo em ./migrations.
+# Mantido para reconciliacao historica e para evitar drift recorrente no check.
+# Formato: um timestamp (14 digitos) por linha.
+20260227135141
+20260302144152
+20260304124826
+20260309222827
+20260309224354
+20260309224422
+20260319110127
+20260319111314
+20260319115856
+# Duplicata remota de 20260325150000_add_public_menu_slug.sql (mesmo nome, registrada duas vezes)
+20260325215952
+# Duplicata remota de 20260326140000_enforce_available_equals_active_constraint.sql (criada via MCP apply_migration)
+20260326162433
+# Versoes remotas marcadas como reverted durante repair do historico e sem arquivo local correspondente
+20260413160842
+20260413175556
+20260413205047

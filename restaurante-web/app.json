@@ -1,0 +1,72 @@
+{
+  "expo": {
+    "name": "Restaurante Web",
+    "slug": "restaurante-web",
+    "version": "1.0.1",
+    "orientation": "default",
+    "icon": "./imagem/icone.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./imagem/icone.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#8B2F2F"
+    },
+    "assetBundlePatterns": [
+      "assets/**/*",
+      "components/**/*.js",
+      "screens/**/*.js",
+      "context/**/*.js"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.comandapraia.donacida",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "UISupportedInterfaceOrientations": [
+          "UIInterfaceOrientationPortrait",
+          "UIInterfaceOrientationLandscapeLeft",
+          "UIInterfaceOrientationLandscapeRight"
+        ],
+        "UISupportedInterfaceOrientations~ipad": [
+          "UIInterfaceOrientationPortrait",
+          "UIInterfaceOrientationPortraitUpsideDown",
+          "UIInterfaceOrientationLandscapeLeft",
+          "UIInterfaceOrientationLandscapeRight"
+        ]
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./imagem/icone.png",
+        "backgroundColor": "#8B2F2F"
+      },
+      "package": "com.comandapraia.donacida",
+      "ndkVersion": "26.1.10909125",
+      "screenOrientation": "default"
+    },
+    "web": {
+      "bundler": "metro",
+      "name": "Restaurante Web",
+      "shortName": "Restaurante Web",
+      "backgroundColor": "#0C7A96",
+      "favicon": "./imagem/icone.png"
+    },
+    "jsEngine": "hermes",
+    "extra": {
+      "eas": {
+        "projectId": "930f1e33-a6ec-4432-8c37-891f4eddcb1f"
+      }
+    },
+    "plugins": [
+        "expo-font",
+        [
+            "@sentry/react-native/expo",
+            {
+                "url": "https://sentry.io/",
+                "project": "javascript-react",
+                "organization": "restaurante-app"
+            }
+        ]
+    ]
+  }
+}

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Backup Rules for restaurante-app
+  Valid schema for android:fullBackupContent.
+-->
+<full-backup-content>
+  <exclude domain="sharedpref" path="EncryptedSharedPreferences.xml" />
+  <exclude domain="sharedpref" path="biometric" />
+  <exclude domain="sharedpref" path="session" />
+  <exclude domain="sharedpref" path="auth" />
+  <exclude domain="sharedpref" path="token" />
+  <exclude domain="sharedpref" path="secret" />
+
+  <exclude domain="file" path="expo/session" />
+  <exclude domain="file" path="expo/auth" />
+  <exclude domain="file" path="expo/credentials" />
+  <exclude domain="file" path="RCTAsyncLocalStorage" />
+</full-backup-content>

@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Build and cache
+dist/
+*.tsbuildinfo
+.cache/
+
+# Runtime artifacts
+logs/
+*.log
+tmp/
+
+# Local tooling
+.snyk
+snyk-mcp.log
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

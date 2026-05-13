@@ -1,0 +1,6 @@
+appId: com.comandapraia.donacida
+name: Visible Probe
+---
+- launchApp
+- assertVisible:
+    text: "ENTRAR"

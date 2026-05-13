@@ -1,0 +1,50 @@
+{
+  "id": "1f4d36ec-66e0-4ff3-be51-6f3507ebea18",
+  "status": "FINISHED",
+  "platform": "ANDROID",
+  "artifacts": {
+    "buildUrl": "https://expo.dev/artifacts/eas/4SbJ6TUv2aLye36LLTR4hU.tar.gz",
+    "applicationArchiveUrl": "https://expo.dev/artifacts/eas/4SbJ6TUv2aLye36LLTR4hU.tar.gz"
+  },
+  "fingerprint": {
+    "id": "019d5af3-5e4b-71ce-9df5-12320d6cbca5",
+    "hash": "ac44a937e3e63f18915b041aa7d04cd25865c0d4"
+  },
+  "initiatingActor": {
+    "id": "83ded47a-b1e9-490f-81ae-e80fffb3af39",
+    "displayName": "lumachadolp"
+  },
+  "logFiles": [
+    "https://job-logs.eascdn.net/production/1f4d36ec-66e0-4ff3-be51-6f3507ebea18/1775347392297-ebba5ef7-b063-40a7-9970-38cf4cd8bcc2.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260405%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260405T002335Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=c182882028047e516c183a5650f0ec4aafcc4dcc48e772f81f9023961583bf723664e5540a3ff83f031f311d0e257839d631e8a2432134f56e74b2997789c80e539a5410348fd4e191c0165308b9c119836ddaa9a18e48c93a160efdef538a9582b2d60715adfa8d751ac27a648ab98acc6d79997f9020fa0df7d39868c2c2f913caffbbc1310c8d73c76c34f3f930e2aa163de2ddde6e06a332f281c3ba83bd09dab62771e3b713a01491b9a2e5cf0405d837510126f9d14bdc391cc995ce78503ef259d27ed8c6940d4c43bec5c44e4c3dced73815e5604624488bc78275bf7a678586261cf703a4de2013c4dc969d4b6c7594286dd422e8458945588ddda3",
+    "https://job-logs.eascdn.net/production/1f4d36ec-66e0-4ff3-be51-6f3507ebea18/1775347394717-32ab63e4-ff06-422f-b677-c55de48c2edf.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260405%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260405T002335Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=8da6ab68cbac7f479ad4c40a29322901ee753c024398a2c2cd2c493cfee55b835da5fca743bbe98643f5b10b7ac8b1746416a8d8014662c929f88e9cb228cab33d40ae338525845d7b9af90727654a0b7d0a96522a18041a8a7c2beb886c33c65334f7c82cd2151bf4b9fbc60353341be82263f05836d9caf2bf26871fba6bfb9dec72492dc6e288e2d02b0239296309fcd49952627525f8355f62485c12a8140a3daa3fb0a9fd7aa8e37d7fee196710a1483cff95debfa551b8028bf6a567b89558b3eb4bc4be45cdee539b7fb67d9e635578059b9c30e2bf2476782b8408be77f7c9463248f5d96091ba5acffe7f1a7de086b9d38c6178090cf5a9ce30a5a3",
+    "https://job-logs.eascdn.net/production/1f4d36ec-66e0-4ff3-be51-6f3507ebea18/1775347394990-fe767bf9-2131-4143-aed2-8735c3d3491e.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260405%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260405T002335Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=b0fb5638956f26bbc3d96fff4f9da8ce8fc51b7f9ca9a3c73b57c6956e78ba55189ae3a4d18eeb77f6edf366d0d689d84ee63f9fcb88910a4952e287ccaef039864062231fdedbf4d35630bbe019c41156d28fe1b8cbed90a7bd0b6e0eda274452fe353138d6ec6121e4ee48b184961581cf7ddd236368e4eb2c08f354a22048424bb2c7245c8748cc636fa2cfb68b78a741c018b4d92454b6032241ddf6bf5878e7fe74052ffe0809091b52d33558be919c1a7d3fc5ce98bd22b9ac25d6243e8a472c308869b2781a88670278bd88fa286c9a98deffd9f303865d16345995fc2b44b7899f363ab769f5beec0e89645416329db3a594491737aea3cce98be5ce",
+    "https://job-logs.eascdn.net/production/1f4d36ec-66e0-4ff3-be51-6f3507ebea18/1775347395231-d1580f26-35ef-46a7-b9ed-dec8628712c7.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260405%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260405T002335Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=a5161093738881637cb72190af3b941734e99ae40f910d9e129eb0528e9b310ccbaebf4f8c410dc17a949d29749cbbc6cfb0791d0e6d761a9fdb783ea19a3a119ad9667904a3f1dcc2861345ac2077db46656a9c4920a0171ab9fbb96201c6f60feae383ad7482f7648afd5f53b2fd782ad9a687a411014a9b158e65601ae6904eea08fe979d3b413953c7378fb3b0ae9acb7a8b9b493e65611109851ee1b9443b1fd85eb853ed1a49e373d72f9cc76ba395a62b8da9704880f3ac685692c415f37337747fe32aac59016d4f24f634927adacf2a04551bfc746076821e54110147e03abb0620f668ee56662a993b25808847e594746ec81ab56a75336eb4ea03"
+  ],
+  "project": {
+    "id": "8384f741-18dd-41fb-b0ab-df0ece2acecf",
+    "name": "restaurante-app",
+    "slug": "restaurante-app",
+    "ownerAccount": {
+      "id": "78274571-4fa1-4f3a-a809-635e4af9bbf5",
+      "name": "lumachadolp"
+    }
+  },
+  "distribution": "INTERNAL",
+  "buildProfile": "preview",
+  "sdkVersion": "54.0.0",
+  "appVersion": "1.0.1",
+  "appBuildVersion": "1",
+  "gitCommitHash": "64673ab24f823a4b9890311f483f9eab48dbccce",
+  "gitCommitMessage": "fix(android): always include src/oldarch in esc-pos-printer sourceSets\n\nPatch 1 in patchEscPosAndroidBuildGradle() had an inverted condition:\n\nFix: unconditionally add src/oldarch so that NativeEscPosPrinterSpec and\nNativeEscPosPrinterDiscoverySpec (package com.escposprinter, extending\nReactContextBaseJavaModule) are always available for Java compilation.\n\nThis resolves the compileDebugJavaWithJavac failure:\n  error: cannot find symbol: class NativeEscPosPrinterDiscoverySpec\n  error: cannot find symbol: class NativeEscPosPrinterSpec\n  error: incompatible types: EscPosPrinterModule cannot be converted to NativeModule\n\nRoot cause: com.facebook.react plugin was removed (Patch 2) to prevent the\nJNI codegen path in Android-autolinking.cmake from failing. Without the\nplugin, codegen does not run and the generated spec classes do not exist.\nThe oldarch stubs in src/oldarch/ supply equivalent abstract classes usable\nwith the old-arch NativeModules bridge (interop layer on RN 0.84).",
+  "priority": "NORMAL",
+  "createdAt": "2026-04-05T00:03:12.011Z",
+  "updatedAt": "2026-04-05T00:23:09.324Z",
+  "completedAt": "2026-04-05T00:22:57.939Z",
+  "expirationDate": "2026-04-19T00:03:12.059Z",
+  "isForIosSimulator": false,
+  "metrics": {
+    "buildWaitTime": 171,
+    "buildQueueTime": 40728,
+    "buildDuration": 1144645
+  }
+}

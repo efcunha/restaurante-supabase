@@ -1,0 +1,35 @@
+{
+  "title": "Safe no-impact assisted evolution for ConfiguracaoEstoqueScreen",
+  "author": "copilot",
+  "designRef": "local-safe-run-config-estoque",
+  "forms": [
+    {
+      "name": "ConfiguracaoEstoqueScreen",
+      "critical": false,
+      "uxAccessibilityImpact": "Ajuste de preferencia visual para exibicao de alertas de estoque sem alterar regras de negocio.",
+      "fields": {
+        "add": [
+          {
+            "name": "alertDisplayMode",
+            "type": "enum",
+            "required": false,
+            "pii": false
+          }
+        ],
+        "remove": [],
+        "rename": [],
+        "validation": [
+          {
+            "field": "alertDisplayMode",
+            "rule": "oneOf:compact|comfortable",
+            "messageKey": "validation.alertDisplayMode"
+          }
+        ]
+      },
+      "patches": []
+    }
+  ],
+  "validationCommands": [
+    "cd restaurante-web && npm run type-check"
+  ]
+}

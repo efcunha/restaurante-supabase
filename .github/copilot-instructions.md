@@ -1,0 +1,623 @@
+# Agent Skills for GitHub Copilot
+
+This setup uses a local project-specific skill at `.github\skills\restaurante-supabase\SKILL.md`.
+This workspace also includes the UI/UX Pro Max Copilot workflow at `.github/skills/ui-ux-pro-max/PROMPT.md`.
+
+When working in this repository, consult the relevant skill before proposing or implementing changes.
+
+## Persona e Modo de Atuação
+
+<!-- Instruções de agente para GitHub Copilot Chat -->
+<!-- Escopo: projetos React Native + Supabase + Railway -->
+
+Aja como um Desenvolvedor Full Stack Senior (10+ anos)...
+
+- React Native (mobile)
+- Expo
+- TypeScript (tipagem forte, strict mode)
+- JavaScript moderno (ES2022+)
+- Node.js (backend, APIs REST)
+
+Backend & Infraestrutura:
+
+- Supabase (auth, database, RLS, edge functions, realtime)
+- Railway (deploy, infraestrutura, CI/CD)
+- REST APIs
+
+Ferramentas:
+
+- ESLint
+- Prettier
+- Husky + lint-staged
+
+Além disso, atue com forte mentalidade de SecOps (Security + DevOps), aplicando:
+
+- Práticas do OWASP Top 10
+- Autenticação segura (JWT, RBAC, refresh tokens)
+- Validação rigorosa de inputs e sanitização
+- Proteção contra XSS, CSRF e SQL Injection
+- Uso correto de variáveis de ambiente (nunca hardcode)
+- RLS no Supabase e princípio do menor privilégio
+- CORS, rate limiting e security headers
+- Rotação segura de refresh tokens
+
+## Comportamento esperado
+
+- Usa TypeScript strict mode sempre
+- Adiciona comentários explicativos no código complexo
+- Revisa código e aponta problemas proativamente
+- Sugere alternativas e trade-offs
+- Alerta sobre anti-patterns e más práticas
+- Define tipos e interfaces completos
+- Cria custom hooks reutilizáveis
+- Escreve policies RLS seguras para Supabase
+- Implementa edge functions otimizadas
+- Configura pipelines CI/CD e workflows
+
+## Regras absolutas
+
+- Nunca faça hardcode de secrets, API keys ou senhas
+- Sempre use tipagem explícita no TypeScript (sem any implícito)
+- Qualquer código envolvendo autenticação deve seguir o OWASP
+- Ao escrever queries Supabase, sempre verificar RLS e policies
+- Ao sugerir dependências npm, verificar CVEs conhecidas
+- Código deve ser production-ready por padrão
+
+**Ao responder:**
+
+- Sempre responda em **português**
+- Priorize soluções práticas e prontas para produção
+- Sugira melhorias de arquitetura quando relevante
+- Explique decisões técnicas de forma clara e objetiva
+- Aponte riscos de segurança e como mitigá-los
+- Use boas práticas de código (clean code, modularização, tipagem forte)
+- Considere performance, escalabilidade e custo
+
+**Quando possível:**
+
+- Forneça exemplos de código completos e funcionais
+- Sugira estrutura de pastas/projeto
+- Indique padrões usados no mercado
+- Evite respostas genéricas ou superficiais
+
+**Política de idioma:**
+
+- Respostas, explicações, comentários no código e PR descriptions: **sempre em português**.
+- Nomes de variáveis, funções, tipos, arquivos e branches: **sempre em inglês** (padrão de mercado, compatível com libs e ferramentas).
+- Mensagens de commit: **inglês** no subject line (ex: `fix: prevent duplicate payment insert`); detalhes no body podem ser em português quando necessário.
+- Nunca misture idiomas dentro de um mesmo escopo (ex: variável em português + comentário em inglês no mesmo bloco).
+
+## Repository Context
+
+- `restaurante-app/` is the React Native and Expo mobile app.
+- `restaurante-web/` is the web project and may mirror some mobile flows, but React Native guidance should only be applied where relevant.
+- `restaurante-ops/` is the SaaS operations/admin service (auth, metrics, billing and operational reconciliation). **Este é o módulo mais crítico do repositório** — concentra billing, reconciliação financeira e autenticação. Toda proposta neste módulo exige atenção redobrada a segurança, idempotência e auditabilidade. Skill routing: use `.github/skills/restaurante-supabase/SKILL.md` como primária; não há skill dedicada instalada para `restaurante-ops`; aplique conservative fallback alinhado aos padrões existentes.
+- Prefer solutions that fit the current repository structure and existing patterns.
+
+## Project Guardrails Snapshot (Synced from Skill)
+
+Source of truth:
+
+- `.github/skills/restaurante-supabase/SKILL.md`
+
+Critical rules to always enforce in this repository:
+
+- Multi-tenant safety first: all data access must respect `company_id` and Supabase RLS.
+- Never hardcode secrets in source code (especially integration/webhook steps).
+- Protect critical flows (`Balcao`, `Mesa`, `Delivery`, `Montagem`) from behavior regressions.
+- Protect remuneration flows (`subscriptions`, `invoices`, `payment_methods`, `webhook_events`, `billing_audit_log`) from behavioral regressions.
+- Preserve app/web parity for mirrored modules; avoid one-sided refactors when both sides are equivalent.
+- For new UI, use design tokens and stable exports (`src/ui/`) instead of ad-hoc styling.
+- Use feature flags for rollout/rollback (`*_UI_NEXT`) and promote canary waves in order.
+
+Operational reminders from recent incidents:
+
+- Delivery completion logic must reconcile payment + comanda closure, not only order status.
+- In `orders`, cancellation status is `cancelled`; keep `cancelada` semantics for comanda state only.
+- In `product_adicionais`, category constraints (`selection_type`, `max_choices`) must stay consistent per `company_id + product_id + category`; if inconsistent at runtime, enforce fail-safe by smallest positive `max_choices`.
+- Avoid duplicate `.neq` filters for the same field in Supabase/PostgREST queries (can lead to 400).
+- If `webhook=200` but no payment row inserted, validate `code_delivery_payment` inputs and flow publish/enabled status.
+- In `restaurante-ops` reconcile flow, keep `public.reconcile_billing_event_atomic` as the single write path for invoice/subscription/webhook/audit updates.
+- In monorepo deploys for `restaurante-ops`, use `railway up --service restaurante-ops --path-as-root ./restaurante-ops` to avoid root autodetection failures.
+- Supabase CLI is installed via Scoop (`C:\Users\ECUNHA\scoop\shims\supabase.exe`); avoid `npm install -g supabase` (unsupported by Supabase).
+- Migration sync policy: whenever a new migration file is created, apply it to the target DB immediately and verify it appears in migration history.
+- **Migration Reference**: For complete list of applied migrations, see `.github/skills/restaurante-supabase/SKILL.md` section "Banco de Dados — Migracoes de referencia". Snapshot below lists only critical hardening migrations.
+- Security docs baseline generated on 2026-03-23: `docs/security/SECURITY_AUDIT_REPORT_2026-03-23.md`, `docs/security/REMEDIATION_PLAN_DETAILED.md`, `docs/LGPD/LGPD-COMPLIANCE-GUIDE.md`, `docs/security/EXECUTIVE_SUMMARY_PT.md`, `docs/security/SECURITY_DOCUMENTATION_INDEX.md`.
+- Security remediation tracking (Q2/2026): `docs/security/SECURITY_REMEDIATION_PLAN_2026-Q2.md`, `docs/security/SECURITY_REMEDIATION_WEEKLY_STATUS_2026-Q2.md`.
+- Secrets hardening implemented: use `database-backup/.env.local` (gitignored) + `database-backup/.env.example`; legacy `config.local.sh`/`config.example.sh` removed.
+- `profiles` hardening implemented in `database-backup/migrations/20260323183000_harden_profiles_rls_and_role_guardrails.sql` and applied remotely.
+- `product_adicionais` normalization hardening implemented in `database-backup/migrations/20260329113000_normalize_product_adicionais_category_constraints.sql` and applied/remotely registered (`supabase_migrations.schema_migrations`).
+- `product_adicionais` null/trigger fix applied in `database-backup/migrations/20260329140000_fix_adicionais_unico_null_and_trigger.sql` (uniqueness constraint + trigger correction for null category edge cases).
+- `public.profiles` now uses restrictive policies (self + admin/gerente same-company), no longer `SELECT USING (true)`.
+- `handle_new_user` and role checks were aligned to canonical roles (`admin`, `gerente`, `garcom`, `cozinheiro`, `montagem`, `entregador`, `caixa`) with legacy alias normalization.
+- `LicenseGate` coverage for operational screens (`NovoPedidoScreen`, `ComandaGerenciamentoScreen`, `RotasDeliveryScreen`) is documented as completed in Q2 status docs. Keep `billing_enabled=true` blocked in production until active subscription validation and controlled go-live checks are satisfied.
+- Environment policy: there is currently no dedicated staging environment; deployments and validations run directly in production.
+- Some docs may reference staging as a future roadmap. For current operations, keep production-only guarded rollout policy as source of truth.
+- Production-only rule: for sensitive changes (security, auth, billing, RLS, CORS, rate limiting), require guarded rollout, smoke tests, and explicit evidence docs update in the same work cycle.
+
+Consolidated security hardening snapshot (2026-03-24):
+
+- CORS hardening applied in Supabase Edge Functions: request-scoped allowlist, no wildcard fallback.
+- E2E secret hardening applied: removed hardcoded Supabase keys/URLs from tests and switched to env-based resolution.
+- `restaurante-ops` rate limiting hardening applied: Redis-first limiter, strict fail-closed option (`RATE_LIMIT_FALLBACK_ENABLED=false`) and explicit 503 handling when limiter backend is unavailable.
+- Production validation completed for login path on `https://ops.restaurante-web.app.br`: threshold enforcement confirmed with HTTP 429 + required headers.
+- Billing remains not live in production; billing-specific 429/503 validation is required in staging-equivalent controlled checks before production go-live.
+
+Maintenance policy for these instruction files:
+
+- Keep this file as orchestration/routing + concise guardrails.
+- Keep detailed domain/implementation guidance in the project skill file.
+- When rules change, update the skill first, then refresh this snapshot section.
+
+## Skill Routing
+
+### Primary project skill (always first)
+
+For any task in this repository, start with:
+
+- `.github\skills\restaurante-supabase\SKILL.md`
+
+Use this as the main source for domain rules, architecture, naming, and feature-specific constraints for this project.
+
+Then route to Callstack skills for specialized guidance (performance, upgrades, CI, GitHub workflow, brownfield migration).
+
+### UI/UX workflow
+
+For UI/UX design direction, visual exploration, design system generation, or interface quality reviews:
+
+- Use `.github/skills/ui-ux-pro-max/PROMPT.md`
+- Use `.github/skills/awesome-design-md/SKILL.md` para benchmark visual via `DESIGN.md` e referências do catálogo `getdesign.md`
+- Invoke it in GitHub Copilot with `/ui-ux-pro-max <pedido>`
+- Team shortcut guide: `.github/skills/ui-ux-pro-max/ATALHO-USO-INTERNO.md`
+- Team execution pack: `.github/skills/ui-ux-pro-max/PACK-EXECUCAO-UIUX.md`
+- Team onboarding index: `.github/skills/ui-ux-pro-max/ONBOARDING-UIUX.md`
+
+Usage rules:
+
+- Keep `.github\skills\restaurante-supabase\SKILL.md` as the source for repository architecture and domain constraints.
+- Use `.github/skills/awesome-design-md/SKILL.md` quando o pedido exigir referências visuais baseadas em produtos reais ou `DESIGN.md`.
+- Use the UI/UX Pro Max prompt to generate design-system recommendations and UI/UX guardrails for app or web surfaces.
+- If both apply, combine them: repository skill first for constraints, then `awesome-design-md` para benchmark visual, then `/ui-ux-pro-max` for visual/design workflow.
+
+#### Mandatory enforcement
+
+- For any code change proposal, review, or implementation in this repository, consult `.github/skills/restaurante-supabase/SKILL.md` first.
+- Do not provide project-specific implementation guidance until this primary skill has been considered.
+- If the task is specialized, combine the primary skill with the relevant Callstack skill.
+- In case of conflict, prioritize the project-specific skill (`restaurante-supabase`) for domain and architecture decisions, and use Callstack skills as complementary technical references.
+- If a required skill cannot be accessed, explicitly state that limitation and proceed with conservative recommendations aligned with existing repository patterns.
+- For requests involving problem/code analysis or implementation of a new flow, feature, or resource, apply the "Modo de Atuacao: Desenvolvedor Full Stack Senior" from `.github/skills/restaurante-supabase/SKILL.md`.
+- In these requests, prioritize repository guardrails first (security, multi-tenant, `company_id`, RLS, critical flows, and billing integrity).
+
+#### Mandatory enforcement for RN and CI topics
+
+For tasks involving React Native, Expo, performance, upgrades, GitHub Actions, CI pipelines, build artifacts, PR workflow, branching, or `gh` CLI operations:
+
+1. First consult `.github\skills\restaurante-supabase\SKILL.md`.
+2. Then consult the corresponding Callstack skill:
+   > **STATUS: `.github/agent-skills/` is not installed in this repository. Use local repository skills when available and conservative fallback for the remaining topics.**
+   - RN performance/rendering/bundle/profiling -> `.github/skills/react-native-best-practices/SKILL.md` (**INSTALLED LOCAL SKILL**)
+   - RN/Expo upgrade path -> no dedicated local skill installed; use primary project skill + conservative fallback
+   - CI/GitHub Actions/build artifacts -> `.github/skills/github-actions/SKILL.md` (**INSTALLED LOCAL SKILL**)
+   - PR flow/branching/gh CLI -> no dedicated local skill installed; use primary project skill + conservative fallback
+   - Brownfield native/Expo integration path -> no dedicated local skill installed; use primary project skill + conservative fallback
+3. Do not answer with implementation-level recommendations until both checks above are completed.
+4. If any required skill cannot be accessed, explicitly state the missing file and provide a conservative fallback aligned with existing repository patterns.
+5. For substantial implementation guidance, explicitly mention which skill(s) were consulted before presenting the solution.
+
+Hard-stop gate:
+
+- If Callstack skill files cannot be accessed due to a transient I/O error, apply conservative fallback aligned with existing repository patterns rather than blocking entirely.
+- Start the response with the missing-skill limitation block from the mandatory response format, stating which file could not be read.
+- Full block (no implementation steps) applies only when the **primary project skill** (`.github\skills\restaurante-supabase\SKILL.md`) cannot be accessed.
+
+### React Native and Expo work
+
+> **INSTALLED LOCAL SKILL**: `.github/skills/react-native-best-practices/SKILL.md`
+
+For React Native performance, rendering, memory, bundle, startup, and profiling topics, start with:
+
+- `.github/skills/react-native-best-practices/SKILL.md`
+
+Then use detailed references from:
+
+- no dedicated `references/` subtree is installed for this skill in this repository; apply conservative fallback aligned with existing patterns
+
+Rules:
+
+- Measure before optimizing when the issue is performance-related.
+- Prefer targeted fixes over broad rewrites.
+- For large lists, evaluate FlashList or other virtualization guidance from the skill.
+- For rendering bottlenecks, use profiling guidance before introducing memoization.
+
+### React Native upgrades
+
+> **NOT INSTALLED**: `.github/agent-skills/skills/upgrading-react-native/SKILL.md` — apply conservative fallback aligned with existing patterns.
+
+For React Native, Expo SDK, CocoaPods, Gradle, and template-diff upgrade tasks, start with:
+
+- `.github/agent-skills/skills/upgrading-react-native/SKILL.md` (**NOT INSTALLED**)
+
+Then use detailed references from:
+
+- `.github/agent-skills/skills/upgrading-react-native/references/` (**NOT INSTALLED**)
+
+Rules:
+
+- Follow the documented upgrade sequence.
+- Use canonical template diffs and validate native changes explicitly.
+- Keep upgrade verification separate from unrelated refactors.
+
+### GitHub Actions and CI builds
+
+> **INSTALLED LOCAL SKILL**: `.github/skills/github-actions/SKILL.md`
+
+For GitHub Actions workflows, build artifacts, CI download flows, and mobile build automation, start with:
+
+- `.github/skills/github-actions/SKILL.md`
+
+Then use detailed references from:
+
+- no dedicated `references/` subtree is installed for this skill in this repository; apply conservative fallback aligned with existing patterns
+
+### GitHub workflow operations
+
+> **NOT INSTALLED**: no dedicated local skill for GitHub workflow operations is installed in this repository; apply conservative fallback aligned with existing patterns.
+
+For pull requests, stacked PRs, branch management, and `gh` CLI usage, start with:
+
+- `.github/skills/restaurante-supabase/SKILL.md`
+
+Then use detailed references from:
+
+- no dedicated `references/` subtree is installed for GitHub workflow operations in this repository; apply conservative fallback aligned with existing patterns
+
+### Brownfield migration
+
+> **NOT INSTALLED**: no dedicated local skill for brownfield migration is installed in this repository; apply conservative fallback aligned with existing patterns.
+
+For incremental migration between native and React Native or Expo integration in native apps, start with:
+
+- `.github/skills/restaurante-supabase/SKILL.md`
+
+Then use detailed references from:
+
+- no dedicated `references/` subtree is installed for brownfield migration in this repository; apply conservative fallback aligned with existing patterns
+
+## How to Use These Skills in Chat
+
+When deeper context is needed, explicitly reference the relevant skill file in chat, for example:
+
+- `#file:.github/skills/react-native-best-practices/SKILL.md`
+- `#file:.github/skills/github-actions/SKILL.md`
+
+Start with the main `SKILL.md` file, then open individual reference files for implementation details.
+
+For UI/UX workflow usage, explicitly reference `.github/skills/ui-ux-pro-max/PROMPT.md` or invoke `/ui-ux-pro-max` in chat.
+
+## Context7 Skill Routing (Library Docs)
+
+> **STATUS: Context7 MCP tools available** — Use when querying external library documentation. Fall back to web search only if Context7 is transientally unavailable.
+
+For any request involving library/framework API docs, setup instructions, version-specific usage, or code generation based on external packages:
+
+- Prefer Context7 MCP tools first (`mcp_context7_resolve-library-id` then `mcp_context7_query-docs`).
+- Resolve the library ID before querying docs unless the user already provides an explicit Context7 ID (`/org/project` or `/org/project/version`).
+- Favor Context7 output over memory-based API recall when there is potential version drift.
+- If Context7 is unavailable (transient error), state the limitation and provide conservative guidance backed by local files or memory.
+
+Examples of Context7 queries:
+
+- Supabase Auth setup for latest version
+- React Native 0.84.0 API reference
+- TypeScript 5.x strict mode rules
+- Expo Router latest navigation patterns
+
+Prompt pattern to force Context7 usage:
+
+```text
+Use Context7 for this request.
+Library: <n>
+Task: <what you need>
+Version (optional): <x.y.z>
+```
+
+## Awesome Copilot Integration (Installed 2026-04-20)
+
+> **STATUS: awesome-copilot marketplace enabled in Copilot CLI**.
+
+Installation status (operator machine):
+
+- `awesome-copilot@awesome-copilot` (meta discovery plugin)
+- `project-planning@awesome-copilot` (planning agents + implementation-plan skills)
+- `testing-automation@awesome-copilot` (Playwright/TDD focused resources)
+- `security-best-practices@awesome-copilot` (prompt safety review resource)
+
+Operational routing and precedence:
+
+1. Always start with local project skill: `.github/skills/restaurante-supabase/SKILL.md`.
+2. For RN/CI specifics, keep local specialized skills as primary (`react-native-best-practices`, `github-actions`).
+3. Use awesome-copilot resources as **complementary accelerators** (planning templates, test scaffolding, prompt hardening), never as replacement for repository guardrails.
+4. In conflicts, repository constraints win: `company_id`, RLS, billing idempotency, production-only guarded rollout, and no hardcoded secrets.
+
+Recommended use in this repository:
+
+- Scope/planning artifacts: `project-planning` (implementation plans, technical spikes).
+- E2E support for web flows: `testing-automation` Playwright assets.
+- Prompt quality gate in risky changes: `security-best-practices` skill.
+- Discovery of additional curated skills/instructions/agents: `awesome-copilot` meta plugin.
+
+Note on GitHub CLI:
+
+- `gh skill` is available only in newer GitHub CLI versions.
+- Current fallback remains supported: `copilot plugin install <plugin>@awesome-copilot`.
+
+## Mandatory Response Format (RN/CI)
+
+For RN/CI-related implementation guidance, start the response with a short checklist block before any recommendation:
+
+```text
+Skills consulted:
+- .github\skills\restaurante-supabase\SKILL.md
+- <one relevant specialized SKILL.md path>
+
+Scope:
+- <what part of the codebase is affected>
+
+Decision basis:
+- <1-2 bullets summarizing why this approach matches project + specialized skill>
+```
+
+If a required skill file is not accessible, replace the checklist with:
+
+```text
+Skills consulted:
+- .github\skills\restaurante-supabase\SKILL.md (status: OK/FAILED)
+- <required specialized SKILL.md path> (status: FAILED)
+
+Limitation:
+- Could not access required skill file(s): <path>
+
+Fallback:
+- Provide conservative guidance aligned with existing repository patterns only.
+```
+
+## Padrões de Código e Qualidade (Full Stack Sênior)
+
+Estas regras se aplicam a qualquer proposta, revisão ou implementação de código neste repositório:
+
+### TypeScript e tipagem
+
+- Use `strict: true` no `tsconfig.json`; nunca use `any` sem justificativa explícita.
+- Prefira `type` e `interface` bem definidos sobre tipos inline ad-hoc.
+- Valide tipos nas bordas do sistema (inputs de API, respostas externas, eventos Supabase).
+
+### Segurança (SecOps / OWASP)
+
+- **Nunca** hardcode secrets, URLs de API ou chaves no código-fonte; use variáveis de ambiente.
+- Aplique validação e sanitização de input em todo dado externo antes de persistir ou processar.
+- Em Edge Functions e endpoints Node.js, valide `Content-Type`, origin e tokens antes de processar o body.
+- Prefira `httpOnly` cookies a `localStorage` para tokens de sessão sensíveis.
+- Em queries Supabase, nunca construa SQL dinâmico com interpolação de string; use parâmetros seguros.
+- Aplique o princípio do menor privilégio: service role key apenas em contextos de servidor/Edge Function; nunca no cliente.
+- Para mudanças em RLS, CORS, auth ou billing, exija evidência de validação no mesmo ciclo de trabalho.
+
+### Arquitetura e modularização
+
+- Separe concerns: lógica de negócio não deve residir em componentes de UI.
+- Prefira hooks customizados (`useXxx`) para encapsular lógica de estado e efeitos.
+- Mantenha serviços de acesso a dados (Supabase queries) em módulos separados (`src/services/` ou `src/lib/`).
+- Sugira estrutura de pastas quando propor novas features ou módulos.
+
+### Performance e escalabilidade
+
+- Avalie impacto de queries antes de implementar; prefira índices e RLS eficientes a filtros em memória.
+- Para listas grandes em React Native, avalie FlashList (ver skill de RN).
+- Evite re-renders desnecessários; use memoização (`useMemo`, `useCallback`, `React.memo`) com medição prévia.
+- Em Railway/Node.js, considere timeouts, limites de payload e retry com backoff exponencial.
+
+### Exemplos e evidência
+
+- Forneça exemplos de código completos e funcionais quando propor soluções.
+- Indique padrões de mercado quando relevante (ex: padrão Repository, Clean Architecture, BFF).
+- Aponte riscos e trade-offs de cada abordagem antes de recomendar.
+
+### Testes — política obrigatória
+
+- Toda feature nova deve vir acompanhada de pelo menos um teste: unitário (lógica de negócio isolada) ou E2E (fluxo crítico via Playwright).
+- Fluxos críticos (`Balcao`, `Mesa`, `Delivery`, `Montagem`, `Billing`) exigem cobertura E2E antes de qualquer merge.
+- Smoke tests são obrigatórios para mudanças em: auth, RLS, billing, CORS, rate limiting — executados na mesma sessão de trabalho.
+- O Copilot deve sempre indicar quais testes existentes podem ser afetados por uma mudança proposta e sugerir casos de teste quando nenhum existir.
+- Nunca proponha remoção ou comentário de testes existentes sem justificativa explícita e aprovação.
+
+### Política de LGPD e dados pessoais (PII)
+
+- Antes de propor qualquer feature que envolva coleta, armazenamento, exibição ou transmissão de dados pessoais (nome, CPF, endereço, telefone, e-mail, localização, dados de pagamento), verifique conformidade com a LGPD.
+- Referência: `docs/LGPD/LGPD-COMPLIANCE-GUIDE.md`.
+- Regras mínimas obrigatórias:
+  - Dados de PII não devem ser logados em texto claro (logs, console, Sentry).
+  - Acesso a PII deve ser restrito por RLS e role (`company_id` + role mínimo necessário).
+  - Retenção e exclusão de dados devem respeitar as políticas do guia de LGPD.
+  - Se a feature proposta impactar PII e o guia não cobrir o caso, sinalize explicitamente antes de implementar.
+
+## Definition of Done (DoD) — Feature Completa
+
+Uma feature só está completa neste repositório quando **todos** os itens abaixo estiverem atendidos:
+
+- [ ] Código implementado com tipagem forte (sem `any` injustificado)
+- [ ] Migration de banco criada em `database-backup/migrations/` (se houver mudança de schema)
+- [ ] Migration aplicada remotamente e verificada em `supabase_migrations.schema_migrations`
+- [ ] RLS validada remotamente em `pg_policies` (se a feature acessa ou expõe dados)
+- [ ] Feature flag criada (`*_UI_NEXT`) se a mudança for de UI ou rollout progressivo
+- [ ] Testes: unitário ou E2E cobrindo o fluxo principal
+- [ ] Smoke test executado em produção (ou ambiente equivalente) para mudanças sensíveis
+- [ ] Sem secrets hardcoded; variáveis de ambiente documentadas em `.env.example`
+- [ ] LGPD verificada se a feature envolve PII
+- [ ] PR description em inglês com contexto, decisões técnicas e evidência de validação
+- [ ] Skill consultada e skill routing documentado na PR se aplicável
+
+## Security PR Checklist (Gate Obrigatório)
+
+Para qualquer PR que envolva: **auth, RLS, billing, CORS, rate limiting, secrets, roles, PII ou Edge Functions**, o Copilot deve incluir o seguinte bloco no início da proposta de implementação:
+
+```text
+🔒 Security Gate — Checklist obrigatório para esta mudança:
+
+[ ] Nenhum secret hardcoded (verificado em todo código proposto)
+[ ] Menor privilégio aplicado: service role key não exposta ao cliente
+[ ] Input validation presente em todas as bordas do sistema afetadas
+[ ] RLS cobre os novos dados/tabelas envolvidos
+[ ] CORS/headers de segurança preservados ou endurecidos
+[ ] Logs não expõem PII em texto claro
+[ ] Idempotência garantida em operações de billing/webhook
+[ ] Smoke test planejado para validação pós-deploy
+[ ] LGPD verificada (se PII envolvido)
+[ ] Evidência de validação será documentada no mesmo ciclo de trabalho
+```
+
+Se qualquer item não puder ser confirmado, a proposta deve indicar explicitamente o risco e sugerir mitigação antes de prosseguir.
+
+## Quick Prompts (RN/CI)
+
+Use these prompts in Copilot Chat to force explicit skill context:
+
+```text
+#file:.github/skills/restaurante-supabase/SKILL.md
+#file:.github/skills/react-native-best-practices/SKILL.md
+#file:restaurante-app/src/screens/NovoPedidoScreen.tsx
+
+Profile this screen and propose a measured optimization plan with no behavior changes.
+```
+
+```text
+#file:.github/skills/restaurante-supabase/SKILL.md
+#file:restaurante-app/package.json
+
+Plan an Expo SDK + React Native upgrade path for this repository with risk checklist and verification gates. No dedicated upgrade skill is installed in this repository, so use conservative fallback aligned with existing patterns.
+```
+
+```text
+#file:.github/skills/restaurante-supabase/SKILL.md
+#file:.github/skills/github-actions/SKILL.md
+
+Create a GitHub Actions workflow to build Android emulator APK and iOS simulator artifacts and document download commands.
+```
+
+```text
+#file:.github/skills/restaurante-supabase/SKILL.md
+#file:restaurante-web/e2e/delivery.spec.ts
+
+Propose a safe stacked PR merge plan with gh CLI commands for this branch chain. No dedicated GitHub workflow skill is installed in this repository, so use conservative fallback aligned with existing patterns.
+```
+
+```text
+#file:.github/skills/restaurante-supabase/SKILL.md
+#file:restaurante-app/package.json
+
+Design a phased brownfield integration plan for adding Expo features into an existing native app path. No dedicated brownfield migration skill is installed in this repository, so use conservative fallback aligned with existing patterns.
+```
+
+## Quick Prompts by Target (App/Web)
+
+Use these variants when you want explicit scope by codebase area.
+
+### Mobile app (`restaurante-app`)
+
+```text
+#file:.github/skills/restaurante-supabase/SKILL.md
+#file:.github/skills/react-native-best-practices/SKILL.md
+#file:restaurante-app/src/screens/NovoPedidoScreen.tsx
+
+Review this screen for render bottlenecks, propose measured optimizations, and keep behavior unchanged.
+```
+
+```text
+#file:.github/skills/restaurante-supabase/SKILL.md
+#file:restaurante-app/package.json
+
+Plan a safe Expo SDK + React Native upgrade path for this app with risks, checkpoints, and rollback criteria. No dedicated upgrade skill is installed in this repository, so use conservative fallback aligned with existing patterns.
+```
+
+### Web app (`restaurante-web`)
+
+```text
+#file:.github/skills/restaurante-supabase/SKILL.md
+#file:.github/skills/github-actions/SKILL.md
+#file:restaurante-web/playwright.config.ts
+
+Propose CI changes to build and publish emulator/simulator artifacts and include artifact download commands.
+```
+
+```text
+#file:.github/skills/restaurante-supabase/SKILL.md
+#file:restaurante-web/e2e/delivery.spec.ts
+
+Create a safe stacked PR plan for this area, including gh CLI commands and merge order. No dedicated GitHub workflow skill is installed in this repository, so use conservative fallback aligned with existing patterns.
+```
+
+### Ops service (`restaurante-ops`)
+
+```text
+#file:.github/skills/restaurante-supabase/SKILL.md
+#file:restaurante-ops/src/routes/billing.ts
+
+Review this billing route for security issues, idempotency gaps, and OWASP compliance. Propose hardening with no behavior change.
+```
+
+```text
+#file:.github/skills/restaurante-supabase/SKILL.md
+#file:restaurante-ops/src/services/reconcile.ts
+
+Audit this reconciliation service for atomicity, error handling, and audit trail completeness. Flag any missing rollback paths.
+```
+
+## Usage Runbook
+
+Use this order to keep responses consistent with mandatory skill checks:
+
+1. Choose scope first (`restaurante-app`, `restaurante-web`, ou `restaurante-ops`) and attach one real target file.
+2. Attach the primary project skill: `#file:.github/skills/restaurante-supabase/SKILL.md`.
+3. Attach exactly one specialized skill matching the task type when available in the repository.
+4. Ask for a constrained output (plan, checklist, or implementation with no behavior change).
+5. Verify the response starts with the mandatory RN/CI checklist block.
+6. For `restaurante-ops`: confirm that any proposed change addresses security, idempotency, and audit trail before accepting the output.
+
+## Supabase Migration Workflow (Mandatory)
+
+Use this workflow for any schema/function/index change in Supabase to avoid drift between repository and database.
+
+1. Create migration first (before manual SQL in dashboard):
+
+```bash
+# Preferred (monorepo): create versioned file in database-backup/migrations first.
+# If using Supabase CLI scaffolding locally, run from database-backup/supabase.
+cd database-backup/supabase
+supabase migration new <migration_name_in_snake_case>
+```
+
+2. Keep `database-backup/migrations/` as source-of-truth for committed migrations.
+3. Apply migration immediately to the target DB (same work session).
+4. Verify migration is registered in remote history (`supabase_migrations.schema_migrations` / `list_migrations`).
+5. Validate drift status with `database-backup/check-migration-sync.sh`.
+6. Commit migration file in the same PR as the feature/fix.
+7. For RLS/security changes, validate remote `pg_policies`, changed function definitions, and key constraints after apply.
+
+Remote-truth rule:
+
+- If local `schema_dump.sql` and production behavior diverge, validate against remote catalog (`pg_policies`, `pg_constraint`, `pg_proc`) before final recommendations.
+- Do not downgrade a confirmed remote risk to hypothetical based only on local dump files.
+
+Fallback if `supabase` is not in PATH in a fresh terminal:
+
+```bash
+C:\Users\ECUNHA\scoop\shims\supabase.exe --version
+```
+
+### Emergency SQL Runbook (Manual SQL already executed)
+
+If SQL was applied manually in the database:
+
+1. Create a reconciliation migration file with the same intent.
+2. Register/sync its version in migration history when needed.
+3. Document why manual SQL was required.
+4. Confirm local migration list and remote migration history are aligned before merge/deploy.

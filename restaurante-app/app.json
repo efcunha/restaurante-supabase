@@ -1,0 +1,105 @@
+{
+  "expo": {
+    "name": "Restaurante",
+    "slug": "restaurante-app",
+    "scheme": "restaurante",
+    "version": "1.0.1",
+    "orientation": "default",
+    "icon": "./imagem/icone.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./imagem/icone.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#8B2F2F"
+    },
+    "assetBundlePatterns": [
+      "assets/**/*",
+      "components/**/*.js",
+      "screens/**/*.js",
+      "context/**/*.js"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.comandapraia.donacida",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": false,
+          "NSAllowsLocalNetworking": true,
+          "NSPinnedDomains": {
+            "supabase.co": {
+              "NSIncludesSubdomains": true,
+              "NSPinnedLeafIdentities": [
+                {
+                  "SPKI-SHA256-BASE64": "GU2W4j1P24T3sqlI+o6YTnidzz0PI8fB/Gvd2ITfSZE="
+                }
+              ],
+              "NSPinnedCAIdentities": [
+                {
+                  "SPKI-SHA256-BASE64": "kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4="
+                }
+              ]
+            },
+            "api.mercadopago.com": {
+              "NSIncludesSubdomains": false,
+              "NSPinnedLeafIdentities": [
+                {
+                  "SPKI-SHA256-BASE64": "1rsZujOXhUcEKiMBfMqCDwhVvouJYiW+H7/RiBr4c8Y="
+                }
+              ],
+              "NSPinnedCAIdentities": [
+                {
+                  "SPKI-SHA256-BASE64": "Wec45nQiFwKvHtuHxSAMGkt19k+uPSw9JlEkxhvYPHk="
+                }
+              ]
+            }
+          }
+        },
+        "UISupportedInterfaceOrientations": [
+          "UIInterfaceOrientationPortrait",
+          "UIInterfaceOrientationLandscapeLeft",
+          "UIInterfaceOrientationLandscapeRight"
+        ],
+        "UISupportedInterfaceOrientations~ipad": [
+          "UIInterfaceOrientationPortrait",
+          "UIInterfaceOrientationPortraitUpsideDown",
+          "UIInterfaceOrientationLandscapeLeft",
+          "UIInterfaceOrientationLandscapeRight"
+        ]
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./imagem/icone.png",
+        "backgroundColor": "#8B2F2F"
+      },
+      "package": "com.comandapraia.donacida",
+      "ndkVersion": "26.1.10909125",
+      "screenOrientation": "default",
+      "softwareKeyboardLayoutMode": "pan"
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "newArchEnabled": false,
+    "jsEngine": "hermes",
+    "plugins": [
+      "expo-build-properties",
+      "expo-font",
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "javascript-react",
+          "organization": "restaurante-app"
+        }
+      ]
+    ],
+    "owner": "lumachadolp",
+    "extra": {
+      "eas": {
+        "projectId": "8384f741-18dd-41fb-b0ab-df0ece2acecf"
+      }
+    }
+  }
+}

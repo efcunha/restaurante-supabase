@@ -1,0 +1,33 @@
+# Subflow: login.yaml
+# Parâmetros obrigatórios: TEST_EMAIL, TEST_PASSWORD
+# Chame via:
+#   - runFlow:
+#       file: _subflows/login.yaml
+#       env:
+#         TEST_EMAIL: ${PLAYWRIGHT_TEST_EMAIL}
+#         TEST_PASSWORD: ${PLAYWRIGHT_TEST_PASSWORD}
+appId: com.comandapraia.donacida
+---
+- launchApp:
+    clearState: true
+
+- extendedWaitUntil:
+    visible:
+    id: "login-email-input"
+    timeout: 15000
+
+- tapOn:
+  id: "login-email-input"
+- inputText: "${PLAYWRIGHT_TEST_EMAIL}"
+
+- tapOn:
+  id: "login-password-input"
+- inputText: "${PLAYWRIGHT_TEST_PASSWORD}"
+
+- tapOn:
+  id: "login-submit-button"
+
+- extendedWaitUntil:
+    visible:
+      text: "Novo Pedido"
+    timeout: 15000

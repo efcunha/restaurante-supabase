@@ -1,0 +1,51 @@
+{
+  "id": "831b212c-ebd8-45dd-bfe7-7b064a743f77",
+  "status": "ERRORED",
+  "platform": "ANDROID",
+  "error": {
+    "errorCode": "EAS_BUILD_UNKNOWN_GRADLE_ERROR",
+    "message": "Gradle build failed with unknown error. See logs for the \"Run gradlew\" phase for more information."
+  },
+  "artifacts": {},
+  "fingerprint": {
+    "id": "019d5a37-032e-707f-827f-f577f99915f3",
+    "hash": "674b4b97164ebfc4b974fd7ab583405b5efa925c"
+  },
+  "initiatingActor": {
+    "id": "83ded47a-b1e9-490f-81ae-e80fffb3af39",
+    "displayName": "lumachadolp"
+  },
+  "logFiles": [
+    "https://job-logs.eascdn.net/production/831b212c-ebd8-45dd-bfe7-7b064a743f77/1775335048175-fef58501-2e82-432d-8778-8a41f0e74bef.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260404%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260404T205735Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=265f17e198a16a8651182b00d390da1eb99c20ed31430404ab6eaeefd3240a227e6500523d9a8251f29c85d6617f4ecb9527c67f8981e637db4828169f1f9903d723a62b59dede7dc83c9a79f4f87553ec3c3cb1e11355715d40ee3c28bee3075a396ff41b3b0509973439d9a9ead4165a954c82f2d56ea422e6d26084cdb1b64dba8bc3adf8144f09b36af5d3eb5118b6ec83ae3d01791d364b33ebb35e669f2390ffed562533763abf9d2aa41e911056bfa5f3b74bebecd22829604b32c8f220fa83ee02fe96a435a2b97e2db4bd97e5b7d4065a3ef7303184540e188fee81eb6024459de69d95910f12cd3bf44584058734c02de14243077c8d18538d3d74",
+    "https://job-logs.eascdn.net/production/831b212c-ebd8-45dd-bfe7-7b064a743f77/1775335058186-795c7bbc-ed7e-414e-a415-dff0c9422607.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260404%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260404T205735Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=ba68f1d80e0d896e088373e7944fe33c29d848972894fd24e2f48d4cfcc085a64a6d483d0a0979986e94bfdffba0a8e418874df80c05bc322ae6f8a3ae6c23342db06061e878feadeaa1318c27375859ed54e8c5bf67d0ae2fea0124ff4ca581d49895fa3af3cb4e6bca718b8d4772315aa1aabbf0b360ced8ff50b6d4777c62440a4a72acc6cd209aefb3644251cbf04f99a2a5e905883c354c2fbffcbfd5560c9641a2684498f953c39e24e2856de505d3e00d1b444b6593c58d9566d0137ecd73c446a2333471c6698661303d6cbb8b0bc7a55289ea859a45c7f8d508dff216d74d2f09cc2c50ae6fa39a472ede80cae7a2068bd9d27233a60cefad10b5b0",
+    "https://job-logs.eascdn.net/production/831b212c-ebd8-45dd-bfe7-7b064a743f77/1775335058407-fc3d476d-56b7-489a-9b3e-95345fb1d4de.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260404%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260404T205735Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=8a47525b4455225383074433f9e0ab1dfda0567947a79b90d254c62fadeefc7d98eeb69795faed908a77e682b043fef1bc935ed843a42eeb6d413f5cfcac0e5dab3be56a41ff609e689e473cff5890974a90683519a0b85844eeac62554acbdc132f6d3a94c733abdc2f736695e6b488f6990ebd36fdb677ab6655c57ca91d7ab0893964ad72a6a3292b449d343cd87a48cb2f98fb8cfad08dc499986f779ee1fae1a0c82a04444478fea7040b9a5b6517a086d2b2f80fb9240fe5aab8785edebab1d1320fe75468975da876069d1f569ecd684506d32afaf6bfc225af87a7d271f82c5334311459c48d4f5c8aa6c31829d87ab657dcd24a338d91c8a8f68229",
+    "https://job-logs.eascdn.net/production/831b212c-ebd8-45dd-bfe7-7b064a743f77/1775335058622-d9ed9ee6-bb06-4c92-9940-c5f1a7b533e2.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260404%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260404T205735Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=67dca5dd94aea534e75518f2dd064d95b4ad8606d28fe7c2cdc75335c05885d31ac10a911c381f5b7bc085fee299d454f264d93dd2005e4349f9186debad812d2579c6b8179ae535f003958d18ec7d8b0b0dad4aad2bee08898bab353f6b1e90504b0531ac9cff31207eee593e0fef01c63dc0af33827dcbe376d70bb6209c84ef509b18b06d0065afa228cc7f77c6f7e3f78397deaa2d1a77a384e138265f083c3569ccab4c7432d85aa765eb2a69c711da9675e682e2af6bce2b96a9d1026647d7f4f5a92ce735a7fc49252e58e470df9f4b67602271dee9f6de0922ec338a13ff37ec327696bf07e725291235b88c140419ca54bff7faebc15d9d6a3fed23"
+  ],
+  "project": {
+    "id": "8384f741-18dd-41fb-b0ab-df0ece2acecf",
+    "name": "restaurante-app",
+    "slug": "restaurante-app",
+    "ownerAccount": {
+      "id": "78274571-4fa1-4f3a-a809-635e4af9bbf5",
+      "name": "lumachadolp"
+    }
+  },
+  "distribution": "INTERNAL",
+  "buildProfile": "preview",
+  "sdkVersion": "54.0.0",
+  "appVersion": "1.0.1",
+  "appBuildVersion": "1",
+  "gitCommitHash": "4ba9bd30b08a7c6be151ec4891576a1d38187936",
+  "gitCommitMessage": "chore: update @sentry/react-native to version 8.7.0 and add temporary build error logs for Android and iOS",
+  "priority": "NORMAL",
+  "createdAt": "2026-04-04T20:37:27.933Z",
+  "updatedAt": "2026-04-04T20:55:02.597Z",
+  "completedAt": "2026-04-04T20:54:53.606Z",
+  "expirationDate": "2026-04-18T20:37:27.970Z",
+  "isForIosSimulator": false,
+  "metrics": {
+    "buildWaitTime": 127,
+    "buildQueueTime": 47180,
+    "buildDuration": 998002
+  }
+}

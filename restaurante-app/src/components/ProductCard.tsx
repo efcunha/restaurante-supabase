@@ -1,0 +1,152 @@
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { colors } from '../theme/colors';
+import { normalizeCategorySlug } from '../utils/menuCategories';
+interface ProductCardProps {
+  product: {
+    id: string;
+    name: string;
+    price: number;
+    category: string;
+    active?: boolean;
+  };
+  onPress?: (productId: string) => void;
+  onToggleActive?: (productId: string) => void;
+}
+
+/**
+ * ProductCard - Memoized component for displaying product information
+ * 
+ * Uses React.memo with custom comparison to prevent unnecessary re-renders
+ * Only re-renders when product data actually changes
+ */
+const ProductCard = React.memo<ProductCardProps>(
+  ({ product, onPress, onToggleActive }) => {
+    const handlePress = React.useCallback(() => {
+      onPress?.(product.id);
+    }, [onPress, product.id]);
+
+    const handleToggleActive = React.useCallback(() => {
+      onToggleActive?.(product.id);
+    }, [onToggleActive, product.id]);
+
+    return (
+      <TouchableOpacity
+        style={[styles.card, !product.active && styles.cardInactive]}
+        onPress={handlePress}
+        activeOpacity={0.7}
+      >
+        <View style={styles.header}>
+          <Text style={styles.name} numberOfLines={2}>
+            {product.name}
+          </Text>
+          {onToggleActive && (
+            <TouchableOpacity
+              style={[styles.statusBadge, product.active && styles.statusBadgeActive]}
+              onPress={handleToggleActive}
+            >
+              <Text style={styles.statusText}>
+                {product.active ? 'Ativo' : 'Inativo'}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <View style={styles.footer}>
+          <Text style={styles.price}>
+            R$ {product.price.toFixed(2)}
+          </Text>
+          <Text style={styles.category}>{getCategoryLabel(product.category)}</Text>
+        </View>
+      </TouchableOpacity>
+    );
+  },
+  // Custom comparison function - only re-render if these properties change
+  (prevProps, nextProps) => {
+    return (
+      prevProps.product.id === nextProps.product.id &&
+      prevProps.product.name === nextProps.product.name &&
+      prevProps.product.price === nextProps.product.price &&
+      prevProps.product.category === nextProps.product.category &&
+      prevProps.product.active === nextProps.product.active &&
+      prevProps.onPress === nextProps.onPress &&
+      prevProps.onToggleActive === nextProps.onToggleActive
+    );
+  }
+);
+
+ProductCard.displayName = 'ProductCard';
+
+function getCategoryLabel(category: string): string {
+  const normalized = normalizeCategorySlug(category);
+  if (!normalized) return 'Outro';
+
+  return normalized
+    .split('-')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+const styles = StyleSheet.create({
+  card: {
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: colors.surfaceMuted,
+  },
+  cardInactive: {
+    opacity: 0.6,
+    backgroundColor: colors.surfaceMuted,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  name: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginRight: 8,
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: colors.border,
+  },
+  statusBadgeActive: {
+    backgroundColor: colors.success,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.white,
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  price: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  category: {
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+});
+
+export default ProductCard;

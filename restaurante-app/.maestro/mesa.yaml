@@ -1,0 +1,60 @@
+# Equivalente a: restaurante-web/e2e/mesa.spec.ts
+# Fluxo: Login Garcom 01 -> Novo Pedido -> Mesa com número
+#
+# Pré-requisito:
+#   - .env.maestro com PLAYWRIGHT_TEST_EMAIL e PLAYWRIGHT_TEST_PASSWORD
+#   - Mesa ${NUMERO_MESA} sem comanda aberta no banco
+#     (pool garcom01: mesas 1-5; padrão: mesa 3)
+#
+# Limpeza da mesa antes do teste (run manual ou CI script):
+#   curl -X PATCH "${SUPABASE_URL}/rest/v1/comandas?table_number=eq.3&status=eq.aberta" \
+#     -H "apikey: ${SUPABASE_ANON_KEY}" \
+#     -H "Authorization: Bearer ${TOKEN}" \
+#     -H "Content-Type: application/json" \
+#     -d '{"status":"cancelada"}'
+#
+# Execução: maestro test .maestro/mesa.yaml
+# Sobrescrever mesa: maestro test .maestro/mesa.yaml --env NUMERO_MESA=5
+appId: com.comandapraia.donacida
+name: "Fluxo Mesa - Garcom 01"
+env:
+  NUMERO_MESA: "3"
+---
+# ── 1. Login ─────────────────────────────────────────────────────────────────
+- runFlow: _subflows/login.yaml
+
+# ── 2. Navega para Novo Pedido ────────────────────────────────────────────────
+- tapOn: "Novo Pedido"
+- extendedWaitUntil:
+    visible:
+      text: "Digite o nome"
+    timeout: 15000
+
+# ── 3. Preenche nome e número da mesa ────────────────────────────────────────
+- tapOn: "Digite o nome"
+- inputText: "Mesa Maestro G01"
+
+- tapOn: "Nº"
+- inputText: "${NUMERO_MESA}"
+- tapOn: "Novo Pedido"
+# ── 4. Adiciona pizza Grande/Família ─────────────────────────────────────────
+- runFlow: _subflows/add_pizza.yaml
+
+# ── 5. Adiciona itens padrão (Chopp x3, Risoto x1, Caldo x3) ─────────────────
+- runFlow: _subflows/add_itens_padrao.yaml
+
+# ── 6. Cria pedido e valida toast de sucesso ──────────────────────────────────
+- tapOn: "Criar Pedido"
+- extendedWaitUntil:
+    visible:
+      text: "Digite o nome"
+    timeout: 20000
+
+# ── 7. Verifica Cozinha (descomente se o usuário de teste tiver acesso à tab) ─
+# O mesa.spec.ts verifica que itens de produção aparecem na Cozinha.
+# Garcom padrão pode não ter acesso; habilite conforme o role do usuário de teste.
+#
+# - tapOn: "Cozinha"
+# - assertVisible:
+#     text: "Cozinha"
+#     timeout: 10000

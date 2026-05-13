@@ -1,0 +1,34 @@
+# Equivalente a: restaurante-web/e2e/balcao-garcom02.spec.ts
+# Fluxo: Login Garcom 02 -> Novo Pedido -> Balcão puro (sem mesa)
+#
+# Pré-requisito: .env.maestro com PLAYWRIGHT_TEST_EMAIL_GARCOM02 e PLAYWRIGHT_TEST_PASSWORD_GARCOM02
+# Execução: maestro test .maestro/balcao_garcom02.yaml
+appId: com.comandapraia.donacida
+name: "Fluxo Balcão - Garcom 02"
+---
+# ── 1. Login Garcom 02 ────────────────────────────────────────────────────────────────
+- runFlow: _subflows/login_garcom02.yaml
+
+# ── 2. Navega para Novo Pedido ────────────────────────────────────────────────
+- tapOn: "Novo Pedido"
+- extendedWaitUntil:
+    visible:
+      text: "Digite o nome"
+    timeout: 15000
+
+# ── 3. Preenche nome do cliente (Balcão: sem número de mesa) ─────────────────
+- tapOn: "Digite o nome"
+- inputText: "Cliente Balcao G02 Maestro"
+- tapOn: "Novo Pedido"
+# ── 4. Adiciona pizza Grande/Família ─────────────────────────────────────────
+- runFlow: _subflows/add_pizza.yaml
+
+# ── 5. Adiciona itens padrão (Chopp x3, Risoto x1, Caldo x3) ─────────────────
+- runFlow: _subflows/add_itens_padrao.yaml
+
+# ── 6. Cria pedido e valida toast de sucesso ──────────────────────────────────
+- tapOn: "Criar Pedido"
+- extendedWaitUntil:
+    visible:
+      text: "Digite o nome"
+    timeout: 15000

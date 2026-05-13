@@ -1,0 +1,54 @@
+[
+  {
+    "id": "c49e0e7b-c777-4821-8ddc-c3c41a51c46b",
+    "status": "ERRORED",
+    "platform": "ANDROID",
+    "error": {
+      "errorCode": "EAS_BUILD_UNKNOWN_GRADLE_ERROR",
+      "message": "Gradle build failed with unknown error. See logs for the \"Run gradlew\" phase for more information."
+    },
+    "artifacts": {},
+    "fingerprint": {
+      "id": "019d5a4c-f916-7d53-8223-f5d7466d7ee0",
+      "hash": "4447e9c6f92e11a862c6b880b6ad818ea65c12d8"
+    },
+    "initiatingActor": {
+      "id": "83ded47a-b1e9-490f-81ae-e80fffb3af39",
+      "displayName": "lumachadolp"
+    },
+    "logFiles": [
+      "https://job-logs.eascdn.net/production/c49e0e7b-c777-4821-8ddc-c3c41a51c46b/1775336487365-bb565d66-1694-4251-bba3-c9415495a981.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260404%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260404T210138Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=0126382a1adb5b675d0222c5917366e4abc50bc8234878714a31630e11390d8465797a83f87837a3b564c689d33195ed6aea2bf0b2880605e4af6447a5c7dd0c101882cd28cec65a0f92f98fdf05a25dab762551ab65953e5e10e56908083486506dd979529c435751a28018faabc549d1a8a2b09096644c2c358b7816c0cfbabc454b87b031d13a088178d72b7e5ff8d3f1d47e2aee415a3db3404053e38b303bc7dabb3a008f2d3ea2f625b111915531687af7b4fdb0e4fdd8147d91ac2388e236310b89509658b234bea968c4823669bf240ac78c1477e7c99d36dfa3754b8a48124b8eb33e10237a1a0170d3fa84f615ecb7bdb2b7a841716f943bfaa7e0",
+      "https://job-logs.eascdn.net/production/c49e0e7b-c777-4821-8ddc-c3c41a51c46b/1775336550373-eeedb484-cdfe-4509-86c4-515f6750dae2.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260404%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260404T210643Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=a6683536c70bf45feadaba44add5d9358af5af64519b941fcf09f2cc6e5e6f560d1131cb80822a9af780cf373ecaba63eb8a01c4bed8822ddd014f6210d74c63e64446b47404f7c792c7b83a5b9228d55d34724e9a5260b56d3ad7cf3f636521388129a46d08c037b10bd3c91a3923e96f5794c0125423470a876f79d907975257bd46fe1642d275c066ef4ea160e9cf44f9c790179b7101209567225a9fc838079502c4d02bfddec6adcc278af3dffae6ee649320cbfa043d879fae11831114512695a7c1ea15e11b0aa2329a22f5e8e91f33b9e6ddd365e8281168aae7b685f60a1e54e44fa9978d6328cbbb85c877901fd9bcbf6afdff1eb7af783c26fef8",
+      "https://job-logs.eascdn.net/production/c49e0e7b-c777-4821-8ddc-c3c41a51c46b/1775336554557-8f25c48c-bbab-4460-a5f2-fd5f1a7de390.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260404%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260404T210643Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=6b30d4e2511549d300aeb40c6971ec4db3a812ee73829f7842eeed47ed8fe724d50622d8fe801cf68d507b7c533a002375a891e00443d174813bdee424e2d33c41a9addc6c43ec3d65989a8fc4511a85e822fc5ae1156a69171e057ed344f2afc2e14baf8a016e92248796ae982638065ea1112ce9957964d39f2dad1a0484d19d401c069669f90b3edaf2406aa5b2341fc3f483304d8f2986f8b7e5c8f9144825ca584c5754a94721bf07173fe11e01a76e75e56a7b25d88a7413eb7093740e22a78696eed0468ef0af42f22947c32d3fd013f89221dc7d5c71f4f39522f86264923d73356c5bb8653e6787796d4dc0a02465369bf13a10f8adc32f4ed0eb02",
+      "https://job-logs.eascdn.net/production/c49e0e7b-c777-4821-8ddc-c3c41a51c46b/1775336554817-a472261c-0f2b-4994-89a5-eae5af22d67a.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260404%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260404T210643Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=752acef4db916cfb39720f6afca0ab1b5393b3492c31a34450da9759e8b1cfe5ca389922de5f4208446e810afe0746d8243d886d0c59747f293a93ccac23c01352041249150cf2c297aaccc419a41f94a3dad5569f05216b6743dce77a166f6166098bb5f1f005fb9ce6985e777ff2f13cecffb48e6bf45ba156bfac627a86fe53a5818ca56da5a832dc795eaa03f88829192adb776bbe10e45b87a830bd9fbd1e3cb0fac8510c8d9e3328b047746069700486d124a28232a888fe4300f3348aa971c25cb7a407c72049101b2b7e7176449597dd91fa202401b1ea8569ff02264d387d2442f8eb8a4b5f3bf0cba2d0376119846d88cf4e8855f3c990f0417bd3",
+      "https://job-logs.eascdn.net/production/c49e0e7b-c777-4821-8ddc-c3c41a51c46b/1775336555008-e5ed7e92-7727-44f8-8aca-662a65c4fa45.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260404%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260404T210643Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=195845beb922a56edbfd912e67e6a2dd241ff2f27a1352b6e99922f04afdd67c302a842018fbd6d7fd0fce32a24b2a4af4adf6d6d9252b79e8fab14b602264c92beec57183840ef4cac7c6c6bea306a7cbf2744f0dcdd01feafba89cdde9b5aec177da8af76d12c93c7fa9057ee594f2edeb2149697412403dafe9340387422392ef2d86c5d0982db663ed117efa55828e1c8136316c5c9d58af585d94d0beaec1e29b428df7469c11ccbd34c9b96bd23c3422cd3ebd9fa79ed01a07581a5613452ce6d7b379a2bcf433229e107b90852e01881eabc38d82c89e9967962d885e25bfafdba5eaa494184acfdfa994e9ecee705bf4a5eb3065950c10f8421db079"
+    ],
+    "project": {
+      "id": "8384f741-18dd-41fb-b0ab-df0ece2acecf",
+      "name": "restaurante-app",
+      "slug": "restaurante-app",
+      "ownerAccount": {
+        "id": "78274571-4fa1-4f3a-a809-635e4af9bbf5",
+        "name": "lumachadolp"
+      }
+    },
+    "distribution": "INTERNAL",
+    "buildProfile": "preview",
+    "sdkVersion": "54.0.0",
+    "appVersion": "1.0.1",
+    "appBuildVersion": "1",
+    "gitCommitHash": "a05dcff7df3ada7ffef062c58386762be414d571",
+    "gitCommitMessage": "fix: patch esc-pos-printer codegen config in postinstall\n\n- Remove react-native-esc-pos-printer codegenConfig during postinstall\n  to prevent invalid Android autolinking CMake entries on RN 0.84\n- Keep expo-modules-core Promise.kt patch behavior unchanged",
+    "priority": "NORMAL",
+    "createdAt": "2026-04-04T21:01:27.155Z",
+    "updatedAt": "2026-04-04T21:10:24.022Z",
+    "completedAt": "2026-04-04T21:10:13.093Z",
+    "expirationDate": "2026-04-18T21:01:27.181Z",
+    "isForIosSimulator": false,
+    "metrics": {
+      "buildWaitTime": 63651,
+      "buildQueueTime": 40118,
+      "buildDuration": 421726
+    }
+  }
+]

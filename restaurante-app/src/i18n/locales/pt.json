@@ -1,0 +1,127 @@
+{
+  "common": {
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "delete": "Excluir",
+    "edit": "Editar",
+    "create": "Criar",
+    "update": "Atualizar",
+    "loading": "Carregando...",
+    "error": "Erro",
+    "success": "Sucesso",
+    "confirm": "Confirmar",
+    "back": "Voltar",
+    "next": "Próximo",
+    "finish": "Finalizar",
+    "search": "Buscar",
+    "filter": "Filtrar",
+    "clear": "Limpar",
+    "close": "Fechar",
+    "yes": "Sim",
+    "no": "Não"
+  },
+  "auth": {
+    "login": "Entrar",
+    "logout": "Sair",
+    "email": "Email",
+    "password": "Senha",
+    "forgotPassword": "Esqueci minha senha",
+    "loginError": "Erro ao fazer login",
+    "invalidCredentials": "Email ou senha inválidos",
+    "sessionExpired": "Sessão expirada. Faça login novamente."
+  },
+  "orders": {
+    "title": "Pedidos",
+    "create": "Criar Pedido",
+    "edit": "Editar Pedido",
+    "delete": "Excluir Pedido",
+    "details": "Detalhes do Pedido",
+    "list": "Lista de Pedidos",
+    "empty": "Nenhum pedido encontrado",
+    "status": {
+      "pending": "Pendente",
+      "preparing": "Preparando",
+      "ready": "Pronto",
+      "delivered": "Entregue",
+      "cancelled": "Cancelado"
+    },
+    "fields": {
+      "comandaNumber": "Número da Comanda",
+      "mesa": "Mesa",
+      "customer": "Cliente",
+      "items": "Itens",
+      "total": "Total",
+      "notes": "Observações",
+      "createdAt": "Criado em",
+      "updatedAt": "Atualizado em"
+    },
+    "actions": {
+      "markAsReady": "Marcar como Pronto",
+      "markAsDelivered": "Marcar como Entregue",
+      "cancel": "Cancelar Pedido"
+    },
+    "messages": {
+      "created": "Pedido criado com sucesso",
+      "updated": "Pedido atualizado com sucesso",
+      "deleted": "Pedido excluído com sucesso",
+      "cancelled": "Pedido cancelado",
+      "createError": "Erro ao criar pedido",
+      "updateError": "Erro ao atualizar pedido",
+      "deleteError": "Erro ao excluir pedido"
+    }
+  },
+  "comandas": {
+    "title": "Comandas",
+    "open": "Abrir Comanda",
+    "close": "Fechar Comanda",
+    "status": {
+      "aberta": "Aberta",
+      "fechada": "Fechada",
+      "cancelada": "Cancelada"
+    },
+    "messages": {
+      "opened": "Comanda aberta",
+      "closed": "Comanda fechada",
+      "cancelled": "Comanda cancelada"
+    }
+  },
+  "payments": {
+    "title": "Pagamentos",
+    "pay": "Pagar",
+    "paid": "Pago",
+    "unpaid": "Não Pago",
+    "method": "Forma de Pagamento",
+    "methods": {
+      "dinheiro": "Dinheiro",
+      "pix": "PIX",
+      "debito": "Débito",
+      "credito": "Crédito",
+      "voucher": "Voucher"
+    },
+    "messages": {
+      "success": "Pagamento realizado com sucesso",
+      "error": "Erro ao processar pagamento",
+      "unauthorized": "Você não tem permissão para modificar pagamentos"
+    }
+  },
+  "validation": {
+    "required": "Campo obrigatório",
+    "invalidEmail": "Email inválido",
+    "invalidPhone": "Telefone inválido",
+    "minLength": "Mínimo de {{count}} caracteres",
+    "maxLength": "Máximo de {{count}} caracteres",
+    "min": "Valor mínimo: {{value}}",
+    "max": "Valor máximo: {{value}}",
+    "positive": "Valor deve ser positivo",
+    "integer": "Valor deve ser um número inteiro"
+  },
+  "errors": {
+    "generic": "Ocorreu um erro. Tente novamente.",
+    "network": "Erro de conexão. Verifique sua internet.",
+    "unauthorized": "Você não tem permissão para esta ação.",
+    "notFound": "Recurso não encontrado.",
+    "validation": "Erro de validação. Verifique os campos.",
+    "rateLimit": "Muitas requisições. Aguarde um momento.",
+    "serverError": "Erro no servidor. Tente novamente mais tarde."
+  }
+}

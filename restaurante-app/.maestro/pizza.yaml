@@ -1,0 +1,35 @@
+# Equivalente a: restaurante-web/e2e/pizza.spec.ts
+# Fluxo: Login Garcom 01 -> Novo Pedido -> Pizza + itens padrão (Balcão, sem mesa)
+#
+# Pré-requisito: .env.maestro com PLAYWRIGHT_TEST_EMAIL e PLAYWRIGHT_TEST_PASSWORD
+# Execução: maestro test .maestro/pizza.yaml
+appId: com.comandapraia.donacida
+name: "Fluxo Pizza - Garcom 01"
+---
+# ── 1. Login ─────────────────────────────────────────────────────────────────
+- runFlow: _subflows/login.yaml
+
+# ── 2. Navega para Novo Pedido ────────────────────────────────────────────────
+- tapOn: "Novo Pedido"
+- extendedWaitUntil:
+    visible:
+      text: "Digite o nome"
+    timeout: 15000
+
+# ── 3. Preenche nome do cliente ───────────────────────────────────────────────
+- tapOn: "Digite o nome"
+- inputText: "Pedido Pizza Maestro"
+- tapOn: "Novo Pedido"
+
+# ── 4. Configura Pizza Grande/Família (Calabresa + Chocolate com Morango + Bacon)
+- runFlow: _subflows/add_pizza.yaml
+
+# ── 5. Adiciona itens padrão (Chopp x3, Risoto x1, Caldo x3) ─────────────────
+- runFlow: _subflows/add_itens_padrao.yaml
+
+# ── 6. Cria pedido e valida toast de sucesso ──────────────────────────────────
+- tapOn: "Criar Pedido"
+- extendedWaitUntil:
+    visible:
+      text: "Digite o nome"
+    timeout: 15000

@@ -1,0 +1,16 @@
+packages:
+  - restaurante-app
+  - restaurante-web
+  - restaurante-ops
+  - restaurante-site
+  - balanca-bridge
+  - packages/*
+allowBuilds:
+  '@firebase/util': true
+  '@sentry/cli': true
+  '@serialport/bindings-cpp': true
+  esbuild: true
+  protobufjs: true
+  react-native-esc-pos-printer: true
+  sharp: true
+  unrs-resolver: true

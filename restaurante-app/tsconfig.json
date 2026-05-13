@@ -1,0 +1,23 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
+    "alwaysStrict": true,
+    "ignoreDeprecations": "6.0",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@restaurante/ui": ["../packages/ui/src"],
+      "@restaurante/ui/*": ["../packages/ui/src/*"],
+      "@restaurante/tokens": ["../packages/tokens/src"],
+      "@restaurante/schemas": ["../packages/schemas/src"],
+      "@restaurante/config": ["../packages/config/src"]
+    }
+  }
+}

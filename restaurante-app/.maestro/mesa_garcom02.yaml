@@ -1,0 +1,51 @@
+# Equivalente a: restaurante-web/e2e/mesa-garcom02.spec.ts
+# Fluxo: Login Garcom 02 -> Novo Pedido -> Mesa com número
+#
+# Pré-requisito:
+#   - .env.maestro com PLAYWRIGHT_TEST_EMAIL_GARCOM02 e PLAYWRIGHT_TEST_PASSWORD_GARCOM02
+#   - Mesa ${NUMERO_MESA} sem comanda aberta no banco
+#     (pool garcom02: mesas 6-10; padrão: mesa 8)
+#
+# Limpeza da mesa antes do teste (run manual ou CI script):
+#   curl -X PATCH "${SUPABASE_URL}/rest/v1/comandas?table_number=eq.8&status=eq.aberta" \
+#     -H "apikey: ${SUPABASE_ANON_KEY}" \
+#     -H "Authorization: Bearer ${TOKEN}" \
+#     -H "Content-Type: application/json" \
+#     -d '{"status":"cancelada"}'
+#
+# Execução: maestro test .maestro/mesa_garcom02.yaml
+# Sobrescrever mesa: maestro test .maestro/mesa_garcom02.yaml --env NUMERO_MESA=9
+appId: com.comandapraia.donacida
+name: "Fluxo Mesa - Garcom 02"
+env:
+  NUMERO_MESA: "8"
+---
+# ── 1. Login Garcom 02 ────────────────────────────────────────────────────────────────
+- runFlow: _subflows/login_garcom02.yaml
+
+# ── 2. Navega para Novo Pedido ────────────────────────────────────────────────
+- tapOn: "Novo Pedido"
+- extendedWaitUntil:
+    visible:
+      text: "Digite o nome"
+    timeout: 15000
+
+# ── 3. Preenche nome e número da mesa ────────────────────────────────────────
+- tapOn: "Digite o nome"
+- inputText: "Mesa Maestro G02"
+
+- tapOn: "Nº"
+- inputText: "${NUMERO_MESA}"
+- tapOn: "Novo Pedido"
+# ── 4. Adiciona pizza Grande/Família ─────────────────────────────────────────
+- runFlow: _subflows/add_pizza.yaml
+
+# ── 5. Adiciona itens padrão (Chopp x3, Risoto x1, Caldo x3) ─────────────────
+- runFlow: _subflows/add_itens_padrao.yaml
+
+# ── 6. Cria pedido e valida toast de sucesso ──────────────────────────────────
+- tapOn: "Criar Pedido"
+- extendedWaitUntil:
+    visible:
+      text: "Digite o nome"
+    timeout: 20000

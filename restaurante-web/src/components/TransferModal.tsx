@@ -1,0 +1,206 @@
+
+import React, { useState } from 'react';
+import {
+Modal,
+    View,
+    Text,
+    StyleSheet,
+    TouchableOpacity,
+    TextInput,
+    Platform,
+    KeyboardAvoidingView,
+    TouchableWithoutFeedback
+} from 'react-native';
+import { colors } from '../theme/colors';
+interface TransferModalProps {
+    visible: boolean;
+    onClose: () => void;
+    onConfirm: (tableNumber: string) => void;
+    currentTable?: string;
+}
+
+export default function TransferModal({ visible, onClose, onConfirm, currentTable }: TransferModalProps) {
+    const [tableNumber, setTableNumber] = useState('');
+
+    const handleConfirm = () => {
+        if (!tableNumber.trim()) return;
+        onConfirm(tableNumber);
+        setTableNumber('');
+    };
+
+    const handleClose = () => {
+        setTableNumber('');
+        onClose();
+    };
+
+    return (
+        <Modal
+            visible={visible}
+            animationType="fade"
+            transparent={true}
+            onRequestClose={handleClose}
+        >
+            <TouchableWithoutFeedback onPress={handleClose}>
+                <View style={styles.overlay}>
+                    <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+                        <KeyboardAvoidingView
+                            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                            style={styles.container}
+                        >
+                            <View style={styles.header}>
+                                <Text style={styles.title}>Transferir Pedido</Text>
+                                <TouchableOpacity onPress={handleClose}>
+                                    <Text style={styles.closeBtn}>✕</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            <View style={styles.content}>
+                                {currentTable && (
+                                    <Text style={styles.currentTableText}>
+                                        Mesa atual: <Text style={styles.bold}>{currentTable}</Text>
+                                    </Text>
+                                )}
+
+                                <Text style={styles.label}>Nova Mesa:</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    value={tableNumber}
+                                    onChangeText={setTableNumber}
+                                    placeholder="Número da mesa"
+                                    keyboardType="numeric"
+                                    autoFocus={true}
+                                    onSubmitEditing={handleConfirm}
+                                />
+
+                                <View style={styles.actions}>
+                                    <TouchableOpacity
+                                        style={[styles.btn, styles.cancelBtn]}
+                                        onPress={handleClose}
+                                    >
+                                        <Text style={styles.btnTextCancel}>Cancelar</Text>
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity
+                                        style={[styles.btn, styles.confirmBtn, !tableNumber.trim() && styles.disabledBtn]}
+                                        onPress={handleConfirm}
+                                        disabled={!tableNumber.trim()}
+                                    >
+                                        <Text style={styles.btnTextConfirm}>Confirmar</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        </KeyboardAvoidingView>
+                    </TouchableWithoutFeedback>
+                </View>
+            </TouchableWithoutFeedback>
+        </Modal>
+    );
+}
+
+const styles = StyleSheet.create({
+    overlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20
+    },
+    container: {
+        width: '100%',
+        maxWidth: 340,
+        backgroundColor: colors.white,
+        borderRadius: 16,
+        overflow: 'hidden',
+        ...Platform.select({
+            ios: {
+                shadowColor: colors.shadow,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 8,
+            },
+            android: {
+                elevation: 8,
+            },
+            web: {
+                // @ts-ignore
+                boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.2)',
+            }
+        }),
+    },
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border,
+        backgroundColor: colors.surfaceMuted
+    },
+    title: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: colors.text
+    },
+    closeBtn: {
+        fontSize: 20,
+        color: colors.textSecondary,
+        padding: 4
+    },
+    content: {
+        padding: 20
+    },
+    currentTableText: {
+        fontSize: 14,
+        color: colors.textSecondary,
+        marginBottom: 16
+    },
+    bold: {
+        fontWeight: '700',
+        color: colors.text
+    },
+    label: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: colors.text,
+        marginBottom: 8
+    },
+    input: {
+        backgroundColor: colors.surfaceMuted,
+        borderWidth: 1,
+        borderColor: colors.border,
+        borderRadius: 8,
+        padding: 12,
+        fontSize: 16,
+        marginBottom: 24
+    },
+    actions: {
+        flexDirection: 'row',
+        gap: 12
+    },
+    btn: {
+        flex: 1,
+        paddingVertical: 12,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center'
+    },
+    cancelBtn: {
+        backgroundColor: colors.surfaceMuted,
+    },
+    confirmBtn: {
+        backgroundColor: colors.primary,
+    },
+    disabledBtn: {
+        opacity: 0.5
+    },
+    btnTextCancel: {
+        color: colors.textSecondary,
+        fontWeight: '600',
+        fontSize: 16
+    },
+    btnTextConfirm: {
+        color: colors.white,
+        fontWeight: '600',
+        fontSize: 16
+    }
+});

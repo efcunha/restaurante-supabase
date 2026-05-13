@@ -1,0 +1,136 @@
+# Dependencies
+node_modules/
+
+# Expo / React Native
+.expo/
+.metro-health-check*
+*.hbc
+
+# Android
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+*.apk
+*.aab
+*.jks
+*.pem
+*.key
+*.p12
+*.pfx
+*.udg
+*.keystore
+
+# iOS
+ios/Pods/
+ios/build/
+ios/.xcode.env.local
+*.xcworkspace
+DerivedData/
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.xcuserstate
+
+# Firebase / service accounts
+.firebase/
+serviceAccountKey.json
+firebase-adminsdk-*.json
+*-adminsdk-*.json
+google-services.json
+GoogleService-Info.plist
+
+# Environment keys
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Sensitive local scripts (never commit)
+test-evo-api.js
+fetch-instances.js
+
+# IDE / tooling
+.idea/
+.vscode/
+.cursor/
+.windsurf/
+.trae/
+.kiro/
+.gemini/
+.antigravity/
+kiro/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build / coverage
+build/
+dist/
+coverage/
+*.tsbuildinfo
+dataconnect/
+kotlin*
+mcp-server-ts/*
+
+# Site build artifacts
+restaurante-site/public/downloads/*.apk
+restaurante-site/public/downloads/*.tar.gz
+
+# Playwright / test artifacts
+test-results*
+restaurante-web/playwright-report/
+e2e/*
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.bundle
+*Zone.Identifier
+.cache/
+__pycache__/
+*.pyc
+tmp/*
+restaurante-ops/tmp/*
+recovered/*
+*output*.txt
+*results*.txt
+
+# Local automation/snapshots
+.playwright-mcp/
+
+# Snyk
+.snyk
+snyk-mcp.log
+.config/snyk/
+
+# Debug scripts generated locally
+scripts/debug/
+
+# Database backups (NEVER commit these)
+database-backup/backups/
+database-backup/logs/
+database-backup/.env.local
+database-backup/*.dump
+database-backup/*.sql
+database-backup/*.backup
+database-backup/*.bak
+
+# Ignore vscode AI rules
+.github/instructions/codacy.instructions.md

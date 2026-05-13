@@ -1,0 +1,51 @@
+{
+  "id": "9961ca75-c91b-43ea-bf3b-9a80e8ffaf9f",
+  "status": "ERRORED",
+  "platform": "ANDROID",
+  "error": {
+    "errorCode": "EAS_BUILD_UNKNOWN_GRADLE_ERROR",
+    "message": "Gradle build failed with unknown error. See logs for the \"Run gradlew\" phase for more information."
+  },
+  "artifacts": {},
+  "fingerprint": {
+    "id": "019d59e6-2921-791c-815b-5fe62b3a4fbf",
+    "hash": "eaf7202f7930c7c46a52de01d13d3d301c4da719"
+  },
+  "initiatingActor": {
+    "id": "83ded47a-b1e9-490f-81ae-e80fffb3af39",
+    "displayName": "lumachadolp"
+  },
+  "logFiles": [
+    "https://job-logs.eascdn.net/production/9961ca75-c91b-43ea-bf3b-9a80e8ffaf9f/1775329749461-f3f728ae-cd37-48e5-ba3d-dd8f83cb53cd.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260404%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260404T194353Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=09895d74a9bbab6a43315c3037e688b86411311af489f8c70b14686aba71d317f1ce280edbfd0e0c7691010d67b3b0d76fa4b95de91760e5e7e05d9d810ec0b087b37305b30df1b8044999cd80022fe07e8b1fb56e1e774f9af569acd92a0ba22583a68564fc783b160cf65bbcf3dfae634215000a6dd114fa3e788608f4024e2056b245532e31e32c5517214d105f1fc7b0a339e3f335ffd75c5b64a6b17227ba0fd18b68890c690b561f9467252c31d9309c80dd9a94d588a55d3f559445e54f8b175c4b9e360a891177c53baf79d8a09973f30e399f51c8d3fa4d14a5de432ba2e40aab0a51576d12c0347ce6899c2e1431273defde0482aee5a11e8800fa",
+    "https://job-logs.eascdn.net/production/9961ca75-c91b-43ea-bf3b-9a80e8ffaf9f/1775329752697-1e230f4f-864d-4fba-9e1e-c928dacfe179.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260404%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260404T194353Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=6d140781c07c91f05d26a95b39e042a8f707ca0bc7ec0186432132604e2ad167bc0894e9853a9f98dc3f01dc1de870314ad38730737b6cca88ffdd08dea72fb42b5043d7f8bd653ac580125deb95b82c167406cd6abfa50085472335e51969da3f99c58f558214e3c542bd1d557766c66a4481a1725ce2dc07e6c45421fa751e739f673f9ce04d87c8295e6f7ec353668825689cff142592d5fcb152767bc5e40a865fdce3d14720f43f6f513bb4edeb457b4f55a0efb280e142e4ff9580b1b94d8d4086839d8b71ddf472a7986d409b22e271d2d365dc2c048a06211f84dc467caaea05d7a4493df927d2bd48f6a98e419f530cb988c236680bd9d54306fe86",
+    "https://job-logs.eascdn.net/production/9961ca75-c91b-43ea-bf3b-9a80e8ffaf9f/1775329752951-ca5594fe-9f19-4249-a49d-f45a54c1469c.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260404%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260404T194353Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=6d68489b122d439c4d9aea06c1a52b34f491e12ec445f9187fd3c1146c41e5ca25fb7ef81d851c8f69fa7ee9bc7182e4c5d04c4d1c7fd716271712846ab4b4be3766bc69271a3aa186762ea3ba6be9661bb93bd18e800de18630c47b112f47b55578c8854288511b903e4075d47ffe33ab86385e93b2f9397ee254518a86779529b390b8af4c2ecee83da830048d15f5f600953f86db54d63860019f20d08c822d28810ba2f4cb6ea72dab31058b1b4ba46fb0fe56534d8e8c683717caca23b4909d8149ee77701d0514f3be6085b2ca8235d867514c4f26ced5445efec20bb8879794115bd9c59d16cf4950621b09729c6f92dd9328b332249739a2d2ffa0b1",
+    "https://job-logs.eascdn.net/production/9961ca75-c91b-43ea-bf3b-9a80e8ffaf9f/1775329753154-ac332086-7c63-4307-8066-e90fe9a44174.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260404%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260404T194353Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=8f658480a39ebf3ce02f88555fd8dbe1d28a2d947d7ecb451719eb6bfe3e88f8abeeafb4ffaa50cd2deab3254589c17025d6b2f4517d8ccfeea624cbac2a964cdad1e4b0736a4e4dfc18ac5fc90ee599bf3122d7f9d0c1978e9a9d33cbb603f61b48997ce543c3c8671cf582b035748e19b43af68d9fadab6f12845fe6fdefca0114bd08efd8b52b83fcef8ccb4a6bd1111743aea5e6db43e0abfb2a39f450f518d75c0e62e1e22aab2f894965c0eb4db290eed0b2b841409984a8ec3e3358a04dfde223cef7421b0e94622d1f36a488d702ceacf669e064688fa9c51f861de60808f36a0ff4defc420bbab6c40400a951bb80682e7ebb7504c13b5f91c00ca9"
+  ],
+  "project": {
+    "id": "8384f741-18dd-41fb-b0ab-df0ece2acecf",
+    "name": "restaurante-app",
+    "slug": "restaurante-app",
+    "ownerAccount": {
+      "id": "78274571-4fa1-4f3a-a809-635e4af9bbf5",
+      "name": "lumachadolp"
+    }
+  },
+  "distribution": "INTERNAL",
+  "buildProfile": "preview",
+  "sdkVersion": "54.0.0",
+  "appVersion": "1.0.1",
+  "appBuildVersion": "1",
+  "gitCommitHash": "4a342eaad03febacaa4ae5f5f0bd4c966460fec5",
+  "gitCommitMessage": "feat: add react-native-esc-pos-printer dependency and .easignore for build artifacts",
+  "priority": "NORMAL",
+  "createdAt": "2026-04-04T19:09:09.244Z",
+  "updatedAt": "2026-04-04T19:21:13.774Z",
+  "completedAt": "2026-04-04T19:21:05.568Z",
+  "expirationDate": "2026-04-18T19:09:09.275Z",
+  "isForIosSimulator": false,
+  "metrics": {
+    "buildWaitTime": 110,
+    "buildQueueTime": 44309,
+    "buildDuration": 671534
+  }
+}

@@ -1,0 +1,111 @@
+
+                {/* Tamanho 180ml */}
+                <Text style={{ fontSize: 13, fontWeight: '700', color: colors.secondary, marginTop: 12, marginBottom: 4 }}>📏 180ml - R$ 10,00</Text>
+                
+                {/* Cebolinha e Coentro - 180ml */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                  <TouchableOpacity
+                    style={{ flex: 1, backgroundColor: colors.warning, padding: 10, borderRadius: 8 }}
+                    onPress={() => {
+                      const nome = `${item.name} 180ml (Cebolinha e Coentro)`;
+                      setProdutos(prev => ({ ...prev, [nome]: (prev[nome] || 0) + 1 }));
+                    }}
+                  >
+                    <Text style={{ color: colors.white, fontSize: 11, fontWeight: '600', textAlign: 'center' }}>🌿 Cebolinha e Coentro</Text>
+                  </TouchableOpacity>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <TouchableOpacity
+                      style={{ backgroundColor: colors.danger, width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' }}
+                      onPress={() => {
+                        const nome = `${item.name} 180ml (Cebolinha e Coentro)`;
+                        setProdutos(prev => ({ ...prev, [nome]: Math.max(0, (prev[nome] || 0) - 1) }));
+                      }}
+                    >
+                      <Text style={{ color: colors.white, fontSize: 18, fontWeight: 'bold' }}>−</Text>
+                    </TouchableOpacity>
+                    <Text style={{ fontSize: 16, fontWeight: 'bold', minWidth: 24, textAlign: 'center' }}>
+                      {produtos[`${item.name} 180ml (Cebolinha e Coentro)`] || 0}
+                    </Text>
+                    <TouchableOpacity
+                      style={{ backgroundColor: colors.warning, width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' }}
+                      onPress={() => {
+                        const nome = `${item.name} 180ml (Cebolinha e Coentro)`;
+                        setProdutos(prev => ({ ...prev, [nome]: (prev[nome] || 0) + 1 }));
+                      }}
+                    >
+                      <Text style={{ color: colors.white, fontSize: 18, fontWeight: 'bold' }}>+</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Cebolinha - 180ml */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                  <TouchableOpacity
+                    style={{ flex: 1, backgroundColor: colors.success, padding: 10, borderRadius: 8 }}
+                    onPress={() => {
+                      const nome = `${item.name} 180ml (Cebolinha)`;
+                      setProdutos(prev => ({ ...prev, [nome]: (prev[nome] || 0) + 1 }));
+                    }}
+                  >
+                    <Text style={{ color: colors.white, fontSize: 11, fontWeight: '600', textAlign: 'center' }}>🧅 Cebolinha</Text>
+                  </TouchableOpacity>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <TouchableOpacity
+                      style={{ backgroundColor: colors.danger, width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' }}
+                      onPress={() => {
+                        const nome = `${item.name} 180ml (Cebolinha)`;
+                        setProdutos(prev => ({ ...prev, [nome]: Math.max(0, (prev[nome] || 0) - 1) }));
+                      }}
+                    >
+                      <Text style={{ color: colors.white, fontSize: 18, fontWeight: 'bold' }}>−</Text>
+                    </TouchableOpacity>
+                    <Text style={{ fontSize: 16, fontWeight: 'bold', minWidth: 24, textAlign: 'center' }}>
+                      {produtos[`${item.name} 180ml (Cebolinha)`] || 0}
+                    </Text>
+                    <TouchableOpacity
+                      style={{ backgroundColor: colors.success, width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' }}
+                      onPress={() => {
+                        const nome = `${item.name} 180ml (Cebolinha)`;
+                        setProdutos(prev => ({ ...prev, [nome]: (prev[nome] || 0) + 1 }));
+                      }}
+                    >
+                      <Text style={{ color: colors.white, fontSize: 18, fontWeight: 'bold' }}>+</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Sem Nada - 180ml */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6, marginBottom: 12 }}>
+                  <TouchableOpacity
+                    style={{ flex: 1, backgroundColor: colors.textSecondary, padding: 10, borderRadius: 8 }}
+                    onPress={() => {
+                      const nome = `${item.name} 180ml (Sem Nada)`;
+                      setProdutos(prev => ({ ...prev, [nome]: (prev[nome] || 0) + 1 }));
+                    }}
+                  >
+                    <Text style={{ color: colors.white, fontSize: 11, fontWeight: '600', textAlign: 'center' }}>⚪ Sem Nada</Text>
+                  </TouchableOpacity>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <TouchableOpacity
+                      style={{ backgroundColor: colors.danger, width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' }}
+                      onPress={() => {
+                        const nome = `${item.name} 180ml (Sem Nada)`;
+                        setProdutos(prev => ({ ...prev, [nome]: Math.max(0, (prev[nome] || 0) - 1) }));
+                      }}
+                    >
+                      <Text style={{ color: colors.white, fontSize: 18, fontWeight: 'bold' }}>−</Text>
+                    </TouchableOpacity>
+                    <Text style={{ fontSize: 16, fontWeight: 'bold', minWidth: 24, textAlign: 'center' }}>
+                      {produtos[`${item.name} 180ml (Sem Nada)`] || 0}
+                    </Text>
+                    <TouchableOpacity
+                      style={{ backgroundColor: colors.textSecondary, width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' }}
+                      onPress={() => {
+                        const nome = `${item.name} 180ml (Sem Nada)`;
+                        setProdutos(prev => ({ ...prev, [nome]: (prev[nome] || 0) + 1 }));
+                      }}
+                    >
+                      <Text style={{ color: colors.white, fontSize: 18, fontWeight: 'bold' }}>+</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>

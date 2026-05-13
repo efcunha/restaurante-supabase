@@ -1,0 +1,58 @@
+# Subflow: add_pizza.yaml
+# Pizza Grande/Família: 1/2 Calabresa + 1/2 Chocolate com Morango + Bacon
+# Requer: estar na tela Novo Pedido com o cardápio carregado
+appId: com.comandapraia.donacida
+---
+- extendedWaitUntil:
+    visible:
+      text: "Calabresa"
+    timeout: 10000
+
+- tapOn:
+    text: "Calabresa"
+    index: 0
+
+- extendedWaitUntil:
+    visible:
+      text: "Grande/Família"
+    timeout: 8000
+
+- tapOn:
+    text: "Grande/Família"
+    index: 0
+
+- extendedWaitUntil:
+    visible:
+      text: "Chocolate com Morango"
+    timeout: 10000
+
+- tapOn:
+    text: "Chocolate com Morango"
+    index: 0
+
+- extendedWaitUntil:
+    visible:
+      text: "Próximo: Extras"
+    timeout: 8000
+
+- tapOn:
+    text: "Próximo: Extras"
+    index: 0
+
+- extendedWaitUntil:
+    visible:
+      text: "Bacon"
+    timeout: 8000
+
+- tapOn:
+    text: "Bacon"
+    index: 0
+
+- tapOn:
+    text: "Adicionar ao Pedido"
+    index: 0
+
+- extendedWaitUntil:
+    visible:
+      text: "Pizza adicionada!"
+    timeout: 8000
