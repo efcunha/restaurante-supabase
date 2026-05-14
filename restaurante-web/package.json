@@ -112,7 +112,7 @@
     "@react-native/metro-config": "^0.84.0",
     "@supabase/mcp-server-supabase": "^0.6.3",
     "@types/uuid": "^10.0.0",
-    "babel-loader": "^9.2.1",
+    "babel-loader": "^10.1.1",
     "babel-plugin-react-native-web": "^0.21.0",
     "dotenv": "^17.2.3",
     "eslint": "^9.39.4",
