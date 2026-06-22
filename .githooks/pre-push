@@ -1,0 +1,151 @@
+#!/usr/bin/env python
+"""Pre-push guard: blocks pushes that would expose secrets/PII to remote.
+
+Detects:
+- Files matching risky patterns (.env, .key, .pem, credentials*, *.csv, etc.)
+- Strings resembling leaked secrets (API keys, JWT secret=, Figma tokens, etc.)
+- PII markers (CPF, RG, NIS patterns)
+"""
+import re
+import subprocess
+import sys
+
+FORBIDDEN_PATH_PATTERNS = [
+    r"^\.env(\.|$)",
+    r"\.env\.dpapi\.xml$",
+    r"\.key$",
+    r"\.pem$",
+    r"\.pfx$",
+    r"\.p12$",
+    r"\.crt$",
+    r"\.cer$",
+    r"\.keystore$",
+    r"\.jks$",
+    r"credentials",
+    r"serviceAccountKey\.json$",
+    r"google-services\.json$",
+    r"GoogleService-Info\.plist$",
+    r"firebase-adminsdk-.*\.json$",
+    r"release\.keystore$",
+    r"\.csv$",
+    r"\.xlsx$",
+    r"\.xls$",
+    r"\.pdf$",
+    r"\.docx?$",
+]
+
+FORBIDDEN_CONTENT_PATTERNS = [
+    (r"FIGMA_TOKEN\s*=\s*figd_[A-Za-z0-9_-]+", "hardcoded Figma token"),
+    (r"CURSOR_SECRET\s*=\s*[A-Fa-f0-9]{16,}", "hardcoded Cursor secret"),
+    (r"RELEASE_STORE_PASSWORD\s*=\s*\S{6,}", "hardcoded Android keystore password"),
+    (r"RELEASE_KEY_PASSWORD\s*=\s*\S{6,}", "hardcoded Android key password"),
+    (r"EXPO_PUBLIC_FIREBASE_API_KEY\s*=\s*AIza[0-9A-Za-z_-]{20,}", "hardcoded Firebase API key"),
+    (r"SUPABASE_SERVICE_ROLE_KEY\s*=\s*eyJ[A-Za-z0-9_-]{10,}\.", "hardcoded Supabase service role key"),
+    (r"MERCADOPAGO_ACCESS_TOKEN\s*=\s*APP_USR-\S{10,}", "hardcoded Mercado Pago access token"),
+    (r"API_SECRET_KEY\s*=\s*[^$\n\s{]+", "hardcoded API_SECRET_KEY"),
+    (r"API_MASTER_KEY\s*=\s*[^$\n\s{]+", "hardcoded API_MASTER_KEY"),
+    (r"ENCRYPTION_KEY\s*=\s*[A-Za-z0-9+/=_\-]{20,}", "hardcoded ENCRYPTION_KEY"),
+    (r"SECRET_KEY\s*=\s*[A-Za-z0-9+/=_\-]{20,}", "hardcoded SECRET_KEY"),
+    (r"ADMIN_PASSWORD\s*=\s*\S{6,}", "hardcoded ADMIN_PASSWORD"),
+    (r"postgresql://[^/\s]+:[^/\s]+@", "postgres URL with embedded password"),
+    (r"postgres://[^/\s]+:[^/\s]+@", "postgres URL with embedded password"),
+    (r"\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b", "possible CPF number"),
+]
+
+def get_pushed_files():
+    result = subprocess.run(
+        ["git", "rev-list", "--objects", "HEAD"],
+        capture_output=True, text=True, encoding="utf-8", errors="replace",
+    )
+    files = set()
+    for line in result.stdout.splitlines():
+        parts = line.split(" ", 1)
+        if len(parts) == 2:
+            files.add(parts[1].replace("\\", "/"))
+    return files
+
+def main():
+    print("[pre-push] Scanning for secrets and PII...")
+    files = get_pushed_files()
+    errors = []
+
+    SKIP_PATH_PATTERNS = [
+        r"\.example$",
+        r"\.example\.",
+        r"\.template$",
+        r"/data/charts?\.csv$",
+        r"/data/colors?\.csv$",
+        r"/data/icons?\.csv$",
+        r"/data/landing\.csv$",
+        r"/data/products?\.csv$",
+        r"/data/styles?\.csv$",
+        r"/data/typography\.csv$",
+        r"/data/ux-guidelines\.csv$",
+        r"/data/web-interface\.csv$",
+        r"/data/ui-reasoning\.csv$",
+        r"/data/react-performance\.csv$",
+        r"/data/stacks/.*\.csv$",
+        r"\.template\.csv$",
+        r"README\.md$",
+        r"docs/",
+        r"migrations/.*\.sql$",
+    ]
+
+    PLACEHOLDER_VALUES = {"", "change-me", "changeme", "your-password", "your-key",
+                         "your-token", "your-secret", "substitua", "placeholder", "example"}
+
+    def has_real_value(text, pattern):
+        matches = re.findall(pattern, text)
+        for m in matches:
+            value = m.group(0)
+            if "=" in value:
+                v = value.split("=", 1)[1].strip().strip("'\"")
+            else:
+                v = value
+            if v.lower() in PLACEHOLDER_VALUES:
+                continue
+            if len(v) < 8:
+                continue
+            if v.endswith("=") and len(v) < 20:
+                continue
+            return True
+        return False
+
+    for path in sorted(files):
+        norm = path.replace("\\", "/").lstrip("./")
+        skip = any(re.search(p, norm, re.IGNORECASE) for p in SKIP_PATH_PATTERNS)
+        if skip:
+            continue
+        for pat in FORBIDDEN_PATH_PATTERNS:
+            if re.search(pat, norm, re.IGNORECASE):
+                errors.append(f"FORBIDDEN PATH: {path} (matches /{pat}/)")
+                break
+        else:
+            try:
+                blob = subprocess.run(
+                    ["git", "show", f"HEAD:{path}"],
+                    capture_output=True, text=True, encoding="utf-8", errors="replace",
+                    timeout=10,
+                )
+                if blob.returncode == 0 and blob.stdout:
+                    stripped = "\n".join(
+                        line for line in blob.stdout.splitlines() if not line.strip().startswith("#")
+                    )
+                    for pat, desc in FORBIDDEN_CONTENT_PATTERNS:
+                        if has_real_value(stripped, pat):
+                            errors.append(f"FORBIDDEN CONTENT in {path}: {desc}")
+            except Exception:
+                pass
+
+    if errors:
+        print("\n[pre-push] PUSH BLOCKED - security violations detected:\n")
+        for e in errors:
+            print(f"  - {e}")
+        print("\nFix these issues before pushing. See SECURITY.md and .gitignore.")
+        return 1
+
+    print("[pre-push] OK - no secrets/PII detected in push.")
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main())

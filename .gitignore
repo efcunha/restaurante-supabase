@@ -46,6 +46,9 @@ GoogleService-Info.plist
 .env.*
 !.env.example
 !.env.*.example
+# DPAPI-encrypted env backups (Windows-specific; safe to ignore)
+.env.dpapi.xml
+.env.*.dpapi.xml
 
 # Sensitive local scripts (never commit)
 test-evo-api.js
