@@ -1,0 +1,86 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "server": {
+    "port": 4096,
+    "hostname": "127.0.0.1",
+    "mdns": true,
+    "mdnsDomain": "opencode.local"
+  },
+  "model": "minimax-coding-plan/MiniMax-M3",
+  "provider": {
+    "minimax-coding-plan": {
+      "npm": "@ai-sdk/openai",
+      "options": {
+        "baseURL": "https://api.minimax.io/v1",
+        "apiKey": "sk-cp-ZZ1VegmgWvaPyHlfl8G1ug5UnANJig79dz6DWxmUbZR51O9BA82ohyWyXcLA2dClrWlI5vAFqnQ_qEDm3A0jqGM6Q8G-3RcwOkWQEEGJvD4J8eeoapSTO4A"
+      },
+      "models": {
+        "MiniMax-M3": { "name": "MiniMax M3" }
+      }
+    },
+	"ollama": {
+	"options": {
+	  "baseURL": "http://localhost:11434/v1"
+	},
+	"models": {
+	  "qwen2.5-coder:14b": {
+		"name": "Qwen 2.5 Coder 14B",
+		"contextWindow": 32768
+	  },
+	  "qwen2.5:3b": {
+		"name": "Qwen 2.5 Coder 3B",
+		"contextWindow": 32768
+	  },
+	  "qwen3-embedding:0.6": {
+		"name": "Qwen 3 Embedding 0.6B",
+		"contextWindow": 32768
+	  }
+	}
+  },
+  },
+  "lsp": {
+    "typescript": {
+      "command": ["npx", "-y", "typescript-language-server", "--stdio"],
+      "extensions": [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts"],
+      "enabled": true
+    },
+    "python": {
+      "command": ["uvx", "pyright-langserver", "--stdio"],
+      "extensions": [".py", ".pyi"],
+      "enabled": true
+    }
+  },
+
+  "mcp": {
+
+    "mcp-igniter": { "type": "local", "command": ["npx", "@igniter-js/mcp-server"], "enabled": true, "timeout": 90000 },
+
+    "memory": { "type": "local", "command": ["npx", "-y", "@modelcontextprotocol/server-memory"], "enabled": true },
+
+    "sequential-thinking": { "type": "local", "command": ["npx", "-y", "@modelcontextprotocol/server-sequential-thinking"], "enabled": true },
+
+    "postgres-railway": { "type": "local", "command": ["npx", "-y", "@modelcontextprotocol/server-postgres", "postgresql://postgres:${POSTGRES_RAILWAY_PASSWORD}@zephyr.proxy.rlwy.net:31127/railway"], "enabled": true, "timeout": 60000},
+
+    "redis-railway": { "type": "local", "command": ["npx", "-y", "@modelcontextprotocol/server-redis", "redis://default:yHexkYKEsVNaThDlsJEYtGDdMIpBwifg@zephyr.proxy.rlwy.net:10548"], "enabled": true, "timeout": 60000},
+
+    "playwright": { "type": "local", "command": ["npx", "-y", "@playwright/mcp"], "enabled": true },
+
+    "context7": { "type": "remote", "url": "https://mcp.context7.com/mcp", "headers": {"CONTEXT7_API_KEY": "ctx7sk-75bffc34-f39c-44e0-a838-a6c5040e9b2c"}, "enabled": true},
+
+    "opencode-rag": { "type": "local", "command": ["node", "./.opencode/node_modules/opencode-rag-plugin/dist/cli.js", "mcp", "--config", "./opencode-rag.json"], "env": { "OPENCODE_RAG_CWD": "D:/restaurante-supabase" }, "enabled": true, "timeout": 60000 },
+
+    "jira-local": {
+      "type": "local",
+      "command": ["node", "C:/nvm4w/nodejs/node_modules/jira-server/build/index.js"],
+      "env": {
+        "JIRA_DOMAIN": "https://edsonfcunha68.atlassian.net",
+        "JIRA_EMAIL": "edsonfcunha68@gmail.com",
+        "JIRA_API_TOKEN": "${JIRA_API_TOKEN}"
+      },
+      "enabled": true,
+      "timeout": 60000
+    }
+  },
+
+  "plugin": ["./.opencode/plugins/rag-plugin.js"]
+}

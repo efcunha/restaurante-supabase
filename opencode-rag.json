@@ -1,0 +1,120 @@
+{
+  "embedding": {
+    "provider": "ollama",
+    "baseUrl": "http://127.0.0.1:11434/api",
+    "model": "nomic-embed-text",
+    "timeoutMs": 60000
+  },
+  "indexing": {
+    "includeExtensions": [
+      ".ts",
+      ".tsx",
+      ".js",
+      ".jsx",
+      ".mjs",
+      ".cjs",
+      ".py",
+      ".html",
+      ".htm",
+      ".css",
+      ".scss",
+      ".json",
+      ".md",
+      ".mdx",
+      ".yml",
+      ".yaml",
+      ".toml",
+      ".ini",
+      ".cfg",
+      ".sql",
+      ".sh",
+      ".ps1",
+      ".dockerfile",
+      ".kt",
+      ".swift",
+      ".java",
+      ".gradle",
+      ".xml"
+    ],
+    "excludeDirs": [
+      "node_modules",
+      ".git",
+      ".opencode",
+      ".expo",
+      ".metro-health-check*",
+      "dist",
+      "build",
+      "coverage",
+      "__pycache__",
+      ".venv",
+      ".venv*",
+      "venv",
+      ".playwright-mcp",
+      "test-results",
+      "playwright-report",
+      "e2e",
+      "tmp",
+      "logs",
+      "backups",
+      "Planilhas",
+      "recovered",
+      "data",
+      "uploads",
+      "storage",
+      "dataconnect",
+      "mcp-server-ts",
+      ".kotlin",
+      ".kotlin*",
+      "android/.gradle",
+      "android/build",
+      "android/app/build",
+      "ios/Pods",
+      "ios/build",
+      "DerivedData"
+    ],
+    "chunkOverlap": 0,
+    "minFileSizeBytes": 0,
+    "concurrency": 1,
+    "embedBatchSize": 16
+  },
+  "vectorStore": {
+    "path": "./.opencode/rag_db"
+  },
+  "retrieval": {
+    "topK": 10,
+    "minScore": 0.2,
+    "hybridSearch": {
+      "enabled": true,
+      "keywordWeight": 0.5
+    }
+  },
+  "openCode": {
+    "enabled": true,
+    "maxContextChunks": 10,
+    "readOverride": true,
+    "autoIndex": {
+      "enabled": true,
+      "debounceMs": 2000,
+      "intervalMs": 300000
+    },
+    "autoInject": {
+      "enabled": true,
+      "minScore": 0.75,
+      "maxChunks": 3,
+      "maxTokens": 2000
+    }
+  },
+  "mcp": {
+    "enabled": true
+  },
+  "logging": {
+    "level": "info",
+    "logFilePath": "./.opencode/opencode-rag.log"
+  },
+  "description": {
+    "enabled": false
+  },
+  "chunking": {
+    "nodeTypes": {}
+  }
+}
