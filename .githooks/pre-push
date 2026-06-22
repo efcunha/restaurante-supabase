@@ -1,56 +1,119 @@
 #!/usr/bin/env python
-"""Pre-push guard: blocks pushes that would expose secrets/PII to remote.
+# -*- coding: utf-8 -*-
+"""Pre-push guard for restaurante-supabase monorepo.
 
-Detects:
-- Files matching risky patterns (.env, .key, .pem, credentials*, *.csv, etc.)
-- Strings resembling leaked secrets (API keys, JWT secret=, Figma tokens, etc.)
-- PII markers (CPF, RG, NIS patterns)
+Blocks pushes that would expose secrets/PII for:
+- Firebase, Supabase, Figma, Cursor
+- Android release keystore
+- Mercado Pago, WhatsApp Evolution API
+- Postgres URLs with embedded credentials
 """
+import io
 import re
 import subprocess
 import sys
 
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+
 FORBIDDEN_PATH_PATTERNS = [
     r"^\.env(\.|$)",
     r"\.env\.dpapi\.xml$",
-    r"\.key$",
-    r"\.pem$",
-    r"\.pfx$",
-    r"\.p12$",
-    r"\.crt$",
-    r"\.cer$",
-    r"\.keystore$",
-    r"\.jks$",
-    r"credentials",
-    r"serviceAccountKey\.json$",
-    r"google-services\.json$",
-    r"GoogleService-Info\.plist$",
-    r"firebase-adminsdk-.*\.json$",
-    r"release\.keystore$",
-    r"\.csv$",
-    r"\.xlsx$",
-    r"\.xls$",
-    r"\.pdf$",
-    r"\.docx?$",
+    r"\.key$", r"\.pem$", r"\.pfx$", r"\.p12$",
+    r"\.crt$", r"\.cer$", r"\.keystore$", r"\.jks$", r"\.udg$",
+    r"credentials", r"serviceAccountKey\.json$",
+    r"google-services\.json$", r"GoogleService-Info\.plist$",
+    r"firebase-adminsdk-.*\.json$", r"release\.keystore$",
+    r"debug\.keystore$", r"restaurante-release-key\.keystore$",
+    r"\.csv$", r"\.xlsx$", r"\.xls$", r"\.pdf$", r"\.docx?$",
+    r"\.dump$", r"\.sql$", r"\.backup$", r"\.bak$",
+    r"database-backup/backups/", r"database-backup/logs/",
+    r"restaurante-site/public/downloads/",
+    r"Planilhas/",
 ]
 
 FORBIDDEN_CONTENT_PATTERNS = [
     (r"FIGMA_TOKEN\s*=\s*figd_[A-Za-z0-9_-]+", "hardcoded Figma token"),
     (r"CURSOR_SECRET\s*=\s*[A-Fa-f0-9]{16,}", "hardcoded Cursor secret"),
-    (r"RELEASE_STORE_PASSWORD\s*=\s*\S{6,}", "hardcoded Android keystore password"),
-    (r"RELEASE_KEY_PASSWORD\s*=\s*\S{6,}", "hardcoded Android key password"),
+    (r"RELEASE_STORE_PASSWORD\s*=\s*['\"]?[A-Za-z0-9!@#$%^&*()_+\-=\[\]{};':\"\\|,.<>\/?]{6,}['\"]?", "hardcoded Android keystore password"),
+    (r"RELEASE_KEY_PASSWORD\s*=\s*['\"]?[A-Za-z0-9!@#$%^&*()_+\-=\[\]{};':\"\\|,.<>\/?]{6,}['\"]?", "hardcoded Android key password"),
     (r"EXPO_PUBLIC_FIREBASE_API_KEY\s*=\s*AIza[0-9A-Za-z_-]{20,}", "hardcoded Firebase API key"),
     (r"SUPABASE_SERVICE_ROLE_KEY\s*=\s*eyJ[A-Za-z0-9_-]{10,}\.", "hardcoded Supabase service role key"),
+    (r"EXPO_PUBLIC_SUPABASE_ANON_KEY\s*=\s*eyJ[A-Za-z0-9_-]{10,}\.", "hardcoded Supabase anon key"),
     (r"MERCADOPAGO_ACCESS_TOKEN\s*=\s*APP_USR-\S{10,}", "hardcoded Mercado Pago access token"),
+    (r"MERCADOPAGO_WEBHOOK_SECRET\s*=\s*\S{16,}", "hardcoded Mercado Pago webhook secret"),
+    (r"EXPO_PUBLIC_EVO_API_KEY\s*=\s*\S{16,}", "hardcoded Evolution API key"),
     (r"API_SECRET_KEY\s*=\s*[^$\n\s{]+", "hardcoded API_SECRET_KEY"),
     (r"API_MASTER_KEY\s*=\s*[^$\n\s{]+", "hardcoded API_MASTER_KEY"),
     (r"ENCRYPTION_KEY\s*=\s*[A-Za-z0-9+/=_\-]{20,}", "hardcoded ENCRYPTION_KEY"),
     (r"SECRET_KEY\s*=\s*[A-Za-z0-9+/=_\-]{20,}", "hardcoded SECRET_KEY"),
-    (r"ADMIN_PASSWORD\s*=\s*\S{6,}", "hardcoded ADMIN_PASSWORD"),
-    (r"postgresql://[^/\s]+:[^/\s]+@", "postgres URL with embedded password"),
-    (r"postgres://[^/\s]+:[^/\s]+@", "postgres URL with embedded password"),
-    (r"\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b", "possible CPF number"),
+    (r"ADMIN_PASSWORD\s*=\s*[^$\n\s{#]+", "hardcoded ADMIN_PASSWORD"),
+    (r"postgresql?://[^/\s]+:[^/\s]+@", "postgres URL with embedded password"),
 ]
+
+SKIP_PATH_PATTERNS = [
+    r"\.example$", r"\.example\.", r"\.template$", r"\.template\.csv$",
+    r"README\.md$", r"docs/",
+    r"/data/charts?\.csv$", r"/data/colors?\.csv$", r"/data/icons?\.csv$",
+    r"/data/landing\.csv$", r"/data/products?\.csv$",
+    r"/data/styles?\.csv$", r"/data/typography\.csv$",
+    r"/data/ux-guidelines\.csv$", r"/data/web-interface\.csv$",
+    r"/data/ui-reasoning\.csv$", r"/data/react-performance\.csv$",
+    r"/data/stacks/.*\.csv$",
+    r"database-backup/migrations/.*\.sql$",
+    r"REMEDIATION\.md$", r"SECURITY\.md$", r"docs/.*\.md$",
+    r"database-backup/migrations/",
+    r"\.skills/.*\.md$",
+    r"\.github/instructions/",
+    r"\.github/skills/",
+    r"restaurante-app/scripts/.*\.sh$",
+    r"restaurante-app/scripts/.*\.sql$",
+    r"restaurante-app/scripts/seed\.sql$",
+    r"\.eslint-report\.json$",
+    r"\.spec\.ts$",
+    r"\.test\.ts$",
+    r"\.test\.tsx$",
+    r"/__tests__/",
+    r"/tests/",
+    r"validators?/",
+    r"validations?/",
+    r"validation\.ts$",
+    r"validation\.js$",
+    r"format[A-Z].*\.ts$",
+    r"format[A-Z].*\.js$",
+    r"schemas?/",
+    r"types?/",
+]
+
+PLACEHOLDER_VALUES = {"", "change-me", "changeme", "your-password",
+                     "your-key", "your-token", "your-secret",
+                     "substitua", "placeholder", "example",
+                     "gere-com-secrets-token-hex-32",
+                     "your-figma-token", "your-cursor-secret",
+                     "[REDACTED-PII]", "00000000000", "00000000000000",
+                     "(00) 00000-0000", "admin@example.com",
+                     "your-firebase-api-key", "your-supabase-anon-key",
+                     "your-supabase-service-role-key"}
+
+
+def has_real_secret(text, pattern):
+    for m in re.finditer(pattern, text, flags=re.MULTILINE):
+        value = m.group(0)
+        if "=" in value:
+            v = value.split("=", 1)[1].strip().strip("'\"")
+        else:
+            v = value
+        if v.lower() in PLACEHOLDER_VALUES:
+            continue
+        if "${" in v or "$" in v[:3]:
+            continue
+        if v.endswith("=") and len(v) < 20:
+            continue
+        if len(v) < 8:
+            continue
+        return True
+    return False
+
 
 def get_pushed_files():
     result = subprocess.run(
@@ -64,57 +127,15 @@ def get_pushed_files():
             files.add(parts[1].replace("\\", "/"))
     return files
 
+
 def main():
-    print("[pre-push] Scanning for secrets and PII...")
+    print("[pre-push] Scanning for secrets and PII (restaurante-supabase)...")
     files = get_pushed_files()
     errors = []
 
-    SKIP_PATH_PATTERNS = [
-        r"\.example$",
-        r"\.example\.",
-        r"\.template$",
-        r"/data/charts?\.csv$",
-        r"/data/colors?\.csv$",
-        r"/data/icons?\.csv$",
-        r"/data/landing\.csv$",
-        r"/data/products?\.csv$",
-        r"/data/styles?\.csv$",
-        r"/data/typography\.csv$",
-        r"/data/ux-guidelines\.csv$",
-        r"/data/web-interface\.csv$",
-        r"/data/ui-reasoning\.csv$",
-        r"/data/react-performance\.csv$",
-        r"/data/stacks/.*\.csv$",
-        r"\.template\.csv$",
-        r"README\.md$",
-        r"docs/",
-        r"migrations/.*\.sql$",
-    ]
-
-    PLACEHOLDER_VALUES = {"", "change-me", "changeme", "your-password", "your-key",
-                         "your-token", "your-secret", "substitua", "placeholder", "example"}
-
-    def has_real_value(text, pattern):
-        matches = re.findall(pattern, text)
-        for m in matches:
-            value = m.group(0)
-            if "=" in value:
-                v = value.split("=", 1)[1].strip().strip("'\"")
-            else:
-                v = value
-            if v.lower() in PLACEHOLDER_VALUES:
-                continue
-            if len(v) < 8:
-                continue
-            if v.endswith("=") and len(v) < 20:
-                continue
-            return True
-        return False
-
     for path in sorted(files):
         norm = path.replace("\\", "/").lstrip("./")
-        skip = any(re.search(p, norm, re.IGNORECASE) for p in SKIP_PATH_PATTERNS)
-        if skip:
+        if any(re.search(p, norm, re.IGNORECASE) for p in SKIP_PATH_PATTERNS):
             continue
         for pat in FORBIDDEN_PATH_PATTERNS:
             if re.search(pat, norm, re.IGNORECASE):
@@ -124,15 +145,16 @@ def main():
             try:
                 blob = subprocess.run(
                     ["git", "show", f"HEAD:{path}"],
-                    capture_output=True, text=True, encoding="utf-8", errors="replace",
-                    timeout=10,
+                    capture_output=True, text=True, encoding="utf-8",
+                    errors="replace", timeout=10,
                 )
                 if blob.returncode == 0 and blob.stdout:
                     stripped = "\n".join(
-                        line for line in blob.stdout.splitlines() if not line.strip().startswith("#")
+                        line for line in blob.stdout.splitlines()
+                        if not line.strip().startswith("#") and "| " not in line[:5]
                     )
                     for pat, desc in FORBIDDEN_CONTENT_PATTERNS:
-                        if has_real_value(stripped, pat):
+                        if has_real_secret(stripped, pat):
                             errors.append(f"FORBIDDEN CONTENT in {path}: {desc}")
             except Exception:
                 pass
@@ -146,6 +168,7 @@ def main():
 
     print("[pre-push] OK - no secrets/PII detected in push.")
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())

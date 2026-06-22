@@ -104,6 +104,7 @@ e2e/*
 *.tmp
 *.temp
 *.bak
+*.backup
 *.bundle
 *Zone.Identifier
 .cache/
@@ -137,3 +138,19 @@ database-backup/*.bak
 
 # Ignore vscode AI rules
 .github/instructions/codacy.instructions.md
+
+# --- PII / LGPD: prevenir commit de dados pessoais ---
+Planilhas/
+data/
+uploads/
+storage/
+backups/
+logs/
+recovered/
+*.xlsx
+*.xls
+*.ods
+*.pdf
+*.doc
+*.docx
+*.rtf
