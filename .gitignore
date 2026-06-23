@@ -66,6 +66,8 @@ fetch-instances.js
 kiro/
 *.swp
 *.swo
+.codex/
+.opencode/
 
 # OS
 .DS_Store

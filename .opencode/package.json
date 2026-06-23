@@ -1,9 +1,0 @@
-{
-  "name": ".opencode",
-  "private": true,
-  "type": "module",
-  "dependencies": {
-    "@opencode-ai/plugin": "1.15.5",
-    "opencode-rag-plugin": "file:../../ameg/.opencode/node_modules/opencode-rag-plugin"
-  }
-}
